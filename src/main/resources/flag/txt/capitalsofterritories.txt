@@ -1,0 +1,55 @@
+Cayman Islands	George Town	United Kingdom
+Svalbard	Longyearbyen	Norway
+Sint Eustatius	Oranjestad	Netherlands
+Niue	Alofi	New Zealand
+Saba	The Bottom	Netherlands
+Curaçao	Willemstad	Netherlands
+Bermuda	Hamilton	United Kingdom
+Faroe Islands	Thorshavn	Denmark
+French Polynesia	Papeete	France
+Saint-Barthélemy	Gustavia	France
+Turks and Caicos Islands	Cockburn Town	United Kingdom
+Andaman and Nicobar Islands	Port Blair	India
+Ascension Island	Georgetown	United Kingdom
+New Caledonia	Numea	France
+Guam	Hagåtña	United States
+Puerto Rico	San Juan	United States
+Montserrat	Brades	United Kingdom
+Sint Maarten	Philipsburg	Netherlands
+Mayotte	Mamoudzou	France
+Norfolk Island	Kingston	Australia
+Tristan da Cunha	Edinburgh of the Seven Seas	United Kingdom
+American Samoa	Pago Pago	United States
+British Virgin Islands	Road Town	United Kingdom
+Dependent Territory	Capital of Dependent Territory	Sovereign State
+U.S. Virgin Islands	Charlotte Amalie	United States
+Cocos (Keeling) Islands	West Island	Australia
+Saint-Martin (The Collectivity of)	Marigot	France
+Northern Mariana Islands	Capital Hill	United States
+Martinique	Fort-de-France	France
+South Georgia and the South Sandwich Islands	King Edward Point	United Kingdom
+Isle of Man	Douglas	United Kingdom
+Christmas Island	Flying Fish Cove	Australia
+Wallis and Futuna	Mata-Utu	France
+Guadeloupe	Basse-Terre	France
+Cook Islands	Avarua	New Zealand
+Galapagos Islands	Puerto Baquerizo Moreno	Ecuador
+Jersey	Saint Helier	United Kingdom
+Pitcairn	Adamstown	United Kingdom
+Bonaire	Kralendijk	Netherlands
+Åland	Maarianhamina	Finland
+Greenland	Nuuk	Denmark
+Aruba	Oranjestad	Netherlands
+Saint Pierre and Miquelon	Saint-Pierre	France
+Saint Helena, Ascension and Tristan da Cunha	Jamestown	United Kingdom
+
+Guernsey	Saint Peter Port	United Kingdom
+Falkland Islands	Stanley	United Kingdom
+Anguilla	The Valley	United Kingdom
+Tokelau	Nukunonu	New Zealand
+
+Balearic Islands	Palma de Mallorca	Spain
+Réunion	Saint-Denis	France
+French Southern and Antarctic Lands	Saint-Denis	France
+
+

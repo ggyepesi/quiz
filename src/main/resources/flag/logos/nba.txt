@@ -1,0 +1,30 @@
+Boston Celtics	Boston, Massachusetts	TD Garden	19,156	42.366303°N 71.062228°W	1946
+Brooklyn Nets	Brooklyn, New York	Barclays Center	17,732	40.68265°N 73.974689°W	1967*	1976
+New York Knicks	New York, New York	Madison Square Garden	19,812	40.750556°N 73.993611°W	1946
+Philadelphia 76ers	Philadelphia, Pennsylvania	Wells Fargo Center	20,478	39.901111°N 75.171944°W	1946*	1949
+Toronto Raptors	Toronto, Ontario	Scotiabank Arena	19,800	43.643333°N 79.379167°W	1995
+Chicago Bulls	Chicago, Illinois	United Center	20,917	41.880556°N 87.674167°W	1966
+Cleveland Cavaliers	Cleveland, Ohio	Rocket Arena	19,432	41.496389°N 81.688056°W	1970
+Detroit Pistons	Detroit, Michigan	Little Caesars Arena	20,332	42.341111°N 83.055°W	1937*	1948
+Indiana Pacers	Indianapolis, Indiana	Gainbridge Fieldhouse	17,923	39.763889°N 86.155556°W	1967	1976
+Milwaukee Bucks	Milwaukee, Wisconsin	Fiserv Forum	17,341	43.043611°N 87.916944°W	1968
+Atlanta Hawks	Atlanta, Georgia	State Farm Arena	16,600	33.757222°N 84.396389°W	1946*	1949
+Charlotte Hornets	Charlotte, North Carolina	Spectrum Center	19,077	35.225°N 80.839167°W	1988*
+Miami Heat	Miami, Florida	Kaseya Center	19,600	25.781389°N 80.188056°W	1988
+Orlando Magic	Orlando, Florida	Kia Center	18,846	28.539167°N 81.383611°W	1989
+Washington Wizards	Washington, D.C.	Capital One Arena	20,356	38.898056°N 77.020833°W	1961*
+Denver Nuggets	Denver, Colorado	Ball Arena	19,520	39.748611°N 105.0075°W	1967	1976
+Minnesota Timberwolves	Minneapolis, Minnesota	Target Center	18,798	44.979444°N 93.276111°W	1989
+Oklahoma City Thunder	Oklahoma City, Oklahoma	Paycom Center	18,203	35.463333°N 97.515°W	1967*
+Portland Trail Blazers	Portland, Oregon	Moda Center	19,393	45.531667°N 122.666667°W	1970
+Utah Jazz	Salt Lake City, Utah	Delta Center	18,306	40.768333°N 111.901111°W	1974*
+Golden State Warriors	San Francisco, California	Chase Center	18,064	37.768056°N 122.3875°W	1946*
+Los Angeles Clippers	Inglewood, California	Intuit Dome	18,000	33.9451°N 118.3431°W	1970*
+Los Angeles Lakers	Los Angeles, California	Crypto.com Arena	19,079	34.043056°N 118.267222°W	1947*	1948
+Phoenix Suns	Phoenix, Arizona	PHX Arena	16,645	33.445833°N 112.071389°W	1968
+Sacramento Kings	Sacramento, California	Golden 1 Center	17,608	38.649167°N 121.518056°W	1923*	1948
+Dallas Mavericks	Dallas, Texas	American Airlines Center	19,200	32.790556°N 96.810278°W	1980
+Houston Rockets	Houston, Texas	Toyota Center	18,055	29.750833°N 95.362222°W	1967*
+Memphis Grizzlies	Memphis, Tennessee	FedExForum	18,119	35.138333°N 90.050556°W	1995*
+New Orleans Pelicans	New Orleans, Louisiana	Smoothie King Center	16,867	29.948889°N 90.081944°W	2002*
+San Antonio Spurs	San Antonio, Texas	Frost Bank Center	18,418	29.426944°N 98.4375°W	1967*	1976

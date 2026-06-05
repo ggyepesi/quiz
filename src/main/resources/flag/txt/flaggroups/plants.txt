@@ -1,0 +1,683 @@
+1	Branch
+2	Flower
+2.1	Fleur-de-lis
+3	Fruit
+4	Leaf
+5	Tree
+6	Other plants
+
+Branch
+Flag of the Arab League
+Flag of the Arab League
+ 
+Flag of Belize
+Flag of Belize
+ 
+Presidential Standard of Brazil
+Presidential Standard of Brazil
+ 
+Bandeira Estado Rio de Janeiro, Brasil
+Bandeira Estado Rio de Janeiro, Brasil
+ 
+Flag of Candeal, Bahia, Brazil
+Flag of Candeal, Bahia, Brazil
+ 
+Naval Ensign of Colombia
+Naval Ensign of Colombia
+ 
+Flag of Cyprus
+Flag of Cyprus
+ 
+Presidential Standard of the Czech Republic
+Presidential Standard of the Czech Republic
+ 
+Flag of Dominica
+Flag of Dominica
+ 
+Flag of the Dominican Republic
+Flag of the Dominican Republic
+ 
+Flag of El Salvador
+Flag of El Salvador
+ 
+Flag of Eritrea
+Flag of Eritrea
+ 
+Presidential Flag of Eritrea
+Presidential Flag of Eritrea
+ 
+Presidential Flag of Estonia
+Presidential Flag of Estonia
+ 
+Presidential Flag of Greece
+Presidential Flag of Greece
+ 
+Flag of Guadeloupe
+Flag of Guadeloupe
+ 
+Flag of Guatemala
+Flag of Guatemala
+ 
+Naval Ensign of Hungary
+Naval Ensign of Hungary
+ 
+Presidential Standard of Italy
+Presidential Standard of Italy
+ 
+Presidential Standard of Malta
+Presidential Standard of Malta
+ 
+Flag of Mexico
+Flag of Mexico
+ 
+Flag of Moldova
+Flag of Moldova
+ 
+Presidential Standard of Pakistan
+Presidential Standard of Pakistan
+ 
+Flag of Paraguay (obverse)
+Flag of Paraguay (obverse)
+ 
+Flag of Paraná, Brazil
+Flag of Paraná, Brazil
+ 
+Flag of Peru (state)
+Flag of Peru (state)
+ 
+Flag of Rhodesia (1968-1979)
+Flag of Rhodesia (1968-1979)
+ 
+Flag of San Marino
+Flag of San Marino
+ 
+Flag of the United Nations
+Flag of the United Nations
+ 
+Flag of the President of the United States
+Flag of the President of the United States
+ 
+Flag of the Vice President of the United States
+Flag of the Vice President of the United States
+ 
+Flag of the United States Virgin Islands
+Flag of the United States Virgin Islands
+ 
+Flag of Vanuatu
+Flag of Vanuatu
+ 
+Flag of Venezuela
+Flag of Venezuela
+ 
+Flag of Vermont, USA
+Flag of Vermont, USA
+ 
+Ensign of the Vietnam People's Navy
+Ensign of the Vietnam People's Navy
+Flower
+Flag of Alytus, Lithuania
+Flag of Alytus, Lithuania
+ 
+Royal Standard of Australia
+Royal Standard of Australia
+ 
+Royal Standard of Barbados
+Royal Standard of Barbados
+ 
+Presidential Standard of Belarus
+Presidential Standard of Belarus
+ 
+Flag of Bielsko-Biała, Poland
+Flag of Bielsko-Biała, Poland
+ 
+Presidential Standard of Brazil
+Presidential Standard of Brazil
+ 
+Royal Standard of the British Commonwealth
+Royal Standard of the British Commonwealth
+ 
+Royal Standard of Canada
+Royal Standard of Canada
+ 
+Flag of Cesky Krumlov, Czech Republic
+Flag of Cesky Krumlov, Czech Republic
+ 
+Flag of Chiba Prefecture, Japan
+Flag of Chiba Prefecture, Japan
+ 
+Flag of Deli Sultanate (1632-1946)
+Flag of Deli Sultanate (1632-1946)
+ 
+Flag of Derbyshire
+Flag of Derbyshire
+ 
+Flag of the East Riding of Yorkshire
+Flag of the East Riding of Yorkshire
+ 
+Flag of Ehime Prefecture, Japan
+Flag of Ehime Prefecture, Japan
+ 
+State Flag and Ensign of Finland
+State Flag and Ensign of Finland
+ 
+War Flag and Naval Ensign of Finland
+War Flag and Naval Ensign of Finland
+ 
+Naval Jack of Finland
+Naval Jack of Finland
+ 
+Presidential Flag of Finland
+Presidential Flag of Finland
+ 
+Flag of Franco-Terreneuviens
+Flag of Franco-Terreneuviens
+ 
+Flag of Fukuoka Prefecture, Japan
+Flag of Fukuoka Prefecture, Japan
+ 
+Flag of Hampshire
+Flag of Hampshire
+ 
+Flag of Hanamaki, Iwate, Japan
+Flag of Hanamaki, Iwate, Japan
+ 
+Flag of Hong Kong
+Flag of Hong Kong
+ 
+Flag of Ibaraki Prefecture, Japan
+Flag of Ibaraki Prefecture, Japan
+ 
+Flag of Iwakuni, Yamaguchi, Japan
+Flag of Iwakuni, Yamaguchi, Japan
+ 
+Royal Standard of Jamaica
+Royal Standard of Jamaica
+ 
+Imperial Standard of Japan
+Imperial Standard of Japan
+ 
+Flag of Kalmykia
+Flag of Kalmykia
+ 
+Flag of Kansas
+Flag of Kansas
+ 
+Flag of Kasugai, Aichi, Japan
+Flag of Kasugai, Aichi, Japan
+ 
+Flag of Lancashire
+Flag of Lancashire
+ 
+Flag of Macao
+Flag of Macao
+ 
+Flag of Manchukuo Emperor Kangte
+Flag of Manchukuo Emperor Kangte
+ 
+Flag of Mississippi, United States
+Flag of Mississippi, United States
+ 
+Flag of Moldova
+Flag of Moldova
+ 
+Flag of Montreal
+Flag of Montreal
+ 
+Flag of Mpumalanga Province, South Africa (Barberton daisy)
+Flag of Mpumalanga Province, South Africa (Barberton daisy)
+ 
+Flag of Nara, Nara, Japan
+Flag of Nara, Nara, Japan
+ 
+Flag of Nava, Spain
+Flag of Nava, Spain
+ 
+Royal Standard of New Zealand
+Royal Standard of New Zealand
+ 
+Flag of the North Riding of Yorkshire
+Flag of the North Riding of Yorkshire
+ 
+Flag of Northamptonshire
+Flag of Northamptonshire
+ 
+Flag of Northern Territory
+Flag of Northern Territory
+ 
+Flag of Odawara, Kanagawa, Japan
+Flag of Odawara, Kanagawa, Japan
+ 
+Flag of Oppland
+Flag of Oppland
+ 
+Flag of Padania
+Flag of Padania
+ 
+Flag of the Pitcairn Islands
+Flag of the Pitcairn Islands
+ 
+Flag of Reus, Spain
+Flag of Reus, Spain
+ 
+Flag of Rhodesia (1968-1979)
+Flag of Rhodesia (1968-1979)
+ 
+Flag of Roses, Spain
+Flag of Roses, Spain
+ 
+Saskatchewan
+Saskatchewan
+ 
+Flag of Saga Prefecture, Japan
+Flag of Saga Prefecture, Japan
+ 
+Flag of Spain
+Flag of Spain
+ 
+Royal Standard of Spain
+Royal Standard of Spain
+ 
+Standard of the Princess of Asturias
+Standard of the Princess of Asturias
+ 
+Flag of Tsuchiura, Ibaraki, Japan
+Flag of Tsuchiura, Ibaraki, Japan
+ 
+Flag of the West Riding of Yorkshire
+Flag of the West Riding of Yorkshire
+ 
+Flag of Yorkshire
+Flag of Yorkshire
+Fleur-de-lis
+Flag of Acadiana
+Flag of Acadiana
+ 
+Flag of Beverwijk, Netherlands
+Flag of Beverwijk, Netherlands
+ 
+Flag of Bielsko-Biała, Poland
+Flag of Bielsko-Biała, Poland
+ 
+Flag of the Republic of Bosnia and Herzegovina (1991-1998)
+Flag of the Republic of Bosnia and Herzegovina (1991-1998)
+ 
+Flag of Burgundy
+Flag of Burgundy
+ 
+Royal Standard of Canada
+Royal Standard of Canada
+ 
+Flag of Darmstadt, Germany
+Flag of Darmstadt, Germany
+ 
+Flag of Daugavpils, Latvia
+Flag of Daugavpils, Latvia
+ 
+Flag of Detroit, Michigan
+Flag of Detroit, Michigan
+ 
+Flag of Flevoland, Netherlands
+Flag of Flevoland, Netherlands
+ 
+Flag of Florence, Italy
+Flag of Florence, Italy
+ 
+Flag of Fort Wayne, Indiana
+Flag of Fort Wayne, Indiana
+ 
+Flag of Guadeloupe (unofficial)
+Flag of Guadeloupe (unofficial)
+ 
+Flag of Île-de-France
+Flag of Île-de-France
+ 
+Flag of Jõelähtme, Estonia
+Flag of Jõelähtme, Estonia
+ 
+Flag of Jurbarkas, Lithuania
+Flag of Jurbarkas, Lithuania
+ 
+Flag of Lincolnshire
+Flag of Lincolnshire
+ 
+Flag of Lyon
+Flag of Lyon
+ 
+Flag of Monmouthshire
+Flag of Monmouthshire
+ 
+Flag of Montreal
+Flag of Montreal
+ 
+Flag of Morcín
+Flag of Morcín
+ 
+Flag of New Orleans, Louisiana
+Flag of New Orleans, Louisiana
+ 
+Flag of Picardy
+Flag of Picardy
+ 
+Flag of Quebec
+Flag of Quebec
+ 
+Flag of St. Louis, Missouri
+Flag of St. Louis, Missouri
+ 
+Royal Standard of Scotland
+Royal Standard of Scotland
+ 
+Flag of Serbia
+Flag of Serbia
+ 
+Presidential Standard of Serbia
+Presidential Standard of Serbia
+ 
+Flag of Skierniewice, Poland
+Flag of Skierniewice, Poland
+ 
+Flag of Spain
+Flag of Spain
+ 
+Royal Standard of Spain
+Royal Standard of Spain
+ 
+Standard of the Princess of Asturias
+Standard of the Princess of Asturias
+ 
+Flag of Turku, Finland
+Flag of Turku, Finland
+ 
+Flag of Wiesbaden, Germany
+Flag of Wiesbaden, Germany
+Fruit
+Flag of Connecticut
+Flag of Connecticut
+ 
+Flag of Grenada
+Flag of Grenada
+ 
+Civil and State Ensign of Grenada
+Civil and State Ensign of Grenada
+ 
+Naval Ensign of Grenada
+Naval Ensign of Grenada
+ 
+Royal Standard of Jamaica
+Royal Standard of Jamaica
+ 
+Royal Standard of Spain
+Royal Standard of Spain
+ 
+Standard of the Princess of Asturias
+Standard of the Princess of Asturias
+ 
+Flag of Worcestershire, England, with black pears
+Flag of Worcestershire, England, with black pears
+Leaf
+Flag of Boyacá Department, Colombia
+Flag of Boyacá Department, Colombia
+ 
+Flag of Canada
+Flag of Canada
+ 
+Flag of the Canadian Coast Guard
+Flag of the Canadian Coast Guard
+ 
+Flag of Congo (1970-1991)
+Flag of Congo (1970-1991)
+ 
+Flag of Figueres, Spain
+Flag of Figueres, Spain
+ 
+Flag of Fiji
+Flag of Fiji
+ 
+Civil Ensign of Fiji
+Civil Ensign of Fiji
+ 
+State Ensign of Fiji
+State Ensign of Fiji
+ 
+Naval Ensign of Fiji
+Naval Ensign of Fiji
+ 
+Civil Air Ensign of Fiji
+Civil Air Ensign of Fiji
+ 
+Flag of Frisia, The Netherlands
+Flag of Frisia, The Netherlands
+ 
+Flag of Grenada
+Flag of Grenada
+ 
+Flag of Kamakura, Kanagawa, Japan
+Flag of Kamakura, Kanagawa, Japan
+ 
+Flag of Kassel, Germany
+Flag of Kassel, Germany
+ 
+Flag of Kiryu, Gunma, Japan
+Flag of Kiryu, Gunma, Japan
+ 
+Flag of Komatsu, Ishikawa, Japan
+Flag of Komatsu, Ishikawa, Japan
+ 
+Flag of Misawa, Aomori, Japan
+Flag of Misawa, Aomori, Japan
+ 
+Unofficial Flag of New Zealand (2001)
+Unofficial Flag of New Zealand (2001)
+ 
+Unofficial Flag of New Zealand (2004)
+Unofficial Flag of New Zealand (2004)
+ 
+Unofficial Flag of New Zealand (2015)
+Unofficial Flag of New Zealand (2015)
+ 
+Flag of Numazu, Shizuoka, Japan
+Flag of Numazu, Shizuoka, Japan
+ 
+Flag of Ontario
+Flag of Ontario
+ 
+Royal Standard of Canada
+Royal Standard of Canada
+ 
+Flag of Sri Lanka
+Flag of Sri Lanka
+ 
+Flag of Takamatsu, Kagawa, Japan
+Flag of Takamatsu, Kagawa, Japan
+ 
+Flag of Tokorozawa, Saitama, Japan
+Flag of Tokorozawa, Saitama, Japan
+ 
+Flag of Toronto
+Flag of Toronto
+ 
+Flag of Vaupés department, Colombia
+Flag of Vaupés department, Colombia
+ 
+Flag of Hsinchu County, Taiwan
+Flag of Hsinchu County, Taiwan
+Tree
+Flag of Aragon
+Flag of Aragon
+ 
+Royal Standard of Barbados
+Royal Standard of Barbados
+ 
+Flag of Belize
+Flag of Belize
+ 
+Flag of the British Indian Ocean Territory
+Flag of the British Indian Ocean Territory
+ 
+British Empire flag
+British Empire flag
+ 
+Flag of Canudos, Bahia, Brazil
+Flag of Canudos, Bahia, Brazil
+ 
+Flag of the Cocos (Keeling) Islands
+Flag of the Cocos (Keeling) Islands
+ 
+Flag of Equatorial Guinea
+Flag of Equatorial Guinea
+ 
+Flag of Fiji
+Flag of Fiji
+ 
+Civil Ensign of Fiji
+Civil Ensign of Fiji
+ 
+State Ensign of Fiji
+State Ensign of Fiji
+ 
+Naval Ensign of Fiji
+Naval Ensign of Fiji
+ 
+Civil Air Ensign of Fiji
+Civil Air Ensign of Fiji
+ 
+Banner of arms of Gnesta Municipality, Sweden
+Banner of arms of Gnesta Municipality, Sweden
+ 
+Flag of Guam
+Flag of Guam
+ 
+Flag of Hagen, Germany
+Flag of Hagen, Germany
+ 
+Flag of Haiti
+Flag of Haiti
+ 
+Naval Ensign of Honduras
+Naval Ensign of Honduras
+ 
+Flag of Lebanon
+Flag of Lebanon
+ 
+Flag of Lebanon (18th century)
+Flag of Lebanon (18th century)
+ 
+Flag of the French Mandate of Lebanon (1919–1943)
+Flag of the French Mandate of Lebanon (1919–1943)
+ 
+Flag of Madrid, Spain
+Flag of Madrid, Spain
+ 
+Naval Ensign of Massachusetts
+Naval Ensign of Massachusetts
+ 
+Flag of Mississippi (1861-1865), United States
+Flag of Mississippi (1861-1865), United States
+ 
+Flag of New England
+Flag of New England
+ 
+Former flag of Maine during the 1900s
+Former flag of Maine during the 1900s
+ 
+Flag of Norfolk Island
+Flag of Norfolk Island
+ 
+Flag of Offenbach am Main, Germany
+Flag of Offenbach am Main, Germany
+ 
+Flag of Oromia
+Flag of Oromia
+ 
+Flag of Penang
+Flag of Penang
+ 
+State Flag of Perú
+State Flag of Perú
+ 
+Flag of Prince Edward Island
+Flag of Prince Edward Island
+ 
+Flag of Romania (1965-1989)
+Flag of Romania (1965-1989)
+ 
+South Carolina
+South Carolina
+ 
+Flag of Tokelau (unofficial)
+Flag of Tokelau (unofficial)
+ 
+Flag of Vermont, USA
+Flag of Vermont, USA
+ 
+Pine Tree Flag
+Pine Tree Flag
+Other plants
+Flag of Afghanistan
+Flag of Afghanistan
+ 
+Flag of Afghanistan (2004-2013)
+Flag of Afghanistan (2004-2013)
+ 
+Flag of Alderney
+Flag of Alderney
+ 
+Presidential Standard of Belarus
+Presidential Standard of Belarus
+ 
+Bowman Flag
+Bowman Flag
+ 
+Flag of Bulgaria (1967-1971)
+Flag of Bulgaria (1967-1971)
+ 
+Flag of Bulgaria (1971-1990)
+Flag of Bulgaria (1971-1990)
+ 
+Flag of Burundi (1962-1966)
+Flag of Burundi (1962-1966)
+ 
+Flag of the Cayman Islands
+Flag of the Cayman Islands
+ 
+Flag of Cheshire, England
+Flag of Cheshire, England
+ 
+Flag of East Germany (1949-1990)
+Flag of East Germany (1949-1990)
+ 
+Flag of Eritrea
+Flag of Eritrea
+ 
+Flag of Labrador
+Flag of Labrador
+ 
+Flag of Mexico
+Flag of Mexico
+ 
+Flag of Myanmar (1974-2010)
+Flag of Myanmar (1974-2010)
+ 
+Flag of Nagahama, Shiga, Japan
+Flag of Nagahama, Shiga, Japan
+ 
+Flag of Nevada
+Flag of Nevada
+ 
+Royal Standard of New Zealand
+Royal Standard of New Zealand
+ 
+Flag of Ogaki, Gifu, Japan
+Flag of Ogaki, Gifu, Japan
+ 
+Flag of Osaka Prefecture, Japan
+Flag of Osaka Prefecture, Japan
+ 
+Flag of Romania (1965-1989)
+Flag of Romania (1965-1989)
+ 
+Flag of the Turks and Caicos Islands
+Flag of the Turks and Caicos Islands
+ 
+Flag of the People's Republic of Tuva (1921-1944)
+Flag of the People's Republic of Tuva (1921-

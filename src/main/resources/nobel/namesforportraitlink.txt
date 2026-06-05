@@ -1,0 +1,28 @@
+  # names manually resolved either
+  # by adding the name and link or
+  # by adding the (more) official name for which portrait link is given in nobelportraitlinks.txt
+  # the names are wrong mostly on the nobel proze site
+
+  Abiy Ahmed Ali  |  Abiy Ahmed
+  Albert Lutuli | Albert Luthuli
+  Aleksey Yekimov  | Alexey Ekimov
+  Anne L’Huillier |  Anne L'Huillier
+  Anwar al-Sadat  |  Anwar Sadat
+  Chen Ning Yang  |  Yang Chen-Ning
+  Frédéric Joliot |  Frédéric Joliot-Curie
+  Ilya Mechnikov  |  Élie Metchnikoff
+  James M. Buchanan Jr. | James M. Buchanan
+  Jaroslav Heyrovsky  |  Jaroslav Heyrovský
+  Kenzaburo Oe | Kenzaburō Ōe
+  Le Duc Tho  |  Lê Đức Thọ
+  Leopold Ruzicka  | Leopold Ružička
+  Mairead Corrigan | Mairead Maguire
+  Nikolay Semenov |  Nikolay Semyonov
+  Norman F. Ramsey | Norman Ramsey Jr.
+  Oscar Arias Sánchez |  Óscar Arias
+  Rigoberta Menchú Tum | Rigoberta Menchú
+  Robert Cecil |  Robert Cecil, 1st Viscount Cecil of Chelwood
+  Robert F. Curl Jr.  |  Robert Curl
+  Robert F. Engle III  | Robert F. Engle
+  The 14th Dalai Lama  | Tenzin Gyatso (The 14th Dalai Lama)
+  William G. Kaelin Jr | William Kaelin Jr.

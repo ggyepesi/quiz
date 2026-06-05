@@ -1,0 +1,178 @@
+creature Theseus
+father Aegeus
+mother Aethra
+consorts Phaedra
+consorts Ariadne
+consorts Hippolyta
+killed_by Lycomedes
+
+creature Heracles
+father Zeus
+mother Alcmene
+consorts Megara
+raised_by Amalthea
+
+creature Iphicles
+father Amphythryon
+mother Alcmene
+
+creature Perseus
+father Zeus
+mother Danae
+consorts Andromeda
+deed kill Medusa
+deed kill Cetus
+
+creature Actaeon
+father Aristaeus
+
+
+creature Andromeda
+father Cepheus
+mother Cassiopeia
+
+creature Admetus
+father Pheres
+consorts Alcestis
+
+creature Alcestis
+father Pelias
+consorts Admetus
+
+creature Cadmus
+father Agenor
+mother Telephassa
+
+creature Bellerophon
+father Glaucus
+
+creature Glaucus
+father Sisyphus
+mother Merope
+consorts Eurymede
+
+labours Theseus
+kill Periphetes
+kill Sinis
+kill Crommyonian_Sow
+
+deed kill
+subject Theseus
+object Periphetes
+
+deed tame
+subject Bellerophon
+object Pegasus
+
+deed kill
+subject Theseus
+object Sinis
+
+deed kill
+subject Perseus
+object Medusa
+
+creature Achilleus
+father Peleus
+mother Thetis
+
+creature Alcmene
+consorts Amphytyron
+child Heracles
+child Iphicles
+child Laonome
+
+creature Orpheus
+father Oeagrus
+mother Calliope
+
+creature Aegeus
+consorts  Medea
+
+creature Lycomedes
+kill Theseus
+
+creature Periphetes
+nick Club_Bearer
+
+creature Sinis
+nick Pine_Bender
+
+creature Jason
+father Aeson
+mother Alcimede
+raised_by Chiron
+consorts Hypsipyle
+consorts Medea
+
+creature Hippolyta
+father Ares
+mother Otrera
+attribute girdle
+
+group argonauts
+leader Jason
+member Heracles
+member Castor
+member Pollux
+member Augeias
+member Atalanta
+member Meleager
+
+group amazons
+leader Hippolyta
+
+group muses
+member Calliope (epic poetry)
+member Clio (history)
+member Polyhymnia (hymn)
+member Euterpe (flute)
+member Terpsichore (light verse and dance)
+member Erato (lyric choral poetry)
+member Melpomene (tragedy)
+member Thalia (comedy)
+member Urania (astronomy, astrology, and space)[11]
+
+group pleiades
+member Maia
+member Electra
+member Taygete
+member Alcyone
+member Celaeno
+member Sterope
+member Merope
+
+group titans
+atlas
+
+group titanides
+
+group oceanids
+
+group olympians
+
+group nymphs
+
+group charites
+member Aglaea
+member Euphrosyne
+member Thalia
+
+group moira
+member Clotho
+member Lachesis
+member Atropos
+
+group erinyes
+member Alecto
+member Megaera
+member Tisiphone
+
+island Lemnos
+ruler Hypsipyle
+
+city Troy
+
+
+
+

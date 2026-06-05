@@ -1,0 +1,50 @@
+Alabama	Montgomery	1846	159.8 sq mi (414 km2)	200,603	386,047	476,207	3
+Alaska	Juneau	1906	2,716.7 sq mi (7,036 km2)	32,255	32,255		3
+Arizona	Phoenix	1889	517.6 sq mi (1,341 km2)	1,608,139	4,845,832	4,899,104	1
+Arkansas	Little Rock	1821	116.2 sq mi (301 km2)	202,591	748,031	912,604	1
+California	Sacramento	1854	97.9 sq mi (254 km2)	524,943	2,397,382	2,680,831	6
+Colorado	Denver	1867	153.3 sq mi (397 km2)	715,522	2,963,821	3,623,560	1
+Connecticut	Hartford	1875	17.3 sq mi (45 km2)	121,054	1,213,531	1,482,086	4
+Delaware	Dover	1777	22.4 sq mi (58 km2)	39,403	181,851	7,379,700	2
+Florida	Tallahassee	1824	95.7 sq mi (248 km2)	196,169	384,298		8
+Georgia (U.S. state)	Atlanta	1868	133.5 sq mi (346 km2)	498,715	6,089,815	6,930,423	1
+Hawaii	Honolulu	1845	68.4 sq mi (177 km2)	350,964	1,016,508		1
+Idaho	Boise	1865	63.8 sq mi (165 km2)	235,684	764,718	850,341	1
+Illinois	Springfield	1837	54.0 sq mi (140 km2)	114,394	208,640	308,523	7
+Indiana	Indianapolis	1825	361.5 sq mi (936 km2)	887,642	2,111,040	2,492,514	1
+Iowa	Des Moines	1857	75.8 sq mi (196 km2)	214,133	709,466	890,322	1
+Kansas	Topeka	1856	56.0 sq mi (145 km2)	126,587	233,152		5
+Kentucky	Frankfort	1792	14.7 sq mi (38 km2)	28,602	75,393	746,045	15
+Louisiana	Baton Rouge	1880	76.8 sq mi (199 km2)	227,470	870,569		2
+Maine	Augusta	1832	55.4 sq mi (143 km2)	18,899	123,642		10
+Maryland	Annapolis	1694	6.73 sq mi (17 km2)	40,812	2,844,510	9,973,383	7
+Massachusetts	Boston	1630	89.6 sq mi (232 km2)	675,647	4,941,632	8,466,186	1
+Michigan	Lansing	1847	35.0 sq mi (91 km2)	112,644	541,297		5
+Minnesota	Saint Paul	1849	52.8 sq mi (137 km2)	311,527	3,690,261	4,078,788	2
+Mississippi	Jackson	1821	104.9 sq mi (272 km2)	153,701	591,978	671,607	1
+Missouri	Jefferson City	1826	27.3 sq mi (71 km2)	43,228	150,309		15
+Montana	Helena	1875	14.0 sq mi (36 km2)	32,091	83,058		6
+Nebraska	Lincoln	1867	74.6 sq mi (193 km2)	291,082	340,217	361,921	2
+Nevada	Carson City	1861	143.4 sq mi (371 km2)	58,639	58,639	657,958	6
+New Hampshire	Concord	1808	64.3 sq mi (167 km2)	43,976	153,808	8,466,186	3
+New Jersey	Trenton	1784	7.66 sq mi (20 km2)	90,871	387,340	23,582,649	10
+New Mexico	Santa Fe	1610	37.3 sq mi (97 km2)	87,505	154,823	1,162,523	4
+New York	Albany	1797	21.4 sq mi (55 km2)	99,224	899,262	1,190,727	6
+North Carolina	Raleigh	1792	114.6 sq mi (297 km2)	467,665	1,413,982	2,106,463	2
+North Dakota	Bismarck	1883	26.9 sq mi (70 km2)	73,622	133,626		2
+Ohio	Columbus	1816	210.3 sq mi (545 km2)	905,748	2,138,926	2,544,048	1
+Oklahoma	Oklahoma City	1910	620.3 sq mi (1,607 km2)	681,054	1,425,695	1,498,149	1
+Oregon	Salem	1855	45.7 sq mi (118 km2)	175,535	433,353	3,280,736	3
+Pennsylvania	Harrisburg	1812	8.11 sq mi (21 km2)	50,099	591,712	1,295,259	9
+Rhode Island	Providence	1900	18.5 sq mi (48 km2)	190,934	1,676,579	8,466,186	1
+South Carolina	Columbia	1786	125.2 sq mi (324 km2)	136,632	829,470	951,412	2
+South Dakota	Pierre	1889	13.0 sq mi (34 km2)	14,091	20,745		9
+Tennessee	Nashville	1826	525.9 sq mi (1,362 km2)	689,447	1,989,519	2,118,233	1
+Texas	Austin	1839	305.1 sq mi (790 km2)	961,855	2,283,371		4
+Utah	Salt Lake City	1858	109.1 sq mi (283 km2)	199,723	1,257,936	2,701,129	1
+Vermont	Montpelier	1805	10.2 sq mi (26 km2)	8,074	59,807	285,369	6
+Virginia	Richmond	1780	60.1 sq mi (156 km2)	226,610	1,314,434		4
+Washington	Olympia	1853	16.7 sq mi (43 km2)	55,605	294,793	4,953,421	23
+West Virginia	Charleston	1885	31.6 sq mi (82 km2)	48,864	258,859	779,969	1
+Wisconsin	Madison	1838	68.7 sq mi (178 km2)	269,840	680,796	910,246	2
+Wyoming	Cheyenne	1869	21.1 sq mi (55 km2)	65,132	100,512		1

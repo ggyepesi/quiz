@@ -1,0 +1,278 @@
+! scope="row" |[[Delaware]]
+|[[File:Flag of Delaware.svg|border|180x120px]]<br />[[Flag of Delaware|Details]]
+|[[File:Seal of Delaware.svg|120x120px]]<br />[[Seal of Delaware|Details]]
+|[[File:Coat of arms of Delaware.svg|120x120px]]<br />[[Coat of arms of Delaware|Details]]
+|-
+! scope="row" |[[Pennsylvania]]
+|[[File:Flag of Pennsylvania.svg|border|180x120px]]<br />[[Flag of Pennsylvania|Details]]
+|[[File:Seal of Pennsylvania.svg|120x120px]]<br />[[Seal of Pennsylvania|Details]]
+|[[File:Coat of arms of Pennsylvania.svg|120x120px]]<br />[[Coat of arms of Pennsylvania|Details]]
+|-
+! scope="row" |[[New Jersey]]
+|[[File:Flag of New Jersey.svg|border|180x120px]]<br />[[Flag of New Jersey|Details]]
+|[[File:Seal of New Jersey.svg|120x120px]]<br />[[Seal of New Jersey|Details]]
+|[[File:Coat of Arms of New Jersey.svg|120x120px]]<br />[[Coat of arms of New Jersey|Details]]
+|-
+! scope="row" |[[Georgia (U.S. state)|Georgia]]
+|[[File:Flag of Georgia (U.S. state).svg|border|180x120px]]<br />[[Flag of Georgia (U.S. state)|Details]]
+|[[File:Seal of Georgia.svg|120x120px]]<br />[[Seal of Georgia|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Connecticut]]
+|[[File:Flag of Connecticut.svg|border|180x120px]]<br />[[Flag of Connecticut|Details]]
+|[[File:Seal of Connecticut.svg|120x120px]]<br />[[Seal of Connecticut|Details]]
+|[[File:Coat of arms of Connecticut.svg|120x120px]]<br />[[Coat of arms of Connecticut|Details]]
+|-
+! scope="row" |[[Massachusetts]]
+|[[File:Flag of Massachusetts.svg|border|180x180px]]<br />[[Flag of Massachusetts|Details]]
+|[[File:Seal of Massachusetts.svg|120x120px]]<br />[[Seal of Massachusetts|Details]]
+|[[File:Coat of arms of Massachusetts.svg|120x120px]]<br />[[Coat of arms of Massachusetts|Details]]
+|-
+! scope="row" |[[Maryland]]
+|[[File:Flag of Maryland.svg|border|180x120px]]<br />[[Flag of Maryland|Details]]
+|[[File:Seal of Maryland.svg|120x120px]]<br />[[Seal of Maryland|Details]]
+|[[File:Coat of arms of the State of Maryland.svg|120x120px]]<br />[[Coat of arms of Maryland|Details]]
+|-
+! scope="row" |[[South Carolina]]
+|[[File:Flag of South Carolina.svg|border|180x120px]]<br />[[Flag of South Carolina|Details]]
+|[[File:Seal of South Carolina.svg|120x120px]]<br />[[Seal of South Carolina|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[New Hampshire]]
+|[[File:Flag of New Hampshire.svg|border|180x120px]]<br />[[Flag of New Hampshire|Details]]
+|[[File:Seal of New Hampshire.svg|120x120px]]<br />[[Seal of New Hampshire|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Virginia]]
+|[[File:Flag of Virginia.svg|border|180x120px]]<br />[[Flag of Virginia|Details]]
+|[[File:Seal of Virginia.svg|120x120px]]<br />[[Seal of Virginia|Details]]
+|[[File:Coat of arms of the Commonwealth of Virginia.png|120x120px]]<br />[[Flag_and_seal_of_Virginia#Coat_of_arms|Details]]
+|-
+! scope="row" |[[New York (state)|New York]]
+|[[File:Flag of New York.svg|border|180x120px]]<br />[[Flag of New York (state)|Details]]
+|[[File:Seal_of_New_York_(state).svg|120x120px]]<br />[[Seal of New York (state)|Details]]
+|[[File:Coat_of_arms_of_New_York_State.svg|alt=|120x120px]]<br />[[Coat of arms of New York|Details]]
+|-
+! scope="row" |[[North Carolina]]
+|[[File:Flag of North Carolina.svg|border|180x120px]]<br />[[Flag of North Carolina|Details]]
+|[[File:Seal of North Carolina.svg|120x120px]]<br />[[Seal of North Carolina|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Rhode Island]]
+|[[File:Flag of Rhode Island.svg|border|180x120px]]<br />[[Flag of Rhode Island|Details]]
+|[[File:Seal of Rhode Island.svg|120x120px]]<br />[[Seal of Rhode Island|Details]]
+|[[File:Coat of arms of Rhode Island.svg|120x120px]]<br />[[Coat of arms of Rhode Island|Details]]
+|-
+! scope="row" |[[Vermont]]
+|[[File:Flag of Vermont.svg|border|180x120px]]<br />[[Flag of Vermont|Details]]
+|[[File:Seal of Vermont.svg|120x120px]]<br />[[Seal of Vermont|Details]]
+|[[File:Coat of arms of Vermont.svg|120x120px]]<br />[[Coat of arms of Vermont|Details]]
+|-
+! scope="row" |[[Kentucky]]
+|[[File:Flag of Kentucky.svg|border|180x120px]]<br />[[Flag of Kentucky|Details]]
+|[[File:Seal of Kentucky.svg|120x120px]]<br />[[Seal of Kentucky|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Tennessee]]
+|[[File:Flag of Tennessee.svg|border|180x120px]]<br />[[Flag of Tennessee|Details]]
+|[[File:Seal of Tennessee.svg|120x120px]]<br />[[Seal of Tennessee|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Ohio]]
+|[[File:Flag of Ohio.svg|180x120px]]<br />[[Flag of Ohio|Details]]
+|[[File:Seal of Ohio (B&W).svg|120x120px]]<br />[[Seal of Ohio|Details]]
+|[[File:Coat of arms of Ohio.svg|120x120px]]<br />[[Coat of arms of Ohio|Details]]
+|-
+! scope="row" |[[Louisiana]]
+|[[File:Flag of Louisiana.svg|border|180x120px]]<br />[[Flag of Louisiana|Details]]
+|[[File:Seal of Louisiana.svg|120x120px]]<br />[[Seal of Louisiana|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Indiana]]
+|[[File:Flag of Indiana.svg|border|180x120px]]<br />[[Flag of Indiana|Details]]
+|[[File:Seal of Indiana.svg|120x120px]]<br />[[Seal of Indiana|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Mississippi]]
+|[[File:Flag_of_Mississippi.svg|border|180x120px]]<br />[[Flag of Mississippi|Details]]
+|[[File:Seal of Mississippi 2014.svg|120x120px]]<br />[[Seal of Mississippi|Details]]
+|[[File:Coat of arms of Mississippi.svg|120x120px]]<br />[[Coat of arms of Mississippi|Details]]
+|-
+! scope="row" |[[Illinois]]
+|[[File:Flag of Illinois.svg|border|180x120px]]<br />[[Flag of Illinois|Details]]
+|[[File:Seal of Illinois.svg|120x120px]]<br />[[Seal of Illinois|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Alabama]]
+|[[File:Flag of Alabama.svg|border|180x120px]]<br/>[[Flag of Alabama|Details]]
+|[[File:Seal of Alabama.svg|120x120px]]<br/>[[Seal of Alabama|Details]]
+|[[File:Coat of arms of Alabama.svg|120x120px]]<br/>[[Coat of arms of Alabama|Details]]
+|-
+! scope="row" |[[Maine]]
+|[[File:Flag of the State of Maine.svg|border|180x120px]]<br />[[Flag of Maine|Details]]
+|[[File:Seal of Maine.svg|120x120px]]<br />[[Seal of Maine|Details]]
+|[[File:Coat of arms of Maine.svg|120x120px]]<br />[[Coat of arms of Maine|Details]]
+|-
+! scope="row" |[[Missouri]]
+|[[File:Flag of Missouri.svg|border|180x120px]]<br />[[Flag of Missouri|Details]]
+|[[File:Seal of Missouri.svg|120x120px]]<br />[[Seal of Missouri|Details]]
+|[[File:Coat of arms of Missouri.svg|120x120px]]<br />[[Coat of arms of Missouri|Details]]
+|-
+! scope="row" |[[Arkansas]]
+|[[File:Flag of Arkansas.svg|border|180x120px]]<br />[[Flag of Arkansas|Details]]
+|[[File:Seal of Arkansas.svg|120x120px]]<br />[[Seal of Arkansas|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Michigan]]
+|[[File:Flag of Michigan.svg|border|180x120px]]<br />[[Flag of Michigan|Details]]
+|[[File:Seal of Michigan.svg|120x120px]]<br />[[Seal of Michigan|Details]]
+|[[File:Coat of arms of Michigan.svg|120x120px]]<br />[[Coat of arms of Michigan|Details]]
+|-
+! scope="row" |[[Florida]]
+|[[File:Flag of Florida.svg|border|180x120px]]<br />[[Flag of Florida|Details]]
+|[[File:Seal of Florida.svg|120x120px]]<br />[[Seal of Florida|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Texas]]
+|[[File:Flag of Texas.svg|border|180x120px]]<br />[[Flag of Texas|Details]]
+|[[File:Seal of the state of texas.svg|120x120px]]<br />[[Seal of Texas|Details]]
+|[[File:State Arms of Texas.svg|120x120px]]<br />[[Coat of arms of Texas|Details]]
+|-
+! scope="row" |[[Iowa]]
+|[[File:Flag of Iowa.svg|border|180x120px]]<br />[[Flag of Iowa|Details]]
+|[[File:Seal of Iowa.svg|120x120px]]<br />[[Seal of Iowa|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Wisconsin]]
+|[[File:Flag of Wisconsin.svg|border|180x120px]]<br />[[Flag of Wisconsin|Details]]
+|[[File:Seal of Wisconsin.svg|120x120px]]<br />[[Seal of Wisconsin|Details]]
+|[[File:Coat of arms of Wisconsin.svg|120x120px]]<br />[[Coat of arms of Wisconsin|Details]]
+|-
+! scope="row" |[[California]]
+|[[File:Flag of California.svg|border|180x120px]]<br />[[Flag of California|Details]]
+|[[File:Great Seal of the State of California Colored.svg|120x120px]]<br />[[Seal of California|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Minnesota]]
+|[[File:Flag of Minnesota.svg|border|180x120px]]<br />[[Flag of Minnesota|Details]]
+|[[File:Seal of Minnesota.svg|120x120px]]<br />[[Seal of Minnesota|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Oregon]]
+|[[File:Flag of Oregon.svg|border|180x120px]]<br />[[Flag of Oregon|Details]]
+|[[File:Seal of Oregon.svg|120x120px]]<br />[[Seal of Oregon|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Kansas]]
+|[[File:Flag of Kansas.svg|border|180x120px]]<br />[[Flag of Kansas|Details]]
+|[[File:Great Seal of the State of Kansas Colored.svg|120x120px]]<br />[[Seal of Kansas|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[West Virginia]]
+|[[File:Flag of West Virginia.svg|border|180x120px]]<br />[[Flag of West Virginia|Details]]
+|[[File:Seal of West Virginia.svg|120x120px]]<br />[[Seal of West Virginia|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Nevada]]
+|[[File:Flag of Nevada.svg|border|180x120px]]<br />[[Flag of Nevada|Details]]
+|[[File:State Seal of Nevada.svg|120x120px]]<br />[[Seal of Nevada|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Nebraska]]
+|[[File:Flag of Nebraska.svg|border|180x120px]]<br />[[Flag of Nebraska|Details]]
+|[[File:State Seal of Nebraska.svg|120x120px]]<br />[[Seal of Nebraska|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Colorado]]
+|[[File:Flag of Colorado.svg|border|180x120px]]<br />[[Flag of Colorado|Details]]
+|[[File:Seal of Colorado.svg|120x120px]]<br />[[Seal of Colorado|Details]]
+|[[File:Coat of arms of Colorado.svg|120x120px]]<br />[[Coat of Arms of the State of Colorado|Details]]
+|-
+! scope="row" |[[North Dakota]]
+|[[File:Flag of North Dakota.svg|border|180x120px]]<br />[[Flag of North Dakota|Details]]
+|[[File:Great Seal of North Dakota.svg|120x120px]]<br />[[Seal of North Dakota|Details]]
+|[[File:Coat of Arms of North Dakota.svg|120x120px]]<br />[[Coat of arms of North Dakota|Details]]
+|-
+! scope="row" |[[South Dakota]]
+|[[File:Flag of South Dakota.svg|border|180x120px]]<br />[[Flag of South Dakota|Details]]
+|[[File:Seal of South Dakota.svg|120x120px]]<br />[[Seal of South Dakota|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Montana]]
+|[[File:Flag of Montana.svg|border|180x120px]]<br />[[Flag of Montana|Details]]
+|[[File:Montana-StateSeal.svg|120x120px]]<br />[[Seal of Montana|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Washington (state)|Washington]]
+|[[File:Flag of Washington.svg|border|180x120px]]<br />[[Flag of Washington|Details]]
+|[[File:Seal of Washington.svg|120x120px]]<br />[[Seal of Washington|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Idaho]]
+|[[File:Flag of Idaho.svg|border|180x120px]]<br />[[Flag of Idaho|Details]]
+|[[File:Seal of Idaho.svg|120x120px]]<br />[[Seal of Idaho|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Wyoming]]
+|[[File:Flag of Wyoming.svg|border|180x120px]]<br />[[Flag of Wyoming|Details]]
+|[[File:Great Seal of the State of Wyoming.svg|120x120px]]<br />[[Seal of Wyoming|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Utah]]
+|[[File:Flag of Utah.svg|border|180x120px]]<br />[[Flag of Utah|Details]]
+|[[File:Seal of Utah.svg|120x120px]]<br />[[Seal of Utah|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Oklahoma]]
+|[[File:Flag of Oklahoma.svg|border|180x120px]]<br />[[Flag of Oklahoma|Details]]
+|[[File:Seal of Oklahoma.svg|120x120px]]<br />[[Seal of Oklahoma|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[New Mexico]]
+|[[File:Flag of New Mexico.svg|border|180x120px]]<br />[[Flag of New Mexico|Details]]
+|[[File:Seal of New Mexico.svg|120x120px]]<br />[[Seal of New Mexico|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Arizona]]
+|[[File:Flag of Arizona.svg|border|180x180px]]<br />[[Flag of Arizona|Details]]
+|[[File:Arizona state seal.svg|120x120px]]<br />[[Seal of Arizona|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Alaska]]
+|[[File:Flag of Alaska.svg|border|180x120px]]<br/>[[Flag of Alaska|Details]]
+|[[File:Seal of the State of Alaska.svg|120x120px]]<br/>[[Seal of Alaska|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Hawaii]]
+|[[File:Flag of Hawaii.svg|border|180x120px]]<br/>[[Flag of Hawaii|Details]]
+|[[File:Seal of the State of Hawaii.svg|120x120px]]<br/>[[Seal of Hawaii|Details]]
+|[[File:Coat of arms of Hawaii.svg|120x120px]]<br/>[[Coat of arms of Hawaii|Details]]
+|-
+! scope="row" |[[District of Columbia]]
+|[[File:Flag of the District of Columbia.svg|border|180x120px]]<br/>[[Flag of the District of Columbia|Details]]
+|[[File:Seal of the District of Columbia.svg|120x120px]]<br/>[[Seal of the District of Columbia|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[American Samoa]]
+|[[File:Flag of American Samoa.svg|border|180x120px]]<br/>[[Flag of American Samoa|Details]]
+|[[File:Seal of American Samoa.svg|120x120px]]<br/>[[Seal of American Samoa|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Guam]]
+|[[File:Flag of Guam.svg|border|180x120px]]<br/>[[Flag of Guam|Details]]
+|[[File:Seal of Guam.svg|120x120px]]<br/>[[Seal of Guam|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Northern Mariana Islands]]
+|[[File:Flag of the Northern Mariana Islands.svg|border|180x120px]]<br/>[[Flag of the Northern Mariana Islands|Details]]
+|[[File:Seal of the Northern Mariana Islands.svg|120x120px]]<br/>[[Seal of the Northern Mariana Islands|Details]]
+| {{n/a}}
+|-
+! scope="row" |[[Puerto Rico]]
+|[[File:Flag of Puerto Rico.svg|border|180x120px]]<br/>[[Flag of Puerto Rico|Details]]
+|[[File:Great Seal of the Commonwealth of Puerto Rico.svg|120x120px]]<br/>[[Seal of Puerto Rico|Details]]
+|-
+! scope="row" |[[United States Virgin Islands]]
+|[[File:Flag of the United States Virgin Islands.svg|border|180x120px]]<br/>[[Flag of the United States Virgin Islands|Details]]
+|[[File:Seal of the United States Virgin Islands.svg|120x120px]]<br/>[[Seal of the United States Virgin Islands|Details]]
+| {{n/a}}

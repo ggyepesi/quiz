@@ -1,0 +1,14 @@
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <option name="RIGHT_MARGIN" value="80" />
+    <option name="WRAP_WHEN_TYPING_REACHES_RIGHT_MARGIN" value="true" />
+    <codeStyleSettings language="JAVA">
+      <option name="ALIGN_MULTILINE_CHAINED_METHODS" value="true" />
+      <option name="ALIGN_MULTILINE_PARAMETERS_IN_CALLS" value="true" />
+      <option name="ALIGN_MULTILINE_METHOD_BRACKETS" value="true" />
+      <option name="PREFER_PARAMETERS_WRAP" value="true" />
+      <option name="WRAP_FIRST_METHOD_IN_CALL_CHAIN" value="true" />
+      <option name="KEEP_BUILDER_METHODS_INDENTS" value="true" />
+    </codeStyleSettings>
+  </code_scheme>
+</component>

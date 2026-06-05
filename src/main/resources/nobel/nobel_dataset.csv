@@ -1,0 +1,982 @@
+name,category,year,gender,nationality,age_at_award,filename,portrait_url,portrait_error
+Albert Einstein,Nobel Prize in Physics,,male,United States,,Albert_Einstein.png,https://commons.wikimedia.org/wiki/Special:FilePath/Albert Einstein Head cleaned.jpg?width=512,
+Albert Einstein,Nobel Prize in Physics,,male,Switzerland,,Albert_Einstein.png,https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Albert_Einstein_Head_cleaned.jpg/960px-Albert_Einstein_Head_cleaned.jpg,
+Albert Einstein,Nobel Prize in Physics,,male,Germany,,Albert_Einstein.png,https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Albert_Einstein_Head_cleaned.jpg/960px-Albert_Einstein_Head_cleaned.jpg,
+Albert Einstein,Nobel Prize in Physics,,male,Weimar Republic,,Albert_Einstein.png,https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Albert_Einstein_Head_cleaned.jpg/960px-Albert_Einstein_Head_cleaned.jpg,
+Albert Einstein,Nobel Prize in Physics,,male,Kingdom of Württemberg,,Albert_Einstein.png,https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Albert_Einstein_Head_cleaned.jpg/960px-Albert_Einstein_Head_cleaned.jpg,
+Albert Einstein,Nobel Prize in Physics,,male,statelessness,,Albert_Einstein.png,https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Albert_Einstein_Head_cleaned.jpg/960px-Albert_Einstein_Head_cleaned.jpg,
+Albert Einstein,Nobel Prize in Physics,,male,Cisleithania,,Albert_Einstein.png,https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Albert_Einstein_Head_cleaned.jpg/960px-Albert_Einstein_Head_cleaned.jpg,
+John Bardeen,Nobel Prize in Physics,,male,United States,,John_Bardeen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bardeen.jpg?width=512,
+Niels Bohr,Nobel Prize in Physics,,male,Kingdom of Denmark,,Niels_Bohr.png,https://commons.wikimedia.org/wiki/Special:FilePath/Niels Bohr.jpg?width=512,
+Marie Curie,Nobel Prize in Physics,,female,France,,Marie_Curie.png,https://commons.wikimedia.org/wiki/Special:FilePath/Marie Curie (1900) (cropped).jpg?width=512,
+Marie Curie,Nobel Prize in Physics,,female,Russian Empire,,Marie_Curie.png,https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg,
+Marie Curie,Nobel Prize in Physics,,female,Second Polish Republic,,Marie_Curie.png,https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg,
+Enrico Fermi,Nobel Prize in Physics,,male,United States,,Enrico_Fermi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Enrico Fermi 1943-49.jpg?width=512,
+Enrico Fermi,Nobel Prize in Physics,,male,Italy,,Enrico_Fermi.png,https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Enrico_Fermi_1943-49.jpg/960px-Enrico_Fermi_1943-49.jpg,
+Enrico Fermi,Nobel Prize in Physics,,male,Kingdom of Italy,,Enrico_Fermi.png,https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Enrico_Fermi_1943-49.jpg/960px-Enrico_Fermi_1943-49.jpg,
+Max Planck,Nobel Prize in Physics,,male,German Reich,,Max_Planck.png,https://commons.wikimedia.org/wiki/Special:FilePath/Max Planck.png?width=512,
+Erwin Schrödinger,Nobel Prize in Physics,,male,Germany,,Erwin_Schrödinger.png,https://commons.wikimedia.org/wiki/Special:FilePath/Erwin Schrödinger - Narodowe Archiwum Cyfrowe (1-E-939).jpg?width=512,Download failed
+Erwin Schrödinger,Nobel Prize in Physics,,male,Nazi Germany,,Erwin_Schrödinger.png,https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Erwin_Schr%C3%B6dinger_-_Narodowe_Archiwum_Cyfrowe_%281-E-939%29.jpg/960px-Erwin_Schr%C3%B6dinger_-_Narodowe_Archiwum_Cyfrowe_%281-E-939%29.jpg,
+Erwin Schrödinger,Nobel Prize in Physics,,male,Cisleithania,,Erwin_Schrödinger.png,https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Erwin_Schr%C3%B6dinger_-_Narodowe_Archiwum_Cyfrowe_%281-E-939%29.jpg/960px-Erwin_Schr%C3%B6dinger_-_Narodowe_Archiwum_Cyfrowe_%281-E-939%29.jpg,
+Charles K. Kao,Nobel Prize in Physics,,male,United States,,Charles_K_Kao.png,https://commons.wikimedia.org/wiki/Special:FilePath/Charles K. Kao cropped 2.jpg?width=512,
+Charles K. Kao,Nobel Prize in Physics,,male,United Kingdom,,Charles_K_Kao.png,https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Charles_K._Kao_cropped_2.jpg/960px-Charles_K._Kao_cropped_2.jpg,
+Abdus Salam,Nobel Prize in Physics,,male,Pakistan,,Abdus_Salam.png,https://commons.wikimedia.org/wiki/Special:FilePath/Abdus Salam 1987 (cropped).jpg?width=512,
+Abdus Salam,Nobel Prize in Physics,,male,British Raj,,Abdus_Salam.png,https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Abdus_Salam_1987.jpg/960px-Abdus_Salam_1987.jpg,
+Wilhelm Röntgen,Nobel Prize in Physics,,male,Kingdom of Prussia,,Wilhelm_Röntgen.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Wilhelm Conrad Röntgen (1888-1900), 88374 p.jpg?width=512",Download failed
+Wilhelm Röntgen,Nobel Prize in Physics,,male,Weimar Republic,,Wilhelm_Röntgen.png,https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Wilhelm_Conrad_R%C3%B6ntgen_%281888-1900%29%2C_88374_p.jpg/960px-Wilhelm_Conrad_R%C3%B6ntgen_%281888-1900%29%2C_88374_p.jpg,
+Wilhelm Röntgen,Nobel Prize in Physics,,male,German Empire,,Wilhelm_Röntgen.png,https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Wilhelm_Conrad_R%C3%B6ntgen_%281888-1900%29%2C_88374_p.jpg/960px-Wilhelm_Conrad_R%C3%B6ntgen_%281888-1900%29%2C_88374_p.jpg,
+Guglielmo Marconi,Nobel Prize in Physics,,male,Kingdom of Italy,,Guglielmo_Marconi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Guglielmo Marconi.jpg?width=512,
+Pierre Curie,Nobel Prize in Physics,,male,France,,Pierre_Curie.png,https://commons.wikimedia.org/wiki/Special:FilePath/Pierre Curie by Dujardin c1906.jpg?width=512,
+Richard Feynman,Nobel Prize in Physics,,male,United States,,Richard_Feynman.png,https://commons.wikimedia.org/wiki/Special:FilePath/RichardFeynman-PaineMansionWoods1984 copyrightTamikoThiel bw.jpg?width=512,
+David Gross,Nobel Prize in Physics,,male,United States,,David_Gross.png,https://commons.wikimedia.org/wiki/Special:FilePath/David Gross LANL.jpg?width=512,
+Werner Heisenberg,Nobel Prize in Physics,,male,Nazi Germany,,Werner_Heisenberg.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Bundesarchiv Bild183-R57262, Werner Heisenberg.jpg?width=512",Download failed
+Werner Heisenberg,Nobel Prize in Physics,,male,Weimar Republic,,Werner_Heisenberg.png,https://upload.wikimedia.org/wikipedia/commons/f/f8/Bundesarchiv_Bild183-R57262%2C_Werner_Heisenberg.jpg,
+Werner Heisenberg,Nobel Prize in Physics,,male,German Empire,,Werner_Heisenberg.png,https://upload.wikimedia.org/wikipedia/commons/f/f8/Bundesarchiv_Bild183-R57262%2C_Werner_Heisenberg.jpg,
+Werner Heisenberg,Nobel Prize in Physics,,male,West Germany,,Werner_Heisenberg.png,https://upload.wikimedia.org/wikipedia/commons/f/f8/Bundesarchiv_Bild183-R57262%2C_Werner_Heisenberg.jpg,
+Henri Becquerel,Nobel Prize in Physics,,male,France,,Henri_Becquerel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Nadar - Henri Becquerel.jpg?width=512,
+Hendrik Lorentz,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Hendrik_Lorentz.png,https://commons.wikimedia.org/wiki/Special:FilePath/H A Lorentz (Nobel).jpg?width=512,
+Rudolf Mössbauer,Nobel Prize in Physics,,male,Germany,,Rudolf_Mössbauer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Rudolf L. Moessbauer 1962.png?width=512,
+William Alfred Fowler,Nobel Prize in Physics,,male,United States,,William_Alfred_Fowler.png,https://commons.wikimedia.org/wiki/Special:FilePath/William A. Fowler Los Alamos ID.png?width=512,
+J. J. Thomson,Nobel Prize in Physics,,male,United Kingdom,,J_J_Thomson.png,https://commons.wikimedia.org/wiki/Special:FilePath/J.J. Thomson LCCN2014715407.jpg?width=512,
+Paul Dirac,Nobel Prize in Physics,,male,United Kingdom,,Paul_Dirac.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Paul Dirac, 1933.jpg?width=512",
+Hannes Alfvén,Nobel Prize in Physics,,male,Sweden,,Hannes_Alfvén.png,https://commons.wikimedia.org/wiki/Special:FilePath/YoungAlfven.jpg?width=512,
+Philipp Lenard,Nobel Prize in Physics,,male,Hungary,,Philipp_Lenard.png,https://commons.wikimedia.org/wiki/Special:FilePath/Phillipp Lenard in 1900.jpg?width=512,
+Philipp Lenard,Nobel Prize in Physics,,male,Germany,,Philipp_Lenard.png,https://upload.wikimedia.org/wikipedia/commons/7/7c/Lenard.jpg,
+James Franck,Nobel Prize in Physics,,male,United States,,James_Franck.png,https://commons.wikimedia.org/wiki/Special:FilePath/James Franck.jpg?width=512,Download failed
+James Franck,Nobel Prize in Physics,,male,Weimar Republic,,James_Franck.png,https://upload.wikimedia.org/wikipedia/commons/7/71/James_Franck_1925.jpg,
+Max von Laue,Nobel Prize in Physics,,male,Germany,,Max_von_Laue.png,https://commons.wikimedia.org/wiki/Special:FilePath/(UAZ) AB.1.0583 Laue.tif?width=512,Download failed
+Wilhelm Wien,Nobel Prize in Physics,,male,Germany,,Wilhelm_Wien.png,https://commons.wikimedia.org/wiki/Special:FilePath/Wien2.jpg?width=512,Download failed
+Gustav Ludwig Hertz,Nobel Prize in Physics,,male,Soviet Union,,Gustav_Ludwig_Hertz.png,https://commons.wikimedia.org/wiki/Special:FilePath/Prof. Gustav Herz LCCN2014709678.jpg?width=512,
+Gustav Ludwig Hertz,Nobel Prize in Physics,,male,German Democratic Republic,,Gustav_Ludwig_Hertz.png,https://upload.wikimedia.org/wikipedia/commons/5/51/Gustav_Hertz.jpg,
+Gustav Ludwig Hertz,Nobel Prize in Physics,,male,German Reich,,Gustav_Ludwig_Hertz.png,https://upload.wikimedia.org/wikipedia/commons/5/51/Gustav_Hertz.jpg,
+Otto Stern,Nobel Prize in Physics,,male,United States,,Otto_Stern.png,https://commons.wikimedia.org/wiki/Special:FilePath/Otto Stern.jpg?width=512,
+Otto Stern,Nobel Prize in Physics,,male,Germany,,Otto_Stern.png,https://upload.wikimedia.org/wikipedia/commons/8/88/Otto_Stern.jpg,
+Ferdinand Braun,Nobel Prize in Physics,,male,Kingdom of Prussia,,Ferdinand_Braun.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ferdinand Braun.jpg?width=512,Download failed
+Ferdinand Braun,Nobel Prize in Physics,,male,Electorate of Hesse,,Ferdinand_Braun.png,https://upload.wikimedia.org/wikipedia/commons/5/55/Ferdinand_Braun.jpg,
+Johannes Stark,Nobel Prize in Physics,,male,Germany,,Johannes_Stark.png,https://commons.wikimedia.org/wiki/Special:FilePath/Johannes Stark.jpg?width=512,
+Johannes Stark,Nobel Prize in Physics,,male,Kingdom of Bavaria,,Johannes_Stark.png,https://upload.wikimedia.org/wikipedia/commons/1/1d/Johannes_Stark.jpg,
+Maria Goeppert Mayer,Nobel Prize in Physics,,female,United States,,Maria_Goeppert_Mayer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Maria Goeppert-Mayer.jpg?width=512,
+Maria Goeppert Mayer,Nobel Prize in Physics,,female,Germany,,Maria_Goeppert_Mayer.png,https://upload.wikimedia.org/wikipedia/commons/2/22/Maria_Goeppert-Mayer.jpg,
+Peter Grünberg,Nobel Prize in Physics,,male,Germany,,Peter_Grünberg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Peter Gruenberg 01.jpg?width=512,
+Wolfgang Paul,Nobel Prize in Physics,,male,Germany,,Wolfgang_Paul.png,,No portrait found anywhere
+Max Born,Nobel Prize in Physics,,male,United Kingdom,,Max_Born.png,https://commons.wikimedia.org/wiki/Special:FilePath/Max Born.jpg?width=512,
+Max Born,Nobel Prize in Physics,,male,United Kingdom of Great Britain and Ireland,,Max_Born.png,https://upload.wikimedia.org/wikipedia/commons/f/f7/Max_Born.jpg,
+Max Born,Nobel Prize in Physics,,male,German Reich,,Max_Born.png,https://upload.wikimedia.org/wikipedia/commons/f/f7/Max_Born.jpg,
+Chandrasekhara Venkata Raman,Nobel Prize in Physics,,male,India,,Chandrasekhara_Venkata_Raman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Sir CV Raman.JPG?width=512,Download failed
+David J. Wineland,Nobel Prize in Physics,,male,United States,,David_J_Wineland.png,https://commons.wikimedia.org/wiki/Special:FilePath/David Wineland 2008.jpg?width=512,Download failed
+Heike Kamerlingh Onnes,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Heike_Kamerlingh_Onnes.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kamerlingh portret.jpg?width=512,Download failed
+John Cockcroft,Nobel Prize in Physics,,male,United Kingdom,,John_Cockcroft.png,https://commons.wikimedia.org/wiki/Special:FilePath/Cockcroft.jpg?width=512,
+Roy J. Glauber,Nobel Prize in Physics,,male,United States,,Roy_J_Glauber.png,https://commons.wikimedia.org/wiki/Special:FilePath/Roy Glauber.jpg?width=512,Download failed
+Reinhard Genzel,Nobel Prize in Physics,,male,Germany,,Reinhard_Genzel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Reinhard Genzel.jpg?width=512,
+Wolfgang Pauli,Nobel Prize in Physics,,male,United States,,Wolfgang_Pauli.png,"https://commons.wikimedia.org/wiki/Special:FilePath/ETH-BIB-Pauli, Wolfgang.tif?width=512",
+Wolfgang Pauli,Nobel Prize in Physics,,male,Switzerland,,Wolfgang_Pauli.png,https://upload.wikimedia.org/wikipedia/commons/4/43/Pauli.jpg,
+Wolfgang Pauli,Nobel Prize in Physics,,male,Austria,,Wolfgang_Pauli.png,https://upload.wikimedia.org/wikipedia/commons/4/43/Pauli.jpg,
+Hans Georg Dehmelt,Nobel Prize in Physics,,male,United States,,Hans_Georg_Dehmelt.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hans Dehmelt.jpg?width=512,
+Hans Georg Dehmelt,Nobel Prize in Physics,,male,Germany,,Hans_Georg_Dehmelt.png,https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Hans_Dehmelt.jpg/960px-Hans_Dehmelt.jpg,
+Theodor W. Hänsch,Nobel Prize in Physics,,male,United States,,Theodor_W_Hänsch.png,https://commons.wikimedia.org/wiki/Special:FilePath/Theodor W Haensch.jpg?width=512,
+Theodor W. Hänsch,Nobel Prize in Physics,,male,Germany,,Theodor_W_Hänsch.png,https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Theodor_Haensch.jpg/960px-Theodor_Haensch.jpg,
+Horst Ludwig Störmer,Nobel Prize in Physics,,male,Germany,,Horst_Ludwig_Störmer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Horst Störmer.jpg?width=512,
+Herbert Kroemer,Nobel Prize in Physics,,male,United States,,Herbert_Kroemer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Herbert Kroemer (cropped).jpg?width=512,
+Herbert Kroemer,Nobel Prize in Physics,,male,Germany,,Herbert_Kroemer.png,https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Herbert_Kroemer_%28cropped%29.jpg/960px-Herbert_Kroemer_%28cropped%29.jpg,
+Ernst Ruska,Nobel Prize in Physics,,male,Germany,,Ernst_Ruska.png,https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg/960px-Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg,
+Ernst Ruska,Nobel Prize in Physics,,male,Nazi Germany,,Ernst_Ruska.png,https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg/960px-Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg,
+Ernst Ruska,Nobel Prize in Physics,,male,Weimar Republic,,Ernst_Ruska.png,https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg/960px-Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg,
+Ernst Ruska,Nobel Prize in Physics,,male,German Empire,,Ernst_Ruska.png,https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg/960px-Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg,
+Ernst Ruska,Nobel Prize in Physics,,male,Allied-occupied Germany,,Ernst_Ruska.png,https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg/960px-Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg,
+Alfred Kastler,Nobel Prize in Physics,,male,France,,Alfred_Kastler.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kastler.jpg?width=512,Download failed
+Klaus von Klitzing,Nobel Prize in Physics,,male,Germany,,Klaus_von_Klitzing.png,https://commons.wikimedia.org/wiki/Special:FilePath/Klaus von Klitzing 2015.jpg?width=512,
+Willard Boyle,Nobel Prize in Physics,,male,Canada,,Willard_Boyle.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 2009-Press Conference KVA-23.jpg?width=512,Download failed
+Willard Boyle,Nobel Prize in Physics,,male,United States,,Willard_Boyle.png,https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Nobel_Prize_2009-Press_Conference_KVA-23.jpg/960px-Nobel_Prize_2009-Press_Conference_KVA-23.jpg,
+George E. Smith,Nobel Prize in Physics,,male,United States,,George_E_Smith.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 2009-Press Conference KVA-27.jpg?width=512,
+Wolfgang Ketterle,Nobel Prize in Physics,,male,Germany,,Wolfgang_Ketterle.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ketterle.jpg?width=512,
+Walther Bothe,Nobel Prize in Physics,,male,Germany,,Walther_Bothe.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bothe.jpg?width=512,
+Georg Bednorz,Nobel Prize in Physics,,male,Germany,,Georg_Bednorz.png,"https://commons.wikimedia.org/wiki/Special:FilePath/8th Silesian Science Festival, Johannes Georg Bednorz, KsP 709, 09.12.2024.jpg?width=512",Download failed
+Gerd Binnig,Nobel Prize in Physics,,male,Germany,,Gerd_Binnig.png,https://commons.wikimedia.org/wiki/Special:FilePath/Gerd Binnig sw.jpg?width=512,Download failed
+Gerd Binnig,Nobel Prize in Physics,,male,Allied-occupied Germany,,Gerd_Binnig.png,https://upload.wikimedia.org/wikipedia/commons/d/df/Gerd_Binnig_at_the_Memorial_Symposium_for_Heinrich_Rohrer_%28cropped%29_2.jpg,
+J. Hans D. Jensen,Nobel Prize in Physics,,male,West Germany,,J_Hans_D_Jensen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Johannes Hans Daniel Jensen (1907–1973).jpg?width=512,
+J. Hans D. Jensen,Nobel Prize in Physics,,male,German Reich,,J_Hans_D_Jensen.png,https://upload.wikimedia.org/wikipedia/commons/e/e4/Johannes_Hans_Daniel_Jensen_%281907%E2%80%931973%29.jpg,
+Pavel Cherenkov,Nobel Prize in Physics,,male,Soviet Union,,Pavel_Cherenkov.png,https://commons.wikimedia.org/wiki/Special:FilePath/Cerenkov.jpg?width=512,
+Pavel Cherenkov,Nobel Prize in Physics,,male,Russian Empire,,Pavel_Cherenkov.png,https://upload.wikimedia.org/wikipedia/commons/b/b8/Cerenkov.jpg,
+Victor Francis Hess,Nobel Prize in Physics,,male,United States,,Victor_Francis_Hess.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hess.jpg?width=512,
+Victor Francis Hess,Nobel Prize in Physics,,male,Austria,,Victor_Francis_Hess.png,https://upload.wikimedia.org/wikipedia/commons/c/cc/Hess.jpg,
+Anton Zeilinger,Nobel Prize in Physics,,male,Austria,,Anton_Zeilinger.png,https://commons.wikimedia.org/wiki/Special:FilePath/A. Zeilinger (cropped).jpg?width=512,Download failed
+Pieter Zeeman,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Pieter_Zeeman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Pieter Zeeman.jpg?width=512,Download failed
+James Chadwick,Nobel Prize in Physics,,male,United Kingdom,,James_Chadwick.png,https://commons.wikimedia.org/wiki/Special:FilePath/James Chadwick.jpg?width=512,
+Donald Arthur Glaser,Nobel Prize in Physics,,male,United States,,Donald_Arthur_Glaser.png,https://commons.wikimedia.org/wiki/Special:FilePath/Donald Glaser.jpg?width=512,Download failed
+Leon Cooper,Nobel Prize in Physics,,male,United States,,Leon_Cooper.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Laureate Leon Cooper in 2007.jpg?width=512,Download failed
+"John Strutt, 3rd Baron Rayleigh",Nobel Prize in Physics,,male,United Kingdom of Great Britain and Ireland,,John_Strutt_3rd_Baron_Rayleigh.png,https://commons.wikimedia.org/wiki/Special:FilePath/John William Strutt.jpg?width=512,Download failed
+Louis de Broglie,Nobel Prize in Physics,,male,France,,Louis_de_Broglie.png,https://commons.wikimedia.org/wiki/Special:FilePath/Prince Louis-Victor de Broglie.jpg?width=512,Download failed
+Alexander Prokhorov,Nobel Prize in Physics,,male,Russia,,Alexander_Prokhorov.png,https://commons.wikimedia.org/wiki/Special:FilePath/Aleksandr Prokhorov.jpg?width=512,
+Alexander Prokhorov,Nobel Prize in Physics,,male,Soviet Union,,Alexander_Prokhorov.png,https://upload.wikimedia.org/wikipedia/commons/4/4c/Aleksandr_Prokhorov.jpg,
+Nikolay Basov,Nobel Prize in Physics,,male,Russia,,Nikolay_Basov.png,https://commons.wikimedia.org/wiki/Special:FilePath/Basov.jpg?width=512,
+Nikolay Basov,Nobel Prize in Physics,,male,Soviet Union,,Nikolay_Basov.png,https://upload.wikimedia.org/wikipedia/commons/c/c1/Basov.jpg,
+Nikolay Basov,Nobel Prize in Physics,,male,Russian Socialist Federative Soviet Republic,,Nikolay_Basov.png,https://upload.wikimedia.org/wikipedia/commons/c/c1/Basov.jpg,
+Ferenc Krausz,Nobel Prize in Physics,,male,Hungary,,Ferenc_Krausz.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ferenc Krausz (cropped).jpg?width=512,Download failed
+Ferenc Krausz,Nobel Prize in Physics,,male,Austria,,Ferenc_Krausz.png,https://upload.wikimedia.org/wikipedia/commons/1/19/Ferenc_Krausz_%28cropped%29.jpg,
+Geoffrey Hinton,Nobel Prize in Physics,,male,Canada,,Geoffrey_Hinton.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Geoffrey E. Hinton, 2024 Nobel Prize Laureate in Physics (3x4 cropped).jpg?width=512",Download failed
+Geoffrey Hinton,Nobel Prize in Physics,,male,United Kingdom,,Geoffrey_Hinton.png,https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Geoffrey_E._Hinton%2C_2024_Nobel_Prize_Laureate_in_Physics_%28cropped1%29.jpg/960px-Geoffrey_E._Hinton%2C_2024_Nobel_Prize_Laureate_in_Physics_%28cropped1%29.jpg,
+Aage Bohr,Nobel Prize in Physics,,male,Kingdom of Denmark,,Aage_Bohr.png,https://commons.wikimedia.org/wiki/Special:FilePath/Aage Bohr.jpg?width=512,
+Andre Geim,Nobel Prize in Physics,,male,United Kingdom,,Andre_Geim.png,https://commons.wikimedia.org/wiki/Special:FilePath/Andre Geim 2010-1.jpg?width=512,Download failed
+Andre Geim,Nobel Prize in Physics,,male,Soviet Union,,Andre_Geim.png,https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Andre_Geim_10.jpg/960px-Andre_Geim_10.jpg,
+Andre Geim,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Andre_Geim.png,https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Andre_Geim_10.jpg/960px-Andre_Geim_10.jpg,
+John C. Mather,Nobel Prize in Physics,,male,United States,,John_C_Mather.png,https://commons.wikimedia.org/wiki/Special:FilePath/Webb First Images Broadcast (52272775759).jpg?width=512,Download failed
+Vitaly Ginzburg,Nobel Prize in Physics,,male,Russia,,Vitaly_Ginzburg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Виталий Лазаревич Гинзбург.jpg?width=512,
+Vitaly Ginzburg,Nobel Prize in Physics,,male,Soviet Union,,Vitaly_Ginzburg.png,https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/%D0%92%D0%B8%D1%82%D0%B0%D0%BB%D0%B8%D0%B9_%D0%9B%D0%B0%D0%B7%D0%B0%D1%80%D0%B5%D0%B2%D0%B8%D1%87_%D0%93%D0%B8%D0%BD%D0%B7%D0%B1%D1%83%D1%80%D0%B3.jpg/960px-%D0%92%D0%B8%D1%82%D0%B0%D0%BB%D0%B8%D0%B9_%D0%9B%D0%B0%D0%B7%D0%B0%D1%80%D0%B5%D0%B2%D0%B8%D1%87_%D0%93%D0%B8%D0%BD%D0%B7%D0%B1%D1%83%D1%80%D0%B3.jpg,
+Simon van der Meer,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Simon_van_der_Meer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Simon van der Meer in the AA Control Room (cropped).jpg?width=512,Download failed
+Adam Riess,Nobel Prize in Physics,,male,United States,,Adam_Riess.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 2011-Press Conference KVA-DSC 7707.jpg?width=512,Download failed
+Konstantin Novoselov,Nobel Prize in Physics,,male,United Kingdom,,Konstantin_Novoselov.png,https://commons.wikimedia.org/wiki/Special:FilePath/Konstantin Novoselov portrait.jpg?width=512,Download failed
+Konstantin Novoselov,Nobel Prize in Physics,,male,Russia,,Konstantin_Novoselov.png,https://upload.wikimedia.org/wikipedia/commons/3/3f/Konstantin_Novoselov_portrait.jpg,
+Konstantin Novoselov,Nobel Prize in Physics,,male,Soviet Union,,Konstantin_Novoselov.png,https://upload.wikimedia.org/wikipedia/commons/3/3f/Konstantin_Novoselov_portrait.jpg,
+Saul Perlmutter,Nobel Prize in Physics,,male,United States,,Saul_Perlmutter.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 2011-Press Conference KVA-DSC 7744.jpg?width=512,Download failed
+Hugh David Politzer,Nobel Prize in Physics,,male,United States,,Hugh_David_Politzer.png,https://commons.wikimedia.org/wiki/Special:FilePath/H.D. Politzer.jpg?width=512,
+Martin Lewis Perl,Nobel Prize in Physics,,male,United States,,Martin_Lewis_Perl.png,https://commons.wikimedia.org/wiki/Special:FilePath/Martin Perl - tau.jpg?width=512,
+Norman Foster Ramsey,Nobel Prize in Physics,,male,United States,,Norman_Foster_Ramsey.png,https://commons.wikimedia.org/wiki/Special:FilePath/HD.4G.049 (10537741015) crop.jpg?width=512,Download failed
+Sheldon Glashow,Nobel Prize in Physics,,male,United States,,Sheldon_Glashow.png,https://commons.wikimedia.org/wiki/Special:FilePath/Sheldon Glashow at Harvard.jpg?width=512,
+Ben Roy Mottelson,Nobel Prize in Physics,,male,United States,,Ben_Roy_Mottelson.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Mottelson,Ben 1963 Kopenhagen.jpg?width=512",
+Ben Roy Mottelson,Nobel Prize in Physics,,male,Kingdom of Denmark,,Ben_Roy_Mottelson.png,https://upload.wikimedia.org/wikipedia/commons/4/47/Mottelson%2CBen_1963_Kopenhagen.jpg,
+Frank Wilczek,Nobel Prize in Physics,,male,United States,,Frank_Wilczek.png,https://commons.wikimedia.org/wiki/Special:FilePath/FrankStockholm2004.jpg?width=512,Download failed
+Klaus Hasselmann,Nobel Prize in Physics,,male,Germany,,Klaus_Hasselmann.png,,No portrait found anywhere
+Serge Haroche,Nobel Prize in Physics,,male,France,,Serge_Haroche.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Serge Haroche at Techfest, IIT Bombay.jpg?width=512",Download failed
+Karl Alexander Müller,Nobel Prize in Physics,,male,Switzerland,,Karl_Alexander_Müller.png,https://commons.wikimedia.org/wiki/Special:FilePath/Karl Alexander Mueller.jpg?width=512,
+Felix Bloch,Nobel Prize in Physics,,male,United States,,Felix_Bloch.png,"https://commons.wikimedia.org/wiki/Special:FilePath/ETH-BIB-Bloch, Felix (1905-1983)-Portr 03540.tif?width=512",
+Felix Bloch,Nobel Prize in Physics,,male,United States,,Felix_Bloch.png,https://upload.wikimedia.org/wikipedia/commons/5/57/Bloch.jpg,
+Felix Bloch,Nobel Prize in Physics,,male,Switzerland,,Felix_Bloch.png,https://upload.wikimedia.org/wikipedia/commons/5/57/Bloch.jpg,
+Felix Bloch,Nobel Prize in Physics,,male,Switzerland,,Felix_Bloch.png,https://upload.wikimedia.org/wikipedia/commons/5/57/Bloch.jpg,
+Charles Édouard Guillaume,Nobel Prize in Physics,,male,Switzerland,,Charles_Édouard_Guillaume.png,https://commons.wikimedia.org/wiki/Special:FilePath/Guillaume 1920.jpg?width=512,Download failed
+Charles Édouard Guillaume,Nobel Prize in Physics,,male,France,,Charles_Édouard_Guillaume.png,,No portrait found anywhere
+Heinrich Rohrer,Nobel Prize in Physics,,male,Switzerland,,Heinrich_Rohrer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Rohrer.jpg?width=512,
+Michel Mayor,Nobel Prize in Physics,,male,Switzerland,,Michel_Mayor.png,https://commons.wikimedia.org/wiki/Special:FilePath/Michel Mayor ESA20824331 (cropped).jpeg?width=512,Download failed
+Didier Queloz,Nobel Prize in Physics,,male,Switzerland,,Didier_Queloz.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Didier Queloz, 2012 (cropped).jpg?width=512",
+Albert A. Michelson,Nobel Prize in Physics,,male,United States,,Albert_A_Michelson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Albert Abraham Michelson2.jpg?width=512,Download failed
+Arthur Holly Compton,Nobel Prize in Physics,,male,United States,,Arthur_Holly_Compton.png,https://commons.wikimedia.org/wiki/Special:FilePath/Arthur Compton 1927.jpg?width=512,
+Robert Hofstadter,Nobel Prize in Physics,,male,United States,,Robert_Hofstadter.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Hofstadter.jpg?width=512,
+Robert A. Millikan,Nobel Prize in Physics,,male,United States,,Robert_A_Millikan.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Andrews Millikan 1920s.jpg?width=512,
+Johannes Diderik van der Waals,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Johannes_Diderik_van_der_Waals.png,https://commons.wikimedia.org/wiki/Special:FilePath/Van der Waals.jpg?width=512,
+William Lawrence Bragg,Nobel Prize in Physics,,male,United Kingdom,,William_Lawrence_Bragg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Wl-bragg.jpg?width=512,
+William Lawrence Bragg,Nobel Prize in Physics,,male,Australia,,William_Lawrence_Bragg.png,,No portrait found anywhere
+Clinton Davisson,Nobel Prize in Physics,,male,United States,,Clinton_Davisson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Clinton Davisson.jpg?width=512,Download failed
+Gabriel Lippmann,Nobel Prize in Physics,,male,Luxembourg,,Gabriel_Lippmann.png,https://commons.wikimedia.org/wiki/Special:FilePath/Gabriel Lippmann2.jpg?width=512,Download failed
+Gabriel Lippmann,Nobel Prize in Physics,,male,France,,Gabriel_Lippmann.png,,No portrait found anywhere
+Lev Landau,Nobel Prize in Physics,,male,Soviet Union,,Lev_Landau.png,https://commons.wikimedia.org/wiki/Special:FilePath/Landau.jpg?width=512,
+Lev Landau,Nobel Prize in Physics,,male,Russian Empire,,Lev_Landau.png,https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Landau.jpg/960px-Landau.jpg,
+Lev Landau,Nobel Prize in Physics,,male,Azerbaijan Democratic Republic,,Lev_Landau.png,,No portrait found anywhere
+Frederick Soddy,Nobel Prize in Chemistry,,male,United Kingdom,,Frederick_Soddy.png,https://commons.wikimedia.org/wiki/Special:FilePath/Frederick Soddy.jpg?width=512,
+Peter Debye,Nobel Prize in Chemistry,,male,United States,,Peter_Debye.png,https://commons.wikimedia.org/wiki/Special:FilePath/Debye100.jpg?width=512,
+Peter Debye,Nobel Prize in Chemistry,,male,Kingdom of the Netherlands,,Peter_Debye.png,,No portrait found anywhere
+Paul Sabatier,Nobel Prize in Chemistry,,male,France,,Paul_Sabatier.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Sabatier.jpg?width=512,Download failed
+Victor Grignard,Nobel Prize in Chemistry,,male,France,,Victor_Grignard.png,https://commons.wikimedia.org/wiki/Special:FilePath/Viktor-grignard (cropped).jpg?width=512,
+Benjamin List,Nobel Prize in Chemistry,,male,Germany,,Benjamin_List.png,https://commons.wikimedia.org/wiki/Special:FilePath/Empfang für Benjamin List im Rathaus Köln-7597-crop.jpg?width=512,
+Ei-ichi Negishi,Nobel Prize in Chemistry,,male,Japan,,Ei-ichi_Negishi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 2010-Press Conference KVA-DSC 7398.jpg?width=512,
+Ei-ichi Negishi,Nobel Prize in Chemistry,,male,United States,,Ei-ichi_Negishi.png,,No portrait found anywhere
+Wendell Meredith Stanley,Nobel Prize in Chemistry,,male,United States,,Wendell_Meredith_Stanley.png,https://commons.wikimedia.org/wiki/Special:FilePath/Wendell Meredith Stanley.jpg?width=512,Download failed
+Akira Suzuki,Nobel Prize in Chemistry,,male,Japan,,Akira_Suzuki.png,https://commons.wikimedia.org/wiki/Special:FilePath/Akira Suzuki 20111212.jpg?width=512,Download failed
+John Howard Northrop,Nobel Prize in Chemistry,,male,United States,,John_Howard_Northrop.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Howard Northrop.jpg?width=512,
+Richard F. Heck,Nobel Prize in Chemistry,,male,United States,,Richard_F_Heck.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard Fred Heck cropped.jpg?width=512,Download failed
+Ahmed Zewail,Nobel Prize in Chemistry,,male,United States,,Ahmed_Zewail.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ahmed Zewail HD2009 Othmer Gold Medal portrait.JPG?width=512,
+Ahmed Zewail,Nobel Prize in Chemistry,,male,Egypt,,Ahmed_Zewail.png,,No portrait found anywhere
+Martin Chalfie,Nobel Prize in Chemistry,,male,United States,,Martin_Chalfie.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Martin Chalfie-press conference Dec 07th, 2008-4.jpg?width=512",
+Martin Chalfie,Nobel Prize in Chemistry,,male,United States,,Martin_Chalfie.png,,No portrait found anywhere
+Jerome Karle,Nobel Prize in Chemistry,,male,United States,,Jerome_Karle.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jerome Karle.jpg?width=512,Download failed
+Jerome Karle,Nobel Prize in Chemistry,,male,United States,,Jerome_Karle.png,https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Jerome_Karle_Portrait.jpg/960px-Jerome_Karle_Portrait.jpg,
+Jerome Karle,Nobel Prize in Chemistry,,male,United States,,Jerome_Karle.png,,No portrait found anywhere
+John Fenn,Nobel Prize in Chemistry,,male,United States,,John_Fenn.png,https://commons.wikimedia.org/wiki/Special:FilePath/John B Fenn01.jpg?width=512,Download failed
+Richard Smalley,Nobel Prize in Chemistry,,male,United States,,Richard_Smalley.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard Smalley.png?width=512,
+Alan J. Heeger,Nobel Prize in Chemistry,,male,United States,,Alan_J_Heeger.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Heeger, Alan J. (1936).jpg?width=512",
+James B. Sumner,Nobel Prize in Chemistry,,male,United States,,James_B_Sumner.png,https://commons.wikimedia.org/wiki/Special:FilePath/James Batcheller Sumner.jpg?width=512,Download failed
+George Porter,Nobel Prize in Chemistry,,male,United Kingdom,,George_Porter.png,https://commons.wikimedia.org/wiki/Special:FilePath/George Porter Nobel.jpg?width=512,Download failed
+Lars Onsager,Nobel Prize in Chemistry,,male,Norway,,Lars_Onsager.png,https://commons.wikimedia.org/wiki/Special:FilePath/Onsager 1968.jpg?width=512,Download failed
+Lars Onsager,Nobel Prize in Chemistry,,male,United States,,Lars_Onsager.png,,No portrait found anywhere
+Lars Onsager,Nobel Prize in Chemistry,,male,Kingdom of the Netherlands,,Lars_Onsager.png,,No portrait found anywhere
+Herbert A. Hauptman,Nobel Prize in Chemistry,,male,United States,,Herbert_A_Hauptman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Herbert Hauptman - UB 2009.jpg?width=512,
+Jean-Marie Lehn,Nobel Prize in Chemistry,,male,France,,Jean-Marie_Lehn.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jean-Marie Lehn par Claude Truong-Ngoc octobre 2018.jpg?width=512,
+Thomas A. Steitz,Nobel Prize in Chemistry,,male,United States,,Thomas_A_Steitz.png,https://commons.wikimedia.org/wiki/Special:FilePath/Thomas A. Steitz.jpg?width=512,Download failed
+William Giauque,Nobel Prize in Chemistry,,male,Canada,,William_Giauque.png,,No portrait found anywhere
+William Giauque,Nobel Prize in Chemistry,,male,United States,,William_Giauque.png,,No portrait found anywhere
+Hideki Shirakawa,Nobel Prize in Chemistry,,male,Japan,,Hideki_Shirakawa.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hideki Shirakawa.jpg?width=512,Download failed
+Karl Barry Sharpless,Nobel Prize in Chemistry,,male,United States,,Karl_Barry_Sharpless.png,https://commons.wikimedia.org/wiki/Special:FilePath/Barry Sharpless 02.jpg?width=512,Download failed
+Robert Curl,Nobel Prize in Chemistry,,male,United States,,Robert_Curl.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Curl crop 2009 CHAO.jpg?width=512,Download failed
+William Lipscomb,Nobel Prize in Chemistry,,male,United States,,William_Lipscomb.png,https://commons.wikimedia.org/wiki/Special:FilePath/William n lipscomb jr.jpg?width=512,
+Alan MacDiarmid,Nobel Prize in Chemistry,,male,United States,,Alan_MacDiarmid.png,https://commons.wikimedia.org/wiki/Special:FilePath/Alan MacDiarmid 2005.017.004e crop.tif?width=512,Download failed
+Alan MacDiarmid,Nobel Prize in Chemistry,,male,New Zealand,,Alan_MacDiarmid.png,,No portrait found anywhere
+William Standish Knowles,Nobel Prize in Chemistry,,male,United States,,William_Standish_Knowles.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bush7NobelLaureates.jpg?width=512,Download failed
+Stanford Moore,Nobel Prize in Chemistry,,male,United States,,Stanford_Moore.png,,No portrait found anywhere
+Kurt Wüthrich,Nobel Prize in Chemistry,,male,Switzerland,,Kurt_Wüthrich.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kurt wuethrich.jpg?width=512,Download failed
+Koichi Tanaka,Nobel Prize in Chemistry,,male,Japan,,Koichi_Tanaka.png,https://commons.wikimedia.org/wiki/Special:FilePath/Koichi Tanaka 2003.jpg?width=512,
+Koichi Tanaka,Nobel Prize in Chemistry,,male,Japan,,Koichi_Tanaka.png,,No portrait found anywhere
+F. Sherwood Rowland,Nobel Prize in Chemistry,,male,United States,,F_Sherwood_Rowland.png,https://commons.wikimedia.org/wiki/Special:FilePath/F. Sherwood Rowland.jpg?width=512,Download failed
+Richard Ernst,Nobel Prize in Chemistry,,male,Switzerland,,Richard_Ernst.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard R. Ernst 1980s (cropped).jpg?width=512,
+Leopold Ružička,Nobel Prize in Chemistry,,male,Switzerland,,Leopold_Ružička.png,https://commons.wikimedia.org/wiki/Special:FilePath/Lavoslav Ružićka 1939.jpg?width=512,Download failed
+Leopold Ružička,Nobel Prize in Chemistry,,male,Switzerland,,Leopold_Ružička.png,,No portrait found anywhere
+Leopold Ružička,Nobel Prize in Chemistry,,male,Cisleithania,,Leopold_Ružička.png,,No portrait found anywhere
+Leopold Ružička,Nobel Prize in Chemistry,,male,Cisleithania,,Leopold_Ružička.png,,No portrait found anywhere
+Alfred Werner,Nobel Prize in Chemistry,,male,Switzerland,,Alfred_Werner.png,https://commons.wikimedia.org/wiki/Special:FilePath/(UAZ) AB.1.1093 Werner.tif?width=512,Download failed
+Alfred Werner,Nobel Prize in Chemistry,,male,France,,Alfred_Werner.png,,No portrait found anywhere
+Paul Josef Crutzen,Nobel Prize in Chemistry,,male,Germany,,Paul_Josef_Crutzen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Crutzen.jpg?width=512,
+Paul Josef Crutzen,Nobel Prize in Chemistry,,male,Kingdom of the Netherlands,,Paul_Josef_Crutzen.png,,No portrait found anywhere
+Donald J. Cram,Nobel Prize in Chemistry,,male,United States,,Donald_J_Cram.png,,No portrait found anywhere
+John Cornforth,Nobel Prize in Chemistry,,male,Australia,,John_Cornforth.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Cornforth 1975.jpg?width=512,Download failed
+Elias James Corey,Nobel Prize in Chemistry,,male,United States,,Elias_James_Corey.png,https://commons.wikimedia.org/wiki/Special:FilePath/E.J.Coreyx240.jpg?width=512,
+Thomas Cech,Nobel Prize in Chemistry,,male,United States,,Thomas_Cech.png,https://commons.wikimedia.org/wiki/Special:FilePath/Thomas Cech HD2007 Othmer Gold Medal portrait2.JPG?width=512,Download failed
+Thomas Cech,Nobel Prize in Chemistry,,male,United States,,Thomas_Cech.png,https://upload.wikimedia.org/wikipedia/commons/6/68/Thomas_Robert_Cech.jpg,
+Frédéric Joliot-Curie,Nobel Prize in Chemistry,,male,France,,Frédéric_Joliot-Curie.png,https://commons.wikimedia.org/wiki/Special:FilePath/Frédéric Joliot-Curie ArM.jpg?width=512,Download failed
+Frédéric Joliot-Curie,Nobel Prize in Chemistry,,male,France,,Frédéric_Joliot-Curie.png,,No portrait found anywhere
+Frederick Sanger,Nobel Prize in Chemistry,,male,United Kingdom,,Frederick_Sanger.png,https://commons.wikimedia.org/wiki/Special:FilePath/Frederick Sanger2.jpg?width=512,Download failed
+Frederick Sanger,Nobel Prize in Chemistry,,male,United Kingdom of Great Britain and Ireland,,Frederick_Sanger.png,,No portrait found anywhere
+William Howard Stein,Nobel Prize in Chemistry,,male,United States,,William_Howard_Stein.png,,No portrait found anywhere
+Ryōji Noyori,Nobel Prize in Chemistry,,male,Japan,,Ryōji_Noyori.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ryoji Noyori 20021212.jpg?width=512,Download failed
+Odd Hassel,Nobel Prize in Chemistry,,male,Norway,,Odd_Hassel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Odd Hassel.jpg?width=512,Download failed
+Kary Mullis,Nobel Prize in Chemistry,,male,United States,,Kary_Mullis.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kary Mullis.jpg?width=512,
+Artturi Ilmari Virtanen,Nobel Prize in Chemistry,,male,Finland,,Artturi_Ilmari_Virtanen.png,https://commons.wikimedia.org/wiki/Special:FilePath/A-I-Virtanen-portrait.jpg?width=512,Download failed
+Artturi Ilmari Virtanen,Nobel Prize in Chemistry,,male,Finland,,Artturi_Ilmari_Virtanen.png,,No portrait found anywhere
+Artturi Ilmari Virtanen,Nobel Prize in Chemistry,,male,Grand Duchy of Finland,,Artturi_Ilmari_Virtanen.png,,No portrait found anywhere
+Artturi Ilmari Virtanen,Nobel Prize in Chemistry,,male,Grand Duchy of Finland,,Artturi_Ilmari_Virtanen.png,,No portrait found anywhere
+"Alexander R. Todd, Baron Todd",Nobel Prize in Chemistry,,male,United Kingdom,,Alexander_R_Todd_Baron_Todd.png,https://commons.wikimedia.org/wiki/Special:FilePath/Alexander Todd Nobel.jpg?width=512,
+Harry Kroto,Nobel Prize in Chemistry,,male,United Kingdom,,Harry_Kroto.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hkroto.jpg?width=512,Download failed
+Jaroslav Heyrovský,Nobel Prize in Chemistry,,male,Czechoslovakia,,Jaroslav_Heyrovský.png,https://commons.wikimedia.org/wiki/Special:FilePath/Heyrovsky Jaroslav.jpg?width=512,
+Roger D. Kornberg,Nobel Prize in Chemistry,,male,United States,,Roger_D_Kornberg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Roger Kornberg April 2016.jpg?width=512,Download failed
+Paul Flory,Nobel Prize in Chemistry,,male,United States,,Paul_Flory.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Flory 1973.jpg?width=512,Download failed
+Harold Urey,Nobel Prize in Chemistry,,male,United States,,Harold_Urey.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Harold Urey, 1934.jpg?width=512",
+Ilya Prigogine,Nobel Prize in Chemistry,,male,Belgium,,Ilya_Prigogine.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ilya Prigogine 1977c.jpg?width=512,
+Ilya Prigogine,Nobel Prize in Chemistry,,male,Russian Empire,,Ilya_Prigogine.png,,No portrait found anywhere
+Irving Langmuir,Nobel Prize in Chemistry,,male,United States,,Irving_Langmuir.png,https://commons.wikimedia.org/wiki/Special:FilePath/Langmuir.jpg?width=512,
+Theodor Svedberg,Nobel Prize in Chemistry,,male,Sweden,,Theodor_Svedberg.png,https://commons.wikimedia.org/wiki/Special:FilePath/The-svedberg-1.jpg?width=512,Download failed
+Theodore William Richards,Nobel Prize in Chemistry,,male,United States,,Theodore_William_Richards.png,https://commons.wikimedia.org/wiki/Special:FilePath/Theodore william richards.jpg?width=512,
+Arthur Harden,Nobel Prize in Chemistry,,male,United Kingdom,,Arthur_Harden.png,https://commons.wikimedia.org/wiki/Special:FilePath/ArthurHarden.jpg?width=512,
+Willard Libby,Nobel Prize in Chemistry,,male,United States,,Willard_Libby.png,https://commons.wikimedia.org/wiki/Special:FilePath/Willard Libby in Lab.jpg?width=512,Download failed
+Aaron Klug,Nobel Prize in Chemistry,,male,United Kingdom,,Aaron_Klug.png,https://commons.wikimedia.org/wiki/Special:FilePath/Aaron Klug 1979.jpg?width=512,
+George Andrew Olah,Nobel Prize in Chemistry,,male,Hungary,,George_Andrew_Olah.png,https://commons.wikimedia.org/wiki/Special:FilePath/Oláh György előadása 8299.jpg?width=512,
+George Andrew Olah,Nobel Prize in Chemistry,,male,United States,,George_Andrew_Olah.png,,No portrait found anywhere
+Louis E. Brus,Nobel Prize in Chemistry,,male,United States,,Louis_E_Brus.png,https://commons.wikimedia.org/wiki/Special:FilePath/Louis E Brus.jpg?width=512,
+Roger Y. Tsien,Nobel Prize in Chemistry,,male,United States,,Roger_Y_Tsien.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Roger Tsien-press conference Dec 07th, 2008-2.jpg?width=512",
+Robert H. Grubbs,Nobel Prize in Chemistry,,male,United States,,Robert_H_Grubbs.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Grubbs Royal Society.jpg?width=512,Download failed
+Robert H. Grubbs,Nobel Prize in Chemistry,,male,United States,,Robert_H_Grubbs.png,,No portrait found anywhere
+Yves Chauvin,Nobel Prize in Chemistry,,male,France,,Yves_Chauvin.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Chauvin, Yves (1930-2015).jpg?width=512",
+Richard R. Schrock,Nobel Prize in Chemistry,,male,United States,,Richard_R_Schrock.png,https://commons.wikimedia.org/wiki/Special:FilePath/R. Schrock 2012.jpg?width=512,
+Norman Haworth,Nobel Prize in Chemistry,,male,United Kingdom,,Norman_Haworth.png,https://commons.wikimedia.org/wiki/Special:FilePath/Norman Haworth.jpg?width=512,
+Norman Haworth,Nobel Prize in Chemistry,,male,United Kingdom of Great Britain and Ireland,,Norman_Haworth.png,,No portrait found anywhere
+Osamu Shimomura,Nobel Prize in Chemistry,,male,Japan,,Osamu_Shimomura.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Osamu Shimomura-press conference Dec 06th, 2008-2.jpg?width=512",Download failed
+Osamu Shimomura,Nobel Prize in Chemistry,,male,Empire of Japan,,Osamu_Shimomura.png,,No portrait found anywhere
+Peter D. Mitchell,Nobel Prize in Chemistry,,male,United Kingdom,,Peter_D_Mitchell.png,https://commons.wikimedia.org/wiki/Special:FilePath/36. Tagung 1986 Chemiker; Pressekonferenz Peter D. Mitchell - W134Nr.125218c - Willy Pragher (cropped).jpg?width=512,Download failed
+Roderick MacKinnon,Nobel Prize in Chemistry,,male,United States,,Roderick_MacKinnon.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Roderick MacKinnon, M.D..jpg?width=512",Download failed
+Walter Gilbert,Nobel Prize in Chemistry,,male,United States,,Walter_Gilbert.png,https://commons.wikimedia.org/wiki/Special:FilePath/Walter Gilbert HD2008 portrait.JPG?width=512,
+Kenichi Fukui,Nobel Prize in Chemistry,,male,Japan,,Kenichi_Fukui.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kenichi Fukui nobel.jpg?width=512,Download failed
+George Paget Thomson,Nobel Prize in Physics,,male,United Kingdom,,George_Paget_Thomson.png,https://commons.wikimedia.org/wiki/Special:FilePath/George Paget Thomson.jpg?width=512,
+George Paget Thomson,Nobel Prize in Physics,,male,United Kingdom of Great Britain and Ireland,,George_Paget_Thomson.png,,No portrait found anywhere
+Jean Perrin,Nobel Prize in Physics,,male,France,,Jean_Perrin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jean Perrin 1926.jpg?width=512,Download failed
+Subrahmanyan Chandrasekhar,Nobel Prize in Physics,,male,United States,,Subrahmanyan_Chandrasekhar.png,https://commons.wikimedia.org/wiki/Special:FilePath/Subrahmanyan Chandrasekhar.jpg?width=512,
+Subrahmanyan Chandrasekhar,Nobel Prize in Physics,,male,India,,Subrahmanyan_Chandrasekhar.png,,No portrait found anywhere
+Subrahmanyan Chandrasekhar,Nobel Prize in Physics,,male,British Raj,,Subrahmanyan_Chandrasekhar.png,,No portrait found anywhere
+François Englert,Nobel Prize in Physics,,male,Belgium,,François_Englert.png,https://commons.wikimedia.org/wiki/Special:FilePath/Francois Englert (3x4 cropped).jpg?width=512,Download failed
+Georges Charpak,Nobel Prize in Physics,,male,Poland,,Georges_Charpak.png,https://commons.wikimedia.org/wiki/Special:FilePath/CHARPAK Georges-24x50-2005 cropped.JPG?width=512,
+Georges Charpak,Nobel Prize in Physics,,male,France,,Georges_Charpak.png,,No portrait found anywhere
+Edward Victor Appleton,Nobel Prize in Physics,,male,United Kingdom,,Edward_Victor_Appleton.png,https://commons.wikimedia.org/wiki/Special:FilePath/Appleton.jpg?width=512,
+John Robert Schrieffer,Nobel Prize in Physics,,male,United States,,John_Robert_Schrieffer.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Robert Schrieffer 1972.jpg?width=512,Download failed
+Jack Steinberger,Nobel Prize in Physics,,male,United States,,Jack_Steinberger.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jack-Steinberger-2008.JPG?width=512,Download failed
+Jack Steinberger,Nobel Prize in Physics,,male,Switzerland,,Jack_Steinberger.png,,No portrait found anywhere
+Jack Steinberger,Nobel Prize in Physics,,male,Germany,,Jack_Steinberger.png,,No portrait found anywhere
+Albert Fert,Nobel Prize in Physics,,male,France,,Albert_Fert.png,https://commons.wikimedia.org/wiki/Special:FilePath/Albert fert 15 janvier 2009 Spintronique Paris Descartes.JPG?width=512,Download failed
+Q155759,Nobel Prize in Physics,,male,Soviet Union,,Q155759.png,https://commons.wikimedia.org/wiki/Special:FilePath/Igor Tamm.jpg?width=512,
+Q155759,Nobel Prize in Physics,,male,Russian Empire,,Q155759.png,,No portrait found anywhere
+Masatoshi Koshiba,Nobel Prize in Physics,,male,Japan,,Masatoshi_Koshiba.png,https://commons.wikimedia.org/wiki/Special:FilePath/Masatoshi Koshiba 2002.jpg?width=512,Download failed
+Masatoshi Koshiba,Nobel Prize in Physics,,male,Empire of Japan,,Masatoshi_Koshiba.png,,No portrait found anywhere
+Hideki Yukawa,Nobel Prize in Physics,,male,Japan,,Hideki_Yukawa.png,https://commons.wikimedia.org/wiki/Special:FilePath/Yukawa.jpg?width=512,
+Hideki Yukawa,Nobel Prize in Physics,,male,Empire of Japan,,Hideki_Yukawa.png,,No portrait found anywhere
+Louis Néel,Nobel Prize in Physics,,male,France,,Louis_Néel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Louis Néel 1970b.jpg?width=512,Download failed
+Dennis Gabor,Nobel Prize in Physics,,male,Hungary,,Dennis_Gabor.png,https://commons.wikimedia.org/wiki/Special:FilePath/Dennis Gabor 1971.jpg?width=512,Download failed
+Dennis Gabor,Nobel Prize in Physics,,male,United Kingdom,,Dennis_Gabor.png,,No portrait found anywhere
+Eugene Wigner,Nobel Prize in Physics,,male,Hungary,,Eugene_Wigner.png,https://commons.wikimedia.org/wiki/Special:FilePath/Wigner.jpg?width=512,
+Eugene Wigner,Nobel Prize in Physics,,male,United States,,Eugene_Wigner.png,,No portrait found anywhere
+Hans Bethe,Nobel Prize in Physics,,male,United States,,Hans_Bethe.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hans Bethe.jpg?width=512,Download failed
+Hans Bethe,Nobel Prize in Physics,,male,German Reich,,Hans_Bethe.png,,No portrait found anywhere
+Russell Alan Hulse,Nobel Prize in Physics,,male,United States,,Russell_Alan_Hulse.png,https://commons.wikimedia.org/wiki/Special:FilePath/Russell Alan Hulse.jpg?width=512,
+Gustaf Dalén,Nobel Prize in Physics,,male,Sweden,,Gustaf_Dalén.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nils Gustaf Dalén.jpg?width=512,
+Charles Glover Barkla,Nobel Prize in Physics,,male,United Kingdom,,Charles_Glover_Barkla.png,https://commons.wikimedia.org/wiki/Special:FilePath/Charles Glover Barkla 01.jpg?width=512,Download failed
+Charles Thomson Rees Wilson,Nobel Prize in Physics,,male,United Kingdom,,Charles_Thomson_Rees_Wilson.png,https://commons.wikimedia.org/wiki/Special:FilePath/CTR Wilson.jpg?width=512,
+Charles Thomson Rees Wilson,Nobel Prize in Physics,,male,United Kingdom of Great Britain and Ireland,,Charles_Thomson_Rees_Wilson.png,,No portrait found anywhere
+William Shockley,Nobel Prize in Physics,,male,United States,,William_Shockley.png,"https://commons.wikimedia.org/wiki/Special:FilePath/William Shockley, Stanford University.jpg?width=512",Download failed
+William Shockley,Nobel Prize in Physics,,male,United Kingdom,,William_Shockley.png,,No portrait found anywhere
+Isidor Isaac Rabi,Nobel Prize in Physics,,male,United States,,Isidor_Isaac_Rabi.png,https://commons.wikimedia.org/wiki/Special:FilePath/II Rabi.jpg?width=512,Download failed
+Isidor Isaac Rabi,Nobel Prize in Physics,,male,Cisleithania,,Isidor_Isaac_Rabi.png,,No portrait found anywhere
+Owen Willans Richardson,Nobel Prize in Physics,,male,United Kingdom,,Owen_Willans_Richardson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Owen Richardson.jpg?width=512,
+Carl David Anderson,Nobel Prize in Physics,,male,United States,,Carl_David_Anderson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Carl David Anderson.jpg?width=512,Download failed
+Ernest Lawrence,Nobel Prize in Physics,,male,United States,,Ernest_Lawrence.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ernest Lawrence.jpg?width=512,
+Manne Siegbahn,Nobel Prize in Physics,,male,Sweden,,Manne_Siegbahn.png,https://commons.wikimedia.org/wiki/Special:FilePath/1924 Karl Manne Siegbahn.jpg?width=512,
+Robert Wilson,Nobel Prize in Physics,,male,United States,,Robert_Wilson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Wilson (28215880301) (cropped) (cropped).jpg?width=512,Download failed
+Percy Williams Bridgman,Nobel Prize in Physics,,male,United States,,Percy_Williams_Bridgman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bridgman.jpg?width=512,Download failed
+Steven Chu,Nobel Prize in Physics,,male,United States,,Steven_Chu.png,https://commons.wikimedia.org/wiki/Special:FilePath/Steven Chu official DOE portrait.jpg?width=512,
+Murray Gell-Mann,Nobel Prize in Physics,,male,United States,,Murray_Gell-Mann.png,https://commons.wikimedia.org/wiki/Special:FilePath/Murray Gell-Mann - World Economic Forum Annual Meeting 2012.jpg?width=512,Download failed
+Pyotr Kapitsa,Nobel Prize in Physics,,male,Soviet Union,,Pyotr_Kapitsa.png,https://commons.wikimedia.org/wiki/Special:FilePath/Pyotr Kapitsa 1930s.jpg?width=512,
+Pyotr Kapitsa,Nobel Prize in Physics,,male,Russian Empire,,Pyotr_Kapitsa.png,,No portrait found anywhere
+Pyotr Kapitsa,Nobel Prize in Physics,,male,Russian Socialist Federative Soviet Republic,,Pyotr_Kapitsa.png,,No portrait found anywhere
+Arno Allan Penzias,Nobel Prize in Physics,,male,United States,,Arno_Allan_Penzias.png,https://commons.wikimedia.org/wiki/Special:FilePath/32. Tagung 1982 Physiker; Beim Studentenabend Arno A. Penzias - W134Nr.119142 - Willy Pragher (cropped).jpg?width=512,
+Arno Allan Penzias,Nobel Prize in Physics,,male,Germany,,Arno_Allan_Penzias.png,,No portrait found anywhere
+Arno Allan Penzias,Nobel Prize in Physics,,male,statelessness,,Arno_Allan_Penzias.png,,No portrait found anywhere
+Emilio G. Segrè,Nobel Prize in Physics,,male,United States,,Emilio_G_Segrè.png,https://commons.wikimedia.org/wiki/Special:FilePath/Segre.jpg?width=512,
+Emilio G. Segrè,Nobel Prize in Physics,,male,Kingdom of Italy,,Emilio_G_Segrè.png,,No portrait found anywhere
+Raymond Davis Jr.,Nobel Prize in Physics,,male,United States,,Raymond_Davis_Jr.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Raymond Davis, Jr 2001.jpg?width=512",Download failed
+C. F. Powell,Nobel Prize in Physics,,male,United Kingdom,,C_F_Powell.png,https://commons.wikimedia.org/wiki/Special:FilePath/Cecil Powell.jpg?width=512,
+Luis Walter Alvarez,Nobel Prize in Physics,,male,United States,,Luis_Walter_Alvarez.png,https://commons.wikimedia.org/wiki/Special:FilePath/LWA Picture Final.jpg?width=512,Download failed
+Steven Weinberg,Nobel Prize in Physics,,male,United States,,Steven_Weinberg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Steven Weinberg 2010.jpg?width=512,Download failed
+George F. Smoot,Nobel Prize in Physics,,male,United States,,George_F_Smoot.png,https://commons.wikimedia.org/wiki/Special:FilePath/George smoot 06N7133a.jpg?width=512,Download failed
+Leo Esaki,Nobel Prize in Physics,,male,Japan,,Leo_Esaki.png,https://commons.wikimedia.org/wiki/Special:FilePath/Esaki leo Gakushiin.jpg?width=512,Download failed
+Brian David Josephson,Nobel Prize in Physics,,male,United Kingdom,,Brian_David_Josephson.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Brian Josephson, March 2004.jpg?width=512",
+Chen-ning Yang,Nobel Prize in Physics,,male,United States,,Chen-ning_Yang.png,https://commons.wikimedia.org/wiki/Special:FilePath/Yang.jpg?width=512,Download failed
+Chen-ning Yang,Nobel Prize in Physics,,male,People's Republic of China,,Chen-ning_Yang.png,https://upload.wikimedia.org/wikipedia/commons/b/b7/HD.3F.010_%2811086446676%29%28Chen_Ning_Yang%29.jpg,
+Chen-ning Yang,Nobel Prize in Physics,,male,Taiwan,,Chen-ning_Yang.png,,No portrait found anywhere
+Chen-ning Yang,Nobel Prize in Physics,,male,Republic of China,,Chen-ning_Yang.png,,No portrait found anywhere
+Jack Kilby,Nobel Prize in Physics,,male,United States,,Jack_Kilby.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jack Kilby 1960s.png?width=512,
+Edward Mills Purcell,Nobel Prize in Physics,,male,United States,,Edward_Mills_Purcell.png,https://commons.wikimedia.org/wiki/Special:FilePath/Edward Mills Purcell.jpg?width=512,Download failed
+Zhores Alferov,Nobel Prize in Physics,,male,Russia,,Zhores_Alferov.png,https://commons.wikimedia.org/wiki/Special:FilePath/Zhores Alferov April 2016.jpg?width=512,
+Zhores Alferov,Nobel Prize in Physics,,male,Soviet Union,,Zhores_Alferov.png,,No portrait found anywhere
+Ernest Walton,Nobel Prize in Physics,,male,Ireland,,Ernest_Walton.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ernest Walton.jpg?width=512,
+Ernest Walton,Nobel Prize in Physics,,male,Irish Free State,,Ernest_Walton.png,,No portrait found anywhere
+Ernest Walton,Nobel Prize in Physics,,male,United Kingdom of Great Britain and Ireland,,Ernest_Walton.png,,No portrait found anywhere
+Owen Chamberlain,Nobel Prize in Physics,,male,United States,,Owen_Chamberlain.png,https://commons.wikimedia.org/wiki/Special:FilePath/Owen Chamberlain.jpg?width=512,
+Tsung-Dao Lee,Nobel Prize in Physics,,male,United States,,Tsung-Dao_Lee.png,https://commons.wikimedia.org/wiki/Special:FilePath/TD Lee.jpg?width=512,
+Tsung-Dao Lee,Nobel Prize in Physics,,male,Taiwan,,Tsung-Dao_Lee.png,https://upload.wikimedia.org/wikipedia/commons/5/53/TD_Lee.jpg,
+Tsung-Dao Lee,Nobel Prize in Physics,,male,Republic of China,,Tsung-Dao_Lee.png,https://upload.wikimedia.org/wikipedia/commons/5/53/TD_Lee.jpg,
+Patrick Blackett,Nobel Prize in Physics,,male,United Kingdom,,Patrick_Blackett.png,https://commons.wikimedia.org/wiki/Special:FilePath/Blackett.jpg?width=512,
+Patrick Blackett,Nobel Prize in Physics,,male,United Kingdom of Great Britain and Ireland,,Patrick_Blackett.png,,No portrait found anywhere
+Shin'ichirō Tomonaga,Nobel Prize in Physics,,male,Japan,,Shinichirō_Tomonaga.png,https://commons.wikimedia.org/wiki/Special:FilePath/Tomonaga.jpg?width=512,Download failed
+Shin'ichirō Tomonaga,Nobel Prize in Physics,,male,Empire of Japan,,Shinichirō_Tomonaga.png,,No portrait found anywhere
+Charles Hard Townes,Nobel Prize in Physics,,male,United States,,Charles_Hard_Townes.png,https://commons.wikimedia.org/wiki/Special:FilePath/Charles Townes.jpg?width=512,Download failed
+Polykarp Kusch,Nobel Prize in Physics,,male,United States,,Polykarp_Kusch.png,https://commons.wikimedia.org/wiki/Special:FilePath/Polykarp Kusch.jpg?width=512,Download failed
+Walter Houser Brattain,Nobel Prize in Physics,,male,United States,,Walter_Houser_Brattain.png,https://commons.wikimedia.org/wiki/Special:FilePath/Brattain.jpg?width=512,
+Gerard 't Hooft,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Gerard_t_Hooft.png,https://commons.wikimedia.org/wiki/Special:FilePath/Gerard 't Hooft.jpg?width=512,
+Julian Schwinger,Nobel Prize in Physics,,male,United States,,Julian_Schwinger.png,https://commons.wikimedia.org/wiki/Special:FilePath/Schwinger.jpg?width=512,
+Riccardo Giacconi,Nobel Prize in Physics,,male,United States,,Riccardo_Giacconi.png,https://commons.wikimedia.org/wiki/Special:FilePath/RiccardoGiacconi.jpg?width=512,Download failed
+Riccardo Giacconi,Nobel Prize in Physics,,male,Italy,,Riccardo_Giacconi.png,,No portrait found anywhere
+Riccardo Giacconi,Nobel Prize in Physics,,male,Kingdom of Italy,,Riccardo_Giacconi.png,,No portrait found anywhere
+Willis Lamb,Nobel Prize in Physics,,male,United States,,Willis_Lamb.png,https://commons.wikimedia.org/wiki/Special:FilePath/Willis Lamb 1955.jpg?width=512,Download failed
+Carlo Rubbia,Nobel Prize in Physics,,male,Italy,,Carlo_Rubbia.png,https://commons.wikimedia.org/wiki/Special:FilePath/Carlo Rubbia 2012.jpg?width=512,
+Pierre-Gilles de Gennes,Nobel Prize in Physics,,male,France,,Pierre-Gilles_de_Gennes.png,https://commons.wikimedia.org/wiki/Special:FilePath/Pierre-Gilles de Gennes.jpg?width=512,Download failed
+Jerome Isaac Friedman,Nobel Prize in Physics,,male,United States,,Jerome_Isaac_Friedman.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Jerry Friedman in Valencia, Rey Jaime event, June 2016.jpg?width=512",Download failed
+Yoichiro Nambu,Nobel Prize in Physics,,male,Japan,,Yoichiro_Nambu.png,https://commons.wikimedia.org/wiki/Special:FilePath/YoichiroNambu.jpg?width=512,Download failed
+Yoichiro Nambu,Nobel Prize in Physics,,male,United States,,Yoichiro_Nambu.png,,No portrait found anywhere
+Alexei Abrikosov,Nobel Prize in Physics,,male,United States,,Alexei_Abrikosov.png,https://commons.wikimedia.org/wiki/Special:FilePath/AA Abrikosov ANL1.jpg?width=512,
+Alexei Abrikosov,Nobel Prize in Physics,,male,Russia,,Alexei_Abrikosov.png,,No portrait found anywhere
+Alexei Abrikosov,Nobel Prize in Physics,,male,Soviet Union,,Alexei_Abrikosov.png,,No portrait found anywhere
+Frits Zernike,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Frits_Zernike.png,https://commons.wikimedia.org/wiki/Special:FilePath/Zernike.jpg?width=512,
+Nevill Francis Mott,Nobel Prize in Physics,,male,United Kingdom,,Nevill_Francis_Mott.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Mott,Nevill Francis 1952 London.jpg?width=512",Download failed
+Melvin Schwartz,Nobel Prize in Physics,,male,United States,,Melvin_Schwartz.png,https://commons.wikimedia.org/wiki/Special:FilePath/Melvin Schwartz.jpg?width=512,
+Nicolaas Bloembergen,Nobel Prize in Physics,,male,United States,,Nicolaas_Bloembergen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nicolaas Bloembergen 1981.jpg?width=512,Download failed
+Bernard Katz,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Bernard_Katz.png,https://commons.wikimedia.org/wiki/Special:FilePath/37. Tagung 1987 Mediziner Sir Bernard Katz - W134Nr.125421a1 - Willy Pragher (cropped).jpg?width=512,Download failed
+Bernard Katz,Nobel Prize in Physiology or Medicine,,male,Germany,,Bernard_Katz.png,,No portrait found anywhere
+Bernard Katz,Nobel Prize in Physiology or Medicine,,male,United Kingdom of Great Britain and Ireland,,Bernard_Katz.png,https://upload.wikimedia.org/wikipedia/commons/e/e2/Sir_Bernard_Katz.jpg,
+Elizabeth Blackburn,Nobel Prize in Physiology or Medicine,,female,United States,,Elizabeth_Blackburn.png,https://commons.wikimedia.org/wiki/Special:FilePath/Elizabeth Blackburn CHF Heritage Day 2012 Rush 001.JPG?width=512,Download failed
+Elizabeth Blackburn,Nobel Prize in Physiology or Medicine,,female,Australia,,Elizabeth_Blackburn.png,,No portrait found anywhere
+Carol Greider,Nobel Prize in Physiology or Medicine,,female,United States,,Carol_Greider.png,https://commons.wikimedia.org/wiki/Special:FilePath/GREIDER Carol 2014 - Less vignetting.jpg?width=512,
+Konrad Emil Bloch,Nobel Prize in Physiology or Medicine,,male,United States,,Konrad_Emil_Bloch.png,https://commons.wikimedia.org/wiki/Special:FilePath/Konrad Bloch.JPG?width=512,
+Konrad Emil Bloch,Nobel Prize in Physiology or Medicine,,male,Germany,,Konrad_Emil_Bloch.png,,No portrait found anywhere
+Gertrude B. Elion,Nobel Prize in Physiology or Medicine,,female,United States,,Gertrude_B_Elion.png,https://commons.wikimedia.org/wiki/Special:FilePath/Gertrude Elion (cropped).jpg?width=512,
+Alexander Fleming,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Alexander_Fleming.png,https://commons.wikimedia.org/wiki/Special:FilePath/Synthetic Production of Penicillin TR1468.jpg?width=512,
+Robert Koch,Nobel Prize in Physiology or Medicine,,male,German Empire,,Robert_Koch.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Koch.jpg?width=512,Download failed
+Robert Koch,Nobel Prize in Physiology or Medicine,,male,Kingdom of Hanover,,Robert_Koch.png,,No portrait found anywhere
+Ivan Pavlov,Nobel Prize in Physiology or Medicine,,male,Soviet Union,,Ivan_Pavlov.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ivan Pavlov NLM3.jpg?width=512,
+Feodor Felix Konrad Lynen,Nobel Prize in Physiology or Medicine,,male,Germany,,Feodor_Felix_Konrad_Lynen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Feodor Lynen with pipette.jpg?width=512,
+Max Theiler,Nobel Prize in Physiology or Medicine,,male,United States,,Max_Theiler.png,https://commons.wikimedia.org/wiki/Special:FilePath/Max Theiler nobel.jpg?width=512,
+Max Theiler,Nobel Prize in Physiology or Medicine,,male,South Africa,,Max_Theiler.png,,No portrait found anywhere
+Paul Ehrlich,Nobel Prize in Physiology or Medicine,,male,Kingdom of Prussia,,Paul_Ehrlich.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Ehrlich 3.jpg?width=512,
+Paul Ehrlich,Nobel Prize in Physiology or Medicine,,male,German Empire,,Paul_Ehrlich.png,,No portrait found anywhere
+Albrecht Kossel,Nobel Prize in Physiology or Medicine,,male,Germany,,Albrecht_Kossel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Albrecht Kossel nobel.jpg?width=512,Download failed
+Otto Fritz Meyerhof,Nobel Prize in Physiology or Medicine,,male,United States,,Otto_Fritz_Meyerhof.png,https://commons.wikimedia.org/wiki/Special:FilePath/Otto Fritz Meyerhof.jpg?width=512,
+Otto Fritz Meyerhof,Nobel Prize in Physiology or Medicine,,male,Germany,,Otto_Fritz_Meyerhof.png,,No portrait found anywhere
+Hans Krebs,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Hans_Krebs.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hans Adolf Krebs.jpg?width=512,
+Hans Krebs,Nobel Prize in Physiology or Medicine,,male,Germany,,Hans_Krebs.png,,No portrait found anywhere
+Gerhard Domagk,Nobel Prize in Physiology or Medicine,,male,Germany,,Gerhard_Domagk.png,https://commons.wikimedia.org/wiki/Special:FilePath/Gerhard Domagk nobel.jpg?width=512,
+Hans Spemann,Nobel Prize in Physiology or Medicine,,male,Germany,,Hans_Spemann.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hans Spemann nobel.jpg?width=512,
+Ernst Chain,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Ernst_Chain.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ernst Boris Chain 1945.jpg?width=512,
+Ernst Chain,Nobel Prize in Physiology or Medicine,,male,Germany,,Ernst_Chain.png,,No portrait found anywhere
+Martin Rodbell,Nobel Prize in Physiology or Medicine,,male,United States,,Martin_Rodbell.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Rodbell, Martin (1925-1998).jpg?width=512",
+Karl von Frisch,Nobel Prize in Physiology or Medicine,,male,Austria,,Karl_von_Frisch.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Karl von Frisch - Atelier Veritas, c. 1926.jpg?width=512",Download failed
+Günter Blobel,Nobel Prize in Physiology or Medicine,,male,United States,,Günter_Blobel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Gunter Blobel 2008 1.JPG?width=512,Download failed
+Günter Blobel,Nobel Prize in Physiology or Medicine,,male,Germany,,Günter_Blobel.png,,No portrait found anywhere
+Günter Blobel,Nobel Prize in Physiology or Medicine,,male,Nazi Germany,,Günter_Blobel.png,,No portrait found anywhere
+"Earl Wilbur Sutherland, Jr.",Nobel Prize in Physiology or Medicine,,male,United States,,Earl_Wilbur_Sutherland_Jr.png,https://commons.wikimedia.org/wiki/Special:FilePath/Earl Wilbur Sutherland Jr.jpg?width=512,
+Henry Hallett Dale,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Henry_Hallett_Dale.png,https://commons.wikimedia.org/wiki/Special:FilePath/Henry Dale nobel.jpg?width=512,
+Harald zur Hausen,Nobel Prize in Physiology or Medicine,,male,Germany,,Harald_zur_Hausen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Harald zur Hausen 01.jpg?width=512,Download failed
+Emil von Behring,Nobel Prize in Physiology or Medicine,,male,Kingdom of Prussia,,Emil_von_Behring.png,https://commons.wikimedia.org/wiki/Special:FilePath/Emil Behring 1896 Neapel.jpg?width=512,Download failed
+Emil von Behring,Nobel Prize in Physiology or Medicine,,male,German Reich,,Emil_von_Behring.png,,No portrait found anywhere
+Otto Heinrich Warburg,Nobel Prize in Physiology or Medicine,,male,Nazi Germany,,Otto_Heinrich_Warburg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Otto Heinrich Warburg (cropped).jpg?width=512,
+Otto Heinrich Warburg,Nobel Prize in Physiology or Medicine,,male,Nazi Germany,,Otto_Heinrich_Warburg.png,,No portrait found anywhere
+Otto Heinrich Warburg,Nobel Prize in Physiology or Medicine,,male,Weimar Republic,,Otto_Heinrich_Warburg.png,,No portrait found anywhere
+Otto Heinrich Warburg,Nobel Prize in Physiology or Medicine,,male,Weimar Republic,,Otto_Heinrich_Warburg.png,,No portrait found anywhere
+Otto Heinrich Warburg,Nobel Prize in Physiology or Medicine,,male,German Empire,,Otto_Heinrich_Warburg.png,,No portrait found anywhere
+Otto Heinrich Warburg,Nobel Prize in Physiology or Medicine,,male,German Empire,,Otto_Heinrich_Warburg.png,,No portrait found anywhere
+Otto Heinrich Warburg,Nobel Prize in Physiology or Medicine,,male,West Germany,,Otto_Heinrich_Warburg.png,,No portrait found anywhere
+Otto Heinrich Warburg,Nobel Prize in Physiology or Medicine,,male,West Germany,,Otto_Heinrich_Warburg.png,https://upload.wikimedia.org/wikipedia/commons/c/c1/Otto_Warburg.jpg,
+Max Delbrück,Nobel Prize in Physiology or Medicine,,male,United States,,Max_Delbrück.png,https://commons.wikimedia.org/wiki/Special:FilePath/Maxdelbrück-cr.jpg?width=512,Download failed
+Max Delbrück,Nobel Prize in Physiology or Medicine,,male,Germany,,Max_Delbrück.png,,No portrait found anywhere
+Bert Sakmann,Nobel Prize in Physiology or Medicine,,male,Germany,,Bert_Sakmann.png,https://commons.wikimedia.org/wiki/Special:FilePath/Sakmann.jpg?width=512,Download failed
+Bert Sakmann,Nobel Prize in Physiology or Medicine,,male,Nazi Germany,,Bert_Sakmann.png,,No portrait found anywhere
+Fritz Albert Lipmann,Nobel Prize in Physiology or Medicine,,male,United States,,Fritz_Albert_Lipmann.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Portrait of Fritz Albert Lipmann (1899-1986), Biochemist (2551001689).jpg?width=512",
+Fritz Albert Lipmann,Nobel Prize in Physiology or Medicine,,male,Germany,,Fritz_Albert_Lipmann.png,,No portrait found anywhere
+Erwin Neher,Nobel Prize in Physiology or Medicine,,male,Germany,,Erwin_Neher.png,https://commons.wikimedia.org/wiki/Special:FilePath/Erwin neher 2007 lindau.jpg?width=512,Download failed
+Erwin Neher,Nobel Prize in Physiology or Medicine,,male,Nazi Germany,,Erwin_Neher.png,,No portrait found anywhere
+Werner Forssmann,Nobel Prize in Physiology or Medicine,,male,German Empire,,Werner_Forssmann.png,https://commons.wikimedia.org/wiki/Special:FilePath/Werner Forssmann nobel.jpg?width=512,
+Werner Forssmann,Nobel Prize in Physiology or Medicine,,male,West Germany,,Werner_Forssmann.png,,No portrait found anywhere
+Werner Forssmann,Nobel Prize in Physiology or Medicine,,male,German Reich,,Werner_Forssmann.png,https://upload.wikimedia.org/wikipedia/commons/9/9f/Werner_Forssmann_nobel.jpg,
+Georges J. F. Köhler,Nobel Prize in Physiology or Medicine,,male,Germany,,Georges_J_F_Köhler.png,https://commons.wikimedia.org/wiki/Special:FilePath/40. Tagung 1990 Mediziner Portraits; Prof. Köhler (Freiburg) - W134Nr.126381c1 - Willy Pragher (cropped).jpg?width=512,Download failed
+Otto Loewi,Nobel Prize in Physiology or Medicine,,male,United States,,Otto_Loewi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Otto Loewi nobel.jpg?width=512,Download failed
+Otto Loewi,Nobel Prize in Physiology or Medicine,,male,Austria,,Otto_Loewi.png,,No portrait found anywhere
+Otto Loewi,Nobel Prize in Physiology or Medicine,,male,Germany,,Otto_Loewi.png,,No portrait found anywhere
+Christiane Nüsslein-Volhard,Nobel Prize in Physiology or Medicine,,female,Germany,,Christiane_Nüsslein-Volhard.png,https://commons.wikimedia.org/wiki/Special:FilePath/Christiane Nüsslein-Volhard mg 4372 cropped.jpg?width=512,Download failed
+Robert Bárány,Nobel Prize in Physiology or Medicine,,male,Sweden,,Robert_Bárány.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Bárány av Lars Emil Finn.png?width=512,Download failed
+Robert Bárány,Nobel Prize in Physiology or Medicine,,male,Austria,,Robert_Bárány.png,,No portrait found anywhere
+Robert Bárány,Nobel Prize in Physiology or Medicine,,male,Cisleithania,,Robert_Bárány.png,,No portrait found anywhere
+Julius Wagner-Jauregg,Nobel Prize in Physiology or Medicine,,male,Austria,,Julius_Wagner-Jauregg.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Dr Julius Wagner-Jauregg, SFA222007138.jpg?width=512",Download failed
+Konrad Lorenz,Nobel Prize in Physiology or Medicine,,male,Austria,,Konrad_Lorenz.png,https://commons.wikimedia.org/wiki/Special:FilePath/Konrad Lorenz.JPG?width=512,
+Carl Ferdinand Cori,Nobel Prize in Physiology or Medicine,,male,United States,,Carl_Ferdinand_Cori.png,https://commons.wikimedia.org/wiki/Special:FilePath/Carl Ferdinand Cori.jpg?width=512,
+Carl Ferdinand Cori,Nobel Prize in Physiology or Medicine,,male,Czechoslovakia,,Carl_Ferdinand_Cori.png,,No portrait found anywhere
+Carl Ferdinand Cori,Nobel Prize in Physiology or Medicine,,male,Cisleithania,,Carl_Ferdinand_Cori.png,,No portrait found anywhere
+William P. Murphy,Nobel Prize in Physiology or Medicine,,male,United States,,William_P_Murphy.png,https://commons.wikimedia.org/wiki/Special:FilePath/William P Murphy.jpg?width=512,
+Shinya Yamanaka,Nobel Prize in Physiology or Medicine,,male,Japan,,Shinya_Yamanaka.png,https://commons.wikimedia.org/wiki/Special:FilePath/Shinya Yamanaka 20141226.jpg?width=512,Download failed
+John Gurdon,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,John_Gurdon.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Gurdon Cambridge 2012.JPG?width=512,Download failed
+James Watson,Nobel Prize in Physiology or Medicine,,male,United States,,James_Watson.png,https://commons.wikimedia.org/wiki/Special:FilePath/James D. Watson (cropped).jpg?width=512,Download failed
+Hermann Joseph Muller,Nobel Prize in Physiology or Medicine,,male,United States,,Hermann_Joseph_Muller.png,https://commons.wikimedia.org/wiki/Special:FilePath/HJ Muller 1952.jpg?width=512,
+Karl Landsteiner,Nobel Prize in Physiology or Medicine,,male,United States,,Karl_Landsteiner.png,https://commons.wikimedia.org/wiki/Special:FilePath/Karl Landsteiner nobel.jpg?width=512,
+Karl Landsteiner,Nobel Prize in Physiology or Medicine,,male,Austria–Hungary,,Karl_Landsteiner.png,https://upload.wikimedia.org/wikipedia/commons/e/e0/Karl_Landsteiner_nobel.jpg,
+Thomas C. Südhof,Nobel Prize in Physiology or Medicine,,male,United States,,Thomas_C_Südhof.png,https://commons.wikimedia.org/wiki/Special:FilePath/Thomas c südhof.jpg?width=512,
+Thomas C. Südhof,Nobel Prize in Physiology or Medicine,,male,Germany,,Thomas_C_Südhof.png,,No portrait found anywhere
+Ronald Ross,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Ronald_Ross.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ronald Ross.jpg?width=512,Download failed
+Luc Montagnier,Nobel Prize in Physiology or Medicine,,male,France,,Luc_Montagnier.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Luc Montagnier-press conference Dec 06th, 2008-6.jpg?width=512",Download failed
+Françoise Barré-Sinoussi.,Nobel Prize in Physiology or Medicine,,female,France,,Françoise_Barré-Sinoussi.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Françoise Barré-Sinoussi-press conference Dec 06th, 2008-1.jpg?width=512",
+Bruce Beutler,Nobel Prize in Physiology or Medicine,,male,United States,,Bruce_Beutler.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bruce Beutler - Nobel Prize 2011-Press Conference KI-DSC 7508.jpg?width=512,Download failed
+Bruce Beutler,Nobel Prize in Physiology or Medicine,,male,United States,,Bruce_Beutler.png,,No portrait found anywhere
+Jack Szostak,Nobel Prize in Physiology or Medicine,,male,Canada,,Jack_Szostak.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 2009-Press Conference Physiology or Medicine-16.jpg?width=512,Download failed
+Jack Szostak,Nobel Prize in Physiology or Medicine,,male,United States,,Jack_Szostak.png,,No portrait found anywhere
+Andrew Huxley,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Andrew_Huxley.png,https://commons.wikimedia.org/wiki/Special:FilePath/Andrew Fielding Huxley nobel.jpg?width=512,
+Robert Edwards,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Robert_Edwards.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Geoffrey Edwards (2010).jpg?width=512,
+Ralph Steinman,Nobel Prize in Physiology or Medicine,,male,Canada,,Ralph_Steinman.png,https://commons.wikimedia.org/wiki/Special:FilePath/RMSt.jpg?width=512,
+Ralph Steinman,Nobel Prize in Physiology or Medicine,,male,United States,,Ralph_Steinman.png,https://upload.wikimedia.org/wikipedia/commons/5/5e/RMSt.jpg,
+Jules A. Hoffmann,Nobel Prize in Physiology or Medicine,,male,Luxembourg,,Jules_A_Hoffmann.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 2011-Press Conference KI-DSC 7584.jpg?width=512,
+Jules A. Hoffmann,Nobel Prize in Physiology or Medicine,,male,France,,Jules_A_Hoffmann.png,,No portrait found anywhere
+Baruch Samuel Blumberg,Nobel Prize in Physiology or Medicine,,male,United States,,Baruch_Samuel_Blumberg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Baruch Samuel Blumberg by Tom Trower (NASA) (cropped).jpg?width=512,Download failed
+Paul Lauterbur,Nobel Prize in Physiology or Medicine,,male,United States,,Paul_Lauterbur.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Lauterbur 2003 cropped.jpg?width=512,
+Rosalyn Sussman Yalow,Nobel Prize in Physiology or Medicine,,female,United States,,Rosalyn_Sussman_Yalow.png,https://commons.wikimedia.org/wiki/Special:FilePath/Rosalyn Yalow.jpg?width=512,Download failed
+Har Gobind Khorana,Nobel Prize in Physiology or Medicine,,male,United States,,Har_Gobind_Khorana.png,https://commons.wikimedia.org/wiki/Special:FilePath/Har Gobind Khorana.jpg?width=512,
+Har Gobind Khorana,Nobel Prize in Physiology or Medicine,,male,India,,Har_Gobind_Khorana.png,,No portrait found anywhere
+Har Gobind Khorana,Nobel Prize in Physiology or Medicine,,male,British Raj,,Har_Gobind_Khorana.png,,No portrait found anywhere
+Har Gobind Khorana,Nobel Prize in Physiology or Medicine,,male,Dominion of India,,Har_Gobind_Khorana.png,,No portrait found anywhere
+Christiaan Eijkman,Nobel Prize in Physiology or Medicine,,male,Kingdom of the Netherlands,,Christiaan_Eijkman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Christiaan Eijkman.jpg?width=512,Download failed
+Daniel Carleton Gajdusek,Nobel Prize in Physiology or Medicine,,male,United States,,Daniel_Carleton_Gajdusek.png,https://commons.wikimedia.org/wiki/Special:FilePath/Daniel Carleton Gajdusek 2bw.jpg?width=512,Download failed
+Adolf Butenandt,Nobel Prize in Chemistry,,male,Germany,,Adolf_Butenandt.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bad Schachen Porträt; Adolf Butenandt - W134Nr.020182c - Willy Pragher (cropped).jpg?width=512,
+Marie Curie,Nobel Prize in Chemistry,,female,France,,Marie_Curie.png,https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg,
+Marie Curie,Nobel Prize in Chemistry,,female,Russian Empire,,Marie_Curie.png,https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg,
+Marie Curie,Nobel Prize in Chemistry,,female,Second Polish Republic,,Marie_Curie.png,,No portrait found anywhere
+Ada Yonath,Nobel Prize in Chemistry,,female,Israel,,Ada_Yonath.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ada E. Yonath.jpg?width=512,Download failed
+Carolyn Bertozzi,Nobel Prize in Chemistry,,female,United States,,Carolyn_Bertozzi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Carolyn Bertozzi IMG 9384.jpg?width=512,Download failed
+Dorothy Hodgkin,Nobel Prize in Chemistry,,female,United Kingdom,,Dorothy_Hodgkin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Professor Dorothy Hodgkin.jpg?width=512,Download failed
+Irène Joliot-Curie,Nobel Prize in Chemistry,,female,France,,Irène_Joliot-Curie.png,https://commons.wikimedia.org/wiki/Special:FilePath/Joliot-curie.jpg?width=512,
+Ernest Rutherford,Nobel Prize in Chemistry,,male,New Zealand,,Ernest_Rutherford.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ernest Rutherford LOC.jpg?width=512,Download failed
+Wilhelm Ostwald,Nobel Prize in Chemistry,,male,Germany,,Wilhelm_Ostwald.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ostwald.jpg?width=512,Download failed
+Wilhelm Ostwald,Nobel Prize in Chemistry,,male,Russian Empire,,Wilhelm_Ostwald.png,,No portrait found anywhere
+Edwin McMillan,Nobel Prize in Chemistry,,male,United States,,Edwin_McMillan.png,https://commons.wikimedia.org/wiki/Special:FilePath/Edwin McMillan Nobel.jpg?width=512,Download failed
+Mario Molina,Nobel Prize in Chemistry,,male,United States,,Mario_Molina.png,https://commons.wikimedia.org/wiki/Special:FilePath/Mario Molina 1c389 8387.jpg?width=512,Download failed
+Mario Molina,Nobel Prize in Chemistry,,male,Mexico,,Mario_Molina.png,,No portrait found anywhere
+Vincent du Vigneaud,Nobel Prize in Chemistry,,male,United States,,Vincent_du_Vigneaud.png,https://commons.wikimedia.org/wiki/Special:FilePath/Dr. Vincent du Vigneaud.jpg?width=512,Download failed
+Eduard Buchner,Nobel Prize in Chemistry,,male,German Empire,,Eduard_Buchner.png,https://commons.wikimedia.org/wiki/Special:FilePath/Eduardbuchner.jpg?width=512,
+Dan Shechtman,Nobel Prize in Chemistry,,male,United States,,Dan_Shechtman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 2011-Nobel interviews KVA-DSC 8049.jpg?width=512,Download failed
+Dan Shechtman,Nobel Prize in Chemistry,,male,United States,,Dan_Shechtman.png,,No portrait found anywhere
+Dan Shechtman,Nobel Prize in Chemistry,,male,Israel,,Dan_Shechtman.png,,No portrait found anywhere
+Dan Shechtman,Nobel Prize in Chemistry,,male,Israel,,Dan_Shechtman.png,,No portrait found anywhere
+Ernst Otto Fischer,Nobel Prize in Chemistry,,male,Germany,,Ernst_Otto_Fischer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ernst Otto Fischer Stamp Germany 2018.jpg?width=512,Download failed
+Hermann Staudinger,Nobel Prize in Chemistry,,male,Germany,,Hermann_Staudinger.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hermann Staudinger.jpg?width=512,Download failed
+Glenn T. Seaborg,Nobel Prize in Chemistry,,male,United States,,Glenn_T_Seaborg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Glenn Seaborg - 1964.jpg?width=512,
+Archer John Porter Martin,Nobel Prize in Chemistry,,male,United Kingdom,,Archer_John_Porter_Martin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Archer John Porter Martin Nobel.jpg?width=512,Download failed
+Archer John Porter Martin,Nobel Prize in Chemistry,,male,United Kingdom of Great Britain and Ireland,,Archer_John_Porter_Martin.png,,No portrait found anywhere
+Richard Laurence Millington Synge,Nobel Prize in Chemistry,,male,United Kingdom,,Richard_Laurence_Millington_Synge.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard Laurence Millington Synge.jpg?width=512,
+Richard Laurence Millington Synge,Nobel Prize in Chemistry,,male,United Kingdom of Great Britain and Ireland,,Richard_Laurence_Millington_Synge.png,,No portrait found anywhere
+Linus Pauling,Nobel Prize in Chemistry,,male,United States,,Linus_Pauling.png,https://commons.wikimedia.org/wiki/Special:FilePath/Linus Pauling 1962.jpg?width=512,
+Linus Pauling,Nobel Prize in Chemistry,,male,United States,,Linus_Pauling.png,,No portrait found anywhere
+Cyril Norman Hinshelwood,Nobel Prize in Chemistry,,male,United Kingdom,,Cyril_Norman_Hinshelwood.png,https://commons.wikimedia.org/wiki/Special:FilePath/Cyril Norman Hinshelwood Nobel.jpg?width=512,
+Nikolay Semyonov,Nobel Prize in Chemistry,,male,Soviet Union,,Nikolay_Semyonov.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nikolay Semyonov Nobel.jpg?width=512,
+Nikolay Semyonov,Nobel Prize in Chemistry,,male,Russian Empire,,Nikolay_Semyonov.png,https://upload.wikimedia.org/wikipedia/commons/1/11/Nikolay_Semyonov_Nobel.jpg,
+Melvin Calvin,Nobel Prize in Chemistry,,male,United States,,Melvin_Calvin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Melvin Calvin.jpg?width=512,Download failed
+Robert Robinson,Nobel Prize in Chemistry,,male,United Kingdom,,Robert_Robinson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Robinson organic chemist.jpg?width=512,Download failed
+Robert Robinson,Nobel Prize in Chemistry,,male,United Kingdom of Great Britain and Ireland,,Robert_Robinson.png,,No portrait found anywhere
+Jennifer Doudna,Nobel Prize in Chemistry,,female,United States,,Jennifer_Doudna.png,https://commons.wikimedia.org/wiki/Special:FilePath/Professor Jennifer Doudna ForMemRS (cropped).jpg?width=512,Download failed
+Otto Hahn,Nobel Prize in Chemistry,,male,Nazi Germany,,Otto_Hahn.png,https://commons.wikimedia.org/wiki/Special:FilePath/Otto Hahn (Nobel).jpg?width=512,
+Otto Hahn,Nobel Prize in Chemistry,,male,Weimar Republic,,Otto_Hahn.png,,No portrait found anywhere
+Otto Hahn,Nobel Prize in Chemistry,,male,German Empire,,Otto_Hahn.png,,No portrait found anywhere
+Otto Hahn,Nobel Prize in Chemistry,,male,West Germany,,Otto_Hahn.png,,No portrait found anywhere
+Fritz Haber,Nobel Prize in Chemistry,,male,Kingdom of Prussia,,Fritz_Haber.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Portret van Professor Fritz Haber, een chemicus uit Duitsland (foto 1918- 1934), SFA002023057.jpg?width=512",Download failed
+Fritz Haber,Nobel Prize in Chemistry,,male,Weimar Republic,,Fritz_Haber.png,https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Portret_van_Professor_Fritz_Haber%2C_een_chemicus_uit_Duitsland_%28foto_1918-_1934%29%2C_SFA002023057.jpg/960px-Portret_van_Professor_Fritz_Haber%2C_een_chemicus_uit_Duitsland_%28foto_1918-_1934%29%2C_SFA002023057.jpg,
+Adolf von Baeyer,Nobel Prize in Chemistry,,male,German Empire,,Adolf_von_Baeyer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Adolf von Baeyer CIPB0531 (cropped).jpg?width=512,Download failed
+Walther Nernst,Nobel Prize in Chemistry,,male,Kingdom of Prussia,,Walther_Nernst.png,https://commons.wikimedia.org/wiki/Special:FilePath/Walther Nernst SI.jpg?width=512,
+Walther Nernst,Nobel Prize in Chemistry,,male,Weimar Republic,,Walther_Nernst.png,https://upload.wikimedia.org/wikipedia/commons/7/7d/Walther_Nernst_1900s.jpg,
+Otto Wallach,Nobel Prize in Chemistry,,male,German Empire,,Otto_Wallach.png,https://commons.wikimedia.org/wiki/Special:FilePath/Otto Wallach 1910.jpg?width=512,Download failed
+Venkatraman Ramakrishnan,Nobel Prize in Chemistry,,male,United States,,Venkatraman_Ramakrishnan.png,https://commons.wikimedia.org/wiki/Special:FilePath/Venki Ramakrishnan.jpg?width=512,Download failed
+Gerhard Ertl,Nobel Prize in Chemistry,,male,Germany,,Gerhard_Ertl.png,https://commons.wikimedia.org/wiki/Special:FilePath/Prof Ertl-Portrait.jpg?width=512,
+Emil Fischer,Nobel Prize in Chemistry,,male,Germany,,Emil_Fischer.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Hermann Emil Fischer. Photograph by Atelier Victoria, 1895. Wellcome V0027668 (cropped).jpg?width=512",Download failed
+Emil Fischer,Nobel Prize in Chemistry,,male,German Empire,,Emil_Fischer.png,,No portrait found anywhere
+Paul Karrer,Nobel Prize in Chemistry,,male,Switzerland,,Paul_Karrer.png,https://commons.wikimedia.org/wiki/Special:FilePath/UAZ DOK.005.059 Karrer.tif?width=512,Download failed
+Kurt Alder,Nobel Prize in Chemistry,,male,Germany,,Kurt_Alder.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kurt Alder Nobel.jpg?width=512,Download failed
+Manfred Eigen,Nobel Prize in Chemistry,,male,Germany,,Manfred_Eigen.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Eigen,Manfred 1996 Göttingen.jpg?width=512",Download failed
+Gerhard Herzberg,Nobel Prize in Chemistry,,male,Canada,,Gerhard_Herzberg.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Herzberg,Gerhard 1952 London.jpg?width=512",
+Gerhard Herzberg,Nobel Prize in Chemistry,,male,Germany,,Gerhard_Herzberg.png,,No portrait found anywhere
+Gerhard Herzberg,Nobel Prize in Chemistry,,male,Nazi Germany,,Gerhard_Herzberg.png,,No portrait found anywhere
+Hans Fischer,Nobel Prize in Chemistry,,male,Germany,,Hans_Fischer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hans Fischer (Nobel).jpg?width=512,
+Hans Fischer,Nobel Prize in Chemistry,,male,Nazi Germany,,Hans_Fischer.png,,No portrait found anywhere
+Hans Fischer,Nobel Prize in Chemistry,,male,Weimar Republic,,Hans_Fischer.png,https://upload.wikimedia.org/wikipedia/commons/1/15/Hans_Fischer_%28Nobel%29.jpg,
+Hans Fischer,Nobel Prize in Chemistry,,male,German Empire,,Hans_Fischer.png,https://upload.wikimedia.org/wikipedia/commons/1/15/Hans_Fischer_%28Nobel%29.jpg,
+Carl Bosch,Nobel Prize in Chemistry,,male,German Reich,,Carl_Bosch.png,https://commons.wikimedia.org/wiki/Special:FilePath/Carl Bosch.jpg?width=512,
+Heinrich Wieland,Nobel Prize in Chemistry,,male,Nazi Germany,,Heinrich_Wieland.png,https://commons.wikimedia.org/wiki/Special:FilePath/Heinrich Wieland.jpg?width=512,
+Heinrich Wieland,Nobel Prize in Chemistry,,male,Weimar Republic,,Heinrich_Wieland.png,,No portrait found anywhere
+Heinrich Wieland,Nobel Prize in Chemistry,,male,German Empire,,Heinrich_Wieland.png,,No portrait found anywhere
+Heinrich Wieland,Nobel Prize in Chemistry,,male,West Germany,,Heinrich_Wieland.png,,No portrait found anywhere
+Johann Deisenhofer,Nobel Prize in Chemistry,,male,United States,,Johann_Deisenhofer.png,https://commons.wikimedia.org/wiki/Special:FilePath/39. Tagung 1989 Chemiker; Pressekonferenz Johann Deisenhofer - W134Nr.126215c - Willy Pragher.jpg?width=512,Download failed
+Johann Deisenhofer,Nobel Prize in Chemistry,,male,Germany,,Johann_Deisenhofer.png,,No portrait found anywhere
+Hans von Euler-Chelpin,Nobel Prize in Chemistry,,male,Sweden,,Hans_von_Euler-Chelpin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Euler-chelpin.jpg?width=512,Download failed
+Hans von Euler-Chelpin,Nobel Prize in Chemistry,,male,Germany,,Hans_von_Euler-Chelpin.png,,No portrait found anywhere
+Friedrich Bergius,Nobel Prize in Chemistry,,male,Germany,,Friedrich_Bergius.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bergius.jpg?width=512,
+Otto Diels,Nobel Prize in Chemistry,,male,Germany,,Otto_Diels.png,https://commons.wikimedia.org/wiki/Special:FilePath/Otto Paul Hermann Diels.jpg?width=512,
+Robert Huber,Nobel Prize in Chemistry,,male,Germany,,Robert_Huber.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Huber.JPG?width=512,
+Karl Ziegler,Nobel Prize in Chemistry,,male,Germany,,Karl_Ziegler.png,https://commons.wikimedia.org/wiki/Special:FilePath/Karl Ziegler Nobel.jpg?width=512,Download failed
+George de Hevesy,Nobel Prize in Chemistry,,male,Hungary,,George_de_Hevesy.png,https://commons.wikimedia.org/wiki/Special:FilePath/George de Hevesy.jpg?width=512,Download failed
+George de Hevesy,Nobel Prize in Chemistry,,male,Sweden,,George_de_Hevesy.png,https://upload.wikimedia.org/wikipedia/commons/b/b4/George_de_Hevesy.jpg,
+Richard Willstätter,Nobel Prize in Chemistry,,male,Nazi Germany,,Richard_Willstätter.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard Willstätter.jpg?width=512,
+Richard Willstätter,Nobel Prize in Chemistry,,male,Weimar Republic,,Richard_Willstätter.png,,No portrait found anywhere
+Richard Willstätter,Nobel Prize in Chemistry,,male,German Empire,,Richard_Willstätter.png,https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/ETH-BIB-Willst%C3%A4tter%2C_Richard_%281872-1942%29-Portrait-Portr_07881.tif/lossy-page1-960px-ETH-BIB-Willst%C3%A4tter%2C_Richard_%281872-1942%29-Portrait-Portr_07881.tif.jpg,
+Hartmut Michel,Nobel Prize in Chemistry,,male,Germany,,Hartmut_Michel.png,https://commons.wikimedia.org/wiki/Special:FilePath/22 MPI BP Hartmut Michel 221028 quadrat.jpg?width=512,
+Hartmut Michel,Nobel Prize in Chemistry,,male,West Germany,,Hartmut_Michel.png,,No portrait found anywhere
+Adolf Windaus,Nobel Prize in Chemistry,,male,Germany,,Adolf_Windaus.png,https://commons.wikimedia.org/wiki/Special:FilePath/Windaus.jpg?width=512,
+Georg Wittig,Nobel Prize in Chemistry,,male,Germany,,Georg_Wittig.png,,No portrait found anywhere
+Max Perutz,Nobel Prize in Chemistry,,male,Austria,,Max_Perutz.png,https://commons.wikimedia.org/wiki/Special:FilePath/Max Perutz 1962.jpg?width=512,Download failed
+Max Perutz,Nobel Prize in Chemistry,,male,United Kingdom,,Max_Perutz.png,,No portrait found anywhere
+Max Perutz,Nobel Prize in Chemistry,,male,United Kingdom of Great Britain and Ireland,,Max_Perutz.png,,No portrait found anywhere
+Richard Adolf Zsigmondy,Nobel Prize in Chemistry,,male,Austria,,Richard_Adolf_Zsigmondy.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard Adolf Zsigmondy LOC.jpg?width=512,
+Fritz Pregl,Nobel Prize in Chemistry,,male,Austria,,Fritz_Pregl.png,https://commons.wikimedia.org/wiki/Special:FilePath/Fritz Pregl.jpg?width=512,
+Fritz Pregl,Nobel Prize in Chemistry,,male,Kingdom of Yugoslavia,,Fritz_Pregl.png,,No portrait found anywhere
+Fritz Pregl,Nobel Prize in Chemistry,,male,Cisleithania,,Fritz_Pregl.png,,No portrait found anywhere
+Fritz Pregl,Nobel Prize in Chemistry,,male,"Kingdom of Serbs, Croats and Slovenes",,Fritz_Pregl.png,,No portrait found anywhere
+Richard Kuhn,Nobel Prize in Chemistry,,male,Nazi Germany,,Richard_Kuhn.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard Kuhn ETH-Bib Dia 248-065.jpg?width=512,
+Richard Kuhn,Nobel Prize in Chemistry,,male,Cisleithania,,Richard_Kuhn.png,,No portrait found anywhere
+Richard Kuhn,Nobel Prize in Chemistry,,male,West Germany,,Richard_Kuhn.png,,No portrait found anywhere
+Walter Kohn,Nobel Prize in Chemistry,,male,Canada,,Walter_Kohn.png,https://commons.wikimedia.org/wiki/Special:FilePath/WalterKohnGraz21042006 1.jpg?width=512,Download failed
+Walter Kohn,Nobel Prize in Chemistry,,male,United States,,Walter_Kohn.png,,No portrait found anywhere
+Walter Kohn,Nobel Prize in Chemistry,,male,Austria,,Walter_Kohn.png,,No portrait found anywhere
+Brian Kobilka,Nobel Prize in Chemistry,,male,United States,,Brian_Kobilka.png,https://commons.wikimedia.org/wiki/Special:FilePath/Brian Kobilka (649437151).jpg?width=512,Download failed
+Robert Lefkowitz,Nobel Prize in Chemistry,,male,United States,,Robert_Lefkowitz.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Lefkowitz 1 2012 (cropped).jpg?width=512,Download failed
+Svante August Arrhenius,Nobel Prize in Chemistry,,male,Sweden,,Svante_August_Arrhenius.png,https://commons.wikimedia.org/wiki/Special:FilePath/Arrhenius2.jpg?width=512,
+Vladimir Prelog,Nobel Prize in Chemistry,,male,Switzerland,,Vladimir_Prelog.png,https://commons.wikimedia.org/wiki/Special:FilePath/Vladimir Prelog ETH-Bib Portr 00214.jpg?width=512,
+Paul Hermann Müller,Nobel Prize in Physiology or Medicine,,male,Switzerland,,Paul_Hermann_Müller.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Hermann Müller nobel.jpg?width=512,
+Emil Theodor Kocher,Nobel Prize in Physiology or Medicine,,male,Switzerland,,Emil_Theodor_Kocher.png,https://commons.wikimedia.org/wiki/Special:FilePath/Emil Theodor Kocher.jpg?width=512,
+Tadeusz Reichstein,Nobel Prize in Physiology or Medicine,,male,Poland,,Tadeusz_Reichstein.png,https://commons.wikimedia.org/wiki/Special:FilePath/Thadeus Reichstein ETH-Bib Portr 10137.jpg?width=512,
+Tadeusz Reichstein,Nobel Prize in Physiology or Medicine,,male,Switzerland,,Tadeusz_Reichstein.png,,No portrait found anywhere
+Werner Arber,Nobel Prize in Physiology or Medicine,,male,Switzerland,,Werner_Arber.png,https://commons.wikimedia.org/wiki/Special:FilePath/Werber Arber.jpg?width=512,Download failed
+Rolf M. Zinkernagel,Nobel Prize in Physiology or Medicine,,male,Switzerland,,Rolf_M_Zinkernagel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Rolf Zinkernagel Erudite Conclave medical college trivandrum.jpg?width=512,Download failed
+Francis Crick,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Francis_Crick.png,https://commons.wikimedia.org/wiki/Special:FilePath/Francis Crick 1995.jpg?width=512,Download failed
+Howard Florey,Nobel Prize in Physiology or Medicine,,male,Australia,,Howard_Florey.png,https://commons.wikimedia.org/wiki/Special:FilePath/Howard Walter Florey 1945.jpg?width=512,
+Andrew Schally,Nobel Prize in Physiology or Medicine,,male,United States,,Andrew_Schally.png,https://commons.wikimedia.org/wiki/Special:FilePath/Andrew Schally portrait.jpg?width=512,
+Andrew Schally,Nobel Prize in Physiology or Medicine,,male,Second Polish Republic,,Andrew_Schally.png,,No portrait found anywhere
+Santiago Ramón y Cajal,Nobel Prize in Physiology or Medicine,,male,Spain,,Santiago_Ramón_y_Cajal.png,https://commons.wikimedia.org/wiki/Special:FilePath/Cajal-mi.jpg?width=512,Download failed
+Santiago Ramón y Cajal,Nobel Prize in Physiology or Medicine,,male,Spain,,Santiago_Ramón_y_Cajal.png,https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Santiago_Ram%C3%B3n_y_Cajal_%281852-1934%29_portrait_%28restored%29.jpg/960px-Santiago_Ram%C3%B3n_y_Cajal_%281852-1934%29_portrait_%28restored%29.jpg,
+Camillo Golgi,Nobel Prize in Physiology or Medicine,,male,Austrian Empire,,Camillo_Golgi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Camillo Golgi nobel.jpg?width=512,
+Camillo Golgi,Nobel Prize in Physiology or Medicine,,male,Kingdom of Italy,,Camillo_Golgi.png,,No portrait found anywhere
+Camillo Golgi,Nobel Prize in Physiology or Medicine,,male,Kingdom of Sardinia,,Camillo_Golgi.png,,No portrait found anywhere
+August Krogh,Nobel Prize in Physiology or Medicine,,male,Kingdom of Denmark,,August_Krogh.png,https://commons.wikimedia.org/wiki/Special:FilePath/August Krogh Bain 32006.jpg?width=512,Download failed
+Jean Dausset,Nobel Prize in Physiology or Medicine,,male,France,,Jean_Dausset.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jean Dausset 1968.jpg?width=512,Download failed
+Niko Tinbergen,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Niko_Tinbergen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nikolaas Tinbergen 1978.jpg?width=512,
+Niko Tinbergen,Nobel Prize in Physiology or Medicine,,male,Kingdom of the Netherlands,,Niko_Tinbergen.png,https://upload.wikimedia.org/wikipedia/commons/8/84/Nikolaas_Tinbergen_1978.jpg,
+Charles Brenton Huggins,Nobel Prize in Physiology or Medicine,,male,Canada,,Charles_Brenton_Huggins.png,https://commons.wikimedia.org/wiki/Special:FilePath/34. Tagung 1984 Mediziner; Eröffnung am 25.6. Charles B. Huggins - W134Nr.122975d - Willy Pragher (cropped).jpg?width=512,Download failed
+Charles Brenton Huggins,Nobel Prize in Physiology or Medicine,,male,United States,,Charles_Brenton_Huggins.png,,No portrait found anywhere
+Archibald Hill,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Archibald_Hill.png,https://commons.wikimedia.org/wiki/Special:FilePath/Archibald Vivian Hill.jpg?width=512,
+Stanley B. Prusiner,Nobel Prize in Physiology or Medicine,,male,United States,,Stanley_B_Prusiner.png,https://commons.wikimedia.org/wiki/Special:FilePath/Stanley B. Prusiner in 2024 (3x4 close cropped).jpg?width=512,Download failed
+César Milstein,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,César_Milstein.png,https://commons.wikimedia.org/wiki/Special:FilePath/Milstein lnp restauración.jpg?width=512,
+César Milstein,Nobel Prize in Physiology or Medicine,,male,Argentina,,César_Milstein.png,,No portrait found anywhere
+Eric Kandel,Nobel Prize in Physiology or Medicine,,male,United States,,Eric_Kandel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Eric Kandel by aquaris3.jpg?width=512,Download failed
+Eric Kandel,Nobel Prize in Physiology or Medicine,,male,Austria,,Eric_Kandel.png,https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Eric_Kandel_01.JPG/960px-Eric_Kandel_01.JPG,
+Hugo Theorell,Nobel Prize in Physiology or Medicine,,male,Sweden,,Hugo_Theorell.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hugo Theorell nobel.jpg?width=512,
+Corneille Heymans,Nobel Prize in Physiology or Medicine,,male,Belgium,,Corneille_Heymans.png,https://commons.wikimedia.org/wiki/Special:FilePath/Corneille Heymans nobel.jpg?width=512,
+Svante Pääbo,Nobel Prize in Physiology or Medicine,,male,Sweden,,Svante_Pääbo.png,https://commons.wikimedia.org/wiki/Special:FilePath/Professor Svante Paabo ForMemRS (cropped).jpg?width=512,
+Élie Metchnikoff,Nobel Prize in Physiology or Medicine,,male,France,,Élie_Metchnikoff.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ilya Mechnikov nobel.jpg?width=512,
+Élie Metchnikoff,Nobel Prize in Physiology or Medicine,,male,Russian Empire,,Élie_Metchnikoff.png,,No portrait found anywhere
+Thomas Hunt Morgan,Nobel Prize in Physiology or Medicine,,male,United States,,Thomas_Hunt_Morgan.png,https://commons.wikimedia.org/wiki/Special:FilePath/Thomas Hunt Morgan.jpg?width=512,
+Frederick Banting,Nobel Prize in Physiology or Medicine,,male,Canada,,Frederick_Banting.png,https://commons.wikimedia.org/wiki/Special:FilePath/Fredrick banting.jpg?width=512,
+Albert Szent-Györgyi,Nobel Prize in Physiology or Medicine,,male,Hungary,,Albert_Szent-Györgyi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Albert Szent-Györgyi.jpg?width=512,Download failed
+Albert Szent-Györgyi,Nobel Prize in Physiology or Medicine,,male,United States,,Albert_Szent-Györgyi.png,,No portrait found anywhere
+Niels Ryberg Finsen,Nobel Prize in Physiology or Medicine,,male,Kingdom of Denmark,,Niels_Ryberg_Finsen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Niels Ryberg Finsen portrait.jpg?width=512,Download failed
+Maurice Wilkins,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Maurice_Wilkins.png,https://commons.wikimedia.org/wiki/Special:FilePath/Maurice Wilkins nobel.jpg?width=512,
+Maurice Wilkins,Nobel Prize in Physiology or Medicine,,male,New Zealand,,Maurice_Wilkins.png,https://upload.wikimedia.org/wikipedia/commons/7/7f/Maurice_H_F_Wilkins.jpg,
+Rita Levi-Montalcini,Nobel Prize in Physiology or Medicine,,female,United States,,Rita_Levi-Montalcini.png,https://commons.wikimedia.org/wiki/Special:FilePath/Rita Levi-Montalcini (1986).png?width=512,
+Rita Levi-Montalcini,Nobel Prize in Physiology or Medicine,,female,Italy,,Rita_Levi-Montalcini.png,,No portrait found anywhere
+Rita Levi-Montalcini,Nobel Prize in Physiology or Medicine,,female,Kingdom of Italy,,Rita_Levi-Montalcini.png,,No portrait found anywhere
+Alexis Carrel,Nobel Prize in Physiology or Medicine,,male,France,,Alexis_Carrel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Alexis Carrel 1912.jpg?width=512,Download failed
+Charles Louis Alphonse Laveran,Nobel Prize in Physiology or Medicine,,male,France,,Charles_Louis_Alphonse_Laveran.png,https://commons.wikimedia.org/wiki/Special:FilePath/Charles Laveran nobel.jpg?width=512,Download failed
+Willem Einthoven,Nobel Prize in Physiology or Medicine,,male,Kingdom of the Netherlands,,Willem_Einthoven.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Portrait of W. (Willem) Einthoven, professor of Physiology and Histology at Leiden University Icones 332.tiff?width=512",Download failed
+Henrik Dam,Nobel Prize in Physiology or Medicine,,male,Kingdom of Denmark,,Henrik_Dam.png,https://commons.wikimedia.org/wiki/Special:FilePath/Henrik Dam nobel.jpg?width=512,Download failed
+Joseph Murray,Nobel Prize in Physiology or Medicine,,male,United States,,Joseph_Murray.png,,No portrait found anywhere
+Allvar Gullstrand,Nobel Prize in Physiology or Medicine,,male,Sweden,,Allvar_Gullstrand.png,https://commons.wikimedia.org/wiki/Special:FilePath/Allvar Gullstrand.png?width=512,Download failed
+Frank Macfarlane Burnet,Nobel Prize in Physiology or Medicine,,male,Australia,,Frank_Macfarlane_Burnet.png,https://commons.wikimedia.org/wiki/Special:FilePath/Frank Macfarlane Burnet.jpg?width=512,Download failed
+Alan Lloyd Hodgkin,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Alan_Lloyd_Hodgkin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Alan Lloyd Hodgkin nobel.jpg?width=512,
+Barbara McClintock,Nobel Prize in Physiology or Medicine,,female,Japan,,Barbara_McClintock.png,https://commons.wikimedia.org/wiki/Special:FilePath/Barbara McClintock (1902-1992) shown in her laboratory in 1947.jpg?width=512,
+Linda B. Buck,Nobel Prize in Physiology or Medicine,,female,United States,,Linda_B_Buck.png,https://commons.wikimedia.org/wiki/Special:FilePath/Linda Buck 2015 (cropped).jpg?width=512,Download failed
+Barry Marshall,Nobel Prize in Physiology or Medicine,,male,Australia,,Barry_Marshall.png,https://commons.wikimedia.org/wiki/Special:FilePath/Barry J Marshall.jpg?width=512,Download failed
+Andrew Fire,Nobel Prize in Physiology or Medicine,,male,United States,,Andrew_Fire.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Andrew Fire, Stanford University.jpg?width=512",
+Gerty Cori,Nobel Prize in Physiology or Medicine,,female,United States,,Gerty_Cori.png,https://commons.wikimedia.org/wiki/Special:FilePath/Gerty Theresa Cori.jpg?width=512,
+Gerty Cori,Nobel Prize in Physiology or Medicine,,female,Czechoslovakia,,Gerty_Cori.png,,No portrait found anywhere
+Gerty Cori,Nobel Prize in Physiology or Medicine,,female,Cisleithania,,Gerty_Cori.png,,No portrait found anywhere
+Salvador Luria,Nobel Prize in Physiology or Medicine,,male,United States,,Salvador_Luria.png,https://commons.wikimedia.org/wiki/Special:FilePath/Salvador E. Luria ca.1969.jpg?width=512,Download failed
+Salvador Luria,Nobel Prize in Physiology or Medicine,,male,Italy,,Salvador_Luria.png,,No portrait found anywhere
+Salvador Luria,Nobel Prize in Physiology or Medicine,,male,Kingdom of Italy,,Salvador_Luria.png,,No portrait found anywhere
+Craig Mello,Nobel Prize in Physiology or Medicine,,male,United States,,Craig_Mello.png,https://commons.wikimedia.org/wiki/Special:FilePath/Craig Mello 01 (cropped).jpg?width=512,Download failed
+Martin Evans,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Martin_Evans.png,https://commons.wikimedia.org/wiki/Special:FilePath/Martin Evans Nobel Prize.jpg?width=512,Download failed
+Robin Warren,Nobel Prize in Physiology or Medicine,,male,Australia,,Robin_Warren.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robin Warren.jpg?width=512,Download failed
+Jules Bordet,Nobel Prize in Physiology or Medicine,,male,Belgium,,Jules_Bordet.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jules Bordet nobel.jpg?width=512,Download failed
+Richard Axel,Nobel Prize in Physiology or Medicine,,male,United States,,Richard_Axel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Professor Richard Axel ForMemRS (cropped).jpg?width=512,Download failed
+Charles Scott Sherrington,Nobel Prize in Physiology or Medicine,,male,United States,,Charles_Scott_Sherrington.png,https://commons.wikimedia.org/wiki/Special:FilePath/Prof. Charles Scott Sherrington.jpg?width=512,Download failed
+Charles Scott Sherrington,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Charles_Scott_Sherrington.png,,No portrait found anywhere
+Peter Medawar,Nobel Prize in Physiology or Medicine,,male,United States,,Peter_Medawar.png,https://commons.wikimedia.org/wiki/Special:FilePath/Peter Brian Medawar.jpg?width=512,
+Peter Medawar,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Peter_Medawar.png,https://upload.wikimedia.org/wikipedia/commons/c/ca/Peter_Brian_Medawar.jpg,
+Charles Richet,Nobel Prize in Physiology or Medicine,,male,France,,Charles_Richet.png,https://commons.wikimedia.org/wiki/Special:FilePath/Charles Robert Richet nobel.jpg?width=512,Download failed
+Mario Capecchi,Nobel Prize in Physiology or Medicine,,male,United States,,Mario_Capecchi.png,https://commons.wikimedia.org/wiki/Special:FilePath/MarioCapecchiFotoThalerTamas2.JPG?width=512,Download failed
+Oliver Smithies,Nobel Prize in Physiology or Medicine,,male,United States,,Oliver_Smithies.png,https://commons.wikimedia.org/wiki/Special:FilePath/Oliver Smithies HD2009 AIC Gold Medal portrait (cropped).JPG?width=512,
+Oliver Smithies,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Oliver_Smithies.png,,No portrait found anywhere
+Johannes Fibiger,Nobel Prize in Physiology or Medicine,,male,Kingdom of Denmark,,Johannes_Fibiger.png,https://commons.wikimedia.org/wiki/Special:FilePath/J Fibiger.jpg?width=512,
+Ragnar Granit,Nobel Prize in Physiology or Medicine,,male,Finland,,Ragnar_Granit.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ragnar Granit2.jpg?width=512,Download failed
+Ragnar Granit,Nobel Prize in Physiology or Medicine,,male,Sweden,,Ragnar_Granit.png,https://upload.wikimedia.org/wikipedia/commons/6/63/Ragnar_Granit.jpg,
+Ragnar Granit,Nobel Prize in Physiology or Medicine,,male,Grand Duchy of Finland,,Ragnar_Granit.png,,No portrait found anywhere
+François Jacob,Nobel Prize in Physiology or Medicine,,male,France,,François_Jacob.png,https://commons.wikimedia.org/wiki/Special:FilePath/François Jacob nobel.jpg?width=512,Download failed
+Joshua Lederberg,Nobel Prize in Physiology or Medicine,,male,United States,,Joshua_Lederberg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Joshua Lederberg crop.jpg?width=512,
+Paul Nurse,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Paul_Nurse.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Nurse portrait.jpg?width=512,
+George Emil Palade,Nobel Prize in Physiology or Medicine,,male,United States,,George_Emil_Palade.png,https://commons.wikimedia.org/wiki/Special:FilePath/RO033-16.jpg?width=512,
+George Emil Palade,Nobel Prize in Physiology or Medicine,,male,Romania,,George_Emil_Palade.png,,No portrait found anywhere
+André Lwoff,Nobel Prize in Physiology or Medicine,,male,France,,André_Lwoff.png,https://commons.wikimedia.org/wiki/Special:FilePath/André Lwoff nobel.jpg?width=512,Download failed
+Allan McLeod Cormack,Nobel Prize in Physiology or Medicine,,male,United States,,Allan_McLeod_Cormack.png,"https://commons.wikimedia.org/wiki/Special:FilePath/34. Tagung 1984 Mediziner; Verabschiedung H.-H. Kunckel, Allen Cormack - W134Nr.123006 - Willy Pragher (cropped).jpg?width=512",
+Allan McLeod Cormack,Nobel Prize in Physiology or Medicine,,male,South Africa,,Allan_McLeod_Cormack.png,,No portrait found anywhere
+Edward Adelbert Doisy,Nobel Prize in Physiology or Medicine,,male,United States,,Edward_Adelbert_Doisy.png,https://commons.wikimedia.org/wiki/Special:FilePath/Edward A Doisy.jpg?width=512,
+Edgar Douglas Adrian,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Edgar_Douglas_Adrian.png,https://commons.wikimedia.org/wiki/Special:FilePath/Edgar Douglas Adrian nobel.jpg?width=512,Download failed
+Jacques Monod,Nobel Prize in Physiology or Medicine,,male,France,,Jacques_Monod.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jacques Monod 1971.jpg?width=512,
+John James Rickard Macleod,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,John_James_Rickard_Macleod.png,https://commons.wikimedia.org/wiki/Special:FilePath/J.J.R. Macleod ca. 1928.png?width=512,Download failed
+Stanley Cohen,Nobel Prize in Physiology or Medicine,,male,United States,,Stanley_Cohen.png,https://commons.wikimedia.org/wiki/Special:FilePath/Stanley Cohen-Biochemist.jpg?width=512,
+Roger Sperry,Nobel Prize in Physiology or Medicine,,male,United States,,Roger_Sperry.png,https://commons.wikimedia.org/wiki/Special:FilePath/Roger Wolcott Sperry.jpg?width=512,
+Selman Abraham Waksman,Nobel Prize in Physiology or Medicine,,male,United States,,Selman_Abraham_Waksman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Selman Waksman NYWTS.jpg?width=512,
+Selman Abraham Waksman,Nobel Prize in Physiology or Medicine,,male,Soviet Union,,Selman_Abraham_Waksman.png,,No portrait found anywhere
+Selman Abraham Waksman,Nobel Prize in Physiology or Medicine,,male,Russian Empire,,Selman_Abraham_Waksman.png,https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Selman_Waksman_NYWTS.jpg/960px-Selman_Waksman_NYWTS.jpg,
+Albert Claude,Nobel Prize in Physiology or Medicine,,male,United States,,Albert_Claude.png,https://commons.wikimedia.org/wiki/Special:FilePath/Albert Claude 1974.jpg?width=512,
+Albert Claude,Nobel Prize in Physiology or Medicine,,male,United States,,Albert_Claude.png,,No portrait found anywhere
+Albert Claude,Nobel Prize in Physiology or Medicine,,male,United States,,Albert_Claude.png,,No portrait found anywhere
+Albert Claude,Nobel Prize in Physiology or Medicine,,male,United States,,Albert_Claude.png,,No portrait found anywhere
+Albert Claude,Nobel Prize in Physiology or Medicine,,male,Belgium,,Albert_Claude.png,,No portrait found anywhere
+Albert Claude,Nobel Prize in Physiology or Medicine,,male,Belgium,,Albert_Claude.png,https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Albert_Claude_1974.jpg/960px-Albert_Claude_1974.jpg,
+Vladimir Prelog,Nobel Prize in Chemistry,,male,Austria–Hungary,,Vladimir_Prelog.png,,No portrait found anywhere
+Vladimir Prelog,Nobel Prize in Chemistry,,male,Kingdom of Yugoslavia,,Vladimir_Prelog.png,,No portrait found anywhere
+Stefan Hell,Nobel Prize in Chemistry,,male,Germany,,Stefan_Hell.png,https://commons.wikimedia.org/wiki/Special:FilePath/Stefan W Hell.jpg?width=512,Download failed
+Stefan Hell,Nobel Prize in Chemistry,,male,Romania,,Stefan_Hell.png,,No portrait found anywhere
+Peter Agre,Nobel Prize in Chemistry,,male,United States,,Peter_Agre.png,https://commons.wikimedia.org/wiki/Special:FilePath/Peter Agre.jpg?width=512,Download failed
+Sidney Altman,Nobel Prize in Chemistry,,male,Canada,,Sidney_Altman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Sidney Altman crop.jpg?width=512,
+Sidney Altman,Nobel Prize in Chemistry,,male,United States,,Sidney_Altman.png,https://upload.wikimedia.org/wikipedia/commons/5/57/Sidney_Altman_crop.jpg,
+Christian B. Anfinsen,Nobel Prize in Chemistry,,male,United States,,Christian_B_Anfinsen.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Christian B. Anfinsen, NIH portrait, 1969.jpg?width=512",
+Francis William Aston,Nobel Prize in Chemistry,,male,United Kingdom,,Francis_William_Aston.png,https://commons.wikimedia.org/wiki/Special:FilePath/Francis William Aston.jpg?width=512,
+Paul Berg,Nobel Prize in Chemistry,,male,United States,,Paul_Berg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Berg in 1980.jpg?width=512,Download failed
+Paul D. Boyer,Nobel Prize in Chemistry,,male,United States,,Paul_D_Boyer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul D. Boyer.jpg?width=512,Download failed
+Herbert C. Brown,Nobel Prize in Chemistry,,male,United States,,Herbert_C_Brown.png,https://commons.wikimedia.org/wiki/Special:FilePath/33. Tagung 1983 Chemiker Herbert C. Brown - W134Nr.120809d - Willy Pragher (cropped).jpg?width=512,Download failed
+Herbert C. Brown,Nobel Prize in Chemistry,,male,United Kingdom,,Herbert_C_Brown.png,,No portrait found anywhere
+Derek Barton,Nobel Prize in Chemistry,,male,United Kingdom,,Derek_Barton.png,https://commons.wikimedia.org/wiki/Special:FilePath/Derek-Harold-Richard-Barton.jpg?width=512,Download failed
+Henri Moissan,Nobel Prize in Chemistry,,male,France,,Henri_Moissan.png,https://commons.wikimedia.org/wiki/Special:FilePath/Henri Moissan.jpg?width=512,
+Jacobus Henricus van 't Hoff,Nobel Prize in Chemistry,,male,Kingdom of the Netherlands,,Jacobus_Henricus_van_t_Hoff.png,https://commons.wikimedia.org/wiki/Special:FilePath/Vant Hoff.jpg?width=512,
+John L. Hall,Nobel Prize in Physics,,male,United States,,John_L_Hall.png,https://commons.wikimedia.org/wiki/Special:FilePath/John L. Hall.jpg?width=512,
+Douglas Osheroff,Nobel Prize in Physics,,male,United States,,Douglas_Osheroff.png,https://commons.wikimedia.org/wiki/Special:FilePath/Douglas Osheroff.jpg?width=512,
+Val Logsdon Fitch,Nobel Prize in Physics,,male,United States,,Val_Logsdon_Fitch.png,https://commons.wikimedia.org/wiki/Special:FilePath/Val Fitch.jpg?width=512,Download failed
+Kip S. Thorne,Nobel Prize in Physics,,male,United States,,Kip_S_Thorne.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kip Thorne at Caltech.jpg?width=512,Download failed
+Alain Aspect,Nobel Prize in Physics,,male,France,,Alain_Aspect.png,https://commons.wikimedia.org/wiki/Special:FilePath/Alain Aspect (26341660894) (cropped).jpg?width=512,
+John Hopfield,Nobel Prize in Physics,,male,United States,,John_Hopfield.png,"https://commons.wikimedia.org/wiki/Special:FilePath/John J. Hopfield, 2024 Nobel Prize Laureate in Physics 1 (cropped).jpg?width=512",Download failed
+Andrea M. Ghez,Nobel Prize in Physics,,female,United States,,Andrea_M_Ghez.png,https://commons.wikimedia.org/wiki/Special:FilePath/Andrea Ghez (cropped1).jpg?width=512,Download failed
+John Clarke,Nobel Prize in Physics,,male,United Kingdom,,John_Clarke.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Clarke (physicist) 2025 (4x5).png?width=512,Download failed
+Gérard Mourou,Nobel Prize in Physics,,male,France,,Gérard_Mourou.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Gérard Mourou, 2014.jpg?width=512",
+Anne L'Huillier,Nobel Prize in Physics,,female,Sweden,,Anne_LHuillier.png,https://commons.wikimedia.org/wiki/Special:FilePath/Anne LHuiller 01.JPG?width=512,
+Anne L'Huillier,Nobel Prize in Physics,,female,France,,Anne_LHuillier.png,,No portrait found anywhere
+Sheldon Cooper,Nobel Prize in Physics,,male,United States,,Sheldon_Cooper.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jim Parsons.png?width=512,Download failed
+Arthur Ashkin,Nobel Prize in Physics,,male,United States,,Arthur_Ashkin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Arthur Ashkin EM1B5678 (44417135450).jpg?width=512,
+Arthur B. McDonald,Nobel Prize in Physics,,male,Canada,,Arthur_B_McDonald.png,https://commons.wikimedia.org/wiki/Special:FilePath/Arthur B. McDonald 5139-2015.jpg?width=512,Download failed
+David J. Thouless,Nobel Prize in Physics,,male,United States,,David_J_Thouless.png,https://commons.wikimedia.org/wiki/Special:FilePath/DavidThouless 1995 UW.jpg?width=512,Download failed
+David J. Thouless,Nobel Prize in Physics,,male,United Kingdom,,David_J_Thouless.png,https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/DavidThouless_1995_UW.jpg/960px-DavidThouless_1995_UW.jpg,
+Jim Peebles,Nobel Prize in Physics,,male,Canada,,Jim_Peebles.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jim Peebles.jpg?width=512,Download failed
+Jim Peebles,Nobel Prize in Physics,,male,Canada,,Jim_Peebles.png,,No portrait found anywhere
+Jim Peebles,Nobel Prize in Physics,,male,United States,,Jim_Peebles.png,,No portrait found anywhere
+Jim Peebles,Nobel Prize in Physics,,male,United States,,Jim_Peebles.png,,No portrait found anywhere
+Shuji Nakamura,Nobel Prize in Physics,,male,Japan,,Shuji_Nakamura.png,https://commons.wikimedia.org/wiki/Special:FilePath/Professor Shuji Nakamura (Cropped).jpg?width=512,Download failed
+Shuji Nakamura,Nobel Prize in Physics,,male,United States,,Shuji_Nakamura.png,,No portrait found anywhere
+Duncan Haldane,Nobel Prize in Physics,,male,United Kingdom,,Duncan_Haldane.png,https://commons.wikimedia.org/wiki/Special:FilePath/Duncan Haldane.jpg?width=512,Download failed
+Duncan Haldane,Nobel Prize in Physics,,male,Slovenia,,Duncan_Haldane.png,,No portrait found anywhere
+Giorgio Parisi,Nobel Prize in Physics,,male,Italy,,Giorgio_Parisi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Parisi giorgio.jpg?width=512,Download failed
+John Clauser,Nobel Prize in Physics,,male,United States,,John_Clauser.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Francis Clauser (cropped).jpg?width=512,Download failed
+Isamu Akasaki,Nobel Prize in Physics,,male,Japan,,Isamu_Akasaki.png,https://commons.wikimedia.org/wiki/Special:FilePath/Isamu Akasaki 201111.jpg?width=512,Download failed
+Isamu Akasaki,Nobel Prize in Physics,,male,Empire of Japan,,Isamu_Akasaki.png,,No portrait found anywhere
+Michael Kosterlitz,Nobel Prize in Physics,,male,United States,,Michael_Kosterlitz.png,https://commons.wikimedia.org/wiki/Special:FilePath/2016 Nobel Reception US Embassy Sweden (31557185216) (cropped).jpg?width=512,Download failed
+Michael Kosterlitz,Nobel Prize in Physics,,male,United Kingdom,,Michael_Kosterlitz.png,,No portrait found anywhere
+Rainer Weiss,Nobel Prize in Physics,,male,United States,,Rainer_Weiss.png,https://commons.wikimedia.org/wiki/Special:FilePath/Rainer Weiss EM1B8841 (24027015857).jpg?width=512,Download failed
+Syukuro Manabe,Nobel Prize in Physics,,male,Japan,,Syukuro_Manabe.png,https://commons.wikimedia.org/wiki/Special:FilePath/Crafoord Prize EM1B0732 (42329290061).jpg?width=512,Download failed
+Syukuro Manabe,Nobel Prize in Physics,,male,United States,,Syukuro_Manabe.png,,No portrait found anywhere
+Hiroshi Amano,Nobel Prize in Physics,,male,Japan,,Hiroshi_Amano.png,https://commons.wikimedia.org/wiki/Special:FilePath/Hiroshi Amano.jpg?width=512,Download failed
+Hiroshi Amano,Nobel Prize in Physics,,male,Japan,,Hiroshi_Amano.png,,No portrait found anywhere
+Takaaki Kajita,Nobel Prize in Physics,,male,Japan,,Takaaki_Kajita.png,https://commons.wikimedia.org/wiki/Special:FilePath/Takaaki Kajita cropped 1 Takaaki Kajita 202010.jpg?width=512,Download failed
+Barry C. Barish,Nobel Prize in Physics,,male,United States,,Barry_C_Barish.png,https://commons.wikimedia.org/wiki/Special:FilePath/05-0367-92D.hr.jpg?width=512,Download failed
+Susumu Tonegawa,Nobel Prize in Physiology or Medicine,,male,Japan,,Susumu_Tonegawa.png,https://commons.wikimedia.org/wiki/Special:FilePath/Susumu Tonegawa Photo.jpg?width=512,Download failed
+Robert F. Furchgott,Nobel Prize in Physiology or Medicine,,male,United States,,Robert_F_Furchgott.png,https://commons.wikimedia.org/wiki/Special:FilePath/Drfurchgott.jpg?width=512,
+Robert W. Holley,Nobel Prize in Physiology or Medicine,,male,United States,,Robert_W_Holley.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Holley.jpg?width=512,
+Hamilton Smith,Nobel Prize in Physiology or Medicine,,male,United States,,Hamilton_Smith.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Hamilton Smith, 2.jpg?width=512",Download failed
+Renato Dulbecco,Nobel Prize in Physiology or Medicine,,male,United States,,Renato_Dulbecco.png,https://commons.wikimedia.org/wiki/Special:FilePath/Renato Dulbecco crop.jpg?width=512,Download failed
+Renato Dulbecco,Nobel Prize in Physiology or Medicine,,male,Italy,,Renato_Dulbecco.png,,No portrait found anywhere
+Renato Dulbecco,Nobel Prize in Physiology or Medicine,,male,Kingdom of Italy,,Renato_Dulbecco.png,,No portrait found anywhere
+Edmond H. Fischer,Nobel Prize in Physiology or Medicine,,male,United States,,Edmond_H_Fischer.png,https://commons.wikimedia.org/wiki/Special:FilePath/Edmond Fischer Nobel Laureate 1992.jpg?width=512,Download failed
+Edmond H. Fischer,Nobel Prize in Physiology or Medicine,,male,Italy,,Edmond_H_Fischer.png,,No portrait found anywhere
+Edmond H. Fischer,Nobel Prize in Physiology or Medicine,,male,Switzerland,,Edmond_H_Fischer.png,https://upload.wikimedia.org/wikipedia/commons/2/21/Edmond_Fischer_Nobel_Laureate_1992.jpg,
+Edwin G. Krebs,Nobel Prize in Physiology or Medicine,,male,United States,,Edwin_G_Krebs.png,,No portrait found anywhere
+Marshall Warren Nirenberg,Nobel Prize in Physiology or Medicine,,male,United States,,Marshall_Warren_Nirenberg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Marshall Nirenberg.jpg?width=512,Download failed
+Edward Calvin Kendall,Nobel Prize in Physiology or Medicine,,male,United States,,Edward_Calvin_Kendall.png,https://commons.wikimedia.org/wiki/Special:FilePath/Edward Calvin Kendall 1940s.jpg?width=512,Download failed
+Julius Axelrod,Nobel Prize in Physiology or Medicine,,male,United States,,Julius_Axelrod.png,https://commons.wikimedia.org/wiki/Special:FilePath/Julius Axelrod 3.jpg?width=512,
+Julius Axelrod,Nobel Prize in Physiology or Medicine,,male,Poland,,Julius_Axelrod.png,,No portrait found anywhere
+James Black,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,James_Black.png,https://commons.wikimedia.org/wiki/Special:FilePath/James Black (pharmacologist).jpg?width=512,
+Daniel Bovet,Nobel Prize in Physiology or Medicine,,male,Italy,,Daniel_Bovet.png,https://commons.wikimedia.org/wiki/Special:FilePath/Daniel Bovet nobel.jpg?width=512,Download failed
+Daniel Bovet,Nobel Prize in Physiology or Medicine,,male,Switzerland,,Daniel_Bovet.png,,No portrait found anywhere
+Walter Rudolf Hess,Nobel Prize in Physiology or Medicine,,male,Switzerland,,Walter_Rudolf_Hess.png,https://commons.wikimedia.org/wiki/Special:FilePath/Walter Hess.jpg?width=512,
+William Ramsay,Nobel Prize in Chemistry,,male,United Kingdom of Great Britain and Ireland,,William_Ramsay.png,https://commons.wikimedia.org/wiki/Special:FilePath/William Ramsay.jpg?width=512,
+Eric Betzig,Nobel Prize in Chemistry,,male,United States,,Eric_Betzig.png,https://commons.wikimedia.org/wiki/Special:FilePath/Eric Betzig.jpg?width=512,
+William E. Moerner,Nobel Prize in Chemistry,,male,United States,,William_E_Moerner.png,https://commons.wikimedia.org/wiki/Special:FilePath/WE Moerner.jpg?width=512,
+Greg Winter,Nobel Prize in Chemistry,,male,United Kingdom,,Greg_Winter.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Gregory Winter, 2016 (cropped).jpg?width=512",Download failed
+Alexey Ekimov,Nobel Prize in Chemistry,,male,United States,,Alexey_Ekimov.png,https://commons.wikimedia.org/wiki/Special:FilePath/US Embassy Sweden 2023 Nobel Reception (53390424929) (cropped).jpg?width=512,
+Alexey Ekimov,Nobel Prize in Chemistry,,male,Russia,,Alexey_Ekimov.png,,No portrait found anywhere
+Alexey Ekimov,Nobel Prize in Chemistry,,male,Soviet Union,,Alexey_Ekimov.png,,No portrait found anywhere
+Richard Henderson,Nobel Prize in Chemistry,,male,United Kingdom,,Richard_Henderson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard Henderson D81 4486 (38005042695).jpg?width=512,Download failed
+Jens Christian Skou,Nobel Prize in Chemistry,,male,Kingdom of Denmark,,Jens_Christian_Skou.png,https://commons.wikimedia.org/wiki/Special:FilePath/Skou2008.jpg?width=512,
+Tomas Lindahl,Nobel Prize in Chemistry,,male,Sweden,,Tomas_Lindahl.png,https://commons.wikimedia.org/wiki/Special:FilePath/Tomas Lindahl 0113.jpg?width=512,Download failed
+Demis Hassabis,Nobel Prize in Chemistry,,male,United Kingdom,,Demis_Hassabis.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Demis Hassabis, 2024 Nobel Prize Laureate in Chemistry 7 (cropped).jpg?width=512",
+Jean-Pierre Sauvage,Nobel Prize in Chemistry,,male,France,,Jean-Pierre_Sauvage.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jean-Pierre Sauvage.jpg?width=512,Download failed
+Ben Feringa,Nobel Prize in Chemistry,,male,Kingdom of the Netherlands,,Ben_Feringa.png,https://commons.wikimedia.org/wiki/Special:FilePath/FeringaWiki.jpg?width=512,Download failed
+David Baker,Nobel Prize in Chemistry,,male,United States,,David_Baker.png,"https://commons.wikimedia.org/wiki/Special:FilePath/David Baker, 2024 Nobel Prize Laureate in Chemistry 4 (cropped).jpg?width=512",Download failed
+Frances Arnold,Nobel Prize in Chemistry,,female,United States,,Frances_Arnold.png,https://commons.wikimedia.org/wiki/Special:FilePath/Frances Arnold in 2021 at Caltech 01 (cropped).jpg?width=512,Download failed
+Akira Yoshino,Nobel Prize in Chemistry,,male,Japan,,Akira_Yoshino.png,https://commons.wikimedia.org/wiki/Special:FilePath/Akira Yoshino 20170920 (cropped 2).jpg?width=512,Download failed
+Arieh Warshel,Nobel Prize in Chemistry,,male,United States,,Arieh_Warshel.png,https://commons.wikimedia.org/wiki/Special:FilePath/AW TW PS.jpg?width=512,Download failed
+Arieh Warshel,Nobel Prize in Chemistry,,male,Israel,,Arieh_Warshel.png,,No portrait found anywhere
+David MacMillan,Nobel Prize in Chemistry,,male,United States,,David_MacMillan.png,https://commons.wikimedia.org/wiki/Special:FilePath/David MacMillan.jpg?width=512,
+David MacMillan,Nobel Prize in Chemistry,,male,United Kingdom,,David_MacMillan.png,,No portrait found anywhere
+Michael Levitt,Nobel Prize in Chemistry,,male,United States,,Michael_Levitt.png,https://commons.wikimedia.org/wiki/Special:FilePath/DIMG 7539 (11253383215).jpg?width=512,Download failed
+Michael Levitt,Nobel Prize in Chemistry,,male,United Kingdom,,Michael_Levitt.png,,No portrait found anywhere
+Michael Levitt,Nobel Prize in Chemistry,,male,South Africa,,Michael_Levitt.png,https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/DIMG_7539_%2811253383215%29.jpg/960px-DIMG_7539_%2811253383215%29.jpg,
+Michael Levitt,Nobel Prize in Chemistry,,male,Israel,,Michael_Levitt.png,,No portrait found anywhere
+Morten P. Meldal,Nobel Prize in Chemistry,,male,Kingdom of Denmark,,Morten_P_Meldal.png,https://commons.wikimedia.org/wiki/Special:FilePath/MortenMeldal23.jpg?width=512,Download failed
+Paul L. Modrich,Nobel Prize in Chemistry,,male,United States,,Paul_L_Modrich.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul L. Modrich 0116.jpg?width=512,Download failed
+Susumu Kitagawa,Nobel Prize in Chemistry,,male,Japan,,Susumu_Kitagawa.png,https://commons.wikimedia.org/wiki/Special:FilePath/Susumu Kitagawa cropped Susumu Kitagawa 20191212.jpg?width=512,
+Aziz Sancar,Nobel Prize in Chemistry,,male,United States,,Aziz_Sancar.png,https://commons.wikimedia.org/wiki/Special:FilePath/Aziz Sancar 0060.jpg?width=512,
+Aziz Sancar,Nobel Prize in Chemistry,,male,Turkey,,Aziz_Sancar.png,https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Aziz_Sancar_0060.jpg/960px-Aziz_Sancar_0060.jpg,
+Aziz Sancar,Nobel Prize in Chemistry,,male,Northern Cyprus,,Aziz_Sancar.png,,No portrait found anywhere
+Moungi Bawendi,Nobel Prize in Chemistry,,male,United States,,Moungi_Bawendi.png,https://commons.wikimedia.org/wiki/Special:FilePath/US Embassy Sweden 2023 Nobel Reception (53390424864) (cropped).jpg?width=512,
+Moungi Bawendi,Nobel Prize in Chemistry,,male,France,,Moungi_Bawendi.png,,No portrait found anywhere
+Moungi Bawendi,Nobel Prize in Chemistry,,male,Tunisia,,Moungi_Bawendi.png,,No portrait found anywhere
+Emmanuelle Charpentier,Nobel Prize in Chemistry,,female,France,,Emmanuelle_Charpentier.png,https://commons.wikimedia.org/wiki/Special:FilePath/Emmanuelle Charpentier.jpg?width=512,Download failed
+Richard Robson,Nobel Prize in Chemistry,,male,United Kingdom,,Richard_Robson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard Robson.webp?width=512,Download failed
+Richard Robson,Nobel Prize in Chemistry,,male,Australia,,Richard_Robson.png,,No portrait found anywhere
+Joachim Frank,Nobel Prize in Chemistry,,male,United States,,Joachim_Frank.png,https://commons.wikimedia.org/wiki/Special:FilePath/Joachim Frank EM1B8792 (27115577469).jpg?width=512,Download failed
+Joachim Frank,Nobel Prize in Chemistry,,male,Germany,,Joachim_Frank.png,,No portrait found anywhere
+Jacques Dubochet,Nobel Prize in Chemistry,,male,Switzerland,,Jacques_Dubochet.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Jacques Dubochet, 2017 (cropped).jpg?width=512",Download failed
+George Davis Snell,Nobel Prize in Physiology or Medicine,,male,United States,,George_Davis_Snell.png,,No portrait found anywhere
+Arthur Kornberg,Nobel Prize in Physiology or Medicine,,male,United States,,Arthur_Kornberg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Arthur Kornberg (30828410210).jpg?width=512,Download failed
+Arthur Kornberg,Nobel Prize in Physiology or Medicine,,male,United States,,Arthur_Kornberg.png,,No portrait found anywhere
+Michael Stuart Brown,Nobel Prize in Physiology or Medicine,,male,United States,,Michael_Stuart_Brown.png,https://commons.wikimedia.org/wiki/Special:FilePath/Mike Brown 2003.jpg?width=512,Download failed
+Harold E. Varmus,Nobel Prize in Physiology or Medicine,,male,United States,,Harold_E_Varmus.png,https://commons.wikimedia.org/wiki/Special:FilePath/HEVarmus.jpg?width=512,Download failed
+Harold E. Varmus,Nobel Prize in Physiology or Medicine,,male,United States,,Harold_E_Varmus.png,,No portrait found anywhere
+Sune Bergström,Nobel Prize in Physiology or Medicine,,male,Sweden,,Sune_Bergström.png,https://commons.wikimedia.org/wiki/Special:FilePath/Sune Bergström 3.jpg?width=512,
+Rodney Robert Porter,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Rodney_Robert_Porter.png,https://commons.wikimedia.org/wiki/Special:FilePath/Rodney Robert Porter.jpg?width=512,
+Daniel Nathans,Nobel Prize in Physiology or Medicine,,male,United States,,Daniel_Nathans.png,https://commons.wikimedia.org/wiki/Special:FilePath/37. Tagung 1987 Mediziner Daniel Nathans lächelnd - W134Nr.125411c - Willy Pragher (cropped).jpg?width=512,
+George Wald,Nobel Prize in Physiology or Medicine,,male,United States,,George_Wald.png,https://commons.wikimedia.org/wiki/Special:FilePath/George Wald 1987.jpg?width=512,Download failed
+Bengt I. Samuelsson,Nobel Prize in Physiology or Medicine,,male,Sweden,,Bengt_I_Samuelsson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bengt Samuelsson.png?width=512,
+Lee Hartwell,Nobel Prize in Physiology or Medicine,,male,United States,,Lee_Hartwell.png,,No portrait found anywhere
+Ferid Murad,Nobel Prize in Physiology or Medicine,,male,United States,,Ferid_Murad.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ferid Murad.jpg?width=512,Download failed
+Alfred G. Gilman,Nobel Prize in Physiology or Medicine,,male,United States,,Alfred_G_Gilman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Alfred Goodman Gilman (cropped).jpg?width=512,Download failed
+Arvid Carlsson,Nobel Prize in Physiology or Medicine,,male,Sweden,,Arvid_Carlsson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Arvid Carlsson 2011a.jpg?width=512,Download failed
+Francis Peyton Rous,Nobel Prize in Physiology or Medicine,,male,United States,,Francis_Peyton_Rous.png,,No portrait found anywhere
+Eric F. Wieschaus,Nobel Prize in Physiology or Medicine,,male,United States,,Eric_F_Wieschaus.png,https://commons.wikimedia.org/wiki/Special:FilePath/Eric F. Wieschaus.jpg?width=512,
+Peter C. Doherty,Nobel Prize in Physiology or Medicine,,male,Australia,,Peter_C_Doherty.png,https://commons.wikimedia.org/wiki/Special:FilePath/Peter C. Doherty 2017.jpg?width=512,Download failed
+Richard Roberts,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Richard_Roberts.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Roberts, Richard John (1943).jpg?width=512",Download failed
+Louis Ignarro,Nobel Prize in Physiology or Medicine,,male,United States,,Louis_Ignarro.png,https://commons.wikimedia.org/wiki/Special:FilePath/Louis Ignarro by Carlos Barretta (cropped).jpg?width=512,Download failed
+Niels Kaj Jerne,Nobel Prize in Physiology or Medicine,,male,Kingdom of Denmark,,Niels_Kaj_Jerne.png,https://commons.wikimedia.org/wiki/Special:FilePath/Niels Kaj Jerne 1950 crop.jpg?width=512,
+Haldan Keffer Hartline,Nobel Prize in Physiology or Medicine,,male,United States,,Haldan_Keffer_Hartline.png,https://commons.wikimedia.org/wiki/Special:FilePath/HKHartline.png?width=512,Download failed
+Frederick Chapman Robbins,Nobel Prize in Physiology or Medicine,,male,United States,,Frederick_Chapman_Robbins.png,https://commons.wikimedia.org/wiki/Special:FilePath/Frederick Chapman Robbins nobel.jpg?width=512,Download failed
+John Vane,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,John_Vane.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Robert Vane.jpg?width=512,
+Tim Hunt,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Tim_Hunt.png,https://commons.wikimedia.org/wiki/Special:FilePath/Tim hunt.jpg?width=512,
+Paul Greengard,Nobel Prize in Physiology or Medicine,,male,United States,,Paul_Greengard.png,https://commons.wikimedia.org/wiki/Special:FilePath/Paul Greengard.jpg?width=512,
+Thomas Huckle Weller,Nobel Prize in Physiology or Medicine,,male,United States,,Thomas_Huckle_Weller.png,https://commons.wikimedia.org/wiki/Special:FilePath/Thomas Huckle Weller nobel.jpg?width=512,Download failed
+E. Donnall Thomas,Nobel Prize in Physiology or Medicine,,male,United States,,E_Donnall_Thomas.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Edward Donnall ""Don"" Thomas.jpg?width=512",
+George H. Hitchings,Nobel Prize in Physiology or Medicine,,male,United States,,George_H_Hitchings.png,https://commons.wikimedia.org/wiki/Special:FilePath/George H. Hitchings 1988.jpg?width=512,
+J. Michael Bishop,Nobel Prize in Physiology or Medicine,,male,United States,,J_Michael_Bishop.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nci-vol-8172-300 j michael bishop.jpg?width=512,
+John Franklin Enders,Nobel Prize in Physiology or Medicine,,male,United States,,John_Franklin_Enders.png,https://commons.wikimedia.org/wiki/Special:FilePath/Enders2.jpg?width=512,
+Dickinson W. Richards,Nobel Prize in Physiology or Medicine,,male,United States,,Dickinson_W_Richards.png,https://commons.wikimedia.org/wiki/Special:FilePath/Dickinson W. Richards nobel.jpg?width=512,
+Phillip Sharp,Nobel Prize in Physiology or Medicine,,male,United States,,Phillip_Sharp.png,https://commons.wikimedia.org/wiki/Special:FilePath/Phillip Sharp HD2007 with Winthrop Sears Medal (cropped).jpg?width=512,Download failed
+James Rothman,Nobel Prize in Physiology or Medicine,,male,United States,,James_Rothman.png,https://commons.wikimedia.org/wiki/Special:FilePath/James Edward Rothman.jpg?width=512,Download failed
+Tu Youyou,Nobel Prize in Physiology or Medicine,,female,People's Republic of China,,Tu_Youyou.png,"https://commons.wikimedia.org/wiki/Special:FilePath/D810 4987 Tu Youyou, medicine (22945001843) (cropped).jpg?width=512",
+Gary Ruvkun,Nobel Prize in Physiology or Medicine,,male,United States,,Gary_Ruvkun.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Gary Ruvkun, 2024 Nobel Prize Laureate in Medicine.jpg?width=512",Download failed
+Randy Schekman,Nobel Prize in Physiology or Medicine,,male,United States,,Randy_Schekman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Randy Shekman 01.JPG?width=512,
+Victor Ambros,Nobel Prize in Physiology or Medicine,,male,United States,,Victor_Ambros.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Victor Ambros, 2024 Nobel Prize Laureate in Medicine.jpg?width=512",
+David Julius,Nobel Prize in Physiology or Medicine,,male,United States,,David_Julius.png,https://commons.wikimedia.org/wiki/Special:FilePath/Dr David Julius by christopher michel in 2022 04.jpg?width=512,Download failed
+Michael Rosbash,Nobel Prize in Physiology or Medicine,,male,United States,,Michael_Rosbash.png,https://commons.wikimedia.org/wiki/Special:FilePath/Michael Rosbash EM1B8756 (38847326642).jpg?width=512,Download failed
+Gregg L. Semenza,Nobel Prize in Physiology or Medicine,,male,United States,,Gregg_L_Semenza.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel 9 Dec 2019 012 copy (49204052292) (cropped).jpg?width=512,Download failed
+William G. Kaelin,Nobel Prize in Physiology or Medicine,,male,United States,,William_G_Kaelin.png,https://commons.wikimedia.org/wiki/Special:FilePath/William G. Kaelin Jr. UNIST CGI 2019.jpg?width=512,Download failed
+Jeffrey C. Hall,Nobel Prize in Physiology or Medicine,,male,United States,,Jeffrey_C_Hall.png,https://commons.wikimedia.org/wiki/Special:FilePath/Jeffrey C. Hall D81 4349 (25006040668).jpg?width=512,Download failed
+John O'Keefe,Nobel Prize in Physiology or Medicine,,male,United States,,John_OKeefe.png,https://commons.wikimedia.org/wiki/Special:FilePath/John O'Keefe (neuroscientist) 2014.jpg?width=512,Download failed
+John O'Keefe,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,John_OKeefe.png,,No portrait found anywhere
+Michael Houghton,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Michael_Houghton.png,https://commons.wikimedia.org/wiki/Special:FilePath/Prof Michael Houghton.jpg?width=512,Download failed
+Michael W. Young,Nobel Prize in Physiology or Medicine,,male,United States,,Michael_W_Young.png,https://commons.wikimedia.org/wiki/Special:FilePath/Michael W. Young D81 4345 (38162439194).jpg?width=512,Download failed
+Peter J. Ratcliffe,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Peter_J_Ratcliffe.png,https://commons.wikimedia.org/wiki/Special:FilePath/Peter J. Ratcliffe (cropped).jpg?width=512,Download failed
+Tasuku Honjo,Nobel Prize in Physiology or Medicine,,male,Japan,,Tasuku_Honjo.png,https://commons.wikimedia.org/wiki/Special:FilePath/Tasuku Honjo 201311.jpg?width=512,
+Edvard Moser,Nobel Prize in Physiology or Medicine,,male,Norway,,Edvard_Moser.png,https://commons.wikimedia.org/wiki/Special:FilePath/Edvard Moser.jpg?width=512,Download failed
+Gordon McBean,2007 Nobel Peace Prize,2007-01-01T00:00:00Z,male,Canada,7,Gordon_McBean.png,,No portrait found anywhere
+Harvey J. Alter,Nobel Prize in Physiology or Medicine,,male,United States,,Harvey_J_Alter.png,https://commons.wikimedia.org/wiki/Special:FilePath/Harvey J. Alter.jpeg?width=512,
+James P. Allison,Nobel Prize in Physiology or Medicine,,male,United States,,James_P_Allison.png,https://commons.wikimedia.org/wiki/Special:FilePath/James P. Allison EM1B5525 (46207775441).jpg?width=512,Download failed
+May-Britt Moser,Nobel Prize in Physiology or Medicine,,female,Norway,,May-Britt_Moser.png,https://commons.wikimedia.org/wiki/Special:FilePath/May-Britt Moser (20902423978) (cropped).jpg?width=512,Download failed
+Steve Spangler,2005 Nobel Peace Prize,2005-01-01T00:00:00Z,male,United States,39,Steve_Spangler.png,https://commons.wikimedia.org/wiki/Special:FilePath/SteveSpanglerHeadshot2017.jpg?width=512,Download failed
+Yoshinori Ohsumi,Nobel Prize in Physiology or Medicine,,male,Japan,,Yoshinori_Ohsumi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Laureates 7428 (30679389523) (cropped).jpg?width=512,
+Shimon Sakaguchi,Nobel Prize in Physiology or Medicine,,male,Japan,,Shimon_Sakaguchi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Shimon Sakaguchi cropped 3 Shimon Sakaguchi 201711.jpg?width=512,Download failed
+Satoshi Ōmura,Nobel Prize in Physiology or Medicine,,male,Japan,,Satoshi_Ōmura.png,https://commons.wikimedia.org/wiki/Special:FilePath/Satoshi Ōmura 5040-2015.jpg?width=512,
+William C. Campbell,Nobel Prize in Physiology or Medicine,,male,Ireland,,William_C_Campbell.png,https://commons.wikimedia.org/wiki/Special:FilePath/William C. Campbell 4983-1-2015.jpg?width=512,
+William C. Campbell,Nobel Prize in Physiology or Medicine,,male,United States,,William_C_Campbell.png,,No portrait found anywhere
+Charles M. Rice,Nobel Prize in Physiology or Medicine,,male,United States,,Charles_M_Rice.png,https://commons.wikimedia.org/wiki/Special:FilePath/Charles M. Rice.jpg?width=512,
+Fred Ramsdell,Nobel Prize in Physiology or Medicine,,male,United States,,Fred_Ramsdell.png,https://commons.wikimedia.org/wiki/Special:FilePath/Fred Ramsdell - US Embassy Sweden Nobel Reception 2025.jpg?width=512,
+Q56509417,Nobel Prize in Physiology or Medicine,,,,,Q56509417.png,,No portrait found anywhere
+Ardem Patapoutian,Nobel Prize in Physiology or Medicine,,male,United States,,Ardem_Patapoutian.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ardem Patapoutian at Scripps in 2022 03.jpg?width=512,
+Ardem Patapoutian,Nobel Prize in Physiology or Medicine,,male,Lebanon,,Ardem_Patapoutian.png,,No portrait found anywhere
+Katalin Karikó,Nobel Prize in Physiology or Medicine,,female,Hungary,,Katalin_Karikó.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Katalin Karikó at the United States Embassy Sweden, 2023 Nobel Reception (cropped).jpg?width=512",
+Katalin Karikó,Nobel Prize in Physiology or Medicine,,female,United States,,Katalin_Karikó.png,,No portrait found anywhere
+Drew Weissman,Nobel Prize in Physiology or Medicine,,male,United States,,Drew_Weissman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Drew Weissman Life Science medalist.jpg?width=512,
+Mary E. Brunkow,Nobel Prize in Physiology or Medicine,,female,United States,,Mary_E_Brunkow.png,https://commons.wikimedia.org/wiki/Special:FilePath/Mary Brunkow - US Embassy Sweden Nobel Reception 2025.jpg?width=512,
+William Henry Bragg,Nobel Prize in Physics,,male,United Kingdom,,William_Henry_Bragg.png,https://commons.wikimedia.org/wiki/Special:FilePath/Wh-bragg.jpg?width=512,
+Yuan T. Lee,Nobel Prize in Chemistry,,male,United States,,Yuan_T_Lee.png,https://commons.wikimedia.org/wiki/Special:FilePath/Yuan Tseh Lee HD2008 Othmer Gold Medal portrait.JPG?width=512,Download failed
+Yuan T. Lee,Nobel Prize in Chemistry,,male,Taiwan,,Yuan_T_Lee.png,,No portrait found anywhere
+Yuan T. Lee,Nobel Prize in Chemistry,,male,Empire of Japan,,Yuan_T_Lee.png,https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Yuan_T._Lee_official_portrait.jpg/960px-Yuan_T._Lee_official_portrait.jpg,
+Dudley R. Herschbach,Nobel Prize in Chemistry,,male,United States,,Dudley_R_Herschbach.png,https://commons.wikimedia.org/wiki/Special:FilePath/Dudley Herschbach HD2011 AIC Gold Medal 2.jpg?width=512,Download failed
+Dudley R. Herschbach,Nobel Prize in Chemistry,,male,United States,,Dudley_R_Herschbach.png,,No portrait found anywhere
+Dudley R. Herschbach,Nobel Prize in Chemistry,,male,United States,,Dudley_R_Herschbach.png,,No portrait found anywhere
+Charles J. Pedersen,Nobel Prize in Chemistry,,male,Japan,,Charles_J_Pedersen.png,,No portrait found anywhere
+Charles J. Pedersen,Nobel Prize in Chemistry,,male,United States,,Charles_J_Pedersen.png,,No portrait found anywhere
+Roald Hoffmann,Nobel Prize in Chemistry,,male,United States,,Roald_Hoffmann.png,https://commons.wikimedia.org/wiki/Special:FilePath/Roald Hoffmann.jpg?width=512,Download failed
+Roald Hoffmann,Nobel Prize in Chemistry,,male,United States,,Roald_Hoffmann.png,,No portrait found anywhere
+Roald Hoffmann,Nobel Prize in Chemistry,,male,Second Polish Republic,,Roald_Hoffmann.png,,No portrait found anywhere
+Roald Hoffmann,Nobel Prize in Chemistry,,male,Second Polish Republic,,Roald_Hoffmann.png,,No portrait found anywhere
+Geoffrey Wilkinson,Nobel Prize in Chemistry,,male,United Kingdom,,Geoffrey_Wilkinson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Geoffrey Wilkinson ca. 1976.png?width=512,
+M. Stanley Whittingham,Nobel Prize in Chemistry,,male,United States,,M_Stanley_Whittingham.png,https://commons.wikimedia.org/wiki/Special:FilePath/Stanley Whittingham (portrait) 2020.jpg?width=512,Download failed
+M. Stanley Whittingham,Nobel Prize in Chemistry,,male,United Kingdom,,M_Stanley_Whittingham.png,,No portrait found anywhere
+Fraser Stoddart,Nobel Prize in Chemistry,,male,United States,,Fraser_Stoddart.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Laureates Fraser Stoddart 2016 (31117136180).jpg?width=512,Download failed
+Fraser Stoddart,Nobel Prize in Chemistry,,male,United Kingdom,,Fraser_Stoddart.png,,No portrait found anywhere
+Omar M. Yaghi,Nobel Prize in Chemistry,,male,United States,,Omar_M_Yaghi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Yaghi3 (cropped).jpg?width=512,Download failed
+Omar M. Yaghi,Nobel Prize in Chemistry,,male,Jordan,,Omar_M_Yaghi.png,,No portrait found anywhere
+Omar M. Yaghi,Nobel Prize in Chemistry,,male,Saudi Arabia,,Omar_M_Yaghi.png,,No portrait found anywhere
+Martin Karplus,Nobel Prize in Chemistry,,male,United States,,Martin_Karplus.png,https://commons.wikimedia.org/wiki/Special:FilePath/Martin Karplus Nobel Prize 22 2013.jpg?width=512,Download failed
+Martin Karplus,Nobel Prize in Chemistry,,male,Austria,,Martin_Karplus.png,,No portrait found anywhere
+John B. Goodenough,Nobel Prize in Chemistry,,male,United States,,John_B_Goodenough.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel 9 Dec 2019 029 copy (49204051647) (cropped).jpg?width=512,Download failed
+David H. Hubel,Nobel Prize in Physiology or Medicine,,male,Canada,,David_H_Hubel.png,https://commons.wikimedia.org/wiki/Special:FilePath/DHUBEL.jpg?width=512,Download failed
+David H. Hubel,Nobel Prize in Physiology or Medicine,,male,United States,,David_H_Hubel.png,,No portrait found anywhere
+H. Robert Horvitz,Nobel Prize in Physiology or Medicine,,male,United States,,H_Robert_Horvitz.png,,No portrait found anywhere
+Michel Devoret,Nobel Prize in Physics,,male,France,,Michel_Devoret.png,https://commons.wikimedia.org/wiki/Special:FilePath/Michel Devoret (54987873184).jpg?width=512,Download failed
+John M. Martinis,Nobel Prize in Physics,,male,United States,,John_M_Martinis.png,"https://commons.wikimedia.org/wiki/Special:FilePath/John M. Martinis, American physicst and 2025 Nobel laurate in physics.jpg?width=512",Download failed
+Donna Strickland,Nobel Prize in Physics,,female,Canada,,Donna_Strickland.png,https://commons.wikimedia.org/wiki/Special:FilePath/Donna Strickland EM1B5760 (46183560632) (cropped).jpg?width=512,Download failed
+Pierre Agostini,Nobel Prize in Physics,,male,France,,Pierre_Agostini.png,https://commons.wikimedia.org/wiki/Special:FilePath/US Embassy Sweden 2023 Nobel Reception (53397591873) (cropped).jpg?width=512,
+George Smith,Nobel Prize in Chemistry,,male,United States,,George_Smith.png,https://commons.wikimedia.org/wiki/Special:FilePath/George Smith EM1B5987 (31295398907).jpg?width=512,Download failed
+John Michael Jumper,Nobel Prize in Chemistry,,male,United States,,John_Michael_Jumper.png,"https://commons.wikimedia.org/wiki/Special:FilePath/John Jumper, 2024 Nobel Prize Laureate in Chemistry 7 (cropped).jpg?width=512",
+Kenichi Fukui,Nobel Prize in Chemistry,,male,Empire of Japan,,Kenichi_Fukui.png,,No portrait found anywhere
+Robert Bruce Merrifield,Nobel Prize in Chemistry,,male,United States,,Robert_Bruce_Merrifield.png,https://commons.wikimedia.org/wiki/Special:FilePath/R. B. Merrifield.jpg?width=512,
+Irwin Rose,Nobel Prize in Chemistry,,male,United States,,Irwin_Rose.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel2004chemistrylaurets-Rose.jpg?width=512,
+Michael Smith,Nobel Prize in Chemistry,,male,Canada,,Michael_Smith.png,https://commons.wikimedia.org/wiki/Special:FilePath/Michael Smith cropped.jpg?width=512,Download failed
+John Kendrew,Nobel Prize in Chemistry,,male,United Kingdom,,John_Kendrew.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Kendrew Nobel.jpg?width=512,
+Avram Hershko,Nobel Prize in Chemistry,,male,Hungary,,Avram_Hershko.png,https://commons.wikimedia.org/wiki/Special:FilePath/Flickr - Government Press Office (GPO) - Nobel Laureate Avram Hershko.jpg?width=512,Download failed
+Avram Hershko,Nobel Prize in Chemistry,,male,Israel,,Avram_Hershko.png,,No portrait found anywhere
+Robert Burns Woodward,Nobel Prize in Chemistry,,male,United States,,Robert_Burns_Woodward.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Burns Woodward in 1965.jpg?width=512,Download failed
+Robert Burns Woodward,Nobel Prize in Chemistry,,male,United States,,Robert_Burns_Woodward.png,,No portrait found anywhere
+Arne Tiselius,Nobel Prize in Chemistry,,male,Sweden,,Arne_Tiselius.png,https://commons.wikimedia.org/wiki/Special:FilePath/Arne Tiselius.jpg?width=512,
+Aaron Ciechanover,Nobel Prize in Chemistry,,male,Israel,,Aaron_Ciechanover.png,https://commons.wikimedia.org/wiki/Special:FilePath/Flickr - Government Press Office (GPO) - Nobel Laureate Aaron Ciechanover (cropped).jpg?width=512,Download failed
+Robert S. Mulliken,Nobel Prize in Chemistry,,male,United States,,Robert_S_Mulliken.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Mulliken,Robert 1929 Chicago.jpg?width=512",
+John Pople,Nobel Prize in Chemistry,,male,United Kingdom,,John_Pople.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Anthony Pople.png?width=512,
+Luis Federico Leloir,Nobel Prize in Chemistry,,male,France,,Luis_Federico_Leloir.png,https://commons.wikimedia.org/wiki/Special:FilePath/Luis Federico Leloir - young.jpg?width=512,Download failed
+Luis Federico Leloir,Nobel Prize in Chemistry,,male,Argentina,,Luis_Federico_Leloir.png,,No portrait found anywhere
+Giulio Natta,Nobel Prize in Chemistry,,male,Italy,,Giulio_Natta.png,https://commons.wikimedia.org/wiki/Special:FilePath/Giulio Natta Nobel.jpg?width=512,Download failed
+Giulio Natta,Nobel Prize in Chemistry,,male,Kingdom of Italy,,Giulio_Natta.png,https://upload.wikimedia.org/wikipedia/commons/a/a6/Giulio_Natta_1960s.jpg,
+John E. Walker,Nobel Prize in Chemistry,,male,United Kingdom,,John_E_Walker.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Ernest Walker.jpg?width=512,
+Ronald George Wreyford Norrish,Nobel Prize in Chemistry,,male,United Kingdom,,Ronald_George_Wreyford_Norrish.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ronald George Wreyford Norrish.jpg?width=512,
+Henry Taube,Nobel Prize in Chemistry,,male,United States,,Henry_Taube.png,https://commons.wikimedia.org/wiki/Special:FilePath/Henry Taube - HD.3F.005 (11086397086).jpg?width=512,
+John Polanyi,Nobel Prize in Chemistry,,male,Canada,,John_Polanyi.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Polanyi 01.jpg?width=512,Download failed
+John Polanyi,Nobel Prize in Chemistry,,male,Germany,,John_Polanyi.png,,No portrait found anywhere
+Rudolph A. Marcus,Nobel Prize in Chemistry,,male,Canada,,Rudolph_A_Marcus.png,https://commons.wikimedia.org/wiki/Special:FilePath/Prof. Dr. Rudolph A. Marcus.jpg?width=512,Download failed
+Rudolph A. Marcus,Nobel Prize in Chemistry,,male,United States,,Rudolph_A_Marcus.png,,No portrait found anywhere
+George Whipple,Nobel Prize in Physiology or Medicine,,male,United States,,George_Whipple.png,https://commons.wikimedia.org/wiki/Special:FilePath/George Whipple nobel.jpg?width=512,Download failed
+Godfrey Hounsfield,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Godfrey_Hounsfield.png,https://commons.wikimedia.org/wiki/Special:FilePath/Godfrey Hounsfield.jpg?width=512,
+Godfrey Hounsfield,Nobel Prize in Physiology or Medicine,,male,United Kingdom of Great Britain and Ireland,,Godfrey_Hounsfield.png,,No portrait found anywhere
+Edward B. Lewis,Nobel Prize in Physiology or Medicine,,male,United States,,Edward_B_Lewis.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ed Lewis 1986.png?width=512,Download failed
+Nicolaas Bloembergen,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Nicolaas_Bloembergen.png,,No portrait found anywhere
+Antony Hewish,Nobel Prize in Physics,,male,United Kingdom,,Antony_Hewish.png,https://commons.wikimedia.org/wiki/Special:FilePath/26. Tagung 1976 Physiker; Gruppen beim Bayrischen Frühstück Antony Hewish - W134Nr.106841b - Willy Pragher.jpg?width=512,Download failed
+Robert B. Laughlin,Nobel Prize in Physics,,male,United States,,Robert_B_Laughlin.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Robert Laughlin, Stanford University.jpg?width=512",
+Henry Way Kendall,Nobel Prize in Physics,,male,United States,,Henry_Way_Kendall.png,https://commons.wikimedia.org/wiki/Special:FilePath/Henry Kendall by Tom Frost crop.jpg?width=512,
+Arthur Leonard Schawlow,Nobel Prize in Physics,,male,United States,,Arthur_Leonard_Schawlow.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Artur Schawlow, Stanford University.jpg?width=512",
+Claude Cohen-Tannoudji,Nobel Prize in Physics,,male,France,,Claude_Cohen-Tannoudji.png,https://commons.wikimedia.org/wiki/Special:FilePath/COHEN TANNOUDJI Claude-24x30-1999.jpg?width=512,Download failed
+James Rainwater,Nobel Prize in Physics,,male,United States,,James_Rainwater.png,https://commons.wikimedia.org/wiki/Special:FilePath/James Rainwater 2.jpg?width=512,
+William Daniel Phillips,Nobel Prize in Physics,,male,United States,,William_Daniel_Phillips.png,https://commons.wikimedia.org/wiki/Special:FilePath/William Phillips-physicist photo.jpg?width=512,Download failed
+Martin Ryle,Nobel Prize in Physics,,male,United Kingdom,,Martin_Ryle.png,https://commons.wikimedia.org/wiki/Special:FilePath/Martin Ryle (cropped).jpg?width=512,Download failed
+Philip W. Anderson,Nobel Prize in Physics,,male,United States,,Philip_W_Anderson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Andersonphoto.jpg?width=512,
+Frederick Reines,Nobel Prize in Physics,,male,United States,,Frederick_Reines.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Frederick Reines, early 1950s.jpg?width=512",Download failed
+Burton Richter,Nobel Prize in Physics,,male,United States,,Burton_Richter.png,https://commons.wikimedia.org/wiki/Special:FilePath/Burton Richter NSF crop.jpg?width=512,
+Peter Higgs,Nobel Prize in Physics,,male,United Kingdom,,Peter_Higgs.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Prize 24 2013.jpg?width=512,
+Joseph Hooton Taylor,Nobel Prize in Physics,,male,United States,,Joseph_Hooton_Taylor.png,https://commons.wikimedia.org/wiki/Special:FilePath/2008JosephTaylor.jpg?width=512,Download failed
+Ivar Giæver,Nobel Prize in Physics,,male,Norway,,Ivar_Giæver.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ivar Giaever 1973.jpg?width=512,
+Ivar Giæver,Nobel Prize in Physics,,male,United States,,Ivar_Giæver.png,,No portrait found anywhere
+Bertram Brockhouse,Nobel Prize in Physics,,male,Canada,,Bertram_Brockhouse.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bertram Brockhouse.jpg?width=512,Download failed
+Leon M. Lederman,Nobel Prize in Physics,,male,United States,,Leon_M_Lederman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Leon M. Lederman.jpg?width=512,
+Ilya Frank,Nobel Prize in Physics,,male,Soviet Union,,Ilya_Frank.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ilya Frank.jpg?width=512,
+Ilya Frank,Nobel Prize in Physics,,male,Russian Empire,,Ilya_Frank.png,,No portrait found anywhere
+Robert Coleman Richardson,Nobel Prize in Physics,,male,United States,,Robert_Coleman_Richardson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Robert Coleman Richardson.jpg?width=512,
+Kai Siegbahn,Nobel Prize in Physics,,male,Sweden,,Kai_Siegbahn.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kai Manne Börje Siegbahn.jpg?width=512,
+Samuel C. C. Ting,Nobel Prize in Physics,,male,United States,,Samuel_C_C_Ting.png,https://commons.wikimedia.org/wiki/Special:FilePath/Samuel Ting 2023.jpg?width=512,Download failed
+Anthony James Leggett,Nobel Prize in Physics,,male,United States,,Anthony_James_Leggett.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Laureate Sir Anthony James Leggett in 2007.jpg?width=512,
+Anthony James Leggett,Nobel Prize in Physics,,male,United Kingdom,,Anthony_James_Leggett.png,,No portrait found anywhere
+James Cronin,Nobel Prize in Physics,,male,United States,,James_Cronin.png,https://commons.wikimedia.org/wiki/Special:FilePath/James-cronin.jpg?width=512,
+Kenneth G. Wilson,Nobel Prize in Physics,,male,United States,,Kenneth_G_Wilson.png,https://commons.wikimedia.org/wiki/Special:FilePath/Kenneth G. Wilson.121.png?width=512,
+John Hasbrouck Van Vleck,Nobel Prize in Physics,,male,United States,,John_Hasbrouck_Van_Vleck.png,https://commons.wikimedia.org/wiki/Special:FilePath/JH van Vleck 1974.jpg?width=512,
+Roger Penrose,Nobel Prize in Physics,,male,United Kingdom,,Roger_Penrose.png,https://commons.wikimedia.org/wiki/Special:FilePath/Roger Penrose 9560.JPG?width=512,Download failed
+Brian Schmidt,Nobel Prize in Physics,,male,United States,,Brian_Schmidt.png,https://commons.wikimedia.org/wiki/Special:FilePath/Brian Schmidt portrait 1.jpg?width=512,
+Brian Schmidt,Nobel Prize in Physics,,male,Australia,,Brian_Schmidt.png,,No portrait found anywhere
+Richard E. Taylor,Nobel Prize in Physics,,male,Canada,,Richard_E_Taylor.png,https://commons.wikimedia.org/wiki/Special:FilePath/Richard E. Taylor.jpg?width=512,
+Clifford Shull,Nobel Prize in Physics,,male,United States,,Clifford_Shull.png,https://commons.wikimedia.org/wiki/Special:FilePath/Wollan and Shull 1949 (cropped).jpg?width=512,
+David Lee,Nobel Prize in Physics,,male,United States,,David_Lee.png,https://commons.wikimedia.org/wiki/Special:FilePath/Nobel Laureate David Morris Lee in 2007.jpg?width=512,
+Daniel C. Tsui,Nobel Prize in Physics,,male,United States,,Daniel_C_Tsui.png,https://commons.wikimedia.org/wiki/Special:FilePath/Daniel Chee Tsui.jpg?width=512,
+Martinus J. G. Veltman,Nobel Prize in Physics,,male,Kingdom of the Netherlands,,Martinus_J_G_Veltman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Martinus Veltman.jpg?width=512,
+Makoto Kobayashi,Nobel Prize in Physics,,male,Japan,,Makoto_Kobayashi.png,https://commons.wikimedia.org/wiki/Special:FilePath/Makoto Kobayashi 20101223.jpg?width=512,
+Toshihide Maskawa,Nobel Prize in Physics,,male,Japan,,Toshihide_Maskawa.png,https://commons.wikimedia.org/wiki/Special:FilePath/Masukawa.jpg?width=512,Download failed
+Toshihide Maskawa,Nobel Prize in Physics,,male,Empire of Japan,,Toshihide_Maskawa.png,,No portrait found anywhere
+Eric Allin Cornell,Nobel Prize in Physics,,male,United States,,Eric_Allin_Cornell.png,"https://commons.wikimedia.org/wiki/Special:FilePath/Physics Nobel Laureate Eric Allin Cornell, in June of 2015.jpg?width=512",Download failed
+Carl Wieman,Nobel Prize in Physics,,male,United States,,Carl_Wieman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Carl Wieman.jpg?width=512,
+Albert Claude,Nobel Prize in Physiology or Medicine,,male,Belgium,,Albert_Claude.png,,No portrait found anywhere
+Albert Claude,Nobel Prize in Physiology or Medicine,,male,Belgium,,Albert_Claude.png,,No portrait found anywhere
+Severo Ochoa,Nobel Prize in Physiology or Medicine,,male,Spain,,Severo_Ochoa.png,https://commons.wikimedia.org/wiki/Special:FilePath/Severo Ochoa 1958.jpg?width=512,Download failed
+Severo Ochoa,Nobel Prize in Physiology or Medicine,,male,United States,,Severo_Ochoa.png,,No portrait found anywhere
+Charles Nicolle,Nobel Prize in Physiology or Medicine,,male,France,,Charles_Nicolle.png,https://commons.wikimedia.org/wiki/Special:FilePath/Charles Jules Henri Nicolle. Photograph. Wellcome V0026919.jpg?width=512,
+Charles Nicolle,Nobel Prize in Physiology or Medicine,,male,France,,Charles_Nicolle.png,,No portrait found anywhere
+Frederick Hopkins,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Frederick_Hopkins.png,https://commons.wikimedia.org/wiki/Special:FilePath/Frederick Gowland Hopkins nobel.jpg?width=512,
+Sydney Brenner,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Sydney_Brenner.png,https://commons.wikimedia.org/wiki/Special:FilePath/Sydney Brenner OIST 2008 (33208371153) (cropped).jpg?width=512,
+Sydney Brenner,Nobel Prize in Physiology or Medicine,,male,South Africa,,Sydney_Brenner.png,,No portrait found anywhere
+Christian de Duve,Nobel Prize in Physiology or Medicine,,male,Belgium,,Christian_de_Duve.png,https://commons.wikimedia.org/wiki/Special:FilePath/Christian de Duve.tif?width=512,
+Baruj Benacerraf,Nobel Prize in Physiology or Medicine,,male,United States,,Baruj_Benacerraf.png,https://commons.wikimedia.org/wiki/Special:FilePath/Baruj Benacerraf 1969.jpg?width=512,
+Baruj Benacerraf,Nobel Prize in Physiology or Medicine,,male,Venezuela,,Baruj_Benacerraf.png,,No portrait found anywhere
+David Baltimore,Nobel Prize in Physiology or Medicine,,male,United States,,David_Baltimore.png,https://commons.wikimedia.org/wiki/Special:FilePath/Dr. David Baltimore2 crop2.jpg?width=512,Download failed
+Philip Showalter Hench,Nobel Prize in Physiology or Medicine,,male,United States,,Philip_Showalter_Hench.png,https://commons.wikimedia.org/wiki/Special:FilePath/Philip Showalter Hench.jpg?width=512,Download failed
+Ulf von Euler,Nobel Prize in Physiology or Medicine,,male,Sweden,,Ulf_von_Euler.png,https://commons.wikimedia.org/wiki/Special:FilePath/Ulf von Euler.jpg?width=512,
+Bernardo Houssay,Nobel Prize in Physiology or Medicine,,male,Argentina,,Bernardo_Houssay.png,https://commons.wikimedia.org/wiki/Special:FilePath/Bernado Houssay.JPG?width=512,
+Edward Tatum,Nobel Prize in Physiology or Medicine,,male,United States,,Edward_Tatum.png,https://commons.wikimedia.org/wiki/Special:FilePath/Edward Lawrie Tatum.jpg?width=512,Download failed
+Georg von Békésy,Nobel Prize in Physiology or Medicine,,male,Hungary,,Georg_von_Békésy.png,https://commons.wikimedia.org/wiki/Special:FilePath/Georg von Békésy nobel.jpg?width=512,Download failed
+Georg von Békésy,Nobel Prize in Physiology or Medicine,,male,United States,,Georg_von_Békésy.png,,No portrait found anywhere
+George Beadle,Nobel Prize in Physiology or Medicine,,male,United States,,George_Beadle.png,https://commons.wikimedia.org/wiki/Special:FilePath/University of Chicago President George Beadle at Congress of Racial Equality Meeting on Housing Sit-Ins (cropped).jpg?width=512,Download failed
+Roger Guillemin,Nobel Prize in Physiology or Medicine,,male,United States,,Roger_Guillemin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Roger Guillemin.jpg?width=512,
+Roger Guillemin,Nobel Prize in Physiology or Medicine,,male,France,,Roger_Guillemin.png,,No portrait found anywhere
+Joseph Erlanger,Nobel Prize in Physiology or Medicine,,male,United States,,Joseph_Erlanger.png,https://commons.wikimedia.org/wiki/Special:FilePath/Joseph Erlanger nobel.jpg?width=512,Download failed
+Howard Temin,Nobel Prize in Physiology or Medicine,,male,United States,,Howard_Temin.png,https://commons.wikimedia.org/wiki/Special:FilePath/Howard Martin Temin 1975.jpg?width=512,Download failed
+Peter Mansfield,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,Peter_Mansfield.png,https://commons.wikimedia.org/wiki/Special:FilePath/Peter Mansfield Leipzig.jpg?width=512,
+George Minot,Nobel Prize in Physiology or Medicine,,male,United States,,George_Minot.png,https://commons.wikimedia.org/wiki/Special:FilePath/George Minot nobel.jpg?width=512,Download failed
+Torsten Nils Wiesel,Nobel Prize in Physiology or Medicine,,male,United States,,Torsten_Nils_Wiesel.png,https://commons.wikimedia.org/wiki/Special:FilePath/Torsten Wiesel-7Nov2006.jpg?width=512,Download failed
+Torsten Nils Wiesel,Nobel Prize in Physiology or Medicine,,male,Sweden,,Torsten_Nils_Wiesel.png,,No portrait found anywhere
+Joseph L. Goldstein,Nobel Prize in Physiology or Medicine,,male,United States,,Joseph_L_Goldstein.png,https://commons.wikimedia.org/wiki/Special:FilePath/Joe Goldstein.JPG?width=512,Download failed
+John Sulston,Nobel Prize in Physiology or Medicine,,male,United Kingdom,,John_Sulston.png,https://commons.wikimedia.org/wiki/Special:FilePath/John Sulston (2008).jpg?width=512,
+Alfred Hershey,Nobel Prize in Physiology or Medicine,,male,United States,,Alfred_Hershey.png,https://commons.wikimedia.org/wiki/Special:FilePath/Alfred Hershey.jpg?width=512,
+André Frédéric Cournand,Nobel Prize in Physiology or Medicine,,male,United States,,André_Frédéric_Cournand.png,https://commons.wikimedia.org/wiki/Special:FilePath/André Frédéric Cournand nobel.jpg?width=512,
+André Frédéric Cournand,Nobel Prize in Physiology or Medicine,,male,France,,André_Frédéric_Cournand.png,https://upload.wikimedia.org/wikipedia/commons/4/47/Andr%C3%A9_Fr%C3%A9d%C3%A9ric_Cournand_nobel.jpg,
+Gerald Edelman,Nobel Prize in Physiology or Medicine,,male,United States,,Gerald_Edelman.png,https://commons.wikimedia.org/wiki/Special:FilePath/Professor Gerald M. Edelman.jpg?width=512,Download failed
+Herbert Spencer Gasser,Nobel Prize in Physiology or Medicine,,male,United States,,Herbert_Spencer_Gasser.png,https://commons.wikimedia.org/wiki/Special:FilePath/Herbert Spencer Gasser nobel.jpg?width=512,
+António Egas Moniz,Nobel Prize in Physiology or Medicine,,male,Portugal,,António_Egas_Moniz.png,https://commons.wikimedia.org/wiki/Special:FilePath/Moniz.jpg?width=512,
+António Egas Moniz,Nobel Prize in Physiology or Medicine,,male,Kingdom of Portugal,,António_Egas_Moniz.png,,No portrait found anywhere
+John Eccles,Nobel Prize in Physiology or Medicine,,male,Australia,,John_Eccles.png,https://commons.wikimedia.org/wiki/Special:FilePath/Sir John Eccles Wellcome L0026812.jpg?width=512,

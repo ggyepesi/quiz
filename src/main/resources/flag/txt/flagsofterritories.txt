@@ -1,0 +1,106 @@
+Group	New Zealand
+|[[File:Flag of Cook Islands.svg]]
+|[[File:Flag of Niue.svg]]
+|[[File:Flag of Tokelau.svg]]
+|[[File:Flag_of_the_Ross_Dependency_(unofficial).svg]]
+
+Group	Norway
+|[[File:Flag of Bouvet Island.svg]]
+|[[File:Flag of Peter I Island.svg]]
+|[[File:Flag of Queen Maud Land.svg]]
+|[[File:Flag of Svalbard.svg]]
+
+Group	United Kingdom
+|[[File:Flag of Guernsey.svg]]
+|[[File:Flag of Isle of Man.svg]]
+|[[File:Flag of Jersey.svg]]
+|[[File:Flag of Anguilla.svg]]
+|[[File:Flag of Bermuda.svg]]
+|[[File:Flag of British Virgin Islands.svg]]
+|[[File:Flag of Cayman Islands.svg]]
+|[[File:Flag of Falkland Islands.svg]]
+|[[File:Flag of Gibraltar.svg]]
+|[[File:Flag of Montserrat.svg]]
+|[[File:Flag of Pitcairn Islands.svg]]
+|[[File:Flag of Saint Helena, Ascension and Tristan da Cunha.svg]]
+|[[File:Flag of Saint Helena.svg]]
+|[[File:Flag of Ascension Island.svg]]
+|[[File:Flag of Tristan da Cunha.svg]]
+|[[File:Flag of Turks and Caicos Islands.svg]]
+|[[File:Flag of Akrotiri and Dhekelia.svg]]
+|[[File:Flag of British Indian Ocean Territory.svg]]
+|[[File:Flag of South Georgia and the South Sandwich Islands.svg]]
+|[[File:Flag of British Antarctic Territory.svg]]
+|[[File:Flag_of_Herm.svg]]
+|[[File:Flag_of_Alderney.svg]]
+|[[File:Flag_of_Sark_(bordered).svg]]
+
+Group	United States
+|[[File:Flag of Guam.svg]]
+|[[File:Flag of Northern Mariana Islands.svg]]
+|[[File:Flag of Puerto Rico.svg]]
+|[[File:Flag of United States Virgin Islands.svg]]
+|[[File:Flag of American Samoa.svg]]
+|[[File:Flag of Baker Island.svg]]
+|[[File:Flag of Howland Island.svg]]
+|[[File:Flag of Jarvis Island.svg]]
+|[[File:Flag of Johnston Atoll.svg]]
+|[[File:Flag of Kingman Reef.svg]]
+|[[File:Flag of Midway Atoll.svg]]
+|[[File:Flag of Navassa Island.svg]]
+|[[File:Flag of Wake Island.svg]]
+
+Group	Australia
+|[[File:Flag of Christmas Island.svg]]
+|[[File:Flag of Cocos (Keeling) Islands.svg]]
+|[[File:Flag of Norfolk Island.svg]]
+|[[File:Flag of Ashmore and Cartier Islands.svg]]
+|[[File:Flag of Coral Sea Islands.svg]]
+|[[File:Flag of Heard Island and McDonald Islands.svg]]
+|[[File:Flag of Australian Antarctic Territory.svg]]
+
+Group	China.svg
+|[[File:Flag of Hong Kong.svg]]
+|[[File:Flag of Macao.svg]]
+
+Group	Denmark
+|[[File:Flag of Faroe Islands.svg]]
+|[[File:Flag of Greenland.svg]]
+
+Group	Finland
+|[[File:Flag of Åland.svg]]
+
+Group	France
+|[[File:Flag of French Polynesia.svg]]
+|[[File:Flag of Saint Barthélemy.svg]]
+|[[File:Flag of Saint Martin.svg]]
+|[[File:Flag of Saint Pierre and Miquelon.svg]]
+|[[File:Flag of Wallis and Futuna.svg]]
+|[[File:Flag of New Caledonia.svg]]
+|[[File:Flag of Clipperton Island.svg]]
+|[[File:Flag of French Southern and Antarctic Lands.svg]]
+|[[File:Flag of Martinique.svg]]
+|[[File:Flag_of_French_Guiana.svg]]
+|[[File:Proposed_flag_of_Réunion_(VAR).svg]]
+
+Group	Netherlands
+|[[File:Flag of Aruba.svg]]
+|[[File:Flag of Bonaire.svg]]
+|[[File:Flag of Curaçao.svg]]
+|[[File:Flag of Sint Maarten.svg]]
+|[[File:Flag of Sint Eustatius.svg]]
+|[[File:Flag of Saba.svg]]
+
+Group	Portugal
+|[[File:Flag_of_Madeira.svg]]
+|[[File:Flag_of_the_Azores.svg]]
+
+Group	Spain
+|[[File:Flag_of_the_Canary_Islands_(simple).svg]]
+|[[File:Flag_of_Ceuta.svg]]
+|[[File:Flag_of_the_Balearic_Islands.svg]]
+|[[File:Flag_of_Melilla.svg]]
+
+Group	Chile
+|[[File:Bandera_Juan_Fernández.svg]]
+|[[File:Flag of Easter_Island.svg]]

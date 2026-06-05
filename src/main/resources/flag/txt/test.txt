@@ -1,0 +1,27 @@
+
+    private void addAnswerComponent(List<String> query, GridBagConstraints gbc) {
+        switch (answerType) {
+            case LIST:
+                if (answerComponent == null) {
+                    createListAnswerComponent();
+                    gbc.gridy++;
+                    gbc.weighty = 1;
+                    frame.add(searchPanel, gbc);
+                    gbc.gridy++;
+                    gbc.weighty = 8;
+                    frame.add(answerComponent, gbc);
+                    frame.setLocationRelativeTo(null);
+                    frame.setResizable(true);        
+                    frame.pack();
+                    frame.setSize(600, 800);
+                    frame.setVisible(true);
+                } else {
+                    frame.revalidate();
+                }
+                break;
+            case ABCD:
+                break;
+            case PAIRING:
+                break;
+        }
+    }

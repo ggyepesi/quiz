@@ -1,0 +1,1265 @@
+gyorgygyepesi@MacBookPro quiz %  cd /Users/gyorgygyepesi/vsprojects/quiz ; /usr/bin/env /Users/gyorgygyepesi/Library/Java/JavaVirtualMachines/ope
+njdk-16.0.1/Contents/Home/bin/java @/var/folders/tz/b_9ptgwn5ng7dtdjct6lbrvm0000gn/T/cp_5ltaekaa0o7s9kjaafdmcl6rb.argfile nobel.PortraitLinkExtra
+ctor 
+Nobel laureates     https://en.wikipedia.org/wiki/Nobel_laureates
+a gold medal    https://en.wikipedia.org/wiki/Nobel_Prize_medal
+SEK     https://en.wikipedia.org/wiki/Swedish_krona
+Alvin E. Roth   https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Alvin_E._Roth_3_2012.jpg/1280px-Alvin_E._Roth_3_2012.jpg
+Brian Kobilka   https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Brian_Kobilka_361726_by_Christopher_Michel_6-20-24.jpg/960px-Brian_Kobilka_361726_by_Christopher_Michel_6-20-24.jpg
+Robert J. Lefkowitz     https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Robert_Lefkowitz_2_2012.jpg/1280px-Robert_Lefkowitz_2_2012.jpg
+David J. Wineland       https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Portrait_of_David_Wineland.jpg/960px-Portrait_of_David_Wineland.jpg
+Serge Haroche   https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Serge_Haroche_1_2012.jpg/1280px-Serge_Haroche_1_2012.jpg
+Nobel Prizes    https://en.wikipedia.org/wiki/Nobel_Prize
+Swedish https://en.wikipedia.org/wiki/Swedish_language
+Norwegian       https://en.wikipedia.org/wiki/Norwegian_language
+Royal Swedish Academy of Sciences       https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Main_building_of_the_Royal_Swedish_Academy_of_Sciences_%28Kungliga_Vetenskapsakademien%29%2C_Frescati%2C_Norra_Djurg%C3%A5rden%2C_Stockholm.jpg/1280px-Main_building_of_the_Royal_Swedish_Academy_of_Sciences_%28Kungliga_Vetenskapsakademien%29%2C_Frescati%2C_Norra_Djurg%C3%A5rden%2C_Stockholm.jpg
+Swedish Academy https://en.wikipedia.org/wiki/Swedish_Academy
+Karolinska Institutet   https://en.wikipedia.org/wiki/Karolinska_Institute
+Norwegian Nobel Committee       https://upload.wikimedia.org/wikipedia/en/1/1c/Logo_of_the_Nobel_Peace_Prize.jpg
+chemistry       https://en.wikipedia.org/wiki/Nobel_Prize_in_Chemistry
+physics https://en.wikipedia.org/wiki/Nobel_Prize_in_Physics
+literature      https://en.wikipedia.org/wiki/Nobel_Prize_in_Literature
+peace   https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/President_Jimmy_Carter%27s_2002_Nobel_Peace_Prize_-_Bronze_Medal_-_At_Visitor%27s_Center_-_Plains_-_Georgia_-_USA_%2834208881752%29.jpg/960px-President_Jimmy_Carter%27s_2002_Nobel_Peace_Prize_-_Bronze_Medal_-_At_Visitor%27s_Center_-_Plains_-_Georgia_-_USA_%2834208881752%29.jpg
+physiology or medicine  https://en.wikipedia.org/wiki/Nobel_Prize_in_Physiology_or_Medicine
+Alfred Nobel    https://upload.wikimedia.org/wikipedia/commons/0/07/Alfred_Nobel3.jpg
+Nobel Foundation        https://en.wikipedia.org/wiki/Nobel_Foundation
+Sveriges Riksbank       https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Riksbankshuset_April_2015.jpg/1280px-Riksbankshuset_April_2015.jpg
+central bank    https://en.wikipedia.org/wiki/Central_bank
+economics       https://en.wikipedia.org/wiki/Nobel_Memorial_Prize_in_Economic_Sciences
+laureate        https://upload.wikimedia.org/wikipedia/commons/a/ae/Napoleon_I_40_Francs_76001795.jpg
+a gold medal    https://en.wikipedia.org/wiki/Nobel_Prize_medal
+diploma https://upload.wikimedia.org/wikipedia/commons/b/b7/SheepskinDiploma.jpg
+SEK     https://en.wikipedia.org/wiki/Swedish_krona
+Stockholm       https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Royal_Dramatic_Theatre_Stockholm.jpg/1280px-Royal_Dramatic_Theatre_Stockholm.jpg
+World War&#160;II       https://upload.wikimedia.org/wikipedia/commons/1/10/Bundesarchiv_Bild_101I-646-5188-17%2C_Flugzeuge_Junkers_Ju_87.jpg
+Nobel Prizes    https://en.wikipedia.org/wiki/Nobel_Prizes
+Nobel Memorial Prize in Economic Sciences       https://en.wikipedia.org/wiki/Nobel_Memorial_Prize_in_Economic_Sciences
+Adolf Hitler    https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Hitler_portrait_crop_%28cropped%29%282%29.jpg/960px-Hitler_portrait_crop_%28cropped%29%282%29.jpg
+Richard Kuhn    https://upload.wikimedia.org/wikipedia/commons/3/3f/Richard_Kuhn_ETH-Bib_Dia_248-065.jpg
+Adolf Butenandt https://upload.wikimedia.org/wikipedia/commons/8/8d/Bad_Schachen_Portr%C3%A4t%3B_Adolf_Butenandt_-_W134Nr.020182c_-_Willy_Pragher_%28cropped%29.jpg
+Gerhard Domagk  https://upload.wikimedia.org/wikipedia/commons/d/df/Gerhard_Domagk_nobel.jpg
+Carl von Ossietzky      https://upload.wikimedia.org/wikipedia/commons/5/5c/Carl_von_Ossietzky.jpg
+Chinese government      https://en.wikipedia.org/wiki/Government_of_China
+Liu Xiaobo      https://upload.wikimedia.org/wikipedia/en/a/a3/Liu_Xiaobo.jpg
+Soviet Union    https://en.wikipedia.org/wiki/Soviet_Union
+Boris Pasternak https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Boris_Pasternak_1958_photo.jpg/960px-Boris_Pasternak_1958_photo.jpg
+Liu Xiaobo      https://upload.wikimedia.org/wikipedia/en/a/a3/Liu_Xiaobo.jpg
+Carl von Ossietzky      https://upload.wikimedia.org/wikipedia/commons/5/5c/Carl_von_Ossietzky.jpg
+Aung San Suu Kyi        https://upload.wikimedia.org/wikipedia/commons/9/97/Aung_San_Suu_Kyi_at_the_Enthronement_of_Naruhito_%281%29.jpg
+Jean-Paul Sartre        https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Jean_Paul_Sartre_1965.jpg/960px-Jean_Paul_Sartre_1965.jpg
+Lê Ðức Thọ        https://upload.wikimedia.org/wikipedia/commons/b/b7/Le_Duc_Tho_at_Orly_Field_1972_%28cropped%29.jpg
+International Committee of the Red Cross        https://en.wikipedia.org/wiki/International_Committee_of_the_Red_Cross
+Nobel Peace Prize       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/President_Jimmy_Carter%27s_2002_Nobel_Peace_Prize_-_Bronze_Medal_-_At_Visitor%27s_Center_-_Plains_-_Georgia_-_USA_%2834208881752%29.jpg/960px-President_Jimmy_Carter%27s_2002_Nobel_Peace_Prize_-_Bronze_Medal_-_At_Visitor%27s_Center_-_Plains_-_Georgia_-_USA_%2834208881752%29.jpg
+UNHCR   https://en.wikipedia.org/wiki/UNHCR
+Nobel Peace Prize       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/President_Jimmy_Carter%27s_2002_Nobel_Peace_Prize_-_Bronze_Medal_-_At_Visitor%27s_Center_-_Plains_-_Georgia_-_USA_%2834208881752%29.jpg/960px-President_Jimmy_Carter%27s_2002_Nobel_Peace_Prize_-_Bronze_Medal_-_At_Visitor%27s_Center_-_Plains_-_Georgia_-_USA_%2834208881752%29.jpg
+Nobel Prize in Physics  https://en.wikipedia.org/wiki/Nobel_Prize_in_Physics
+John Bardeen    https://upload.wikimedia.org/wikipedia/commons/4/4a/Bardeen.jpg
+Nobel Prize in Chemistry        https://en.wikipedia.org/wiki/Nobel_Prize_in_Chemistry
+Frederick Sanger        https://upload.wikimedia.org/wikipedia/commons/f/f8/Frederick_Sanger2.jpg
+Karl Barry Sharpless    https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Barry_Sharpless_in_2026.jpg/960px-Barry_Sharpless_in_2026.jpg
+Marie Curie     https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg
+Linus Pauling   https://upload.wikimedia.org/wikipedia/commons/5/53/Linus_Pauling_in_the_1940s.jpg
+Marie Curie     https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg
+Physics https://en.wikipedia.org/wiki/List_of_Nobel_laureates_in_Physics
+Chemistry       https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/AlfredNobel_adjusted.jpg/960px-AlfredNobel_adjusted.jpg
+Literature      https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Mats_Malm_on_the_Nobel_Prize_in_Literature_2022.jpg/1280px-Mats_Malm_on_the_Nobel_Prize_in_Literature_2022.jpg
+Peace   https://upload.wikimedia.org/wikipedia/commons/9/92/Norske_nobelinstiutt_1.jpg
+Prize in Economic Sciences      https://upload.wikimedia.org/wikipedia/commons/0/0d/Nobel2008Economics_news_conference1.jpg
+Wilhelm Röntgen        https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Wilhelm_Conrad_R%C3%B6ntgen_%281888-1900%29%2C_88374_p.jpg/960px-Wilhelm_Conrad_R%C3%B6ntgen_%281888-1900%29%2C_88374_p.jpg
+Jacobus Henricus van 't Hoff    https://upload.wikimedia.org/wikipedia/commons/3/33/Jacobus_van_%27t_Hoff_by_Perscheid_1904.jpg
+Emil von Behring        https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Emil_von_Behring_sitzend.jpg/960px-Emil_von_Behring_sitzend.jpg
+Sully Prudhomme https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Sully_Prudhomme%2C_Ren%C3%A9-Fran%C3%A7ois-Armand%2C_BNF_Gallica.jpg/960px-Sully_Prudhomme%2C_Ren%C3%A9-Fran%C3%A7ois-Armand%2C_BNF_Gallica.jpg
+Henry Dunant    https://upload.wikimedia.org/wikipedia/commons/3/38/Henry_Dunant-young.jpg
+Frédéric Passy        https://upload.wikimedia.org/wikipedia/commons/3/38/Frederic_Passy.jpg
+Hendrik Lorentz https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Nobelprijswinnaars._H.A._Lorentz_%28cropped%29.jpg/960px-Nobelprijswinnaars._H.A._Lorentz_%28cropped%29.jpg
+Pieter Zeeman   https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Pieter_Zeeman.jpg/960px-Pieter_Zeeman.jpg
+Emil Fischer    https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Hermann_Emil_Fischer._Photograph_by_Atelier_Victoria%2C_1895._Wellcome_V0027668_%28cropped%29.jpg/960px-Hermann_Emil_Fischer._Photograph_by_Atelier_Victoria%2C_1895._Wellcome_V0027668_%28cropped%29.jpg
+Ronald Ross     https://upload.wikimedia.org/wikipedia/commons/7/76/Ronald_Ross.jpg
+Theodor Mommsen https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Theodor_Mommsen_2.jpg/960px-Theodor_Mommsen_2.jpg
+Élie Ducommun  https://upload.wikimedia.org/wikipedia/commons/9/9a/Ducommun.jpg
+Charles Albert Gobat    https://upload.wikimedia.org/wikipedia/commons/9/9b/Charles_Albert_Gobat2.jpg
+Henri Becquerel https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Paul_Nadar_-_Henri_Becquerel.jpg/960px-Paul_Nadar_-_Henri_Becquerel.jpg
+Pierre Curie    https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Pierre_Curie_by_Dujardin_c1906.jpg/960px-Pierre_Curie_by_Dujardin_c1906.jpg
+Marie Curie     https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg
+Svante Arrhenius        https://upload.wikimedia.org/wikipedia/commons/6/6c/Arrhenius2.jpg
+Niels Ryberg Finsen     https://upload.wikimedia.org/wikipedia/commons/f/f0/Niels_Ryberg_Finsen_portrait.jpg
+Bjørnstjerne Bjørnson https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portrett_av_Bj%C3%B8rnstjerne_Bj%C3%B8rnson%2C_1909_-_no-nb_digifoto_20150129_00043_bldsa_BB0791_-_Restoration.jpg/960px-Portrett_av_Bj%C3%B8rnstjerne_Bj%C3%B8rnson%2C_1909_-_no-nb_digifoto_20150129_00043_bldsa_BB0791_-_Restoration.jpg
+Randal Cremer   https://upload.wikimedia.org/wikipedia/commons/1/1e/Cremer.jpg
+Lord Rayleigh   https://upload.wikimedia.org/wikipedia/commons/2/28/John_William_Strutt.jpg
+William Ramsay  https://upload.wikimedia.org/wikipedia/commons/c/cb/William_Ramsay.jpg
+Ivan Pavlov     https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Ivan_Pavlov_NLM3.jpg/960px-Ivan_Pavlov_NLM3.jpg
+Frédéric Mistral      https://upload.wikimedia.org/wikipedia/commons/9/97/Frederic_Mistral_portrait_photo.jpg
+José Echegaray https://upload.wikimedia.org/wikipedia/commons/9/9b/Jos%C3%A9_Echegaray_y_Eizaguirre.jpg
+Institut de Droit International https://en.wikipedia.org/wiki/Institut_de_Droit_International
+Philipp Lenard  https://upload.wikimedia.org/wikipedia/commons/7/7c/Lenard.jpg
+Adolf von Baeyer        https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Adolf_von_Baeyer_CIPB0531_%28cropped%29.jpg/960px-Adolf_von_Baeyer_CIPB0531_%28cropped%29.jpg
+Robert Koch     https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/RobertKoch_cropped.jpg/960px-RobertKoch_cropped.jpg
+Henryk Sienkiewicz      https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Henryk_Sienkiewicz_ca_1885_%2845871548%29_%28cropped%29.jpg/960px-Henryk_Sienkiewicz_ca_1885_%2845871548%29_%28cropped%29.jpg
+Bertha von Suttner      https://upload.wikimedia.org/wikipedia/commons/5/50/Bertha_von_Suttner_nobel.jpg
+J. J. Thomson   https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/J.J_Thomson.jpg/960px-J.J_Thomson.jpg
+Henri Moissan   https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Henri_Moissan.jpg/960px-Henri_Moissan.jpg
+Camillo Golgi   https://upload.wikimedia.org/wikipedia/commons/5/57/Camillo_Golgi_nobel.jpg
+Santiago Ramón y Cajal https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Santiago_Ram%C3%B3n_y_Cajal_%281852-1934%29_portrait_%28restored%29.jpg/960px-Santiago_Ram%C3%B3n_y_Cajal_%281852-1934%29_portrait_%28restored%29.jpg
+Giosuè Carducci        https://upload.wikimedia.org/wikipedia/commons/2/2f/Giosu%C3%A8_Carducci2.jpg
+Theodore Roosevelt      https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Theodore_Roosevelt_by_the_Pach_Bros_%284x5_cropped%29.jpg/960px-Theodore_Roosevelt_by_the_Pach_Bros_%284x5_cropped%29.jpg
+Albert A. Michelson     https://upload.wikimedia.org/wikipedia/commons/9/9e/Albert_Abraham_Michelson2.jpg
+Eduard Buchner  https://upload.wikimedia.org/wikipedia/commons/d/d1/Eduard_Buchner_%28Nobel_1907%29.jpg
+Charles Louis Alphonse Laveran  https://upload.wikimedia.org/wikipedia/commons/7/7f/Charles_Laveran_nobel.jpg
+Rudyard Kipling https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Rudyard_Kipling_%28portrait%29.jpg/960px-Rudyard_Kipling_%28portrait%29.jpg
+Ernesto Teodoro Moneta  https://upload.wikimedia.org/wikipedia/commons/7/7b/Ernesto_Teodoro_Moneta.jpg
+Louis Renault   https://en.wikipedia.org/wiki/Louis_Renault_(jurist)
+Gabriel Lippmann        https://upload.wikimedia.org/wikipedia/commons/4/4b/Gabriel_Lippmann2.jpg
+Ernest Rutherford       https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Sir_Ernest_Rutherford_LCCN2014716719_-_restoration1.jpg/960px-Sir_Ernest_Rutherford_LCCN2014716719_-_restoration1.jpg
+Élie Metchnikoff       https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Elie_Metchnikoff_-_Between_ca._1910_and_ca._1915_-_LOC.jpg/960px-Elie_Metchnikoff_-_Between_ca._1910_and_ca._1915_-_LOC.jpg
+Paul Ehrlich    https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Paul_Ehrlich_1915.jpg/960px-Paul_Ehrlich_1915.jpg
+Rudolf Christoph Eucken https://en.wikipedia.org/wiki/Rudolf_Christoph_Eucken
+Klas Pontus Arnoldson   https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/KP_Arnoldson_signed.jpg/960px-KP_Arnoldson_signed.jpg
+Fredrik Bajer   https://upload.wikimedia.org/wikipedia/commons/e/e2/Frederik_Bajer_by_E._M%C3%B8ller.jpg
+Karl Ferdinand Braun    https://upload.wikimedia.org/wikipedia/commons/5/55/Ferdinand_Braun.jpg
+Guglielmo Marconi       https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Guglielmo_Marconi.jpg/960px-Guglielmo_Marconi.jpg
+Wilhelm Ostwald https://upload.wikimedia.org/wikipedia/commons/5/5d/Wilhelm_Ostwald_by_Nicola_Perscheid.jpg
+Emil Theodor Kocher     https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Emil_Theodor_Kocher_%28slight_3x4_crop%29.jpg/960px-Emil_Theodor_Kocher_%28slight_3x4_crop%29.jpg
+Selma Lagerlöf https://upload.wikimedia.org/wikipedia/commons/1/11/Selma_Lagerl%C3%B6f.jpg
+Auguste Beernaert       https://upload.wikimedia.org/wikipedia/commons/4/47/Auguste_Beernaert%2803%29.jpg
+Paul Henri Balluet d'Estournelles de Constant   https://upload.wikimedia.org/wikipedia/commons/e/e1/Paul_Balluet_nobel.jpg
+Johannes Diderik van der Waals  https://upload.wikimedia.org/wikipedia/commons/7/7c/Johannes_Diderik_van_der_Waals.jpg
+Otto Wallach    https://upload.wikimedia.org/wikipedia/commons/4/4f/Otto_Wallach_1880s.jpg
+Albrecht Kossel https://upload.wikimedia.org/wikipedia/commons/e/eb/Albrecht_Kossel_nobel.jpg
+Paul Heyse      https://upload.wikimedia.org/wikipedia/commons/d/da/Paul_Heyse_1910.jpg
+International Peace Bureau      https://en.wikipedia.org/wiki/International_Peace_Bureau
+Wilhelm Wien    https://upload.wikimedia.org/wikipedia/commons/2/2b/Wien2.jpg
+Marie Curie     https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg
+Allvar Gullstrand       https://en.wikipedia.org/wiki/Allvar_Gullstrand
+Maurice Maeterlinck     https://upload.wikimedia.org/wikipedia/commons/7/70/Maurice_Maeterlinck_2.jpg
+Tobias Asser    https://upload.wikimedia.org/wikipedia/commons/a/ac/TMCasser.jpg
+Alfred Hermann Fried    https://upload.wikimedia.org/wikipedia/commons/9/93/Alfred_Hermann_Fried_nobel.jpg
+Gustaf Dalén   https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Nils_Gustaf_Dal%C3%A9n.jpg/960px-Nils_Gustaf_Dal%C3%A9n.jpg
+Victor Grignard https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Viktor-grignard_%28cropped%29.jpg/960px-Viktor-grignard_%28cropped%29.jpg
+Paul Sabatier   https://upload.wikimedia.org/wikipedia/commons/8/8a/Paul_Sabatier.jpg
+Alexis Carrel   https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Alexis_Carrel_02.jpg/960px-Alexis_Carrel_02.jpg
+Gerhart Hauptmann       https://upload.wikimedia.org/wikipedia/commons/0/05/Gerhart_Hauptmann_nobel.jpg
+Elihu Root      https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Elihu_Root%2C_Secretary_of_War%2C_half-length_portrait%2C_facing_slightly_left_LCCN90714305_Trim_%28cropped%29.jpg/960px-Elihu_Root%2C_Secretary_of_War%2C_half-length_portrait%2C_facing_slightly_left_LCCN90714305_Trim_%28cropped%29.jpg
+Heike Kamerlingh Onnes  https://upload.wikimedia.org/wikipedia/commons/9/94/Kamerlingh_portret.jpg
+Alfred Werner   https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Alfred_Werner_ETH-Bib_Portr_09965.jpg/960px-Alfred_Werner_ETH-Bib_Portr_09965.jpg
+Charles Richet  https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Charles_Robert_Richet_3.jpg/960px-Charles_Robert_Richet_3.jpg
+Rabindranath Tagore     https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/1926_Rabindrath_Tagore.jpg/960px-1926_Rabindrath_Tagore.jpg
+Henri La Fontaine       https://upload.wikimedia.org/wikipedia/commons/8/86/HenriLaFontaine.jpg
+Max von Laue    https://upload.wikimedia.org/wikipedia/commons/0/07/Max_von_Laue_1914.jpg
+Theodore William Richards       https://upload.wikimedia.org/wikipedia/commons/6/6d/Theodore_william_richards.jpg
+Robert Bárány https://upload.wikimedia.org/wikipedia/commons/6/61/Robert_Barany.jpg
+William Henry Bragg     https://upload.wikimedia.org/wikipedia/commons/2/26/Wh-bragg.jpg
+Lawrence Bragg  https://upload.wikimedia.org/wikipedia/commons/1/1d/Wl-bragg.jpg
+Richard Willstätter    https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/ETH-BIB-Willst%C3%A4tter%2C_Richard_%281872-1942%29-Portrait-Portr_07881.tif/lossy-page1-960px-ETH-BIB-Willst%C3%A4tter%2C_Richard_%281872-1942%29-Portrait-Portr_07881.tif.jpg
+Romain Rolland  https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Romain_Rolland_de_face_au_balcon%2C_Meurisse%2C_1914_retouche.jpg/960px-Romain_Rolland_de_face_au_balcon%2C_Meurisse%2C_1914_retouche.jpg
+Verner von Heidenstam   https://en.wikipedia.org/wiki/Verner_von_Heidenstam
+Charles Glover Barkla   https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Charles_Glover_Barkla_01.jpg/960px-Charles_Glover_Barkla_01.jpg
+Karl Adolph Gjellerup   https://upload.wikimedia.org/wikipedia/commons/3/35/Karl_Gjellerup.jpg
+Henrik Pontoppidan      https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Henrik_Pontoppidan_1913.jpg/960px-Henrik_Pontoppidan_1913.jpg
+International Committee of the Red Cross        https://en.wikipedia.org/wiki/International_Committee_of_the_Red_Cross
+Max Planck      https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Max_Planck_by_Hugo_Erfurth_1938cr_-_restoration1.jpg/960px-Max_Planck_by_Hugo_Erfurth_1938cr_-_restoration1.jpg
+Fritz Haber     https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Portret_van_Professor_Fritz_Haber%2C_een_chemicus_uit_Duitsland_%28foto_1918-_1934%29%2C_SFA002023057.jpg/960px-Portret_van_Professor_Fritz_Haber%2C_een_chemicus_uit_Duitsland_%28foto_1918-_1934%29%2C_SFA002023057.jpg
+Johannes Stark  https://upload.wikimedia.org/wikipedia/commons/1/1d/Johannes_Stark.jpg
+Jules Bordet    https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Jules_Bordet_signed.jpg/960px-Jules_Bordet_signed.jpg
+Carl Spitteler  https://upload.wikimedia.org/wikipedia/commons/6/62/Carl_Spitteler_1919.jpg
+Woodrow Wilson  https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/President_Woodrow_Wilson_Harris_%26_Ewing_%283x4_cropped_b%29.jpg/960px-President_Woodrow_Wilson_Harris_%26_Ewing_%283x4_cropped_b%29.jpg
+Charles Édouard Guillaume      https://upload.wikimedia.org/wikipedia/commons/5/51/Guillaume_1920.jpg
+Walther Nernst  https://upload.wikimedia.org/wikipedia/commons/7/7d/Walther_Nernst_1900s.jpg
+August Krogh    https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/August_Krogh_Bain_32006.jpg/960px-August_Krogh_Bain_32006.jpg
+Knut Hamsun     https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Hamsun_bldsa_HA0341.jpg/960px-Hamsun_bldsa_HA0341.jpg
+Léon Bourgeois https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/L%C3%A9on_Bourgeois.jpg/1280px-L%C3%A9on_Bourgeois.jpg
+Albert Einstein https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Albert_Einstein_Head_cleaned.jpg/1280px-Albert_Einstein_Head_cleaned.jpg
+Frederick Soddy https://upload.wikimedia.org/wikipedia/commons/5/5c/Frederick_Soddy.jpg
+Anatole France  https://upload.wikimedia.org/wikipedia/commons/c/c1/Anatole_France_young_years.jpg
+Hjalmar Branting        https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Hjalmar_Branting_by_Goodwin.jpg/960px-Hjalmar_Branting_by_Goodwin.jpg
+Christian Lous Lange    https://upload.wikimedia.org/wikipedia/commons/c/c2/Christian_Lous_Lange.jpg
+Niels Bohr      https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Niels_Bohr.jpg/960px-Niels_Bohr.jpg
+Francis William Aston   https://upload.wikimedia.org/wikipedia/commons/c/c6/Francis_William_Aston.jpg
+Archibald Hill  https://upload.wikimedia.org/wikipedia/commons/c/c9/Archibald_Vivian_Hill.jpg
+Otto Fritz Meyerhof     https://upload.wikimedia.org/wikipedia/commons/0/05/Otto_Fritz_Meyerhof.jpg
+Jacinto Benavente       https://upload.wikimedia.org/wikipedia/commons/9/96/Jacinto_Benavente_y_Martinez.jpg
+Fridtjof Nansen https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Fridtjof_Nansen_LOC_03377u-3.jpg/960px-Fridtjof_Nansen_LOC_03377u-3.jpg
+Robert Andrews Millikan https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Millikan.jpg/1280px-Millikan.jpg
+Fritz Pregl     https://upload.wikimedia.org/wikipedia/commons/1/1d/Fritz_Pregl.jpg
+Frederick Banting       https://upload.wikimedia.org/wikipedia/commons/5/57/F._G._Banting_1923.jpg
+John Macleod    https://en.wikipedia.org/wiki/John_Macleod_(physiologist)
+W. B. Yeats     https://upload.wikimedia.org/wikipedia/commons/8/88/William_Butler_Yeats_by_George_Charles_Beresford.jpg
+Manne Siegbahn  https://upload.wikimedia.org/wikipedia/commons/e/eb/1924_Karl_Manne_Siegbahn.jpg
+Willem Einthoven        https://upload.wikimedia.org/wikipedia/commons/4/49/Willem_Einthoven.jpg
+Władysław Reymont     https://upload.wikimedia.org/wikipedia/commons/a/a1/Wladyslaw_Reymont_1924.jpg
+James Franck    https://upload.wikimedia.org/wikipedia/commons/7/71/James_Franck_1925.jpg
+Gustav Ludwig Hertz     https://upload.wikimedia.org/wikipedia/commons/5/51/Gustav_Hertz.jpg
+Richard Adolf Zsigmondy https://upload.wikimedia.org/wikipedia/commons/9/9b/Richard_Adolf_Zsigmondy.jpg
+George Bernard Shaw     https://upload.wikimedia.org/wikipedia/en/thumb/3/30/Bernard-Shaw-ILN-1911-original.jpg/960px-Bernard-Shaw-ILN-1911-original.jpg
+Austen Chamberlain      https://upload.wikimedia.org/wikipedia/commons/a/a7/Austen_Chamberlain_MP.jpg
+Charles G. Dawes        https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Chas_G_Dawes-H%26E_%283x4%29.jpg/960px-Chas_G_Dawes-H%26E_%283x4%29.jpg
+Jean Baptiste Perrin    https://upload.wikimedia.org/wikipedia/commons/e/e6/Jean_Perrin_1926.jpg
+Theodor Svedberg        https://upload.wikimedia.org/wikipedia/commons/9/92/The-svedberg-1.jpg
+Johannes Fibiger        https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/J_Fibiger.jpg/960px-J_Fibiger.jpg
+Grazia Deledda  https://upload.wikimedia.org/wikipedia/commons/c/c7/Grazia_Deledda_1926.jpg
+Aristide Briand https://en.wikipedia.org/wiki/Aristide_Briand
+Gustav Stresemann       https://upload.wikimedia.org/wikipedia/commons/2/2b/Bundesarchiv_Bild_146-1989-040-27%2C_Gustav_Stresemann.jpg
+Arthur Compton  https://upload.wikimedia.org/wikipedia/commons/c/c0/Arthur_Compton_1927.jpg
+Charles Thomson Rees Wilson     https://upload.wikimedia.org/wikipedia/commons/2/20/CTR_Wilson.jpg
+Heinrich Otto Wieland   https://upload.wikimedia.org/wikipedia/commons/0/07/Heinrich_Wieland.jpg
+Julius Wagner-Jauregg   https://upload.wikimedia.org/wikipedia/commons/f/fa/Julius_Wagner-Jauregg_ohne_Unterschrift.jpg
+Henri Bergson   https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Henri_Bergson_02.jpg/960px-Henri_Bergson_02.jpg
+Ferdinand Buisson       https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/1930_Ferdinand_Buisson.jpg/960px-1930_Ferdinand_Buisson.jpg
+Ludwig Quidde   https://upload.wikimedia.org/wikipedia/commons/1/17/Ludwig_Quidde_nobel.jpg
+Owen Willans Richardson https://upload.wikimedia.org/wikipedia/commons/3/3b/Owen_Richardson.jpg
+Adolf Windaus   https://upload.wikimedia.org/wikipedia/commons/7/79/Windaus.jpg
+Charles Nicolle https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Charles_Nicolle_at_microscope.jpg/1280px-Charles_Nicolle_at_microscope.jpg
+Sigrid Undset   https://upload.wikimedia.org/wikipedia/commons/1/14/Sigrid_Undset_1928.jpg
+Louis de Broglie        https://upload.wikimedia.org/wikipedia/commons/d/d2/Broglie_Big.jpg
+Arthur Harden   https://upload.wikimedia.org/wikipedia/commons/f/ff/ArthurHarden.jpg
+Hans von Euler-Chelpin  https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Hans_von_Euler-Chelpin_1934.jpg/960px-Hans_von_Euler-Chelpin_1934.jpg
+Christiaan Eijkman      https://upload.wikimedia.org/wikipedia/commons/a/ac/Christiaan_Eijkman.jpg
+Frederick Gowland Hopkins       https://upload.wikimedia.org/wikipedia/commons/7/75/Frederick_Gowland_Hopkins_nobel.jpg
+Thomas Mann     https://upload.wikimedia.org/wikipedia/commons/9/95/Thomas_Mann_1929.jpg
+Frank B. Kellogg        https://upload.wikimedia.org/wikipedia/commons/a/a2/FrankKellogg.jpg
+C. V. Raman     https://en.wikipedia.org/wiki/C._V._Raman
+Hans Fischer    https://upload.wikimedia.org/wikipedia/commons/1/15/Hans_Fischer_%28Nobel%29.jpg
+Karl Landsteiner        https://upload.wikimedia.org/wikipedia/commons/e/e0/Karl_Landsteiner_nobel.jpg
+Sinclair Lewis  https://upload.wikimedia.org/wikipedia/commons/0/0a/Sinclair_Lewis_1930.jpg
+Nathan Söderblom       https://en.wikipedia.org/wiki/Nathan_S%C3%B6derblom
+Carl Bosch      https://upload.wikimedia.org/wikipedia/commons/d/da/Carl_Bosch.jpg
+Friedrich Bergius       https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Friedrich_Bergius.jpg/960px-Friedrich_Bergius.jpg
+Otto Heinrich Warburg   https://upload.wikimedia.org/wikipedia/commons/c/c1/Otto_Warburg.jpg
+Erik Axel Karlfeldt     https://upload.wikimedia.org/wikipedia/commons/e/e7/Erik_Axel_Karlfeldt_1931.jpg
+Jane Addams     https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Jane_Addams_-_Bain_News_Service.jpg/960px-Jane_Addams_-_Bain_News_Service.jpg
+Nicholas Murray Butler  https://upload.wikimedia.org/wikipedia/commons/5/56/Portrait_of_Nicholas_Murray_Butler.jpg
+Werner Heisenberg       https://upload.wikimedia.org/wikipedia/commons/f/f8/Bundesarchiv_Bild183-R57262%2C_Werner_Heisenberg.jpg
+Irving Langmuir https://upload.wikimedia.org/wikipedia/commons/f/f0/Irving_Langmuir.jpg
+Charles Scott Sherrington       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Charles_Scott_Sherrington2.jpg/960px-Charles_Scott_Sherrington2.jpg
+Edgar Adrian    https://upload.wikimedia.org/wikipedia/commons/5/51/Edgar_Douglas_Adrian_nobel.jpg
+John Galsworthy https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/John_galsworthy.jpg/960px-John_galsworthy.jpg
+Erwin Schrödinger      https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Erwin_Schr%C3%B6dinger_-_Narodowe_Archiwum_Cyfrowe_%281-E-939%29.jpg/960px-Erwin_Schr%C3%B6dinger_-_Narodowe_Archiwum_Cyfrowe_%281-E-939%29.jpg
+Paul Dirac      https://upload.wikimedia.org/wikipedia/commons/5/50/Paul_Dirac%2C_1933.jpg
+Thomas Hunt Morgan      https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Thomas_Hunt_Morgan.jpg/960px-Thomas_Hunt_Morgan.jpg
+Ivan Bunin      https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/%D0%98%D0%B2%D0%B0%D0%BD_%D0%91%D1%83%D0%BD%D0%B8%D0%BD_%281928%29.jpg/960px-%D0%98%D0%B2%D0%B0%D0%BD_%D0%91%D1%83%D0%BD%D0%B8%D0%BD_%281928%29.jpg
+Norman Angell   https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Norman_Angell_01.jpg/960px-Norman_Angell_01.jpg
+Harold Urey     https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Harold_Urey%2C_1934.jpg/960px-Harold_Urey%2C_1934.jpg
+George Whipple  https://upload.wikimedia.org/wikipedia/commons/9/95/George_Whipple_nobel.jpg
+George Minot    https://upload.wikimedia.org/wikipedia/commons/b/b0/George_Minot_nobel.jpg
+William P. Murphy       https://upload.wikimedia.org/wikipedia/commons/6/6c/William_P_Murphy.jpg
+Luigi Pirandello        https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Luigi_Pirandello_1932.jpg/1280px-Luigi_Pirandello_1932.jpg
+Arthur Henderson        https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/1910_Arthur_Henderson.jpg/960px-1910_Arthur_Henderson.jpg
+James Chadwick  https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/James_Chadwick.jpg/960px-James_Chadwick.jpg
+Frédéric Joliot-Curie https://upload.wikimedia.org/wikipedia/commons/d/d7/Joliot-fred.jpg
+Irène Joliot-Curie     https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Joliot-curie.jpg/960px-Joliot-curie.jpg
+Hans Spemann    https://upload.wikimedia.org/wikipedia/commons/8/82/Hans_Spemann_nobel.jpg
+Carl von Ossietzky      https://upload.wikimedia.org/wikipedia/commons/5/5c/Carl_von_Ossietzky.jpg
+Victor Francis Hess     https://upload.wikimedia.org/wikipedia/commons/c/cc/Hess.jpg
+Carl David Anderson     https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Carl_David_Anderson.jpg/960px-Carl_David_Anderson.jpg
+Peter Debye     https://upload.wikimedia.org/wikipedia/commons/6/62/Debye100.jpg
+Henry Hallett Dale      https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Henry_Hallett_Dale3.jpg/1280px-Henry_Hallett_Dale3.jpg
+Otto Loewi      https://upload.wikimedia.org/wikipedia/commons/9/99/Otto_Loewi_nobel.jpg
+Eugene O'Neill  https://upload.wikimedia.org/wikipedia/commons/3/38/ONeill-Eugene-LOC.jpg
+Carlos Saavedra Lamas   https://upload.wikimedia.org/wikipedia/commons/2/2a/Carlos_Saavedra_Lamas.jpg
+Clinton Davisson        https://upload.wikimedia.org/wikipedia/commons/0/00/Clinton_Davisson.jpg
+George Paget Thomson    https://upload.wikimedia.org/wikipedia/commons/c/c2/George_Paget_Thomson.jpg
+Norman Haworth  https://upload.wikimedia.org/wikipedia/commons/3/31/Norman_Haworth.jpg
+Paul Karrer     https://upload.wikimedia.org/wikipedia/commons/4/43/Paul_Karrer.jpg
+Albert Szent-Györgyi   https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Szent-Gy%C3%B6rgyi_Albert%2C_Nobel-d%C3%ADjas_%C3%A9s_Kossuth-d%C3%ADjas_orvos%2C_biok%C3%A9mikus._Fortepan_74535.jpg/960px-Szent-Gy%C3%B6rgyi_Albert%2C_Nobel-d%C3%ADjas_%C3%A9s_Kossuth-d%C3%ADjas_orvos%2C_biok%C3%A9mikus._Fortepan_74535.jpg
+Roger Martin du Gard    https://upload.wikimedia.org/wikipedia/commons/7/7d/Roger_Martin_du_Gard_1937.jpg
+Robert Cecil, 1st Viscount Cecil of Chelwood    https://upload.wikimedia.org/wikipedia/commons/2/28/Robert_Cecil%2C_1st_Viscount_Cecil_of_Chelwood_looking_right_circa_1915.jpg
+Enrico Fermi    https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Enrico_Fermi_1943-49.jpg/1280px-Enrico_Fermi_1943-49.jpg
+Richard Kuhn    https://upload.wikimedia.org/wikipedia/commons/3/3f/Richard_Kuhn_ETH-Bib_Dia_248-065.jpg
+Corneille Heymans       https://upload.wikimedia.org/wikipedia/commons/4/4d/Corneille_Heymans_nobel.jpg
+Pearl S. Buck   https://upload.wikimedia.org/wikipedia/commons/f/fe/Pearl_S._Buck_-_1960.jpg
+Nansen International Office for Refugees        https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/No-nb_bldsa_q6c001.jpg/960px-No-nb_bldsa_q6c001.jpg
+Ernest Lawrence https://upload.wikimedia.org/wikipedia/commons/6/6a/Ernest_Lawrence.jpg
+Adolf Butenandt https://upload.wikimedia.org/wikipedia/commons/8/8d/Bad_Schachen_Portr%C3%A4t%3B_Adolf_Butenandt_-_W134Nr.020182c_-_Willy_Pragher_%28cropped%29.jpg
+Leopold Ružička       https://upload.wikimedia.org/wikipedia/commons/d/d8/Leopold_Ruzicka_ETH-Bib_Portr_00239.jpg
+Gerhard Domagk  https://upload.wikimedia.org/wikipedia/commons/d/df/Gerhard_Domagk_nobel.jpg
+Frans Eemil Sillanpää https://upload.wikimedia.org/wikipedia/commons/1/1d/FransEemilSillanp%C3%A4%C3%A4.jpg
+Otto Stern      https://upload.wikimedia.org/wikipedia/commons/8/88/Otto_Stern.jpg
+George de Hevesy        https://upload.wikimedia.org/wikipedia/commons/b/b4/George_de_Hevesy.jpg
+Henrik Dam      https://upload.wikimedia.org/wikipedia/commons/1/1e/Henrik_Dam_nobel.jpg
+Edward Adelbert Doisy   https://upload.wikimedia.org/wikipedia/commons/6/65/Edward_A_Doisy.jpg
+Isidor Isaac Rabi       https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/II_Rabi.jpg/960px-II_Rabi.jpg
+Otto Hahn       https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Otto_Hahn_1970.jpg/960px-Otto_Hahn_1970.jpg
+Joseph Erlanger https://upload.wikimedia.org/wikipedia/commons/b/b5/Joseph_Erlanger_nobel.jpg
+Herbert Spencer Gasser  https://upload.wikimedia.org/wikipedia/commons/a/a3/Herbert_Spencer_Gasser_nobel.jpg
+Johannes V. Jensen      https://upload.wikimedia.org/wikipedia/commons/8/85/Johannes_Vilhelm_Jensen_1944.jpg
+International Committee of the Red Cross        https://en.wikipedia.org/wiki/International_Committee_of_the_Red_Cross
+Wolfgang Pauli  https://upload.wikimedia.org/wikipedia/commons/4/43/Pauli.jpg
+Artturi Ilmari Virtanen https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Virtanen.jpg/960px-Virtanen.jpg
+Alexander Fleming       https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Synthetic_Production_of_Penicillin_TR1468.jpg/960px-Synthetic_Production_of_Penicillin_TR1468.jpg
+Ernst Chain     https://upload.wikimedia.org/wikipedia/commons/a/ae/Ernst_Boris_Chain_1945.jpg
+Howard Florey   https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Sir_Howard_Florey.jpg/960px-Sir_Howard_Florey.jpg
+Gabriela Mistral        https://upload.wikimedia.org/wikipedia/commons/6/64/Gabriela_Mistral_1945.jpg
+Cordell Hull    https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Cordell_Hull%2C_NPG-9700446C_1.jpg/960px-Cordell_Hull%2C_NPG-9700446C_1.jpg
+Percy Williams Bridgman https://upload.wikimedia.org/wikipedia/commons/9/9a/Bridgman.jpg
+James B. Sumner https://upload.wikimedia.org/wikipedia/commons/8/84/James_Batcheller_Sumner.jpg
+John Howard Northrop    https://upload.wikimedia.org/wikipedia/commons/3/3a/John_Howard_Northrop.jpg
+Wendell Meredith Stanley        https://upload.wikimedia.org/wikipedia/commons/5/53/Wendell_Meredith_Stanley.jpg
+Hermann Joseph Muller   https://upload.wikimedia.org/wikipedia/commons/1/11/HJ_Muller_1952.jpg
+Hermann Hesse   https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Hermann_Hesse_2.jpg/1280px-Hermann_Hesse_2.jpg
+Emily Greene Balch      https://upload.wikimedia.org/wikipedia/commons/6/6d/EmilyGreeneBalch.jpg
+John Mott       https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/John_Raleigh_Mott.jpg/960px-John_Raleigh_Mott.jpg
+Edward Victor Appleton  https://upload.wikimedia.org/wikipedia/commons/5/58/Appleton.jpg
+Robert Robinson https://upload.wikimedia.org/wikipedia/commons/9/93/Robert_Robinson_organic_chemist.jpg
+Carl Ferdinand Cori     https://upload.wikimedia.org/wikipedia/commons/3/31/Carl_Ferdinand_Cori.jpg
+Gerty Cori      https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Gerty_Theresa_Cori.jpg/960px-Gerty_Theresa_Cori.jpg
+Bernardo Houssay        https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Bernardo_Alberto_Houssay.jpg/960px-Bernardo_Alberto_Houssay.jpg
+André Gide     https://upload.wikimedia.org/wikipedia/commons/4/42/Andr%C3%A9_Gide.jpg
+Friends Service Council https://en.wikipedia.org/wiki/Quaker_Peace_and_Social_Witness
+American Friends Service Committee      https://en.wikipedia.org/wiki/American_Friends_Service_Committee
+Patrick Blackett        https://upload.wikimedia.org/wikipedia/commons/7/70/Blackett.jpg
+Arne Tiselius   https://upload.wikimedia.org/wikipedia/commons/d/d8/Arne_Tiselius_2.jpg
+Paul Hermann Müller    https://upload.wikimedia.org/wikipedia/commons/d/d6/Paul_Hermann_M%C3%BCller_nobel.jpg
+T. S. Eliot     https://upload.wikimedia.org/wikipedia/commons/2/26/Thomas_Stearns_Eliot_by_Lady_Ottoline_Morrell_%281934%29.jpg
+Hideki Yukawa   https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Yukawa.jpg/960px-Yukawa.jpg
+William Giauque https://upload.wikimedia.org/wikipedia/en/2/20/William_Giauque_Nobel.jpg
+Walter Rudolf Hess      https://upload.wikimedia.org/wikipedia/commons/c/cb/Walter_Hess.jpg
+António Egas Moniz     https://upload.wikimedia.org/wikipedia/commons/c/c2/Moniz.jpg
+William Faulkner        https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Carl_Van_Vechten_-_William_Faulkner_%28greyscale_and_cropped%29.jpg/960px-Carl_Van_Vechten_-_William_Faulkner_%28greyscale_and_cropped%29.jpg
+John Boyd Orr   https://upload.wikimedia.org/wikipedia/commons/4/4f/John_Boyd_Orr_nobel.jpg
+C. F. Powell    https://upload.wikimedia.org/wikipedia/commons/c/ca/Cecil_Powell.jpg
+Otto Diels      https://upload.wikimedia.org/wikipedia/commons/3/38/Otto_Paul_Hermann_Diels.jpg
+Kurt Alder      https://upload.wikimedia.org/wikipedia/commons/3/30/Kurt_Alder_Nobel.jpg
+Philip Showalter Hench  https://upload.wikimedia.org/wikipedia/en/a/a9/Philip_Showalter_Hench.jpg
+Edward Calvin Kendall   https://upload.wikimedia.org/wikipedia/en/f/fa/Edward_Calvin_Kendall_nobel.jpg
+Tadeus Reichstein       https://upload.wikimedia.org/wikipedia/commons/4/4d/Thadeus_Reichstein_ETH-Bib_Portr_10137.jpg
+Bertrand Russell        https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Bertrand_Russell_smoking_in_1936.jpg/960px-Bertrand_Russell_smoking_in_1936.jpg
+Ralph Bunche    https://upload.wikimedia.org/wikipedia/commons/d/d0/Ralph_Bunche_-_1963_March_on_Washington.jpg
+John Cockcroft  https://upload.wikimedia.org/wikipedia/commons/e/ec/Cockcroft.jpg
+Ernest Walton   https://upload.wikimedia.org/wikipedia/commons/6/65/Ernest_Walton.jpg
+Edwin McMillan  https://upload.wikimedia.org/wikipedia/commons/8/86/Edwin_McMillan_Nobel.jpg
+Glenn T. Seaborg        https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Glenn_Seaborg_-_1964.jpg/1280px-Glenn_Seaborg_-_1964.jpg
+Max Theiler     https://upload.wikimedia.org/wikipedia/commons/b/b3/Max_Theiler_nobel.jpg
+Pär Lagerkvist https://upload.wikimedia.org/wikipedia/commons/0/04/Lagerkvist.jpg
+Léon Jouhaux   https://upload.wikimedia.org/wikipedia/commons/c/c9/L%C3%A9on_Jouhaux_nobel.jpg
+Felix Bloch     https://upload.wikimedia.org/wikipedia/commons/5/57/Bloch.jpg
+Edward Mills Purcell    https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Edward_Mills_Purcell.jpg/960px-Edward_Mills_Purcell.jpg
+Archer Martin   https://upload.wikimedia.org/wikipedia/commons/d/df/Archer_John_Porter_Martin_Nobel.jpg
+Richard Laurence Millington Synge       https://upload.wikimedia.org/wikipedia/commons/4/45/Richard_Laurence_Millington_Synge.jpg
+Selman Waksman  https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Selman_Waksman_NYWTS.jpg/1280px-Selman_Waksman_NYWTS.jpg
+François Mauriac       https://upload.wikimedia.org/wikipedia/commons/9/99/Fran%C3%A7ois_Mauriac_redux.jpg
+Albert Schweitzer       https://upload.wikimedia.org/wikipedia/commons/5/58/Bundesarchiv_Bild_183-D0116-0041-019%2C_Albert_Schweitzer.jpg
+Frits Zernike   https://upload.wikimedia.org/wikipedia/commons/4/4d/Zernike.jpg
+Hermann Staudinger      https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Hermann_Staudinger.jpg/960px-Hermann_Staudinger.jpg
+Hans Adolf Krebs        https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Hans_Adolf_Krebs.jpg/960px-Hans_Adolf_Krebs.jpg
+Fritz Albert Lipmann    https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Portrait_of_Fritz_Albert_Lipmann_%281899-1986%29%2C_Biochemist_%282551001689%29.jpg/960px-Portrait_of_Fritz_Albert_Lipmann_%281899-1986%29%2C_Biochemist_%282551001689%29.jpg
+Winston Churchill       https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Sir_Winston_Churchill_-_19086236948_%28restored%29.jpg/1280px-Sir_Winston_Churchill_-_19086236948_%28restored%29.jpg
+George Marshall https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Army_Chief_of_Staff_General_George_C._Marshall_official_Portrait_%28cropped%29%28b%29.jpg/960px-Army_Chief_of_Staff_General_George_C._Marshall_official_Portrait_%28cropped%29%28b%29.jpg
+Max Born        https://upload.wikimedia.org/wikipedia/commons/f/f7/Max_Born.jpg
+Walther Bothe   https://upload.wikimedia.org/wikipedia/commons/e/ea/Bothe.jpg
+Linus Pauling   https://upload.wikimedia.org/wikipedia/commons/5/53/Linus_Pauling_in_the_1940s.jpg
+John Franklin Enders    https://upload.wikimedia.org/wikipedia/en/8/83/John_Franklin_Enders_nobel.jpg
+Frederick Chapman Robbins       https://upload.wikimedia.org/wikipedia/commons/4/45/Frederick_Chapman_Robbins_nobel.jpg
+Thomas Huckle Weller    https://upload.wikimedia.org/wikipedia/commons/7/75/Thomas_Huckle_Weller_nobel.jpg
+Ernest Hemingway        https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/ErnestHemingway.jpg/1280px-ErnestHemingway.jpg
+United Nations High Commissioner for Refugees   https://en.wikipedia.org/wiki/United_Nations_High_Commissioner_for_Refugees
+Willis Lamb     https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Willis_E._Lamb.jpg/960px-Willis_E._Lamb.jpg
+Polykarp Kusch  https://upload.wikimedia.org/wikipedia/commons/9/9d/Polykarp_Kusch.jpg
+Vincent du Vigneaud     https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Dr._Vincent_du_Vigneaud.jpg/960px-Dr._Vincent_du_Vigneaud.jpg
+Hugo Theorell   https://upload.wikimedia.org/wikipedia/commons/2/27/Hugo_Theorell_nobel.jpg
+Halldór Laxness        https://upload.wikimedia.org/wikipedia/commons/4/4d/Halld%C3%B3r_Kiljan_Laxness_1955.jpg
+John Bardeen    https://upload.wikimedia.org/wikipedia/commons/4/4a/Bardeen.jpg
+Walter Houser Brattain  https://upload.wikimedia.org/wikipedia/commons/c/c4/Brattain.jpg
+William Shockley        https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Shockley.jpg/1280px-Shockley.jpg
+Cyril Norman Hinshelwood        https://upload.wikimedia.org/wikipedia/commons/7/7d/Cyril_Norman_Hinshelwood_Nobel.jpg
+Nikolay Semyonov        https://upload.wikimedia.org/wikipedia/commons/1/11/Nikolay_Semyonov_Nobel.jpg
+André Frédéric Cournand      https://upload.wikimedia.org/wikipedia/commons/4/47/Andr%C3%A9_Fr%C3%A9d%C3%A9ric_Cournand_nobel.jpg
+Werner Forssmann        https://upload.wikimedia.org/wikipedia/commons/9/9f/Werner_Forssmann_nobel.jpg
+Dickinson W. Richards   https://upload.wikimedia.org/wikipedia/commons/7/77/Dickinson_W._Richards_nobel.jpg
+Juan Ramón Jiménez    https://en.wikipedia.org/wiki/Juan_Ram%C3%B3n_Jim%C3%A9nez
+Yang Chen-Ning  https://upload.wikimedia.org/wikipedia/commons/b/b7/HD.3F.010_%2811086446676%29%28Chen_Ning_Yang%29.jpg
+Tsung-Dao Lee   https://upload.wikimedia.org/wikipedia/commons/5/53/TD_Lee.jpg
+The Lord Todd   https://upload.wikimedia.org/wikipedia/commons/5/59/Alexander_Todd_Nobel.jpg
+Daniel Bovet    https://upload.wikimedia.org/wikipedia/commons/b/b5/Daniel_Bovet_nobel.jpg
+Albert Camus    https://upload.wikimedia.org/wikipedia/commons/0/08/Albert_Camus%2C_gagnant_de_prix_Nobel%2C_portrait_en_buste%2C_pos%C3%A9_au_bureau%2C_faisant_face_%C3%A0_gauche%2C_cigarette_de_tabagisme.jpg
+Lester B. Pearson       https://upload.wikimedia.org/wikipedia/commons/4/48/Lester_B._Pearson_%281963_ABC_press_photo%29.jpg
+Pavel Cherenkov https://upload.wikimedia.org/wikipedia/commons/b/b8/Cerenkov.jpg
+Ilya Frank      https://upload.wikimedia.org/wikipedia/commons/8/8d/Ilya_Frank.jpg
+Igor Tamm       https://upload.wikimedia.org/wikipedia/commons/9/9f/Igor_Tamm.jpg
+Frederick Sanger        https://upload.wikimedia.org/wikipedia/commons/f/f8/Frederick_Sanger2.jpg
+George Beadle   https://upload.wikimedia.org/wikipedia/en/2/24/George_Wells_Beadle.jpg
+Edward Tatum    https://upload.wikimedia.org/wikipedia/en/3/32/Edward_Lawrie_Tatum_nobel.jpg
+Joshua Lederberg        https://upload.wikimedia.org/wikipedia/commons/e/e4/Joshua_Lederberg-nih.jpg
+Boris Pasternak https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Boris_Pasternak_1958_photo.jpg/960px-Boris_Pasternak_1958_photo.jpg
+Dominique Pire  https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Georges_Pire_1958.jpg/960px-Georges_Pire_1958.jpg
+Emilio Segrè   https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Segre.jpg/960px-Segre.jpg
+Owen Chamberlain        https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Owen_Chamberlain.jpg/960px-Owen_Chamberlain.jpg
+Jaroslav Heyrovský     https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Heyrovsky_Jaroslav.jpg/960px-Heyrovsky_Jaroslav.jpg
+Arthur Kornberg https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Arthur_Kornberg_%2830828410210%29_-_restoration1.jpg/1280px-Arthur_Kornberg_%2830828410210%29_-_restoration1.jpg
+Severo Ochoa    https://upload.wikimedia.org/wikipedia/commons/b/b2/Severo_Ochoa_1958b.jpg
+Salvatore Quasimodo     https://upload.wikimedia.org/wikipedia/commons/7/74/Salvatore_Quasimodo_1959.jpg
+Philip Noel-Baker       https://upload.wikimedia.org/wikipedia/commons/3/33/Philip_Noel-Baker_1942.jpg
+Donald A. Glaser        https://upload.wikimedia.org/wikipedia/commons/1/10/Donald_Glaser.jpg
+Willard Libby   https://upload.wikimedia.org/wikipedia/commons/3/34/24_Tagung_1974_Chemiker_Willard_F._Libby_-_W134Nr.101113a_-_Willy_Pragher.jpg
+Macfarlane Burnet       https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Frank_Macfarlane_Burnet.jpg/960px-Frank_Macfarlane_Burnet.jpg
+Peter Medawar   https://upload.wikimedia.org/wikipedia/commons/c/ca/Peter_Brian_Medawar.jpg
+Saint-John Perse        https://upload.wikimedia.org/wikipedia/commons/1/10/Saint-John_Perse_1960.jpg
+Albert Luthuli  https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Albert_Lutuli_Anefo.jpg/960px-Albert_Lutuli_Anefo.jpg
+Robert Hofstadter       https://upload.wikimedia.org/wikipedia/commons/b/bf/Robert_Hofstadter.jpg
+Rudolf Mössbauer       https://upload.wikimedia.org/wikipedia/commons/e/e2/Mossbauer.jpg
+Melvin Calvin   https://upload.wikimedia.org/wikipedia/commons/8/83/Melvin_Calvin_1960s.jpg
+Georg von Békésy      https://upload.wikimedia.org/wikipedia/en/9/9f/Georg_von_B%C3%A9k%C3%A9sy_nobel.jpg
+Ivo Andrić     https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/S._Kragujevic%2C_Ivo_Andric%2C_1961_%283x4_cropped%29.jpg/960px-S._Kragujevic%2C_Ivo_Andric%2C_1961_%283x4_cropped%29.jpg
+Dag Hammarskjöld       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Dag_Hammarskj%C3%B6ld.jpg/960px-Dag_Hammarskj%C3%B6ld.jpg
+Lev Landau      https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Landau.jpg/960px-Landau.jpg
+Max Perutz      https://upload.wikimedia.org/wikipedia/commons/8/8b/Max_Perutz_1962.jpg
+John Kendrew    https://upload.wikimedia.org/wikipedia/commons/e/ed/John_Kendrew_Nobel.jpg
+Francis Crick   https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Francis_Crick_crop.jpg/1280px-Francis_Crick_crop.jpg
+James Watson    https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/James_D._Watson_%28cropped%29.jpg/960px-James_D._Watson_%28cropped%29.jpg
+Maurice Wilkins https://upload.wikimedia.org/wikipedia/commons/7/7f/Maurice_H_F_Wilkins.jpg
+John Steinbeck  https://upload.wikimedia.org/wikipedia/commons/d/d7/John_Steinbeck_1939_%28cropped%29.jpg
+Linus Pauling   https://upload.wikimedia.org/wikipedia/commons/5/53/Linus_Pauling_in_the_1940s.jpg
+Eugene Wigner   https://upload.wikimedia.org/wikipedia/commons/e/ef/Wigner.jpg
+Maria Goeppert Mayer    https://upload.wikimedia.org/wikipedia/commons/2/22/Maria_Goeppert-Mayer.jpg
+J. Hans D. Jensen       https://upload.wikimedia.org/wikipedia/commons/e/e4/Johannes_Hans_Daniel_Jensen_%281907%E2%80%931973%29.jpg
+Karl Ziegler    https://upload.wikimedia.org/wikipedia/commons/b/b5/Karl_Ziegler_Nobel.jpg
+Giulio Natta    https://upload.wikimedia.org/wikipedia/commons/a/a6/Giulio_Natta_1960s.jpg
+John Eccles     https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Sir_John_Eccles_Wellcome_L0026812.jpg/960px-Sir_John_Eccles_Wellcome_L0026812.jpg
+Alan Hodgkin    https://upload.wikimedia.org/wikipedia/commons/0/07/Alan_Lloyd_Hodgkin_nobel.jpg
+Andrew Huxley   https://upload.wikimedia.org/wikipedia/commons/c/c7/Andrew_Fielding_Huxley_nobel.jpg
+Giorgos Seferis https://en.wikipedia.org/wiki/Giorgos_Seferis
+International Committee of the Red Cross        https://en.wikipedia.org/wiki/International_Committee_of_the_Red_Cross
+League of Red Cross societies   https://en.wikipedia.org/wiki/International_Federation_of_Red_Cross_and_Red_Crescent_Societies
+Charles H. Townes       https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Charles_Townes.jpg/960px-Charles_Townes.jpg
+Nikolay Basov   https://upload.wikimedia.org/wikipedia/commons/c/c1/Basov.jpg
+Alexander Prokhorov     https://upload.wikimedia.org/wikipedia/commons/4/4c/Aleksandr_Prokhorov.jpg
+Dorothy Hodgkin https://upload.wikimedia.org/wikipedia/en/3/3f/Dorothy_Hodgkin_Nobel.jpg
+Konrad Emil Bloch       https://en.wikipedia.org/wiki/Konrad_Emil_Bloch
+Feodor Lynen    https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Feodor_Lynen_with_pipette.jpg/960px-Feodor_Lynen_with_pipette.jpg
+Jean-Paul Sartre        https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Jean_Paul_Sartre_1965.jpg/960px-Jean_Paul_Sartre_1965.jpg
+Martin Luther King Jr.  https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Martin_Luther_King%2C_Jr..jpg/960px-Martin_Luther_King%2C_Jr..jpg
+Shin'ichirō Tomonaga   https://upload.wikimedia.org/wikipedia/commons/3/3a/Tomonaga.jpg
+Julian Schwinger        https://upload.wikimedia.org/wikipedia/commons/3/3c/Schwinger.jpg
+Richard Feynman https://upload.wikimedia.org/wikipedia/en/4/42/Richard_Feynman_Nobel.jpg
+Robert Burns Woodward   https://upload.wikimedia.org/wikipedia/en/b/bf/Robert_Woodward_Nobel.jpg
+François Jacob https://upload.wikimedia.org/wikipedia/commons/8/8b/Fran%C3%A7ois_Jacob_nobel.jpg
+André Michel Lwoff     https://upload.wikimedia.org/wikipedia/commons/f/fd/Andr%C3%A9_Lwoff_nobel.jpg
+Jacques Monod   https://upload.wikimedia.org/wikipedia/commons/7/70/Jacques_Monod_nobel.jpg
+Mikhail Sholokhov       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Mikhail_Sholokhov_1960.jpg/960px-Mikhail_Sholokhov_1960.jpg
+United Nations International Children's Emergency Fund  https://en.wikipedia.org/wiki/UNICEF
+Alfred Kastler  https://upload.wikimedia.org/wikipedia/commons/b/b6/Kastler.jpg
+Robert S. Mulliken      https://upload.wikimedia.org/wikipedia/commons/6/6a/Mulliken%2CRobert_1929_Chicago.jpg
+Francis Peyton Rous     https://upload.wikimedia.org/wikipedia/en/7/74/Peyton_Rous_nobel.jpg
+Charles Brenton Huggins https://upload.wikimedia.org/wikipedia/en/2/2f/Charles_Brenton_Huggins_nobel.jpg
+Shmuel Yosef Agnon      https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/%D7%A4%D7%95%D7%A8%D7%98%D7%A8%D7%98_%D7%A9%22%D7%99_%D7%A2%D7%92%D7%A0%D7%95%D7%9F_%28cropped%29.jpg/960px-%D7%A4%D7%95%D7%A8%D7%98%D7%A8%D7%98_%D7%A9%22%D7%99_%D7%A2%D7%92%D7%A0%D7%95%D7%9F_%28cropped%29.jpg
+Nelly Sachs     https://upload.wikimedia.org/wikipedia/commons/a/a4/Nelly_Sachs_1966.jpg
+Hans Bethe      https://upload.wikimedia.org/wikipedia/commons/5/5f/Hans_Bethe.jpg
+Manfred Eigen   https://upload.wikimedia.org/wikipedia/commons/0/0c/Eigen%2CManfred_1996_G%C3%B6ttingen.jpg
+Ronald George Wreyford Norrish  https://upload.wikimedia.org/wikipedia/en/4/44/Ronald_George_Wreyford_Norrish.jpg
+George Porter   https://upload.wikimedia.org/wikipedia/commons/4/43/George_Porter_Nobel.jpg
+Ragnar Granit   https://upload.wikimedia.org/wikipedia/commons/6/63/Ragnar_Granit.jpg
+Haldan Keffer Hartline  https://upload.wikimedia.org/wikipedia/commons/6/65/Haldan_Keffer_Hartline_nobel.jpg
+George Wald     https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/George_Wald_1987.jpg/960px-George_Wald_1987.jpg
+Miguel Ángel Asturias  https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Miguel_Angel_Asturias.jpg/960px-Miguel_Angel_Asturias.jpg
+Luis Walter Alvarez     https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Luis_Alvarez_with_a_magnetic_monopole_detector_-_Restoration.jpg/960px-Luis_Alvarez_with_a_magnetic_monopole_detector_-_Restoration.jpg
+Lars Onsager    https://upload.wikimedia.org/wikipedia/en/f/f9/Lars_Onsager2.jpg
+Robert W. Holley        https://upload.wikimedia.org/wikipedia/en/8/88/Robert_W._Holley_nobel.jpg
+Har Gobind Khorana      https://upload.wikimedia.org/wikipedia/en/d/d9/Har_Gobind_Khorana_nobel.jpg
+Marshall Warren Nirenberg       https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Marshall_Nirenberg_%282002%2C_by_National_Institutes_of_Health%2C_U.S.%29.jpg/960px-Marshall_Nirenberg_%282002%2C_by_National_Institutes_of_Health%2C_U.S.%29.jpg
+Yasunari Kawabata       https://upload.wikimedia.org/wikipedia/commons/b/b5/Yasunari_Kawabata_1938.jpg
+René Cassin    https://upload.wikimedia.org/wikipedia/commons/d/d3/Ren%C3%A9_Cassin_nobel.jpg
+Murray Gell-Mann        https://en.wikipedia.org/wiki/Murray_Gell-Mann
+Derek Barton    https://upload.wikimedia.org/wikipedia/commons/d/d9/Derek-Harold-Richard-Barton.jpg
+Odd Hassel      https://upload.wikimedia.org/wikipedia/commons/8/8b/Odd_Hassel.jpg
+Max Delbrück   https://upload.wikimedia.org/wikipedia/commons/9/93/Maxdelbr%C3%BCck-cr.jpg
+Alfred Hershey  https://upload.wikimedia.org/wikipedia/commons/9/9f/Alfred_Hershey.jpg
+Salvador Luria  https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Salvador_E._Luria_ca.1969.jpg/1280px-Salvador_E._Luria_ca.1969.jpg
+Samuel Beckett  https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Samuel_Beckett%2C_Pic%2C_1_%28cropped%29.jpg/960px-Samuel_Beckett%2C_Pic%2C_1_%28cropped%29.jpg
+International Labour Organization       https://en.wikipedia.org/wiki/International_Labour_Organization
+Ragnar Frisch   https://upload.wikimedia.org/wikipedia/commons/a/a1/Uio_frisch_2006_0025.jpg
+Jan Tinbergen   https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Jan_Tinbergen_1982.jpg/960px-Jan_Tinbergen_1982.jpg
+Hannes Alfvén  https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/YoungAlfven.jpg/960px-YoungAlfven.jpg
+Louis Néel     https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Louis_N%C3%A9el_1970b.jpg/960px-Louis_N%C3%A9el_1970b.jpg
+Luis Federico Leloir    https://upload.wikimedia.org/wikipedia/commons/7/7d/Luis_Federico_Leloir_-_young.jpg
+Julius Axelrod  https://upload.wikimedia.org/wikipedia/commons/4/4e/Axelrod01.jpg
+Ulf von Euler   https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Ulf_von_Euler.jpg/960px-Ulf_von_Euler.jpg
+Bernard Katz    https://upload.wikimedia.org/wikipedia/commons/e/e2/Sir_Bernard_Katz.jpg
+Aleksandr Solzhenitsyn  https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Aleksandr_Solzhenitsyn_1974crop.jpg/960px-Aleksandr_Solzhenitsyn_1974crop.jpg
+Norman Borlaug  https://upload.wikimedia.org/wikipedia/commons/e/e2/Norman_Borlaug%2C_2004_%28cropped%29.jpg
+Paul Samuelson  https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Paul_A._Samuelson%2C_economist%2C_edited.jpg/1280px-Paul_A._Samuelson%2C_economist%2C_edited.jpg
+Dennis Gabor    https://upload.wikimedia.org/wikipedia/commons/6/6a/Dennis_Gabor_1971b.jpg
+Gerhard Herzberg        https://upload.wikimedia.org/wikipedia/commons/4/4f/Herzberg%2CGerhard_1952_London.jpg
+Earl Wilbur Sutherland Jr.      https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Earl_Wilbur_Sutherland_Jr.jpg/960px-Earl_Wilbur_Sutherland_Jr.jpg
+Pablo Neruda    https://upload.wikimedia.org/wikipedia/commons/8/86/Pablo_Neruda_1963.jpg
+Willy Brandt    https://upload.wikimedia.org/wikipedia/commons/3/3d/Bundesarchiv_B_145_Bild-F057884-0009%2C_Willy_Brandt.jpg
+Simon Kuznets   https://upload.wikimedia.org/wikipedia/commons/6/6c/Simon_Kuznets_1971b.jpg
+John Bardeen    https://upload.wikimedia.org/wikipedia/commons/4/4a/Bardeen.jpg
+Leon Cooper     https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Nobel_Laureate_Leon_Cooper_in_2007.jpg/1280px-Nobel_Laureate_Leon_Cooper_in_2007.jpg
+John Robert Schrieffer  https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/John_Robert_Schrieffer_1972.jpg/960px-John_Robert_Schrieffer_1972.jpg
+Christian B. Anfinsen   https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Christian_B._Anfinsen%2C_NIH_portrait%2C_1969.jpg/960px-Christian_B._Anfinsen%2C_NIH_portrait%2C_1969.jpg
+Stanford Moore  https://upload.wikimedia.org/wikipedia/en/7/7f/Stanford_Moore.jpg
+William Howard Stein    https://upload.wikimedia.org/wikipedia/en/d/dd/William_Howard_Stein.jpg
+Gerald Edelman  https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Gerald_Edelman.jpg/960px-Gerald_Edelman.jpg
+Rodney Robert Porter    https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Rodney_Robert_Porter.jpg/960px-Rodney_Robert_Porter.jpg
+Heinrich Böll  https://upload.wikimedia.org/wikipedia/commons/1/12/Bundesarchiv_B_145_Bild-F062164-0004%2C_Bonn%2C_Heinrich_B%C3%B6ll.jpg
+John Hicks      https://upload.wikimedia.org/wikipedia/commons/2/26/John_Hicks_1972.jpg
+Kenneth Arrow   https://upload.wikimedia.org/wikipedia/commons/9/9d/Kenneth_Arrow%2C_Stanford_University.jpg
+Leo Esaki       https://upload.wikimedia.org/wikipedia/commons/f/fa/Esaki_leo_Gakushiin.jpg
+Ivar Giaever    https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Ivar_Giaever_1973.jpg/960px-Ivar_Giaever_1973.jpg
+Brian Josephson https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Brian_Josephson%2C_March_2004.jpg/960px-Brian_Josephson%2C_March_2004.jpg
+Ernst Otto Fischer      https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Ernst_Otto_Fischer_Stamp_Germany_2018.jpg/1280px-Ernst_Otto_Fischer_Stamp_Germany_2018.jpg
+Geoffrey Wilkinson      https://en.wikipedia.org/wiki/Geoffrey_Wilkinson
+Karl von Frisch https://upload.wikimedia.org/wikipedia/en/b/bb/Karl_von_Frisch.jpg
+Konrad Lorenz   https://en.wikipedia.org/wiki/Konrad_Lorenz
+Nikolaas Tinbergen      https://upload.wikimedia.org/wikipedia/commons/8/84/Nikolaas_Tinbergen_1978.jpg
+Patrick White   https://upload.wikimedia.org/wikipedia/commons/5/5f/Patrick_White_writer.jpg
+Henry Kissinger https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Henry_A._Kissinger%2C_U.S._Secretary_of_State%2C_1973-1977.jpg/1280px-Henry_A._Kissinger%2C_U.S._Secretary_of_State%2C_1973-1977.jpg
+Lê Đức Thọ        https://upload.wikimedia.org/wikipedia/commons/b/b7/Le_Duc_Tho_at_Orly_Field_1972_%28cropped%29.jpg
+Wassily Leontief        https://upload.wikimedia.org/wikipedia/commons/3/36/Wassily_Leontief_1973.jpg
+Martin Ryle     https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Martin_Ryle_1976.jpg/960px-Martin_Ryle_1976.jpg
+Antony Hewish   https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Antony_Hewish_1976.jpg/960px-Antony_Hewish_1976.jpg
+Paul Flory      https://upload.wikimedia.org/wikipedia/commons/1/1c/Paul_Flory_1973.jpg
+Albert Claude   https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Albert_Claude_1974.jpg/960px-Albert_Claude_1974.jpg
+Christian de Duve       https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Christian_de_Duve.tif/lossy-page1-626px-Christian_de_Duve.tif.jpg
+George Emil Palade      https://upload.wikimedia.org/wikipedia/commons/0/0c/George_Emil_Palade_2021_stamp_of_Romania.jpg
+Eyvind Johnson  https://en.wikipedia.org/wiki/Eyvind_Johnson
+Harry Martinson https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Harry_Martinson_001.tiff/lossy-page1-960px-Harry_Martinson_001.tiff.jpg
+Seán MacBride  https://upload.wikimedia.org/wikipedia/commons/d/d4/Se%C3%A1n_MacBride_1984.jpg
+Eisaku Satō    https://upload.wikimedia.org/wikipedia/commons/0/09/Eisaku_Sato_cropped_1_Eisaku_Sato_19641109.jpg
+Gunnar Myrdal   https://upload.wikimedia.org/wikipedia/commons/c/c4/Gunnar_Myrdal_1964_002_%28cropped%29.jpg
+Friedrich Hayek https://upload.wikimedia.org/wikipedia/commons/7/7f/Friedrich_Hayek_portrait.jpg
+Aage Bohr       https://upload.wikimedia.org/wikipedia/commons/c/ce/Aage_Bohr.jpg
+Ben Roy Mottelson       https://upload.wikimedia.org/wikipedia/commons/4/47/Mottelson%2CBen_1963_Kopenhagen.jpg
+James Rainwater https://upload.wikimedia.org/wikipedia/commons/f/fc/James_Rainwater_2.jpg
+John Cornforth  https://upload.wikimedia.org/wikipedia/commons/c/cc/John_Cornforth_1975.jpg
+Vladimir Prelog https://upload.wikimedia.org/wikipedia/commons/6/64/Vladimir_Prelog_ETH-Bib_Portr_00214.jpg
+David Baltimore https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/David_Baltimore_Caltech_by_c_michel_in_2021.jpg/960px-David_Baltimore_Caltech_by_c_michel_in_2021.jpg
+Renato Dulbecco https://upload.wikimedia.org/wikipedia/commons/3/3e/Renato_Dulbecco_crop.jpg
+Howard Martin Temin     https://upload.wikimedia.org/wikipedia/commons/5/58/Howard_Martin_Temin_1975.jpg
+Eugenio Montale https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Eugenio_Montale.jpg/960px-Eugenio_Montale.jpg
+Andrei Sakharov https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/RIAN_archive_25981_Academician_Sakharov.jpg/1280px-RIAN_archive_25981_Academician_Sakharov.jpg
+Leonid Kantorovich      https://upload.wikimedia.org/wikipedia/commons/f/f4/Leonid_Kantorovich_1975.jpg
+Tjalling Koopmans       https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/TjallingKoopmans1967.jpg/960px-TjallingKoopmans1967.jpg
+Burton Richter  https://upload.wikimedia.org/wikipedia/commons/4/41/Burton_Richter_NSF_crop.jpg
+Samuel C. C. Ting       https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Samuel_Ting_1977_%28cropped%29.jpg/960px-Samuel_Ting_1977_%28cropped%29.jpg
+William Lipscomb        https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/William_n_lipscomb_jr.jpg/960px-William_n_lipscomb_jr.jpg
+Baruch Samuel Blumberg  https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Baruch_Samuel_Blumberg_by_Tom_Trower_%28NASA%29.jpg/960px-Baruch_Samuel_Blumberg_by_Tom_Trower_%28NASA%29.jpg
+Daniel Carleton Gajdusek        https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Daniel_Carleton_Gajdusek_2bw.jpg/960px-Daniel_Carleton_Gajdusek_2bw.jpg
+Saul Bellow     https://upload.wikimedia.org/wikipedia/commons/4/4e/Saul_Bellow_%28Herzog_portrait%29.jpg
+Betty Williams  https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Betty_Williams_1996.jpg/960px-Betty_Williams_1996.jpg
+Mairead Maguire https://upload.wikimedia.org/wikipedia/commons/2/28/Mairead_Corrigan_Gaza_crop.jpg
+Milton Friedman https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Portrait_of_Milton_Friedman_%284x5_cropped%29.jpg/1280px-Portrait_of_Milton_Friedman_%284x5_cropped%29.jpg
+Philip W. Anderson      https://upload.wikimedia.org/wikipedia/commons/8/8d/Andersonphoto.jpg
+Nevill Francis Mott     https://upload.wikimedia.org/wikipedia/en/c/ca/Sir_Nevill_Francis_Mott.jpg
+John Hasbrouck Van Vleck        https://upload.wikimedia.org/wikipedia/commons/1/1b/John_H._Van_Vleck.jpg
+Ilya Prigogine  https://upload.wikimedia.org/wikipedia/commons/7/7b/Ilya_Prigogine_1977c.jpg
+Roger Guillemin https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Roger_Guillemin.jpg/960px-Roger_Guillemin.jpg
+Andrew Schally  https://upload.wikimedia.org/wikipedia/commons/2/25/Andrew_Schally_portrait.jpg
+Rosalyn Sussman Yalow   https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Rosalyn_Yalow.jpg/1280px-Rosalyn_Yalow.jpg
+Vicente Aleixandre      https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Spaanse_dichter_en_nobelprijswinnaar_Vicente_Alexandre%2C_Bestanddeelnr_929-3851.jpg/960px-Spaanse_dichter_en_nobelprijswinnaar_Vicente_Alexandre%2C_Bestanddeelnr_929-3851.jpg
+Amnesty International   https://en.wikipedia.org/wiki/Amnesty_International
+Bertil Ohlin    https://upload.wikimedia.org/wikipedia/commons/2/23/BertilOhlin.jpg
+James Meade     https://upload.wikimedia.org/wikipedia/commons/1/1b/James_Meade_Nobel.jpg
+Pyotr Kapitsa   https://upload.wikimedia.org/wikipedia/commons/4/44/Pyotr_Kapitsa_1930s.jpg
+Arno Allan Penzias      https://upload.wikimedia.org/wikipedia/commons/d/da/32._Tagung_1982_Physiker%3B_Beim_Studentenabend_Arno_A._Penzias_-_W134Nr.119142_-_Willy_Pragher_%28cropped%29.jpg
+Robert Woodrow Wilson   https://en.wikipedia.org/wiki/Robert_Woodrow_Wilson
+Peter D. Mitchell       https://upload.wikimedia.org/wikipedia/en/c/cd/Peter_Dennis_Mitchell.jpg
+Werner Arber    https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Werber_Arber_%283x4_cropped%29.jpg/960px-Werber_Arber_%283x4_cropped%29.jpg
+Daniel Nathans  https://upload.wikimedia.org/wikipedia/commons/9/92/37._Tagung_1987_Mediziner_Daniel_Nathans_l%C3%A4chelnd_-_W134Nr.125411c_-_Willy_Pragher_%28cropped%29.jpg
+Hamilton O. Smith       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Hamilton_Smith%2C_2.jpg/960px-Hamilton_Smith%2C_2.jpg
+Isaac Bashevis Singer   https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Isaac_Bashevis_Singer_%28Gotfryd%29.jpg/960px-Isaac_Bashevis_Singer_%28Gotfryd%29.jpg
+Anwar Sadat     https://upload.wikimedia.org/wikipedia/commons/3/3b/Anwar_Sadat_cropped_%28cropped%29%282%29.jpg
+Menachem Begin  https://en.wikipedia.org/wiki/Menachem_Begin
+Herbert A. Simon        https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Herbert_Simon%2C_RIT_NandE_Vol13Num11_1981_Mar19_Complete.jpg/960px-Herbert_Simon%2C_RIT_NandE_Vol13Num11_1981_Mar19_Complete.jpg
+Sheldon Glashow https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Sheldon_Glashow.jpg/960px-Sheldon_Glashow.jpg
+Abdus Salam     https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Abdus_Salam_1987.jpg/1280px-Abdus_Salam_1987.jpg
+Steven Weinberg https://upload.wikimedia.org/wikipedia/commons/b/b3/Steven_Weinberg_2010.jpg
+Herbert C. Brown        https://en.wikipedia.org/wiki/Herbert_C._Brown
+Georg Wittig    https://upload.wikimedia.org/wikipedia/en/e/ea/Georg_Wittig.jpg
+Allan McLeod Cormack    https://upload.wikimedia.org/wikipedia/commons/b/bf/34._Tagung_1984_Mediziner%3B_Verabschiedung_H.-H._Kunckel%2C_Allen_Cormack_-_W134Nr.123006_-_Willy_Pragher_%28cropped%29.jpg
+Godfrey Hounsfield      https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Godfrey_Hounsfield.jpg/960px-Godfrey_Hounsfield.jpg
+Odysseas Elytis https://upload.wikimedia.org/wikipedia/commons/6/69/Odysseas_Elytis_1974.jpg
+Mother Teresa   https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Mother_Teresa_1.jpg/960px-Mother_Teresa_1.jpg
+Theodore Schultz        https://upload.wikimedia.org/wikipedia/en/b/b4/Theodore_Schultz.jpg
+W. Arthur Lewis https://upload.wikimedia.org/wikipedia/en/8/84/Arthur_Lewis_%28Nobel_photo%29.jpg
+James Cronin    https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/James-cronin.jpg/960px-James-cronin.jpg
+Val Logsdon Fitch       https://upload.wikimedia.org/wikipedia/commons/7/7e/Val_Fitch.jpg
+Paul Berg       https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Paul_Berg_in_1980.jpg/960px-Paul_Berg_in_1980.jpg
+Walter Gilbert  https://en.wikipedia.org/wiki/Walter_Gilbert
+Frederick Sanger        https://upload.wikimedia.org/wikipedia/commons/f/f8/Frederick_Sanger2.jpg
+Baruj Benacerraf        https://upload.wikimedia.org/wikipedia/commons/0/00/Baruj_Benacerraf_1969.jpg
+Jean Dausset    https://upload.wikimedia.org/wikipedia/commons/9/98/Jean_Dausset_1968.jpg
+George Davis Snell      https://en.wikipedia.org/wiki/George_Davis_Snell
+Czesław Miłosz        https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Czeslaw_Milosz_3_ap.tif/lossy-page1-960px-Czeslaw_Milosz_3_ap.tif.jpg
+Adolfo Pérez Esquivel  https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Entrevista_a_Adolfo_P%C3%A9rez_Esquivel_%28cropped%29.jpg/960px-Entrevista_a_Adolfo_P%C3%A9rez_Esquivel_%28cropped%29.jpg
+Lawrence Klein  https://upload.wikimedia.org/wikipedia/commons/e/e8/Lawrence_Robert_Klein.jpg
+Nicolaas Bloembergen    https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Nicolaas_Bloembergen_1981.jpg/960px-Nicolaas_Bloembergen_1981.jpg
+Arthur Leonard Schawlow https://upload.wikimedia.org/wikipedia/commons/6/62/Artur_Schawlow%2C_Stanford_University.jpg
+Kai Siegbahn    https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Kai_Manne_B%C3%B6rje_Siegbahn_2.jpg/960px-Kai_Manne_B%C3%B6rje_Siegbahn_2.jpg
+Kenichi Fukui   https://upload.wikimedia.org/wikipedia/commons/a/af/Kenichi_Fukui_nobel.jpg
+Roald Hoffmann  https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Roald_Hoffman_in_2025_01.jpg/960px-Roald_Hoffman_in_2025_01.jpg
+Roger Wolcott Sperry    https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Roger_Wolcott_Sperry.jpg/960px-Roger_Wolcott_Sperry.jpg
+David H. Hubel  https://upload.wikimedia.org/wikipedia/commons/4/47/DHUBEL.jpg
+Torsten Wiesel  https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Nobel_Laureate_Torsten_Wiesel_in_2011_Photo_by_Markus_Marcetic_for_Young_Academy_of_Sweden_%28cropped%29.jpg/1280px-Nobel_Laureate_Torsten_Wiesel_in_2011_Photo_by_Markus_Marcetic_for_Young_Academy_of_Sweden_%28cropped%29.jpg
+Elias Canetti   https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Elias_Canetti_2.jpg/1280px-Elias_Canetti_2.jpg
+United Nations High Commissioner for Refugees   https://en.wikipedia.org/wiki/United_Nations_High_Commissioner_for_Refugees
+James Tobin     https://en.wikipedia.org/wiki/James_Tobin
+Kenneth G. Wilson       https://upload.wikimedia.org/wikipedia/en/d/d1/Kenneth_G._Wilson.jpg
+Aaron Klug      https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Aaron_Klug_1979.jpg/960px-Aaron_Klug_1979.jpg
+Sune Bergström https://upload.wikimedia.org/wikipedia/commons/f/fc/Sune_Bergstr%C3%B6m_3.jpg
+Bengt I. Samuelsson     https://en.wikipedia.org/wiki/Bengt_I._Samuelsson
+John Vane       https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/John_Robert_Vane.jpg/960px-John_Robert_Vane.jpg
+Gabriel García Márquez        https://upload.wikimedia.org/wikipedia/commons/0/0f/Gabriel_Garcia_Marquez.jpg
+Alva Myrdal     https://upload.wikimedia.org/wikipedia/commons/f/f7/ARB-Alva-Myrdal.jpg
+Alfonso García Robles  https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Alfonso_Garcia_Robles_1981.jpg/960px-Alfonso_Garcia_Robles_1981.jpg
+George Stigler  https://upload.wikimedia.org/wikipedia/en/c/c7/George_Stigler.jpg
+Subrahmanyan Chandrasekhar      https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Subrahmanyan_Chandrasekhar.jpg/960px-Subrahmanyan_Chandrasekhar.jpg
+William Alfred Fowler   https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Fowler_1984.jpg/960px-Fowler_1984.jpg
+Henry Taube     https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Henry_Taube_-_HD.3F.005_%2811086397086%29.jpg/1280px-Henry_Taube_-_HD.3F.005_%2811086397086%29.jpg
+Barbara McClintock      https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Barbara_McClintock_%281902-1992%29_shown_in_her_laboratory_in_1947.jpg/1280px-Barbara_McClintock_%281902-1992%29_shown_in_her_laboratory_in_1947.jpg
+William Golding https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/William_Golding_1983.jpg/960px-William_Golding_1983.jpg
+Lech Wałęsa   https://upload.wikimedia.org/wikipedia/commons/8/88/Lech_Wa%C5%82%C4%99sa_w_36._rocznic%C4%99_wybor%C3%B3w_4_czerwca_1989_%28cropped_2%29.jpg
+Gérard Debreu  https://en.wikipedia.org/wiki/G%C3%A9rard_Debreu
+Carlo Rubbia    https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Carlo_Rubbia_2012.jpg/960px-Carlo_Rubbia_2012.jpg
+Simon van der Meer      https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Simon_van_der_Meer.jpg/960px-Simon_van_der_Meer.jpg
+Robert Bruce Merrifield https://upload.wikimedia.org/wikipedia/commons/f/fd/R._B._Merrifield.jpg
+Niels Kaj Jerne https://upload.wikimedia.org/wikipedia/en/c/c7/Jerne-13362-portrait-medium.jpg
+Georges J. F. Köhler   https://upload.wikimedia.org/wikipedia/en/b/b9/Georges_J._F._K%C3%B6hler.jpg
+César Milstein https://upload.wikimedia.org/wikipedia/commons/a/ae/Milstein_lnp_restauraci%C3%B3n.jpg
+Jaroslav Seifert        https://upload.wikimedia.org/wikipedia/commons/e/eb/Jaroslav_Seifert_1981_foto_Hana_Hamplov%C3%A1.jpg
+Desmond Tutu    https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Archbishop-Tutu-medium.jpg/960px-Archbishop-Tutu-medium.jpg
+Richard Stone   https://en.wikipedia.org/wiki/Richard_Stone
+Klaus von Klitzing      https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Klaus_von_Klitzing_2015.jpg/960px-Klaus_von_Klitzing_2015.jpg
+Herbert A. Hauptman     https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Herbert_Hauptman_-_UB_2009.jpg/1280px-Herbert_Hauptman_-_UB_2009.jpg
+Jerome Karle    https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Jerome_Karle_Portrait.jpg/960px-Jerome_Karle_Portrait.jpg
+Michael Stuart Brown    https://upload.wikimedia.org/wikipedia/commons/9/9c/Mike_Brown_2003.jpg
+Joseph L. Goldstein     https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Joseph_Goldstein.jpg/1280px-Joseph_Goldstein.jpg
+Claude Simon    https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Claude_Simon_1967.jpg/960px-Claude_Simon_1967.jpg
+International Physicians for the Prevention of Nuclear War      https://en.wikipedia.org/wiki/International_Physicians_for_the_Prevention_of_Nuclear_War
+Franco Modigliani       https://upload.wikimedia.org/wikipedia/commons/5/53/Franco_Modigliani.jpg
+Ernst Ruska     https://upload.wikimedia.org/wikipedia/en/9/90/Ernst_Ruska.jpg
+Gerd Binnig     https://upload.wikimedia.org/wikipedia/commons/d/df/Gerd_Binnig_at_the_Memorial_Symposium_for_Heinrich_Rohrer_%28cropped%29_2.jpg
+Heinrich Rohrer https://upload.wikimedia.org/wikipedia/commons/3/32/Rohrer.jpg
+Dudley R. Herschbach    https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Dudley_R._Herschbach_in_Lindau.jpg/960px-Dudley_R._Herschbach_in_Lindau.jpg
+Yuan T. Lee     https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Yuan_T._Lee_official_portrait.jpg/960px-Yuan_T._Lee_official_portrait.jpg
+John Polanyi    https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/John_Polanyi.jpg/1280px-John_Polanyi.jpg
+Stanley Cohen   https://en.wikipedia.org/wiki/Stanley_Cohen_(biochemist)
+Rita Levi-Montalcini    https://en.wikipedia.org/wiki/Rita_Levi-Montalcini
+Wole Soyinka    https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Wole_Soyinka_in_2018_%283x4_cropped%29.jpg/960px-Wole_Soyinka_in_2018_%283x4_cropped%29.jpg
+Elie Wiesel     https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/ELIE_WIESEL_%285112581267%29.jpg/960px-ELIE_WIESEL_%285112581267%29.jpg
+James M. Buchanan       https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/James_Buchanan_by_Atlas_network.jpg/960px-James_Buchanan_by_Atlas_network.jpg
+Georg Bednorz   https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/8th_Silesian_Science_Festival%2C_Johannes_Georg_Bednorz%2C_KsP_709%2C_09.12.2024.jpg/960px-8th_Silesian_Science_Festival%2C_Johannes_Georg_Bednorz%2C_KsP_709%2C_09.12.2024.jpg
+K. Alex Müller https://upload.wikimedia.org/wikipedia/commons/8/8e/Karl_Alexander_Mueller_%28cropped%29.jpg
+Donald J. Cram  https://en.wikipedia.org/wiki/Donald_J._Cram
+Jean-Marie Lehn https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Jean-Marie_Lehn_par_Claude_Truong-Ngoc_octobre_2018.jpg/1280px-Jean-Marie_Lehn_par_Claude_Truong-Ngoc_octobre_2018.jpg
+Charles J. Pedersen     https://upload.wikimedia.org/wikipedia/en/b/bd/Charles_J._Pedersen.jpg
+Susumu Tonegawa https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Susumu_Tonegawa_Photo.jpg/960px-Susumu_Tonegawa_Photo.jpg
+Joseph Brodsky  https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Joseph_Brodsky_1988.jpg/960px-Joseph_Brodsky_1988.jpg
+Óscar Arias    https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/%C3%93scar_Arias_%28cropped%29.jpg/960px-%C3%93scar_Arias_%28cropped%29.jpg
+Robert Solow    https://upload.wikimedia.org/wikipedia/commons/2/25/Robert_Solow_by_Olaf_Storbeck_%28cropped%29.jpg
+Leon M. Lederman        https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/HD.3F.001_%2811086394836%29.jpg/1280px-HD.3F.001_%2811086394836%29.jpg
+Melvin Schwartz https://upload.wikimedia.org/wikipedia/commons/f/fe/Melvin_Schwartz.jpg
+Jack Steinberger        https://en.wikipedia.org/wiki/Jack_Steinberger
+Johann Deisenhofer      https://upload.wikimedia.org/wikipedia/commons/a/a8/39._Tagung_1989_Chemiker%3B_Pressekonferenz_Johann_Deisenhofer_-_W134Nr.126215c_-_Willy_Pragher_%28cropped%29.jpg
+Robert Huber    https://upload.wikimedia.org/wikipedia/commons/0/0a/Robert-huber.jpg
+Hartmut Michel  https://upload.wikimedia.org/wikipedia/commons/a/a6/Michel%2C_Hartmut_%281948%29.jpg
+James W. Black  https://en.wikipedia.org/wiki/James_W._Black
+Gertrude B. Elion       https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Gertrude_Elion.jpg/1280px-Gertrude_Elion.jpg
+George H. Hitchings     https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/George_H._Hitchings_1988.jpg/1280px-George_H._Hitchings_1988.jpg
+Naguib Mahfouz  https://upload.wikimedia.org/wikipedia/commons/6/66/Nagib_Mahfouz.jpg
+United Nations peacekeeping forces      https://en.wikipedia.org/wiki/United_Nations_peacekeeping
+Maurice Allais  https://upload.wikimedia.org/wikipedia/commons/1/12/ALLAIS_PN_Maurice-24x30-2001b.jpg
+Norman Ramsey Jr.       https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Ramsey_Norman_A3.jpg/960px-Ramsey_Norman_A3.jpg
+Hans Georg Dehmelt      https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Hans_Dehmelt.jpg/1280px-Hans_Dehmelt.jpg
+Wolfgang Paul   https://upload.wikimedia.org/wikipedia/en/c/c0/Wolfgang_Paul.jpg
+Sidney Altman   https://upload.wikimedia.org/wikipedia/commons/5/57/Sidney_Altman_crop.jpg
+Thomas Cech     https://upload.wikimedia.org/wikipedia/commons/6/68/Thomas_Robert_Cech.jpg
+J. Michael Bishop       https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Nci-vol-8172-300_j_michael_bishop.jpg/960px-Nci-vol-8172-300_j_michael_bishop.jpg
+Harold E. Varmus        https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/National_Cancer_Institute_director_Harold_E._Varmus_%283%29_%28cropped%29.jpg/960px-National_Cancer_Institute_director_Harold_E._Varmus_%283%29_%28cropped%29.jpg
+Camilo José Cela       https://upload.wikimedia.org/wikipedia/commons/3/36/Camilo_Jos%C3%A9_Cela._Fototeca._Biblioteca_Virtual_del_Patrimonio_Bibliogr%C3%A1fico.jpg
+Tenzin Gyatso (The 14th Dalai Lama)     https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/The_Dalai_Lama_in_2012.jpg/960px-The_Dalai_Lama_in_2012.jpg
+Trygve Haavelmo https://upload.wikimedia.org/wikipedia/commons/2/25/Trygve_Haavelmo.jpg
+1990    https://en.wikipedia.org/wiki/1990_Nobel_Prizes
+Jerome Isaac Friedman   https://upload.wikimedia.org/wikipedia/commons/1/1e/OIST_BOG_Members_After_Meeting_Prime_Minister_Shinzo_Abe_4_October_2013_20131004_%28cropped%29.jpg
+Henry Way Kendall       https://upload.wikimedia.org/wikipedia/commons/9/9e/Henry_Kendall_by_Tom_Frost_crop.jpg
+Richard E. Taylor       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Richard_E._Taylor.jpg/1280px-Richard_E._Taylor.jpg
+Elias James Corey       https://upload.wikimedia.org/wikipedia/commons/a/a2/E.J.Coreyx240.jpg
+Joseph Murray   https://upload.wikimedia.org/wikipedia/en/3/3a/Joseph_Murray_Nobel_Portrait.jpg
+E. Donnall Thomas       https://upload.wikimedia.org/wikipedia/commons/c/cc/Edward_Donnall_%22Don%22_Thomas.jpg
+Octavio Paz     https://upload.wikimedia.org/wikipedia/commons/9/98/Octavio_Paz_-_1988_Malm%C3%B6.jpg
+Mikhail Gorbachev       https://upload.wikimedia.org/wikipedia/commons/5/57/RIAN_archive_850809_General_Secretary_of_the_CPSU_CC_M._Gorbachev_%28crop%29.jpg
+Harry Markowitz https://en.wikipedia.org/wiki/Harry_Markowitz
+Merton Miller   https://upload.wikimedia.org/wikipedia/en/7/7c/Merton_Miller.jpg
+William F. Sharpe       https://upload.wikimedia.org/wikipedia/commons/1/1a/William_sharpe_2007.jpg
+1991    https://en.wikipedia.org/wiki/1991_Nobel_Prizes
+Pierre-Gilles de Gennes https://upload.wikimedia.org/wikipedia/commons/f/f6/Pierre-Gilles_crop.jpg
+Richard R. Ernst        https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Richard_R._Ernst_1980s_%28cropped%29.jpg/960px-Richard_R._Ernst_1980s_%28cropped%29.jpg
+Erwin Neher     https://upload.wikimedia.org/wikipedia/commons/4/40/Erwin_Neher_in_Szeged_%28cropped%29.jpg
+Bert Sakmann    https://upload.wikimedia.org/wikipedia/commons/8/8d/Sakmann.jpg
+Nadine Gordimer https://en.wikipedia.org/wiki/Nadine_Gordimer
+Aung San Suu Kyi        https://upload.wikimedia.org/wikipedia/commons/9/97/Aung_San_Suu_Kyi_at_the_Enthronement_of_Naruhito_%281%29.jpg
+Ronald Coase    https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Coase_scan_11_edited_%28cropped%29.jpg/960px-Coase_scan_11_edited_%28cropped%29.jpg
+1992    https://en.wikipedia.org/wiki/1992_Nobel_Prizes
+Georges Charpak https://en.wikipedia.org/wiki/Georges_Charpak
+Rudolph A. Marcus       https://upload.wikimedia.org/wikipedia/commons/7/79/Prof._Dr._Rudolph_A._Marcus_%28cropped%29.jpg
+Edmond H. Fischer       https://upload.wikimedia.org/wikipedia/commons/2/21/Edmond_Fischer_Nobel_Laureate_1992.jpg
+Edwin G. Krebs  https://upload.wikimedia.org/wikipedia/en/9/9e/Edwin_G._Krebs.jpg
+Derek Walcott   https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Derek_Walcott.jpg/960px-Derek_Walcott.jpg
+Rigoberta Menchú       https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/20240620_NP_PRESIDENTE_BERNARDO_AREVALO_Y_KARIN_HERRERA_PARTICIPAN_EN_DIALOGO_PREMIO_NOBEL_DE_LA_PAZ_054_%28cropped%29.jpg/960px-20240620_NP_PRESIDENTE_BERNARDO_AREVALO_Y_KARIN_HERRERA_PARTICIPAN_EN_DIALOGO_PREMIO_NOBEL_DE_LA_PAZ_054_%28cropped%29.jpg
+Gary Becker     https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/GaryBecker-May24-2008.jpg/960px-GaryBecker-May24-2008.jpg
+1993    https://en.wikipedia.org/wiki/1993_Nobel_Prizes
+Russell Alan Hulse      https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Russell_Alan_Hulse.jpg/960px-Russell_Alan_Hulse.jpg
+Joseph Hooton Taylor Jr.        https://upload.wikimedia.org/wikipedia/commons/1/14/2008JosephTaylor.jpg
+Kary Mullis     https://upload.wikimedia.org/wikipedia/commons/7/7f/Kary_Mullis.jpg
+Michael Smith   https://upload.wikimedia.org/wikipedia/en/d/d6/Michaelsmith.jpg
+Richard J. Roberts      https://upload.wikimedia.org/wikipedia/commons/1/19/Roberts%2C_Richard_John_%281943%29.jpg
+Phillip Allen Sharp     https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Phillip_Sharp_HD2007_with_Winthrop_Sears_Medal.jpg/960px-Phillip_Sharp_HD2007_with_Winthrop_Sears_Medal.jpg
+Toni Morrison   https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Toni_Morrison.jpg/960px-Toni_Morrison.jpg
+Nelson Mandela  https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Nelson_Mandela_1994.jpg/960px-Nelson_Mandela_1994.jpg
+F. W. de Klerk  https://upload.wikimedia.org/wikipedia/commons/e/ea/Frederik_Willem_de_Klerk%2C_1990.jpg
+Robert Fogel    https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Robert_William_Fogel.jpg/960px-Robert_William_Fogel.jpg
+Douglass North  https://upload.wikimedia.org/wikipedia/commons/2/2c/Douglass_North.jpg
+1994    https://en.wikipedia.org/wiki/1994_Nobel_Prizes
+Bertram Brockhouse      https://upload.wikimedia.org/wikipedia/commons/a/a7/Bertram_Brockhouse.jpg
+Clifford Shull  https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Clifford_Shull_%28cropped%29.jpg/960px-Clifford_Shull_%28cropped%29.jpg
+George Andrew Olah      https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Ol%C3%A1h_Gy%C3%B6rgy_el%C5%91ad%C3%A1sa_8299.jpg/960px-Ol%C3%A1h_Gy%C3%B6rgy_el%C5%91ad%C3%A1sa_8299.jpg
+Alfred G. Gilman        https://upload.wikimedia.org/wikipedia/commons/7/7f/Alfred_Goodman_Gilman_%28cropped%29.jpg
+Martin Rodbell  https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Rodbell%2C_Martin_%281925-1998%29.jpg/1280px-Rodbell%2C_Martin_%281925-1998%29.jpg
+Kenzaburō Ōe  https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Paris_-_Salon_du_livre_2012_-_Kenzabur%C5%8D_%C5%8Ce_-_003.jpg/960px-Paris_-_Salon_du_livre_2012_-_Kenzabur%C5%8D_%C5%8Ce_-_003.jpg
+Yasser Arafat   https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Leader_of_the_PLO%2C_Yasser_Arafat%2C_1996_Dan_Hadani_Archive.jpg/960px-Leader_of_the_PLO%2C_Yasser_Arafat%2C_1996_Dan_Hadani_Archive.jpg
+Shimon Peres    https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Shimon_Peres_2010_%28cropped_2%29.jpg/960px-Shimon_Peres_2010_%28cropped_2%29.jpg
+Yitzhak Rabin   https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Yitzhak_Rabin_1994_Portrait_%283x4_cropped%29.jpg/960px-Yitzhak_Rabin_1994_Portrait_%283x4_cropped%29.jpg
+John Harsanyi   https://upload.wikimedia.org/wikipedia/en/6/6b/John_Harsanyi.jpg
+John Forbes Nash Jr.    https://upload.wikimedia.org/wikipedia/commons/a/a9/John_Forbes_Nash%2C_Jr._by_Peter_Badge.jpg
+Reinhard Selten https://upload.wikimedia.org/wikipedia/commons/0/05/Reinhard_Selten2.jpg
+1995    https://en.wikipedia.org/wiki/1995_Nobel_Prizes
+Martin Lewis Perl       https://upload.wikimedia.org/wikipedia/commons/6/65/Martin_Perl_-_tau.jpg
+Frederick Reines        https://upload.wikimedia.org/wikipedia/commons/c/cb/Frederick_Reines%2C_early_1950s.jpg
+Paul J. Crutzen https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Paul_Crutzen.jpg/960px-Paul_Crutzen.jpg
+Mario J. Molina https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Mario_Molina_1c389_8387.jpg/960px-Mario_Molina_1c389_8387.jpg
+F. Sherwood Rowland     https://upload.wikimedia.org/wikipedia/commons/9/91/F._Sherwood_Rowland.jpg
+Edward B. Lewis https://upload.wikimedia.org/wikipedia/en/6/68/EdwardBLewis.jpg
+Christiane Nüsslein-Volhard    https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Christiane_N%C3%BCsslein-Volhard_mg_4372.jpg/1280px-Christiane_N%C3%BCsslein-Volhard_mg_4372.jpg
+Eric F. Wieschaus       https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Wieschaus_ecal2011.jpg/1280px-Wieschaus_ecal2011.jpg
+Seamus Heaney   https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Seamus_Heaney%2C_Irish_poet%2C_brightened_%28cropped%29.jpg/960px-Seamus_Heaney%2C_Irish_poet%2C_brightened_%28cropped%29.jpg
+Joseph Rotblat  https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Joseph_Rotblat_Los_Alamos_identity_badge_photo.jpg/960px-Joseph_Rotblat_Los_Alamos_identity_badge_photo.jpg
+Pugwash Conferences on Science and World Affairs        https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Thinkers%27_Lodge_04.jpg/1280px-Thinkers%27_Lodge_04.jpg
+Robert Lucas Jr.        https://upload.wikimedia.org/wikipedia/commons/9/9d/La_Revoluci%C3%B3n_Industrial_Pasado_y_Futuro%2C_Robert_E._Lucas_Jr._screenshot_%28cropped%29.jpg
+1996    https://en.wikipedia.org/wiki/1996_Nobel_Prizes
+David Lee       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Nobel_Laureate_David_Morris_Lee_in_2007.jpg/960px-Nobel_Laureate_David_Morris_Lee_in_2007.jpg
+Douglas Osheroff        https://en.wikipedia.org/wiki/Douglas_Osheroff
+Robert Coleman Richardson       https://upload.wikimedia.org/wikipedia/commons/e/e4/Robert_Coleman_Richardson.jpg
+Robert Curl     https://upload.wikimedia.org/wikipedia/commons/0/05/Robert_Curl_crop_2009_CHAO.jpg
+Harry Kroto     https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Harry_Kroto_1c389_8471.jpg/960px-Harry_Kroto_1c389_8471.jpg
+Richard Smalley https://en.wikipedia.org/wiki/Richard_Smalley
+Peter C. Doherty        https://upload.wikimedia.org/wikipedia/commons/1/11/Professor_Peter_C_Doherty.jpg
+Rolf M. Zinkernagel     https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Rolf_Zinkernagel_Erudite_Conclave_medical_college_trivandrum_%283x4_cropped%29.jpg/960px-Rolf_Zinkernagel_Erudite_Conclave_medical_college_trivandrum_%283x4_cropped%29.jpg
+Wisława Szymborska     https://upload.wikimedia.org/wikipedia/commons/3/3a/Wis%C5%82awa_Szymborska_2009.10.23_%281%29.jpg
+Carlos Filipe Ximenes Belo      https://upload.wikimedia.org/wikipedia/commons/9/9f/Dom_Filipe_Ximenes_Belo_2016.jpg
+José Ramos-Horta       https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Portrait_of_Jose_Ramos-Horta.jpg/960px-Portrait_of_Jose_Ramos-Horta.jpg
+James Mirrlees  https://upload.wikimedia.org/wikipedia/en/3/3d/James_Mirrlees.jpg
+William Vickrey https://en.wikipedia.org/wiki/William_Vickrey
+1997    https://en.wikipedia.org/wiki/1997_Nobel_Prizes
+Steven Chu      https://upload.wikimedia.org/wikipedia/commons/a/ad/Steven_Chu_official_DOE_portrait_crop.jpg
+Claude Cohen-Tannoudji  https://en.wikipedia.org/wiki/Claude_Cohen-Tannoudji
+William Daniel Phillips https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/William_D._Phillips.jpg/960px-William_D._Phillips.jpg
+Paul D. Boyer   https://upload.wikimedia.org/wikipedia/commons/7/7d/Paul_D._Boyer.jpg
+John E. Walker  https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/John_Ernest_Walker.jpg/1280px-John_Ernest_Walker.jpg
+Jens Christian Skou     https://upload.wikimedia.org/wikipedia/commons/4/4c/Skou2008crop.jpg
+Stanley B. Prusiner     https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Stanley_B._Prusiner_in_2024_%283x4_cropped%29.jpg/960px-Stanley_B._Prusiner_in_2024_%283x4_cropped%29.jpg
+Dario Fo        https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Dario_Fo_in_Venice_Film_Festival_02_%28cropped%29.jpg/960px-Dario_Fo_in_Venice_Film_Festival_02_%28cropped%29.jpg
+International Campaign to Ban Landmines https://en.wikipedia.org/wiki/International_Campaign_to_Ban_Landmines
+Jody Williams   https://upload.wikimedia.org/wikipedia/commons/6/6e/Jody_Williams_2001.jpg
+Robert C. Merton        https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Robert_Merton_November_2010_03%281%29.jpg/960px-Robert_Merton_November_2010_03%281%29.jpg
+Myron Scholes   https://en.wikipedia.org/wiki/Myron_Scholes
+1998    https://en.wikipedia.org/wiki/1998_Nobel_Prizes
+Robert B. Laughlin      https://upload.wikimedia.org/wikipedia/commons/f/f0/Robert_Laughlin%2C_Stanford_University.jpg
+Horst Ludwig Störmer   https://upload.wikimedia.org/wikipedia/commons/2/2a/Horst_St%C3%B6rmer_cropped.jpg
+Daniel C. Tsui  https://upload.wikimedia.org/wikipedia/commons/3/34/Daniel_Chee_Tsui.jpg
+Walter Kohn     https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Walter_Kohn.jpg/960px-Walter_Kohn.jpg
+John Pople      https://en.wikipedia.org/wiki/John_Pople
+Robert F. Furchgott     https://upload.wikimedia.org/wikipedia/commons/b/b7/Drfurchgott_%283x4_cropped%29.jpg
+Louis Ignarro   https://upload.wikimedia.org/wikipedia/commons/6/65/Louis_Ignarro_by_Carlos_Barretta_%28cropped%29.jpg
+Ferid Murad     https://upload.wikimedia.org/wikipedia/commons/5/57/Ferid_Murad.jpg
+José Saramago  https://upload.wikimedia.org/wikipedia/commons/5/5c/JSJoseSaramago.jpg
+John Hume       https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/John_Hume%2C_1994_%28cropped%29_2.jpg/960px-John_Hume%2C_1994_%28cropped%29_2.jpg
+David Trimble   https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Official_portrait_of_Lord_Trimble_%283x4_cropped%29.jpg/960px-Official_portrait_of_Lord_Trimble_%283x4_cropped%29.jpg
+Amartya Sen     https://upload.wikimedia.org/wikipedia/commons/3/35/Amartya_Sen_20071128_cologne_cropped.jpg
+1999    https://en.wikipedia.org/wiki/1999_Nobel_Prizes
+Gerard 't Hooft https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Gerard_%27t_Hooft.jpg/960px-Gerard_%27t_Hooft.jpg
+Martinus J. G. Veltman  https://upload.wikimedia.org/wikipedia/commons/b/b7/Martinus_Veltman.jpg
+Ahmed Zewail    https://en.wikipedia.org/wiki/Ahmed_Zewail
+Günter Blobel  https://en.wikipedia.org/wiki/G%C3%BCnter_Blobel
+Günter Grass   https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Europese_conferentie_van_schrijvers_Haagse_Treffen_in_Kurhaus_te_Scheveningen%2C_Bestanddeelnr_932-1798.jpg/960px-Europese_conferentie_van_schrijvers_Haagse_Treffen_in_Kurhaus_te_Scheveningen%2C_Bestanddeelnr_932-1798.jpg
+Médecins Sans Frontières      https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/This_is_Doctors_Without_Borders-M%C3%A9decins_Sans_Fronti%C3%A8res_%28MSF%29.webm/1200px--This_is_Doctors_Without_Borders-M%C3%A9decins_Sans_Fronti%C3%A8res_%28MSF%29.webm.jpg
+Robert Mundell  https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Robert_Mundell_%28cropped%29.jpg/960px-Robert_Mundell_%28cropped%29.jpg
+2000    https://en.wikipedia.org/wiki/2000_Nobel_Prizes
+Jack Kilby      https://en.wikipedia.org/wiki/Jack_Kilby
+Zhores Alferov  https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Zhores_Alferov_April_2016.jpg/960px-Zhores_Alferov_April_2016.jpg
+Herbert Kroemer https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Herbert_Kroemer_%28cropped%29.jpg/960px-Herbert_Kroemer_%28cropped%29.jpg
+Alan J. Heeger  https://upload.wikimedia.org/wikipedia/commons/1/11/Heeger%2C_Alan_J._%281936%29.jpg
+Alan MacDiarmid https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Alan_MacDiarmid_2005.017.004e_crop.tif/lossy-page1-330px-Alan_MacDiarmid_2005.017.004e_crop.tif.jpg
+Hideki Shirakawa        https://upload.wikimedia.org/wikipedia/commons/e/ed/Hideki_Shirakawa.jpg
+Arvid Carlsson  https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Arvid_Carlsson_2011a_%283x4_cropped%29.jpg/960px-Arvid_Carlsson_2011a_%283x4_cropped%29.jpg
+Paul Greengard  https://upload.wikimedia.org/wikipedia/commons/d/dd/Paul_Greengard.jpg
+Eric Kandel     https://en.wikipedia.org/wiki/Eric_Kandel
+Gao Xingjian    https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Gao_Xingjian_%282012%2C_cropped%29.jpg/960px-Gao_Xingjian_%282012%2C_cropped%29.jpg
+Kim Dae-jung    https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Kim_Dae-jung_presidential_portrait.jpg/1280px-Kim_Dae-jung_presidential_portrait.jpg
+James Heckman   https://upload.wikimedia.org/wikipedia/commons/e/e8/Laureate-heckman-james.jpg
+Daniel McFadden https://en.wikipedia.org/wiki/Daniel_McFadden
+2001    https://en.wikipedia.org/wiki/2001_Nobel_Prizes
+Eric Allin Cornell      https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Physics_Nobel_Laureate_Eric_Allin_Cornell%2C_in_June_of_2015.jpg/1280px-Physics_Nobel_Laureate_Eric_Allin_Cornell%2C_in_June_of_2015.jpg
+Wolfgang Ketterle       https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Ketterle.jpg/960px-Ketterle.jpg
+Carl Wieman     https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Carl_Wieman_in_2024_01.jpg/960px-Carl_Wieman_in_2024_01.jpg
+William Standish Knowles        https://upload.wikimedia.org/wikipedia/en/6/6b/William_Standish_Knowles.jpg
+Ryōji Noyori   https://upload.wikimedia.org/wikipedia/commons/a/a1/Ryoji_Noyori_20021212.jpg
+Karl Barry Sharpless    https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Barry_Sharpless_in_2026.jpg/960px-Barry_Sharpless_in_2026.jpg
+Leland H. Hartwell      https://en.wikipedia.org/wiki/Leland_H._Hartwell
+Tim Hunt        https://upload.wikimedia.org/wikipedia/commons/a/a3/Tim_Hunt_at_UCSF_05_2009_%284%29.jpg
+Paul Nurse      https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Paul_Nurse_portrait.jpg/960px-Paul_Nurse_portrait.jpg
+V. S. Naipaul   https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/VS_Naipaul_2016_Dhaka.jpg/1280px-VS_Naipaul_2016_Dhaka.jpg
+United Nations  https://en.wikipedia.org/wiki/United_Nations
+Kofi Annan      https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Kofi_Annan_2012_%28cropped%29.jpg/960px-Kofi_Annan_2012_%28cropped%29.jpg
+George Akerlof  https://upload.wikimedia.org/wikipedia/commons/7/75/George_Akerlof_%28cropped%29.jpg
+Michael Spence  https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/A_Michael_Spence.jpg/1280px-A_Michael_Spence.jpg
+Joseph Stiglitz https://upload.wikimedia.org/wikipedia/commons/9/9e/Joseph_E._Stiglitz%2C_2019_%28cropped%29.jpg
+2002    https://en.wikipedia.org/wiki/2002_Nobel_Prizes
+Riccardo Giacconi       https://upload.wikimedia.org/wikipedia/commons/7/76/Giacconi_lg1.jpg
+Raymond Davis Jr.       https://upload.wikimedia.org/wikipedia/commons/a/a8/Raymond_Davis%2C_Jr_2001.jpg
+Masatoshi Koshiba       https://upload.wikimedia.org/wikipedia/commons/b/b9/Masatoshi_Koshiba_2002.jpg
+John B. Fenn    https://upload.wikimedia.org/wikipedia/commons/a/a6/John_B_Fenn01.jpg
+Koichi Tanaka   https://upload.wikimedia.org/wikipedia/commons/7/72/Koichi_Tanaka_2003.jpg
+Kurt Wüthrich  https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Kurt_W%C3%BCthrich_01.jpg/960px-Kurt_W%C3%BCthrich_01.jpg
+Sydney Brenner  https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Sydney_Brenner_OIST_2008_%2833208371153%29_%28cropped%29.jpg/960px-Sydney_Brenner_OIST_2008_%2833208371153%29_%28cropped%29.jpg
+H. Robert Horvitz       https://en.wikipedia.org/wiki/H._Robert_Horvitz
+John Sulston    https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/John_Sulston_%282008%29.jpg/960px-John_Sulston_%282008%29.jpg
+Imre Kertész   https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Oliver_Mark_-_Imre_Kert%C3%A9sz%2C_Berlin_2005.jpg/1280px-Oliver_Mark_-_Imre_Kert%C3%A9sz%2C_Berlin_2005.jpg
+Jimmy Carter    https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Jimmy_Carter_Official_Portrait2_%283x4_cropped%29.jpg/960px-Jimmy_Carter_Official_Portrait2_%283x4_cropped%29.jpg
+Daniel Kahneman https://upload.wikimedia.org/wikipedia/commons/4/4d/Daniel_Kahneman_%283283955327%29_%28cropped%29.jpg
+Vernon L. Smith https://upload.wikimedia.org/wikipedia/commons/9/9e/Vernon_L._Smith_2011.jpg
+2003    https://en.wikipedia.org/wiki/2003_Nobel_Prizes
+Alexei Abrikosov        https://upload.wikimedia.org/wikipedia/commons/0/0e/AA_Abrikosov_ANL1.jpg
+Vitaly Ginzburg https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/%D0%92%D0%B8%D1%82%D0%B0%D0%BB%D0%B8%D0%B9_%D0%9B%D0%B0%D0%B7%D0%B0%D1%80%D0%B5%D0%B2%D0%B8%D1%87_%D0%93%D0%B8%D0%BD%D0%B7%D0%B1%D1%83%D1%80%D0%B3.jpg/960px-%D0%92%D0%B8%D1%82%D0%B0%D0%BB%D0%B8%D0%B9_%D0%9B%D0%B0%D0%B7%D0%B0%D1%80%D0%B5%D0%B2%D0%B8%D1%87_%D0%93%D0%B8%D0%BD%D0%B7%D0%B1%D1%83%D1%80%D0%B3.jpg
+Anthony James Leggett   https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Nobel_Laureate_Sir_Anthony_James_Leggett_in_2007_%28cropped%29.jpg/960px-Nobel_Laureate_Sir_Anthony_James_Leggett_in_2007_%28cropped%29.jpg
+Peter Agre      https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Peter_Agre_%28cropped%29.jpg/960px-Peter_Agre_%28cropped%29.jpg
+Roderick MacKinnon      https://upload.wikimedia.org/wikipedia/commons/d/dd/Roderick_MacKinnon%2C_M.D._%28cropped%29.jpg
+Paul Lauterbur  https://upload.wikimedia.org/wikipedia/commons/c/c8/Paul_Lauterbur_2003_cropped.jpg
+Peter Mansfield https://upload.wikimedia.org/wikipedia/commons/6/63/Peter_Mansfield_Leipzig.jpg
+J. M. Coetzee   https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/J._M._Coetzee_Nov_2023_headshot.jpg/1280px-J._M._Coetzee_Nov_2023_headshot.jpg
+Shirin Ebadi    https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Shirin_Ebadi_01.jpg/1280px-Shirin_Ebadi_01.jpg
+Robert F. Engle https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/0603-Kraneshares_KRBN-RobertEngle-JonDemske-16_%28cropped%29.jpg/960px-0603-Kraneshares_KRBN-RobertEngle-JonDemske-16_%28cropped%29.jpg
+Clive Granger   https://upload.wikimedia.org/wikipedia/commons/2/26/Clive_Granger_by_Olaf_Storbeck_%283x4_cropped%29.jpg
+2004    https://en.wikipedia.org/wiki/2004_Nobel_Prizes
+David Gross     https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/David_Gross_LANL.jpg/960px-David_Gross_LANL.jpg
+Hugh David Politzer     https://upload.wikimedia.org/wikipedia/commons/6/6e/H.D._Politzer.jpg
+Frank Wilczek   https://upload.wikimedia.org/wikipedia/commons/b/b1/FrankStockholm2004.jpg
+Aaron Ciechanover       https://en.wikipedia.org/wiki/Aaron_Ciechanover
+Avram Hershko   https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Flickr_-_Government_Press_Office_%28GPO%29_-_Nobel_Laureate_Avram_Hershko.jpg/960px-Flickr_-_Government_Press_Office_%28GPO%29_-_Nobel_Laureate_Avram_Hershko.jpg
+Irwin Rose      https://upload.wikimedia.org/wikipedia/commons/2/20/Nobel2004chemistrylaurets-Rose.jpg
+Richard Axel    https://upload.wikimedia.org/wikipedia/commons/4/49/Professor_Richard_Axel_ForMemRS.jpg
+Linda B. Buck   https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Dr_Linda_Buck_ForMemRS.jpg/960px-Dr_Linda_Buck_ForMemRS.jpg
+Elfriede Jelinek        https://upload.wikimedia.org/wikipedia/commons/e/e5/Elfriede_jelinek_2004_small.jpg
+Wangari Maathai https://upload.wikimedia.org/wikipedia/commons/d/da/Wangari_Maathai_in_2001.jpg
+Finn E. Kydland https://upload.wikimedia.org/wikipedia/commons/3/38/Finn_E_Kydland_2015_%28cropped%29.jpg
+Edward C. Prescott      https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Edward_C_Prescott_2015.jpg/1280px-Edward_C_Prescott_2015.jpg
+2005    https://en.wikipedia.org/wiki/2005_Nobel_Prizes
+Roy J. Glauber  https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Roy_Glauber.jpg/960px-Roy_Glauber.jpg
+John L. Hall    https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/John_L._Hall_in_Lindau.jpg/960px-John_L._Hall_in_Lindau.jpg
+Theodor W. Hänsch      https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Theodor_Haensch.jpg/960px-Theodor_Haensch.jpg
+Yves Chauvin    https://upload.wikimedia.org/wikipedia/commons/f/f8/Nobel_Laureates_in_Chemistry_2005_on_stage_%28restored%29.jpg
+Robert H. Grubbs        https://upload.wikimedia.org/wikipedia/commons/8/87/Robert_Grubbs_Royal_Society.jpg
+Richard R. Schrock      https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/R._Schrock_2012.jpg/960px-R._Schrock_2012.jpg
+Barry Marshall  https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Barry_J_Marshall.jpg/1280px-Barry_J_Marshall.jpg
+Robin Warren    https://upload.wikimedia.org/wikipedia/commons/c/c0/Robin_Warren.jpg
+Harold Pinter   https://upload.wikimedia.org/wikipedia/commons/5/58/Harold_Pinter_1962.jpg
+International Atomic Energy Agency      https://en.wikipedia.org/wiki/International_Atomic_Energy_Agency
+Mohamed ElBaradei       https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Mohamed_el-Baradei.jpg/960px-Mohamed_el-Baradei.jpg
+Robert Aumann   https://upload.wikimedia.org/wikipedia/commons/6/6b/OMAN.jpg
+Thomas Schelling        https://upload.wikimedia.org/wikipedia/commons/b/b7/Thomas_C._Schelling_%28cropped%29.jpg
+2006    https://en.wikipedia.org/wiki/2006_Nobel_Prizes
+John C. Mather  https://upload.wikimedia.org/wikipedia/commons/7/72/John_Mather_%28cropped%29.jpg
+George Smoot    https://upload.wikimedia.org/wikipedia/commons/4/4f/George_smoot_06N7133a.jpg
+Roger D. Kornberg       https://upload.wikimedia.org/wikipedia/commons/d/da/Roger_Kornberg_April_2016.jpg
+Andrew Fire     https://upload.wikimedia.org/wikipedia/commons/7/7e/Andrew_Fire%2C_Stanford_University.jpg
+Craig Mello     https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Craig_Mello_01_%28cropped%29.jpg/960px-Craig_Mello_01_%28cropped%29.jpg
+Orhan Pamuk     https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Orhan_Pamuk_2009_Shankbone.jpg/960px-Orhan_Pamuk_2009_Shankbone.jpg
+Muhammad Yunus  https://upload.wikimedia.org/wikipedia/commons/8/80/Muhammad_Yunus_speaking_at_Jamuna_State_Guesthouse%2C_Dhaka_2026-02-16_%28cropped%29.jpg
+Grameen Bank    https://en.wikipedia.org/wiki/Grameen_Bank
+Edmund Phelps   https://upload.wikimedia.org/wikipedia/commons/1/10/Edmund_Phelps_2017.jpg
+2007    https://en.wikipedia.org/wiki/2007_Nobel_Prizes
+Albert Fert     https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Albert_Fert_large.jpg/960px-Albert_Fert_large.jpg
+Peter Grünberg https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Peter_Gruenberg_01.jpg/960px-Peter_Gruenberg_01.jpg
+Gerhard Ertl    https://upload.wikimedia.org/wikipedia/commons/7/7f/Prof_Ertl-Portrait.jpg
+Mario Capecchi  https://en.wikipedia.org/wiki/Mario_Capecchi
+Martin Evans    https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Martin_Evans_Nobel_Prize.jpg/960px-Martin_Evans_Nobel_Prize.jpg
+Oliver Smithies https://en.wikipedia.org/wiki/Oliver_Smithies
+Doris Lessing   https://upload.wikimedia.org/wikipedia/commons/2/26/Doris_Lessing_3.jpg
+Intergovernmental Panel on Climate Change       https://en.wikipedia.org/wiki/Intergovernmental_Panel_on_Climate_Change
+Al Gore https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Al_Gore%2C_Vice_President_of_the_United_States%2C_official_portrait_1994.jpg/960px-Al_Gore%2C_Vice_President_of_the_United_States%2C_official_portrait_1994.jpg
+Leonid Hurwicz  https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Leonid_Hurwicz_%28cropped%29.jpg/960px-Leonid_Hurwicz_%28cropped%29.jpg
+Eric Maskin     https://upload.wikimedia.org/wikipedia/commons/0/07/05N3441_emaskin.jpg
+Roger Myerson   https://upload.wikimedia.org/wikipedia/commons/f/f6/Myerson_roger_b_print.jpg
+2008    https://en.wikipedia.org/wiki/2008_Nobel_Prizes
+Yoichiro Nambu  https://upload.wikimedia.org/wikipedia/commons/1/11/YoichiroNambu.jpg
+Makoto Kobayashi        https://upload.wikimedia.org/wikipedia/commons/0/0f/Makoto_Kobayashi_20101223.jpg
+Toshihide Maskawa       https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Toshihide_Masukawa-press_conference_Dec_07th%2C_2008-2.jpg/960px-Toshihide_Masukawa-press_conference_Dec_07th%2C_2008-2.jpg
+Osamu Shimomura https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Osamu_Shimomura-press_conference_Dec_06th%2C_2008-2.jpg/960px-Osamu_Shimomura-press_conference_Dec_06th%2C_2008-2.jpg
+Martin Chalfie  https://upload.wikimedia.org/wikipedia/commons/2/26/Martin_Chalfie_Royal_Society.jpg
+Roger Y. Tsien  https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Roger_Tsien-press_conference_Dec_07th%2C_2008-2.jpg/960px-Roger_Tsien-press_conference_Dec_07th%2C_2008-2.jpg
+Harald zur Hausen       https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Harald_zur_Hausen_03.jpg/960px-Harald_zur_Hausen_03.jpg
+Françoise Barré-Sinoussi      https://upload.wikimedia.org/wikipedia/commons/0/01/Fran%C3%A7oise_Barr%C3%A9-Sinoussi-press_conference_Dec_06th%2C_2008-1.jpg
+Luc Montagnier  https://upload.wikimedia.org/wikipedia/commons/3/3c/Luc_Montagnier-press_conference_Dec_06th%2C_2008-6.jpg
+J. M. G. Le Clézio     https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Jean-Marie_Gustave_Le_Cl%C3%A9zio-press_conference_Dec_06th%2C_2008-9_%28cropped%29.jpg/960px-Jean-Marie_Gustave_Le_Cl%C3%A9zio-press_conference_Dec_06th%2C_2008-9_%28cropped%29.jpg
+Martti Ahtisaari        https://upload.wikimedia.org/wikipedia/commons/7/7d/Martti_Ahtisaari_M%C3%A4ntyniemess%C3%A4_%28cropped%29.jpg
+Paul Krugman    https://upload.wikimedia.org/wikipedia/commons/9/9c/P20230814AS-0367_%28cropped%29.jpg
+2009    https://en.wikipedia.org/wiki/2009_Nobel_Prizes
+Charles K. Kao  https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Charles_K._Kao_cropped_2.jpg/1280px-Charles_K._Kao_cropped_2.jpg
+Willard S. Boyle        https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Nobel_Prize_2009-Press_Conference_KVA-23.jpg/960px-Nobel_Prize_2009-Press_Conference_KVA-23.jpg
+George E. Smith https://upload.wikimedia.org/wikipedia/commons/c/c5/Nobel_Prize_2009-Press_Conference_KVA-27.jpg
+Venkatraman Ramakrishnan        https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Nobel_Prize_2009-Press_Conference_KVA-08.jpg/960px-Nobel_Prize_2009-Press_Conference_KVA-08.jpg
+Thomas A. Steitz        https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Nobel_Prize_2009-Press_Conference_KVA-10.jpg/960px-Nobel_Prize_2009-Press_Conference_KVA-10.jpg
+Ada Yonath      https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Ada_Yonath_2013_January_CHF.jpg/1280px-Ada_Yonath_2013_January_CHF.jpg
+Elizabeth Blackburn     https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Elizabeth_Blackburn_in_2024_by_Christopher_Michel.jpg/960px-Elizabeth_Blackburn_in_2024_by_Christopher_Michel.jpg
+Carol W. Greider        https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Carol_Greider_by_Chris_Michel_1s946948-11-23.jpg/960px-Carol_Greider_by_Chris_Michel_1s946948-11-23.jpg
+Jack W. Szostak https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Jack_Szostak_in_2025.jpg/1280px-Jack_Szostak_in_2025.jpg
+Herta Müller   https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Herta_M%C3%BCller_Brucknerhaus_Linz_2025_BHO-4188.jpg/960px-Herta_M%C3%BCller_Brucknerhaus_Linz_2025_BHO-4188.jpg
+Barack Obama    https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/President_Barack_Obama.jpg/1280px-President_Barack_Obama.jpg
+Elinor Ostrom   https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Nobel_Prize_2009-Press_Conference_KVA-30.jpg/960px-Nobel_Prize_2009-Press_Conference_KVA-30.jpg
+Oliver E. Williamson    https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Nobel_Prize_2009-Press_Conference_KVA-42.jpg/960px-Nobel_Prize_2009-Press_Conference_KVA-42.jpg
+2010    https://en.wikipedia.org/wiki/2010_Nobel_Prizes
+Andre Geim      https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Andre_Geim_10.jpg/960px-Andre_Geim_10.jpg
+Konstantin Novoselov    https://upload.wikimedia.org/wikipedia/commons/3/3f/Konstantin_Novoselov_portrait.jpg
+Richard F. Heck https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Richard_F._Heck2010.jpg/960px-Richard_F._Heck2010.jpg
+Ei-ichi Negishi https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Nobel_Prize_2010-Press_Conference_KVA-DSC_7398.jpg/960px-Nobel_Prize_2010-Press_Conference_KVA-DSC_7398.jpg
+Akira Suzuki    https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Nobel_Prize_2010-Press_Conference_KVA-DSC_7383.jpg/960px-Nobel_Prize_2010-Press_Conference_KVA-DSC_7383.jpg
+Robert Edwards  https://upload.wikimedia.org/wikipedia/en/d/da/Robert_Edwards.jpg
+Mario Vargas Llosa      https://en.wikipedia.org/wiki/Mario_Vargas_Llosa
+Liu Xiaobo      https://upload.wikimedia.org/wikipedia/en/a/a3/Liu_Xiaobo.jpg
+Peter A. Diamond        https://upload.wikimedia.org/wikipedia/commons/b/b1/Peter_Diamond_%28economist%29.jpg
+Dale T. Mortensen       https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Dale_Mortensen_2.jpg/1280px-Dale_Mortensen_2.jpg
+Christopher A. Pissarides       https://upload.wikimedia.org/wikipedia/commons/0/0d/Christopher_Pissarides_Wiki_MR2013.jpg
+2011    https://en.wikipedia.org/wiki/2011_Nobel_Prizes
+Saul Perlmutter https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Saul_Perlmutter_375e309_by_Christopher_Michel_8202024_01.jpg/960px-Saul_Perlmutter_375e309_by_Christopher_Michel_8202024_01.jpg
+Adam Riess      https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Nobel_Prize_2011-Press_Conference_KVA-DSC_7764.jpg/960px-Nobel_Prize_2011-Press_Conference_KVA-DSC_7764.jpg
+Brian Schmidt   https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Brian_Schmidt.jpg/960px-Brian_Schmidt.jpg
+Dan Shechtman   https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Nobel_Prize_2011-Nobel_interviews_KVA-DSC_8039.jpg/960px-Nobel_Prize_2011-Nobel_interviews_KVA-DSC_8039.jpg
+Bruce Beutler   https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Bruce_Beutler.jpg/1280px-Bruce_Beutler.jpg
+Jules A. Hoffmann       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Nobel_Prize_2011-Press_Conference_Jules_A._Hoffmann_%283x4_cropped%29.jpg/960px-Nobel_Prize_2011-Press_Conference_Jules_A._Hoffmann_%283x4_cropped%29.jpg
+Ralph M. Steinman       https://upload.wikimedia.org/wikipedia/commons/5/5e/RMSt.jpg
+Tomas Tranströmer      https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Tomas_Transtr%C3%B6mer_2012-05-04_001_%28cropped%29.jpg/960px-Tomas_Transtr%C3%B6mer_2012-05-04_001_%28cropped%29.jpg
+Ellen Johnson Sirleaf   https://upload.wikimedia.org/wikipedia/commons/f/f1/Ellen_Johnson_Sirleaf_February_2015.jpg
+Leymah Gbowee   https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Leymah_Gbowee_no_Fronteiras_do_Pensamento_Porto_Alegre_2013_%289730602149%29_%28cropped%29.jpg/960px-Leymah_Gbowee_no_Fronteiras_do_Pensamento_Porto_Alegre_2013_%289730602149%29_%28cropped%29.jpg
+Tawakel Karman  https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Tawakkol_Karman_Photo.jpg/960px-Tawakkol_Karman_Photo.jpg
+Thomas J. Sargent       https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Nobel_Prize_2011-Press_Conference_KVA-DSC_7770.jpg/960px-Nobel_Prize_2011-Press_Conference_KVA-DSC_7770.jpg
+Christopher A. Sims     https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Nobel_Prize_2011-Press_Conference_KVA-DSC_7720.jpg/960px-Nobel_Prize_2011-Press_Conference_KVA-DSC_7720.jpg
+2012    https://en.wikipedia.org/wiki/2012_Nobel_Prizes
+Serge Haroche   https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Serge_Haroche_1_2012.jpg/1280px-Serge_Haroche_1_2012.jpg
+David J. Wineland       https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Portrait_of_David_Wineland.jpg/960px-Portrait_of_David_Wineland.jpg
+Brian K. Kobilka        https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Brian_Kobilka_361726_by_Christopher_Michel_6-20-24.jpg/960px-Brian_Kobilka_361726_by_Christopher_Michel_6-20-24.jpg
+Robert J. Lefkowitz     https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Robert_Lefkowitz_2_2012.jpg/1280px-Robert_Lefkowitz_2_2012.jpg
+John B. Gurdon  https://en.wikipedia.org/wiki/John_Gurdon
+Shinya Yamanaka https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Shinya_Yamanaka_20141226.jpg/960px-Shinya_Yamanaka_20141226.jpg
+Mo Yan  https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/MoYan_Hamburg_2008.jpg/1280px-MoYan_Hamburg_2008.jpg
+European Union  https://en.wikipedia.org/wiki/European_Union
+Alvin E. Roth   https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Alvin_E._Roth_3_2012.jpg/1280px-Alvin_E._Roth_3_2012.jpg
+Lloyd S. Shapley        https://upload.wikimedia.org/wikipedia/commons/c/cb/Shapley%2C_Lloyd_%281980%29.jpg
+2013    https://en.wikipedia.org/wiki/2013_Nobel_Prizes
+François Englert       https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/DIMG_7472_%2811253451693%29.jpg/1280px-DIMG_7472_%2811253451693%29.jpg
+Peter W. Higgs  https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Nobel_Prize_24_2013_%28cropped%29.jpg/960px-Nobel_Prize_24_2013_%28cropped%29.jpg
+Martin Karplus  https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Martin_Karplus_Nobel_Prize_22_2013.jpg/1280px-Martin_Karplus_Nobel_Prize_22_2013.jpg
+Michael Levitt  https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/DIMG_7539_%2811253383215%29.jpg/1280px-DIMG_7539_%2811253383215%29.jpg
+Arieh Warshel   https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/AW_TW_PS.jpg/1280px-AW_TW_PS.jpg
+James E. Rothman        https://upload.wikimedia.org/wikipedia/commons/b/bf/James_Edward_Rothman.jpg
+Randy W. Schekman       https://en.wikipedia.org/wiki/Randy_W._Schekman
+Thomas C. Südhof       https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Thomas_C._S%C3%BCdhof_in_2024_%283x4_cropped%29.jpg/960px-Thomas_C._S%C3%BCdhof_in_2024_%283x4_cropped%29.jpg
+Alice Munro     https://upload.wikimedia.org/wikipedia/commons/3/3a/Alice_Munro_2006_%28cropped%29.jpg
+Organisation for the Prohibition of Chemical Weapons    https://en.wikipedia.org/wiki/Organisation_for_the_Prohibition_of_Chemical_Weapons
+Eugene F. Fama  https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Eugene_Fama_at_Nobel_Prize%2C_2013.jpg/1280px-Eugene_Fama_at_Nobel_Prize%2C_2013.jpg
+Lars Peter Hansen       https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Lars_Peter_Hansen_photo_in_2007.jpg/960px-Lars_Peter_Hansen_photo_in_2007.jpg
+Robert J. Shiller       https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Robert_J._Shiller_2017.jpg/960px-Robert_J._Shiller_2017.jpg
+2014    https://en.wikipedia.org/wiki/2014_Nobel_Prizes
+Isamu Akasaki   https://upload.wikimedia.org/wikipedia/commons/d/dd/Isamu_Akasaki_201111.jpg
+Hiroshi Amano   https://upload.wikimedia.org/wikipedia/commons/9/9f/Hiroshi_Amano_20141211.jpg
+Shuji Nakamura  https://upload.wikimedia.org/wikipedia/commons/2/24/Shuji_Nakamura_Nobel.jpg
+Eric Betzig     https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Eric_Betzig_%28cropped%29.jpg/960px-Eric_Betzig_%28cropped%29.jpg
+Stefan Hell     https://upload.wikimedia.org/wikipedia/commons/a/af/Stefan_W_Hell.jpg
+William Moerner https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/W.E._Moerner_in_2024.jpg/960px-W.E._Moerner_in_2024.jpg
+John O'Keefe    https://upload.wikimedia.org/wikipedia/commons/9/95/John_O%27Keefe_%28neuroscientist%29_2014_%28cropped%29.jpg
+May-Britt Moser https://upload.wikimedia.org/wikipedia/commons/e/e9/May-Britt_Moser_2014.jpg
+Edvard Moser    https://upload.wikimedia.org/wikipedia/commons/e/ed/Edvard_Moser_2015.jpg
+Patrick Modiano https://upload.wikimedia.org/wikipedia/commons/d/d1/Patrick_Modiano_6_dec_2014_-_22.jpg
+Kailash Satyarthi       https://upload.wikimedia.org/wikipedia/commons/b/b4/Kailash_Satyarthi%2C_August_2023.jpg
+Malala Yousafzai        https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Malala_Yousafzai_2023_portrait_2x3.jpg/960px-Malala_Yousafzai_2023_portrait_2x3.jpg
+Jean Tirole     https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Jean_Tirole_%28cropped%29.jpg/960px-Jean_Tirole_%28cropped%29.jpg
+2015    https://en.wikipedia.org/wiki/2015_Nobel_Prizes
+Takaaki Kajita  https://upload.wikimedia.org/wikipedia/commons/8/8a/Takaaki_Kajita_cropped_1_Takaaki_Kajita_202010.jpg
+Arthur B. McDonald      https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Arthur_B._McDonald_5193-2015.jpg/1280px-Arthur_B._McDonald_5193-2015.jpg
+Tomas Lindahl   https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Tomas_Lindahl_0113.jpg/1280px-Tomas_Lindahl_0113.jpg
+Paul L. Modrich https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Paul_L._Modrich_0116.jpg/1280px-Paul_L._Modrich_0116.jpg
+Aziz Sancar     https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Aziz_Sancar_0060.jpg/1280px-Aziz_Sancar_0060.jpg
+William C. Campbell     https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/William_C._Campbell_4983-1-2015.jpg/1280px-William_C._Campbell_4983-1-2015.jpg
+Satoshi Ōmura  https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Satoshi_%C5%8Cmura_5040-2015.jpg/1280px-Satoshi_%C5%8Cmura_5040-2015.jpg
+Tu Youyou       https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/D810_4987_Tu_Youyou%2C_medicine_%2822945001843%29_%28cropped%29.jpg/960px-D810_4987_Tu_Youyou%2C_medicine_%2822945001843%29_%28cropped%29.jpg
+Svetlana Alexievich     https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Svetlana_Alexievich_asv2024-01.jpg/960px-Svetlana_Alexievich_asv2024-01.jpg
+Tunisian National Dialogue Quartet      https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Tunisian_National_Dialogue_Quartet_Visit_to_Vienna_March_2016_%2824747151924%29.jpg/1280px-Tunisian_National_Dialogue_Quartet_Visit_to_Vienna_March_2016_%2824747151924%29.jpg
+Angus Deaton    https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Angus_Deaton_5289-2015.jpg/1280px-Angus_Deaton_5289-2015.jpg
+2016    https://en.wikipedia.org/wiki/2016_Nobel_Prizes
+David J. Thouless       https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/DavidThouless_1995_UW.jpg/960px-DavidThouless_1995_UW.jpg
+Duncan Haldane  https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Duncan_Haldane.jpg/1280px-Duncan_Haldane.jpg
+John M. Kosterlitz      https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/2016_Nobel_Reception_US_Embassy_Sweden_%2831557185216%29_%28cropped%29.jpg/960px-2016_Nobel_Reception_US_Embassy_Sweden_%2831557185216%29_%28cropped%29.jpg
+Jean-Pierre Sauvage     https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Jean-Pierre_Sauvage.jpg/960px-Jean-Pierre_Sauvage.jpg
+Fraser Stoddart https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Nobel_Laureates_7327_%2830647283454%29.jpg/1280px-Nobel_Laureates_7327_%2830647283454%29.jpg
+Ben Feringa     https://en.wikipedia.org/wiki/Ben_Feringa
+Yoshinori Ohsumi        https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Nobel_Laureates_7428_%2830679389523%29_%28cropped%29.jpg/960px-Nobel_Laureates_7428_%2830679389523%29_%28cropped%29.jpg
+Bob Dylan       https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/DylanYoungKilkenny140719v2_%2850_of_52%29_%2852246124397%29_%28cropped%29.jpg/960px-DylanYoungKilkenny140719v2_%2850_of_52%29_%2852246124397%29_%28cropped%29.jpg
+Juan Manuel Santos      https://upload.wikimedia.org/wikipedia/commons/3/37/Juan_Manuel_Santos_and_Lula_%28cropped%29.jpg
+Oliver Hart     https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Nobel_Laureates_0983_%2831117127490%29.jpg/960px-Nobel_Laureates_0983_%2831117127490%29.jpg
+Bengt R. Holmström     https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Nobel_Laureates_0889_%2830679343193%29.jpg/1280px-Nobel_Laureates_0889_%2830679343193%29.jpg
+2017    https://en.wikipedia.org/wiki/2017_Nobel_Prizes
+Rainer Weiss    https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Rainer_Weiss_EM1B8841_%2824027015857%29.jpg/960px-Rainer_Weiss_EM1B8841_%2824027015857%29.jpg
+Barry Barish    https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/05-0367-92D.hr.jpg/960px-05-0367-92D.hr.jpg
+Kip Thorne      https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Kip_Thorne_by_Christopher_Michel_2022.jpg/960px-Kip_Thorne_by_Christopher_Michel_2022.jpg
+Jacques Dubochet        https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Jacques_Dubochet%2C_2017_%28cropped%29.jpg/960px-Jacques_Dubochet%2C_2017_%28cropped%29.jpg
+Joachim Frank   https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Joachim_Frank.jpg/960px-Joachim_Frank.jpg
+Richard Henderson       https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Richard_Henderson_D81_4486_%2838005042695%29.jpg/960px-Richard_Henderson_D81_4486_%2838005042695%29.jpg
+Jeffrey C. Hall https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Jeffrey_C._Hall_EM1B8737_%2838162359274%29.jpg/1280px-Jeffrey_C._Hall_EM1B8737_%2838162359274%29.jpg
+Michael Rosbash https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Michael_Rosbash_EM1B8756_%2838847326642%29.jpg/960px-Michael_Rosbash_EM1B8756_%2838847326642%29.jpg
+Michael W. Young        https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Michael_W._Young_D81_4345_%2838162439194%29.jpg/960px-Michael_W._Young_D81_4345_%2838162439194%29.jpg
+Kazuo Ishiguro  https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/MKr377543_Kazuo_Ishiguro_%28A_Pale_View_of_Hills%2C_Cannes_2025%29.jpg/960px-MKr377543_Kazuo_Ishiguro_%28A_Pale_View_of_Hills%2C_Cannes_2025%29.jpg
+International Campaign to Abolish Nuclear Weapons       https://en.wikipedia.org/wiki/International_Campaign_to_Abolish_Nuclear_Weapons
+Richard Thaler  https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Richard_Thaler_Chatham.jpg/960px-Richard_Thaler_Chatham.jpg
+2018    https://en.wikipedia.org/wiki/2018_Nobel_Prizes
+Arthur Ashkin   https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Arthur_Ashkin_EM1B5678_%2844417135450%29.jpg/960px-Arthur_Ashkin_EM1B5678_%2844417135450%29.jpg
+Gérard Mourou  https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/G%C3%A9rard_Mourou%2C_2014.jpg/960px-G%C3%A9rard_Mourou%2C_2014.jpg
+Donna Strickland        https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Donna_Strickland_EM1B5760_%2846183560632%29_%28cropped%29.jpg/1280px-Donna_Strickland_EM1B5760_%2846183560632%29_%28cropped%29.jpg
+Frances H. Arnold       https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Frances_Arnold_in_2021_at_Caltech_01_%28cropped%29.jpg/960px-Frances_Arnold_in_2021_at_Caltech_01_%28cropped%29.jpg
+George Smith    https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/George_Smith_EM1B5849_%2831295409687%29.jpg/1280px-George_Smith_EM1B5849_%2831295409687%29.jpg
+Greg Winter     https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Gregory_Winter%2C_2016_%28cropped%29.jpg/960px-Gregory_Winter%2C_2016_%28cropped%29.jpg
+James P. Allison        https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/James_P._Allison_EM1B5525_%2846207775441%29.jpg/1280px-James_P._Allison_EM1B5525_%2846207775441%29.jpg
+Tasuku Honjo    https://upload.wikimedia.org/wikipedia/commons/b/b3/Tasuku_Honjo_201311.jpg
+Olga Tokarczuk  https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Olga_Tokarczuk-9739.jpg/960px-Olga_Tokarczuk-9739.jpg
+Denis Mukwege   https://upload.wikimedia.org/wikipedia/commons/f/f3/Denis_Mukwege_2018.jpg
+Nadia Murad     https://upload.wikimedia.org/wikipedia/commons/b/b9/Nadia_Murad_2023_%28close-up%29.jpg
+William Nordhaus        https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/William_Nordhaus_EM1B6043_%2846234132921%29.jpg/960px-William_Nordhaus_EM1B6043_%2846234132921%29.jpg
+Paul Romer      https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Paul_Romer_in_2005.jpg/960px-Paul_Romer_in_2005.jpg
+2019    https://en.wikipedia.org/wiki/2019_Nobel_Prizes
+Jim Peebles     https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Jim_Peebles_%28cropped_2%29.jpg/960px-Jim_Peebles_%28cropped_2%29.jpg
+Michel Mayor    https://upload.wikimedia.org/wikipedia/commons/e/e3/Michel_Mayor%2C_2012_%28cropped%29.jpg
+Didier Queloz   https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Queloz_profile.jpg/1280px-Queloz_profile.jpg
+John B. Goodenough      https://upload.wikimedia.org/wikipedia/commons/4/49/Nobel_9_Dec_2019_029_copy_%2849204051647%29_%28cropped%29.jpg
+M. Stanley Whittingham  https://upload.wikimedia.org/wikipedia/commons/8/84/Stanley_Whittingham_2020_%283x4_cropped%29.jpg
+Akira Yoshino   https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Akira_Yoshino_20170920_%28cropped_2%29.jpg/960px-Akira_Yoshino_20170920_%28cropped_2%29.jpg
+William Kaelin Jr.      https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/William_G._Kaelin_Jr._UNIST_CGI_2019.jpg/960px-William_G._Kaelin_Jr._UNIST_CGI_2019.jpg
+Peter J. Ratcliffe      https://upload.wikimedia.org/wikipedia/commons/1/19/Peter_J._Ratcliffe_%28cropped%29.jpg
+Gregg L. Semenza        https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Gregg_L._Semenza_%28cropped%29.jpg/960px-Gregg_L._Semenza_%28cropped%29.jpg
+Peter Handke    https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Peter-handke.jpg/960px-Peter-handke.jpg
+Abiy Ahmed      https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Prime_Minister_of_Ethiopia_Abiy_Ahmed_Ali_%28cropped%29.jpg/960px-Prime_Minister_of_Ethiopia_Abiy_Ahmed_Ali_%28cropped%29.jpg
+Abhijit Banerjee        https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Abhijit_Banerjee_at_the_2025_Jaipur_Literature_Festival.jpg/1280px-Abhijit_Banerjee_at_the_2025_Jaipur_Literature_Festival.jpg
+Esther Duflo    https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Nobel_9_Dec_2019_Esther_Duflo_%28cropped%29.jpg/960px-Nobel_9_Dec_2019_Esther_Duflo_%28cropped%29.jpg
+Michael Kremer  https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Kremer_bio.jpg/960px-Kremer_bio.jpg
+2020    https://en.wikipedia.org/wiki/2020_Nobel_Prizes
+Roger Penrose   https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Roger_Penrose_at_Festival_della_Scienza_Oct_29_2011.jpg/960px-Roger_Penrose_at_Festival_della_Scienza_Oct_29_2011.jpg
+Reinhard Genzel https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Reinhard_Genzel.jpg/960px-Reinhard_Genzel.jpg
+Andrea M. Ghez  https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Andrea_Ghez.jpg/1280px-Andrea_Ghez.jpg
+Emmanuelle Charpentier  https://upload.wikimedia.org/wikipedia/commons/6/66/Emmanuelle_Charpentier.jpg
+Jennifer Doudna https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Jennifer_Doudna_by_Christopher_Michel_in_2023_01.jpg/960px-Jennifer_Doudna_by_Christopher_Michel_in_2023_01.jpg
+Harvey J. Alter https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Dr._Harvey_J._Alter_wins_2020_Nobel_Prize_%28cropped%29.jpg/960px-Dr._Harvey_J._Alter_wins_2020_Nobel_Prize_%28cropped%29.jpg
+Michael Houghton        https://upload.wikimedia.org/wikipedia/commons/e/e4/Prof_Michael_Houghton.jpg
+Charles M. Rice https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Charles_Rice%2C_2020_Nobel_Laureate_in_Medicine_%28cropped%29.jpg/960px-Charles_Rice%2C_2020_Nobel_Laureate_in_Medicine_%28cropped%29.jpg
+Louise Glück   https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Louise_Gl%C3%BCck_circa_1977.jpg/960px-Louise_Gl%C3%BCck_circa_1977.jpg
+World Food Programme    https://en.wikipedia.org/wiki/World_Food_Programme
+Paul Milgrom    https://upload.wikimedia.org/wikipedia/commons/e/e1/Paul_Milgrom_Headshot.jpg
+Robert B. Wilson        https://en.wikipedia.org/wiki/Robert_B._Wilson
+2021    https://en.wikipedia.org/wiki/2021_Nobel_Prizes
+Giorgio Parisi  https://upload.wikimedia.org/wikipedia/commons/c/c1/Parisi_giorgio.jpg
+Klaus Hasselmann        https://en.wikipedia.org/wiki/Klaus_Hasselmann
+Syukuro Manabe  https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Crafoord_Prize_EM1B0732_%2842329290061%29.jpg/960px-Crafoord_Prize_EM1B0732_%2842329290061%29.jpg
+Benjamin List   https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Empfang_f%C3%BCr_Benjamin_List_im_Rathaus_K%C3%B6ln-7597-crop.jpg/960px-Empfang_f%C3%BCr_Benjamin_List_im_Rathaus_K%C3%B6ln-7597-crop.jpg
+David MacMillan https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/David_MacMillan.jpg/1280px-David_MacMillan.jpg
+David Julius    https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Dr_David_Julius_by_christopher_michel_in_2022_04.jpg/960px-Dr_David_Julius_by_christopher_michel_in_2022_04.jpg
+Ardem Patapoutian       https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Ardem_Patapoutian_by_C_Michel_67_%28cropped%29.jpg/960px-Ardem_Patapoutian_by_C_Michel_67_%28cropped%29.jpg
+Abdulrazak Gurnah       https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Abdulrazak_Gurnah_2024_%28cropped%29.jpg/1280px-Abdulrazak_Gurnah_2024_%28cropped%29.jpg
+Maria Ressa     https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Serica_Trailblazers_2025_-_Maria_Ressa_01_cropped.jpg/960px-Serica_Trailblazers_2025_-_Maria_Ressa_01_cropped.jpg
+Dmitry Muratov  https://upload.wikimedia.org/wikipedia/commons/9/99/2018-06-20_Boris_Nemzow_Preis_2018-9831_%28cropped%29.jpg
+David Card      https://en.wikipedia.org/wiki/David_Card
+Joshua Angrist  https://upload.wikimedia.org/wikipedia/commons/4/42/Joshua_Angrist_-_2011.jpg
+Guido Imbens    https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Guido_Imbens_in_2025_by_Christopher_Michel.jpg/960px-Guido_Imbens_in_2025_by_Christopher_Michel.jpg
+2022    https://en.wikipedia.org/wiki/2022_Nobel_Prizes
+Alain Aspect    https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Alain_Aspect_%2826341660894%29_%28cropped%29.jpg/1280px-Alain_Aspect_%2826341660894%29_%28cropped%29.jpg
+John Clauser    https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/John_Clauser_Updated_2024.jpg/960px-John_Clauser_Updated_2024.jpg
+Anton Zeilinger https://upload.wikimedia.org/wikipedia/commons/d/dc/Anton_Zeilinger%2C_2019_%2849085194786%29_%28cropped%29.jpg
+Carolyn Bertozzi        https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Carolyn_Bertozzi_by_Christopher_Michel_in_2022_4.jpg/960px-Carolyn_Bertozzi_by_Christopher_Michel_in_2022_4.jpg
+Morten P. Meldal        https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/MortenMeldal23_%28cropped%29.jpg/960px-MortenMeldal23_%28cropped%29.jpg
+Karl Barry Sharpless    https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Barry_Sharpless_in_2026.jpg/960px-Barry_Sharpless_in_2026.jpg
+Svante Pääbo  https://upload.wikimedia.org/wikipedia/commons/9/90/Professor_Svante_Paabo_ForMemRS_%28cropped%29_%28cropped%29.jpg
+Annie Ernaux    https://upload.wikimedia.org/wikipedia/commons/c/cd/Annie_Ernaux_al_Salone_del_Libro_%28cropped%29.jpg
+Ales Bialiatski https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Ales_Bialiatski_Fot_Mariusz_Kubik_02.jpg/960px-Ales_Bialiatski_Fot_Mariusz_Kubik_02.jpg
+Memorial        https://en.wikipedia.org/wiki/Memorial_(society)
+Centre for Civil Liberties      https://en.wikipedia.org/wiki/Center_for_Civil_Liberties_(human_rights_organization)
+Ben Bernanke    https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Ben_Bernanke_official_portrait.jpg/960px-Ben_Bernanke_official_portrait.jpg
+Douglas Diamond https://upload.wikimedia.org/wikipedia/commons/1/1c/Douglas_Diamond.jpg
+Philip H. Dybvig        https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/ASSA_2025_-_Philip_Dybvig_01.jpg/1280px-ASSA_2025_-_Philip_Dybvig_01.jpg
+2023    https://en.wikipedia.org/wiki/2023_Nobel_Prizes
+Pierre Agostini https://upload.wikimedia.org/wikipedia/commons/8/8a/US_Embassy_Sweden_2023_Nobel_Reception_%2853397591873%29_%28cropped%29.jpg
+Ferenc Krausz   https://upload.wikimedia.org/wikipedia/commons/1/19/Ferenc_Krausz_%28cropped%29.jpg
+Anne L'Huillier https://en.wikipedia.org/wiki/Anne_L%27Huillier
+Moungi Bawendi  https://upload.wikimedia.org/wikipedia/commons/5/5c/US_Embassy_Sweden_2023_Nobel_Reception_%2853390424864%29_%28cropped%29.jpg
+Louis E. Brus   https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Louis_E_Brus.jpg/960px-Louis_E_Brus.jpg
+Alexey Ekimov   https://upload.wikimedia.org/wikipedia/commons/c/cf/US_Embassy_Sweden_2023_Nobel_Reception_%2853390424929%29_%28cropped%29.jpg
+Katalin Karikó https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Katalin_Karik%C3%B3_by_Michel_2024_02.jpg/960px-Katalin_Karik%C3%B3_by_Michel_2024_02.jpg
+Drew Weissman   https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Drew_Weissman%2C_2023_Nobel_Laureate_in_Medicine_%28cropped%29.jpg/960px-Drew_Weissman%2C_2023_Nobel_Laureate_in_Medicine_%28cropped%29.jpg
+Jon Fosse       https://upload.wikimedia.org/wikipedia/commons/3/31/Writer_Jon_Fosse_%28cropped%29.jpg
+Narges Mohammadi        https://upload.wikimedia.org/wikipedia/commons/1/11/Narges_Mohammadi_%28cropped%29.jpg
+Claudia Goldin  https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Claudia_Goldin_%283x4_cropped%29.jpg/960px-Claudia_Goldin_%283x4_cropped%29.jpg
+2024    https://en.wikipedia.org/wiki/2024_Nobel_Prizes
+John Hopfield   https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/John_J._Hopfield_delivering_his_lecture_at_the_2024_Nobel_Prize_Lectures_in_Stockholm.jpg/960px-John_J._Hopfield_delivering_his_lecture_at_the_2024_Nobel_Prize_Lectures_in_Stockholm.jpg
+Geoffrey Hinton https://upload.wikimedia.org/wikipedia/commons/3/30/Geoffrey_E._Hinton%2C_2024_Nobel_Prize_Laureate_in_Physics_%28cropped1%29.jpg
+David Baker     https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/David_Baker_at_UW_in_2026_03.jpg/960px-David_Baker_at_UW_in_2026_03.jpg
+Demis Hassabis  https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Demis_Hassabis%2C_2024_Nobel_Prize_Laureate_in_Chemistry_7_%28cropped%29.jpg/960px-Demis_Hassabis%2C_2024_Nobel_Prize_Laureate_in_Chemistry_7_%28cropped%29.jpg
+John M. Jumper  https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/John_Jumper%2C_2024_Nobel_Prize_Laureate_in_Chemistry.jpg/1280px-John_Jumper%2C_2024_Nobel_Prize_Laureate_in_Chemistry.jpg
+Victor Ambros   https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Victor_Ambros%2C_2024_Nobel_Prize_Laureate_in_Medicine.jpg/1280px-Victor_Ambros%2C_2024_Nobel_Prize_Laureate_in_Medicine.jpg
+Gary Ruvkun     https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Gary_Ruvkun%2C_2024_Nobel_Prize_Laureate_in_Medicine_3_%28cropped%29.jpg/960px-Gary_Ruvkun%2C_2024_Nobel_Prize_Laureate_in_Medicine_3_%28cropped%29.jpg
+Han Kang        https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Han_Kang%2C_2024_Nobel_Prize_Laureate_in_Literature_%28cropped%29.jpg/960px-Han_Kang%2C_2024_Nobel_Prize_Laureate_in_Literature_%28cropped%29.jpg
+Nihon Hidankyo  https://en.wikipedia.org/wiki/Nihon_Hidankyo
+Daron Acemoglu  https://en.wikipedia.org/wiki/Daron_Acemoglu
+Simon Johnson   https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Simon_Johnson%2C_2024_Nobel_Prize_Laureate_in_Economics_4_%28cropped%29.jpg/960px-Simon_Johnson%2C_2024_Nobel_Prize_Laureate_in_Economics_4_%28cropped%29.jpg
+James A. Robinson       https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/James_A._Robinson%2C_2024_Nobel_Prize_Laureate_in_Economics_3_%28cropped%29.jpg/960px-James_A._Robinson%2C_2024_Nobel_Prize_Laureate_in_Economics_3_%28cropped%29.jpg
+2025    https://en.wikipedia.org/wiki/2025_Nobel_Prizes
+John Clarke     https://en.wikipedia.org/wiki/John_Clarke_(physicist)
+Michel H. Devoret       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Michel_Devoret_%2854987873184%29.jpg/960px-Michel_Devoret_%2854987873184%29.jpg
+John M. Martinis        https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/John_M._Martinis%2C_American_physicst_and_2025_Nobel_laurate_in_physics.jpg/960px-John_M._Martinis%2C_American_physicst_and_2025_Nobel_laurate_in_physics.jpg
+Susumu Kitagawa https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Susumu_Kitagawa_on_November_3%2C_2025.jpg/1280px-Susumu_Kitagawa_on_November_3%2C_2025.jpg
+Richard Robson  https://upload.wikimedia.org/wikipedia/commons/4/43/Richard_Robson_2025_Nobel_laureates_in_chemistry_at_Stockholm_University_%28cropped%29.jpg
+Omar M. Yaghi   https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Omar_Yaghi_413953_by_Christopher_Michel_1-7-2025.jpg/960px-Omar_Yaghi_413953_by_Christopher_Michel_1-7-2025.jpg
+Mary E. Brunkow https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Mary_Brunkow_-_US_Embassy_Sweden_Nobel_Reception_2025.jpg/960px-Mary_Brunkow_-_US_Embassy_Sweden_Nobel_Reception_2025.jpg
+Fred Ramsdell   https://upload.wikimedia.org/wikipedia/commons/3/31/Fred_Ramsdell_-_US_Embassy_Sweden_Nobel_Reception_2025.jpg
+Shimon Sakaguchi        https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Shimon_Sakaguchi_cropped_2_Shimon_Sakaguchi_201711.jpg/960px-Shimon_Sakaguchi_cropped_2_Shimon_Sakaguchi_201711.jpg
+László Krasznahorkai  https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Krasznahorkai_L%C3%A1szl%C3%B3_%28D%C3%A9ri_Mikl%C3%B3s%29_%283x4_cropped%29.jpg/960px-Krasznahorkai_L%C3%A1szl%C3%B3_%28D%C3%A9ri_Mikl%C3%B3s%29_%283x4_cropped%29.jpg
+María Corina Machado   https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Nobel_Peace_Prize_2025_-_Mar%C3%ADa_Corina_Machado_press_conference_%283x4_cropped%29.jpg/960px-Nobel_Peace_Prize_2025_-_Mar%C3%ADa_Corina_Machado_press_conference_%283x4_cropped%29.jpg
+Joel Mokyr      https://upload.wikimedia.org/wikipedia/commons/d/db/Professor_Joel_Mokyr.jpg
+Philippe Aghion https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Phillipe_Aghion_-_The_State_of_France_%28cropped%2Boptimised%29.jpg/1280px-Phillipe_Aghion_-_The_State_of_France_%28cropped%2Boptimised%29.jpg
+Peter Howitt    https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Peter_Howitt_2025_Nobel_laurates_in_economic_sciences_%28cropped%29.jpg/960px-Peter_Howitt_2025_Nobel_laurates_in_economic_sciences_%28cropped%29.jpg
+Physics https://en.wikipedia.org/wiki/List_of_Nobel_laureates_in_Physics
+Chemistry       https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/AlfredNobel_adjusted.jpg/960px-AlfredNobel_adjusted.jpg
+Literature      https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Mats_Malm_on_the_Nobel_Prize_in_Literature_2022.jpg/1280px-Mats_Malm_on_the_Nobel_Prize_in_Literature_2022.jpg
+Peace   https://upload.wikimedia.org/wikipedia/commons/9/92/Norske_nobelinstiutt_1.jpg
+Prize in Economic Sciences      https://upload.wikimedia.org/wikipedia/commons/0/0d/Nobel2008Economics_news_conference1.jpg
+List of Nobel laureates by country      https://en.wikipedia.org/wiki/List_of_Nobel_laureates_by_country
+List of Nobel laureates by university affiliation       https://en.wikipedia.org/wiki/List_of_Nobel_laureates_by_university_affiliation
+List of female Nobel laureates  https://en.wikipedia.org/wiki/List_of_female_Nobel_laureates
+List of nominees for the Nobel Prize in Literature      https://en.wikipedia.org/wiki/List_of_nominees_for_the_Nobel_Prize_in_Literature_(disambiguation)
+List of nominees for the Nobel Prize in Chemistry       https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Lise_Meitner_%281878-1968%29%2C_lecturing_at_Catholic_University%2C_Washington%2C_D.C.%2C_1946.jpg/960px-Lise_Meitner_%281878-1968%29%2C_lecturing_at_Catholic_University%2C_Washington%2C_D.C.%2C_1946.jpg
+List of nominees for the Nobel Prize in Physics https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Chien-shiung_Wu_%281912-1997%29_C.jpg/960px-Chien-shiung_Wu_%281912-1997%29_C.jpg
+List of female nominees for the Nobel Prize     https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Cecilia_Helena_Payne_Gaposchkin_%281900-1979%29_%28cropped%29.jpg/960px-Cecilia_Helena_Payne_Gaposchkin_%281900-1979%29_%28cropped%29.jpg
+List of individuals nominated for the Nobel Peace Prize https://en.wikipedia.org/wiki/List_of_individuals_nominated_for_the_Nobel_Peace_Prize
+List of organizations nominated for the Nobel Peace Prize       https://en.wikipedia.org/wiki/List_of_organizations_nominated_for_the_Nobel_Peace_Prize
+Richard Kuhn    https://upload.wikimedia.org/wikipedia/commons/3/3f/Richard_Kuhn_ETH-Bib_Dia_248-065.jpg
+Adolf Butenandt https://upload.wikimedia.org/wikipedia/commons/8/8d/Bad_Schachen_Portr%C3%A4t%3B_Adolf_Butenandt_-_W134Nr.020182c_-_Willy_Pragher_%28cropped%29.jpg
+Gerhard Domagk  https://upload.wikimedia.org/wikipedia/commons/d/df/Gerhard_Domagk_nobel.jpg
+Mohandas Karamchand Gandhi      https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Mahatma-Gandhi%2C_studio%2C_1931.jpg/1280px-Mahatma-Gandhi%2C_studio%2C_1931.jpg
+Boris Pasternak https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Boris_Pasternak_1958_photo.jpg/960px-Boris_Pasternak_1958_photo.jpg
+Soviet Union    https://en.wikipedia.org/wiki/Soviet_Union
+Jean-Paul Sartre        https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Jean_Paul_Sartre_1965.jpg/960px-Jean_Paul_Sartre_1965.jpg
+Lê Đức Thọ        https://upload.wikimedia.org/wikipedia/commons/b/b7/Le_Duc_Tho_at_Orly_Field_1972_%28cropped%29.jpg
+Paris Peace Accords     https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Vietnam_Peace_Treaty_1973.jpg/960px-Vietnam_Peace_Treaty_1973.jpg
+Vietnam War     https://upload.wikimedia.org/wikipedia/commons/6/67/U.S._Army_UH-1H_Hueys_insert_ARVN_troops_at_Kh%C3%A2m_%C4%90%E1%BB%A9c%2C_Vietnam%2C_12_July_1970_%2879431435%29.jpg
+Liu Xiaobo      https://upload.wikimedia.org/wikipedia/en/a/a3/Liu_Xiaobo.jpg
+Swedish Academy https://en.wikipedia.org/wiki/Swedish_Academy
+Nobel Foundation        https://en.wikipedia.org/wiki/Nobel_Foundation
+Nobel Foundation        https://en.wikipedia.org/wiki/Nobel_Foundation
+Wayback Machine https://en.wikipedia.org/wiki/Wayback_Machine
+Wayback Machine https://en.wikipedia.org/wiki/Wayback_Machine
+Wayback Machine https://en.wikipedia.org/wiki/Wayback_Machine
+Nobel Prizes    https://en.wikipedia.org/wiki/Nobel_Prize
+Lists of Nobel laureates        https://en.wikipedia.org/wiki/Lists_of_Nobel_laureates
+Nobel Prize medal       https://en.wikipedia.org/wiki/Nobel_Prize_medal
+Chemistry       https://en.wikipedia.org/wiki/Nobel_Prize_in_Chemistry
+Economics       https://en.wikipedia.org/wiki/Nobel_Memorial_Prize_in_Economic_Sciences
+Literature      https://en.wikipedia.org/wiki/Nobel_Prize_in_Literature
+Peace   https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/President_Jimmy_Carter%27s_2002_Nobel_Peace_Prize_-_Bronze_Medal_-_At_Visitor%27s_Center_-_Plains_-_Georgia_-_USA_%2834208881752%29.jpg/960px-President_Jimmy_Carter%27s_2002_Nobel_Peace_Prize_-_Bronze_Medal_-_At_Visitor%27s_Center_-_Plains_-_Georgia_-_USA_%2834208881752%29.jpg
+Physics https://en.wikipedia.org/wiki/Nobel_Prize_in_Physics
+Physiology or Medicine  https://en.wikipedia.org/wiki/Nobel_Prize_in_Physiology_or_Medicine
+Heads of state and government   https://en.wikipedia.org/wiki/List_of_heads_of_state_and_government_Nobel_laureates
+Chemistry       https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/AlfredNobel_adjusted.jpg/960px-AlfredNobel_adjusted.jpg
+Economics       https://upload.wikimedia.org/wikipedia/commons/0/0d/Nobel2008Economics_news_conference1.jpg
+Literature      https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Mats_Malm_on_the_Nobel_Prize_in_Literature_2022.jpg/1280px-Mats_Malm_on_the_Nobel_Prize_in_Literature_2022.jpg
+Peace   https://upload.wikimedia.org/wikipedia/commons/9/92/Norske_nobelinstiutt_1.jpg
+Physics https://en.wikipedia.org/wiki/List_of_Nobel_laureates_in_Physics
+Physiology or Medicine  https://upload.wikimedia.org/wikipedia/en/4/44/NobelPrize1.jpg
+Bengali https://en.wikipedia.org/wiki/List_of_Bengali_Nobel_laureates
+Black   https://en.wikipedia.org/wiki/List_of_black_Nobel_laureates
+Christian       https://en.wikipedia.org/wiki/List_of_Christian_Nobel_laureates
+Female  https://en.wikipedia.org/wiki/List_of_female_Nobel_laureates
+Jewish  https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/PikiWiki_Israel_9696_jewish_laureates_promenade_in_rishon_lezion.jpg/1280px-PikiWiki_Israel_9696_jewish_laureates_promenade_in_rishon_lezion.jpg
+Latin American  https://en.wikipedia.org/wiki/List_of_Latin_American_Nobel_laureates
+Non-religious   https://en.wikipedia.org/wiki/List_of_nonreligious_Nobel_laureates
+nationality     https://en.wikipedia.org/wiki/List_of_Nobel_laureates_by_country
+African https://en.wikipedia.org/wiki/List_of_African_Nobel_laureates
+Egyptian        https://en.wikipedia.org/wiki/List_of_Egyptian_Nobel_laureates_and_nominees
+South African   https://en.wikipedia.org/wiki/List_of_South_African_Nobel_laureates_and_nominees
+Asian   https://en.wikipedia.org/wiki/List_of_Asian_Nobel_laureates
+Armenian        https://en.wikipedia.org/wiki/List_of_Armenian_Nobel_laureates
+Chinese https://en.wikipedia.org/wiki/List_of_Chinese_Nobel_laureates
+Filipino        https://en.wikipedia.org/wiki/List_of_Nobel_laureates_and_nominees_in_the_Philippines
+Indian  https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Rabindranath_Tagore_in_1909.jpg/960px-Rabindranath_Tagore_in_1909.jpg
+Israeli https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/PikiWiki_Israel_9695_jewish_laureates_promenade_in_rishon_lezion.jpg/1280px-PikiWiki_Israel_9695_jewish_laureates_promenade_in_rishon_lezion.jpg
+Japanese        https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Nobel_Prize_2010-Press_Conference_KVA-DSC_8021.jpg/1280px-Nobel_Prize_2010-Press_Conference_KVA-DSC_8021.jpg
+Korean  https://en.wikipedia.org/wiki/List_of_Korean_Nobel_laureates_and_nominees
+Pakistani       https://en.wikipedia.org/wiki/List_of_Pakistani_Nobel_laureates
+Turkish https://en.wikipedia.org/wiki/List_of_Turkish_Nobel_laureates
+Vietnamese      https://en.wikipedia.org/wiki/List_of_Vietnamese_Nobel_laureates_and_nominees
+Belgian https://en.wikipedia.org/wiki/List_of_Belgian_Nobel_laureates
+Danish  https://en.wikipedia.org/wiki/List_of_Danish_Nobel_laureates
+German  https://en.wikipedia.org/wiki/List_of_German_Nobel_laureates
+Greek   https://en.wikipedia.org/wiki/List_of_Greek_Nobel_laureates_and_nominees
+Hungarian       https://en.wikipedia.org/wiki/List_of_Hungarian_Nobel_laureates
+Irish   https://en.wikipedia.org/wiki/List_of_Irish_Nobel_laureates_and_nominees
+Italian https://upload.wikimedia.org/wikipedia/commons/2/2f/Giosu%C3%A8_Carducci2.jpg
+Polish  https://en.wikipedia.org/wiki/List_of_Polish_Nobel_laureates
+Romanian        https://en.wikipedia.org/wiki/List_of_Romanian_Nobel_laureates_and_nominees
+Russian https://en.wikipedia.org/wiki/List_of_Russian_Nobel_laureates
+Spanish https://en.wikipedia.org/wiki/List_of_Spanish_Nobel_laureates
+Swedish https://en.wikipedia.org/wiki/List_of_Swedish_Nobel_laureates
+Swiss   https://en.wikipedia.org/wiki/List_of_Swiss_Nobel_laureates
+Welsh   https://en.wikipedia.org/wiki/List_of_Welsh_Nobel_laureates
+Australian      https://en.wikipedia.org/wiki/List_of_Australian_Nobel_laureates
+American        https://en.wikipedia.org/wiki/List_of_American_Nobel_laureates
+Mexican https://en.wikipedia.org/wiki/List_of_Mexican_Nobel_laureates_and_nominees
+Argentine       https://en.wikipedia.org/wiki/List_of_Argentine_Nobel_laureates
+Brazilian       https://en.wikipedia.org/wiki/List_of_Brazilian_Nobel_laureates_and_nominees
+Venezuelan      https://en.wikipedia.org/wiki/List_of_Venezuelan_Nobel_laureates
+by university   https://en.wikipedia.org/wiki/List_of_Nobel_laureates_by_university_affiliation
+City University of New York     https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Ccny_0984.jpg/960px-Ccny_0984.jpg
+Columbia University     https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Alma_Mater%2C_Columbia_University_%286435262141%29.jpg/1280px-Alma_Mater%2C_Columbia_University_%286435262141%29.jpg
+Princeton University    https://en.wikipedia.org/wiki/List_of_Nobel_laureates_affiliated_with_Princeton_University_as_alumni_or_faculty
+Washington University in St. Louis      https://en.wikipedia.org/wiki/List_of_Nobel_laureates_affiliated_with_Washington_University_in_St._Louis_as_alumni_or_faculty
+Catholic priests and religious  https://en.wikipedia.org/wiki/List_of_Catholic_priests_and_religious_awarded_the_Nobel_Prize
+Heads of state and government   https://en.wikipedia.org/wiki/List_of_heads_of_state_and_government_Nobel_nominees
+Couples https://en.wikipedia.org/wiki/List_of_couples_awarded_the_Nobel_Prize
+Women   https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Cecilia_Helena_Payne_Gaposchkin_%281900-1979%29_%28cropped%29.jpg/960px-Cecilia_Helena_Payne_Gaposchkin_%281900-1979%29_%28cropped%29.jpg
+1901–1999     https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Lise_Meitner_%281878-1968%29%2C_lecturing_at_Catholic_University%2C_Washington%2C_D.C.%2C_1946.jpg/960px-Lise_Meitner_%281878-1968%29%2C_lecturing_at_Catholic_University%2C_Washington%2C_D.C.%2C_1946.jpg
+1901–1999     https://upload.wikimedia.org/wikipedia/commons/1/1c/L._N._Tolstoy%2C_by_Prokudin-Gorsky_%28cropped%29.jpg
+2000–present  https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Krasznahorkai%2C-L%C3%A1zl%C3%B3_koen-stadtgarten_031116_1_%28cropped%29.jpg/960px-Krasznahorkai%2C-L%C3%A1zl%C3%B3_koen-stadtgarten_031116_1_%28cropped%29.jpg
+1900–1999     https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Noordam-delegates-1915.jpg/1280px-Noordam-delegates-1915.jpg
+2000–present  https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Nobel_Peace_Prize_2025_-_Mar%C3%ADa_Corina_Machado_press_conference_%283x4_cropped%29.jpg/960px-Nobel_Peace_Prize_2025_-_Mar%C3%ADa_Corina_Machado_press_conference_%283x4_cropped%29.jpg
+Organizations   https://en.wikipedia.org/wiki/List_of_organizations_nominated_for_the_Nobel_Peace_Prize
+1901–1999     https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Chien-shiung_Wu_%281912-1997%29_C.jpg/960px-Chien-shiung_Wu_%281912-1997%29_C.jpg
+1901–1999     https://en.wikipedia.org/wiki/List_of_nominees_for_the_Nobel_Prize_in_Physiology_or_Medicine_(1901%E2%80%931999)
+AFSC Nobel nominees     https://en.wikipedia.org/wiki/List_of_American_Friends_Service_Committee_Nobel_nominees
+PRIO Director's Shortlist       https://en.wikipedia.org/wiki/PRIO_Director%27s_Shortlist
+Clarivate       https://en.wikipedia.org/wiki/Clarivate_Citation_Laureates
+Female  https://en.wikipedia.org/wiki/List_of_female_Clarivate_Citation_laureates
+Chemistry       https://en.wikipedia.org/wiki/List_of_Clarivate_Citation_laureates_in_Chemistry
+Economics       https://en.wikipedia.org/wiki/List_of_Clarivate_Citation_laureates_in_Economic_Sciences
+Physics https://en.wikipedia.org/wiki/List_of_Clarivate_Citation_laureates_in_Physics
+Physiology or Medicine  https://en.wikipedia.org/wiki/List_of_Clarivate_Citation_laureates_in_Physiology_or_Medicine
+Nobel Foundation        https://en.wikipedia.org/wiki/Nobel_Foundation
+Nobel Committees        https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Main_building_of_the_Royal_Swedish_Academy_of_Sciences_%28Kungliga_Vetenskapsakademien%29%2C_Frescati%2C_Norra_Djurg%C3%A5rden%2C_Stockholm.jpg/1280px-Main_building_of_the_Royal_Swedish_Academy_of_Sciences_%28Kungliga_Vetenskapsakademien%29%2C_Frescati%2C_Norra_Djurg%C3%A5rden%2C_Stockholm.jpg
+Chemistry       https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Nobel2008Chemistry_news_conference0.jpg/1280px-Nobel2008Chemistry_news_conference0.jpg
+Economics       https://upload.wikimedia.org/wikipedia/commons/0/0d/Nobel2008Economics_news_conference1.jpg
+Literature      https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Svenska_akademin_20181006_04.jpg/960px-Svenska_akademin_20181006_04.jpg
+Physics https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Announcement_Nobelprize_Physics_2009-2.jpg/1280px-Announcement_Nobelprize_Physics_2009-2.jpg
+Physiology or Medicine  https://en.wikipedia.org/wiki/Nobel_Committee_for_Physiology_or_Medicine
+Norwegian Nobel Committee       https://upload.wikimedia.org/wikipedia/en/1/1c/Logo_of_the_Nobel_Peace_Prize.jpg
+Nobel Assembly at the Karolinska Institute      https://en.wikipedia.org/wiki/Nobel_Assembly_at_the_Karolinska_Institute
+Controversies   https://en.wikipedia.org/wiki/Nobel_Prize_controversies
+Literature      https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/The_French_Philosopher_Jean-Paul_Sartre_1965_%28JOKAHBL3E_F08-7%29.tif/lossy-page1-1280px-The_French_Philosopher_Jean-Paul_Sartre_1965_%28JOKAHBL3E_F08-7%29.tif.jpg
+Physics https://en.wikipedia.org/wiki/Nobel_Prize_in_Physics_controversies
+Peace   https://upload.wikimedia.org/wikipedia/commons/b/b7/Le_Duc_Tho_at_Orly_Field_1972_%28cropped%29.jpg
+Alfred Nobel    https://upload.wikimedia.org/wikipedia/commons/0/07/Alfred_Nobel3.jpg
+Björkborn Manor        https://upload.wikimedia.org/wikipedia/commons/9/94/Bj%C3%B6rborns_herrg%C3%A5rd.jpg
+Nobel Banquet   https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Panoramic_Shot_Nobel_Banquet_2005.jpg/1280px-Panoramic_Shot_Nobel_Banquet_2005.jpg
+Nobel Laboratory        https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Nobel_museum_at_Bj%C3%B6rkborn_2008.jpg/1280px-Nobel_museum_at_Bj%C3%B6rkborn_2008.jpg
+Lindau Nobel Laureate Meetings  https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/65th_Lindau_Nobel_Laureate_Meeting_%282015%29.jpg/1280px-65th_Lindau_Nobel_Laureate_Meeting_%282015%29.jpg
+Nobel Monument  https://en.wikipedia.org/wiki/Nobel_Monument
+World Summit of Nobel Peace Laureates   https://upload.wikimedia.org/wikipedia/en/e/e6/Logo_of_The_World_Summit_of_Nobel_Peace_Laureates.jpg
+Prizes known as the "Nobel" of their fields     https://en.wikipedia.org/wiki/List_of_prizes_known_as_the_Nobel_or_the_highest_honors_of_a_field
+1177 names

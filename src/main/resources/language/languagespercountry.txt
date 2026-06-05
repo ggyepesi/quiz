@@ -1,0 +1,770 @@
+Abkhazia[a]	2	"- Abkhaz
+   - Russian"		Georgian	Abkhaz	
+Afghanistan[1][2][3]	2	"- Persian (Dari)
+   - Pashto"	"- Uzbek[b]
+   - Turkmen[b]
+   - Pashayi[b]
+   - Nuristani[b]
+   - Balochi[b]
+   - Pamiri[b]"		"- Persian (Dari)
+   - Pashto"	- Persian (Dari)
+Albania[4]	1	Albanian		"- Greek
+   - Macedonian
+   - Aromanian"		Italian
+Algeria[5]	2	"- Arabic
+   - Berber"			"- Arabic
+   - Berber"	French
+Andorra	1	Catalan[6]		"- Spanish
+   - French
+   - Portuguese"		
+Angola[7]	1	Portuguese			"- Kimbundu
+   - Umbundu
+   - Kikongo
+   - Chokwe
+   - Kwanyama
+   - Ganguela[*citation needed*]"	- Angolan Portuguese
+Antigua and Barbuda	1	None (English has *de facto* status)				- Antiguan and Barbudan Creole
+Argentina	1	None (Spanish has de facto status)	"- Spanish (in Corrientes and Chaco)[8][9]
+   - Guaraní (in Corrientes)[8]
+   - Kom (in Chaco)[9]
+   - Moquoit (in Chaco)[9]
+   - Wichi (in Chaco)[9]"			"- Argentine Spanish
+   - English
+   - Italian
+   - German
+   - French"
+Armenia	1	Armenian			Armenian (state language)[10]	Russian
+Australia	1	None (English has de facto status)	"- English (on Norfolk Island)
+   - Norfuk (on Norfolk Island)"			
+Austria[11][12]	1	German	"- Burgenland Croatian (parts of Burgenland)
+   - Hungarian (parts of Burgenland)
+   - Slovene (parts of Carinthia)"	"- Slovene
+   - Czech
+   - Hungarian
+   - Slovak
+   - Romani
+   - Serbian"	German (state language)	English
+Azerbaijan	1	Azerbaijani			Azerbaijani (state language)[13]	Russian
+Bahamas	1	English				
+Bahrain	1	Arabic		English		
+Bangladesh	1	Bengali	"- Sylheti (parts of Sylhet Division)
+   - Chittagonian (parts of Chittagong Division)
+   - Rangpuri/Kamtapuri (parts of Rangpur Division)"	"- Chakma
+   - Marma
+   - Rakhine
+   - Hajong
+   - Santali
+   - Tripuri
+   - Manipuri"	Bengali	
+Barbados	1	English				
+Belarus	2	"- Belarusian
+   - Russian"			Belarusian	
+Belgium	3	"- Dutch
+   - French
+   - German"	"- Dutch (Flanders, Brussels)[14]
+   - French (Brussels, Wallonia)[14]
+   - German (German-speaking community)[14]"			English
+Belize	1	English		Garifuna		"- Kriol (lingua franca)
+   - Spanish (border with Mexico and Guatemala)"
+Benin	1	French				
+Bhutan	1	Dzongkha				
+Bolivia[15]	37	"1. Castilian (Spanish)
+   2. Aymara
+   3. Araona
+   4. Baure
+   5. Bésiro (Chiquitano)
+   6. Canichana
+   7. Cavineña
+   8. Cayubaba
+   9. Chácobo
+   10. Chimán
+   11. Ese Ejja
+   12. Guaraní
+   13. Guarasu'we
+   14. Guarayu
+   15. Itonama
+   16. Leco
+   17. Machajuyai-Kallawaya
+   18. Machineri
+   19. Maropa
+   20. Mojeño-Ignaciano
+   21. Mojeño-Trinitario
+   22. Moré
+   23. Mosetén
+   24. Movima
+   25. Pacawara
+   26. Puquina
+   27. Quechua
+   28. Sirionó
+   29. Tacana
+   30. Tapieté
+   31. Toromona
+   32. Uru-Chipaya
+   33. Weenhayek
+   34. Yaminawa
+   35. Yuki
+   36. Yuracaré
+   37. Zamuco"				
+Bosnia and Herzegovina	3	None (Bosnian, Croatian and Serbian all have de facto status)[16]				
+Botswana	1	English			Tswana	"- Other Bantu languages
+   - Several Khoisan languages"
+Brazil	1	Portuguese[17]	"- German (in Pomerode[18])
+   - East Pomeranian (in Pancas,[19][20]Santa Maria de Jetibá,[21][22]Domingos 
+   Martins,[23]Itarana,[24][25]Laranja da Terra,[23]Vila Pavão[23] and 
+   Canguçu[23])
+   - Riograndenser Hunsrückisch (in Antônio Carlos, Santa Catarina,[26] and 
+   in Santa Maria do Herval, Rio Grande do Sul[27][28][29][30])
+   - Talian (in Bento Gonçalves,[31][32][33]Caxias do Sul,[34]Flores da 
+   Cunha[35][36][37]Nova Roma do Sul[38][39] and Serafina Corréa[40])
+   - Nheengatu, Baniwa, Tucano (in São Gabriel de Cachoeira, Amazonas)[41][
+   42]
+   - Guaraní (in Tacuru, Mato Grosso do Sul)[43]"	"Eighty Brazilian municipalities have co-official languages.[44] The list 
+can be seen at Languages of Brazil."	Portuguese	"- Spanish
+   - English
+   - French"
+Brunei	1	Malay				"- English
+   - Chinese"
+Bulgaria	1	Bulgarian				
+Burkina Faso	4	"- Mooré
+   - Bissa
+   - Dyula
+   - Fula"			"Working languages: 
+   
+   - English
+   - French"	
+Burundi[45][46]	3	"- French
+   - Kirundi
+   - English"			Kirundi	Swahili
+Cambodia	1	Khmer				"- French
+   - English
+   - Chinese"
+Cameroon	2	"- English
+   - French"				
+Canada	2	"- English (Federal)
+   - French (Federal)"	"- Chipewyan (Northwest Territories)
+   - Cree (Northwest Territories)
+   - Gwich'in (Northwest Territories)
+   - Inuinnaqtun (Northwest Territories and Nunavut)
+   - Inuktitut (Northwest Territories and Nunavut)
+   - Inuvialuktun (Northwest Territories)
+   - Mi'kmaq (Nova Scotia)
+   - North Slavey (Northwest Territories)
+   - South Slavey (Northwest Territories)
+   - Tłı̨chǫ (Northwest Territories)"	"- Chipewyan
+   - Cree
+   - Gwich'in
+   - Inuinnaqtun
+   - Inuktitut
+   - Inuvialuktun
+   - Mi'kmaq
+   - North Slavey
+   - South Slavey
+   - Tłı̨chǫ"		
+Cape Verde	1	Portuguese			Cape Verdean Creole	
+Central African Republic	2	"- French
+   - Sango"				
+Chad	2	"- Arabic
+   - French"				
+Chile	1	Spanish	Languages of ethnic groups are official in their territories[47]			
+China	1	Standard Chinese	"- English (Hong Kong)
+   - Portuguese (Macau)"	"- Mongolian
+   - Uyghur
+   - Tibetan
+   - Zhuang
+   - Kazakh
+   - Korean"		Other Sinitic languages
+Christmas Island	3	"- English
+   - Mandarin Chinese
+   - Malay"				
+Cocos (Keeling) Islands	2	"- English
+   - Cocos Malay"				Malay
+Colombia	1	Spanish	Languages of ethnic groups are official in their territories[48]			
+Comoros	3	"- Arabic
+   - Comorian
+   - French"				
+Democratic Republic of the Congo	1	French		"- Lingala
+   - Kikongo"	"- Swahili
+   - Tshiluba"	
+Republic of the Congo	1	French		"- Lingala
+   - Munukutuba"		
+Cook Islands	2	"- English
+   - Cook Islands Māori"				
+Costa Rica	1	Spanish		"- Indigenous languages[49]
+   - Limonese Creole[50]"		
+Croatia	1	Croatian	"- Serbian
+   - Hungarian
+   - Czech
+   - Slovak
+   - Pannonian Rusyn"		"- Italian (Istria County)
+   - Romani (non-territorial)
+   - Slovene (non-territorial)"	English
+Cuba	1	Spanish				
+Cyprus	2	"- Greek[51]
+   - Turkish[51]"			"- Armenian[52]
+   - Cypriot Arabic[52]"	English
+Czech Republic	2	- Czech[c]		"- Belarusian[d]
+   - Bulgarian[d]
+   - Croatian[d]
+   - German[d]
+   - Greek[d]
+   - Hungarian[d]
+   - Polish[d]
+   - Romani[d]
+   - Russian[d]
+   - Rusyn[d]
+   - Serbian[d]
+   - Ukrainian[d]
+   - Vietnamese[d]"	Czech	
+Denmark	1	Danish	"- Faroese (in the Faroe Islands)
+   - Kalaallisut (in Greenland)"	German (in Southern Jutland)		English
+Djibouti	2	"- Arabic
+   - French"				
+Dominica	1	English				
+Dominican Republic	1	Spanish				
+East Timor	2	"- Portuguese[53]
+   - Tetum[53]"		- Indonesian		
+Ecuador[54]	1	- Spanish	Languages of ethnic groups are official in their territories	"- Spanish[e]
+   - Kichwa[e]
+   - Shuar[e]"		
+Egypt	1	Arabic		Coptic	Egyptian Arabic	English
+El Salvador	1	Spanish				
+Equatorial Guinea	3	"- French
+   - Portuguese
+   - Spanish"				
+Eritrea	1	Tigrinya				"- Arabic
+   - Italian"
+Estonia	1	Estonian				"- English
+   - Russian"
+Eswatini	2	"- English
+   - Swazi"				
+Ethiopia	5	"- Afar
+   - Amharic
+   - Oromo
+   - Somali
+   - Tigrinya"			"- Afar
+   - Amharic
+   - Benshangul
+   - Gumuz
+   - Harari
+   - Kunama
+   - Oromo
+   - Sidamo
+   - Somali
+   - Tigrinya"	
+Fiji	3	"- English
+   - Fijian
+   - Fiji Hindi"				
+Finland	2	"- Finnish
+   - Swedish"		Sami (in Enontekiö, Inari, Sodankylä, Utsjoki)	"- Finnish
+   - Swedish"	English
+France	1	French[55]		"- Corsican language
+   - Basque language
+   - Breton language"		Occitan language
+Gabon	1	French				
+The Gambia	1	English				"- Wolof
+   - Mandinka
+   - Pulaar
+   - Soninke
+   - Jola
+   - Serer
+   - Mandjak
+   - Bainuk
+   - Kiriol"
+Georgia	1	Georgian				Russian
+Germany	1	German[56]	"- Danish (in Schleswig-Holstein)
+   - Lower Sorbian (in Brandenburg)
+   - North Frisian (in Schleswig-Holstein)
+   - Saterland Frisian (in Lower Saxony)
+   - Upper Sorbian (in Saxony)
+   - German Sign Language
+   - Low German"	"- Danish
+   - Lower Sorbian
+   - North Frisian
+   - Romani[57]
+   - Upper Sorbian"		English
+Ghana	1	English	"- Fante
+   - Asante Twi
+   - Akuapem Twi
+   - Adangme (in Greater Accra)
+   - Dagaare (in the Upper West Region)
+   - Dagbani (in the Northern Region)
+   - Ewe (in the Volta Region)
+   - Ga (in Greater Accra)
+   - Gonja (in the Northern Region)
+   - Kasem (in the Upper East Region)
+   - Nzema (in the Western Region)"			
+Greece	1	Greek				
+Grenada	1	English				
+Guatemala	1	Spanish			"- Garifuna
+   - Maya
+   - Xinca"	
+Guinea	1	French				"- Fula
+   - Maninka
+   - Susu"
+Guinea-Bissau	1	Portuguese				
+Guyana	1	English				Guyanese Creole
+Haiti	2	"- French
+   - Haitian Creole"				
+Honduras	1	Spanish				
+Hong Kong	3	"- Cantonese
+   - English
+   - Mandarin"				
+Hungary	1	Hungarian[58]		"- Croatian[59]
+   - German[59]
+   - Romanian[59]
+   - Serbian[59]
+   - Slovak[59]
+   - Slovene[59]"		
+Iceland	2	"- Icelandic
+   - Icelandic Sign Language[60]"				
+India	2	"- Hindi
+   - English"		"22 official languages:[61]
+
+   - Assamese
+   - Bengali
+   - Bodo
+   - Dogri
+   - Gujarati
+   - Hindi
+   - Kannada
+   - Kashmiri
+   - Konkani
+   - Maithili
+   - Malayalam
+   - Meitei (Manipuri)
+   - Marathi
+   - Nepali
+   - Odia (Oriya),
+   - Punjabi
+   - Sanskrit
+   - Santali
+   - Sindhi
+   - Tamil
+   - Telugu
+   - Urdu"	- see Languages of India	
+Indonesia	1	Indonesian	- Javanese (in Yogyakarta)		Indonesian	"- Indonesian
+   - Malay
+   - Javanese
+   - Sundanese
+   - Batak
+   - Minangkabau
+   - 700 more languages in Indonesia"
+Iran	1	Persian		"- Azerbaijani
+   - Kurdish
+   - Luri
+   - Gilaki
+   - Mazanderani
+   - Balochi
+   - Arabic
+   - Qashqai
+   - Tati
+   - Turkmeni"	Persian	
+Iraq	2	"- Arabic
+   - Kurdish[62]"	"- Armenian recognized
+   - Assyrian Neo-Aramaic (in Assyrian areas)
+   - Iraqi Turkmen (in Turkmen areas)"			
+Ireland[63]	2	"- Irish
+   - English"			Irish	
+Israel	1	Hebrew	Arabic	English		"- Russian
+   - English"
+Italy	1	Italian	"- French (in Aosta Valley)
+   - Franco-Provençal (in Aosta Valley)
+   - German (in South Tyrol)
+   - Ladin (in South Tyrol)
+   - Friulian (in Friuli-Venezia Giulia)
+   - Sardinian (in Sardinia)
+   - Corsican (in northern Sardinia)
+   -"	"- Catalan (in Sardinia)
+   - Slovene (in Friuli-Venezia Giulia)
+   - Occitan (in Piedmont's Occitan valleys)
+   - Albanian (in Sicily and Calabria)
+   - Greek (in Calabria and Puglia)"		Other Italo-Dalmatian languages
+Ivory Coast	1	French				
+Jamaica	1	English	Jamaican Patois		Jamaican Patois	Jamaican Patois
+Japan	1	None (Japanese has de facto status)			Japanese	
+Jordan	1	Arabic		"- Circassian
+   - Chechen
+   - Armenian"		
+Kazakhstan	2	"- Kazakh
+   - Russian"			Kazakh	
+Kenya	2	"- English
+   - Swahili"			Swahili	
+Kiribati	2	"- English
+   - Gilbertese"				
+North Korea	1	Korean				
+South Korea	2	"- Korean
+   - Korean Sign Language"				
+Kosovo[a]	2	"- Albanian
+   - Serbian"	Turkish		"- Albanian (nationwide)
+   - Serbian (Northern Kosovo)"	
+Kuwait	1	Arabic			"- Kuwaiti Sign Language
+   - Kuwaiti Arabic
+   - Kuwaiti Persian"	
+Kyrgyzstan	2	"- Kyrgyz
+   - Russian"			Kyrgyz	
+Laos	1	Lao				
+Latvia	1	Latvian[64][65]				Russian
+Lebanon	1	Arabic	Arabic	Armenian	"- Arabic
+   - English
+   - French"	"- Arabic
+   - English
+   - French"
+Lesotho	2	"- Sesotho
+   - English"			Sotho	
+Liberia	1	English				
+Libya	1	Arabic				
+Liechtenstein	1	German				
+Lithuania	1	Lithuanian				"- Polish
+   - Russian"
+Luxembourg	3	"- French
+   - German
+   - Luxembourgish"			Luxembourgish	"- English
+   - Portuguese"
+Macau	2	"- Cantonese
+   - Portuguese"				
+Madagascar	2	"- French
+   - Malagasy"			Malagasy	
+Malawi	2	- English			Chichewa	
+Malaysia	1	Malay[f]	Regional/State dialects		Malay	"- Malay
+   - Mandarin Chinese
+   - Cantonese
+   - Tamil
+   - English"
+Maldives	1	Dhivehi			Dhivehi	English
+Mali	13	"1. Bambara
+   2. Bobo
+   3. Bozo
+   4. Dogon
+   5. Fula
+   6. Hassaniya
+   7. Kassonke
+   8. Maninke
+   9. Minyanka
+   10. Senufo
+   11. Songhay languages
+   12. Soninke
+   13. Tamasheq"		French		
+Malta	2	"- Maltese
+   - English"			Maltese	
+Sovereign Military Order of Malta[a]	1	Italian				
+Marshall Islands	2	"- English
+   - Marshallese"				
+Mauritania	1	Arabic			"- Arabic
+   - Fula
+   - Soninke
+   - Wolof"	French
+Mauritius	2	None (English has de jure status and French has de facto status)		English		
+Mexico	1	None (Spanish has de facto status)			68 National languages	
+Federated States of Micronesia	1	English	"- Chuukese (in Chuuk State)
+   - Kosraean (in Kosrae State)
+   - Pohnpeian (in Pohnpei State)
+   - Yapese (in Yap State)"			
+Moldova	1	Romanian	"- Gagauz
+   - Russian
+   - Ukrainian"			
+Monaco[67]	1	French				Monégasque
+Mongolia	1	Mongolian				
+Montenegro	1	Montenegrin				
+Morocco	2	"- Arabic
+   - Berber"			"- Arabic
+   - Berber"	French
+Mozambique	1	Portuguese				
+Myanmar (Burma)	1	Burmese	"- Chin
+   - Kachin
+   - Karen
+   - Karenni
+   - Mon
+   - Rakhine
+   - Shan"			English
+Namibia[68]	1	English	"- German
+   - Oshiwambo"		Afrikaans	
+Nauru	2	"- English
+   - Nauruan"				
+Nepal	1	Nepali[69]			All languages spoken as the mother tongue in Nepal[70]	
+Netherlands	1	Dutch	"- Frisian (in the province of Friesland)
+   - English (in Sint Maarten, Sint Eustatius, Saba)
+   - Papiamento (in Aruba, Curaçao, Bonaire)"	"- Dutch Low Saxon
+   - Dutch Sign Language
+   - Limburgish
+   - Sinte Romani
+   - Yiddish"		English
+New Zealand	3	"- Māori language
+   - New Zealand Sign Language
+   - (English has de facto status)"				
+Nicaragua	1	Spanish	"In Autonomous Regions: 
+   
+   - Creole
+   - Garifuna
+   - Mayangna
+   - Miskito
+   - Rama
+   - Sumo"			
+Niger	1	Hausa			"- Arabic
+   - French
+   - Fulfulde
+   - Gulmancema
+   - Kanuri
+   - Zarma
+   - Tamazight"	
+Nigeria	1	English			"- Hausa
+   - Yoruba
+   - Igbo"	"- English
+   - Hausa"
+Niue	2	"- English
+   - Niuean"				
+Norfolk Island	2	"- English
+   - Norfuk[71]"				
+North Macedonia	2	"- Macedonian
+   - Albanian[72]"				
+Northern Cyprus[a]	1	Turkish				
+Norway	2	"- Norwegian
+   - Sami languages[73]"	"- Northern Sami
+   - Lule Sami
+   - Southern Sámi
+   - Kven"	"- Kven
+   - Scandoromani"	"- Bokmål (written)
+   - Nynorsk (written)"	English
+Oman	1	Arabic		Shehri		
+Pakistan	2	"- Urdu
+   - English"	- Sindhi		Urdu	"- Punjabi
+   - Balochi
+   - Sindhi
+   - Pashto
+   - Saraiki"
+Palau	2	"- English
+   - Palauan"	"- Sonsorolese (in Sonsorol)
+   - Tobian (in Hatohobei)
+   - Japanese (in Angaur)"			
+Palestine	1	Arabic				"- English
+   - Hebrew"
+Panama	1	Spanish				
+Papua New Guinea	4	"- English
+   - Hiri Motu
+   - PNG Sign Language
+   - Tok Pisin"				
+Paraguay	2	"- Spanish
+   - Guaraní"				
+Peru	1	Spanish	"Quechua, Aymara and another native languages are official wherever they 
+predominate."			
+Philippines	2	"- Filipino
+   - English"	"- Aklanon (in the Visayas)
+   - Bikol (in Luzon)
+   - Cebuano (in the Visayas and Mindanao)
+   - Chavacano (in Mindanao)
+   - Hiligaynon (in the Visayas)
+   - Ibanag (in Luzon)
+   - Ilocano (in Luzon, official in La Union[74])
+   - Ivatan (in Luzon)
+   - Kapampangan (in Luzon)
+   - Kinaray-a (in the Visayas)
+   - Maguindanao (in Mindanao)
+   - Maranao (in Mindanao)
+   - Pangasinan (in Luzon)
+   - Sambal (in Luzon)
+   - Tagalog (in Luzon)
+   - Tausug (in Mindanao)
+   - Waray (in the Visayas)
+   - Yakan (in Mindanao)"	"Arabic[g] (optional language)
+Spanish[g] (optional language)
+(+ over 100 more minority languages)"	"- Filipino
+   - Filipino Sign Language (national sign language)"	
+Poland	1	Polish	"- Kashubian (Pomeranian Voivodeship)
+   - German (Opole Voivodeship)
+   - Lithuanian (Puńsk commune)
+   - Belarusian (Podlaskie Voivodseship)"	"- Lemko
+   - Karaim
+   - Tatar
+   - Ukrainian"		English
+Portugal	1	Portuguese	Mirandese (Terra de Miranda)			English
+Qatar	1	Arabic				
+Romania	1	Romanian		"- Armenian
+   - German
+   - Hungarian
+   - Romani
+   - Russian
+   - Serbian
+   - Slovak
+   - Tatar
+   - Turkish
+   - Ukrainian"		
+Russia	1	Russian	(33 languages)			
+Rwanda	4	"- English
+   - French
+   - Kinyarwanda
+   - Swahili"				
+Sahrawi Arab Democratic Republic[a]	2	"- Arabic
+   - Spanish"			Arabic	
+Saint Kitts and Nevis	1	English				
+Saint Lucia	1	English				
+Saint Vincent and the Grenadines	1	English				
+Samoa	2	"- English
+   - Samoan"				
+San Marino	1	Italian				
+São Tomé and Príncipe	1	Portuguese				
+Saudi Arabia	1	Arabic		"- Faifi
+   - Razihi
+   - Mehri"		"- Indian Languages
+   - Filipino
+   - Bengali"
+Senegal	1	French			"- Jola-Fogny
+   - Mandinka
+   - Pulaar
+   - Serer
+   - Soninke
+   - Wolof"	
+Serbia	1	Serbian		(15 languages)		
+Seychelles	3	"- English
+   - French
+   - Seychellois Creole"				
+Sierra Leone	1	English			Krio	
+Singapore	4	"- English
+   - Malay
+   - Mandarin Chinese
+   - Tamil"			Malay	
+Slovakia	1	Slovak		"- Bulgarian
+   - Czech
+   - German
+   - Hungarian
+   - Polish
+   - Romani
+   - Rusyn
+   - Serbian
+   - Ukrainian"
+Slovenia	1	Slovene		"- Hungarian (Dobrovnik, Hodoš, Lendava)
+   - Italian (Izola, Koper, Piran)
+   - Croatian (Metlika, Brežice)"		
+Solomon Islands	1	- English				
+Somalia	2	Somali, Arabic				
+Somaliland[a]	3	"- Arabic
+   - English
+   - Somali"				
+South Africa	12	"1. Afrikaans
+   2. English
+   3. Southern Ndebele
+   4. Sotho
+   5. Northern Sotho
+   6. Swazi
+   7. Tsonga
+   8. Tswana
+   9. Venda
+   10. Xhosa
+   11. Zulu
+   12. SA Sign Language[76]"				
+South Ossetia[a]	2	"- Ossetian
+   - Russian"	Georgian	Georgian		
+South Sudan	1	English			"- Bari
+   - Dinka
+   - Luo
+   - Murle
+   - Nuer
+   - Zande
+   - (60 other languages)"	
+Spain	1	Spanish	"- Catalan (Balearic Islands, Catalonia, Valencian Community)
+   - Galician (Galicia)
+   - Occitan (Catalonia)
+   - Basque (Basque Country, Navarra)"	"- Astur-Leonese (Asturias, León, Zamora, Salamanca, Cáceres)
+   - Aragonese (Aragon)
+   - Fala (Province of Cáceres)
+   - Portuguese
+   - Galician (Asturias, León, Zamora)
+   - Catalan (Aragon, Carche (Murcia))"		
+Sri Lanka	2	"- Sinhala
+   - Tamil"				English
+Sudan	2	"- Arabic
+   - English"				
+Suriname	1	Dutch			Sranan Tongo	
+Sweden	1	Swedish		"- Finnish (Gällivare, Haparanda, Kiruna, Pajala, Övertorneå)
+   - Meänkieli (Gällivare, Haparanda, Kiruna, Pajala, Övertorneå)
+   - Sami (Arjeplog, Gällivare, Jokkmokk, Kiruna)
+   - Yiddish
+   - Romani"		English
+Switzerland	4	"- French (Bern, Fribourg, Geneva, Jura, Neuchâtel, Valais, Vaud)
+   - German (Aargau, Appenzell Ausserrhoden, Appenzell Innerrhoden, 
+   Basel-Landschaft, Basel-Stadt, Bern, Fribourg, Glarus, Graubünden, 
+   Lucerne, Nidwalden, Obwalden, Saint Gallen, Schaffhausen, Schwyz, 
+   Solothurn, Thurgau, Uri, Valais, Zug, Zürich)
+   - Italian (Ticino, Graubünden)
+   - Romansh (Graubünden)"				
+Syria	1	Arabic	Kurdish	"- Assyrian
+   - Western Neo-Aramaic
+   - Armenian"		
+Taiwan	1	None (Mandarin Chinese has de facto status)			"- Taiwanese Mandarin[h]
+   - Taiwanese Hokkien[h]
+   - Taiwanese Hakka[77]
+   - Formosan languages[78]
+   - Taiwan Sign Language
+   - Matsu dialect
+   - Wuqiu dialect"	
+Tajikistan	1	Tajik			Tajik	Russian
+Tanzania	2	"- Swahili
+   - English"			Swahili	
+Thailand	1	Thai	"- Central Thai
+   - Isan
+   - Northern Thai
+   - Southern Thai"	Sixty-two 'domestic' languages are officially recognized		Burmese
+Togo	1	French				
+Tokelau	2	"- English
+   - Tokelauan"				
+Tonga	2	"- English
+   - Tongan"				
+Transnistria[a]	3	"- Moldovan
+   - Russian
+   - Ukrainian"				
+Trinidad and Tobago	1	English				Trinidadian Creole
+Tunisia	1	Arabic			Arabic	
+Turkey	1	Turkish		Kurdish	Turkish	
+Turkmenistan	1	Turkmen			Turkmen	Russian
+Tuvalu	2	"- Tuvaluan
+   - English"			"- Tuvaluan
+   - English"	
+Uganda	2	"- English
+   - Swahili[79]"				
+Ukraine	1	Ukrainian	"- Russian (Autonomous Republic of Crimea)
+   - Crimean Tatar (Autonomous Republic of Crimea)"			
+United Arab Emirates	1	Arabic				English
+United Kingdom and Crown dependencies etc.	1	None (English has de facto status)	"- Irish and Ulster-Scots (in Northern Ireland)
+   - Scots and Scottish Gaelic (in Scotland)
+   - Welsh (in Wales)
+   - Pitcairnese (in Pitcairn Islands)
+   - Guernésiais and French (in Guernsey)
+   - Jèrriais and French (in Jersey)
+   - Manx (in Isle of Man)"			
+United States	1	None (English has de facto status) [i]	(28 languages)	indigenous languages of recognized federal tribes	- English	
+Uruguay	2	- Uruguayan Sign Language (Spanish has de facto status)				
+Uzbekistan	1	Uzbek		"- Uzbek
+   - Karakalpak and Uzbek in Karakalpakstan"		Russian
+Vanuatu	3	"- English
+   - French
+   - Bislama"				
+Vatican City	2	"- Italian
+   - Latin"				Swiss German
+Venezuela	2	- Spanish		Native languages are official for indigenous peoples		
+Vietnam	1	Vietnamese		"- Cantonese
+   - Cham
+   - Hmong
+   - Khmer
+   - Lao
+   - Muong
+   - Rade
+   - Tay
+   - Thai
+   - Vietnamese sign languages"	Vietnamese	
+Yemen	1	Arabic		"- Mehri
+   - Soqotri"		
+Zambia	1	English				
+Zimbabwe	16	"1. Chewa
+   2. Chibarwe
+   3. English
+   4. Kalanga
+   5. Khoisan[j][81]
+   6. Nambya
+   7. Ndau
+   8. Ndebele
+   9. Shangani
+   10. Shona
+   11. Sign language[k]
+   12. Sotho
+   13. Tonga
+   14. Tswana
+   15. Venda
+   16. Xhosa"				

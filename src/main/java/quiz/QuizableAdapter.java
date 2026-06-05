@@ -1,0 +1,587 @@
+package quiz;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
+public abstract class QuizableAdapter implements Quizable {
+    public abstract QuizableAdapter createNew();
+
+    @NotQuizableField
+    private static final Map<Class<?>, List<Field>> ALL_FIELDS_CACHE =
+            new ConcurrentHashMap<>();
+    @NotQuizableField
+    private static final Map<Class<?>, Map<String, Field>> FIELD_CACHE =
+            new ConcurrentHashMap<>();
+
+    public static boolean isMinorField(Field field) {
+        return field != null
+                && field.isAnnotationPresent(MinorField.class);
+    }
+
+    public static boolean isQuizableReference(Field field) {
+        return field != null
+                && field.isAnnotationPresent(QuizableReference.class);
+    }
+
+    public static boolean isNotQuizableField(Field field) {
+        return field != null
+                && field.isAnnotationPresent(NotQuizableField.class);
+    }
+
+    public static boolean isValidQuizValue(Object value) {
+        return switch (value) {
+            case null -> false;
+            case String s -> !s.isBlank();
+            case Collection<?> c -> !c.isEmpty();
+            case Map<?, ?> m -> !m.isEmpty();
+            default -> true;
+        };
+    }
+
+    public static List<Field> getAllFields(Class<?> cls) {
+        if (cls == null) {
+            return Collections.emptyList();
+        }
+
+        return ALL_FIELDS_CACHE.computeIfAbsent(
+                cls,
+                QuizableAdapter::collectAllFields);
+    }
+
+    private static List<Field> collectAllFields(Class<?> cls) {
+        Class<?> current = cls;
+        List<Field> fields = new ArrayList<>();
+
+        while (current != null && current.getSuperclass() != null) {
+            for (Field field : current.getDeclaredFields()) {
+                if (isNotQuizableField(field)) {
+                    continue;
+                }
+
+                field.setAccessible(true);
+                fields.add(field);
+            }
+            current = current.getSuperclass();
+        }
+        return Collections.unmodifiableList(fields);
+    }
+
+    public static Field getField(Class<?> cls, String name) {
+        if (cls == null || name == null) {
+            return null;
+        }
+
+        return FIELD_CACHE
+                .computeIfAbsent(cls, QuizableAdapter::buildFieldMap)
+                .get(name);
+    }
+
+    private static Map<String, Field> buildFieldMap(Class<?> cls) {
+        Map<String, Field> map = new ConcurrentHashMap<>();
+
+        for (Field field : getAllFields(cls)) {
+            map.putIfAbsent(field.getName(), field);
+        }
+
+        return map;
+    }
+
+    public static void clearReflectionCaches() {
+        ALL_FIELDS_CACHE.clear();
+        FIELD_CACHE.clear();
+    }
+
+    @Override
+    public boolean hasField(String fieldName) {
+        try {
+            return hasField(getField(getClass(), fieldName));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public boolean hasFields(Collection<String> fieldNames) {
+        for (String fieldName : fieldNames) {
+            if (!hasField(fieldName)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean hasAnyField() {
+        for (Field field : getAllFields(getClass())) {
+            if (hasField(field)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public HashMap<List<Object>, Quizable> generateUniqueCombinations(List<String> fieldNames) {
+        QuizablePanelConfig cfg = QuizablePanelConfig.of(getClass());
+        if (fieldNames != null) {
+            for (String name : fieldNames) {
+                cfg.addField(name, QuizablePanelConfig.leaf());
+            }
+        }
+        return generateUniqueCombinations(cfg);
+    }
+
+    public HashMap<List<Object>, Quizable> generateUniqueCombinations(QuizablePanelConfig config) {
+        if (config == null) {
+            return new HashMap<>();
+        }
+
+        LinkedHashSet<String> fieldNames = new LinkedHashSet<>(config.getFields().keySet());
+        HashMap<List<Object>, Quizable> combinations = new HashMap<>();
+
+        if (fieldNames.isEmpty()) {
+            combinations.put(new ArrayList<>(), createNew());
+            return combinations;
+        }
+
+        List<FieldChoiceBundle> perFieldChoices = new ArrayList<>();
+
+        for (String fieldName : fieldNames) {
+            Field field = getField(getClass(), fieldName);
+            if (field == null) {
+                continue;
+            }
+
+            Object fieldValue;
+            try {
+                fieldValue = field.get(this);
+            } catch (IllegalAccessException e) {
+                continue;
+            }
+
+            if (fieldValue == null) {
+                continue;
+            }
+
+            QuizablePanelConfig childConfig = config.getFieldConfig(fieldName);
+            List<FieldAlternative> alternatives = generateFieldAlternatives(field, fieldValue, childConfig);
+
+            if (!alternatives.isEmpty()) {
+                perFieldChoices.add(new FieldChoiceBundle(fieldName, field, alternatives));
+            }
+        }
+
+        if (perFieldChoices.isEmpty()) {
+            combinations.put(new ArrayList<>(), createNew());
+            return combinations;
+        }
+
+        buildCombinations(perFieldChoices, 0, new ArrayList<>(), new ArrayList<>(), combinations);
+        return combinations;
+    }
+
+    private void buildCombinations(List<FieldChoiceBundle> bundles,
+                                   int index,
+                                   List<Object> currentKey,
+                                   List<SelectedFieldValue> selectedValues,
+                                   Map<List<Object>, Quizable> out) {
+
+        if (index == bundles.size()) {
+            Quizable projected = projectSelectedValues(selectedValues);
+            out.put(new ArrayList<>(currentKey), projected);
+            return;
+        }
+
+        FieldChoiceBundle bundle = bundles.get(index);
+        for (FieldAlternative alt : bundle.alternatives) {
+            int oldKeySize = currentKey.size();
+            int oldSelectedSize = selectedValues.size();
+
+            currentKey.addAll(alt.keyTokens);
+            selectedValues.add(new SelectedFieldValue(bundle.fieldName, bundle.field, alt.projectedValue));
+
+            buildCombinations(bundles, index + 1, currentKey, selectedValues, out);
+
+            while (currentKey.size() > oldKeySize) {
+                currentKey.remove(currentKey.size() - 1);
+            }
+            while (selectedValues.size() > oldSelectedSize) {
+                selectedValues.remove(selectedValues.size() - 1);
+            }
+        }
+    }
+
+    private List<FieldAlternative> generateFieldAlternatives(Field field,
+                                                             Object fieldValue,
+                                                             QuizablePanelConfig childConfig) {
+
+        Class<?> fieldType = field.getType();
+        List<FieldAlternative> alternatives = new ArrayList<>();
+
+        if (Collection.class.isAssignableFrom(fieldType)) {
+            for (Object element : (Collection<?>) fieldValue) {
+                alternatives.addAll(generateValueAlternatives(element, childConfig, false, null));
+            }
+            return alternatives;
+        }
+
+        if (Map.class.isAssignableFrom(fieldType)) {
+            Map<?, ?> map = (Map<?, ?>) fieldValue;
+            for (Entry<?, ?> e : map.entrySet()) {
+                alternatives.addAll(generateValueAlternatives(e.getValue(), childConfig, true, e.getKey()));
+            }
+            return alternatives;
+        }
+
+        alternatives.addAll(generateValueAlternatives(fieldValue, childConfig, false, null));
+        return alternatives;
+    }
+
+    private List<FieldAlternative> generateValueAlternatives(Object value,
+                                                             QuizablePanelConfig childConfig,
+                                                             boolean isMapValue,
+                                                             Object mapKey) {
+        List<FieldAlternative> alternatives = new ArrayList<>();
+
+        if (value == null) {
+            return alternatives;
+        }
+
+        if (value instanceof QuizableAdapter qa
+                && childConfig != null
+                && !childConfig.getFields().isEmpty()) {
+            HashMap<List<Object>, Quizable> nested = qa.generateUniqueCombinations(childConfig);
+            for (Entry<List<Object>, Quizable> e : nested.entrySet()) {
+                List<Object> tokens = new ArrayList<>();
+                if (isMapValue) {
+                    tokens.add(mapKey);
+                }
+                tokens.addAll(e.getKey());
+
+                Object projectedValue = isMapValue
+                        ? new MEntry(mapKey, e.getValue())
+                        : e.getValue();
+
+                alternatives.add(new FieldAlternative(tokens, projectedValue));
+            }
+            return alternatives;
+        }
+
+        if (isMapValue) {
+            alternatives.add(new FieldAlternative(
+                    new ArrayList<>(List.of(mapKey, summarizeSimple(value))),
+                    new MEntry(mapKey, value)));
+        } else {
+            alternatives.add(new FieldAlternative(
+                    new ArrayList<>(List.of(summarizeSimple(value))),
+                    value));
+        }
+
+        return alternatives;
+    }
+
+    private Quizable projectSelectedValues(List<SelectedFieldValue> selectedValues) {
+        QuizableAdapter other = createNew();
+
+        for (SelectedFieldValue selected : selectedValues) {
+            try {
+                Field otherField = getField(other.getClass(), selected.fieldName);
+                if (otherField == null) {
+                    continue;
+                }
+
+                Object otherFieldValue = otherField.get(other);
+                Class<?> fieldType = selected.field.getType();
+                Object value = selected.value;
+
+                if (Collection.class.isAssignableFrom(fieldType)) {
+                    @SuppressWarnings("unchecked")
+                    Collection<Object> collection = (Collection<Object>) otherFieldValue;
+                    collection.add(value);
+                } else if (Map.class.isAssignableFrom(fieldType)) {
+                    @SuppressWarnings("unchecked")
+                    Map<Object, Object> map = (Map<Object, Object>) otherFieldValue;
+                    MEntry me = (MEntry) value;
+                    map.put(me.key, me.value);
+                } else {
+                    otherField.set(other, value);
+                }
+            } catch (Exception e) {
+                System.out.println("Error projecting " + selected.fieldName + " on " + this);
+                e.printStackTrace();
+            }
+        }
+
+        return other;
+    }
+
+    public Quizable project(QuizablePanelConfig config, List<Object> flatValues) {
+        if (config == null) {
+            throw new IllegalArgumentException("config must not be null");
+        }
+
+        Index index = new Index();
+        QuizableAdapter projected = projectRecursive(config, flatValues, index);
+
+        if (index.pos != flatValues.size()) {
+            throw new IllegalArgumentException(
+                    "Unused values remain: consumed " + index.pos + " of " + flatValues.size());
+        }
+
+        return projected;
+    }
+
+    private QuizableAdapter projectRecursive(QuizablePanelConfig config,
+                                             List<Object> flatValues,
+                                             Index index) {
+        QuizableAdapter other = createNew();
+
+        for (String fieldName : config.getFields().keySet()) {
+            Field field = getField(getClass(), fieldName);
+            if (field == null) {
+                continue;
+            }
+
+            QuizablePanelConfig childConfig = config.getFieldConfig(fieldName);
+
+            try {
+                Field otherField = getField(other.getClass(), fieldName);
+                if (otherField == null) {
+                    continue;
+                }
+
+                Object currentTargetValue = otherField.get(other);
+                ProjectionResult result = projectFieldValue(
+                        field,
+                        childConfig,
+                        flatValues,
+                        index,
+                        currentTargetValue);
+
+                if (result.assign) {
+                    otherField.set(other, result.value);
+                }
+            } catch (Exception e) {
+                System.out.println("Error projecting field " + fieldName + " on " + this);
+                e.printStackTrace();
+            }
+        }
+
+        return other;
+    }
+
+    @SuppressWarnings("unchecked")
+    private ProjectionResult projectFieldValue(Field field,
+                                               QuizablePanelConfig childConfig,
+                                               List<Object> flatValues,
+                                               Index index,
+                                               Object currentTargetValue) throws Exception {
+
+        Class<?> fieldType = field.getType();
+
+        if (Collection.class.isAssignableFrom(fieldType)) {
+            if (currentTargetValue == null) {
+                return ProjectionResult.keepExisting();
+            }
+
+            Object next = nextValue(flatValues, index);
+            ((Collection<Object>) currentTargetValue).add(next);
+            return ProjectionResult.keepExisting();
+        }
+
+        if (Map.class.isAssignableFrom(fieldType)) {
+            if (currentTargetValue == null) {
+                return ProjectionResult.keepExisting();
+            }
+
+            Object key = nextValue(flatValues, index);
+            Object value = nextValue(flatValues, index);
+            ((Map<Object, Object>) currentTargetValue).put(key, value);
+            return ProjectionResult.keepExisting();
+        }
+
+        if (Quizable.class.isAssignableFrom(fieldType)
+                && childConfig != null
+                && !childConfig.getFields().isEmpty()) {
+
+            if (!QuizableAdapter.class.isAssignableFrom(fieldType)) {
+                return ProjectionResult.assign(nextValue(flatValues, index));
+            }
+
+            QuizableAdapter nested;
+            if (currentTargetValue instanceof QuizableAdapter qa) {
+                nested = qa;
+            } else {
+                Object originalFieldValue = field.get(this);
+                if (originalFieldValue instanceof QuizableAdapter qa) {
+                    nested = qa.createNew();
+                } else {
+                    return ProjectionResult.assign(nextValue(flatValues, index));
+                }
+            }
+
+            return ProjectionResult.assign(nested.projectRecursive(childConfig, flatValues, index));
+        }
+
+        return ProjectionResult.assign(nextValue(flatValues, index));
+    }
+
+    private Object nextValue(List<Object> flatValues, Index index) {
+        if (index.pos >= flatValues.size()) {
+            throw new IllegalArgumentException("Not enough values for projection");
+        }
+        return flatValues.get(index.pos++);
+    }
+
+    private static class Index {
+        int pos = 0;
+    }
+
+    private static class ProjectionResult {
+        final Object value;
+        final boolean assign;
+
+        ProjectionResult(Object value, boolean assign) {
+            this.value = value;
+            this.assign = assign;
+        }
+
+        static ProjectionResult assign(Object value) {
+            return new ProjectionResult(value, true);
+        }
+
+        static ProjectionResult keepExisting() {
+            return new ProjectionResult(null, false);
+        }
+    }
+
+    private Object summarizeSimple(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Quizable q) {
+            return q.getName();
+        }
+        return value;
+    }
+
+    private class FieldChoiceBundle {
+        String fieldName;
+        Field field;
+        List<FieldAlternative> alternatives;
+
+        FieldChoiceBundle(String fieldName, Field field, List<FieldAlternative> alternatives) {
+            this.fieldName = fieldName;
+            this.field = field;
+            this.alternatives = alternatives;
+        }
+    }
+
+    private class FieldAlternative {
+        List<Object> keyTokens;
+        Object projectedValue;
+
+        FieldAlternative(List<Object> keyTokens, Object projectedValue) {
+            this.keyTokens = keyTokens;
+            this.projectedValue = projectedValue;
+        }
+    }
+
+    private class SelectedFieldValue {
+        String fieldName;
+        Field field;
+        Object value;
+
+        SelectedFieldValue(String fieldName, Field field, Object value) {
+            this.fieldName = fieldName;
+            this.field = field;
+            this.value = value;
+        }
+    }
+
+    private class MEntry {
+        Object key;
+        Object value;
+
+        MEntry(Object key, Object value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return key + " -> " + value;
+        }
+    }
+
+    private boolean hasField(Field field) {
+        if (field == null) {
+            return false;
+        }
+
+        try {
+            Object fieldValue = field.get(this);
+            if (fieldValue == null) {
+                return false;
+            }
+            Class<?> fieldType = field.getType();
+            if (Collection.class.isAssignableFrom(fieldType)) {
+                return !((Collection<?>) fieldValue).isEmpty();
+            } else if (Map.class.isAssignableFrom(fieldType)) {
+                return !((Map<?, ?>) fieldValue).isEmpty();
+            } else if (Quizable.class.isAssignableFrom(fieldType)) {
+                Quizable quizable = (Quizable) fieldValue;
+                return quizable.hasAnyField();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    public Quizable project(List<String> fieldNames, List<Object> fieldValues) {
+        if (fieldNames.size() != fieldValues.size()) {
+            throw new IllegalArgumentException();
+        }
+
+        QuizableAdapter other = createNew();
+        Class<?> cls = getClass();
+
+        for (int i = 0; i < fieldNames.size(); ++i) {
+            try {
+                Field field = getField(cls, fieldNames.get(i));
+                Object value = fieldValues.get(i);
+                Class<?> fieldType = field.getType();
+                Field otherField = getField(other.getClass(), field.getName());
+                Object otherFieldValue = otherField.get(other);
+
+                if (otherFieldValue == null) {
+                    otherField.set(other, value);
+                } else if (Quizable.class.isAssignableFrom(fieldType)) {
+                    otherField.set(other, ((Quizable) otherFieldValue).project(fieldNames, fieldValues));
+                } else if (Collection.class.isAssignableFrom(fieldType)) {
+                    ((Collection<Object>) otherFieldValue).add(value);
+                } else if (Map.class.isAssignableFrom(fieldType)) {
+                    MEntry me = (MEntry) value;
+                    ((Map<Object, Object>) otherFieldValue).put(me.key, me.value);
+                } else {
+                    otherField.set(other, value);
+                }
+            } catch (Exception e) {
+                System.out.println("Error at " + fieldNames.get(i) + ", " + this);
+            }
+        }
+        return other;
+    }
+}

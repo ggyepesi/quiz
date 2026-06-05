@@ -1,0 +1,2725 @@
+
+1	Aquatic animals
+1.1	Conch
+1.2	Crayfish
+1.3	Dolphin and Whale
+1.4	Fish
+1.5	Lobster and spiny lobster
+1.6	Scallop
+1.7	Seahorse
+1.8	Shrimp
+1.9	Seal
+2	Birds
+2.1	Albatross
+2.2	Birds of prey
+2.3	Chicken
+2.4	Crane
+2.5	Dove
+2.6	Duck
+2.7	Parrot
+2.8	Peacock
+2.9	Penguin
+2.10	Seagull
+2.11	Swan
+2.12	Toucan
+2.13	Other birds
+3	Canines
+3.1	Dog
+3.2	Fox
+3.3	Wolf
+4	Felines
+4.1	Jaguar
+4.2	Leopard
+4.3	Lion
+4.4	Tiger
+5	Hoofed animals
+5.1	Antelope
+5.2	Bison
+5.3	Camel
+5.4	Deer
+5.5	Elk
+5.6	Goat
+5.7	Ibex
+5.8	Huemul
+5.9	Horse
+5.10	Llama
+5.11	Oxen / Cow
+5.12	Pig
+5.13	Reindeer
+5.14	Sheep
+5.15	Springbok
+5.16	Vicuña
+6	Reptiles
+6.1	Alligator / Crocodile
+6.2	Snake
+6.3	Turtle
+6.4	Dinosaurs
+7	Insects
+7.1	Ants
+7.2	Bees
+7.3	Butterflies
+7.4	Moths
+8	Mustelids
+8.1	Badger
+8.2	Marten
+8.3	Otters
+8.4	Sable
+9	Other animals
+9.1	Armadillo
+9.2	Bat
+9.3	Bear
+9.4	Beaver
+9.5	Capybara
+9.6	Elephant
+9.7	Kangaroo
+9.8	Monkey
+9.9	Tapir
+9.10	Worm
+10	Mythological animals
+10.1	Dragon
+10.2	Gamayun
+10.3	Griffin
+10.4	Pegasus
+10.5	Peng
+10.6	Phoenix
+10.7	Snowlion
+10.8	Unicorn
+10.9	Wyvern
+
+Aquatic animals
+Conch
+Flag of Conchas, São Paulo, Brazil
+Flag of Conchas, São Paulo, Brazil
+
+ 
+Flag of the Conch Republic / Key West, Florida, USA
+Flag of the Conch Republic / Key West, Florida, USA
+
+ 
+Flag of Turks and Caicos Islands
+Flag of Turks and Caicos Islands
+
+ 
+Flag of Kingdom of Travancore
+Flag of Kingdom of Travancore
+
+Crayfish
+Flag of United Houma Nation, Louisiana, USA
+Flag of United Houma Nation, Louisiana, USA
+
+Dolphin and Whale
+Flag of Anguilla
+Flag of Anguilla
+
+ 
+Flag of Bombinhas, Santa Catarina, Brazil
+Flag of Bombinhas, Santa Catarina, Brazil
+
+ 
+Flag of the Canadian Coast Guard
+Flag of the Canadian Coast Guard
+
+ 
+Flag of Fernando de Noronha, Pernambuco, Brazil
+Flag of Fernando de Noronha, Pernambuco, Brazil
+
+ 
+Flag of Gżira, Malta
+Flag of Gżira, Malta
+
+ 
+Flag of Ust-Kamchatsky District, Russia
+Flag of Ust-Kamchatsky District, Russia
+
+ 
+Flag of Rhône-Alpes, France
+Flag of Rhône-Alpes, France
+
+Fish
+Flag of Alagoas, Brazil
+Flag of Alagoas, Brazil
+
+ 
+Flag of Anajatua, Maranhão, Brazil
+Flag of Anajatua, Maranhão, Brazil
+
+ 
+Flag of Andújar, Spain
+Flag of Andújar, Spain
+
+ 
+Flag of Atsugi, Kanagawa, Japan
+Flag of Atsugi, Kanagawa, Japan
+
+ 
+Flag of Apicum-Açu, Maranhão, Brazil
+Flag of Apicum-Açu, Maranhão, Brazil
+
+ 
+Flag of Barra de São Miguel, Alagoas, Brazil
+Flag of Barra de São Miguel, Alagoas, Brazil
+
+ 
+Flag of Bombinhas, Santa Catarina, Brazil
+Flag of Bombinhas, Santa Catarina, Brazil
+
+ 
+Flag of Cairu, Bahia, Brazil
+Flag of Cairu, Bahia, Brazil
+
+ 
+Flag of Calçoene, Amapá, Brazil
+Flag of Calçoene, Amapá, Brazil
+
+ 
+Flag of Canudos, Bahia, Brazil
+Flag of Canudos, Bahia, Brazil
+
+ 
+Flag of the Commissioner of Fisheries (United States) (1903-1940)
+Flag of the Commissioner of Fisheries
+(United States)
+(1903-1940)
+
+ 
+Flag of Chimbote, Peru
+Flag of Chimbote, Peru
+
+ 
+Flag of the Federal Dependencies of Venezuela
+Flag of the Federal Dependencies of Venezuela
+
+ 
+Flag of Guapé, Minas Gerais, Brazil
+Flag of Guapé, Minas Gerais, Brazil
+
+ 
+Flag of Herm
+Flag of Herm
+
+ 
+Flag of Juquiá, São Paulo, Brazil
+Flag of Juquiá, São Paulo, Brazil
+
+ 
+Flag of Magadan Oblast, Russia
+Flag of Magadan Oblast, Russia
+
+ 
+Flag of Mangaratiba, Rio de Janeiro, Brazil
+Flag of Mangaratiba, Rio de Janeiro, Brazil
+
+ 
+Flag of Marechal Deodoro, Alagoas, Brazil
+Flag of Marechal Deodoro, Alagoas, Brazil
+
+ 
+Flag of Matinhos, Paraná, Brazil
+Flag of Matinhos, Paraná, Brazil
+
+ 
+Flag of Meeksi Parish, Estonia
+Flag of Meeksi Parish, Estonia
+
+ 
+Flag of Miquelon-Langlade, Saint Pierre and Miquelon, France
+Flag of Miquelon-Langlade, Saint Pierre and Miquelon, France
+
+ 
+Flag of Pilar, Alagoas, Brazil
+Flag of Pilar, Alagoas, Brazil
+
+ 
+Flag of Santana do São Francisco, Sergipe, Brazil
+Flag of Santana do São Francisco, Sergipe, Brazil
+
+ 
+Flag of São Luís do Quitunde, Alagoas, Brazil
+Flag of São Luís do Quitunde, Alagoas, Brazil
+
+ 
+Flag of Saratov Oblast, Russia
+Flag of Saratov Oblast, Russia
+
+ 
+Flag of Shimonoseki, Yamaguchi, Japan
+Flag of Shimonoseki, Yamaguchi, Japan
+
+ 
+Flag of Sobradinho, Bahia, Brazil
+Flag of Sobradinho, Bahia, Brazil
+
+ 
+Flag of Traipu, Alagoas, Brazil
+Flag of Traipu, Alagoas, Brazil
+
+ 
+Flag of the United States Bureau of Fisheries (1903-1940)
+Flag of the United States Bureau of Fisheries
+(1903-1940)
+
+ 
+Flag of the United States Fish and Wildlife Service
+Flag of the United States Fish and Wildlife Service
+
+ 
+Flag of Urk, Netherlands
+Flag of Urk, Netherlands
+
+ 
+Flag of Xique-Xique, Bahia, Brazil
+Flag of Xique-Xique, Bahia, Brazil
+
+Lobster and spiny lobster
+Flag of Turks and Caicos Islands
+Flag of Turks and Caicos Islands
+
+ 
+Flag of Tristan da Cunha
+Flag of Tristan da Cunha
+
+Scallop
+Flag of La Rioja, Spain
+Flag of La Rioja, Spain
+
+ 
+Flag of Peñamellera Baja
+Flag of Peñamellera Baja
+
+ 
+Flag of Bedfordshire, England
+Flag of Bedfordshire, England
+
+ 
+Flag of Olsztyn, Poland
+Flag of Olsztyn, Poland
+
+Seahorse
+Flag of Aracaju, Sergipe, Brazil
+Flag of Aracaju, Sergipe, Brazil
+
+ 
+Flag of Bombinhas, Santa Catarina, Brazil
+Flag of Bombinhas, Santa Catarina, Brazil
+
+ 
+Flag of the Iate Clube de Santos, Brazil
+Flag of the Iate Clube de Santos, Brazil
+
+ 
+Flag of Matinhos, Paraná, Brazil
+Flag of Matinhos, Paraná, Brazil
+
+ 
+Unofficial Flag of Mayotte, France
+Unofficial Flag of Mayotte, France
+
+ 
+Flag of Osório, Rio Grande do Sul, Brazil
+Flag of Osório, Rio Grande do Sul, Brazil
+Shrimp
+Flag of Apicum-Açu, Maranhão, Brazil
+Flag of Apicum-Açu, Maranhão, Brazil
+
+ 
+Flag of Bombinhas, Santa Catarina, Brazil
+Flag of Bombinhas, Santa Catarina, Brazil
+
+ 
+Flago f Pirambu, Sergipe, Brazil
+Flago f Pirambu, Sergipe, Brazil
+
+Seal
+Flag of South Georgia & South Sandwich Islands
+Flag of South Georgia & South Sandwich Islands
+
+Birds
+See also: Flags with birds.
+Albatross
+Flag of the Midway Islands (Laysan Albatross)
+Flag of the Midway Islands (Laysan Albatross)
+
+ 
+Flag of Tierra del Fuego province, Argentina
+Flag of Tierra del Fuego province, Argentina
+
+ 
+Flag of Tristan da Cunha (Atlantic Yellow-nosed Albatross)
+Flag of Tristan da Cunha (Atlantic Yellow-nosed Albatross)
+
+Birds of prey
+Flag of Alagoas, Brazil (1894-1963)
+Flag of Alagoas, Brazil (1894-1963)
+
+ 
+Flag of Albania
+Flag of Albania
+
+ 
+Naval Ensign of Albania
+Naval Ensign of Albania
+
+ 
+Flag of American Samoa
+Flag of American Samoa
+
+ 
+Flag of Amparo, São Paulo, Brazil
+Flag of Amparo, São Paulo, Brazil
+
+ 
+Arrano beltza flag
+Arrano beltza flag
+
+ 
+Flag of Mount Athos
+Flag of Mount Athos
+
+ 
+Royal Standard of Queen Elizabeth II in Australia
+Royal Standard of Queen Elizabeth II in Australia
+
+ 
+State Flag of Austria
+State Flag of Austria
+
+ 
+Presidential Standard of Austria
+Presidential Standard of Austria
+
+ 
+Flag of Azores, Portugal
+Flag of Azores, Portugal
+
+ 
+Flag of Belgorod Oblast, Russia
+Flag of Belgorod Oblast, Russia
+
+ 
+Flag of Bielsko-Biała, Poland
+Flag of Bielsko-Biała, Poland
+
+ 
+Flag of Bogotá, Colombia
+Flag of Bogotá, Colombia
+
+ 
+Flag of Bolivia
+Flag of Bolivia
+
+ 
+Military Flag of Bolivia
+Military Flag of Bolivia
+
+ 
+Flag of Brandenburg, Germany
+Flag of Brandenburg, Germany
+
+ 
+Flag of Buenos Aires (city flag)
+Flag of Buenos Aires (city flag)
+
+ 
+Flag of Campo Grande, Mato Grosso do Sul, Brazil
+Flag of Campo Grande, Mato Grosso do Sul, Brazil
+
+ 
+Flag of Chernivtsi Oblast, Ukraine
+Flag of Chernivtsi Oblast, Ukraine
+
+ 
+Presidential Standard of Chile
+Presidential Standard of Chile
+
+ 
+Flag of the Civil Air Patrol (United States)
+Flag of the Civil Air Patrol
+(United States)
+
+ 
+Flag of the National Commander of the Civil Air Patrol (United States)
+Flag of the National Commander of the Civil Air Patrol
+(United States)
+
+ 
+Flag of the National Vice Commander of the Civil Air Patrol (United States)
+Flag of the National Vice Commander of the Civil Air Patrol
+(United States)
+
+ 
+Naval Ensign of Colombia
+Naval Ensign of Colombia
+
+ 
+Navy Jack of Colombia
+Navy Jack of Colombia
+
+ 
+Flag of the National Air Force of Colombia
+Flag of the National Air Force of Colombia
+
+ 
+Flag of Connaught, Ireland
+Flag of Connaught, Ireland
+
+ 
+Flag of Cundinamarca, Colombia
+Flag of Cundinamarca, Colombia
+
+ 
+Presidential Standard of the Czech Republic
+Presidential Standard of the Czech Republic
+
+ 
+Flag of Dias d'Ávila, Bahia, Brazil
+Flag of Dias d'Ávila, Bahia, Brazil
+
+ 
+Flag of Dortmund, Germany
+Flag of Dortmund, Germany
+
+ 
+Flag of Duisburg, Germany
+Flag of Duisburg, Germany
+
+ 
+Flag of Ecuador
+Flag of Ecuador
+
+ 
+Flag of Egypt
+Flag of Egypt
+
+ 
+Naval Jack of Egypt
+Naval Jack of Egypt
+
+ 
+Air Force Ensign of Egypt
+Air Force Ensign of Egypt
+
+ 
+Flag of Essen, Germany
+Flag of Essen, Germany
+
+ 
+Flag of Friuli
+Flag of Friuli
+
+ 
+Presidential Flag of Iceland
+Presidential Flag of Iceland
+
+ 
+Flag of Friuli-Venezia Giulia, Italy
+Flag of Friuli-Venezia Giulia, Italy
+
+ 
+Flag of Garanhuns, Pernambuco, Brazil
+Flag of Garanhuns, Pernambuco, Brazil
+
+ 
+State Flag of Germany
+State Flag of Germany
+
+ 
+Naval Ensign of Germany
+Naval Ensign of Germany
+
+ 
+Presidential Standard of Germany
+Presidential Standard of Germany
+
+ 
+Flag of Geneva, Switzerland
+Flag of Geneva, Switzerland
+
+ 
+Flag of the Governor of the state of Amazonas, Brazil
+Flag of the Governor of the state of Amazonas, Brazil
+
+ 
+Flag of the Governor of the state of Mato Grosso, Brazil
+Flag of the Governor of the state of Mato Grosso, Brazil
+
+ 
+Flag of Greater Poland Voivodship, Poland
+Flag of Greater Poland Voivodship, Poland
+
+ 
+Flag of Illinois, USA
+Flag of Illinois, USA
+
+ 
+Flag of the Four Provinces of Ireland
+Flag of the Four Provinces of Ireland
+
+ 
+Flag of Iowa, USA
+Flag of Iowa, USA
+
+ 
+Flag of Ivanovo Oblast, Russia
+Flag of Ivanovo Oblast, Russia
+
+ 
+Flag of Kazakhstan
+Flag of Kazakhstan
+
+ 
+Flag of Krasnoyarsk Krai, Russia
+Flag of Krasnoyarsk Krai, Russia
+
+ 
+Presidential Standard of Latvia
+Presidential Standard of Latvia
+
+ 
+Presidential Standard of Lithuania
+Presidential Standard of Lithuania
+
+ 
+Flag of Lorraine, France
+Flag of Lorraine, France
+
+ 
+Flag of Lower Silesia, Poland
+Flag of Lower Silesia, Poland
+
+ 
+Flag of Masovian Voivodship, Poland
+Flag of Masovian Voivodship, Poland
+
+ 
+Flag of Mexico
+Flag of Mexico
+
+ 
+Flag of Michigan, USA
+Flag of Michigan, USA
+
+ 
+Flag of Missouri
+Flag of Missouri
+
+ 
+Flag of Mitaka, Tokyo, Japan
+Flag of Mitaka, Tokyo, Japan
+
+ 
+Flag of the Modoc Tribe of Oklahoma, USA
+Flag of the Modoc Tribe of Oklahoma, USA
+
+ 
+Flag of Moldova
+Flag of Moldova
+
+ 
+Flag of Armed Forces of Moldova
+Flag of Armed Forces of Moldova
+ 
+Flag of Montenegro
+Flag of Montenegro
+
+ 
+Flag of the Natchitoches Tribe of Louisiana (USA)
+Flag of the Natchitoches Tribe of Louisiana (USA)
+
+ 
+Flag of the National Oceanic and Atmospheric Administration Commissioned Corps (United States)
+Flag of the National Oceanic and Atmospheric Administration Commissioned Corps
+(United States)
+
+ 
+Flag of New York, USA
+Flag of New York, USA
+
+ 
+Flag of North Dakota, USA
+Flag of North Dakota, USA
+
+ 
+Flag of Opole Voivodship, Poland
+Flag of Opole Voivodship, Poland
+
+ 
+Flag of Oryol Oblast, Russia
+Flag of Oryol Oblast, Russia
+
+ 
+Flag of Oregon, USA
+Flag of Oregon, USA
+
+ 
+Presidential Standard of Palestine
+Presidential Standard of Palestine
+
+ 
+Flag of the Military Police of Paraná
+Flag of the Military Police of Paraná
+
+ 
+Flag of the President of Poland
+Flag of the President of Poland
+
+ 
+Civil and State Ensign of Poland
+Civil and State Ensign of Poland
+
+ 
+Flag of the Polish Navy
+Flag of the Polish Navy
+
+ 
+Flag of the Polish Navy (Naval bases on land)
+Flag of the Polish Navy (Naval bases on land)
+
+ 
+Flag of the Polish Air Force
+Flag of the Polish Air Force
+
+ 
+Flag of Potsdam, Germany
+Flag of Potsdam, Germany
+
+ 
+Flag of Prussia (1894-1918)
+Flag of Prussia (1894-1918)
+
+ 
+Flag of Rio de Janeiro, Brazil
+Flag of Rio de Janeiro, Brazil
+
+ 
+Flag of Rio de Janeiro, Brazil (1891-1937), (1947-1965)
+Flag of Rio de Janeiro, Brazil (1891-1937), (1947-1965)
+ 
+Flag of the Holy Roman Emperor
+Flag of the Holy Roman Emperor
+
+ 
+Flag of the President of Russia
+Flag of the President of Russia
+
+ 
+Flag of Saltinho, São Paulo, Brazil
+Flag of Saltinho, São Paulo, Brazil
+
+ 
+Flag of São José do Rio Preto, São Paulo, Brazil
+Flag of São José do Rio Preto, São Paulo, Brazil
+
+ 
+Flag of Santa Catarina, Brazil
+Flag of Santa Catarina, Brazil
+
+ 
+Flag of Saxony-Anhalt, Germany (state service flag)
+Flag of Saxony-Anhalt, Germany (state service flag)
+
+ 
+Flag of Serbia
+Flag of Serbia
+
+ 
+Flag of the Shanghai International Settlement (1863–1917)
+Flag of the Shanghai International Settlement (1863–1917)
+
+ 
+Flag of Sloviansk, Ukraine (Falcon)
+Flag of Sloviansk, Ukraine (Falcon)
+ 
+Presidential Standard of Serbia
+Presidential Standard of Serbia
+
+ 
+Flag of Shishalh, British Columbia, Canada
+Flag of Shishalh, British Columbia, Canada
+
+ 
+Ensign of the South African Air Force
+Ensign of the South African Air Force
+
+ 
+Flag of South Australia, Australia
+Flag of South Australia, Australia
+
+ 
+Flag of the Governor of South Australia, Australia
+Flag of the Governor of South Australia, Australia
+
+ 
+Flag of Spain under Franco
+Flag of Spain under Franco
+
+ 
+Flag of Taguatinga, Federal District, Brazil
+Flag of Taguatinga, Federal District, Brazil
+
+ 
+Flag of the United Arab Emirates
+Flag of the United Arab Emirates
+ 
+Presidential Standard of the United States
+Presidential Standard of the United States
+ 
+Flag of the Vice President of the United States
+Flag of the Vice President of the United States
+
+ 
+Flag of the United States Air Force
+Flag of the United States Air Force
+
+ 
+Flag of the United States Coast Guard
+Flag of the United States Coast Guard
+
+ 
+Flag of the United States Marine Corps
+Flag of the United States Marine Corps
+
+ 
+Flag of the Commandant of the Marine Corps (United States)
+Flag of the Commandant of the Marine Corps
+(United States)
+
+ 
+Flag of the United States Navy
+Flag of the United States Navy
+
+ 
+Flag of the United States Virgin Islands
+Flag of the United States Virgin Islands
+
+ 
+Flag of Warmian-Masurian Voivodship, Poland
+Flag of Warmian-Masurian Voivodship, Poland
+
+ 
+Flag of Zambia
+Flag of Zambia
+
+Chicken
+Flag of Bago Division, Myanmar
+Flag of Bago Division, Myanmar
+
+ 
+Flag of Coqueiro Baixo, Rio Grande do Sul, Brazil
+Flag of Coqueiro Baixo, Rio Grande do Sul, Brazil
+
+ 
+Flag of Sultanate of Gowa (14th century–1945)
+Flag of Sultanate of Gowa (14th century–1945)
+ 
+Flag of Lagoa Bonita do Sul, Rio Grande do Sul, Brazil
+Flag of Lagoa Bonita do Sul, Rio Grande do Sul, Brazil
+
+ 
+Flag of Madona District, Latvia
+Flag of Madona District, Latvia
+
+ 
+Flag of Mon State, Myanmar
+Flag of Mon State, Myanmar
+
+ 
+Flag of Wallonia, Belgium
+Flag of Wallonia, Belgium
+
+ 
+Flag of Smolensk Oblast, Russia
+Flag of Smolensk Oblast, Russia
+
+ 
+Flag of Equatorial Guinea (1973-1979)
+Flag of Equatorial Guinea (1973-1979)
+
+ 
+Flag of Kenya presidential standard
+Flag of Kenya presidential standard
+
+ 
+Flag of Kenya presidential standard
+Flag of Kenya presidential standard
+
+ 
+Flag of the União Nacional para a Independência Total de Angola
+Flag of the União Nacional para a Independência Total de Angola
+
+ 
+Flag of Westfália, Rio Grande do Sul, Brazil
+Flag of Westfália, Rio Grande do Sul, Brazil
+
+Crane
+Flag of Ciskei (1981–1994; Blue Crane)
+Flag of Ciskei (1981–1994; Blue Crane)
+
+ 
+Flag of Uganda (Grey Crowned Crane)
+Flag of Uganda (Grey Crowned Crane)
+
+ 
+Flag of Hachinohe, Aomori, Japan
+Flag of Hachinohe, Aomori, Japan
+
+ 
+Flag of Maizuru, Kyoto, Japan
+Flag of Maizuru, Kyoto, Japan
+
+Dove
+Flag of the 8th October Revolutionary Movement, Brazil
+Flag of the 8th October Revolutionary Movement, Brazil
+
+ 
+Flag of Ambazonia
+Flag of Ambazonia
+
+ 
+Flag of Araújos, Minas Gerais, Brazil
+Flag of Araújos, Minas Gerais, Brazil
+
+ 
+Flag of Edogawa, Tokyo, Japan
+Flag of Edogawa, Tokyo, Japan
+
+ 
+Flag of Fiji
+Flag of Fiji
+
+ 
+Civil Ensign of Fiji
+Civil Ensign of Fiji
+
+ 
+State Ensign of Fiji
+State Ensign of Fiji
+
+ 
+Flag of São Francisco, Sergipe, Brazil
+Flag of São Francisco, Sergipe, Brazil
+
+Duck
+Flag of British Weihaiwei, United Kingdom
+Flag of British Weihaiwei, United Kingdom
+
+ 
+Flag of the Comissioner of British Weihawei, United Kingdom (1903–1930)
+Flag of the Comissioner of British Weihawei, United Kingdom (1903–1930)
+
+ 
+Flag of Diemen, North Holland, Netherlands
+Flag of Diemen, North Holland, Netherlands
+
+ 
+Flag of Miquelon-Langlade, Saint Pierre and Miquelon, France
+Flag of Miquelon-Langlade, Saint Pierre and Miquelon, France
+
+ 
+Flag of Pato Bragado, Paraná, Brazil
+Flag of Pato Bragado, Paraná, Brazil
+
+ 
+Flag of Pato Branco, Paraná, Brazil
+Flag of Pato Branco, Paraná, Brazil
+
+ 
+Flag of Patos, Paraíba, Brazil
+Flag of Patos, Paraíba, Brazil
+
+ 
+Flag of Patos de Minas, Minas Gerais, Brazil
+Flag of Patos de Minas, Minas Gerais, Brazil
+
+ 
+Flag of São João dos Patos, Maranhão, Brazil
+Flag of São João dos Patos, Maranhão, Brazil
+
+ 
+Flag of Taymyr Autonomous Okrug, Russia
+Flag of Taymyr Autonomous Okrug, Russia
+
+Parrot
+Flag of Dominica
+Flag of Dominica
+
+ 
+Flag of Liberato Salzano, Rio Grande do Sul, Brazil
+Flag of Liberato Salzano, Rio Grande do Sul, Brazil
+
+ 
+Flag of Rio Grande, Puerto Rico
+Flag of Rio Grande, Puerto Rico
+
+Peacock
+Flag of Burma Province, British India ()
+Flag of Burma Province, British India ()
+
+ 
+Flag of the Konbuang Dynasty
+Flag of the Konbuang Dynasty
+
+ 
+Flag of Burma (1943-5) (Peacock)
+Flag of Burma (1943-5) (Peacock)
+
+ 
+Flag of Ermelo, Netherlands
+Flag of Ermelo, Netherlands
+
+ 
+Flag of Vila Pavão, Espírito Santo, Brazil
+Flag of Vila Pavão, Espírito Santo, Brazil
+
+Penguin
+Flag of British Antarctic Territory
+Flag of British Antarctic Territory
+
+ 
+Flag of South Georgia & South Sandwich Islands
+Flag of South Georgia & South Sandwich Islands
+
+Seagull
+Flag of Bombinhas, Santa Catarina, Brazil
+Flag of Bombinhas, Santa Catarina, Brazil
+
+ 
+Flag of Kiribati (Great Frigatebird)
+Flag of Kiribati (Great Frigatebird)
+
+
+
+Swan
+Flag of Australian Capital Territory, Australia
+Flag of Australian Capital Territory, Australia
+
+ 
+Royal Standard of Queen Elizabeth II in Australia
+Royal Standard of Queen Elizabeth II in Australia
+
+ 
+Flag of Landsmeer, Netherlands
+Flag of Landsmeer, Netherlands
+
+ 
+Flag of Western Australia, Australia
+Flag of Western Australia, Australia
+
+ 
+Flag of the Governor of Western Australia, Australia
+Flag of the Governor of Western Australia, Australia
+
+ 
+Flag of Perth, Australia
+Flag of Perth, Australia
+
+ 
+Flag of Itami, Hyogo, Japan
+Flag of Itami, Hyogo, Japan
+
+ 
+Flag of Buckinghamshire, England
+Flag of Buckinghamshire, England
+
+ 
+Flag of Biłgoraj, Poland
+Flag of Biłgoraj, Poland
+
+Toucan
+Flag of the carnival block Cutucano Atrás, Rio de Janeiro, Rio de Janeiro, Brazil
+Flag of the carnival block Cutucano Atrás, Rio de Janeiro, Rio de Janeiro, Brazil
+
+ 
+Flag of Tucano, Bahia, Brazil
+Flag of Tucano, Bahia, Brazil
+
+Other birds
+Flag of Ceará, Brazil
+Flag of Ceará, Brazil
+
+ 
+Flag of Ceará, Brazil (1967-2007)
+Flag of Ceará, Brazil (1967-2007)
+
+ 
+Flag of Ceará, Brazil (1922-1937, 1947-1967)
+Flag of Ceará, Brazil (1922-1937, 1947-1967)
+
+ 
+Flag of Chin State, Burma (Hornbill)
+Flag of Chin State, Burma (Hornbill)
+
+ 
+Flag of Christmas Island, Australia (Golden Bosun)
+Flag of Christmas Island, Australia (Golden Bosun)
+
+ 
+Flag of Corpus Christi, Texas, USA (Pelican)
+Flag of Corpus Christi, Texas, USA (Pelican)
+
+ 
+Naval Jack of Ecuador (condor)
+Naval Jack of Ecuador (condor)
+
+ 
+Flag of Guarulhos, São Paulo, Brazil (horned screamer)
+Flag of Guarulhos, São Paulo, Brazil (horned screamer)
+
+ 
+Flag of Guatemala (Resplendent Quetzal)
+Flag of Guatemala (Resplendent Quetzal)
+
+ 
+Flag of Hachijo, Tokyo, Japan
+Flag of Hachijo, Tokyo, Japan
+
+ 
+Flag of Himeji, Hyogo, Japan (egret)
+Flag of Himeji, Hyogo, Japan (egret)
+
+ 
+Flag of Hirakata, Osaka, Japan
+Flag of Hirakata, Osaka, Japan
+
+ 
+Flag of Karuizawa, Nagano, Japan
+Flag of Karuizawa, Nagano, Japan
+
+ 
+Flag of Kursk Oblast, Russia (Partridge)
+Flag of Kursk Oblast, Russia (Partridge)
+
+ 
+Flag of Louisiana, USA (Pelican)
+Flag of Louisiana, USA (Pelican)
+
+ 
+Flag of Machida, Tokyo, Japan
+Flag of Machida, Tokyo, Japan
+
+ 
+Flag of the National Oceanic and Atmospheric Administration, United States (Seagull)
+Flag of the National Oceanic and Atmospheric Administration,
+United States
+(Seagull)
+
+ 
+Flag of the Administrator of the National Oceanic and Atmospheric Administration, United States (Seagull)
+Flag of the Administrator of the National Oceanic and Atmospheric Administration,
+United States
+(Seagull)
+
+ 
+Flag of the Deputy Administrator of the National Oceanic and Atmospheric Administration, United States (Seagull)
+Flag of the Deputy Administrator of the National Oceanic and Atmospheric Administration,
+United States
+(Seagull)
+
+ 
+Flag of an Associate Administrator of the National Oceanic and Atmospheric Administration, United States (Seagull)
+Flag of an Associate Administrator of the National Oceanic and Atmospheric Administration,
+United States
+(Seagull)
+
+ 
+Flag of Ogasawara, Tokyo, Japan (Bonin White-eye)
+Flag of Ogasawara, Tokyo, Japan (Bonin White-eye)
+
+ 
+Flag of Papua New Guinea (Bird of Paradise)
+Flag of Papua New Guinea (Bird of Paradise)
+
+ 
+Flag of Pietà, Malta (Pelican)
+Flag of Pietà, Malta (Pelican)
+
+ 
+Flag of New Ireland Province, Papua New Guinea (Paradise drongo)
+Flag of New Ireland Province, Papua New Guinea (Paradise drongo)
+
+ 
+Flag of Ivano-Frankivsk Oblast, Ukraine (Western Jackdaw)
+Flag of Ivano-Frankivsk Oblast, Ukraine (Western Jackdaw)
+
+ 
+Flag of Sado, Niigata, Japan (Crested Ibis)
+Flag of Sado, Niigata, Japan (Crested Ibis)
+
+ 
+Flag of Saint Helena (Saint Helena Plover)
+Flag of Saint Helena (Saint Helena Plover)
+
+ 
+Flag of Sussex, England (Martlet)
+Flag of Sussex, England (Martlet)
+
+ 
+Flag of Taymyr Autonomous Okrug, Russia (Goose)
+Flag of Taymyr Autonomous Okrug, Russia (Goose)
+
+ 
+Flag of Teotônio Vilela, Alagoas, Brazil
+Flag of Teotônio Vilela, Alagoas, Brazil
+
+ 
+Flag of Tottori Prefecture, Japan
+Flag of Tottori Prefecture, Japan
+
+ 
+Flag of Tsubame, Niigata, Japan (Swallow)
+Flag of Tsubame, Niigata, Japan
+(Swallow)
+
+ 
+Flag of West Papua, Indonesia (Northern Cassowary)
+Flag of West Papua, Indonesia (Northern Cassowary)
+ 
+Flag of the United States Fish and Wildlife Service (Canada Goose)
+Flag of the United States Fish and Wildlife Service (Canada Goose)
+
+ 
+Flag of Wormerland, Netherlands (Common Spoonbill)
+Flag of Wormerland, Netherlands
+(Common Spoonbill)
+
+ 
+Flag of Yamaguchi Prefecture, Japan
+Flag of Yamaguchi Prefecture, Japan
+
+ 
+Flag of Kaohsiung County, Taiwan (Seagull)
+Flag of Kaohsiung County, Taiwan (Seagull)
+Canines
+Dog
+Flag of Boituva, São Paulo, Brazil
+Flag of Boituva, São Paulo, Brazil
+
+ 
+Flag of the Canary Islands, Spain
+Flag of the Canary Islands, Spain
+
+ 
+Flag of Yukon Territory, Canada
+Flag of Yukon Territory, Canada
+
+ 
+Flag of Żary, Poland
+Flag of Żary, Poland
+
+Fox
+Flag of the Northwest Territories, Canada
+Flag of the Northwest Territories, Canada
+
+Wolf
+Flag of Chechen Republic of Ichkeria
+Flag of Chechen Republic of Ichkeria
+
+ 
+Flag of Guará, Federal District, Brazil
+Flag of Guará, Federal District, Brazil
+
+ 
+Flag of Guarapuava, Paraná, Brazil
+Flag of Guarapuava, Paraná, Brazil
+
+ 
+Flag of Meise, Belgium
+Flag of Meise, Belgium
+
+ 
+Flag of Cantallops, Spain
+Flag of Cantallops, Spain
+
+Felines
+Jaguar
+Flag of the Department of Amazonas, Colombia
+Flag of the Department of Amazonas, Colombia
+
+ 
+Flag of the Governor of the state of Mato Grosso do Sul, Brazil
+Flag of the Governor of the state of Mato Grosso do Sul, Brazil
+
+ 
+University of Guyana
+University of Guyana
+
+Leopard
+Flag of Bophutatswana (independent 1977–1994; recognized by South Africa)
+Flag of Bophutatswana (independent 1977–1994; recognized by South Africa)
+
+ 
+Flag of the Governor of the state of Acre, Brazil
+Flag of the Governor of the state of Acre, Brazil
+
+ 
+Flag of Nyasaland (1925–1964)
+Flag of Nyasaland (1925–1964)
+
+Lion
+Flag of Álvares Florence, São Paulo, Brazil
+Flag of Álvares Florence, São Paulo, Brazil
+
+ 
+Flag of Alvinlândia, São Paulo, Brazil
+Flag of Alvinlândia, São Paulo, Brazil
+
+ 
+Flags of Andalucia
+Flags of Andalucia
+
+ 
+Flag of Ankole, Uganda
+Flag of Ankole, Uganda
+
+ 
+Flag of Aquitaine, France
+Flag of Aquitaine, France
+
+ 
+Royal Standard of Queen Elizabeth II in Australia
+Royal Standard of Queen Elizabeth II in Australia
+
+ 
+Flag of the Governor-General of Australia
+Flag of the Governor-General of Australia
+
+ 
+Flag of Baden-Württemberg, Germany (service flag)
+Flag of Baden-Württemberg, Germany (service flag)
+
+ 
+State Ensign of Belgium
+State Ensign of Belgium
+
+ 
+Flag of Belgorod Oblast, Russia
+Flag of Belgorod Oblast, Russia
+
+ 
+Flag of Bermuda
+Flag of Bermuda
+
+ 
+Flag of Bremen, Germany (with flag arms)
+Flag of Bremen, Germany (with flag arms)
+
+ 
+Flag of the British Antarctic Territory
+Flag of the British Antarctic Territory
+
+ 
+Flag of the British Army
+Flag of the British Army
+
+ 
+Flag of Buganda, Uganda
+Flag of Buganda, Uganda
+
+ 
+Royal Standard of Queen Elizabeth II in Canada
+Royal Standard of Queen Elizabeth II in Canada
+
+ 
+Flag of the Governor General of Canada
+Flag of the Governor General of Canada
+
+ 
+Flag of Castile-Leon, Spain
+Flag of Castile-Leon, Spain
+
+ 
+Flag of Caixias do Sul, Rio Grande do Sul, Brazil
+Flag of Caixias do Sul, Rio Grande do Sul, Brazil
+
+ 
+Flag of the Cayman Islands
+Flag of the Cayman Islands
+
+ 
+Flag of Croatia
+Flag of Croatia
+
+ 
+Civil and State Ensign of Croatia
+Civil and State Ensign of Croatia
+
+ 
+Naval Ensign of Croatia
+Naval Ensign of Croatia
+
+ 
+Presidential Standard of the Czech Republic
+Presidential Standard of the Czech Republic
+
+ 
+Royal Standard of England
+Royal Standard of England
+
+ 
+Royal Standard of Queen Elizabeth II in England, Wales and Northern Ireland
+Royal Standard of Queen Elizabeth II in England, Wales and Northern Ireland
+
+ 
+Royal Standard of Queen Elizabeth II in Scotland
+Royal Standard of Queen Elizabeth II in Scotland
+
+ 
+Standard of the Prince of Wales (for use in England and Northern Ireland)
+Standard of the Prince of Wales (for use in England and Northern Ireland)
+
+ 
+Standard of the Duchy of Lancaster, England
+Standard of the Duchy of Lancaster, England
+
+ 
+Presidential Flag of Estonia
+Presidential Flag of Estonia
+
+ 
+Naval Ensign of Estonia
+Naval Ensign of Estonia
+
+ 
+Flag of Ethiopia (1897-1936; 1941-1974)
+Flag of Ethiopia
+(1897-1936; 1941-1974)
+
+ 
+War Ensign of the Imperial Ethiopian Navy (1955-1974)
+War Ensign of the Imperial Ethiopian Navy
+(1955-1974)
+
+ 
+Flag of Ethiopia (1974-1975)
+Flag of Ethiopia
+(1974-1975)
+
+ 
+War Ensign of the Imperial Ethiopian Navy (1974-1975)
+War Ensign of the Imperial Ethiopian Navy
+(1974-1975)
+
+ 
+Flag of Extremadura
+Flag of Extremadura
+
+ 
+Flag of Flemish Brabant, Belgium
+Flag of Flemish Brabant, Belgium
+
+ 
+Flag of Fiji
+Flag of Fiji
+
+ 
+Civil Ensign of Fiji
+Civil Ensign of Fiji
+
+ 
+State Ensign of Fiji
+State Ensign of Fiji
+
+ 
+Naval Ensign of Fiji
+Naval Ensign of Fiji
+
+ 
+Civil Air Ensign of Fiji
+Civil Air Ensign of Fiji
+
+ 
+State Flag of Finland
+State Flag of Finland
+
+ 
+Naval Ensign of Finland
+Naval Ensign of Finland
+
+ 
+Naval Jack of Finland
+Naval Jack of Finland
+
+ 
+Presidential Standard of Finland
+Presidential Standard of Finland
+
+ 
+Flag of Flanders, Flemish Region and the Flemish Community in Belgium
+Flag of Flanders, Flemish Region and the Flemish Community in Belgium
+
+ 
+Flag of Franca, São Paulo, Brazil
+Flag of Franca, São Paulo, Brazil
+
+ 
+Flag of Franche-Comté, France
+Flag of Franche-Comté, France
+
+ 
+Flag of the German-speaking community of Belgium
+Flag of the German-speaking community of Belgium
+
+ 
+Flag of Hainaut, Belgium
+Flag of Hainaut, Belgium
+
+ 
+Flag of Herefordshire, England
+Flag of Herefordshire, England
+
+ 
+Flag of Hesse, Germany (state service flag)
+Flag of Hesse, Germany (state service flag)
+
+ 
+Flag of the Indian Army
+Flag of the Indian Army
+
+ 
+Flag of the Indian Coast Guard
+Flag of the Indian Coast Guard
+
+ 
+Colonial Flag of Ionian Islands
+Colonial Flag of Ionian Islands
+
+ 
+Flag of Ivanovo Oblast, Russia
+Flag of Ivanovo Oblast, Russia
+
+ 
+Flag of Jaboatão dos Guararapes, Pernambuco, Brazil
+Flag of Jaboatão dos Guararapes, Pernambuco, Brazil
+
+ 
+Flag of Jersey
+Flag of Jersey
+
+ 
+Colonial Flag of Kenya
+Colonial Flag of Kenya
+
+ 
+Presidential Standard of Latvia
+Presidential Standard of Latvia
+
+ 
+Flag of Liège, Belgium
+Flag of Liège, Belgium
+
+ 
+Flag of Limburg, Belgium
+Flag of Limburg, Belgium
+
+ 
+Flag of Limburg, The Netherlands
+Flag of Limburg, The Netherlands
+
+ 
+Flag of the Kingdom of León (910–1833)
+Flag of the Kingdom of León (910–1833)
+
+ 
+Flag of the Province of León, Spain
+Flag of the Province of León, Spain
+
+ 
+Flag of León, Province of León, Spain
+Flag of León, Province of León, Spain
+
+ 
+Flag of Lviv Oblast, Ukraine
+Flag of Lviv Oblast, Ukraine
+
+ 
+Civil Ensign of Luxembourg
+Civil Ensign of Luxembourg
+
+ 
+Flag of Luxembourg, Belgium
+Flag of Luxembourg, Belgium
+
+ 
+Flag of Lyon, France
+Flag of Lyon, France
+
+ 
+Flag of Melilla, Spain
+Flag of Melilla, Spain
+
+ 
+Flag of Miquelon-Langlade, Saint Pierre and Miquelon, France
+Flag of Miquelon-Langlade, Saint Pierre and Miquelon, France
+
+ 
+Flag of Montenegro
+Flag of Montenegro
+
+ 
+Flag of Morro Agudo, São Paulo, Brazil
+Flag of Morro Agudo, São Paulo, Brazil
+
+ 
+Flag of New Brunswick, Canada
+Flag of New Brunswick, Canada
+
+ 
+Flag of New South Wales, Australia
+Flag of New South Wales, Australia
+
+ 
+Flag of the Governor-General of New Zealand (1953-2008)
+Flag of the Governor-General of New Zealand (1953-2008)
+
+ 
+Flag of the Lt. Governor of Newfoundland and Labrador, Canada
+Flag of the Lt. Governor of Newfoundland and Labrador, Canada
+
+ 
+Flag of Niedorp, Netherlands (beheaded lion)
+Flag of Niedorp, Netherlands (beheaded lion)
+
+ 
+Royal Standard of Norway
+Royal Standard of Norway
+
+ 
+Flag of Nova Scotia, Canada
+Flag of Nova Scotia, Canada
+
+ 
+Flag of Olinda, Pernambuco, Brazil
+Flag of Olinda, Pernambuco, Brazil
+
+ 
+Flag of Paraguay (reverse)
+Flag of Paraguay (reverse)
+
+ 
+Flag of the Patron of Brazil's Navy
+Flag of the Patron of Brazil's Navy
+
+ 
+Flag of the Governor of the state of Pernambuco, Brazil
+Flag of the Governor of the state of Pernambuco, Brazil
+
+ 
+Flag of Podkarpaty Voivodship, Poland
+Flag of Podkarpaty Voivodship, Poland
+
+ 
+Flag of Prince Edward Island, Canada
+Flag of Prince Edward Island, Canada
+
+ 
+Flag of Rio Claro, São Paulo, Brazil
+Flag of Rio Claro, São Paulo, Brazil
+
+ 
+Flag of Recife, Brazil
+Flag of Recife, Brazil
+
+ 
+Flag of Rhineland-Palatinate, Germany
+Flag of Rhineland-Palatinate, Germany
+
+ 
+Flag of Rhodesia (1968-1979)
+Flag of Rhodesia (1968-1979)
+
+ 
+Flag of Saarland, Germany
+Flag of Saarland, Germany
+
+ 
+Flag of Sagaing Division, Myanmar
+Flag of Sagaing Division, Myanmar
+
+ 
+Flag of Saint-Pierre and Miquelon
+Flag of Saint-Pierre and Miquelon
+
+ 
+Flag of São Leopoldo, Rio Grande do Sul, Brazil
+Flag of São Leopoldo, Rio Grande do Sul, Brazil
+
+ 
+Flag of Sark
+Flag of Sark
+
+ 
+Flag of Saskatchewan, Canada
+Flag of Saskatchewan, Canada
+
+ 
+Flag of Schleswig-Holstein, Germany (state service flag)
+Flag of Schleswig-Holstein, Germany (state service flag)
+
+ 
+Royal Standard of Queen Elizabeth II in Scotland
+Royal Standard of Queen Elizabeth II in Scotland
+
+ 
+Royal Standard of Scotland
+Royal Standard of Scotland
+
+ 
+Flag of South Holland, The Netherlands
+Flag of South Holland, The Netherlands
+
+ 
+Flag of South Georgia and the South Sandwich Islands
+Flag of South Georgia and the South Sandwich Islands
+
+ 
+Flag of Spain
+Flag of Spain
+
+ 
+Naval Jack of Spain
+Naval Jack of Spain
+
+ 
+Standard of the King of Spain
+Standard of the King of Spain
+
+ 
+Standard of the Princess of Asturias (Spain)
+Standard of the Princess of Asturias (Spain)
+
+ 
+Flag of Sri Lanka
+Flag of Sri Lanka
+
+ 
+Flag of Tasmania, Australia
+Flag of Tasmania, Australia
+
+ 
+Flag of the Governor of Tasmania, Australia
+Flag of the Governor of Tasmania, Australia
+
+ 
+Flag of Tatuí, São Paulo, Brazil
+Flag of Tatuí, São Paulo, Brazil
+
+ 
+Flag of Thurgau
+Flag of Thurgau
+
+ 
+Flag of Thuringia, Germany (state service flag)
+Flag of Thuringia, Germany (state service flag)
+
+ 
+Flag of Ulyanovsk Oblast, Russia
+Flag of Ulyanovsk Oblast, Russia
+
+ 
+Flag of Uruguaiana, Rio Grande do Sul, Brazil
+Flag of Uruguaiana, Rio Grande do Sul, Brazil
+
+ 
+Flag of Valdés
+Flag of Valdés
+
+ 
+Flag of Valletta, Malta
+Flag of Valletta, Malta
+
+ 
+Flag of Veneto, Italy
+Flag of Veneto, Italy
+
+ 
+Flag of the Most Serene Republic of Venice
+Flag of the Most Serene Republic of Venice
+
+ 
+Flag of Vitória de Santo Antão, Pernambuco, Brazil
+Flag of Vitória de Santo Antão, Pernambuco, Brazil
+
+ 
+Flag of Zeeland, The Netherlands
+Flag of Zeeland, The Netherlands
+
+ 
+State flag of the Imperial State of Iran (1964–1979)
+State flag of the Imperial State of Iran (1964–1979)
+ 
+Flag of the Sublime State of Persia (1789–1925)
+Flag of the Sublime State of Persia (1789–1925)
+Tiger
+Flag of Azad Hind
+Flag of Azad Hind
+
+ 
+Flag of Federated Malay States (1895–1946)
+Flag of Federated Malay States (1895–1946)
+
+ 
+Flag of the Federal Territories of Malaysia
+Flag of the Federal Territories of Malaysia
+
+ 
+Flag of Putrajaya, Malaysia
+Flag of Putrajaya, Malaysia
+
+ 
+Flag of Primorsky Krai, Russia
+Flag of Primorsky Krai, Russia
+
+ 
+Flag of the Kingdom of Kotte
+Flag of the Kingdom of Kotte
+
+ 
+Flag of the Republic of Formosa
+Flag of the Republic of Formosa
+
+Hoofed animals
+Antelope
+Flag of Rhodesia (1968–1979)
+Flag of Rhodesia (1968–1979)
+
+Bison
+Flag of Kansas, USA
+Flag of Kansas, USA
+
+ 
+Flag of Manitoba, Canada
+Flag of Manitoba, Canada
+
+ 
+Flag of the Lt. Governor of Manitoba, Canada
+Flag of the Lt. Governor of Manitoba, Canada
+
+ 
+Flag of Wyoming, USA
+Flag of Wyoming, USA
+
+Camel
+See also: Category:Flags with camels.
+Flag of Balochistan, Pakistan
+Flag of Balochistan, Pakistan
+
+ 
+Flag of Chelyabinsk, Russia
+Flag of Chelyabinsk, Russia
+
+ 
+Flag of Chelyabinsk Oblast, Russia
+Flag of Chelyabinsk Oblast, Russia
+
+ 
+Presidential Flag of Eritrea
+Presidential Flag of Eritrea
+
+Deer
+Flag of Samara Oblast, Russia
+Flag of Samara Oblast, Russia
+
+ 
+Flag of Vermont, USA
+Flag of Vermont, USA
+
+ 
+Flag of Żary, Poland
+Flag of Żary, Poland
+
+Elk
+Flag of Gusev, Russia
+Flag of Gusev, Russia
+
+ 
+Flag of Idaho, USA
+Flag of Idaho, USA
+
+ 
+Flag of Michigan, USA
+Flag of Michigan, USA
+
+Goat
+Ibex
+Flag of Cabranes, Spain
+Flag of Cabranes, Spain
+
+ 
+Flag of Croatia
+Flag of Croatia
+
+ 
+Civil and State Ensign of Croatia
+Civil and State Ensign of Croatia
+
+ 
+Naval Ensign of Croatia
+Naval Ensign of Croatia
+
+ 
+Flag of Graubünden, Switzerland
+Flag of Graubünden, Switzerland
+
+ 
+Flag of Lublin Voivodship, Poland
+Flag of Lublin Voivodship, Poland
+
+ 
+Flag of Schaffhausen, Switzerland
+Flag of Schaffhausen, Switzerland
+
+Huemul
+Presidential Standard of Chile
+Presidential Standard of Chile
+
+Horse
+Flag of Ash Sharqiyah Governorate
+Flag of Ash Sharqiyah Governorate
+
+ 
+Flag of Belém, Pará, Brazil
+Flag of Belém, Pará, Brazil
+
+ 
+Flag of Conchas, São Paulo, Brazil
+Flag of Conchas, São Paulo, Brazil
+
+ 
+Presidential Standard of Georgia
+Presidential Standard of Georgia
+
+ 
+Flag of Herne, Germany
+Flag of Herne, Germany
+
+ 
+Flag of Kansas, USA
+Flag of Kansas, USA
+
+ 
+Flag of Kent, United Kingdom
+Flag of Kent, United Kingdom
+
+ 
+Royal Standard of the King of Lesotho
+Royal Standard of the King of Lesotho
+
+ 
+Flag of Lower Saxony, Germany
+Flag of Lower Saxony, Germany
+
+ 
+Presidential Standard of Lithuania
+Presidential Standard of Lithuania
+
+ 
+Flag of Malta
+Flag of Malta
+
+ 
+Flag of Marijampole, Lithuania
+Flag of Marijampole, Lithuania
+
+ 
+Flag of Moscow, Russia
+Flag of Moscow, Russia
+
+ 
+Flag of Moscow Oblast, Russia
+Flag of Moscow Oblast, Russia
+
+ 
+Flag of New Jersey, USA
+Flag of New Jersey, USA
+
+ 
+Flag of South Dakota, USA
+Flag of South Dakota, USA
+
+ 
+Flag of North Rhine-Westphalia, Germany (state service flag)
+Flag of North Rhine-Westphalia, Germany (state service flag)
+
+ 
+Presidential Standard of Russia
+Presidential Standard of Russia
+
+ 
+Flag of Pennsylvania, USA
+Flag of Pennsylvania, USA
+
+ 
+Flag of Ponga, Asturias
+Flag of Ponga, Asturias
+
+ 
+Flag of QwaQwa (1974-1994)
+Flag of QwaQwa (1974-1994)
+
+ 
+Flag of Schwerin, Germany
+Flag of Schwerin, Germany
+
+ 
+Flag of Tomsk Region, Russia
+Flag of Tomsk Region, Russia
+
+ 
+Utrecht, Netherlands (1956)
+Utrecht, Netherlands (1956)
+
+ 
+Utrecht, Netherlands (1961)
+Utrecht, Netherlands (1961)
+
+ 
+State Flag of Venezuela
+State Flag of Venezuela
+
+Llama
+Flag of Bolivia
+Flag of Bolivia
+
+ 
+Military Flag of Bolivia
+Military Flag of Bolivia
+
+Oxen / Cow
+Flag of Adelaide, Australia
+Flag of Adelaide, Australia
+
+ 
+Flag of Américo de Campos, São Paulo, Brazil
+Flag of Américo de Campos, São Paulo, Brazil
+
+ 
+Flag of André da Rocha, Rio Grande do Sul, Brazil
+Flag of André da Rocha, Rio Grande do Sul, Brazil
+
+ 
+Flag of Anajatua, Maranhão, Brazil
+Flag of Anajatua, Maranhão, Brazil
+
+ 
+Flag of Andorra
+Flag of Andorra
+
+ 
+Flag of Banzaê, Bahia, Brazil
+Flag of Banzaê, Bahia, Brazil
+
+ 
+Flag of Belém, Pará, Brazil
+Flag of Belém, Pará, Brazil
+
+ 
+Flag of Birmingham, England
+Flag of Birmingham, England
+
+ 
+Flag of Candeal, Bahia, Brazil
+Flag of Candeal, Bahia, Brazil
+
+ 
+Flag of Capão Bonito do Sul, Rio Grande do Sul, Brazil
+Flag of Capão Bonito do Sul, Rio Grande do Sul, Brazil
+
+ 
+Flag of Capela do Alto Alegre, Bahia, Brazil
+Flag of Capela do Alto Alegre, Bahia, Brazil
+
+ 
+Flag of Caso, Spain
+Flag of Caso, Spain
+
+ 
+Flag of Catolândia, Bahia, Brazil
+Flag of Catolândia, Bahia, Brazil
+
+ 
+Flag of Chorrochó, Bahia, Brazil
+Flag of Chorrochó, Bahia, Brazil
+
+ 
+Flag of Cocos, Bahia, Brazil
+Flag of Cocos, Bahia, Brazil
+
+ 
+Flag of Conchas, São Paulo, Brazil
+Flag of Conchas, São Paulo, Brazil
+
+ 
+Flag of Conde, Bahia, Brazil
+Flag of Conde, Bahia, Brazil
+
+ 
+Flag of Coqueiro Baixo, Rio Grande do Sul, Brazil
+Flag of Coqueiro Baixo, Rio Grande do Sul, Brazil
+
+ 
+Flag of Cristópolis, Bahia, Brazil
+Flag of Cristópolis, Bahia, Brazil
+
+ 
+Flag of Delmiro Gouveia, Alagoas, Brazil
+Flag of Delmiro Gouveia, Alagoas, Brazil
+
+ 
+Flag of Dom Basílio, Bahia, Brazil
+Flag of Dom Basílio, Bahia, Brazil
+
+ 
+Flag of Delaware, USA
+Flag of Delaware, USA
+
+ 
+Flag of Felixlândia, Minas Gerais, Brazil
+Flag of Felixlândia, Minas Gerais, Brazil
+
+ 
+Flag of Guarapuava, Paraná, Brazil
+Flag of Guarapuava, Paraná, Brazil
+
+ 
+Flag of Herefordshire, England
+Flag of Herefordshire, England
+
+ 
+Flag of Herefordshire, England
+Flag of Herefordshire, England
+
+ 
+Flag of Júlio de Castilhos, Rio Grande do Sul, Brazil
+Flag of Júlio de Castilhos, Rio Grande do Sul, Brazil
+
+ 
+Flag of Kansas, USA
+Flag of Kansas, USA
+
+ 
+Flag of Lagoa Bonita do Sul, Rio Grande do Sul, Brazil
+Flag of Lagoa Bonita do Sul, Rio Grande do Sul, Brazil
+
+ 
+Flag of Malhador, Sergipe, Brazil
+Flag of Malhador, Sergipe, Brazil
+
+ 
+Flag of Mecklenburg-Western Pomerania, Germany (state service flag)
+Flag of Mecklenburg-Western Pomerania, Germany (state service flag)
+
+ 
+Flag of Moldova
+Flag of Moldova
+
+ 
+Flag of Novo Barreiro, Rio Grande do Sul, Brazil
+Flag of Novo Barreiro, Rio Grande do Sul, Brazil
+
+ 
+Flag of Oregon, USA
+Flag of Oregon, USA
+
+ 
+Flag of Osório, Rio Grande do Sul, Brazil
+Flag of Osório, Rio Grande do Sul, Brazil
+
+ 
+Flag of Oxfordshire, England
+Flag of Oxfordshire, England
+
+ 
+Flag of Pato Bragado, Paraná, Brazil
+Flag of Pato Bragado, Paraná, Brazil
+
+ 
+Presidential Flag of Iceland
+Presidential Flag of Iceland
+
+ 
+Flag of Quatro Irmãos, Rio Grande do Sul, Brazil
+Flag of Quatro Irmãos, Rio Grande do Sul, Brazil
+
+ 
+Flag of Ribeirópolis, Sergipe, Brazil
+Flag of Ribeirópolis, Sergipe, Brazil
+
+ 
+Flag of Santa Rosa de Lima, Sergipe, Brazil
+Flag of Santa Rosa de Lima, Sergipe, Brazil
+
+ 
+Flag of Santo Cristo, Rio Grande do Sul, Brazil
+Flag of Santo Cristo, Rio Grande do Sul, Brazil
+
+ 
+Flag of São Miguel do Aleixo, Sergipe, Brazil
+Flag of São Miguel do Aleixo, Sergipe, Brazil
+
+ 
+Flag of São Nicolau, Rio Grande do Sul, Brazil
+Flag of São Nicolau, Rio Grande do Sul, Brazil
+
+ 
+Flag of Flag of Sonora, Mexico
+Flag of Flag of Sonora, Mexico
+
+ 
+Flag of Sucre, Colombia
+Flag of Sucre, Colombia
+
+ 
+Flag of Tabocas do Brejo Velho, Bahia, Brazil
+Flag of Tabocas do Brejo Velho, Bahia, Brazil
+
+ 
+Flag of Flag of Tamaulipas, Mexico
+Flag of Flag of Tamaulipas, Mexico
+
+ 
+Flag of Teofilândia, Bahia, Brazil
+Flag of Teofilândia, Bahia, Brazil
+
+ 
+Flag of Tremedal, Bahia, Brazil
+Flag of Tremedal, Bahia, Brazil
+
+ 
+Flag of Uri, Switzerland
+Flag of Uri, Switzerland
+
+ 
+Flag of Vermont, USA
+Flag of Vermont, USA
+
+Pig
+Flag of Coqueiro Baixo, Rio Grande do Sul, Brazil
+Flag of Coqueiro Baixo, Rio Grande do Sul, Brazil
+
+ 
+Flag of Lagoa Bonita do Sul, Rio Grande do Sul, Brazil
+Flag of Lagoa Bonita do Sul, Rio Grande do Sul, Brazil
+
+ 
+Flag of Santo Cristo, Rio Grande do Sul, Brazil
+Flag of Santo Cristo, Rio Grande do Sul, Brazil
+
+ 
+Flag of São Nicolau, Rio Grande do Sul, Brazil
+Flag of São Nicolau, Rio Grande do Sul, Brazil
+
+ 
+Flag of Xavantina, Santa Catarina, Brazil
+Flag of Xavantina, Santa Catarina, Brazil
+
+Reindeer
+Flag of Koryakia Autonomous Okrug, Russia
+Flag of Koryakia Autonomous Okrug, Russia
+
+ 
+Flag of Magadan, Russia
+Flag of Magadan, Russia
+
+ 
+Flag of South Georgia & South Sandwich Islands
+Flag of South Georgia & South Sandwich Islands
+
+ 
+Flag of Hertfordshire, England
+Flag of Hertfordshire, England
+
+ 
+Flag of Izhemsky rayon, Russia
+Flag of Izhemsky rayon, Russia
+
+Sheep
+Flag of the Falkland Islands
+Flag of the Falkland Islands
+
+ 
+Flag of Adelaide, Australia
+Flag of Adelaide, Australia
+
+ 
+Flag of Coribe, Bahia, Brazil
+Flag of Coribe, Bahia, Brazil
+
+ 
+Royal Standard of New Zealand
+Royal Standard of New Zealand
+
+ 
+Flag of Velsen, Netherlands
+Flag of Velsen, Netherlands
+
+Springbok
+Flag of Orange River Colony
+Flag of Orange River Colony
+
+Vicuña
+Flag of Peru
+Flag of Peru
+
+Reptiles
+Alligator / Crocodile
+Royal Standard of the King of Lesotho
+Royal Standard of the King of Lesotho
+
+ 
+Flag of the Natchitoches Tribe of Louisiana (USA)
+Flag of the Natchitoches Tribe of Louisiana (USA)
+
+Snake
+Flag of the United States Army
+Flag of the United States Army
+
+ 
+Gadsden flag of the American colonies
+Gadsden flag of the American colonies
+
+ 
+Flag of Boituva, São Paulo, Brazil
+Flag of Boituva, São Paulo, Brazil
+
+ 
+Flag of Cascavel, Paraná, Brazil
+Flag of Cascavel, Paraná, Brazil
+
+ 
+Snake Flag of Martinique
+Snake Flag of Martinique
+
+ 
+Flag of Mexico
+Flag of Mexico
+
+ 
+United States Naval Jack from 2002 to 2019
+United States Naval Jack from 2002 to 2019
+
+ 
+Flag of the United States Public Health Service
+Flag of the United States Public Health Service
+
+Turtle
+Flag of the Cayman Islands
+Flag of the Cayman Islands
+
+ 
+Flag of Ascension Island
+Flag of Ascension Island
+
+ 
+Flag of Hikone, Shiga, Japan
+Flag of Hikone, Shiga, Japan
+
+ 
+Flag of the Miami Tribe, Oklahoma, USA
+Flag of the Miami Tribe, Oklahoma, USA
+
+ 
+Flag of Pirambu, Sergipe, Brazil
+Flag of Pirambu, Sergipe, Brazil
+
+ 
+Flag of Utsunomiya, Tochigi, Japan
+Flag of Utsunomiya, Tochigi, Japan
+
+Dinosaurs
+Flag of the Chebulinsky District, Russia
+Flag of the Chebulinsky District, Russia
+
+ 
+Flag of the Chernyshevsky District, Russia
+Flag of the Chernyshevsky District, Russia
+
+ 
+Flag of the Dornogovi Province, Mongolia
+Flag of the Dornogovi Province, Mongolia
+
+ 
+Flag of the Saky, Crimea
+Flag of the Saky, Crimea
+
+Insects
+Ants
+Flag of Formiga, Minas Gerais, Brazil
+Flag of Formiga, Minas Gerais, Brazil
+
+Bees
+Flag of Americana, São Paulo, Brazil
+Flag of Americana, São Paulo, Brazil
+
+ 
+Flag of Barra do Chapéu, São Paulo, Brazil
+Flag of Barra do Chapéu, São Paulo, Brazil
+
+ 
+Flag of Elba, Italia
+Flag of Elba, Italia
+
+ 
+Flag of Iracemápolis, São Paulo, Brazil
+Flag of Iracemápolis, São Paulo, Brazil
+
+Butterflies
+Flag of Bady Bassitt, São Paulo, Brazil
+Flag of Bady Bassitt, São Paulo, Brazil
+
+ 
+Flag of Oro Province, Papua New Guinea
+Flag of Oro Province, Papua New Guinea
+
+Moths
+Flag of Mariposa County, California, United States
+Flag of Mariposa County, California, United States
+
+ 
+Flag of Tainan City, Taiwan
+Flag of Tainan City, Taiwan
+
+Mustelids
+Badger
+Flag of Wisconsin, United States
+Flag of Wisconsin, United States
+
+ 
+Flag of Shenkursky District, Arkhangelsk Oblast, Russia
+Flag of Shenkursky District, Arkhangelsk Oblast, Russia
+
+Marten
+Flag of Croatia
+Flag of Croatia
+
+ 
+Civil and State Ensign of Croatia
+Civil and State Ensign of Croatia
+
+ 
+Naval Ensign of Croatia
+Naval Ensign of Croatia
+
+ 
+Flag of Ufa (Russia)
+Flag of Ufa (Russia)
+
+ 
+Flag of Shadrinsk (Russia)
+Flag of Shadrinsk (Russia)
+
+ 
+Flag of Central Ostrobothnia (Finland)
+Flag of Central Ostrobothnia (Finland)
+
+Otters
+Flag of Vedrovice, Czech Republic
+Flag of Vedrovice, Czech Republic
+
+Sable
+Flag of Novosibirsk Oblast, Russia
+Flag of Novosibirsk Oblast, Russia
+
+ 
+Flag of Orenburg Oblast, Russia
+Flag of Orenburg Oblast, Russia
+
+ 
+Flag of Irkutsk Oblast, Russia[1]
+Flag of Irkutsk Oblast, Russia[1]
+
+ 
+Flag of Radishchev, Irkutsk Oblast, Russia
+Flag of Radishchev, Irkutsk Oblast, Russia
+
+Other animals
+Armadillo
+Flag of Tatuí, São Paulo, Brazil
+Flag of Tatuí, São Paulo, Brazil
+
+Bat
+Flag of Albacete, Spain
+Flag of Albacete, Spain
+
+Bear
+Flag of Appenzell Ausserrhoden, Switzerland
+Flag of Appenzell Ausserrhoden, Switzerland
+
+ 
+Flag of Appenzell Innerrhoden, Switzerland
+Flag of Appenzell Innerrhoden, Switzerland
+
+ 
+Flag of Berlin, Germany
+Flag of Berlin, Germany
+
+ 
+Flag of Berlin, Germany (state service flag)
+Flag of Berlin, Germany (state service flag)
+
+ 
+Flag of Bern, Switzerland
+Flag of Bern, Switzerland
+
+ 
+Flag of California, United States
+Flag of California, United States
+
+ 
+Flag of the Franco-Tenois, Northwest Territories, Canada
+Flag of the Franco-Tenois, Northwest Territories, Canada
+
+ 
+Flag of Zheleznogorsk, Russia
+Flag of Zheleznogorsk, Russia
+
+ 
+Flag of Missouri, United States
+Flag of Missouri, United States
+
+ 
+Flag of Perm Krai, Russia
+Flag of Perm Krai, Russia
+
+ 
+Flag of Przemyśl, Poland
+Flag of Przemyśl, Poland
+
+ 
+Flag of Saxony-Anhalt, Germany (state service flag)
+Flag of Saxony-Anhalt, Germany (state service flag)
+
+ 
+Flag of Teverga, Asturias, Spain
+Flag of Teverga, Asturias, Spain
+
+ 
+Flag of Yaroslavl Oblast, Russia
+Flag of Yaroslavl Oblast, Russia
+
+ 
+Flag of Zakarpattia Oblast, Ukraine
+Flag of Zakarpattia Oblast, Ukraine
+
+Beaver
+Flag of New York City
+Flag of New York City
+
+ 
+Flag of Oregon, USA (reverse)
+Flag of Oregon, USA (reverse)
+
+ 
+Flag of Irkutsk Oblast, Russia[1]
+Flag of Irkutsk Oblast, Russia[1]
+
+Capybara
+Flag of Capivari, São Paulo, Brazil
+Flag of Capivari, São Paulo, Brazil
+
+Elephant
+Flag of Bangkok
+Flag of Bangkok
+
+ 
+Flag of Caprivi African National Union of the Free State of Caprivi Strip/Itenge (Namibia)
+Flag of Caprivi African National Union of the Free State of Caprivi Strip/Itenge (Namibia)
+
+ 
+Flag of Laos (1952-1975)
+Flag of Laos (1952-1975)
+
+ 
+Royal flag of King Ghezo of Dahomey
+Royal flag of King Ghezo of Dahomey
+
+ 
+Flag of Thailand (1855-1915)
+Flag of Thailand (1855-1915)
+
+Kangaroo
+Royal Australian Air Force Ensign
+Royal Australian Air Force Ensign
+
+ 
+Bowman flag
+Bowman flag
+
+ 
+British Empire flag
+British Empire flag
+
+Monkey
+Flag of the Kingdom of Rwenzururu, Uganda (1963–1982)
+Flag of the Kingdom of Rwenzururu, Uganda (1963–1982)
+
+Tapir
+Flag of Charqueada, São Paulo, Brazil
+Flag of Charqueada, São Paulo, Brazil
+
+Worm
+Flag of Charqueada, São Paulo, Brazil
+Flag of Charqueada, São Paulo, Brazil
+
+Mythological animals
+See also: Category:Flags with fictional creatures.
+Dragon
+See also: Category:Flags with dragons.
+Flag of Bhutan
+Flag of Bhutan
+
+ 
+Presidential Standard of Georgia
+Presidential Standard of Georgia
+
+ 
+Flag of Hong Kong (1959-1997)
+Flag of Hong Kong (1959-1997)
+
+ 
+Flag of Ibias
+Flag of Ibias
+
+ 
+Presidential Flag of Iceland
+Presidential Flag of Iceland
+
+ 
+Flag of Ingolstadt, Germany
+Flag of Ingolstadt, Germany
+
+ 
+Flag of Marijampole, Lithuania
+Flag of Marijampole, Lithuania
+
+ 
+Flag of Moscow, Russia
+Flag of Moscow, Russia
+
+ 
+Flag of Moscow Oblast, Russia
+Flag of Moscow Oblast, Russia
+
+ 
+Flag of the Qing Dynasty (1862–1890)
+Flag of the Qing Dynasty (1862–1890)
+
+ 
+Flag of the Qing Dynasty (1890–1912)
+Flag of the Qing Dynasty (1890–1912)
+
+ 
+Flag of Rio Grande, Rio Grande do Sul, Brazil
+Flag of Rio Grande, Rio Grande do Sul, Brazil
+
+ 
+Flag of the President of Russia
+Flag of the President of Russia
+
+ 
+Flag of Wales / Cymru
+Flag of Wales / Cymru
+
+ 
+Flag of Valencia, Spain (pre-autonomy)
+Flag of Valencia, Spain (pre-autonomy)
+
+ 
+Project of Flag for the Empire of Brazil by Jean-Baptiste Debret (1820)
+Project of Flag for the Empire of Brazil by Jean-Baptiste Debret (1820)
+
+Gamayun
+Flag of Smolensk Oblast, Russia
+Flag of Smolensk Oblast, Russia
+
+Griffin
+Flag of Mecklenburg-Western Pomerania, Germany (state service flag)
+Flag of Mecklenburg-Western Pomerania, Germany (state service flag)
+
+ 
+Flag of Podkarpaty Voivodship, Poland
+Flag of Podkarpaty Voivodship, Poland
+
+ 
+Flag of Pomeranian Voivodship, Poland
+Flag of Pomeranian Voivodship, Poland
+
+ 
+Flag of Rostock, Germany
+Flag of Rostock, Germany
+
+ 
+Flag of Santa Tereza, Rio Grande do Sul, Brazil
+Flag of Santa Tereza, Rio Grande do Sul, Brazil
+
+ 
+Flag of West Pomeranian Voivodship, Poland
+Flag of West Pomeranian Voivodship, Poland
+
+Pegasus
+Flag of Tuscany, Italy
+Flag of Tuscany, Italy
+
+Peng
+Flag of Suwa, Nagano, Japan
+Flag of Suwa, Nagano, Japan
+
+Phoenix
+Flag of Atlanta, Georgia, USA
+Flag of Atlanta, Georgia, USA
+
+ 
+Flag of Nagaoka, Niigata, Japan
+Flag of Nagaoka, Niigata, Japan
+
+ 
+Flag of San Francisco, California, USA
+Flag of San Francisco, California, USA
+
+ 
+Presidential Standard of Greece (1973-1974)
+Presidential Standard of Greece (1973-1974)
+
+ 
+Flag of Phoenix, Arizona, USA
+Flag of Phoenix, Arizona, USA
+
+Snowlion
+Flag of Tibet
+Flag of Tibet
+
+Unicorn
+See also: Category:Flags with unicorns.
+Presidential Standard of Lithuania
+Presidential Standard of Lithuania
+
+ 
+Flag of the Lt. Governor of Newfoundland and Labrador, Canada
+Flag of the Lt. Governor of Newfoundland and Labrador, Canada
+
+ 
+Flag of the Gmina Bejsce, Poland
+Flag of the Gmina Bejsce, Poland
+
+ 
+Flag of Sorocaba, São Paulo, Brazil
+Flag of Sorocaba, São Paulo, Brazil
+
+ 
+Banner of the Unicorn Pursuivant
+Banner of the Unicorn Pursuivant
+
+ 
+Banner of the Snawdoun Herald
+Banner of the Snawdoun Herald
+
+Wyvern
+Flag of Melilla, Spain
+Flag of Melilla, Spain
+
+ 
+Flag of Treger region, Brittany, France
+Flag of Treger region, Brittany, France
+
+ 
+Flag of the Kingdom of Wessex
+Flag of the Kingdom of Wessex
+

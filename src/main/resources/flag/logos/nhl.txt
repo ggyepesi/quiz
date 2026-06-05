@@ -1,0 +1,32 @@
+Boston Bruins	Boston, Massachusetts	TD Garden	17,850	1924	Don Sweeney	Joe Sacco	Brad Marchand
+Buffalo Sabres	Buffalo, New York	KeyBank Center	19,070	1970	Kevyn Adams	Lindy Ruff	Rasmus Dahlin
+Detroit Red Wings	Detroit, Michigan	Little Caesars Arena	19,515	1926	Steve Yzerman	Todd McLellan	Dylan Larkin
+Florida Panthers	Sunrise, Florida	Amerant Bank Arena	19,250	1993	Bill Zito	Paul Maurice	Aleksander Barkov
+Montreal Canadiens	Montreal, Quebec	Bell Centre	21,105	1909	1917	Kent Hughes	Martin St. Louis	Nick Suzuki
+Ottawa Senators	Ottawa, Ontario	Canadian Tire Centre	19,347	1992	Steve Staios	Travis Green	Brady Tkachuk
+Tampa Bay Lightning	Tampa, Florida	Amalie Arena	19,092	1992	Julien BriseBois	Jon Cooper	Victor Hedman
+Toronto Maple Leafs	Toronto, Ontario	Scotiabank Arena	18,819	1917	Brad Treliving	Craig Berube	Auston Matthews
+Carolina Hurricanes	Raleigh, North Carolina	Lenovo Center	18,700	1972	1979*	Eric Tulsky	Rod Brind'Amour	Jordan Staal
+Columbus Blue Jackets	Columbus, Ohio	Nationwide Arena	18,144	2000	Don Waddell	Dean Evason	Boone Jenner
+New Jersey Devils	Newark, New Jersey	Prudential Center	16,514	1974*	Tom Fitzgerald	Sheldon Keefe	Nico Hischier
+New York Islanders	Elmont, New York	UBS Arena	17,255	1972	Lou Lamoriello	Patrick Roy	Anders Lee
+New York Rangers	New York, New York	Madison Square Garden	18,006	1926	Chris Drury	Peter Laviolette	Vacant
+Philadelphia Flyers	Philadelphia, Pennsylvania	Wells Fargo Center	19,500	1967	Daniel Briere	John Tortorella	Sean Couturier
+Pittsburgh Penguins	Pittsburgh, Pennsylvania	PPG Paints Arena	18,387	1967	Kyle Dubas	Mike Sullivan	Sidney Crosby
+Washington Capitals	Washington, D.C.	Capital One Arena	18,573	1974	Chris Patrick	Spencer Carbery	Alexander Ovechkin
+Chicago Blackhawks	Chicago, Illinois	United Center	19,717	1926	Kyle Davidson	Anders Sorensen	Nick Foligno
+Colorado Avalanche	Denver, Colorado	Ball Arena	17,809	1972	1979*	Chris MacFarland	Jared Bednar	Gabriel Landeskog
+Dallas Stars	Dallas, Texas	American Airlines Center	18,532	1967*	Jim Nill	Peter DeBoer	Jamie Benn
+Minnesota Wild	Saint Paul, Minnesota	Xcel Energy Center	17,954	2000	Bill Guerin	John Hynes	Jared Spurgeon
+Nashville Predators	Nashville, Tennessee	Bridgestone Arena	17,159	1998	Barry Trotz	Andrew Brunette	Roman Josi
+St. Louis Blues	St. Louis, Missouri	Enterprise Center	18,724	1967	Doug Armstrong	Jim Montgomery	Brayden Schenn
+Utah Hockey Club	Salt Lake City, Utah	Delta Center	14,000	2024	Bill Armstrong	Andre Tourigny	Clayton Keller
+Winnipeg Jets	Winnipeg, Manitoba	Canada Life Centre	15,321	1999*	Kevin Cheveldayoff	Scott Arniel	Adam Lowry
+Anaheim Ducks	Anaheim, California	Honda Center	17,174	1993	Pat Verbeek	Greg Cronin	Radko Gudas
+Calgary Flames	Calgary, Alberta	Scotiabank Saddledome	19,289	1972*	Craig Conroy	Ryan Huska	Mikael Backlund
+Edmonton Oilers	Edmonton, Alberta	Rogers Place	18,347	1972	1979	Stan Bowman	Kris Knoblauch	Connor McDavid
+Los Angeles Kings	Los Angeles, California	Crypto.com Arena	18,230	1967	Rob Blake	Jim Hiller	Anze Kopitar
+San Jose Sharks	San Jose, California	SAP Center	17,562	1991	Mike Grier	Ryan Warsofsky	Logan Couture
+Seattle Kraken	Seattle, Washington	Climate Pledge Arena	17,151	2021	Ron Francis	Dan Bylsma	Jordan Eberle
+Vancouver Canucks	Vancouver, British Columbia	Rogers Arena	18,910	1945	1970	Patrik Allvin	Rick Tocchet	Quinn Hughes
+Vegas Golden Knights	Paradise, Nevada	T-Mobile Arena	17,500	2017	Kelly McCrimmon	Bruce Cassidy	Mark Stone

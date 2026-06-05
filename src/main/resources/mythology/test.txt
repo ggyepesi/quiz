@@ -1,0 +1,4 @@
+creature Heracles
+father Zeus
+mother Alcmene
+consorts Deianira

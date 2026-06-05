@@ -1,0 +1,28 @@
+monster Typhon
+nick  "Father of all Monsters"
+father Tartarus mother Gaia
+attribute 100 dragon heads
+attribte gigantic viper
+attribute huge wings
+attribte fire from eyes
+consort Echidna
+comment Zeus trapped him under Mount Etna Sicily (place)
+
+monster Echidna
+nick "Mother of Monsters"
+father Chrysaor
+attribute half-woman half-snake
+
+monster Orthrus
+father Typhon mother Echidna
+attribute dog with 2 heads
+guarded cattle of Geryon
+killed_by Heracles
+
+monster Cerberus
+father Typhon mother Echidna
+nick "dog with multiple heads"monster 
+
+Lernaean Hydra
+
+

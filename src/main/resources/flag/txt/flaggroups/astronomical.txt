@@ -1,0 +1,321 @@
+1	Star
+1.1	Constellation
+1.1.1	Crux
+1.1.2	Other constellations
+1.2	Asterism
+1.2.1	Big Dipper/Plough/Saptarshi in Ursa Major
+1.2.2	Southern Cross
+1.3	Star cluster
+1.3.1	Pleiades in Taurus
+1.4	Specific stars
+1.4.1	Sun
+1.4.2	Other specific stars
+1.5	Non-specific stars
+2	Planet
+2.1	Earth
+2.2	Venus
+3	Moon
+4	Flags representing Planets
+
+Star
+Constellation
+Crux
+Other constellations
+
+Flag of Brazil (in addition to Crux, depicts Canis Major, Hydra, Scorpius, and Triangulum Australe)
+
+Asterism
+Big Dipper/Plough/Saptarshi in Ursa Major
+Flag of Alaska
+Flag of Alaska
+Flag of All India Home Rule League
+Flag of All India Home Rule League
+Flag of the Irish Citizen Army (1930s)
+Flag of the Irish Citizen Army (1930s)
+Flag of the Community of Madrid
+Flag of the Community of Madrid
+Flag of the Cherokee Nation
+Flag of the Cherokee Nation
+Southern Cross
+Flag of Australia
+Flag of Australia
+Flag of the Australian state of Victoria
+Flag of the Australian state of Victoria
+Australian White Ensign
+Australian White Ensign
+Australian Red Ensign
+Australian Red Ensign
+Royal Australian Air Force Ensign
+Royal Australian Air Force Ensign
+Australian Civil Air Ensign
+Australian Civil Air Ensign
+Flag of New Zealand
+Flag of New Zealand
+New Zealand White Ensign
+New Zealand White Ensign
+New Zealand Red Ensign
+New Zealand Red Ensign
+New Zealand Civil Air Ensign
+New Zealand Civil Air Ensign
+Flag of Papua New Guinea
+Flag of Papua New Guinea
+Naval Ensign of Papua New Guinea
+Naval Ensign of Papua New Guinea
+Flag of Samoa
+Flag of Samoa
+Flag of Sonsorol
+Flag of Sonsorol
+Flag of Tokelau
+Flag of Tokelau
+Star cluster
+Pleiades in Taurus
+Flag of Durham, North Carolina, United States
+Flag of Durham, North Carolina, United States
+Flag of the United States Space Force
+Flag of the United States Space Force
+Specific stars
+Sun
+Flag of Antigua and Barbuda
+Flag of Antigua and Barbuda
+State Ensign of Antigua and Barbuda
+State Ensign of Antigua and Barbuda
+Flag of Argentina
+Flag of Argentina
+Naval Jack of Argentina
+Naval Jack of Argentina
+Flag of Arizona
+Flag of Arizona
+Assyrian Flag
+Assyrian Flag
+The flag of Bangladesh
+The flag of Bangladesh
+Civil Ensign of Bangladesh
+Civil Ensign of Bangladesh
+Naval Ensign of Bangladesh
+Naval Ensign of Bangladesh
+Presidential Standard, Belarus
+Presidential Standard, Belarus
+Flag of Biafra
+Flag of Biafra
+Flag of Bolivia
+Flag of Bolivia
+José Paranhos's Proposed Flag of Brazil (1890)
+José Paranhos's Proposed Flag of Brazil (1890)
+Flag of British Columbia
+Flag of British Columbia
+Flag of Buryatia, Russia
+Flag of Buryatia, Russia
+Flag of the Republic of China
+Flag of the Republic of China
+Army Flag of the Republic of China
+Army Flag of the Republic of China
+Civil Ensign of the Republic of China
+Civil Ensign of the Republic of China
+Naval Jack of the Republic of China
+Naval Jack of the Republic of China
+Flag of Colorado
+Flag of Colorado
+Flag of Costa Rica
+Flag of Costa Rica
+Flag of Denver, Colorado
+Flag of Denver, Colorado
+Flag of Donetsk Oblast
+Flag of Donetsk Oblast
+Flag of Felixlândia, Minas Gerais, Brazil
+Flag of Felixlândia, Minas Gerais, Brazil
+Flag of Greenland
+Flag of Greenland
+Flag of Guadeloupe
+Flag of Guadeloupe
+Flag of Guadeloupe (Variant)
+Flag of Guadeloupe (Variant)
+Naval Ensign of Honduras
+Naval Ensign of Honduras
+Flag of Inner Mongolia
+Flag of Inner Mongolia
+Flag of Ingushetia
+Flag of Ingushetia
+Flag of Iraq (1959-1963)
+Flag of Iraq (1959-1963)
+Flag of Japan
+Flag of Japan
+Naval Ensign of Japan
+Naval Ensign of Japan
+War Flag of Japan
+War Flag of Japan
+Flag of Kazakhstan
+Flag of Kazakhstan
+Flag of Khakassia, Russia
+Flag of Khakassia, Russia
+Flag of Kiribati
+Flag of Kiribati
+Flag of Kurdistan
+Flag of Kurdistan
+Flag of Kyrgyzstan
+Flag of Kyrgyzstan
+Flag of Lapland and Sápmi
+Flag of Lapland and Sápmi
+Flag of North Macedonia
+Flag of North Macedonia
+Flag of Madison, Wisconsin
+Flag of Madison, Wisconsin
+Flag of Malawi
+Flag of Malawi
+Flag of Malawi (2010–2012)
+Flag of Malawi (2010–2012)
+Flag of Manaus, Brazil
+Flag of Manaus, Brazil
+Flag of F.Y.R.O.M (1992–1995)
+Flag of F.Y.R.O.M (1992–1995)
+Flag of Macedonia (Greece)
+Flag of Macedonia (Greece)
+Flag of the Marshall Islands
+Flag of the Marshall Islands
+Flag of Moldova
+Flag of Moldova
+Flag of Mongolia
+Flag of Mongolia
+Flag of Mordovia, Russia
+Flag of Mordovia, Russia
+Flag of Namibia
+Flag of Namibia
+Flag of Nepal
+Flag of Nepal
+Pro-Independence Flag of New Caledonia
+Pro-Independence Flag of New Caledonia
+Flag of New Mexico
+Flag of New Mexico
+Flag of Niger
+Flag of Niger
+Flag of Padania (the "Sun of the Alps")
+Flag of Padania (the "Sun of the Alps")
+Flag of Palmas, Tocantins, Brazil
+Flag of Palmas, Tocantins, Brazil
+Flag of the State of Pernambuco, Brazil
+Flag of the State of Pernambuco, Brazil
+Flag of Peru (1820 proposal)
+Flag of Peru (1820 proposal)
+Flag of Peru (1821~1822)
+Flag of Peru (1821~1822)
+Flag of Peru (1822)
+Flag of Peru (1822)
+Flag of Peru (1822~1825)
+Flag of Peru (1822~1825)
+Flag of Peru–Bolivian Confederation
+Flag of Peru–Bolivian Confederation
+Flag of the Philippines
+Flag of the Philippines
+Flag of Portuguesa, Venezuela
+Flag of Portuguesa, Venezuela
+Flag of Recife, Brazil
+Flag of Recife, Brazil
+Flag of Réunion (proposed)
+Flag of Réunion (proposed)
+Flag of Roswell, New Mexico
+Flag of Roswell, New Mexico
+Flag of Rwanda
+Flag of Rwanda
+Flag of the Sakha Republic, Russia
+Flag of the Sakha Republic, Russia
+Flag of Santa Terezinha do Tocantins, Tocantins, Brazil
+Flag of Santa Terezinha do Tocantins, Tocantins, Brazil
+Flag of Sogamoso, Colombia
+Flag of Sogamoso, Colombia
+Flag of South Peru (1836–1839)
+Flag of South Peru (1836–1839)
+Flag of Tibet
+Flag of Tibet
+Flag of Tocantins
+Flag of Tocantins
+Presidental flag of Turkey
+Presidental flag of Turkey
+Flag of Udmurtia, Russia
+Flag of Udmurtia, Russia
+Flag of Uruguay
+Flag of Uruguay
+Flag of Valinhos, São Paulo, Brazil
+Flag of Valinhos, São Paulo, Brazil
+Flag of Vinnytsia Oblast
+Flag of Vinnytsia Oblast
+Other specific stars
+Flag of Alaska (depicting Polaris)
+Flag of Alaska (depicting Polaris)
+Flag of Minnesota (depicting Polaris)
+Flag of Minnesota (depicting Polaris)
+Flag of Maranhão (depicting Graffias)
+Flag of Maranhão (depicting Graffias)
+Flag of Nunavut (depicting Polaris)
+Flag of Nunavut (depicting Polaris)
+Flag of Pará (depicting Spica)
+Flag of Pará (depicting Spica)
+Non-specific stars
+
+Flag of the National Aeronautics and Space Administration
+(United States)
+Planet
+Earth
+James Cadle's Flag of Earth (also shows the moon and the sun)
+This file has annotations. Move the mouse pointer over the image to see them.
+James Cadle's Flag of Earth (also shows the moon and the sun)
+Earth Day Flag
+Earth Day Flag
+International Flag of Planet Earth proposed by Oskar
+International Flag of Planet Earth proposed by Oskar
+Planet Earth Flag
+Planet Earth Flag
+Flag of the National Aeronautics and Space Administration (United States)
+Flag of the National Aeronautics and Space Administration
+(United States)
+Flag of the United States Space Force
+Flag of the United States Space Force
+Flag of the Chief of Space Operations (United States)
+Flag of the Chief of Space Operations
+(United States)
+Flag of the Vice Chief of Space Operations (United States)
+Flag of the Vice Chief of Space Operations
+(United States)
+Flag of the Chief Master Sergeant of the Space Force (United States)
+Flag of the Chief Master Sergeant of the Space Force
+(United States)
+Venus
+See also gallery of flags with crescents (the "star" in the star and crescent design "possibly symbolizes Venus").
+Croatia
+Croatia
+Flag of West Papua (The "Morning Star Flag")
+Flag of West Papua
+(The "Morning Star Flag")
+Flag of Chile (The "Lone Star Flag")
+Flag of Chile (The "Lone Star Flag")
+Moon
+See also Gallery of flags with crescents.
+Flag of Lapland and Sápmi
+Flag of Lapland and Sápmi
+Flag of Laos Vientiane
+Flag of Laos
+Vientiane
+Flag of Moldova Chișinău
+Flag of Moldova
+Chișinău
+Flag of Mongolia Ulaanbaatar
+Flag of Mongolia
+Ulaanbaatar
+Flag of Palau Ngerulmud
+Flag of Palau
+Ngerulmud
+Flag of the Shan State, Myanmar
+Flag of the Shan State, Myanmar
+Flags representing Planets
+English: Flags representing Planets.
+Español: Banderas que representan planetas.
+See also Category:Flags of Venus, Category:Flags of Earth, and Category:Flags of Mars.
+The International Flag of Planet Earth
+The International Flag of Planet Earth
+James Cadle's Flag of Earth
+This file has annotations. Move the mouse pointer over the image to see them.
+James Cadle's Flag of Earth
+Earth Day Flag
+Earth Day Flag
+Flag of Mars (unofficial)
+Flag of Mars (unofficial)
+Flag of Moon (unofficial)
+Flag of Moon (unofficial)

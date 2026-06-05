@@ -1,0 +1,201 @@
+Abkhazia -> Abkhaz, Russian, Georgian
+Afghanistan -> Persian, Dari, Pashto, Uzbek, Turkmen, Pashayi, Nuristani, Balochi, Pamiri
+Albania -> Albanian, Greek, Macedonian, Aromanian, Italian
+Algeria -> Arabic, Berber, French
+Andorra -> Catalan, Spanish, French, Portuguese
+Angola -> Portuguese, Kimbundu, Umbundu, Kikongo, Chokwe, Kwanyama, Ganguela
+Antigua and Barbuda -> English, Antiguan and Barbudan Creole
+Argentina -> Spanish, Guaraní, Kom, Moquoit, Wichi, English, Italian, German, French
+Armenia -> Armenian, Russian
+Australia -> English, Norfuk
+Austria -> German, Burgenland Croatian, Hungarian, Slovene, Czech, Slovak, Romani, Serbian, English
+Azerbaijan -> Azerbaijani, Russian
+Bahamas -> English
+Bahrain -> Arabic, English
+Bangladesh -> Bengali, Sylheti, Chittagonian, Rangpuri, Kamtapuri, Chakma, Marma, Rakhine, Hajong, Santali, Tripuri, Manipuri
+Barbados -> English
+Belarus -> Belarusian, Russian
+Belgium -> Dutch, French, German, English
+Belize -> English, Garifuna, Kriol, Spanish
+Benin -> French
+Bhutan -> Dzongkha
+Bolivia -> Castilian, Spanish, Aymara, Araona, Baure, Bésiro, Chiquitano, Canichana, Cavineña, Cayubaba, Chácobo, Chimán, Ese Ejja, Guaraní, Guarasu'we, Guarayu, Itonama, Leco, Machajuyai-Kallawaya, Machineri, Maropa, Mojeño-Ignaciano, Mojeño-Trinitario, Moré, Mosetén, Movima, Pacawara, Puquina, Quechua, Sirionó, Tacana, Tapieté, Toromona, Uru-Chipaya, Weenhayek, Yaminawa, Yuki, Yuracaré, Zamuco
+Bosnia and Herzegovina -> Bosnian, Croatian, Serbian
+Botswana -> English, Tswana, Bantu languages, Khoisan languages
+Brazil -> Portuguese, German, East Pomeranian, Riograndenser Hunsrückisch, Talian, Nheengatu, Baniwa, Tucano, Guaraní, Spanish, English, French
+Brunei -> Malay, English, Chinese
+Bulgaria -> Bulgarian
+Burkina Faso -> Mooré, Bissa, Dyula, Fula, English, French
+Burundi -> French, Kirundi, English, Swahili
+Cambodia -> Khmer, French, English, Chinese
+Cameroon -> English, French
+Canada -> English, French, Chipewyan, Cree, Gwich'in, Inuinnaqtun, Inuktitut, Inuvialuktun, Mi'kmaq, North Slavey, South Slavey, Tłı̨chǫ
+Cape Verde -> Portuguese, Cape Verdean Creole
+Central African Republic -> French, Sango
+Chad -> Arabic, French
+Chile -> Spanish
+China -> Standard Chinese, English, Portuguese, Mongolian, Uyghur, Tibetan, Zhuang, Kazakh, Korean, Sinitic languages
+Christmas Island -> English, Mandarin Chinese, Malay
+Cocos (Keeling) Islands -> English, Cocos Malay, Malay
+Colombia -> Spanish
+Comoros -> Arabic, Comorian, French
+Democratic Republic of the Congo -> French, Lingala, Kikongo, Swahili, Tshiluba
+Republic of the Congo -> French, Lingala, Munukutuba
+Cook Islands -> English, Cook Islands Māori
+Costa Rica -> Spanish, Indigenous languages, Limonese Creole
+Croatia -> Croatian, Serbian, Hungarian, Czech, Slovak, Pannonian Rusyn, Italian, Romani, Slovene, English
+Cuba -> Spanish
+Cyprus -> Greek, Turkish, Armenian, Cypriot Arabic, English
+Czech Republic -> Czech, Belarusian, Bulgarian, Croatian, German, Greek, Hungarian, Polish, Romani, Russian, Rusyn, Serbian, Ukrainian, Vietnamese
+Denmark -> Danish, Faroese, Kalaallisut, German, English
+Djibouti -> Arabic, French
+Dominica -> English
+Dominican Republic -> Spanish
+East Timor -> Portuguese, Tetum, Indonesian
+Ecuador -> Spanish, Kichwa, Shuar
+Egypt -> Arabic, Coptic, Egyptian Arabic, English
+El Salvador -> Spanish
+Equatorial Guinea -> French, Portuguese, Spanish
+Eritrea -> Tigrinya, Arabic, Italian
+Estonia -> Estonian, English, Russian
+Eswatini -> English, Swazi
+Ethiopia -> Afar, Amharic, Oromo, Somali, Tigrinya, Benshangul, Gumuz, Harari, Kunama, Sidamo
+Fiji -> English, Fijian, Fiji Hindi
+Finland -> Finnish, Swedish, Sami, English
+France -> French, Corsican, Basque, Breton, Occitan
+Gambia -> English, Wolof, Mandinka, Pulaar, Soninke, Jola, Serer, Mandjak, Bainuk, Kiriol
+Georgia -> Georgian, Russian
+Germany -> German, Danish, Lower Sorbian, North Frisian, Saterland Frisian, Upper Sorbian, German Sign Language, Low German, Romani, English
+Ghana -> English, Fante, Asante Twi, Akuapem Twi, Adangme, Dagaare, Dagbani, Ewe, Ga, Gonja, Kasem, Nzema
+Greece -> Greek
+Grenada -> English
+Guatemala -> Spanish, Garifuna, Maya, Xinca
+Guinea -> French, Fula, Maninka, Susu
+Guinea-Bissau -> Portuguese
+Guyana -> English, Guyanese Creole
+Haiti -> French, Haitian Creole
+Honduras -> Spanish
+Hong Kong -> Cantonese, English, Mandarin
+Hungary -> Hungarian, Croatian, German, Romanian, Serbian, Slovak, Slovene
+Iceland -> Icelandic, Icelandic Sign Language
+India -> Hindi, English, Assamese, Bengali, Bodo, Dogri, Gujarati, Kannada, Kashmiri, Konkani, Maithili, Malayalam, Meitei, Marathi, Nepali, Odia, Oriya, Punjabi, Sanskrit, Santali, Sindhi, Tamil, Telugu, Urdu
+Indonesia -> Indonesian, Javanese, Malay, Sundanese, Batak, Minangkabau
+Iran -> Persian, Azerbaijani, Kurdish, Luri, Gilaki, Mazanderani, Balochi, Arabic, Qashqai, Tati, Turkmeni
+Iraq -> Arabic, Kurdish, Armenian, Assyrian Neo-Aramaic, Iraqi Turkmen
+Ireland -> Irish, English
+Israel -> Hebrew, Arabic, Russian, English
+Italy -> Italian, French, Franco-Provençal, German, Ladin, Friulian, Sardinian, Corsican, Catalan, Slovene, Occitan, Albanian, Greek
+Ivory Coast -> French
+Jamaica -> English, Jamaican Patois
+Japan -> Japanese
+Jordan -> Arabic, Circassian, Chechen, Armenian
+Kazakhstan -> Kazakh, Russian
+Kenya -> English, Swahili
+Kiribati -> English, Gilbertese
+North Korea -> Korean
+South Korea -> Korean, Korean Sign Language
+Kosovo -> Albanian, Serbian, Turkish
+Kuwait -> Arabic, Kuwaiti Sign Language, Kuwaiti Arabic, Kuwaiti Persian
+Kyrgyzstan -> Kyrgyz, Russian
+Laos -> Lao
+Latvia -> Latvian, Russian
+Lebanon -> Arabic, Armenian, English, French
+Lesotho -> Sesotho, English, Sotho
+Liberia -> English
+Libya -> Arabic
+Liechtenstein -> German
+Lithuania -> Lithuanian, Polish, Russian
+Luxembourg -> French, German, Luxembourgish, English, Portuguese
+Macau -> Cantonese, Portuguese
+Madagascar -> French, Malagasy
+Malawi -> English, Chichewa
+Malaysia -> Malay, Mandarin Chinese, Cantonese, Tamil, English
+Maldives -> Dhivehi, English
+Mali -> Bambara, Bobo, Bozo, Dogon, Fula, Hassaniya, Kassonke, Maninke, Minyanka, Senufo, Songhay, Soninke, Tamasheq, French
+Malta -> Maltese, English
+Marshall Islands -> English, Marshallese
+Mauritania -> Arabic, Fula, Soninke, Wolof, French
+Mauritius -> English, French
+Mexico -> Spanish, National languages
+Micronesia -> English, Chuukese, Kosraean, Pohnpeian, Yapese
+Moldova -> Romanian, Gagauz, Russian, Ukrainian
+Monaco -> French, Monégasque
+Mongolia -> Mongolian
+Montenegro -> Montenegrin
+Morocco -> Arabic, Berber, French
+Mozambique -> Portuguese
+Myanmar -> Burmese, Chin, Kachin, Karen, Karenni, Mon, Rakhine, Shan, English
+Namibia -> English, German, Oshiwambo, Afrikaans
+Nauru -> English, Nauruan
+Nepal -> Nepali
+Netherlands -> Dutch, Frisian, English, Papiamento, Dutch Low Saxon, Dutch Sign Language, Limburgish, Sinte Romani, Yiddish
+New Zealand -> Māori, New Zealand Sign Language, English
+Nicaragua -> Spanish, Creole, Garifuna, Mayangna, Miskito, Rama, Sumo
+Niger -> Hausa, Arabic, French, Fulfulde, Gulmancema, Kanuri, Zarma, Tamazight
+Nigeria -> English, Hausa, Yoruba, Igbo
+Niue -> English, Niuean
+Norfolk Island -> English, Norfuk
+North Macedonia -> Macedonian, Albanian
+Norway -> Norwegian, Sami languages, Northern Sami, Lule Sami, Southern Sámi, Kven, Scandoromani, Bokmål, Nynorsk, English
+Oman -> Arabic, Shehri
+Pakistan -> Urdu, English, Sindhi, Punjabi, Balochi, Pashto, Saraiki
+Palau -> English, Palauan, Sonsorolese, Tobian, Japanese
+Palestine -> Arabic, English, Hebrew
+Panama -> Spanish
+Papua New Guinea -> English, Hiri Motu, PNG Sign Language, Tok Pisin
+Paraguay -> Spanish, Guaraní
+Peru -> Spanish, Quechua, Aymara
+Philippines -> Filipino, English, Aklanon, Bikol, Cebuano, Chavacano, Hiligaynon, Ibanag, Ilocano, Ivatan, Kapampangan, Kinaray-a, Maguindanao, Maranao, Pangasinan, Sambal, Tagalog, Tausug, Waray, Yakan, Arabic, Spanish
+Poland -> Polish, Kashubian, German, Lithuanian, Belarusian, Lemko, Karaim, Tatar, Ukrainian, English
+Portugal -> Portuguese, Mirandese, English
+Qatar -> Arabic
+Romania -> Romanian, Armenian, German, Hungarian, Romani, Russian, Serbian, Slovak, Tatar, Turkish, Ukrainian
+Russia -> Russian
+Rwanda -> English, French, Kinyarwanda, Swahili
+Saudi Arabia -> Arabic, Faifi, Razihi, Mehri, Indian languages, Filipino, Bengali
+Senegal -> French, Jola-Fogny, Mandinka, Pulaar, Serer, Soninke, Wolof
+Serbia -> Serbian
+Seychelles -> English, French, Seychellois Creole
+Sierra Leone -> English, Krio
+Singapore -> English, Malay, Mandarin Chinese, Tamil
+Slovakia -> Slovak, Bulgarian, Czech, German, Hungarian, Polish, Romani, Rusyn, Serbian, Ukrainian
+Slovenia -> Slovene, Hungarian, Italian, Croatian
+Solomon Islands -> English
+Somalia -> Somali, Arabic
+Somaliland -> Arabic, English, Somali
+South Africa -> Afrikaans, English, Southern Ndebele, Sotho, Northern Sotho, Swazi, Tsonga, Tswana, Venda, Xhosa, Zulu, SA Sign Language
+South Sudan -> English, Bari, Dinka, Luo, Murle, Nuer, Zande
+Spain -> Spanish, Catalan, Galician, Occitan, Basque, Astur-Leonese, Aragonese, Fala, Portuguese
+Sri Lanka -> Sinhala, Tamil, English
+Sudan -> Arabic, English
+Suriname -> Dutch, Sranan Tongo
+Sweden -> Swedish, Finnish, Meänkieli, Sami, Yiddish, Romani, English
+Switzerland -> French, German, Italian, Romansh
+Syria -> Arabic, Kurdish, Assyrian, Western Neo-Aramaic, Armenian
+Taiwan -> Mandarin Chinese, Taiwanese Mandarin, Taiwanese Hokkien, Taiwanese Hakka, Formosan languages, Taiwan Sign Language, Matsu dialect, Wuqiu dialect
+Tajikistan -> Tajik, Russian
+Tanzania -> Swahili, English
+Thailand -> Thai, Central Thai, Isan, Northern Thai, Southern Thai, Burmese
+Togo -> French
+Tokelau -> English, Tokelauan
+Tonga -> English, Tongan
+Transnistria -> Moldovan, Russian, Ukrainian
+Trinidad and Tobago -> English, Trinidadian Creole
+Tunisia -> Arabic
+Turkey -> Turkish, Kurdish
+Turkmenistan -> Turkmen, Russian
+Tuvalu -> Tuvaluan, English
+Uganda -> English, Swahili
+Ukraine -> Ukrainian, Russian, Crimean Tatar
+United Arab Emirates -> Arabic, English
+United Kingdom -> English, Irish, Ulster-Scots, Scots, Scottish Gaelic, Welsh, Pitcairnese, Guernésiais, Jèrriais, Manx, French
+United States -> English, Indigenous languages
+Uruguay -> Uruguayan Sign Language, Spanish
+Uzbekistan -> Uzbek, Karakalpak, Russian
+Vanuatu -> English, French, Bislama
+Vatican City -> Italian, Latin, Swiss German
+Venezuela -> Spanish, Native languages
+Vietnam -> Vietnamese, Cantonese, Cham, Hmong, Khmer, Lao, Muong, Rade, Tay, Vietnamese sign languages
+Yemen -> Arabic, Mehri, Soqotri
+Zambia -> English
+Zimbabwe -> Chewa, Chibarwe, English, Kalanga, Khoisan, Nambya, Ndau, Ndebele, Shangani, Shona, Sign language, Sotho, Tonga, Tswana, Venda, Xhosa

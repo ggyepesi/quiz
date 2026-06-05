@@ -1,0 +1,580 @@
+package quiz.ui;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.datatransfer.StringSelection;
+import java.util.*;
+import java.util.List;
+
+public class QuizableTextBlock extends JComponent implements QuizableTextSelectable {
+
+    private static final int PAD_X = 6;
+    private static final int PAD_Y = 4;
+    private static final int GAP = 8;
+    private static final int ROW_GAP = 2;
+    private static final int MAX_PREF_WIDTH = 460;
+
+    private static final Color SEARCH_HIGHLIGHT =
+            new Color(255, 245, 120);
+    private static final Color SELECTION_BACKGROUND =
+            new Color(80, 140, 255);
+    private static final Color SELECTION_FOREGROUND =
+            Color.WHITE;
+
+    @Override
+    public void clearSelectionFromManager() {
+        selection.clear();
+        repaint();
+    }
+
+    public record Row(String fieldName,
+                      List<String> fieldPath,
+                      Object value,
+                      List<String> lines) {
+    }
+
+    private record PaintLine(Row row,
+                             String text,
+                             int x,
+                             int baseline,
+                             int top,
+                             int bottom,
+                             int lineIndex) {
+    }
+
+    private record TextPosition(int lineIndex, int offset) {
+    }
+
+    private final List<Row> rows = new ArrayList<>();
+    private final Map<List<String>, List<String>> highlightTokensByPath =
+            new HashMap<>();
+    private final QuizableTextSelection selection =
+            new QuizableTextSelection();
+
+    private int cachedWidth = -1;
+    private List<PaintLine> cachedLines = new ArrayList<>();
+    private Dimension cachedPreferredSize;
+
+    public QuizableTextBlock(List<Row> rows) {
+        if (rows != null) {
+            this.rows.addAll(rows);
+        }
+        QuizablePanel.RenderStats.textBlocks++;
+        setOpaque(false);
+        setFocusable(true);
+
+        putClientProperty(QuizableSearchPanel.FIELD_NAME_PROPERTY, "textBlock");
+        putClientProperty(QuizableSearchPanel.FIELD_VALUE_PROPERTY, this);
+
+        addMouseListener(QuizableTextCopyMouseHandler.INSTANCE);
+        addMouseMotionListener(QuizableTextCopyMouseHandler.INSTANCE);
+        setToolTipText("Drag to select, right-click to copy");
+    }
+
+    public boolean isEmpty() {
+        return rows.isEmpty();
+    }
+
+    public void beginSelection(Point p) {
+        QuizableTextSelectionManager.activate(this);
+
+        requestFocusInWindow();
+        TextPosition pos = positionAt(p);
+        selection.setAnchor(pos.lineIndex(), pos.offset());
+        repaint();
+    }
+
+    public void updateSelection(Point p) {
+        if (!selection.hasAnchor()) {
+            beginSelection(p);
+            return;
+        }
+
+        TextPosition pos = positionAt(p);
+        selection.setFocus(pos.lineIndex(), pos.offset());
+        repaint();
+    }
+
+    public void endSelection(Point p) {
+        updateSelection(p);
+    }
+
+    public void showCopyPopup(Point p) {
+        QuizableTextSelectionManager.activate(this);
+
+        Row row = rowAt(p);
+        JPopupMenu menu = new JPopupMenu();
+
+        String selectedText = selectedText();
+
+        if (!selectedText.isBlank()) {
+            JMenuItem copySelection = new JMenuItem("Copy selection");
+            copySelection.addActionListener(e -> copyToClipboard(selectedText));
+            menu.add(copySelection);
+            menu.addSeparator();
+        }
+
+        JMenuItem copyBlock = new JMenuItem("Copy block");
+        copyBlock.addActionListener(e -> copyToClipboard(blockText()));
+        menu.add(copyBlock);
+
+        if (row != null) {
+            JMenuItem copyRow = new JMenuItem("Copy row");
+            copyRow.addActionListener(e -> copyToClipboard(rowText(row)));
+
+            JMenuItem copyValue = new JMenuItem("Copy value");
+            copyValue.addActionListener(e -> copyToClipboard(rowValueText(row)));
+
+            menu.addSeparator();
+            menu.add(copyRow);
+            menu.add(copyValue);
+
+            if (row.fieldName() != null && !row.fieldName().isBlank()) {
+                JMenuItem copyField = new JMenuItem("Copy field name");
+                copyField.addActionListener(e -> copyToClipboard(row.fieldName()));
+
+                JMenuItem copyPath = new JMenuItem("Copy field path");
+                copyPath.addActionListener(e -> copyToClipboard(pathText(row)));
+
+                menu.addSeparator();
+                menu.add(copyField);
+                menu.add(copyPath);
+            }
+        }
+
+        menu.show(this, p.x, p.y);
+    }
+
+    public Row rowAt(Point p) {
+        if (p == null) {
+            return null;
+        }
+
+        for (PaintLine line : computeLayout(getWidth())) {
+            if (p.y >= line.top() && p.y <= line.bottom()) {
+                return line.row();
+            }
+        }
+
+        return null;
+    }
+
+    private String selectedText() {
+        if (selection.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        for (PaintLine line : computeLayout(getWidth())) {
+            if (!selection.intersectsLine(line.lineIndex())) {
+                continue;
+            }
+
+            int start = clamp(selection.selectedStartForLine(line.lineIndex()),
+                              0, line.text().length());
+            int end = clamp(selection.selectedEndForLine(line.lineIndex(),
+                                                         line.text().length()),
+                            0, line.text().length());
+
+            if (end < start) {
+                int t = start;
+                start = end;
+                end = t;
+            }
+
+            if (sb.length() > 0) {
+                sb.append('\n');
+            }
+
+            sb.append(line.text(), start, end);
+        }
+
+        return sb.toString();
+    }
+
+    private String blockText() {
+        StringBuilder sb = new StringBuilder();
+
+        for (Row row : rows) {
+            if (sb.length() > 0) {
+                sb.append('\n');
+            }
+
+            sb.append(rowText(row));
+        }
+
+        return sb.toString();
+    }
+
+    private String rowText(Row row) {
+        String value = rowValueText(row);
+        String fieldName = row.fieldName();
+
+        return fieldName == null || fieldName.isBlank()
+                ? value
+                : fieldName + ": " + value;
+    }
+
+    private String rowValueText(Row row) {
+        return row.lines() == null
+                ? ""
+                : String.join("\n", row.lines());
+    }
+
+    private String pathText(Row row) {
+        return row.fieldPath() == null
+                ? ""
+                : String.join(".", row.fieldPath());
+    }
+
+    private void copyToClipboard(String text) {
+        Toolkit.getDefaultToolkit()
+               .getSystemClipboard()
+               .setContents(new StringSelection(text == null ? "" : text),
+                            null);
+    }
+
+    public boolean hasMatchingRow(List<String> path, List<String> tokens) {
+        for (Row row : rows) {
+            if (samePath(row.fieldPath(), path)
+                    && matches(row.value(), tokens)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void setHighlightTokens(List<String> path, List<String> tokens) {
+        highlightTokensByPath.put(copyPath(path),
+                                  tokens == null ? List.of() : new ArrayList<>(tokens));
+        repaint();
+    }
+
+    public void clearHighlight() {
+        highlightTokensByPath.clear();
+        repaint();
+    }
+
+    private Font fieldFont() {
+        Font base = UIManager.getFont("Label.font");
+        if (base == null) base = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        return base.deriveFont(Font.BOLD);
+    }
+
+    private Font valueFont() {
+        Font base = UIManager.getFont("Label.font");
+        if (base == null) base = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        return base;
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        if (cachedPreferredSize != null) {
+            return cachedPreferredSize;
+        }
+
+        FontMetrics fmField = getFontMetrics(fieldFont());
+        FontMetrics fmValue = getFontMetrics(valueFont());
+
+        int longest = 0;
+
+        for (Row row : rows) {
+            int prefixWidth = fmField.stringWidth(prefix(row));
+            for (String line : row.lines()) {
+                longest = Math.max(longest,
+                                   prefixWidth + GAP + fmValue.stringWidth(line));
+            }
+        }
+
+        int width = Math.clamp(PAD_X + longest + PAD_X, 120, MAX_PREF_WIDTH);
+        List<PaintLine> lines = computeLayout(width);
+
+        int height = PAD_Y * 2
+                + Math.max(1, lines.size()) * fmValue.getHeight()
+                + Math.max(0, rows.size() - 1) * ROW_GAP;
+
+        cachedPreferredSize = new Dimension(width, height);
+        return cachedPreferredSize;
+    }
+
+    @Override
+    public Dimension getMinimumSize() {
+        return new Dimension(100, getPreferredSize().height);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+        Graphics2D g2 = (Graphics2D) g.create();
+
+        try {
+            Font fieldFont = fieldFont();
+            Font valueFont = valueFont();
+            FontMetrics fmValue = g2.getFontMetrics(valueFont);
+
+            Row previous = null;
+
+            for (PaintLine pl : computeLayout(getWidth())) {
+                Row row = pl.row();
+
+                if (row != previous) {
+                    String prefix = prefix(row);
+
+                    if (!prefix.isEmpty()) {
+                        g2.setFont(fieldFont);
+                        g2.setColor(getForeground());
+                        g2.drawString(prefix, PAD_X, pl.baseline());
+                    }
+
+                    previous = row;
+                }
+
+                g2.setFont(valueFont);
+                paintTextLine(g2, pl, fmValue,
+                              highlightTokensByPath.getOrDefault(row.fieldPath(),
+                                                                  List.of()));
+            }
+        } finally {
+            g2.dispose();
+        }
+    }
+
+    private List<PaintLine> computeLayout(int width) {
+        if (width == cachedWidth && !cachedLines.isEmpty()) {
+            return cachedLines;
+        }
+
+        FontMetrics fmField = getFontMetrics(fieldFont());
+        FontMetrics fmValue = getFontMetrics(valueFont());
+
+        List<PaintLine> out = new ArrayList<>();
+        int y = PAD_Y + fmValue.getAscent();
+        int lineIndex = 0;
+
+        for (Row row : rows) {
+            String prefix = prefix(row);
+            int prefixWidth = prefix.isEmpty() ? 0 : fmField.stringWidth(prefix) + GAP;
+            int valueX = PAD_X + prefixWidth;
+            int valueWidth = Math.max(80, width - valueX - PAD_X);
+
+            List<String> wrapped = new ArrayList<>();
+
+            for (String line : row.lines()) {
+                wrapOneLine(line, fmValue, valueWidth, wrapped);
+            }
+
+            if (wrapped.isEmpty()) {
+                wrapped.add("");
+            }
+
+            for (String line : wrapped) {
+                out.add(new PaintLine(row, line, valueX, y,
+                                      y - fmValue.getAscent(),
+                                      y + fmValue.getDescent(),
+                                      lineIndex++));
+                y += fmValue.getHeight();
+            }
+
+            y += ROW_GAP;
+        }
+
+        cachedWidth = width;
+        cachedLines = out;
+        return out;
+    }
+
+    private void wrapOneLine(String line,
+                             FontMetrics fm,
+                             int maxWidth,
+                             List<String> out) {
+        if (line == null || line.isBlank()) {
+            out.add("");
+            return;
+        }
+
+        String[] words = line.split("\\s+");
+        StringBuilder current = new StringBuilder();
+
+        for (String word : words) {
+            String next = current.isEmpty() ? word : current + " " + word;
+
+            if (fm.stringWidth(next) <= maxWidth) {
+                current.setLength(0);
+                current.append(next);
+            } else {
+                if (!current.isEmpty()) {
+                    out.add(current.toString());
+                }
+
+                current.setLength(0);
+                current.append(word);
+            }
+        }
+
+        if (!current.isEmpty()) {
+            out.add(current.toString());
+        }
+    }
+
+    private void paintTextLine(Graphics2D g2,
+                               PaintLine line,
+                               FontMetrics fm,
+                               List<String> tokens) {
+        String text = line.text();
+        if (text == null) {
+            return;
+        }
+
+        boolean[] searchMark = searchMarks(text, tokens);
+
+        int selectedStart = selection.selectedStartForLine(line.lineIndex());
+        int selectedEnd = selection.selectedEndForLine(line.lineIndex(),
+                                                       text.length());
+
+        selectedStart = selectedStart < 0 ? -1 : clamp(selectedStart, 0, text.length());
+        selectedEnd = selectedEnd < 0 ? -1 : clamp(selectedEnd, 0, text.length());
+
+        int pos = 0;
+
+        while (pos < text.length()) {
+            int start = pos;
+            boolean highlighted = searchMark[pos];
+            boolean selected = selectedStart >= 0
+                    && selectedEnd >= 0
+                    && pos >= selectedStart
+                    && pos < selectedEnd;
+
+            while (pos < text.length()
+                    && searchMark[pos] == highlighted
+                    && ((selectedStart >= 0
+                         && selectedEnd >= 0
+                         && pos >= selectedStart
+                         && pos < selectedEnd) == selected)) {
+                pos++;
+            }
+
+            String part = text.substring(start, pos);
+            int partX = line.x() + fm.stringWidth(text.substring(0, start));
+            int partW = fm.stringWidth(part);
+
+            if (selected) {
+                g2.setColor(SELECTION_BACKGROUND);
+                g2.fillRect(partX, line.baseline() - fm.getAscent(),
+                            partW, fm.getHeight());
+                g2.setColor(SELECTION_FOREGROUND);
+            } else {
+                if (highlighted) {
+                    g2.setColor(SEARCH_HIGHLIGHT);
+                    g2.fillRect(partX, line.baseline() - fm.getAscent(),
+                                partW, fm.getHeight());
+                }
+                g2.setColor(getForeground());
+            }
+
+            g2.drawString(part, partX, line.baseline());
+        }
+    }
+
+    private boolean[] searchMarks(String text, List<String> tokens) {
+        boolean[] mark = new boolean[text.length()];
+        String lower = text.toLowerCase();
+
+        for (String token : tokens) {
+            if (token == null || token.isBlank()) {
+                continue;
+            }
+
+            String tok = token.toLowerCase();
+            int idx = 0;
+
+            while ((idx = lower.indexOf(tok, idx)) >= 0) {
+                for (int i = idx; i < idx + tok.length() && i < mark.length; i++) {
+                    mark[i] = true;
+                }
+
+                idx += Math.max(1, tok.length());
+            }
+        }
+
+        return mark;
+    }
+
+    private TextPosition positionAt(Point p) {
+        List<PaintLine> lines = computeLayout(getWidth());
+
+        if (lines.isEmpty()) {
+            return new TextPosition(0, 0);
+        }
+
+        PaintLine best = lines.get(0);
+
+        for (PaintLine line : lines) {
+            if (p.y >= line.top() && p.y <= line.bottom()) {
+                best = line;
+                break;
+            }
+
+            if (Math.abs(p.y - line.baseline())
+                    < Math.abs(p.y - best.baseline())) {
+                best = line;
+            }
+        }
+
+        return new TextPosition(best.lineIndex(),
+                                offsetForX(best.text(), p.x, best.x()));
+    }
+
+    private int offsetForX(String text, int mouseX, int textX) {
+        FontMetrics fm = getFontMetrics(valueFont());
+
+        if (mouseX <= textX) {
+            return 0;
+        }
+
+        for (int i = 0; i < text.length(); i++) {
+            int mid = textX
+                    + fm.stringWidth(text.substring(0, i))
+                    + fm.charWidth(text.charAt(i)) / 2;
+
+            if (mouseX < mid) {
+                return i;
+            }
+        }
+
+        return text.length();
+    }
+
+    private String prefix(Row row) {
+        return row.fieldName() == null || row.fieldName().isBlank()
+                ? ""
+                : row.fieldName() + ":";
+    }
+
+    private boolean matches(Object value, List<String> tokens) {
+        if (value == null) return false;
+
+        String s = String.valueOf(value).toLowerCase();
+
+        for (String tok : tokens) {
+            if (!s.contains(tok.toLowerCase())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean samePath(List<String> a, List<String> b) {
+        return Objects.equals(a, b);
+    }
+
+    private static List<String> copyPath(List<String> path) {
+        return path == null ? List.of() : new ArrayList<>(path);
+    }
+
+    private static int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
+    }
+}
