@@ -6,6 +6,31 @@ consorts Ariadne
 consorts Hippolyta
 killed_by Lycomedes
 
+creature AA
+consorts BB1
+consorts BB2
+consorts BB3
+consorts BB4
+consorts BB5
+consorts BB6
+
+creature BB
+consorts AA
+creature BB1
+consorts BB3
+
+creature BB2
+consorts BB3
+
+creature BB3
+consorts AA
+creature BB4
+consorts AA
+creature BB5
+consorts AA
+creature BB6
+consorts AA
+
 creature Heracles
 father Zeus
 mother Alcmene

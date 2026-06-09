@@ -77,15 +77,8 @@ class QuizableFieldPathsTest {
         private List<TestChild> children;
         private ImagePane image;
 
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public QuizableAdapter createNew() {
-            return new TestCard();
-        }
+        @Override public String getIdentifier() { return name; }
+        @Override public String getDisplayName() { return name; }
     }
 
     @SuppressWarnings("unused")
@@ -93,15 +86,8 @@ class QuizableFieldPathsTest {
         private String name;
         private String code;
 
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public QuizableAdapter createNew() {
-            return new TestChild();
-        }
+        @Override public String getIdentifier() { return name; }
+        @Override public String getDisplayName() { return name; }
     }
 
     @SuppressWarnings("unused")
@@ -109,14 +95,7 @@ class QuizableFieldPathsTest {
         private String name;
         private List<SelfNode> children;
 
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public QuizableAdapter createNew() {
-            return new SelfNode();
-        }
+        @Override public String getIdentifier() { return name; }
+        @Override public String getDisplayName() { return name; }
     }
 }

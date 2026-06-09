@@ -86,7 +86,7 @@ class QuizGenerationCartesianTest {
     private static class TestQuiz extends Quiz {
         TestQuiz(QuizablePanelConfig queryConfig,
                  QuizablePanelConfig answerConfig,
-                 Group group,
+                 QuizableGroup group,
                  Map<String, ? extends Quizable> quizables) {
             super(queryConfig, answerConfig, group, quizables);
         }
@@ -137,10 +137,8 @@ class QuizGenerationCartesianTest {
             this.answers = answers;
         }
 
-        @Override
-        public String getName() {
-            return name;
-        }
+        @Override public String getIdentifier() { return name; }
+        @Override public String getDisplayName() { return name; }
 
         @Override
         public QuizableAdapter createNew() {
