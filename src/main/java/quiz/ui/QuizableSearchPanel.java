@@ -563,9 +563,7 @@ public class QuizableSearchPanel extends JPanel {
         remember(qp);
         previousMatchedCards.add(qp);
 
-        qp.setOpaque(true);
-        qp.setBackground(CARD_HIT_BACKGROUND);
-        qp.repaint();
+        qp.setHighlightColor(CARD_HIT_BACKGROUND);
     }
 
     private void highlightField(JComponent c) {
@@ -1245,6 +1243,10 @@ public class QuizableSearchPanel extends JPanel {
             if (oldText instanceof String s) {
                 lbl.setText(s);
             }
+        }
+
+        if (jc instanceof QuizablePanel qp) {
+            qp.setHighlightColor(null);
         }
 
         jc.putClientProperty("quiz.search.remembered", null);

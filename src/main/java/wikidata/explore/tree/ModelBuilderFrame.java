@@ -53,12 +53,17 @@ public class ModelBuilderFrame extends JFrame {
     private final JSpinner depthSpinner =
             new JSpinner(new SpinnerNumberModel(0, 0, 5, 1));
 
-    private SwingWorker<List<WikidataDynamicObject>, String> currentWorker;
+    private record GenerationResult(
+            List<WikidataDynamicObject> objects,
+            GeneratedQuizableRuntime runtime) {}
+
+    private SwingWorker<GenerationResult, String> currentWorker;
 
     public ModelBuilderFrame(WikidataSparqlClient client) {
         super("Wikidata Quizable Model Builder");
 
         this.client = client;
+        client.log(this::log);
 
         buildUi();
         wireActions();
@@ -123,8 +128,9 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.samplePanel().setFieldSampleSupplier(
                 sourceWorkbench::fieldSampleContextForSelected);
 
-        sourceWorkbench.discoveryPanel().setNodeSupplier(
-                sourceWorkbench::temporaryRuleNodeForSelected);
+        sourceWorkbench.samplePanel().log(this::log);
+
+        sourceWorkbench.discoveryPanel().log(this::log);
 
         sourceWorkbench.propertyPanel().onPropertySelected(property -> {
             sourceWorkbench.useProperty(property.pid(), property.getName());
@@ -133,6 +139,12 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.afterChange(v -> classModelPanel.refresh());
 
+        sourceWorkbench.afterApplyField(f -> {
+            classModelPanel.refresh();
+            classModelPanel.selectField(f);
+            sourceWorkbench.edit(f);
+        });
+
         classModelPanel.addTreeSelectionListener(e ->
                 sourceWorkbench.edit(classModelPanel.selectedUserObject()));
 
@@ -140,6 +152,9 @@ public class ModelBuilderFrame extends JFrame {
         cancelButton.addActionListener(e -> cancelGeneration());
         previewButton.addActionListener(e -> previewInternalSparql());
         showGeneratedSourceButton.addActionListener(e -> showGeneratedSource());
+
+        client.registerRunButton(generateButton);
+        client.registerCancelButton(cancelButton);
 
         sourceWorkbench.edit(projectModel.rootClass());
     }
@@ -195,16 +210,19 @@ public class ModelBuilderFrame extends JFrame {
         RuleTreeExtractor extractor =
                 new RuleTreeExtractor(client);
 
-        generateButton.setEnabled(false);
-        cancelButton.setEnabled(true);
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
         currentWorker =
                 new SwingWorker<>() {
                     @Override
-                    protected List<WikidataDynamicObject> doInBackground()
+                    protected GenerationResult doInBackground()
                             throws Exception {
-                        return extractor.load(root, depth, this::publish);
+                        List<WikidataDynamicObject> objects =
+                                extractor.load(root, depth, this::publish);
+                        GeneratedQuizableRuntime runtime =
+                                new GeneratedQuizableRuntimeBuilder()
+                                        .build(projectModel.rootClass());
+                        return new GenerationResult(objects, runtime);
                     }
 
                     @Override
@@ -224,25 +242,17 @@ public class ModelBuilderFrame extends JFrame {
                         }
 
                         try {
-                            List<WikidataDynamicObject> objects = get();
+                            GenerationResult result = get();
 
                             log("Root/dynamic objects returned: "
-                                        + objects.size()
+                                        + result.objects().size()
                                         + "\n");
 
-                            log("Before runtime build\n");
-
-                            lastRuntime =
-                                    new GeneratedQuizableRuntimeBuilder()
-                                            .build(projectModel.rootClass());
-
-                            log("Before mapRoots\n");
+                            lastRuntime = result.runtime();
 
                             List<quiz.Quizable> generatedObjects =
                                     new GeneratedQuizableMapper(lastRuntime)
-                                            .mapRoots(objects);
-
-                            log("Before setGeneratedObjects\n");
+                                            .mapRoots(result.objects());
 
                             instancesPanel.setGeneratedObjects(
                                     generatedObjects,
@@ -274,8 +284,6 @@ public class ModelBuilderFrame extends JFrame {
                                         + "\n");
                         } finally {
                             currentWorker = null;
-                            generateButton.setEnabled(true);
-                            cancelButton.setEnabled(false);
                             setCursor(Cursor.getDefaultCursor());
                         }
                     }

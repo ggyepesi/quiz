@@ -31,7 +31,10 @@ public class FieldSourceMapping {
     private final Set<String> allowedQids = new LinkedHashSet<>();
     private final Set<String> excludedQids = new LinkedHashSet<>();
 
+    private FieldSourceType sourceType = FieldSourceType.SPARQL;
+
     public String sourceQid() { return sourceQid; }
+
     public void sourceQid(String sourceQid) {
         this.sourceQid = sourceQid == null ? "" : sourceQid.trim();
     }
@@ -99,5 +102,14 @@ public class FieldSourceMapping {
         return propertyLabel.isBlank()
                 ? propertyPid
                 : propertyLabel + " (" + propertyPid + ")";
+    }
+
+    public FieldSourceType sourceType() {
+        return sourceType;
+    }
+
+    public void sourceType(FieldSourceType sourceType) {
+        this.sourceType =
+                sourceType == null ? FieldSourceType.SPARQL : sourceType;
     }
 }

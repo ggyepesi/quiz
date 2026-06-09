@@ -79,14 +79,10 @@ public class OscarNomination extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name == null ? setName() : name;
-    }
+    public String getIdentifier() { return name == null ? setName() : name; }
 
     @Override
-    public QuizableAdapter createNew() {
-        return new OscarNomination();
-    }
+    public String getDisplayName() { return getIdentifier(); }
 
     private String nullToEmpty(String s) {
         return s == null ? "" : s;
@@ -94,6 +90,6 @@ public class OscarNomination extends QuizableAdapter {
 
     @Override
     public String toString() {
-        return getName();
+        return getDisplayName();
     }
 }

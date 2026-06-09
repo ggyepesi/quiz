@@ -140,7 +140,7 @@ public abstract class Quiz extends Thread {
 
     private boolean isInSelectedGroup(Quizable quizable) {
         if (group == null) return true;
-        try { return group.contains(quizable.getName()); }
+        try { return group.contains(quizable.getIdentifier()); }
         catch (Exception ignored) { return true; }
     }
 

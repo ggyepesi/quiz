@@ -15,9 +15,10 @@ public class TopQidResult extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return qid; }
+
+    @Override
+    public String getDisplayName() { return name; }
 
     public String qid() {
         return qid;
@@ -36,8 +37,4 @@ public class TopQidResult extends QuizableAdapter {
         return name + " (" + qid + ")";
     }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return null;
-    }
 }

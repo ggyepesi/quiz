@@ -24,6 +24,8 @@ import java.util.function.Consumer;
  * - complex child edges -> batched child queries
  */
 public class RuleTreeExtractor {
+    private final WikidataObjectRegistry registry =
+            new WikidataObjectRegistry();
 
     private static final int BATCH_SIZE = 50;
     private static final int POOL_SIZE  = 3;
@@ -41,6 +43,10 @@ public class RuleTreeExtractor {
         this.log = log == null ? s -> {} : log;
     }
 
+    public WikidataObjectRegistry registry() {
+        return registry;
+    }
+    
     public static String valuesQuery(RuleNode node) {
         return RuleNodeQueryBuilder.valuesQuery(node);
     }
@@ -222,7 +228,7 @@ public class RuleTreeExtractor {
             if (qid == null || !qid.matches("Q\\d+")) continue;
 
             WikidataDynamicObject obj = rowsByQid.computeIfAbsent(
-                    qid, k -> new WikidataDynamicObject(qid, label));
+                    qid, k -> registry.getOrCreate(qid, label));
 
             addValueFilterFields(obj, node, b);
             addIncludedFields(obj, node, b, inlinedFields);
@@ -253,7 +259,7 @@ public class RuleTreeExtractor {
         }
 
         if (childQid != null) {
-            return new WikidataDynamicObject(
+            return registry.getOrCreate(
                     childQid,
                     StringUtils.firstNonBlank(label, childQid));
         }
@@ -355,7 +361,7 @@ public class RuleTreeExtractor {
                                 .computeIfAbsent(parentQid,
                                         k -> new LinkedHashMap<>())
                                 .computeIfAbsent(childQid,
-                                        k -> new WikidataDynamicObject(
+                                        k -> registry.getOrCreate(
                                                 childQid, childLabel));
 
                 addValueFilterFields(child, childNode, b);
@@ -421,7 +427,7 @@ public class RuleTreeExtractor {
             if (qid == null || !qid.matches("Q\\d+")) continue;
 
             WikidataDynamicObject obj = rowsByQid.computeIfAbsent(
-                    qid, k -> new WikidataDynamicObject(qid, label));
+                    qid, k -> registry.getOrCreate(qid, label));
 
             addValueFilterFields(obj, node, b);
             addIncludedFields(obj, node, b);
@@ -478,7 +484,7 @@ public class RuleTreeExtractor {
         }
         String qid = entityQid(raw);
         if (qid != null)
-            return new WikidataDynamicObject(
+            return registry.getOrCreate(
                     qid, StringUtils.firstNonBlank(label, qid));
         return StringUtils.firstNonBlank(label, raw);
     }

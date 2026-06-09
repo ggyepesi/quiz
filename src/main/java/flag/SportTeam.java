@@ -42,9 +42,10 @@ public class SportTeam extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return name; }
+
+    @Override
+    public String getDisplayName() { return name; }
 
     @Override
     public QuizableAdapter createNew() {

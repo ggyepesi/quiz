@@ -49,13 +49,14 @@ public class State extends QuizableAdapter {
     }
 
     @Override
-    public State createNew() {
-        return new State("");
-    }
+    public String getIdentifier() { return name; }
 
     @Override
-    public String getName() {
-        return name;
+    public String getDisplayName() { return name; }
+
+    @Override
+    public State createNew() {
+        return new State("");
     }
 
     public void addFlag(String key, ImagePane flag) {

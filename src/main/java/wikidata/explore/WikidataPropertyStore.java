@@ -34,6 +34,10 @@ public class WikidataPropertyStore {
                 out.write(escape(p.label()));
                 out.write('\t');
                 out.write(escape(p.description()));
+                out.write('\t');
+                out.write(escape(p.datatype()));
+                out.write('\t');
+                out.write(escape(p.cardinality()));
                 out.write('\n');
             }
         }
@@ -64,9 +68,9 @@ public class WikidataPropertyStore {
                     list.add(new WikidataProperty(
                             unescape(parts[0]),
                             unescape(parts[1]),
-                            parts.length >= 3
-                                    ? unescape(parts[2])
-                                    : ""));
+                            parts.length >= 3 ? unescape(parts[2]) : "",
+                            parts.length >= 4 ? unescape(parts[3]) : "",
+                            parts.length >= 5 ? unescape(parts[4]) : ""));
                 }
             }
         }

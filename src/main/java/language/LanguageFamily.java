@@ -48,12 +48,13 @@ public class LanguageFamily extends QuizableAdapter {
     }
 
     @Override
-    public QuizableAdapter createNew() {
-        return new LanguageFamily("");
-    }
+    public String getIdentifier() { return name; }
 
     @Override
-    public String getName() {
-        return name;
+    public String getDisplayName() { return name; }
+
+    @Override
+    public QuizableAdapter createNew() {
+        return new LanguageFamily("");
     }
 }

@@ -14,7 +14,29 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class QuizableAdapter implements Quizable {
-    public abstract QuizableAdapter createNew();
+
+    @Override
+    public abstract String getIdentifier();
+
+    @Override
+    public abstract String getDisplayName();
+
+    /**
+     * Creates a blank instance of this class for projection / cartesian-product mechanics.
+     * The default implementation uses reflection and requires an accessible no-arg constructor.
+     * Override when no-arg construction is impossible or requires special initialization.
+     */
+    public QuizableAdapter createNew() {
+        try {
+            java.lang.reflect.Constructor<? extends QuizableAdapter> ctor =
+                    getClass().getDeclaredConstructor();
+            ctor.setAccessible(true);
+            return ctor.newInstance();
+        } catch (Exception e) {
+            throw new UnsupportedOperationException(
+                    "createNew() requires a no-arg constructor on " + getClass().getSimpleName(), e);
+        }
+    }
 
     @NotQuizableField
     private static final Map<Class<?>, List<Field>> ALL_FIELDS_CACHE =
@@ -469,7 +491,7 @@ public abstract class QuizableAdapter implements Quizable {
             return null;
         }
         if (value instanceof Quizable q) {
-            return q.getName();
+            return q.getIdentifier();
         }
         return value;
     }

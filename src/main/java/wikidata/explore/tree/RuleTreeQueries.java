@@ -161,6 +161,33 @@ public final class RuleTreeQueries {
         return q.build();
     }
 
+    public static String fieldValueSampleQuery(
+            RuleIncludedField field,
+            Collection<String> parentQids,
+            RuleLabelConfig labelConfig,
+            int limit) {
+
+        String var =
+                RuleIncludedFieldSparql.variableName(field, 0);
+
+        WikidataQueryBuilder q =
+                new WikidataQueryBuilder()
+                        .selectDistinct("?parent", "?" + var)
+                        .valuesQids("parent", parentQids);
+
+        q.truthy("parent", field.propertyPid(), var);
+
+        if (!field.isMediaField()) {
+            q.select(var + "Label");
+            appendLabelPattern(q, var, var + "Label", labelConfig);
+        }
+
+        q.orderBy("parent");
+        q.limit(limit);
+
+        return q.build();
+    }
+
     public static String delayedIncludedFieldQuery(
             RuleIncludedField field,
             Collection<String> parentQids,

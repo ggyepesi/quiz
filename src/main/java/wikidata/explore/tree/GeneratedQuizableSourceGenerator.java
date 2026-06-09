@@ -1,6 +1,7 @@
 package wikidata.explore.tree;
 
 import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldRenderMode;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -8,11 +9,6 @@ import wikidata.explore.model.GeneratedFieldModel;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Generates a Java source class from the visible model.
- *
- * Image/media fields generate as quiz.ui.ImagePane.
- */
 public class GeneratedQuizableSourceGenerator {
     public static final String GENERATED_PACKAGE = "wikidata.generated";
 
@@ -21,13 +17,21 @@ public class GeneratedQuizableSourceGenerator {
     }
 
     public String sourceFor(GeneratedClassModel model) {
-        String className =
-                sanitizeClassName(model.className());
+        String className = sanitizeClassName(model.className());
 
-        StringBuilder sb =
-                new StringBuilder();
+        StringBuilder sb = new StringBuilder();
 
         sb.append("package ").append(GENERATED_PACKAGE).append(";\n\n");
+
+        boolean needsReferenceImport =
+                model.fields().stream()
+                     .filter(f -> f != null && !f.isNameField())
+                     .anyMatch(GeneratedFieldModel::renderAsReference);
+
+        if (needsReferenceImport) {
+            sb.append("import quiz.QuizableReference;\n\n");
+        }
+
         sb.append("public class ").append(className)
           .append(" extends quiz.QuizableAdapter {\n\n");
 
@@ -38,6 +42,10 @@ public class GeneratedQuizableSourceGenerator {
         for (GeneratedFieldModel field : model.fields()) {
             if (field == null || field.isNameField()) {
                 continue;
+            }
+
+            if (field.renderAsReference()) {
+                sb.append("    @QuizableReference\n");
             }
 
             sb.append("    public ")
@@ -60,17 +68,17 @@ public class GeneratedQuizableSourceGenerator {
         sb.append("    public ").append(className).append("() {}\n\n");
 
         sb.append("    @Override\n")
-          .append("    public String getName() {\n")
+          .append("    public String getIdentifier() {\n")
+          .append("        return qid == null || qid.isBlank() ? name : qid;\n")
+          .append("    }\n\n");
+
+        sb.append("    @Override\n")
+          .append("    public String getDisplayName() {\n")
           .append("        return name == null || name.isBlank() ? qid : name;\n")
           .append("    }\n\n");
 
         sb.append("    @Override\n")
-          .append("    public quiz.QuizableAdapter createNew() {\n")
-          .append("        return new ").append(className).append("();\n")
-          .append("    }\n\n");
-
-        sb.append("    @Override\n")
-          .append("    public String toString() { return getName(); }\n");
+          .append("    public String toString() { return getDisplayName(); }\n");
 
         sb.append("}\n");
         return sb.toString();
@@ -108,8 +116,7 @@ public class GeneratedQuizableSourceGenerator {
             GeneratedFieldModel field,
             GeneratedClassModel owner) {
 
-        String type =
-                field.entityClassName();
+        String type = field.entityClassName();
 
         if (type == null || type.isBlank()) {
             if (field.name().toLowerCase().contains("neigh")) {
@@ -127,8 +134,7 @@ public class GeneratedQuizableSourceGenerator {
             return "GeneratedItem";
         }
 
-        StringBuilder out =
-                new StringBuilder();
+        StringBuilder out = new StringBuilder();
 
         for (String part : splitWords(s)) {
             if (part.isBlank()) {
@@ -158,19 +164,16 @@ public class GeneratedQuizableSourceGenerator {
             return "field";
         }
 
-        List<String> parts =
-                splitWords(s);
+        List<String> parts = splitWords(s);
 
         if (parts.isEmpty()) {
             return "field";
         }
 
-        StringBuilder out =
-                new StringBuilder(parts.get(0).toLowerCase());
+        StringBuilder out = new StringBuilder(parts.get(0).toLowerCase());
 
         for (int i = 1; i < parts.size(); i++) {
-            String p =
-                    parts.get(i);
+            String p = parts.get(i);
 
             if (p.isBlank()) {
                 continue;
@@ -191,8 +194,7 @@ public class GeneratedQuizableSourceGenerator {
             out.insert(0, "f");
         }
 
-        String name =
-                out.toString();
+        String name = out.toString();
 
         return switch (name) {
             case "class", "public", "private", "void" -> name + "Field";
@@ -205,8 +207,7 @@ public class GeneratedQuizableSourceGenerator {
             return "GeneratedItem";
         }
 
-        String s =
-                fieldName.trim();
+        String s = fieldName.trim();
 
         if (s.endsWith("ies") && s.length() > 3) {
             return s.substring(0, s.length() - 3) + "y";
@@ -220,8 +221,7 @@ public class GeneratedQuizableSourceGenerator {
     }
 
     private static List<String> splitWords(String s) {
-        List<String> out =
-                new ArrayList<>();
+        List<String> out = new ArrayList<>();
 
         if (s == null) {
             return out;

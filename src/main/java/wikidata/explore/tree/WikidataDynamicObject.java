@@ -19,7 +19,6 @@ import java.util.Map;
  *   2+ values -> List
  */
 public class WikidataDynamicObject extends QuizableAdapter {
-
     private String qid;
     private String name;
     private String wikidataUrl;
@@ -40,16 +39,19 @@ public class WikidataDynamicObject extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return qid; }
+
+    @Override
+    public String getDisplayName() { return name == null || name.isBlank() ? qid : name; }
+
+    public String displayLabel() { return getDisplayName(); }
 
     public String qid() {
         return qid;
     }
 
     public void qid(String qid) {
-        this.qid = qid == null ? "" : qid;
+        this.qid = normalizeQid(qid);
         this.wikidataUrl = this.qid.isBlank()
                 ? ""
                 : "https://www.wikidata.org/wiki/" + this.qid;
@@ -105,6 +107,10 @@ public class WikidataDynamicObject extends QuizableAdapter {
         dynamicFields.put(fieldName, list);
     }
 
+    private static String normalizeQid(String qid) {
+        return qid == null ? null : qid.strip().trim();
+    }
+
     private static void addIfMissing(List<Object> list, Object value) {
         for (Object item : list) {
             if (sameValue(item, value)) return;
@@ -139,8 +145,4 @@ public class WikidataDynamicObject extends QuizableAdapter {
         return name + (qid == null || qid.isBlank() ? "" : " (" + qid + ")");
     }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return null;
-    }
 }

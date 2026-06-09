@@ -70,6 +70,70 @@ public class WikidataQueryBuilder {
                 """.formatted(escaped, escaped, Math.max(1, limit));
     }
 
+    /**
+     * Discovers outgoing and incoming properties for a sample of items in a single UNION query.
+     * Each result row has a ?direction binding ("outgoing" or "incoming").
+     */
+    /**
+     * Discovers outgoing and incoming properties for a sample of items in a single query.
+     *
+     * Each direction is a fully independent subquery (GROUP BY + LIMIT inside the subquery)
+     * so Blazegraph optimizes each branch separately — same performance as two individual
+     * queries. The outer UNION just concatenates the two result sets.
+     */
+    public static String discoverProperties(Collection<String> qids, int limit) {
+        String values = wdList(qids);
+        int n = Math.max(1, limit);
+        return """
+                SELECT ?prop ?propLabel ?type ?direction ?count ?example ?exampleLabel
+                WHERE {
+                  {
+                    SELECT ?prop ?propLabel ?type ("outgoing" AS ?direction)
+                      (COUNT(DISTINCT ?item) AS ?count)
+                      (SAMPLE(?v) AS ?example)
+                      (SAMPLE(?vLabel) AS ?exampleLabel)
+                    WHERE {
+                      VALUES ?item { %s }
+                      ?item ?propUri ?v .
+                      ?prop wikibase:directClaim ?propUri .
+                      OPTIONAL { ?prop wikibase:propertyType ?type . }
+                      OPTIONAL {
+                        ?v rdfs:label ?vLabel .
+                        FILTER(LANG(?vLabel) = "en")
+                      }
+                      SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+                    }
+                    GROUP BY ?prop ?propLabel ?type
+                    ORDER BY DESC(?count)
+                    LIMIT %d
+                  }
+                  UNION
+                  {
+                    SELECT ?prop ?propLabel ?type ("incoming" AS ?direction)
+                      (COUNT(DISTINCT ?item) AS ?count)
+                      (SAMPLE(?subject) AS ?example)
+                      (SAMPLE(?subjectLabel) AS ?exampleLabel)
+                    WHERE {
+                      VALUES ?item { %s }
+                      ?subject ?propUri ?item .
+                      FILTER(STRSTARTS(STR(?subject), "http://www.wikidata.org/entity/"))
+                      ?prop wikibase:directClaim ?propUri .
+                      OPTIONAL { ?prop wikibase:propertyType ?type . }
+                      OPTIONAL {
+                        ?subject rdfs:label ?subjectLabel .
+                        FILTER(LANG(?subjectLabel) = "en")
+                      }
+                      SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+                    }
+                    GROUP BY ?prop ?propLabel ?type
+                    ORDER BY DESC(?count)
+                    LIMIT %d
+                  }
+                }
+                ORDER BY ?direction DESC(?count)
+                """.formatted(values, n, values, n);
+    }
+
     public static String outgoingDirectStatements(String qid, int limit) {
         qid = cleanQid(qid);
         return """

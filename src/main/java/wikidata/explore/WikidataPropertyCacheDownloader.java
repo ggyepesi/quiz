@@ -24,6 +24,13 @@ public class WikidataPropertyCacheDownloader {
                 String pid = b.qid("property");
                 String label = b.label("property");
                 String description = b.value("propertyDescription");
+                String datatype = b.value("datatype");
+                String isSingle = b.value("isSingle");
+                String isMulti  = b.value("isMulti");
+
+                String cardinality = "true".equals(isSingle) ? "SINGLE"
+                        : "true".equals(isMulti)             ? "COLLECTION"
+                        :                                      "AUTO";
 
                 if (pid != null && pid.matches("P\\d+")) {
                     properties.add(new WikidataProperty(
@@ -33,7 +40,11 @@ public class WikidataPropertyCacheDownloader {
                                     : label,
                             description == null
                                     ? ""
-                                    : description));
+                                    : description,
+                            datatype == null
+                                    ? ""
+                                    : datatype,
+                            cardinality));
                 }
             }
 

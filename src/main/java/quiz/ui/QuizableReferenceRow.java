@@ -88,10 +88,12 @@ public class QuizableReferenceRow extends JComponent {
         if (target == null) {
             return;
         }
+        System.out.println("QuizableReferenceRow.openInContext...");
 
         QuizablePanelConfig cfg = openConfig == null
                 ? null
                 : openConfig.copy();
+        System.out.println("QuizableReferenceRow.openInContext1...");
 
         if (cfg == null && renderContext != null) {
             cfg = renderContext.configFor(target.getClass());
@@ -100,27 +102,32 @@ public class QuizableReferenceRow extends JComponent {
         if (cfg == null) {
             cfg = QuizablePanelConfig.allWithMinorFields(target.getClass());
         }
+        System.out.println("QuizableReferenceRow.openInContext2...");
 
         cfg.setAddListener(true);
 
         String title = openTitle == null || openTitle.isBlank()
                 ? target.getName()
                 : openTitle;
+        System.out.println("QuizableReferenceRow.openInContext3...");
 
         QuizableFrame frame = new QuizableFrame(title, target, cfg);
+        System.out.println("QuizableReferenceRow.openInContext done");
     }
 
     private void openFullObject() {
         if (target == null) {
             return;
         }
+        System.out.println("QuizableReferenceRow.openFullObject...");
 
         QuizablePanelConfig cfg =
                 QuizablePanelConfig.allWithMinorFields(target.getClass())
                                    .setAddListener(true)
                                    .setThumb(true);
-
         QuizableFrame frame = new QuizableFrame(target, cfg);
+        System.out.println("QuizableReferenceRow.openFullObject done");
+
     }
 
     private String targetName() {

@@ -88,30 +88,43 @@ public final class RuleIncludedFieldSparql {
             String var = variableName(field, index);
 
             if (field.optional()) {
-                sb.append("  OPTIONAL { ?value wdt:")
+                sb.append("  OPTIONAL {\n")
+                  .append("    ?value wdt:")
                   .append(field.propertyPid())
                   .append(" ?")
                   .append(var)
-                  .append(" . }\n");
+                  .append(" .\n");
+                if (!field.isMediaField()) {
+                    sb.append("    OPTIONAL {\n")
+                      .append("      ?")
+                      .append(var)
+                      .append(" rdfs:label ?")
+                      .append(var)
+                      .append("Label .\n")
+                      .append("      FILTER(LANG(?")
+                      .append(var)
+                      .append("Label) = \"en\")\n")
+                      .append("    }\n");
+                }
+                sb.append("  }\n");
             } else {
                 sb.append("  ?value wdt:")
                   .append(field.propertyPid())
                   .append(" ?")
                   .append(var)
                   .append(" .\n");
-            }
-
-            if (!field.isMediaField()) {
-                sb.append("  OPTIONAL {\n")
-                  .append("    ?")
-                  .append(var)
-                  .append(" rdfs:label ?")
-                  .append(var)
-                  .append("Label .\n")
-                  .append("    FILTER(LANG(?")
-                  .append(var)
-                  .append("Label) = \"en\")\n")
-                  .append("  }\n");
+                if (!field.isMediaField()) {
+                    sb.append("  OPTIONAL {\n")
+                      .append("    ?")
+                      .append(var)
+                      .append(" rdfs:label ?")
+                      .append(var)
+                      .append("Label .\n")
+                      .append("    FILTER(LANG(?")
+                      .append(var)
+                      .append("Label) = \"en\")\n")
+                      .append("  }\n");
+                }
             }
 
             index++;

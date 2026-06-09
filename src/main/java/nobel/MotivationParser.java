@@ -26,14 +26,10 @@ public class MotivationParser {
         }
 
         @Override
-        public String getName() {
-            return "Motivation";
-        }
+        public String getIdentifier() { return "Motivation"; }
 
         @Override
-        public QuizableAdapter createNew() {
-            return new Motivation();
-        }
+        public String getDisplayName() { return "Motivation"; }
     }
 
     private static final List<String> ACTIONS = List.of(

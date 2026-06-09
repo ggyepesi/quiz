@@ -33,14 +33,10 @@ class LaureatesWithMotivation extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return "";
-    }
+    public String getIdentifier() { return ""; }
 
     @Override
-    public QuizableAdapter createNew() {
-        return new LaureatesWithMotivation();
-    }
+    public String getDisplayName() { return ""; }
 }
 
 class Laureate extends QuizableAdapter {
@@ -60,9 +56,10 @@ class Laureate extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return name; }
+
+    @Override
+    public String getDisplayName() { return name; }
 
     @Override
     public QuizableAdapter createNew() {

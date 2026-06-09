@@ -31,9 +31,10 @@ public class TopQidStatement extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return pid; }
+
+    @Override
+    public String getDisplayName() { return name; }
 
     public String pid() {
         return pid;
@@ -83,8 +84,4 @@ public class TopQidStatement extends QuizableAdapter {
         return name + " (" + pid + ") -> " + valueDisplay();
     }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return null;
-    }
 }

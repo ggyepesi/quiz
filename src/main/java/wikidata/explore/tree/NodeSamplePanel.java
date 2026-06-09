@@ -2,11 +2,13 @@ package wikidata.explore.tree;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
+import wikidata.explore.model.FieldCardinality;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -35,6 +37,8 @@ public class NodeSamplePanel extends JPanel {
             s -> {
             };
 
+    private Consumer<FieldCardinality> onCardinalitySuggested = c -> {};
+
     private SwingWorker<List<Row>, Void> currentWorker;
 
     private final JButton classSampleButton =
@@ -48,6 +52,12 @@ public class NodeSamplePanel extends JPanel {
 
     private final JLabel statusLabel =
             new JLabel(" ");
+
+    private final JLabel contextLabel =
+            new JLabel(" ");
+
+    private final JLabel cardinalityHintLabel =
+            new JLabel("");
 
     private final DefaultTableModel tableModel =
             new DefaultTableModel(
@@ -71,9 +81,11 @@ public class NodeSamplePanel extends JPanel {
 
     public void setClient(WikidataSparqlClient client) {
         this.client = client;
-        boolean enabled = client != null;
-        classSampleButton.setEnabled(enabled);
-        fieldSampleButton.setEnabled(enabled);
+        if (client != null) {
+            client.registerRunButton(classSampleButton);
+            client.registerRunButton(fieldSampleButton);
+            client.registerCancelButton(cancelButton);
+        }
     }
 
     public void setApplyEdits(Runnable applyEdits) {
@@ -100,9 +112,15 @@ public class NodeSamplePanel extends JPanel {
                 } : log;
     }
 
+    public void onCardinalitySuggested(Consumer<FieldCardinality> c) {
+        this.onCardinalitySuggested = c == null ? card -> {} : c;
+    }
+
     private void buildUi() {
         table.setFillsViewportHeight(true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+
+        installLinkBehavior();
 
         sparqlArea.setEditable(false);
         sparqlArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
@@ -113,13 +131,22 @@ public class NodeSamplePanel extends JPanel {
         tabs.addTab("Results", new JScrollPane(table));
         tabs.addTab("SPARQL", new JScrollPane(sparqlArea));
 
+        contextLabel.setFont(contextLabel.getFont().deriveFont(Font.BOLD));
+
         JPanel top =
+                new JPanel(new BorderLayout(4, 2));
+
+        JPanel buttonRow =
                 new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
 
-        top.add(classSampleButton);
-        top.add(fieldSampleButton);
-        top.add(cancelButton);
-        top.add(statusLabel);
+        buttonRow.add(classSampleButton);
+        buttonRow.add(fieldSampleButton);
+        buttonRow.add(cancelButton);
+        buttonRow.add(statusLabel);
+        buttonRow.add(cardinalityHintLabel);
+
+        top.add(contextLabel, BorderLayout.NORTH);
+        top.add(buttonRow, BorderLayout.CENTER);
 
         add(top, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
@@ -127,10 +154,15 @@ public class NodeSamplePanel extends JPanel {
         classSampleButton.setEnabled(false);
         fieldSampleButton.setEnabled(false);
         cancelButton.setEnabled(false);
+        cardinalityHintLabel.setVisible(false);
 
         classSampleButton.addActionListener(e -> runClassSample());
         fieldSampleButton.addActionListener(e -> runFieldSample());
         cancelButton.addActionListener(e -> cancelSample());
+    }
+
+    public void triggerFieldSample() {
+        runFieldSample();
     }
 
     private void runClassSample() {
@@ -148,6 +180,14 @@ public class NodeSamplePanel extends JPanel {
             log.accept("SAMPLE class skipped: no class selected.\n");
             return;
         }
+
+        String nodeName   = node.name() != null ? node.name() : "?";
+        String sourceQid  = node.sourceQid() != null && !node.sourceQid().isBlank()
+                ? " (" + node.sourceQid() + ")" : "";
+        contextLabel.setText("Class instances:  " + nodeName + sourceQid);
+
+        tableModel.setColumnIdentifiers(
+                new Object[]{"QID", nodeName, "", ""});
 
         RuleNode sample =
                 sampleNode(node, SAMPLE_LIMIT);
@@ -229,8 +269,27 @@ public class NodeSamplePanel extends JPanel {
             return;
         }
 
+        String ownerName  = context.ownerClass().className();
+        String fieldPid   = includedField.propertyPid() != null ? includedField.propertyPid() : "?";
+        String propLabel  = includedField.propertyLabel() != null && !includedField.propertyLabel().isBlank()
+                ? includedField.propertyLabel()
+                : (context.field().name() != null ? context.field().name() : fieldPid);
+        contextLabel.setText(
+                ownerName
+                + "  —  " + fieldPid
+                + " · " + propLabel
+                + "  →  value");
+
+        tableModel.setColumnIdentifiers(new Object[]{
+                ownerName + " QID",
+                ownerName,
+                fieldPid + " · " + propLabel,
+                propLabel + " label"
+        });
+
         tableModel.setRowCount(0);
-        statusLabel.setText("Sampling parent objects...");
+        cardinalityHintLabel.setVisible(false);
+        statusLabel.setText("Sampling field values...");
         setBusy(true);
 
         log.accept("\nSAMPLE selected field: "
@@ -257,7 +316,8 @@ public class NodeSamplePanel extends JPanel {
                                 RuleTreeQueries.fieldValueSampleQuery(
                                         includedField,
                                         parentQids,
-                                        parentSample.labelConfig());
+                                        parentSample.labelConfig(),
+                                        SAMPLE_LIMIT * 3);
 
                         SwingUtilities.invokeLater(() ->
                                 sparqlArea.setText(sparql));
@@ -316,11 +376,53 @@ public class NodeSamplePanel extends JPanel {
 
                     @Override
                     protected void done() {
-                        finishSample("field");
+                        finishFieldSample();
                     }
                 };
 
         currentWorker.execute();
+    }
+
+    private void finishFieldSample() {
+        finishSample("field");
+
+        if (currentWorker != null) {
+            return;
+        }
+
+        // currentWorker is null after finishSample clears it — rows are in tableModel
+        int rowCount = tableModel.getRowCount();
+        if (rowCount == 0) {
+            cardinalityHintLabel.setVisible(false);
+            return;
+        }
+
+        Map<String, Integer> valuesPerParent = new HashMap<>();
+        for (int i = 0; i < rowCount; i++) {
+            String parentQid = (String) tableModel.getValueAt(i, 0);
+            String value     = (String) tableModel.getValueAt(i, 2);
+            if (parentQid != null && value != null && !value.isBlank()) {
+                valuesPerParent.merge(parentQid, 1, Integer::sum);
+            }
+        }
+
+        int maxValues = valuesPerParent.values().stream()
+                .mapToInt(Integer::intValue).max().orElse(0);
+        long multiParents = valuesPerParent.values().stream()
+                .filter(n -> n > 1).count();
+
+        FieldCardinality detected =
+                maxValues > 1 ? FieldCardinality.COLLECTION : FieldCardinality.SINGLE;
+
+        String hint = detected == FieldCardinality.COLLECTION
+                ? "Detected: Collection (" + multiParents + " of "
+                        + valuesPerParent.size() + " sampled entities have multiple values)"
+                : "Detected: Single (all sampled entities have at most one value)";
+
+        cardinalityHintLabel.setText(hint + " → applied");
+        cardinalityHintLabel.setVisible(true);
+
+        onCardinalitySuggested.accept(detected);
     }
 
     private List<Parent> loadParentSample(RuleNode parentSample)
@@ -413,13 +515,11 @@ public class NodeSamplePanel extends JPanel {
             log.accept("Cancelling sample...\n");
             statusLabel.setText("Cancelling sample...");
             currentWorker.cancel(true);
+            if (client != null) client.cancelCurrentQuery();
         }
     }
 
     private void setBusy(boolean busy) {
-        classSampleButton.setEnabled(!busy && client != null);
-        fieldSampleButton.setEnabled(!busy && client != null);
-        cancelButton.setEnabled(busy);
         setCursor(Cursor.getPredefinedCursor(
                 busy ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
     }
@@ -457,5 +557,61 @@ public class NodeSamplePanel extends JPanel {
             String parentLabel,
             String value,
             String valueLabel) {
+    }
+
+    private void installLinkBehavior() {
+        javax.swing.table.DefaultTableCellRenderer linkRenderer =
+                new javax.swing.table.DefaultTableCellRenderer() {
+                    @Override
+                    public java.awt.Component getTableCellRendererComponent(
+                            JTable t, Object value, boolean sel, boolean focus, int row, int col) {
+                        super.getTableCellRendererComponent(t, value, sel, focus, row, col);
+                        String text = value == null ? "" : value.toString();
+                        if (!sel && text.matches("[PQ]\\d+"))
+                            setForeground(new java.awt.Color(0, 80, 200));
+                        else if (!sel)
+                            setForeground(t.getForeground());
+                        return this;
+                    }
+                };
+        table.getColumnModel().getColumn(0).setCellRenderer(linkRenderer);
+        table.getColumnModel().getColumn(2).setCellRenderer(linkRenderer);
+
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                int viewRow = table.rowAtPoint(e.getPoint());
+                int viewCol = table.columnAtPoint(e.getPoint());
+                if (viewRow < 0) return;
+                Object val = table.getValueAt(viewRow, viewCol);
+                String text = val == null ? "" : val.toString();
+                if (text.matches("Q\\d+"))
+                    openInBrowser("https://www.wikidata.org/wiki/" + text);
+                else if (text.matches("P\\d+"))
+                    openInBrowser("https://www.wikidata.org/wiki/Property:" + text);
+                else if (text.startsWith("http"))
+                    openInBrowser(text);
+            }
+        });
+        table.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override public void mouseMoved(java.awt.event.MouseEvent e) {
+                int viewRow = table.rowAtPoint(e.getPoint());
+                int viewCol = table.columnAtPoint(e.getPoint());
+                boolean link = false;
+                if (viewRow >= 0 && (viewCol == 0 || viewCol == 2)) {
+                    Object val = table.getValueAt(viewRow, viewCol);
+                    String text = val == null ? "" : val.toString();
+                    link = text.matches("[PQ]\\d+") || text.startsWith("http");
+                }
+                table.setCursor(link
+                        ? java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+                        : java.awt.Cursor.getDefaultCursor());
+            }
+        });
+    }
+
+    private static void openInBrowser(String url) {
+        try {
+            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+        } catch (Exception ignored) {}
     }
 }

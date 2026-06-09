@@ -43,12 +43,8 @@ public class NobelPrize extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return name; }
 
     @Override
-    public QuizableAdapter createNew() {
-        return new NobelPrize();
-    }
+    public String getDisplayName() { return name; }
 }

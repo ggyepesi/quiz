@@ -237,7 +237,7 @@ public class RuleNodeEditorPanel extends JPanel {
             String pid,
             String label,
             String fieldName,
-            NodePropertyDiscoveryPanel.PropertyKind kind) {
+            PropertyDiscoveryPanel.PropertyKind kind) {
 
         applyNodeEdits();
 
@@ -247,7 +247,7 @@ public class RuleNodeEditorPanel extends JPanel {
 
         RuleIncludedField.FieldKind fieldKind =
                 switch (kind) {
-                    case MEDIA -> RuleIncludedField.FieldKind.MEDIA;
+                    case MEDIA  -> RuleIncludedField.FieldKind.MEDIA;
                     case ENTITY -> RuleIncludedField.FieldKind.ENTITY;
                     case SCALAR -> RuleIncludedField.FieldKind.AUTO;
                 };

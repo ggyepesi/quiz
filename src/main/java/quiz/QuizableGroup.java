@@ -22,6 +22,12 @@ public class QuizableGroup extends QuizableAdapter {
     }
 
     @Override
+    public String getIdentifier() { return name; }
+
+    @Override
+    public String getDisplayName() { return name; }
+
+    @Override
     public QuizableGroup createNew() {
         return new QuizableGroup("");
     }
@@ -39,22 +45,22 @@ public class QuizableGroup extends QuizableAdapter {
     }
 
     public void addChild(QuizableGroup child) {
-        if (child == null || child.getName() == null) {
+        if (child == null || child.getIdentifier() == null) {
             return;
         }
 
-        children.putIfAbsent(child.getName(), child);
+        children.putIfAbsent(child.getIdentifier(), child);
         child.parent = this;
     }
 
     public void addMember(Quizable member) {
-        if (member == null || member.getName() == null) {
+        if (member == null || member.getIdentifier() == null) {
             return;
         }
 
         boolean addedHere =
                 members.putIfAbsent(
-                        member.getName(),
+                        member.getIdentifier(),
                         member
                 ) == null;
 
@@ -103,17 +109,12 @@ public class QuizableGroup extends QuizableAdapter {
 
     public String getFullName() {
         return parent == null
-                ? getName()
-                : parent.getFullName() + "/" + getName();
+                ? getDisplayName()
+                : parent.getFullName() + "/" + getDisplayName();
     }
 
     @Override
     public String toString() {
-        return getName();
-    }
-
-    @Override
-    public String getName() {
-        return name;
+        return getDisplayName();
     }
 }

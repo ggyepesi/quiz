@@ -148,16 +148,18 @@ public final class WikidataExplorerQueries {
     }
 
     public static String allPropertiesForCache() {
-        return """
-            SELECT ?property ?propertyLabel ?propertyDescription WHERE {
-              ?property a wikibase:Property .
-
-              SERVICE wikibase:label {
-                bd:serviceParam wikibase:language "en" .
-              }
-            }
-            ORDER BY ?propertyLabel
-            """;
+        return new WikidataQueryBuilder()
+                .select("property", "propertyLabel", "propertyDescription", "datatype")
+                .triple("property", "a", "wikibase:Property")
+                .triple("property", "wikibase:propertyType", "typeUri")
+                .bind("STRAFTER(STR(?typeUri), \"#\")", "datatype")
+                .exists("isSingle",
+                        "?property p:P2302 ?cs1 . ?cs1 ps:P2302 wd:Q19474404 .")
+                .exists("isMulti",
+                        "?property p:P2302 ?cs2 . ?cs2 ps:P2302 wd:Q21510857 .")
+                .label("property")
+                .orderBy("propertyLabel")
+                .build();
     }
 
     private static String cleanPid(String pid) {

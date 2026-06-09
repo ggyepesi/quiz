@@ -6,11 +6,9 @@ import javax.swing.*;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
 import java.awt.*;
 
-/**
- * Left panel: visible generated class model.
- */
 public class SingleRootClassModelPanel extends JPanel {
 
     private final GeneratedProjectModel projectModel;
@@ -57,12 +55,82 @@ public class SingleRootClassModelPanel extends JPanel {
     }
 
     public void refresh() {
+        Object selected = selectedUserObject();
+
         rootTreeNode = buildTree();
         treeModel.setRoot(rootTreeNode);
         treeModel.reload();
-        for (int i = 0; i < tree.getRowCount(); i++) {
-            tree.expandRow(i);
+
+        expandAll();
+
+        if (selected instanceof GeneratedFieldModel f) {
+            selectField(f);
+        } else if (selected instanceof GeneratedClassModel c) {
+            selectClass(c);
         }
+    }
+
+    public void selectField(GeneratedFieldModel field) {
+        if (field == null) {
+            return;
+        }
+
+        DefaultMutableTreeNode node =
+                findNodeForUserObject(rootTreeNode, field);
+
+        if (node == null) {
+            return;
+        }
+
+        selectNode(node);
+    }
+
+    public void selectClass(GeneratedClassModel cls) {
+        if (cls == null) {
+            return;
+        }
+
+        DefaultMutableTreeNode node =
+                findNodeForUserObject(rootTreeNode, cls);
+
+        if (node == null) {
+            return;
+        }
+
+        selectNode(node);
+    }
+
+    private void selectNode(DefaultMutableTreeNode node) {
+        TreePath path = new TreePath(node.getPath());
+
+        tree.setSelectionPath(path);
+        tree.scrollPathToVisible(path);
+    }
+
+    private DefaultMutableTreeNode findNodeForUserObject(
+            DefaultMutableTreeNode node,
+            Object target) {
+
+        if (node == null || target == null) {
+            return null;
+        }
+
+        if (node.getUserObject() == target) {
+            return node;
+        }
+
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode found =
+                    findNodeForUserObject(
+                            (DefaultMutableTreeNode) node.getChildAt(i),
+                            target);
+
+            if (found != null) {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private void buildUi() {
@@ -116,6 +184,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
         rootClass().className(s);
         refresh();
+        selectClass(rootClass());
     }
 
     private void addField() {
@@ -129,12 +198,14 @@ public class SingleRootClassModelPanel extends JPanel {
             return;
         }
 
-        rootClass().addField(
-                name,
-                FieldType.AUTO,
-                FieldCardinality.AUTO);
+        GeneratedFieldModel f =
+                rootClass().addField(
+                        name,
+                        FieldType.AUTO,
+                        FieldCardinality.AUTO);
 
         refresh();
+        selectField(f);
     }
 
     private void removeSelectedField() {
@@ -154,5 +225,11 @@ public class SingleRootClassModelPanel extends JPanel {
 
         rootClass().fields().remove(f);
         refresh();
+    }
+
+    private void expandAll() {
+        for (int i = 0; i < tree.getRowCount(); i++) {
+            tree.expandRow(i);
+        }
     }
 }

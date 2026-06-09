@@ -39,7 +39,12 @@ public class WikidataEntity extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
+    public String getIdentifier() {
+        return qid == null ? "" : qid;
+    }
+
+    @Override
+    public String getDisplayName() {
         return name == null ? "" : name;
     }
 

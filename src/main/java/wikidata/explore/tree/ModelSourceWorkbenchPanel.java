@@ -1,6 +1,7 @@
 package wikidata.explore.tree;
 
 import wikidata.WikidataSparqlClient;
+import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -9,15 +10,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.function.Consumer;
 
-/**
- * Middle panel.
- *
- * Switches between:
- * - ClassSourcePanel for selected root class
- * - FieldSourcePanel for selected field
- *
- * Also supplies Sample with either a class context or field context.
- */
 public class ModelSourceWorkbenchPanel extends JPanel {
 
     private final GeneratedProjectModel projectModel;
@@ -32,13 +24,13 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             new JPanel(new CardLayout());
 
     private final JTabbedPane helperTabs =
-            new JTabbedPane();
+            new JTabbedPane(JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT);
 
     private final NodeSamplePanel samplePanel =
             new NodeSamplePanel();
 
-    private final NodePropertyDiscoveryPanel discoveryPanel =
-            new NodePropertyDiscoveryPanel();
+    private final PropertyDiscoveryPanel discoveryPanel =
+            new PropertyDiscoveryPanel();
 
     private final WikiProjectSeedPanel wikiProjectPanel =
             new WikiProjectSeedPanel();
@@ -48,9 +40,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
     private Object selected;
 
-    private Consumer<Void> afterChange =
-            v -> {
-            };
+    private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
 
     public ModelSourceWorkbenchPanel(GeneratedProjectModel projectModel) {
         super(new BorderLayout(4, 4));
@@ -65,12 +55,18 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     }
 
     public void afterChange(Consumer<Void> afterChange) {
-        this.afterChange =
-                afterChange == null ? v -> {
-                } : afterChange;
+        Consumer<Void> afterChange1 =
+                afterChange == null ? v -> {} : afterChange;
 
-        classSourcePanel.afterChange(this.afterChange);
-        fieldSourcePanel.afterChange(this.afterChange);
+        classSourcePanel.afterChange(afterChange1);
+        fieldSourcePanel.afterChange(afterChange1);
+    }
+
+    public void afterApplyField(
+            Consumer<GeneratedFieldModel> afterApplyField) {
+
+        this.afterApplyField =
+                afterApplyField == null ? f -> {} : afterApplyField;
     }
 
     public Object selected() {
@@ -81,7 +77,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         return samplePanel;
     }
 
-    public NodePropertyDiscoveryPanel discoveryPanel() {
+    public PropertyDiscoveryPanel discoveryPanel() {
         return discoveryPanel;
     }
 
@@ -115,9 +111,6 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             return RuleTreeCompiler.compileClass(c);
         }
 
-        /*
-         * For fields, class-sample is still the owning root class.
-         */
         if (selected instanceof GeneratedFieldModel) {
             return RuleTreeCompiler.compileClass(projectModel.rootClass());
         }
@@ -134,8 +127,12 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     }
 
     public void useProperty(String pid, String label) {
-        if (selected instanceof GeneratedFieldModel) {
+        if (selected instanceof GeneratedFieldModel f) {
             fieldSourcePanel.useProperty(pid, label);
+            if (f.cardinality() == FieldCardinality.AUTO) {
+                helperTabs.setSelectedComponent(samplePanel);
+                samplePanel.triggerFieldSample();
+            }
         }
     }
 
@@ -143,6 +140,43 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         cardPanel.add(classSourcePanel, "class");
         cardPanel.add(fieldSourcePanel, "field");
         cardPanel.add(new JLabel("Select the class or a field."), "empty");
+
+        fieldSourcePanel.setPropertyCache(propertyPanel.propertyCache());
+        fieldSourcePanel.setProjectModel(projectModel);
+
+        fieldSourcePanel.onSampleRequested(() -> {
+            helperTabs.setSelectedComponent(samplePanel);
+            samplePanel.triggerFieldSample();
+        });
+
+        samplePanel.onCardinalitySuggested(cardinality -> {
+            if (selected instanceof GeneratedFieldModel f) {
+                f.cardinality(cardinality);
+                fieldSourcePanel.edit(f);
+                afterApplyField.accept(f);
+            }
+        });
+
+        fieldSourcePanel.afterApplyField(f -> {
+            selected = f;
+            fieldSourcePanel.edit(f);
+            afterApplyField.accept(f);
+        });
+
+        discoveryPanel.setNodeSupplier(this::temporaryRuleNodeForSelected);
+        discoveryPanel.onAddField(p -> useProperty(p.pid(), p.label()));
+        discoveryPanel.onAddAllowedQid(qid -> {
+            if (selected instanceof GeneratedFieldModel f) {
+                f.mapping().allowedQids().add(qid);
+                fieldSourcePanel.edit(f);
+            }
+        });
+        discoveryPanel.onAddExcludedQid(qid -> {
+            if (selected instanceof GeneratedFieldModel f) {
+                f.mapping().excludedQids().add(qid);
+                fieldSourcePanel.edit(f);
+            }
+        });
 
         helperTabs.addTab("Sample", samplePanel);
         helperTabs.addTab("Discover", discoveryPanel);

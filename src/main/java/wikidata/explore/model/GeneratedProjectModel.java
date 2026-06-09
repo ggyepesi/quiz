@@ -1,12 +1,24 @@
 package wikidata.explore.model;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
- * Project wrapper. For now the visible UI exposes a single root class only.
+ * Project wrapper. Holds a registry of configured classes.
+ * The root class is always at index 0 of the class list.
  */
 public class GeneratedProjectModel {
 
     private String name = "Generated Wikidata Project";
-    private GeneratedClassModel rootClass = new GeneratedClassModel("Constellation");
+    private GeneratedClassModel rootClass;
+
+    private final List<GeneratedClassModel> classes = new ArrayList<>();
+
+    public GeneratedProjectModel() {
+        rootClass = new GeneratedClassModel("Constellation");
+        classes.add(rootClass);
+    }
 
     public static GeneratedProjectModel constellationDemo() {
         GeneratedProjectModel p = new GeneratedProjectModel();
@@ -35,5 +47,21 @@ public class GeneratedProjectModel {
     public void rootClass(GeneratedClassModel rootClass) {
         this.rootClass =
                 rootClass == null ? new GeneratedClassModel("GeneratedClass") : rootClass;
+        if (!classes.contains(this.rootClass)) {
+            classes.add(0, this.rootClass);
+        } else {
+            classes.remove(this.rootClass);
+            classes.add(0, this.rootClass);
+        }
+    }
+
+    public List<GeneratedClassModel> classes() {
+        return Collections.unmodifiableList(classes);
+    }
+
+    public void addClass(GeneratedClassModel c) {
+        if (c != null && !classes.contains(c)) {
+            classes.add(c);
+        }
     }
 }

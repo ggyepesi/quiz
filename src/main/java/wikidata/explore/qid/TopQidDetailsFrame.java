@@ -58,6 +58,7 @@ public class TopQidDetailsFrame extends JFrame {
         loadPropertyCache();
         buildUi();
         wireActions();
+        client.registerCancelButton(cancelButton);
         loadStatements();
 
         setSize(1000, 760);
@@ -184,7 +185,6 @@ public class TopQidDetailsFrame extends JFrame {
         }
 
         statusLabel.setText("Waiting for SPARQL reply...");
-        cancelButton.setEnabled(true);
         progressBar.setIndeterminate(true);
         progressBar.setVisible(true);
         resultPanel.setActionsEnabled(false);
@@ -267,7 +267,6 @@ public class TopQidDetailsFrame extends JFrame {
                                 System.currentTimeMillis()
                                         - currentStartMillis;
 
-                        cancelButton.setEnabled(false);
                         progressBar.setIndeterminate(false);
                         progressBar.setVisible(false);
                         resultPanel.setActionsEnabled(true);
@@ -328,8 +327,8 @@ public class TopQidDetailsFrame extends JFrame {
     private void cancelCurrentQuery() {
         if (currentWorker != null && !currentWorker.isDone()) {
             currentWorker.cancel(true);
+            client.cancelCurrentQuery();
             statusLabel.setText("Cancelling...");
-            cancelButton.setEnabled(false);
         }
     }
 

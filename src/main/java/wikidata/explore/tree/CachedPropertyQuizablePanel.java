@@ -13,7 +13,9 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class CachedPropertyQuizablePanel extends JPanel {
@@ -35,6 +37,9 @@ public class CachedPropertyQuizablePanel extends JPanel {
 
     private final List<WikidataPropertyQuizable> properties =
             new ArrayList<>();
+
+    private final Map<String, WikidataProperty> cache =
+            new LinkedHashMap<>();
 
     public CachedPropertyQuizablePanel() {
         super(new BorderLayout(6, 6));
@@ -61,13 +66,19 @@ public class CachedPropertyQuizablePanel extends JPanel {
                 propertySelected == null ? p -> {} : propertySelected;
     }
 
+    public Map<String, WikidataProperty> propertyCache() {
+        return cache;
+    }
+
     private void loadProperties() {
         properties.clear();
+        cache.clear();
         try {
             WikidataPropertyStore store = new WikidataPropertyStore();
 
             for (WikidataProperty p : store.read()) {
                 properties.add(new WikidataPropertyQuizable(p));
+                cache.put(p.pid(), p);
             }
 
             rebuildCards();

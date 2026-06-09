@@ -5,27 +5,33 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class WikidataObjectRegistry {
-    private final Map<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
 
+    /**
+     * Canonicalizes WikidataDynamicObjects by QID.
+     *
+     * QID defines identity; labels, URLs and dynamic fields are attributes.
+     * Therefore all references to the same QID resolve to the same object.
+     */
+    private final Map<String, WikidataDynamicObject> byQid =
+            new LinkedHashMap<>();
+
+    public WikidataDynamicObject getOrCreate1(String qid, String label) {
+        return new WikidataDynamicObject(qid, label);
+    }
     public WikidataDynamicObject getOrCreate(String qid, String label) {
-        qid = cleanQid(qid);
-        if (qid.isBlank()) return new WikidataDynamicObject("", label);
+        String key = cleanQid(qid);
+        if (key.isBlank()) {
+            throw new IllegalArgumentException("null/blank qid");
+        }
 
-        String key = qid;
-        return byQid.compute(key, (k, existing) -> {
-            if (existing != null) {
-                if ((existing.getName() == null || existing.getName().isBlank())
-                        && label != null && !label.isBlank()) {
-                    existing.name(label);
-                }
-                return existing;
-            }
-            return new WikidataDynamicObject(key, label);
-        });
+        return byQid.computeIfAbsent(
+                key,
+                k -> new WikidataDynamicObject(k, label));
     }
 
     public WikidataDynamicObject get(String qid) {
-        return byQid.get(cleanQid(qid));
+        String key = cleanQid(qid);
+        return key.isBlank() ? null : byQid.get(key);
     }
 
     public Collection<WikidataDynamicObject> values() {
@@ -34,10 +40,18 @@ public class WikidataObjectRegistry {
 
     private static String cleanQid(String qid) {
         if (qid == null) return "";
+
         qid = qid.trim();
-        if (qid.startsWith("wd:")) qid = qid.substring(3);
+
+        if (qid.startsWith("wd:")) {
+            qid = qid.substring(3);
+        }
+
         int slash = qid.lastIndexOf('/');
-        if (slash >= 0) qid = qid.substring(slash + 1);
+        if (slash >= 0) {
+            qid = qid.substring(slash + 1);
+        }
+
         return qid.trim();
     }
 }

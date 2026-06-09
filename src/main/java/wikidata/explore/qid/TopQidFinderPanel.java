@@ -65,6 +65,9 @@ public class TopQidFinderPanel extends JPanel {
 
         buildUi();
         wireActions();
+
+        client.registerRunButton(searchButton);
+        client.registerCancelButton(cancelButton);
     }
 
     public void onUseSelected(
@@ -353,8 +356,8 @@ public class TopQidFinderPanel extends JPanel {
     private void cancelCurrentQuery() {
         if (currentWorker != null && !currentWorker.isDone()) {
             currentWorker.cancel(true);
+            client.cancelCurrentQuery();
             statusLabel.setText("Cancelling...");
-            cancelButton.setEnabled(false);
         }
     }
 
@@ -430,8 +433,6 @@ public class TopQidFinderPanel extends JPanel {
     }
 
     private void setBusy(boolean busy) {
-        searchButton.setEnabled(!busy);
-        cancelButton.setEnabled(busy);
         searchField.setEnabled(!busy);
         limitSpinner.setEnabled(!busy);
         exactAlsoBox.setEnabled(!busy);

@@ -28,19 +28,17 @@ public class Motivation extends QuizableAdapter {
     public List<String> getKeywords() { return keywords; }
 
     @Override
-    public String getName() {
+    public String getIdentifier() {
         if (awardReason != null && !awardReason.isBlank()) return awardReason;
         if (!topics.isEmpty()) return String.join(", ", topics);
         return originalText == null ? "Motivation" : originalText;
     }
 
     @Override
-    public String toString() {
-        return getName();
-    }
+    public String getDisplayName() { return getIdentifier(); }
 
     @Override
-    public QuizableAdapter createNew() {
-        return new Motivation();
+    public String toString() {
+        return getDisplayName();
     }
 }

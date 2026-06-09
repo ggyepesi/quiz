@@ -60,6 +60,7 @@ public class NodePropertyDiscoveryPanel extends JPanel {
             "http://wikiba.se/ontology#Math";
 
     private WikidataSparqlClient client;
+    private Consumer<String> log = s -> {};
     private Runnable applyEdits =
             () -> {
             };
@@ -113,7 +114,7 @@ public class NodePropertyDiscoveryPanel extends JPanel {
 
     public void setClient(WikidataSparqlClient client) {
         this.client = client;
-        discoverButton.setEnabled(client != null);
+        if (client != null) client.registerRunButton(discoverButton);
     }
 
     public void setApplyEdits(Runnable applyEdits) {
@@ -127,6 +128,10 @@ public class NodePropertyDiscoveryPanel extends JPanel {
                 supplier == null ? () -> null : supplier;
 
         refreshNodeTitle();
+    }
+
+    public void log(Consumer<String> log) {
+        this.log = log == null ? s -> {} : log;
     }
 
     public void onAddChildEdge(Consumer<DiscoveredProperty> handler) {
@@ -324,7 +329,6 @@ public class NodePropertyDiscoveryPanel extends JPanel {
         statusLabel.setText("Fetching sample QIDs...");
         properties.clear();
         tableModel.fireTableDataChanged();
-        discoverButton.setEnabled(false);
 
         SwingWorker<List<DiscoveredProperty>, String> worker =
                 new SwingWorker<>() {
@@ -369,8 +373,6 @@ public class NodePropertyDiscoveryPanel extends JPanel {
 
                     @Override
                     protected void done() {
-                        discoverButton.setEnabled(true);
-
                         try {
                             List<DiscoveredProperty> result =
                                     get();
@@ -401,6 +403,9 @@ public class NodePropertyDiscoveryPanel extends JPanel {
         String sparql =
                 RuleTreeExtractor.valuesQuery(sample);
 
+        log.accept("\nDiscover: sample QIDs for " + node.name() + "\n"
+                + "-".repeat(40) + "\n" + sparql + "\n");
+
         List<String> qids =
                 new ArrayList<>();
 
@@ -422,6 +427,9 @@ public class NodePropertyDiscoveryPanel extends JPanel {
 
         String sparql =
                 buildProfileQuery(qids);
+
+        log.accept("\nDiscover: profile properties (" + qids.size() + " items)\n"
+                + "-".repeat(40) + "\n" + sparql + "\n");
 
         List<DiscoveredProperty> result =
                 new ArrayList<>();

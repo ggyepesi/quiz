@@ -29,7 +29,7 @@ public class WikidataRuleTreeFrame extends JFrame {
     private final CachedPropertyQuizablePanel propertyPanel = new CachedPropertyQuizablePanel();
     private final WikidataObjectTreePanel resultPanel = new WikidataObjectTreePanel();
     private final NodeSamplePanel samplePanel = new NodeSamplePanel();
-    private final NodePropertyDiscoveryPanel discoveryPanel = new NodePropertyDiscoveryPanel();
+    private final PropertyDiscoveryPanel discoveryPanel = new PropertyDiscoveryPanel();
     private final WikiProjectSeedPanel wikiProjectPanel = new WikiProjectSeedPanel();
     private final JTabbedPane nodeWorkbenchTabs = new JTabbedPane();
     private SwingWorker<List<WikidataDynamicObject>, String> currentLoadWorker;
@@ -212,22 +212,16 @@ public class WikidataRuleTreeFrame extends JFrame {
         });
         discoveryPanel.setNodeSupplier(editorPanel::currentNode);
 
-        discoveryPanel.onAddChildEdge(p -> {
-            editorPanel.addChildEdgeFromProperty(p.pid(), p.label(), p.fieldName(), true);
-
+        discoveryPanel.onAddField(p -> {
+            if (p.kind() == PropertyDiscoveryPanel.PropertyKind.ENTITY) {
+                editorPanel.addChildEdgeFromProperty(p.pid(), p.label(), p.fieldName(), true);
+                appendDebug("Added discovered property as child edge: " + p.label() + " (" + p.pid() + ")\n");
+            } else {
+                editorPanel.addIncludedFieldFromProperty(p.pid(), p.label(), p.fieldName(), p.kind());
+                appendDebug("Added discovered property as included field: " + p.label() + " (" + p.pid() + ")\n");
+            }
             ruleTreePanel.refresh();
             nodeWorkbenchTabs.setSelectedComponent(editorPanel);
-
-            appendDebug("Added discovered property as child edge: " + p.label() + " (" + p.pid() + ")\n");
-        });
-
-        discoveryPanel.onAddIncludedField(p -> {
-            editorPanel.addIncludedFieldFromProperty(p.pid(), p.label(), p.fieldName(), p.kind());
-
-            ruleTreePanel.refresh();
-            nodeWorkbenchTabs.setSelectedComponent(editorPanel);
-
-            appendDebug("Added discovered property as included field: " + p.label() + " (" + p.pid() + ")\n");
         });
 
         discoveryPanel.onAddAllowedQid(qid -> {

@@ -65,8 +65,19 @@ public final class QuizableValueRenderer {
         return panel;
     }
 
-    private static JComponent quizableComponent(Set<Object> visited, Set<Object> ancestors, QuizableRenderContext renderContext, String fieldName, List<String> fieldPath, Quizable q, QuizablePanelConfig config, boolean fill) {
+    private static JComponent quizableComponent(
+            Set<Object> visited, Set<Object> ancestors, QuizableRenderContext renderContext,
+            String fieldName, List<String> fieldPath, Quizable q, QuizablePanelConfig config, boolean fill) {
         JPanel panel = basePanel(fieldName, fieldPath, q);
+
+        for (Object qu : visited) {
+            System.out.println("  visited " + qu);
+            if (((Quizable)qu).getIdentifier().equals(q.getIdentifier())) {
+                System.out.println("QuizableValueRenderer shouldn't be here " +
+                                           "field " + q.getClass() +
+                                           "." + q.getDisplayName());
+            }
+        }
 
         QuizablePanel nested = new QuizablePanel(visited, ancestors, renderContext, false, q, config, fill, fieldPath);
 
@@ -153,10 +164,15 @@ public final class QuizableValueRenderer {
             return imageComponent("", fieldPath, imagePane);
         }
 
-        if (item instanceof Quizable q) {
-            QuizablePanel nested = new QuizablePanel(copyIdentitySet(visited), copyIdentitySet(ancestors), renderContext, false, q, config, fill, fieldPath);
 
-            return nested.hasRenderedConfiguredContent() ? nested : null;
+        if (item instanceof Quizable q) {
+            return new QuizableReferenceRow(
+                    "",
+                    fieldPath,
+                    q,
+                    renderContext,
+                    config,
+                    q.getName());
         }
 
         if (item instanceof Collection<?> collection) {

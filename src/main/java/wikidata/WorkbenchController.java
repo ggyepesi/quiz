@@ -39,6 +39,7 @@ public class WorkbenchController {
         this.state = state;
         this.output = output;
         output.getCancelButton().addActionListener(e -> cancelCurrentQuery());
+        client.registerCancelButton(output.getCancelButton());
     }
 
     public void downloadPropertyCache(
@@ -101,7 +102,9 @@ public class WorkbenchController {
                 properties.add(new WikidataProperty(
                         pid,
                         label == null ? pid : label,
-                        description == null ? "" : description));
+                        description == null ? "" : description,
+                        "",
+                        ""));
             }
         }
 
@@ -165,7 +168,6 @@ public class WorkbenchController {
 
         currentTaskName = taskName;
         output.setCurrentTask(taskName);
-        output.getCancelButton().setEnabled(true);
 
         output.append("\n" + taskName + "\n");
 
@@ -184,7 +186,6 @@ public class WorkbenchController {
 
             @Override
             protected void done() {
-                output.getCancelButton().setEnabled(false);
                 output.setCurrentTask("Idle");
                 currentTaskName = null;
 

@@ -19,9 +19,10 @@ public  class NamedEntity extends QuizableAdapter implements MythologyEntity {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return name; }
+
+    @Override
+    public String getDisplayName() { return name; }
 
     @Override
     // Returns the name of all fields except name

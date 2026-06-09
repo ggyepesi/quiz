@@ -4,8 +4,16 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
-public interface Quizable {    
-    public String getName();
+public interface Quizable {
+    /** Stable unique key used for map keys, cartesian product keys, and identity checks. */
+    String getIdentifier();
+
+    /** Human-readable label shown in UI, titles, and logging. */
+    String getDisplayName();
+
+    /** Backward-compatible bridge — delegates to getDisplayName(). */
+    default String getName() { return getDisplayName(); }
+
     public boolean hasField(String fieldName);
     public boolean hasAnyField();
     public boolean hasFields(Collection<String> fieldNames);

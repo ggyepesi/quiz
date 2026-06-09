@@ -25,14 +25,10 @@ public class President extends QuizableAdapter {
 
     // person can be null if this instance is a projection!
     @Override
-    public String getName() {
-        return person == null ? "" : person.getName();
-    }
+    public String getIdentifier() { return person == null ? "" : person.getIdentifier(); }
 
     @Override
-    public QuizableAdapter createNew() {
-        return new President();
-    }
+    public String getDisplayName() { return person == null ? "" : person.getDisplayName(); }
 }
 
 @SuppressWarnings("unused")
@@ -62,9 +58,10 @@ class Term extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return number + ", " + party + ", " + start + "-" + end;
-    }
+    public String getIdentifier() { return number + ", " + party + ", " + start + "-" + end; }
+
+    @Override
+    public String getDisplayName() { return getIdentifier(); }
 
     @Override
     public QuizableAdapter createNew() {
@@ -106,9 +103,10 @@ class Person extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return name; }
+
+    @Override
+    public String getDisplayName() { return name; }
 
     @Override
     public QuizableAdapter createNew() {
@@ -129,9 +127,10 @@ class Party extends QuizableAdapter {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getIdentifier() { return name; }
+
+    @Override
+    public String getDisplayName() { return name; }
 
     @Override
     public QuizableAdapter createNew() {
