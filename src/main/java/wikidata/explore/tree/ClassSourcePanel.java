@@ -1,22 +1,34 @@
 package wikidata.explore.tree;
 
-import wikidata.explore.model.GeneratedClassModel;
+import wikidata.WikidataBinding;
+import wikidata.WikidataSparqlClient;
+import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.FieldSourceMapping;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.query.WikidataQueryBuilder;
 
 import javax.swing.*;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
-/**
- * Middle panel when the selected item is the root class.
- *
- * Normal UI answers:
- *   How do we find instances of this class?
- */
 public class ClassSourcePanel extends JPanel {
+    private enum SearchMode {
+        API,
+        SPARQL,
+        BOTH
+    }
+    private final JComboBox<SearchMode> searchModeBox =
+            new JComboBox<>(SearchMode.values());
 
     private GeneratedClassModel clazz;
+    private WikidataSparqlClient client;
+    private WikidataApiClient apiClient;
 
+    private Consumer<String> log = s -> {};
     private Consumer<Void> afterChange = v -> {};
 
     private final JLabel titleLabel = new JLabel("Class");
@@ -24,6 +36,13 @@ public class ClassSourcePanel extends JPanel {
     private final JTextField classNameField = new JTextField(18);
     private final JTextField typeQidField = new JTextField(10);
     private final JLabel typeLabel = new JLabel("(not selected)");
+
+    private final JTextField searchTextField = new JTextField(18);
+    private final JButton searchTypeButton = new JButton("Search");
+
+    private final SearchTableModel searchModel = new SearchTableModel();
+    private final JTable searchTable = new JTable(searchModel);
+    private final JButton useSelectedButton = new JButton("Use selected");
 
     private final JSpinner limitSpinner =
             new JSpinner(new SpinnerNumberModel(200, 1, 10000, 10));
@@ -45,6 +64,22 @@ public class ClassSourcePanel extends JPanel {
         buildUi();
     }
 
+    public void log(Consumer<String> log) {
+        this.log = log == null ? s -> {} : log;
+    }
+
+    public void setClient(WikidataSparqlClient client) {
+        this.client = client;
+        client.registerRunButton(searchTypeButton);
+        updateSearchButtonState();
+    }
+
+    public void setApiClient(WikidataApiClient apiClient) {
+        this.apiClient = apiClient;
+        System.out.println("ClassSourcePanel API client installed");
+        updateSearchButtonState();
+    }
+
     public void afterChange(Consumer<Void> afterChange) {
         this.afterChange = afterChange == null ? v -> {} : afterChange;
     }
@@ -62,6 +97,8 @@ public class ClassSourcePanel extends JPanel {
         titleLabel.setText("Class: " + clazz.className());
 
         classNameField.setText(clazz.className());
+        searchTextField.setText(clazz.className());
+
         typeQidField.setText(m.sourceQid());
         typeLabel.setText(m.displaySource());
 
@@ -70,11 +107,9 @@ public class ClassSourcePanel extends JPanel {
         langField.setText(m.labelLanguage());
 
         updateSummary();
+        updateSearchButtonState();
     }
 
-    /**
-     * Called from QID finder/WikiProject later.
-     */
     public void useSourceQid(String qid, String label) {
         if (clazz == null) {
             return;
@@ -82,8 +117,10 @@ public class ClassSourcePanel extends JPanel {
 
         clazz.instanceMapping().sourceQid(qid);
         clazz.instanceMapping().sourceLabel(label);
+
         typeQidField.setText(clazz.instanceMapping().sourceQid());
         typeLabel.setText(clazz.instanceMapping().displaySource());
+
         updateSummary();
         afterChange.accept(null);
     }
@@ -121,7 +158,8 @@ public class ClassSourcePanel extends JPanel {
         typeRow.add(typeLabel);
         addRow(form, c, y++, "Wikidata type/class:", typeRow);
 
-        JLabel relation = new JLabel("Relation: item is instance of selected type (P31)");
+        JLabel relation = new JLabel(
+                "Relation: item is instance of selected type (P31)");
         addWide(form, c, y++, relation);
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -132,6 +170,28 @@ public class ClassSourcePanel extends JPanel {
         options.add(langField);
         addWide(form, c, y++, options);
 
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+
+        searchRow.add(new JLabel("Search:"));
+        searchRow.add(searchTextField);
+
+        searchRow.add(new JLabel("Method:"));
+        searchRow.add(searchModeBox);
+
+        searchRow.add(searchTypeButton);
+        addWide(form, c, y++, searchRow);
+
+        installSearchTableBehavior();
+
+        JScrollPane tableScroll = new JScrollPane(searchTable);
+        tableScroll.setPreferredSize(new Dimension(700, 180));
+        addWide(form, c, y++, tableScroll);
+
+        JPanel useRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        useSelectedButton.setEnabled(false);
+        useRow.add(useSelectedButton);
+        addWide(form, c, y++, useRow);
+
         addWide(form, c, y++, summaryLabel);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
@@ -141,6 +201,197 @@ public class ClassSourcePanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
 
         applyButton.addActionListener(e -> apply());
+        searchTypeButton.addActionListener(e -> runSearch());
+        searchTextField.addActionListener(e -> runSearch());
+        useSelectedButton.addActionListener(e -> useSelectedSearchRow());
+
+        searchTable.getSelectionModel().addListSelectionListener(e ->
+                                                                         useSelectedButton.setEnabled(searchTable.getSelectedRow() >= 0));
+
+        updateSearchButtonState();
+    }
+
+    private void updateSearchButtonState() {
+        searchTypeButton.setEnabled(clazz != null
+                                            && (apiClient != null || client != null));
+    }
+
+    private void runSearch() {
+        if (clazz == null) {
+            return;
+        }
+
+        String text =
+                searchTextField.getText() == null
+                        ? ""
+                        : searchTextField.getText().trim();
+
+        if (text.isBlank()) {
+            text = classNameField.getText() == null
+                    ? ""
+                    : classNameField.getText().trim();
+        }
+
+        if (text.isBlank()) {
+            return;
+        }
+
+        final String queryText = text;
+        SearchMode mode =
+                (SearchMode) searchModeBox.getSelectedItem();
+
+        log.accept("Class/type search: "
+                           + queryText
+                           + " using "
+                           + mode
+                           + "\n");
+
+        searchModel.setRows(List.of());
+        useSelectedButton.setEnabled(false);
+        searchTypeButton.setEnabled(false);
+
+        SwingWorker<List<SearchResult>, Void> worker =
+                new SwingWorker<>() {
+                    @Override
+                    protected List<SearchResult> doInBackground()
+                            throws Exception {
+                        return switch (mode) {
+                            case API -> searchWithApi(queryText);
+                            case SPARQL -> searchWithSparql(queryText);
+                            case BOTH -> dedupe(searchWithApi(queryText), searchWithSparql(queryText));
+                        };
+                    }
+
+                    @Override
+                    protected void done() {
+                        try {
+                            searchModel.setRows(get());
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(
+                                    ClassSourcePanel.this,
+                                    "Search failed:\n" + ex.getMessage(),
+                                    "Search failed",
+                                    JOptionPane.ERROR_MESSAGE);
+                        } finally {
+                            updateSearchButtonState();
+                        }
+                    }
+                };
+
+        worker.execute();
+    }
+
+    private static List<SearchResult> dedupe(
+            List<SearchResult> a,
+            List<SearchResult> b) {
+
+        java.util.Map<String, SearchResult> map =
+                new java.util.LinkedHashMap<>();
+
+        for (SearchResult r : a) map.putIfAbsent(r.qid(), r);
+        for (SearchResult r : b) map.putIfAbsent(r.qid(), r);
+
+        return new java.util.ArrayList<>(map.values());
+    }
+
+    private List<SearchResult> searchWithApi(String text) throws Exception {
+        log.accept("Searching class/type using API: " + text + "\n");
+        List<SearchResult> out = new ArrayList<>();
+
+        for (WikidataApiClient.SearchResult r :
+                apiClient.searchEntities(text, 25)) {
+
+            out.add(new SearchResult(
+                    r.qid(),
+                    r.label() == null || r.label().isBlank()
+                            ? r.qid()
+                            : r.label(),
+                    r.description() == null ? "" : r.description()));
+        }
+
+        return out;
+    }
+
+    private List<SearchResult> searchWithSparql(String text) throws Exception {
+        String sparql =
+                WikidataQueryBuilder.entitySearch(text, 25);
+        log.accept("Searching class/type using SPARQL: " + sparql + "\n");
+
+
+        List<SearchResult> out = new ArrayList<>();
+
+        for (WikidataBinding b : client.query(sparql)) {
+            String qid = b.qid("item");
+            String label = b.label("item");
+            String desc = b.value("itemDescription");
+
+            if (qid != null && qid.matches("Q\\d+")) {
+                out.add(new SearchResult(
+                        qid,
+                        label == null ? qid : label,
+                        desc == null ? "" : desc));
+            }
+        }
+
+        return out;
+    }
+
+    private void useSelectedSearchRow() {
+        int row = searchTable.getSelectedRow();
+
+        if (row < 0) {
+            return;
+        }
+
+        SearchResult r =
+                searchModel.row(searchTable.convertRowIndexToModel(row));
+
+        useSourceQid(r.qid(), r.label());
+    }
+
+    private void installSearchTableBehavior() {
+        searchTable.setRowHeight(24);
+        searchTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+
+        searchTable.getColumnModel().getColumn(0)
+                   .setPreferredWidth(80);
+        searchTable.getColumnModel().getColumn(1)
+                   .setPreferredWidth(180);
+        searchTable.getColumnModel().getColumn(2)
+                   .setPreferredWidth(420);
+
+        searchTable.getColumnModel().getColumn(0)
+                   .setCellRenderer(new QidLinkRenderer());
+
+        searchTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int viewRow = searchTable.rowAtPoint(e.getPoint());
+                int viewCol = searchTable.columnAtPoint(e.getPoint());
+
+                if (viewRow < 0 || viewCol != 0) {
+                    return;
+                }
+
+                Object val = searchTable.getValueAt(viewRow, viewCol);
+                String qid = val == null ? "" : val.toString();
+
+                if (qid.matches("Q\\d+")) {
+                    openInBrowser("https://www.wikidata.org/wiki/" + qid);
+                }
+            }
+        });
+
+        searchTable.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent e) {
+                int col = searchTable.columnAtPoint(e.getPoint());
+
+                searchTable.setCursor(col == 0
+                                              ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                                              : Cursor.getDefaultCursor());
+            }
+        });
     }
 
     private void apply() {
@@ -180,9 +431,100 @@ public class ClassSourcePanel extends JPanel {
     private void clear() {
         titleLabel.setText("Class");
         classNameField.setText("");
+        searchTextField.setText("");
         typeQidField.setText("");
         typeLabel.setText("(not selected)");
         summaryLabel.setText(" ");
+        searchModel.setRows(List.of());
+        updateSearchButtonState();
+    }
+
+    private record SearchResult(
+            String qid,
+            String label,
+            String description) {}
+
+    private static final class SearchTableModel extends AbstractTableModel {
+        private final String[] columns =
+                {"QID", "Label", "Description"};
+
+        private List<SearchResult> rows = new ArrayList<>();
+
+        public void setRows(List<SearchResult> rows) {
+            this.rows = rows == null ? new ArrayList<>() : rows;
+            fireTableDataChanged();
+        }
+
+        public SearchResult row(int i) {
+            return rows.get(i);
+        }
+
+        @Override
+        public int getRowCount() {
+            return rows.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return columns.length;
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            return columns[column];
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            SearchResult r = rows.get(rowIndex);
+
+            return switch (columnIndex) {
+                case 0 -> r.qid();
+                case 1 -> r.label();
+                case 2 -> r.description();
+                default -> "";
+            };
+        }
+    }
+
+    private static final class QidLinkRenderer
+            extends DefaultTableCellRenderer {
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean selected,
+                boolean focus,
+                int row,
+                int col) {
+
+            super.getTableCellRendererComponent(
+                    table,
+                    value,
+                    selected,
+                    focus,
+                    row,
+                    col);
+
+            String text = value == null ? "" : value.toString();
+
+            if (!selected && text.matches("Q\\d+")) {
+                setForeground(new Color(0, 80, 200));
+                setText("<html><u>" + text + "</u></html>");
+            } else {
+                setText(text);
+            }
+
+            return this;
+        }
+    }
+
+    private static void openInBrowser(String url) {
+        try {
+            Desktop.getDesktop().browse(new java.net.URI(url));
+        } catch (Exception ignored) {
+        }
     }
 
     private static void addRow(

@@ -2,7 +2,10 @@ package wikidata.explore.tree;
 
 import aux.SplitPaneUtils;
 import wikidata.WikidataSparqlClient;
+import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.query.result.ObjectQueryResult;
+import wikidata.explore.query.swing.QueryRawLogPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,6 +23,8 @@ import java.util.concurrent.ExecutionException;
 public class ModelBuilderFrame extends JFrame {
 
     private final WikidataSparqlClient client;
+    private final WikidataApiClient apiClient =
+            new WikidataApiClient("QuizProject/1.0");
 
     private final GeneratedProjectModel projectModel =
             GeneratedProjectModel.constellationDemo();
@@ -35,8 +40,8 @@ public class ModelBuilderFrame extends JFrame {
     private final GeneratedInstancesPanel instancesPanel =
             new GeneratedInstancesPanel();
 
-    private final JTextArea logArea =
-            new JTextArea(8, 100);
+    private final QueryRawLogPanel queryLogPanel =
+            new QueryRawLogPanel();
 
     private final JButton generateButton =
             new JButton("Generate instances");
@@ -100,17 +105,15 @@ public class ModelBuilderFrame extends JFrame {
                         titled("Generated instances", instancesPanel),
                         0.66);
 
-        logArea.setEditable(false);
-        logArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
 
-        JScrollPane logScroll = new JScrollPane(logArea);
-        logScroll.setPreferredSize(new Dimension(1200, 160));
+        queryLogPanel.setPreferredSize(new Dimension(1200, 160));
 
+        titled("Query log", queryLogPanel);
         JSplitPane vertical =
                 new JSplitPane(
                         JSplitPane.VERTICAL_SPLIT,
                         main,
-                        titled("Log / SPARQL", logScroll));
+                        titled("Log / SPARQL", queryLogPanel));
 
         vertical.setResizeWeight(0.80);
         vertical.setDividerSize(8);
@@ -121,6 +124,7 @@ public class ModelBuilderFrame extends JFrame {
 
     private void wireActions() {
         sourceWorkbench.setClient(client);
+        sourceWorkbench.setApiClient(apiClient);
 
         sourceWorkbench.samplePanel().setNodeSupplier(
                 sourceWorkbench::temporaryRuleNodeForSelected);
@@ -144,7 +148,7 @@ public class ModelBuilderFrame extends JFrame {
             classModelPanel.selectField(f);
             sourceWorkbench.edit(f);
         });
-
+        sourceWorkbench.log(this::log);
         classModelPanel.addTreeSelectionListener(e ->
                 sourceWorkbench.edit(classModelPanel.selectedUserObject()));
 
@@ -254,9 +258,11 @@ public class ModelBuilderFrame extends JFrame {
                                     new GeneratedQuizableMapper(lastRuntime)
                                             .mapRoots(result.objects());
 
-                            instancesPanel.setGeneratedObjects(
+                            instancesPanel.accept(
+                                    new ObjectQueryResult(
                                     generatedObjects,
-                                    lastRuntime.generatedClass());
+                                    lastRuntime.generatedClass(),
+                                    lastRuntime.source()));
 
                             log("After setGeneratedObjects\n");
                         } catch (InterruptedException e) {
@@ -301,8 +307,7 @@ public class ModelBuilderFrame extends JFrame {
 
     private void log(String s) {
         SwingUtilities.invokeLater(() -> {
-            logArea.append(s);
-            logArea.setCaretPosition(logArea.getDocument().getLength());
+            queryLogPanel.appendRaw(s);
         });
     }
 

@@ -3,9 +3,6 @@ package wikidata.explore.model;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Single visible root class for now.
- */
 public class GeneratedClassModel {
 
     private String className;
@@ -23,10 +20,11 @@ public class GeneratedClassModel {
                         ? "GeneratedClass"
                         : className.trim();
 
-        fields.add(GeneratedFieldModel.nameField());
+        ensureNameField();
     }
 
     public String className() { return className; }
+
     public void className(String className) {
         this.className =
                 className == null || className.isBlank()
@@ -34,14 +32,31 @@ public class GeneratedClassModel {
                         : className.trim();
     }
 
-    public FieldSourceMapping instanceMapping() { return instanceMapping; }
+    public FieldSourceMapping instanceMapping() {
+        return instanceMapping;
+    }
 
-    public List<GeneratedFieldModel> fields() { return fields; }
+    public List<GeneratedFieldModel> fields() {
+        ensureNameField();
+        return fields;
+    }
+
+    public void ensureNameField() {
+        for (GeneratedFieldModel f : fields) {
+            if (f != null && f.isNameField()) {
+                return;
+            }
+        }
+
+        fields.add(0, GeneratedFieldModel.nameField());
+    }
 
     public GeneratedFieldModel addField(
             String name,
             FieldType type,
             FieldCardinality cardinality) {
+
+        ensureNameField();
 
         GeneratedFieldModel f =
                 new GeneratedFieldModel(name, type, cardinality);

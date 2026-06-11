@@ -1,6 +1,7 @@
 package wikidata.explore.tree;
 
 import wikidata.WikidataSparqlClient;
+import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -48,10 +49,20 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         buildUi();
     }
 
+    public void log(Consumer<String> log) {
+        classSourcePanel.log(log);
+    }
+
     public void setClient(WikidataSparqlClient client) {
+        classSourcePanel.setClient(client);
+
         samplePanel.setClient(client);
         discoveryPanel.setClient(client);
         wikiProjectPanel.setSparqlClient(client);
+    }
+
+    public void setApiClient(WikidataApiClient apiClient) {
+        classSourcePanel.setApiClient(apiClient);
     }
 
     public void afterChange(Consumer<Void> afterChange) {

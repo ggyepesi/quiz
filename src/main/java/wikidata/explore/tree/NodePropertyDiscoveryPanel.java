@@ -318,8 +318,7 @@ public class NodePropertyDiscoveryPanel extends JPanel {
         applyEdits.run();
         refreshNodeTitle();
 
-        RuleNode node =
-                nodeSupplier.get();
+        RuleNode node = nodeSupplier.get();
 
         if (node == null) {
             statusLabel.setText("No node selected.");

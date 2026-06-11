@@ -17,8 +17,9 @@ public class SingleRootClassModelPanel extends JPanel {
     private final JTree tree;
 
     private final JButton renameClassButton = new JButton("Rename class");
+    private final JButton addClassButton = new JButton("Add class");
     private final JButton addFieldButton = new JButton("Add field");
-    private final JButton removeFieldButton = new JButton("Remove field");
+    private final JButton removeButton = new JButton("Remove");
 
     public SingleRootClassModelPanel(GeneratedProjectModel projectModel) {
         super(new BorderLayout(4, 4));
@@ -54,8 +55,26 @@ public class SingleRootClassModelPanel extends JPanel {
         return n == null ? null : n.getUserObject();
     }
 
+    public GeneratedClassModel selectedClassOrRoot() {
+        Object selected = selectedUserObject();
+
+        if (selected instanceof GeneratedClassModel c) {
+            return c;
+        }
+
+        if (selected instanceof GeneratedFieldModel f) {
+            return owningClassOf(f);
+        }
+
+        return projectModel.rootClass();
+    }
+
     public void refresh() {
         Object selected = selectedUserObject();
+
+        for (GeneratedClassModel c : projectModel.classes()) {
+            c.ensureNameField();
+        }
 
         rootTreeNode = buildTree();
         treeModel.setRoot(rootTreeNode);
@@ -67,42 +86,187 @@ public class SingleRootClassModelPanel extends JPanel {
             selectField(f);
         } else if (selected instanceof GeneratedClassModel c) {
             selectClass(c);
+        } else {
+            selectClass(projectModel.rootClass());
         }
     }
 
     public void selectField(GeneratedFieldModel field) {
-        if (field == null) {
-            return;
-        }
-
         DefaultMutableTreeNode node =
                 findNodeForUserObject(rootTreeNode, field);
-
-        if (node == null) {
-            return;
+        if (node != null) {
+            selectNode(node);
         }
-
-        selectNode(node);
     }
 
     public void selectClass(GeneratedClassModel cls) {
-        if (cls == null) {
-            return;
-        }
-
         DefaultMutableTreeNode node =
                 findNodeForUserObject(rootTreeNode, cls);
+        if (node != null) {
+            selectNode(node);
+        }
+    }
 
-        if (node == null) {
+    private void buildUi() {
+        tree.setRootVisible(true);
+        tree.setToggleClickCount(0);
+        tree.setRowHeight(28);
+        tree.setFont(tree.getFont().deriveFont(14f));
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        buttons.add(renameClassButton);
+        buttons.add(addClassButton);
+        buttons.add(addFieldButton);
+        buttons.add(removeButton);
+
+        add(buttons, BorderLayout.NORTH);
+        add(new JScrollPane(tree), BorderLayout.CENTER);
+
+        renameClassButton.addActionListener(e -> renameClass());
+        addClassButton.addActionListener(e -> addClass());
+        addFieldButton.addActionListener(e -> addField());
+        removeButton.addActionListener(e -> removeSelected());
+    }
+
+    private DefaultMutableTreeNode buildTree() {
+        DefaultMutableTreeNode projectNode =
+                new DefaultMutableTreeNode(projectModel.name());
+
+        for (GeneratedClassModel cls : projectModel.classes()) {
+            cls.ensureNameField();
+
+            DefaultMutableTreeNode classNode =
+                    new DefaultMutableTreeNode(cls);
+
+            for (GeneratedFieldModel f : cls.fields()) {
+                DefaultMutableTreeNode fieldNode =
+                        new DefaultMutableTreeNode(f);
+
+                for (GeneratedFieldModel child : f.fields()) {
+                    fieldNode.add(new DefaultMutableTreeNode(child));
+                }
+
+                classNode.add(fieldNode);
+            }
+
+            projectNode.add(classNode);
+        }
+
+        return projectNode;
+    }
+
+    private void renameClass() {
+        GeneratedClassModel cls = selectedClassOrRoot();
+
+        String s =
+                JOptionPane.showInputDialog(
+                        this,
+                        "Class name:",
+                        cls.className());
+
+        if (s == null || s.isBlank()) {
             return;
         }
 
-        selectNode(node);
+        cls.className(
+                GeneratedQuizableSourceGenerator.sanitizeClassName(s));
+
+        refresh();
+        selectClass(cls);
+    }
+
+    private void addClass() {
+        String s =
+                JOptionPane.showInputDialog(
+                        this,
+                        "New class name:",
+                        "Star");
+
+        if (s == null || s.isBlank()) {
+            return;
+        }
+
+        GeneratedClassModel cls =
+                projectModel.getOrCreateClass(
+                        GeneratedQuizableSourceGenerator
+                                .sanitizeClassName(s));
+
+        refresh();
+        selectClass(cls);
+    }
+
+    private void addField() {
+        GeneratedClassModel cls = selectedClassOrRoot();
+
+        String name =
+                JOptionPane.showInputDialog(
+                        this,
+                        "Field name:",
+                        "field");
+
+        if (name == null || name.isBlank()) {
+            return;
+        }
+
+        GeneratedFieldModel f =
+                cls.addField(
+                        name,
+                        FieldType.AUTO,
+                        FieldCardinality.AUTO);
+
+        refresh();
+        selectField(f);
+    }
+
+    private void removeSelected() {
+        Object selected = selectedUserObject();
+
+        if (selected instanceof GeneratedFieldModel f) {
+            if (f.isNameField()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "The name field is required and cannot be removed.");
+                return;
+            }
+
+            GeneratedClassModel owner = owningClassOf(f);
+            if (owner != null) {
+                owner.fields().remove(f);
+            }
+
+            refresh();
+            return;
+        }
+
+        if (selected instanceof GeneratedClassModel c) {
+            if (c == projectModel.rootClass()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "The root class cannot be removed.");
+                return;
+            }
+
+            projectModel.removeClass(c);
+            refresh();
+        }
+    }
+
+    private GeneratedClassModel owningClassOf(GeneratedFieldModel f) {
+        if (f == null) {
+            return null;
+        }
+
+        for (GeneratedClassModel cls : projectModel.classes()) {
+            if (cls.fields().contains(f)) {
+                return cls;
+            }
+        }
+
+        return null;
     }
 
     private void selectNode(DefaultMutableTreeNode node) {
         TreePath path = new TreePath(node.getPath());
-
         tree.setSelectionPath(path);
         tree.scrollPathToVisible(path);
     }
@@ -131,100 +295,6 @@ public class SingleRootClassModelPanel extends JPanel {
         }
 
         return null;
-    }
-
-    private void buildUi() {
-        tree.setRootVisible(true);
-        tree.setRowHeight(28);
-        tree.setFont(tree.getFont().deriveFont(14f));
-
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        buttons.add(renameClassButton);
-        buttons.add(addFieldButton);
-        buttons.add(removeFieldButton);
-
-        add(buttons, BorderLayout.NORTH);
-        add(new JScrollPane(tree), BorderLayout.CENTER);
-
-        renameClassButton.addActionListener(e -> renameClass());
-        addFieldButton.addActionListener(e -> addField());
-        removeFieldButton.addActionListener(e -> removeSelectedField());
-    }
-
-    private DefaultMutableTreeNode buildTree() {
-        GeneratedClassModel root = projectModel.rootClass();
-
-        DefaultMutableTreeNode rootNode =
-                new DefaultMutableTreeNode(root);
-
-        for (GeneratedFieldModel f : root.fields()) {
-            DefaultMutableTreeNode fieldNode =
-                    new DefaultMutableTreeNode(f);
-
-            for (GeneratedFieldModel child : f.fields()) {
-                fieldNode.add(new DefaultMutableTreeNode(child));
-            }
-
-            rootNode.add(fieldNode);
-        }
-
-        return rootNode;
-    }
-
-    private void renameClass() {
-        String s =
-                JOptionPane.showInputDialog(
-                        this,
-                        "Root class name:",
-                        rootClass().className());
-
-        if (s == null || s.isBlank()) {
-            return;
-        }
-
-        rootClass().className(s);
-        refresh();
-        selectClass(rootClass());
-    }
-
-    private void addField() {
-        String name =
-                JOptionPane.showInputDialog(
-                        this,
-                        "Field name:",
-                        "field");
-
-        if (name == null || name.isBlank()) {
-            return;
-        }
-
-        GeneratedFieldModel f =
-                rootClass().addField(
-                        name,
-                        FieldType.AUTO,
-                        FieldCardinality.AUTO);
-
-        refresh();
-        selectField(f);
-    }
-
-    private void removeSelectedField() {
-        Object selected =
-                selectedUserObject();
-
-        if (!(selected instanceof GeneratedFieldModel f)) {
-            return;
-        }
-
-        if (f.isNameField()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "The name field is required and cannot be removed.");
-            return;
-        }
-
-        rootClass().fields().remove(f);
-        refresh();
     }
 
     private void expandAll() {

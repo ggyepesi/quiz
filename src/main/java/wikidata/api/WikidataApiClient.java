@@ -48,13 +48,72 @@ public class WikidataApiClient {
                               star.property("P1215"),
                               star.property("P215"));
         }
+
+        WikidataApiClient stapi = new WikidataApiClient("QuizProject/1.0");
+
+        for (var result : stapi.searchEntities("star", 8)) {
+            System.out.println(result);
+        }
     }
 
     public WikidataApiClient(String userAgent) {
         this.userAgent = userAgent == null
                 ? "WikidataApiClient/1.0" : userAgent;
     }
+    /**
+     * Searches for Wikidata entities matching a natural language expression.
+     *
+     * Returns results ranked by relevance — the top result for "star" will be
+     * Q523 (star, astronomical object), for "constellation" Q8928, etc.
+     *
+     * @param query    natural language search string, e.g. "star", "chemical element"
+     * @param limit    number of results to return (max 50)
+     */
+    public List<SearchResult> searchEntities(
+            String query, int limit) throws Exception {
 
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("action",   "wbsearchentities");
+        params.put("search",   encode(query));
+        params.put("language", "en");
+        params.put("type",     "item");
+        params.put("limit",    String.valueOf(Math.min(limit, 50)));
+        params.put("format",   "json");
+
+        JsonNode root = get(WIKIDATA_API, params);
+        List<SearchResult> results = new ArrayList<>();
+
+        JsonNode search = root.path("search");
+        if (search.isArray()) {
+            for (JsonNode hit : search) {
+                String qid         = hit.path("id").asText();
+                String label       = hit.path("label").asText();
+                String description = hit.path("description").asText();
+                String url         = hit.path("url").asText();
+                results.add(new SearchResult(qid, label, description, url));
+            }
+        }
+
+        return results;
+    }
+
+    public record SearchResult(
+            String qid,
+            String label,
+            String description,
+            String url) {
+
+        @Override
+        public String toString() {
+            return qid + "  " + label
+                    + (description.isBlank() ? "" : "  — " + description);
+        }
+    }
+
+    public record EntitySearchResult(
+            String qid,
+            String label,
+            String description) {}
     // ------------------------------------------------------------------
     // Category members → article titles
     // ------------------------------------------------------------------

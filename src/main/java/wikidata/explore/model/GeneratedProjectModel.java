@@ -4,10 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Project wrapper. Holds a registry of configured classes.
- * The root class is always at index 0 of the class list.
- */
 public class GeneratedProjectModel {
 
     private String name = "Generated Wikidata Project";
@@ -17,6 +13,7 @@ public class GeneratedProjectModel {
 
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
+        rootClass.ensureNameField();
         classes.add(rootClass);
     }
 
@@ -35,7 +32,10 @@ public class GeneratedProjectModel {
         return p;
     }
 
-    public String name() { return name; }
+    public String name() {
+        return name;
+    }
+
     public void name(String name) {
         this.name =
                 name == null || name.isBlank()
@@ -43,25 +43,90 @@ public class GeneratedProjectModel {
                         : name.trim();
     }
 
-    public GeneratedClassModel rootClass() { return rootClass; }
+    public GeneratedClassModel rootClass() {
+        rootClass.ensureNameField();
+        return rootClass;
+    }
+
     public void rootClass(GeneratedClassModel rootClass) {
+        GeneratedClassModel oldRoot = this.rootClass;
+
         this.rootClass =
-                rootClass == null ? new GeneratedClassModel("GeneratedClass") : rootClass;
-        if (!classes.contains(this.rootClass)) {
-            classes.add(0, this.rootClass);
-        } else {
-            classes.remove(this.rootClass);
-            classes.add(0, this.rootClass);
+                rootClass == null
+                        ? new GeneratedClassModel("GeneratedClass")
+                        : rootClass;
+
+        this.rootClass.ensureNameField();
+
+        if (oldRoot != null && oldRoot != this.rootClass) {
+            classes.remove(oldRoot);
         }
+
+        classes.remove(this.rootClass);
+        classes.addFirst(this.rootClass);
     }
 
     public List<GeneratedClassModel> classes() {
+        for (GeneratedClassModel c : classes) {
+            c.ensureNameField();
+        }
+
         return Collections.unmodifiableList(classes);
     }
 
     public void addClass(GeneratedClassModel c) {
-        if (c != null && !classes.contains(c)) {
+        if (c == null) {
+            return;
+        }
+
+        c.ensureNameField();
+
+        if (!classes.contains(c)) {
             classes.add(c);
         }
+    }
+
+    public GeneratedClassModel findClass(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+
+        for (GeneratedClassModel c : classes) {
+            if (name.equals(c.className())) {
+                return c;
+            }
+        }
+
+        return null;
+    }
+
+    public GeneratedClassModel getOrCreateClass(String name) {
+        String clean =
+                name == null || name.isBlank()
+                        ? "GeneratedClass"
+                        : name.trim();
+
+        GeneratedClassModel existing = findClass(clean);
+
+        if (existing != null) {
+            return existing;
+        }
+
+        GeneratedClassModel created = new GeneratedClassModel(clean);
+        addClass(created);
+        return created;
+    }
+
+    public void removeClass(GeneratedClassModel c) {
+        if (c == null || c == rootClass) {
+            return;
+        }
+
+        classes.remove(c);
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }

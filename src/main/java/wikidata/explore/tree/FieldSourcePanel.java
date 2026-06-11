@@ -9,8 +9,6 @@ import java.awt.*;
 import java.util.Map;
 import java.util.function.Consumer;
 
-@SuppressWarnings("unchecked")
-
 public class FieldSourcePanel extends JPanel {
 
     private static final String NEW_CLASS_SENTINEL = "New class...";
@@ -51,6 +49,9 @@ public class FieldSourcePanel extends JPanel {
     private final JButton applyButton =
             new JButton("Apply field source");
 
+    private final JComboBox<FieldSourceType> sourceTypeBox =
+            new JComboBox<>(FieldSourceType.values());
+
     public FieldSourcePanel() {
         super(new BorderLayout(4, 4));
         buildUi();
@@ -90,6 +91,7 @@ public class FieldSourcePanel extends JPanel {
         titleLabel.setText("Field: " + field.name());
 
         fieldNameField.setText(field.name());
+        sourceTypeBox.setSelectedItem(m.sourceType());
         typeBox.setSelectedItem(field.type());
         refreshObjectTypeBox(entityClassForDisplay());
         shapeBox.setSelectedItem(field.cardinality());
@@ -145,6 +147,7 @@ public class FieldSourcePanel extends JPanel {
         addWide(form, c, y++, question);
 
         addRow(form, c, y++, "Field name:", fieldNameField);
+        addRow(form, c, y++, "Source:", sourceTypeBox);
         addRow(form, c, y++, "Type:", typeBox);
         addRow(form, c, y++, "Object type:", objectTypeBox);
         addRow(form, c, y++, "Shape:", shapeBox);
@@ -171,7 +174,7 @@ public class FieldSourcePanel extends JPanel {
 
         applyButton.addActionListener(e -> apply());
         sampleShapeButton.addActionListener(e -> onSampleRequested.run());
-
+        sourceTypeBox.addActionListener(e -> updateRecommendation());
         objectTypeBox.addActionListener(e -> {
             if (updatingObjectTypeBox) {
                 return;
@@ -216,6 +219,7 @@ public class FieldSourcePanel extends JPanel {
         }
 
         FieldSourceMapping m = field.mapping();
+        m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
         m.limit(((Number) limitSpinner.getValue()).intValue());
 
@@ -295,6 +299,14 @@ public class FieldSourcePanel extends JPanel {
     private void updateRecommendation() {
         if (field == null) {
             recommendationLabel.setText(" ");
+            return;
+        }
+        FieldSourceType sourceType =
+                (FieldSourceType) sourceTypeBox.getSelectedItem();
+
+        if (sourceType != null && !sourceType.implementedNow()) {
+            recommendationLabel.setText(
+                    "Source: " + sourceType + " | Not yet implemented");
             return;
         }
 
