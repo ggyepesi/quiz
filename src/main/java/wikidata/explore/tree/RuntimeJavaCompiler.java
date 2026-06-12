@@ -11,6 +11,10 @@ import java.nio.file.Files;
 import java.util.List;
 
 public class RuntimeJavaCompiler {
+
+    /** The loader owns the compiled class; close it when the generation is superseded. */
+    public record CompiledClass(Class<?> compiledClass, URLClassLoader loader) {}
+
     private final File rootDir;
 
     public RuntimeJavaCompiler() {
@@ -21,7 +25,7 @@ public class RuntimeJavaCompiler {
         this.rootDir = rootDir;
     }
 
-    public Class<?> compile(String qualifiedClassName, String source) throws Exception {
+    public CompiledClass compile(String qualifiedClassName, String source) throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
             throw new IllegalStateException("No system Java compiler found. Run with a JDK.");
@@ -57,7 +61,9 @@ public class RuntimeJavaCompiler {
                 new URL[]{rootDir.toURI().toURL()},
                 Thread.currentThread().getContextClassLoader());
 
-        return Class.forName(qualifiedClassName, true, loader);
+        return new CompiledClass(
+                Class.forName(qualifiedClassName, true, loader),
+                loader);
     }
 
     private File sourceFileFor(String qualifiedClassName) {

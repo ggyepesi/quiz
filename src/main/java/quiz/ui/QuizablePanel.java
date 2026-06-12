@@ -1,6 +1,5 @@
 package quiz.ui;
 
-import aux.DeepComponentInspector;
 import aux.GridBagUtils;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
@@ -39,21 +38,10 @@ public class QuizablePanel extends JPanel {
     private boolean renderedConfiguredContent = false;
 
     private final List<String> path;
-    private final List<Quizable> objectPath;
     private int firstFieldRow = 0;
 
     public static <T> Set<T> identitySetOf() {
         return Collections.newSetFromMap(new IdentityHashMap<>());
-    }
-
-    public static <T> Set<T> identitySetOf(Collection<? extends T> values) {
-        Set<T> set = identitySetOf();
-
-        if (values != null) {
-            set.addAll(values);
-        }
-
-        return set;
     }
 
     public QuizablePanel(Quizable quizable,
@@ -103,7 +91,8 @@ public class QuizablePanel extends JPanel {
 
 
     /**
-     * Shouldn't be static!
+     * Shouldn't be static! If static then
+     * Arguments can't fit into locals in class file quiz/ui/QuizablePanel$RenderStats
      */
     public final class RenderStats {
         public static final Map<String, Integer> panels = new TreeMap<>();
@@ -138,12 +127,12 @@ public class QuizablePanel extends JPanel {
         RenderStats.panel(quizable);
         // addMouseListener(new DeepComponentInspector());
 
-        this.objectPath = objectPath == null
+        List<Quizable> objectPath1 = objectPath == null
                 ? new ArrayList<>()
                 : new ArrayList<>(objectPath);
 
-        if (rootRender && quizable != null && this.objectPath.isEmpty()) {
-            this.objectPath.add(quizable);
+        if (rootRender && quizable != null && objectPath1.isEmpty()) {
+            objectPath1.add(quizable);
         }
 
         this.quizable = quizable;
@@ -181,14 +170,20 @@ public class QuizablePanel extends JPanel {
             ));
         }
 
-        if (!rootRender && ancestors.contains(quizable)) {
-            addCompactReference(quizable, false);
-            return;
+        if (!rootRender) {
+            assert ancestors != null;
+            if (ancestors.contains(quizable)) {
+                addCompactReference(quizable, false);
+                return;
+            }
         }
 
-        if (!rootRender && visited.contains(quizable)) {
-            addCompactReference(quizable, false);
-            return;
+        if (!rootRender) {
+            assert visited != null;
+            if (visited.contains(quizable)) {
+                addCompactReference(quizable, false);
+                return;
+            }
         }
 
         if (!rootRender && this.renderContext.isTopLevel(quizable)) {
@@ -200,21 +195,7 @@ public class QuizablePanel extends JPanel {
         this.ancestors.add(quizable);
 
         addTitleHeaderIfNeeded();
-/*
-        System.out.println("QP BUILD start "
-                                   + quizable.getClass().getSimpleName()
-                                   + " name=" + quizable.getName()
-                                   + " id=" + System.identityHashCode(quizable)
-                                   + " visited=" + visited.size()
-                                   + " ancestors=" + ancestors.size()); */
-
         buildFields();
- /*       System.out.println("QP BUILD done "
-                                   + quizable.getClass().getSimpleName()
-                                   + " name=" + quizable.getName()
-                                   + " id=" + System.identityHashCode
-                                   (quizable));*/
-
         ensureTitleHasRoom();
         this.ancestors.remove(quizable);
     }
@@ -551,7 +532,7 @@ public class QuizablePanel extends JPanel {
                 new ArrayList<>(base == null ? List.of() : base);
 
         if (out.isEmpty()
-                || !"name".equals(out.get(out.size() - 1))) {
+                || !"name".equals(out.getLast())) {
             out.add("name");
         }
 
@@ -670,47 +651,25 @@ public class QuizablePanel extends JPanel {
                 e.consume();
 
                 if (!renderContext.focusTopLevel(q)) {
-                    try {
-                        dumpFields(q);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
                     openInFrame(q);
                 }
             }
         });
     }
 
-    public static void dumpFields(Object o) throws Exception {
-        System.out.println("FIELDS of " + o.getClass().getName()
-                                   + " id=" + System.identityHashCode(o));
-
-        Class<?> c = o.getClass();
-        while (c != null) {
-            for (Field f : c.getDeclaredFields()) {
-                f.setAccessible(true);
-                Object v = f.get(o);
-
-                System.out.println("  " + c.getSimpleName()
-                                           + "." + f.getName()
-                                           + " : "
-                                           + (v == null ? "null" : v.getClass().getName())
-                                           + " = "
-                                           + shortValue(v));
-            }
-            c = c.getSuperclass();
-        }
-    }
-
     private static String shortValue(Object v) {
-        if (v == null) return "null";
-
-        if (v instanceof Collection<?> c) {
-            return "Collection size=" + c.size();
-        }
-
-        if (v instanceof Map<?, ?> m) {
-            return "Map size=" + m.size();
+        switch (v) {
+            case null -> {
+                return "null";
+            }
+            case Collection<?> c -> {
+                return "Collection size=" + c.size();
+            }
+            case Map<?, ?> m -> {
+                return "Map size=" + m.size();
+            }
+            default -> {
+            }
         }
 
         String s = String.valueOf(v);
@@ -726,8 +685,6 @@ public class QuizablePanel extends JPanel {
                 if (e.isConsumed()) {
                     return;
                 }
-                System.out.println("CLICK count=" + e.getClickCount()
-                                           + " on " + q.getName());
                 if (e.getClickCount() == 2) {
                     e.consume();
                     openInFrame(q);
@@ -737,8 +694,6 @@ public class QuizablePanel extends JPanel {
     }
 
     private void openInFrame(Quizable q) {
-        System.out.println("QuizablePanel open in frame: " + q.getClass() +
-                                   "." + q.getName());
         new QuizableFrame(q,
                 QuizablePanelConfig.allWithMinorFields(q.getClass())
                         .setAddListener(config.isAddListener())

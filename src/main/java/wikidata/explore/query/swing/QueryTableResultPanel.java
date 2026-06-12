@@ -44,7 +44,9 @@ public class QueryTableResultPanel
     }
 
     public void clear() {
+        model.setColumns(java.util.List.of());
         model.setRows(java.util.List.of());
+        searchField.setText("");
     }
 
     private void buildUi() {

@@ -14,10 +14,6 @@ public class GeneratedFieldModel {
     private final FieldSourceMapping mapping = new FieldSourceMapping();
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
 
-    public GeneratedFieldModel() {
-        this("field", FieldType.AUTO, FieldCardinality.AUTO);
-    }
-
     public GeneratedFieldModel(
             String name,
             FieldType type,
@@ -76,6 +72,23 @@ public class GeneratedFieldModel {
 
     public boolean renderAsReference() {
         return renderMode == FieldRenderMode.REFERENCE;
+    }
+
+    public GeneratedFieldModel copy() {
+        GeneratedFieldModel c =
+                new GeneratedFieldModel(name, type, cardinality);
+
+        c.entityClassName = entityClassName;
+        c.renderMode = renderMode;
+        c.mapping.copyFrom(mapping);
+
+        for (GeneratedFieldModel f : fields) {
+            if (f != null) {
+                c.fields.add(f.copy());
+            }
+        }
+
+        return c;
     }
 
     public FieldSourceMapping mapping() { return mapping; }

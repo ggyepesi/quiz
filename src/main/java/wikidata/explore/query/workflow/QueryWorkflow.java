@@ -2,6 +2,7 @@ package wikidata.explore.query.workflow;
 
 import wikidata.explore.query.core.*;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
@@ -13,6 +14,14 @@ public class QueryWorkflow<R> {
     private final QueryContext context;
     private final QueryResultSink<R> resultSink;
     private final QueryEventSink eventSink;
+
+    public QueryWorkflow(
+            QueryContext context,
+            QueryResultSink<R> resultSink,
+            QueryEventSink eventSink) {
+
+        this(null, context, resultSink, eventSink);
+    }
 
     public QueryWorkflow(
             Supplier<Query<R>> querySupplier,
@@ -27,8 +36,14 @@ public class QueryWorkflow<R> {
     }
 
     public R run() throws Exception {
-        Query<R> query = querySupplier.get();
+        return run(querySupplier.get());
+    }
 
+    /**
+     * Runs a pre-built query. Build the query on the EDT (capturing a
+     * model snapshot and any widget state) and call this off the EDT.
+     */
+    public R run(Query<R> query) throws Exception {
         long id = IDS.incrementAndGet();
         long start = System.currentTimeMillis();
 
@@ -40,20 +55,9 @@ public class QueryWorkflow<R> {
                 0,
                 ""));
 
+        R result;
         try {
-            R result = query.execute(context);
-            long ms = System.currentTimeMillis() - start;
-
-            eventSink.accept(new QueryEvent(
-                    id,
-                    query,
-                    QueryStatus.OK,
-                    query.rowCount(result),
-                    ms,
-                    ""));
-
-            resultSink.accept(result);
-            return result;
+            result = query.execute(context);
 
         } catch (Exception e) {
             long ms = System.currentTimeMillis() - start;
@@ -61,12 +65,37 @@ public class QueryWorkflow<R> {
             eventSink.accept(new QueryEvent(
                     id,
                     query,
-                    QueryStatus.FAILED,
+                    isCancellation(e)
+                            ? QueryStatus.CANCELLED
+                            : QueryStatus.FAILED,
                     0,
                     ms,
                     e.getMessage() == null ? "" : e.getMessage()));
 
             throw e;
         }
+
+        long ms = System.currentTimeMillis() - start;
+
+        eventSink.accept(new QueryEvent(
+                id,
+                query,
+                QueryStatus.OK,
+                query.rowCount(result),
+                ms,
+                ""));
+
+        resultSink.accept(result);
+        return result;
+    }
+
+    private static boolean isCancellation(Throwable t) {
+        for (; t != null; t = t.getCause()) {
+            if (t instanceof InterruptedException
+                    || t instanceof CancellationException) {
+                return true;
+            }
+        }
+        return false;
     }
 }

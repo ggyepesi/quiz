@@ -1,7 +1,6 @@
 package wikidata.explore.tree;
 
 import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.FieldRenderMode;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -12,8 +11,17 @@ import java.util.List;
 public class GeneratedQuizableSourceGenerator {
     public static final String GENERATED_PACKAGE = "wikidata.generated";
 
+    private final String packageName;
+
+    public GeneratedQuizableSourceGenerator(String packageName) {
+        this.packageName =
+                packageName == null || packageName.isBlank()
+                        ? GENERATED_PACKAGE
+                        : packageName;
+    }
+
     public String qualifiedClassName(GeneratedClassModel model) {
-        return GENERATED_PACKAGE + "." + sanitizeClassName(model.className());
+        return packageName + "." + sanitizeClassName(model.className());
     }
 
     public String sourceFor(GeneratedClassModel model) {
@@ -21,7 +29,7 @@ public class GeneratedQuizableSourceGenerator {
 
         StringBuilder sb = new StringBuilder();
 
-        sb.append("package ").append(GENERATED_PACKAGE).append(";\n\n");
+        sb.append("package ").append(packageName).append(";\n\n");
 
         boolean needsReferenceImport =
                 model.fields().stream()
@@ -170,7 +178,7 @@ public class GeneratedQuizableSourceGenerator {
             return "field";
         }
 
-        StringBuilder out = new StringBuilder(parts.get(0).toLowerCase());
+        StringBuilder out = new StringBuilder(parts.getFirst().toLowerCase());
 
         for (int i = 1; i < parts.size(); i++) {
             String p = parts.get(i);

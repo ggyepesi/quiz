@@ -4,14 +4,14 @@ import aux.SplitPaneUtils;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.query.result.ObjectQueryResult;
+import wikidata.explore.query.core.QueryContext;
+import wikidata.explore.query.logical.GenerateInstancesQuery;
+import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.query.swing.QueryRawLogPanel;
+import wikidata.explore.query.workflow.QueryWorkflow;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.List;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
 
 /**
  * New conceptual UI:
@@ -26,10 +26,15 @@ public class ModelBuilderFrame extends JFrame {
     private final WikidataApiClient apiClient =
             new WikidataApiClient("QuizProject/1.0");
 
+    private final QueryRawLogPanel queryLogPanel =
+            new QueryRawLogPanel();
+
+    private QueryWorkflow<GenerationRun> generateWorkflow;
+
     private final GeneratedProjectModel projectModel =
             GeneratedProjectModel.constellationDemo();
 
-    private GeneratedQuizableRuntime lastRuntime;
+    private GenerationRun lastRun;
 
     private final SingleRootClassModelPanel classModelPanel =
             new SingleRootClassModelPanel(projectModel);
@@ -37,11 +42,8 @@ public class ModelBuilderFrame extends JFrame {
     private final ModelSourceWorkbenchPanel sourceWorkbench =
             new ModelSourceWorkbenchPanel(projectModel);
 
-    private final GeneratedInstancesPanel instancesPanel =
-            new GeneratedInstancesPanel();
-
-    private final QueryRawLogPanel queryLogPanel =
-            new QueryRawLogPanel();
+    private final QueryObjectResultPanel instancesPanel =
+            new QueryObjectResultPanel();
 
     private final JButton generateButton =
             new JButton("Generate instances");
@@ -57,12 +59,6 @@ public class ModelBuilderFrame extends JFrame {
 
     private final JSpinner depthSpinner =
             new JSpinner(new SpinnerNumberModel(0, 0, 5, 1));
-
-    private record GenerationResult(
-            List<WikidataDynamicObject> objects,
-            GeneratedQuizableRuntime runtime) {}
-
-    private SwingWorker<GenerationResult, String> currentWorker;
 
     public ModelBuilderFrame(WikidataSparqlClient client) {
         super("Wikidata Quizable Model Builder");
@@ -97,29 +93,36 @@ public class ModelBuilderFrame extends JFrame {
                 SplitPaneUtils.horizontal(
                         titled("Class model", classModelPanel),
                         titled("Production source", sourceWorkbench),
-                        0.28);
+                        0.2);
 
         JSplitPane main =
                 SplitPaneUtils.horizontal(
                         leftMiddle,
                         titled("Generated instances", instancesPanel),
-                        0.66);
+                        0.6);
 
+        leftMiddle.setResizeWeight(0.2);
+        main.setResizeWeight(0.60);
 
         queryLogPanel.setPreferredSize(new Dimension(1200, 160));
 
-        titled("Query log", queryLogPanel);
         JSplitPane vertical =
                 new JSplitPane(
                         JSplitPane.VERTICAL_SPLIT,
                         main,
-                        titled("Log / SPARQL", queryLogPanel));
+                        titled("Query log", queryLogPanel));
 
         vertical.setResizeWeight(0.80);
         vertical.setDividerSize(8);
         vertical.setContinuousLayout(true);
 
         add(vertical, BorderLayout.CENTER);
+
+        SwingUtilities.invokeLater(() -> {
+            main.setDividerLocation(0.60);
+            leftMiddle.setDividerLocation(0.2);
+            vertical.setDividerLocation(0.80);
+        });
     }
 
     private void wireActions() {
@@ -152,25 +155,68 @@ public class ModelBuilderFrame extends JFrame {
         classModelPanel.addTreeSelectionListener(e ->
                 sourceWorkbench.edit(classModelPanel.selectedUserObject()));
 
-        generateButton.addActionListener(e -> generateInstances());
-        cancelButton.addActionListener(e -> cancelGeneration());
+        QueryContext queryContext =
+                new QueryContext(client, apiClient, queryLogPanel);
+
+        generateWorkflow =
+                new QueryWorkflow<>(
+                        queryContext,
+                        run -> SwingUtilities.invokeLater(() -> {
+                            if (lastRun != null) {
+                                lastRun.runtime().close();
+                            }
+                            lastRun = run;
+                            instancesPanel.accept(run.objectResult());
+                        }),
+                        queryLogPanel);
+
+        generateButton.addActionListener(e -> {
+            // Snapshot the model and widget state on the EDT, before
+            // the background run starts.
+            GenerateInstancesQuery query =
+                    new GenerateInstancesQuery(
+                            projectModel.copy(),
+                            ((Number) depthSpinner.getValue()).intValue());
+
+            generateButton.setEnabled(false);
+            cancelButton.setEnabled(true);
+
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    generateWorkflow.run(query);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    generateButton.setEnabled(true);
+                    cancelButton.setEnabled(false);
+                    try {
+                        get();
+                    } catch (Exception ex) {
+                        queryLogPanel.appendRaw(
+                                "Generate failed: " + ex.getMessage());
+                    }
+                }
+            }.execute();
+        });
+        cancelButton.addActionListener(e -> client.cancelCurrentQuery());
+
         previewButton.addActionListener(e -> previewInternalSparql());
         showGeneratedSourceButton.addActionListener(e -> showGeneratedSource());
-
-        client.registerRunButton(generateButton);
-        client.registerCancelButton(cancelButton);
 
         sourceWorkbench.edit(projectModel.rootClass());
     }
 
     private void showGeneratedSource() {
-        if (lastRuntime == null) {
+        if (lastRun == null) {
             log("No generated class source yet.\n");
             return;
         }
 
         JTextArea area =
-                new JTextArea(lastRuntime.source(), 40, 120);
+                new JTextArea(lastRun.runtime().source(), 40, 120);
 
         area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         area.setCaretPosition(0);
@@ -178,7 +224,7 @@ public class ModelBuilderFrame extends JFrame {
         JOptionPane.showMessageDialog(
                 this,
                 new JScrollPane(area),
-                lastRuntime.qualifiedClassName(),
+                lastRun.runtime().qualifiedClassName(),
                 JOptionPane.PLAIN_MESSAGE);
     }
 
@@ -196,112 +242,6 @@ public class ModelBuilderFrame extends JFrame {
                 ((Number) depthSpinner.getValue()).intValue())) {
             log(q);
             log("\n");
-        }
-    }
-
-    private void generateInstances() {
-        if (currentWorker != null && !currentWorker.isDone()) {
-            log("Generation is already running.\n");
-            return;
-        }
-
-        RuleNode root =
-                RuleTreeCompiler.compileProject(projectModel);
-
-        int depth =
-                ((Number) depthSpinner.getValue()).intValue();
-
-        RuleTreeExtractor extractor =
-                new RuleTreeExtractor(client);
-
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-
-        currentWorker =
-                new SwingWorker<>() {
-                    @Override
-                    protected GenerationResult doInBackground()
-                            throws Exception {
-                        List<WikidataDynamicObject> objects =
-                                extractor.load(root, depth, this::publish);
-                        GeneratedQuizableRuntime runtime =
-                                new GeneratedQuizableRuntimeBuilder()
-                                        .build(projectModel.rootClass());
-                        return new GenerationResult(objects, runtime);
-                    }
-
-                    @Override
-                    protected void process(List<String> chunks) {
-                        for (String s : chunks) {
-                            log(s);
-                        }
-                    }
-
-                    @Override
-                    protected void done() {
-                        log("ModelBuilderFrame worker done...\n");
-
-                        if (isCancelled()) {
-                            log("Generation cancelled.\n");
-                            return;
-                        }
-
-                        try {
-                            GenerationResult result = get();
-
-                            log("Root/dynamic objects returned: "
-                                        + result.objects().size()
-                                        + "\n");
-
-                            lastRuntime = result.runtime();
-
-                            List<quiz.Quizable> generatedObjects =
-                                    new GeneratedQuizableMapper(lastRuntime)
-                                            .mapRoots(result.objects());
-
-                            instancesPanel.accept(
-                                    new ObjectQueryResult(
-                                    generatedObjects,
-                                    lastRuntime.generatedClass(),
-                                    lastRuntime.source()));
-
-                            log("After setGeneratedObjects\n");
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            log("Generation interrupted.\n");
-
-                        } catch (CancellationException e) {
-                            log("Generation cancelled.\n");
-
-                        } catch (ExecutionException e) {
-                            Throwable cause = e.getCause();
-
-                            log("Generation failed: "
-                                        + cause.getClass().getSimpleName()
-                                        + ": "
-                                        + cause.getMessage()
-                                        + "\n");
-
-                            cause.printStackTrace();
-                        } catch (Exception e) {
-                            log("Generation failed: "
-                                        + e.getClass().getSimpleName()
-                                        + ": "
-                                        + e.getMessage()
-                                        + "\n");
-                        } finally {
-                            currentWorker = null;
-                            setCursor(Cursor.getDefaultCursor());
-                        }
-                    }
-                };
-        currentWorker.execute();
-    }
-
-    private void cancelGeneration() {
-        if (currentWorker != null && !currentWorker.isDone()) {
-            log("Cancelling generation...\n");
-            currentWorker.cancel(true);
-            client.cancelCurrentQuery();
         }
     }
 

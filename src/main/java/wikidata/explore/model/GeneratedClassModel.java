@@ -51,6 +51,21 @@ public class GeneratedClassModel {
         fields.add(0, GeneratedFieldModel.nameField());
     }
 
+    public GeneratedClassModel copy() {
+        GeneratedClassModel c = new GeneratedClassModel(className);
+
+        c.instanceMapping.copyFrom(instanceMapping);
+
+        c.fields.clear();
+        for (GeneratedFieldModel f : fields) {
+            if (f != null) {
+                c.fields.add(f.copy());
+            }
+        }
+
+        return c;
+    }
+
     public GeneratedFieldModel addField(
             String name,
             FieldType type,

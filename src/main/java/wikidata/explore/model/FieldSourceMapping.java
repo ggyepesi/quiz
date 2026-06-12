@@ -7,7 +7,6 @@ import java.util.Set;
 
 /**
  * Mapping details for a visible class or field.
- *
  * In the normal UI only a subset is shown. Direction, production kind and
  * filters belong under Advanced later.
  */
@@ -102,6 +101,34 @@ public class FieldSourceMapping {
         return propertyLabel.isBlank()
                 ? propertyPid
                 : propertyLabel + " (" + propertyPid + ")";
+    }
+
+    public FieldSourceMapping copy() {
+        FieldSourceMapping c = new FieldSourceMapping();
+        c.copyFrom(this);
+        return c;
+    }
+
+    public void copyFrom(FieldSourceMapping other) {
+        if (other == null) {
+            return;
+        }
+
+        sourceQid = other.sourceQid;
+        sourceLabel = other.sourceLabel;
+        propertyPid = other.propertyPid;
+        propertyLabel = other.propertyLabel;
+        direction = other.direction;
+        requireLabel = other.requireLabel;
+        labelLanguage = other.labelLanguage;
+        limit = other.limit;
+        productionKind = other.productionKind;
+        sourceType = other.sourceType;
+
+        allowedQids.clear();
+        allowedQids.addAll(other.allowedQids);
+        excludedQids.clear();
+        excludedQids.addAll(other.excludedQids);
     }
 
     public FieldSourceType sourceType() {

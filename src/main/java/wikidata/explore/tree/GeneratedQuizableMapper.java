@@ -1,6 +1,5 @@
 package wikidata.explore.tree;
 
-import aux.CachedImage;
 import quiz.Quizable;
 import quiz.ui.ImagePane;
 import wikidata.explore.model.FieldCardinality;
@@ -39,11 +38,7 @@ public class GeneratedQuizableMapper {
 
         Object target = runtime.generatedClass().getDeclaredConstructor().newInstance();
         generatedByDynamic.put(source, target);
-        System.out.println("GEN BUILD qid="
-                                   + source.qid()
-                                   + " dynId=" + System.identityHashCode(source)
-                                   + " genId=" + System.identityHashCode(target)
-                                   + " class=" + target.getClass().getName());
+
         setIfExists(target, "qid", source.qid());
         setIfExists(target, "wikidataUrl", source.wikidataUrl());
         setIfExists(target, "name", source.getDisplayName());

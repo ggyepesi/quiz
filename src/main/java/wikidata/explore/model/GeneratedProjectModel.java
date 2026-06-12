@@ -117,6 +117,33 @@ public class GeneratedProjectModel {
         return created;
     }
 
+    /**
+     * Deep snapshot for handing to a background generation run, so EDT
+     * edits made while the run is in flight cannot tear it.
+     */
+    public GeneratedProjectModel copy() {
+        GeneratedProjectModel c = new GeneratedProjectModel();
+        c.name = name;
+        c.classes.clear();
+        c.rootClass = null;
+
+        for (GeneratedClassModel cls : classes) {
+            GeneratedClassModel copied = cls.copy();
+            c.classes.add(copied);
+
+            if (cls == rootClass) {
+                c.rootClass = copied;
+            }
+        }
+
+        if (c.rootClass == null) {
+            c.rootClass = rootClass.copy();
+            c.classes.addFirst(c.rootClass);
+        }
+
+        return c;
+    }
+
     public void removeClass(GeneratedClassModel c) {
         if (c == null || c == rootClass) {
             return;
