@@ -3,38 +3,32 @@ package wikidata.explore.tree;
 import aux.SplitPaneUtils;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
+import wikidata.explore.generation.GenerationRun;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.query.swing.QueryRawLogPanel;
-import wikidata.explore.query.workflow.QueryWorkflow;
+import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
 import java.awt.*;
 
-/**
- * New conceptual UI:
- *
- * LEFT   = visible class model
- * MIDDLE = selected class/field production source
- * RIGHT  = generated instances
- */
 public class ModelBuilderFrame extends JFrame {
 
     private final WikidataSparqlClient client;
+
     private final WikidataApiClient apiClient =
             new WikidataApiClient("QuizProject/1.0");
 
     private final QueryRawLogPanel queryLogPanel =
             new QueryRawLogPanel();
 
-    private QueryWorkflow<GenerationRun> generateWorkflow;
-
     private final GeneratedProjectModel projectModel =
             GeneratedProjectModel.constellationDemo();
 
     private GenerationRun lastRun;
+    private SwingQueryRunner queryRunner;
 
     private final SingleRootClassModelPanel classModelPanel =
             new SingleRootClassModelPanel(projectModel);
@@ -86,7 +80,6 @@ public class ModelBuilderFrame extends JFrame {
         tb.add(depthSpinner);
 
         cancelButton.setEnabled(false);
-
         add(tb, BorderLayout.NORTH);
 
         JSplitPane leftMiddle =
@@ -126,23 +119,20 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void wireActions() {
+        QueryContext queryContext =
+                new QueryContext(client, apiClient, queryLogPanel);
+
+        queryRunner =
+                new SwingQueryRunner(queryContext, queryLogPanel);
+
+        queryRunner.registerCancelButton(cancelButton);
+        queryRunner.registerRunButton(previewButton);
+        queryRunner.registerRunButton(showGeneratedSourceButton);
+        queryRunner.cancelAction(client::cancelCurrentQuery);
+
         sourceWorkbench.setClient(client);
-        sourceWorkbench.setApiClient(apiClient);
-
-        sourceWorkbench.samplePanel().setNodeSupplier(
-                sourceWorkbench::temporaryRuleNodeForSelected);
-
-        sourceWorkbench.samplePanel().setFieldSampleSupplier(
-                sourceWorkbench::fieldSampleContextForSelected);
-
-        sourceWorkbench.samplePanel().log(this::log);
-
-        sourceWorkbench.discoveryPanel().log(this::log);
-
-        sourceWorkbench.propertyPanel().onPropertySelected(property -> {
-            sourceWorkbench.useProperty(property.pid(), property.getName());
-            classModelPanel.refresh();
-        });
+        sourceWorkbench.setQueryRunner(queryRunner);
+        sourceWorkbench.log(this::log);
 
         sourceWorkbench.afterChange(v -> classModelPanel.refresh());
 
@@ -151,62 +141,43 @@ public class ModelBuilderFrame extends JFrame {
             classModelPanel.selectField(f);
             sourceWorkbench.edit(f);
         });
-        sourceWorkbench.log(this::log);
+
         classModelPanel.addTreeSelectionListener(e ->
-                sourceWorkbench.edit(classModelPanel.selectedUserObject()));
+                                                         sourceWorkbench.edit(classModelPanel.selectedUserObject()));
 
-        QueryContext queryContext =
-                new QueryContext(client, apiClient, queryLogPanel);
+        queryRunner.wireButton(
+                generateButton,
+                this::acceptGenerationRun,
+                () -> {
+                    sourceWorkbench.applyEdits();
 
-        generateWorkflow =
-                new QueryWorkflow<>(
-                        queryContext,
-                        run -> SwingUtilities.invokeLater(() -> {
-                            if (lastRun != null) {
-                                lastRun.runtime().close();
-                            }
-                            lastRun = run;
-                            instancesPanel.accept(run.objectResult());
-                        }),
-                        queryLogPanel);
-
-        generateButton.addActionListener(e -> {
-            // Snapshot the model and widget state on the EDT, before
-            // the background run starts.
-            GenerateInstancesQuery query =
-                    new GenerateInstancesQuery(
+                    return new GenerateInstancesQuery(
                             projectModel.copy(),
                             ((Number) depthSpinner.getValue()).intValue());
-
-            generateButton.setEnabled(false);
-            cancelButton.setEnabled(true);
-
-            new SwingWorker<Void, Void>() {
-                @Override
-                protected Void doInBackground() throws Exception {
-                    generateWorkflow.run(query);
-                    return null;
-                }
-
-                @Override
-                protected void done() {
-                    generateButton.setEnabled(true);
-                    cancelButton.setEnabled(false);
-                    try {
-                        get();
-                    } catch (Exception ex) {
-                        queryLogPanel.appendRaw(
-                                "Generate failed: " + ex.getMessage());
-                    }
-                }
-            }.execute();
-        });
-        cancelButton.addActionListener(e -> client.cancelCurrentQuery());
+                },
+                ex -> queryLogPanel.appendRaw(
+                        "Generate failed: " + ex.getMessage()));
 
         previewButton.addActionListener(e -> previewInternalSparql());
         showGeneratedSourceButton.addActionListener(e -> showGeneratedSource());
 
         sourceWorkbench.edit(projectModel.rootClass());
+    }
+
+    private void acceptGenerationRun(GenerationRun run) {
+        SwingUtilities.invokeLater(() -> {
+            if (lastRun != null && lastRun.runtime() != null) {
+                lastRun.runtime().close();
+            }
+
+            lastRun = run;
+
+            if (run != null) {
+                instancesPanel.accept(run.objectResult());
+            } else {
+                instancesPanel.clear();
+            }
+        });
     }
 
     private void showGeneratedSource() {
@@ -229,6 +200,8 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void previewInternalSparql() {
+        sourceWorkbench.applyEdits();
+
         RuleNode root =
                 RuleTreeCompiler.compileProject(projectModel);
 
@@ -246,9 +219,8 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void log(String s) {
-        SwingUtilities.invokeLater(() -> {
-            queryLogPanel.appendRaw(s);
-        });
+        SwingUtilities.invokeLater(() ->
+                                           queryLogPanel.appendRaw(s));
     }
 
     private static JComponent titled(String title, JComponent component) {

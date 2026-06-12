@@ -1,11 +1,10 @@
 package wikidata.explore.tree;
 
-import wikidata.WikidataBinding;
-import wikidata.WikidataSparqlClient;
-import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
-import wikidata.query.WikidataQueryBuilder;
+import wikidata.explore.query.logical.ClassSearchQuery;
+import wikidata.explore.query.result.TableQueryResult;
+import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -16,17 +15,12 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class ClassSourcePanel extends JPanel {
-    private enum SearchMode {
-        API,
-        SPARQL,
-        BOTH
-    }
-    private final JComboBox<SearchMode> searchModeBox =
-            new JComboBox<>(SearchMode.values());
+
+    private final JComboBox<ClassSearchQuery.Mode> searchModeBox =
+            new JComboBox<>(ClassSearchQuery.Mode.values());
 
     private GeneratedClassModel clazz;
-    private WikidataSparqlClient client;
-    private WikidataApiClient apiClient;
+    private SwingQueryRunner queryRunner;
 
     private Consumer<String> log = s -> {};
     private Consumer<Void> afterChange = v -> {};
@@ -68,15 +62,17 @@ public class ClassSourcePanel extends JPanel {
         this.log = log == null ? s -> {} : log;
     }
 
-    public void setClient(WikidataSparqlClient client) {
-        this.client = client;
-        client.registerRunButton(searchTypeButton);
-        updateSearchButtonState();
-    }
+    /**
+     * One-shot: the search button's action listener binds to the first
+     * runner's workflow, so later calls are ignored.
+     */
+    public void setQueryRunner(SwingQueryRunner queryRunner) {
+        if (this.queryRunner != null || queryRunner == null) {
+            return;
+        }
 
-    public void setApiClient(WikidataApiClient apiClient) {
-        this.apiClient = apiClient;
-        System.out.println("ClassSourcePanel API client installed");
+        this.queryRunner = queryRunner;
+        wireQuery();
         updateSearchButtonState();
     }
 
@@ -129,6 +125,10 @@ public class ClassSourcePanel extends JPanel {
         return clazz == null ? null : RuleTreeCompiler.compileClass(clazz);
     }
 
+    public void applyEdits() {
+        apply();
+    }
+
     private void buildUi() {
         JPanel form = new JPanel(new GridBagLayout());
         form.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
@@ -147,7 +147,8 @@ public class ClassSourcePanel extends JPanel {
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
         addWide(form, c, y++, titleLabel);
 
-        JLabel question = new JLabel("How do we find instances of this class?");
+        JLabel question =
+                new JLabel("How do we find instances of this class?");
         question.setFont(question.getFont().deriveFont(Font.ITALIC));
         addWide(form, c, y++, question);
 
@@ -158,8 +159,8 @@ public class ClassSourcePanel extends JPanel {
         typeRow.add(typeLabel);
         addRow(form, c, y++, "Wikidata type/class:", typeRow);
 
-        JLabel relation = new JLabel(
-                "Relation: item is instance of selected type (P31)");
+        JLabel relation =
+                new JLabel("Relation: item is instance of selected type (P31)");
         addWide(form, c, y++, relation);
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -171,13 +172,10 @@ public class ClassSourcePanel extends JPanel {
         addWide(form, c, y++, options);
 
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-
         searchRow.add(new JLabel("Search:"));
         searchRow.add(searchTextField);
-
         searchRow.add(new JLabel("Method:"));
         searchRow.add(searchModeBox);
-
         searchRow.add(searchTypeButton);
         addWide(form, c, y++, searchRow);
 
@@ -201,8 +199,7 @@ public class ClassSourcePanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
 
         applyButton.addActionListener(e -> apply());
-        searchTypeButton.addActionListener(e -> runSearch());
-        searchTextField.addActionListener(e -> runSearch());
+        searchTextField.addActionListener(e -> searchTypeButton.doClick());
         useSelectedButton.addActionListener(e -> useSelectedSearchRow());
 
         searchTable.getSelectionModel().addListSelectionListener(e ->
@@ -211,129 +208,92 @@ public class ClassSourcePanel extends JPanel {
         updateSearchButtonState();
     }
 
-    private void updateSearchButtonState() {
-        searchTypeButton.setEnabled(clazz != null
-                                            && (apiClient != null || client != null));
+    private void wireQuery() {
+        queryRunner.wireButton(
+                searchTypeButton,
+                this::acceptSearchResult,
+                this::buildSearchQuery,
+                ex -> JOptionPane.showMessageDialog(
+                        this,
+                        "Search failed:\n" + ex.getMessage(),
+                        "Search failed",
+                        JOptionPane.ERROR_MESSAGE));
     }
 
-    private void runSearch() {
+    private ClassSearchQuery buildSearchQuery() {
         if (clazz == null) {
-            return;
+            return null;
         }
 
-        String text =
-                searchTextField.getText() == null
-                        ? ""
-                        : searchTextField.getText().trim();
+        String text = searchText();
 
         if (text.isBlank()) {
-            text = classNameField.getText() == null
-                    ? ""
-                    : classNameField.getText().trim();
+            return null;
         }
 
-        if (text.isBlank()) {
-            return;
-        }
-
-        final String queryText = text;
-        SearchMode mode =
-                (SearchMode) searchModeBox.getSelectedItem();
+        ClassSearchQuery.Mode mode =
+                (ClassSearchQuery.Mode) searchModeBox.getSelectedItem();
 
         log.accept("Class/type search: "
-                           + queryText
+                           + text
                            + " using "
                            + mode
                            + "\n");
 
         searchModel.setRows(List.of());
         useSelectedButton.setEnabled(false);
-        searchTypeButton.setEnabled(false);
 
-        SwingWorker<List<SearchResult>, Void> worker =
-                new SwingWorker<>() {
-                    @Override
-                    protected List<SearchResult> doInBackground()
-                            throws Exception {
-                        return switch (mode) {
-                            case API -> searchWithApi(queryText);
-                            case SPARQL -> searchWithSparql(queryText);
-                            case BOTH -> dedupe(searchWithApi(queryText), searchWithSparql(queryText));
-                        };
-                    }
-
-                    @Override
-                    protected void done() {
-                        try {
-                            searchModel.setRows(get());
-                        } catch (Exception ex) {
-                            JOptionPane.showMessageDialog(
-                                    ClassSourcePanel.this,
-                                    "Search failed:\n" + ex.getMessage(),
-                                    "Search failed",
-                                    JOptionPane.ERROR_MESSAGE);
-                        } finally {
-                            updateSearchButtonState();
-                        }
-                    }
-                };
-
-        worker.execute();
+        return new ClassSearchQuery(
+                text,
+                mode,
+                25);
     }
 
-    private static List<SearchResult> dedupe(
-            List<SearchResult> a,
-            List<SearchResult> b) {
+    private String searchText() {
+        String text =
+                searchTextField.getText() == null
+                        ? ""
+                        : searchTextField.getText().trim();
 
-        java.util.Map<String, SearchResult> map =
-                new java.util.LinkedHashMap<>();
-
-        for (SearchResult r : a) map.putIfAbsent(r.qid(), r);
-        for (SearchResult r : b) map.putIfAbsent(r.qid(), r);
-
-        return new java.util.ArrayList<>(map.values());
-    }
-
-    private List<SearchResult> searchWithApi(String text) throws Exception {
-        log.accept("Searching class/type using API: " + text + "\n");
-        List<SearchResult> out = new ArrayList<>();
-
-        for (WikidataApiClient.SearchResult r :
-                apiClient.searchEntities(text, 25)) {
-
-            out.add(new SearchResult(
-                    r.qid(),
-                    r.label() == null || r.label().isBlank()
-                            ? r.qid()
-                            : r.label(),
-                    r.description() == null ? "" : r.description()));
+        if (text.isBlank()) {
+            text =
+                    classNameField.getText() == null
+                            ? ""
+                            : classNameField.getText().trim();
         }
 
-        return out;
+        return text;
     }
 
-    private List<SearchResult> searchWithSparql(String text) throws Exception {
-        String sparql =
-                WikidataQueryBuilder.entitySearch(text, 25);
-        log.accept("Searching class/type using SPARQL: " + sparql + "\n");
+    private void acceptSearchResult(TableQueryResult result) {
+        List<SearchResult> rows = new ArrayList<>();
 
-
-        List<SearchResult> out = new ArrayList<>();
-
-        for (WikidataBinding b : client.query(sparql)) {
-            String qid = b.qid("item");
-            String label = b.label("item");
-            String desc = b.value("itemDescription");
-
-            if (qid != null && qid.matches("Q\\d+")) {
-                out.add(new SearchResult(
-                        qid,
-                        label == null ? qid : label,
-                        desc == null ? "" : desc));
+        if (result != null) {
+            for (List<Object> row : result.rows()) {
+                rows.add(new SearchResult(
+                        value(row, 0),
+                        value(row, 1),
+                        value(row, 2)));
             }
         }
 
-        return out;
+        SwingUtilities.invokeLater(() -> {
+            searchModel.setRows(rows);
+            useSelectedButton.setEnabled(false);
+        });
+    }
+
+    private static String value(List<Object> row, int index) {
+        if (row == null || index >= row.size()) {
+            return "";
+        }
+
+        Object v = row.get(index);
+        return v == null ? "" : String.valueOf(v);
+    }
+
+    private void updateSearchButtonState() {
+        searchTypeButton.setEnabled(clazz != null && queryRunner != null);
     }
 
     private void useSelectedSearchRow() {
@@ -382,16 +342,17 @@ public class ClassSourcePanel extends JPanel {
             }
         });
 
-        searchTable.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
-            @Override
-            public void mouseMoved(java.awt.event.MouseEvent e) {
-                int col = searchTable.columnAtPoint(e.getPoint());
+        searchTable.addMouseMotionListener(
+                new java.awt.event.MouseMotionAdapter() {
+                    @Override
+                    public void mouseMoved(java.awt.event.MouseEvent e) {
+                        int col = searchTable.columnAtPoint(e.getPoint());
 
-                searchTable.setCursor(col == 0
-                                              ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-                                              : Cursor.getDefaultCursor());
-            }
-        });
+                        searchTable.setCursor(col == 0
+                                                      ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                                                      : Cursor.getDefaultCursor());
+                    }
+                });
     }
 
     private void apply() {
@@ -442,9 +403,11 @@ public class ClassSourcePanel extends JPanel {
     private record SearchResult(
             String qid,
             String label,
-            String description) {}
+            String description) {
+    }
 
     private static final class SearchTableModel extends AbstractTableModel {
+
         private final String[] columns =
                 {"QID", "Label", "Description"};
 

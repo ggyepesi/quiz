@@ -89,7 +89,7 @@ public class QueryWorkflow<R> {
         return result;
     }
 
-    private static boolean isCancellation(Throwable t) {
+    public static boolean isCancellation(Throwable t) {
         for (; t != null; t = t.getCause()) {
             if (t instanceof InterruptedException
                     || t instanceof CancellationException) {

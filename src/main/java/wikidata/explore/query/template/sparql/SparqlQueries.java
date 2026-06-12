@@ -1,0 +1,189 @@
+package wikidata.explore.query.template.sparql;
+
+import wikidata.explore.query.core.QueryTemplate;
+import wikidata.query.WikidataExplorerQueries;
+import wikidata.query.WikidataQueryBuilder;
+import wikidata.query.WikidataRootQuery;
+
+import java.util.Collection;
+import java.util.Map;
+
+public final class SparqlQueries {
+
+    private SparqlQueries() {}
+
+    public static final QueryTemplate SAMPLE_CLASS_INSTANCES =
+            new QueryTemplate(
+                    "Sample class instances",
+                    """
+                    SELECT DISTINCT ?value ?valueLabel WHERE {
+                      BIND(wd:${classQid} AS ?root)
+                      ?value wdt:P31 ?root .
+                      ?value rdfs:label ?valueLabel .
+                      FILTER(LANG(?valueLabel) = "${lang}")
+                    }
+                    ORDER BY ?valueLabel
+                    LIMIT ${limit}
+                    """);
+
+    public static final QueryTemplate DISCOVER_INCOMING_PROPERTIES_TO_CLASS =
+            new QueryTemplate(
+                    "Discover incoming properties to class QID",
+                    """
+                    SELECT ?prop ?propLabel ?type ?count
+                    WHERE {
+                      {
+                        SELECT ?propUri
+                               (COUNT(DISTINCT ?subject) AS ?count)
+                        WHERE {
+                          ?subject ?propUri wd:${classQid} .
+                          FILTER(STRSTARTS(
+                            STR(?subject),
+                            "http://www.wikidata.org/entity/Q"
+                          ))
+                        }
+                        GROUP BY ?propUri
+                        ORDER BY DESC(?count)
+                        LIMIT ${innerLimit}
+                      }
+
+                      ?prop wikibase:directClaim ?propUri .
+                      OPTIONAL { ?prop wikibase:propertyType ?type . }
+
+                      SERVICE wikibase:label {
+                        bd:serviceParam wikibase:language "en" .
+                      }
+                    }
+                    ORDER BY DESC(?count)
+                    LIMIT ${limit}
+                    """);
+
+    public static String sampleClassInstances(
+            String classQid,
+            String lang,
+            int limit) {
+
+        return SAMPLE_CLASS_INSTANCES.render(Map.of(
+                "classQid", WikidataQueryBuilder.cleanQid(classQid),
+                "lang", lang == null || lang.isBlank() ? "en" : lang,
+                "limit", Math.max(1, limit)));
+    }
+
+    public static String discoverOutgoingProperties(
+            Collection<String> qids,
+            int limit) {
+
+        int n = Math.max(1, limit);
+
+        return new WikidataQueryBuilder()
+                .distinct(false)
+                .select("prop", "propLabel", "type", "count", "example")
+                .rawWhere("""
+                        {
+                          SELECT ?propUri
+                                 (COUNT(DISTINCT ?item) AS ?count)
+                                 (SAMPLE(?example) AS ?example)
+                          WHERE {
+                        """)
+                .valuesQids("item", qids)
+                .rawWhere("""
+                            ?item ?propUri ?example .
+                            FILTER(STRSTARTS(
+                              STR(?propUri),
+                              "http://www.wikidata.org/prop/direct/"
+                            ))
+                          }
+                          GROUP BY ?propUri
+                          ORDER BY DESC(?count)
+                          LIMIT %d
+                        }
+                        """.formatted(n))
+                .rawWhere("?prop wikibase:directClaim ?propUri .")
+                .optional("?prop wikibase:propertyType ?type .")
+                .label("prop")
+                .orderByRaw("DESC(?count)")
+                .limit(n)
+                .build();
+    }
+
+    public static String discoverIncomingPropertiesToClassQid(
+            String classQid,
+            int limit) {
+
+        int n = Math.max(1, limit);
+
+        return DISCOVER_INCOMING_PROPERTIES_TO_CLASS.render(Map.of(
+                "classQid", WikidataQueryBuilder.cleanQid(classQid),
+                "innerLimit", 40,
+                "limit", n));
+    }
+
+    public static String outgoingTriples(
+            String rootQid,
+            int limit,
+            boolean requireEnglishLabel,
+            Double minLengthKm,
+            Double minAreaKm2) {
+
+        return WikidataExplorerQueries.outgoingTriples(
+                rootQid,
+                limit,
+                requireEnglishLabel,
+                minLengthKm,
+                minAreaKm2);
+    }
+
+    public static String incomingTriples(
+            String rootQid,
+            int limit,
+            boolean requireEnglishLabel,
+            Double minLengthKm,
+            Double minAreaKm2) {
+
+        return WikidataExplorerQueries.incomingTriples(
+                rootQid,
+                limit,
+                requireEnglishLabel,
+                minLengthKm,
+                minAreaKm2);
+    }
+
+    public static String instanceOfTypes(String rootQid) {
+        return WikidataExplorerQueries.instanceOfTypes(rootQid);
+    }
+
+    public static String incomingPropertySummary(
+            String rootQid,
+            int limit) {
+
+        return WikidataExplorerQueries.incomingPropertySummary(rootQid, limit);
+    }
+
+    public static String incomingValuesForProperty(
+            String rootQid,
+            String pid,
+            int limit,
+            String excludeFilter,
+            boolean requireLabel,
+            boolean includeMedia) {
+
+        return WikidataExplorerQueries.incomingValuesForProperty(
+                rootQid,
+                pid,
+                limit,
+                excludeFilter,
+                requireLabel,
+                includeMedia);
+    }
+
+    public static String allPropertiesForCache() {
+        return WikidataExplorerQueries.allPropertiesForCache();
+    }
+
+    public static WikidataRootQuery rootQuery(
+            String rootVar,
+            String sparql) {
+
+        return new WikidataRootQuery(rootVar, sparql);
+    }
+}

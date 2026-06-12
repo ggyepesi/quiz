@@ -1,13 +1,12 @@
 package wikidata.explore.query.logical;
 
-import quiz.Quizable;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.tree.*;
+import wikidata.explore.generation.GenerationPipeline;
+import wikidata.explore.generation.GenerationRun;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -53,30 +52,11 @@ public class GenerateInstancesQuery
     public GenerationRun execute(QueryContext context)
             throws Exception {
 
-        RuleNode root =
-                RuleTreeCompiler.compileProject(projectModel);
-
-        RuleTreeExtractor extractor =
-                new RuleTreeExtractor(context.sparql());
-
-        List<WikidataDynamicObject> dynamicObjects =
-                extractor.load(root, depth, context::logText);
-
-        GeneratedQuizableRuntime runtime =
-                new GeneratedQuizableRuntimeBuilder()
-                        .build(projectModel.rootClass());
-
-        List<Quizable> generatedObjects =
-                new GeneratedQuizableMapper(runtime)
-                        .mapRoots(dynamicObjects);
-
-        return new GenerationRun(
+        return new GenerationPipeline().fullRun(
                 projectModel,
                 depth,
-                root,
-                dynamicObjects,
-                runtime,
-                generatedObjects);
+                context.sparql(),
+                context::logText);
     }
 
     @Override

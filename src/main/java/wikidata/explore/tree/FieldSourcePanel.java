@@ -124,6 +124,8 @@ public class FieldSourcePanel extends JPanel {
         afterApplyField.accept(field);
     }
 
+    public void applyEdits() { apply(); }
+
     private void buildUi() {
         JPanel form = new JPanel(new GridBagLayout());
         form.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));

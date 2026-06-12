@@ -196,7 +196,6 @@ public class WikidataRuleTreeFrame extends JFrame {
             }
         });
 
-        samplePanel.setClient(client);
         samplePanel.setApplyEdits(() -> {
             editorPanel.applyCurrentNodeEdits();
             ruleTreePanel.refresh();

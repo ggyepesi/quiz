@@ -1,11 +1,11 @@
 package wikidata.explore.tree;
 
 import wikidata.WikidataSparqlClient;
-import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
 import java.awt.*;
@@ -41,6 +41,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
     private Object selected;
 
+    private Consumer<Void> afterChange = v -> {};
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
 
     public ModelSourceWorkbenchPanel(GeneratedProjectModel projectModel) {
@@ -50,27 +51,31 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     }
 
     public void log(Consumer<String> log) {
-        classSourcePanel.log(log);
+        Consumer<String> safe =
+                log == null ? s -> {} : log;
+
+        classSourcePanel.log(safe);
+        samplePanel.log(safe);
+        discoveryPanel.log(safe);
     }
 
     public void setClient(WikidataSparqlClient client) {
-        classSourcePanel.setClient(client);
-
-        samplePanel.setClient(client);
         discoveryPanel.setClient(client);
         wikiProjectPanel.setSparqlClient(client);
     }
 
-    public void setApiClient(WikidataApiClient apiClient) {
-        classSourcePanel.setApiClient(apiClient);
+    public void setQueryRunner(SwingQueryRunner queryRunner) {
+        classSourcePanel.setQueryRunner(queryRunner);
+        samplePanel.setQueryRunner(queryRunner);
+        // discoveryPanel.setQueryRunner(queryRunner);
     }
 
     public void afterChange(Consumer<Void> afterChange) {
-        Consumer<Void> afterChange1 =
+        this.afterChange =
                 afterChange == null ? v -> {} : afterChange;
 
-        classSourcePanel.afterChange(afterChange1);
-        fieldSourcePanel.afterChange(afterChange1);
+        classSourcePanel.afterChange(this.afterChange);
+        fieldSourcePanel.afterChange(this.afterChange);
     }
 
     public void afterApplyField(
@@ -117,7 +122,17 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         }
     }
 
+    public void applyEdits() {
+        if (selected instanceof GeneratedClassModel) {
+            classSourcePanel.applyEdits();
+        } else if (selected instanceof GeneratedFieldModel) {
+            fieldSourcePanel.applyEdits();
+        }
+    }
+
     public RuleNode temporaryRuleNodeForSelected() {
+        applyEdits();
+
         if (selected instanceof GeneratedClassModel c) {
             return RuleTreeCompiler.compileClass(c);
         }
@@ -130,6 +145,8 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     }
 
     public FieldSampleContext fieldSampleContextForSelected() {
+        applyEdits();
+
         if (selected instanceof GeneratedFieldModel f) {
             return new FieldSampleContext(projectModel.rootClass(), f);
         }
@@ -140,10 +157,13 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     public void useProperty(String pid, String label) {
         if (selected instanceof GeneratedFieldModel f) {
             fieldSourcePanel.useProperty(pid, label);
+
             if (f.cardinality() == FieldCardinality.AUTO) {
                 helperTabs.setSelectedComponent(samplePanel);
                 samplePanel.triggerFieldSample();
             }
+
+            afterChange.accept(null);
         }
     }
 
@@ -160,11 +180,15 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             samplePanel.triggerFieldSample();
         });
 
+        samplePanel.setNodeSupplier(this::temporaryRuleNodeForSelected);
+        samplePanel.setFieldSampleSupplier(this::fieldSampleContextForSelected);
+
         samplePanel.onCardinalitySuggested(cardinality -> {
             if (selected instanceof GeneratedFieldModel f) {
                 f.cardinality(cardinality);
                 fieldSourcePanel.edit(f);
                 afterApplyField.accept(f);
+                afterChange.accept(null);
             }
         });
 
@@ -172,21 +196,35 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             selected = f;
             fieldSourcePanel.edit(f);
             afterApplyField.accept(f);
+            afterChange.accept(null);
         });
 
         discoveryPanel.setNodeSupplier(this::temporaryRuleNodeForSelected);
-        discoveryPanel.onAddField(p -> useProperty(p.pid(), p.label()));
+
+        discoveryPanel.onAddField(p -> {
+            useProperty(p.pid(), p.label());
+            afterChange.accept(null);
+        });
+
         discoveryPanel.onAddAllowedQid(qid -> {
             if (selected instanceof GeneratedFieldModel f) {
                 f.mapping().allowedQids().add(qid);
                 fieldSourcePanel.edit(f);
+                afterChange.accept(null);
             }
         });
+
         discoveryPanel.onAddExcludedQid(qid -> {
             if (selected instanceof GeneratedFieldModel f) {
                 f.mapping().excludedQids().add(qid);
                 fieldSourcePanel.edit(f);
+                afterChange.accept(null);
             }
+        });
+
+        propertyPanel.onPropertySelected(property -> {
+            useProperty(property.pid(), property.getName());
+            afterChange.accept(null);
         });
 
         helperTabs.addTab("Sample", samplePanel);
