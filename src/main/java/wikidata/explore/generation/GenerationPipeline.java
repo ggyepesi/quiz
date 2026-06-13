@@ -1,9 +1,16 @@
 package wikidata.explore.generation;
 
+import wikidata.explore.codegen.GeneratedQuizableRuntimeBuilder;
+import wikidata.explore.codegen.GeneratedQuizableRuntime;
+import wikidata.explore.codegen.GeneratedQuizableMapper;
+import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.extract.RuleTreeExtractor;
+import wikidata.explore.rule.RuleTreeSerializer;
+import wikidata.explore.rule.RuleTreeCompiler;
+import wikidata.explore.rule.RuleNode;
 import quiz.Quizable;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.tree.*;
 
 import java.util.List;
 import java.util.function.Consumer;

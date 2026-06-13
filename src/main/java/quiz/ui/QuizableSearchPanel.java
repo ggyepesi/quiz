@@ -11,7 +11,8 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 
-public class QuizableSearchPanel extends JPanel {
+public class QuizableSearchPanel extends JPanel
+        implements QuizablePanelTargetListener {
     public static final String FIELD_PATH_PROPERTY = "quiz.fieldPath";
     public static final String FIELD_NAME_PROPERTY = "quiz.fieldName";
     public static final String FIELD_VALUE_PROPERTY = "quiz.fieldValue";
@@ -77,6 +78,11 @@ public class QuizableSearchPanel extends JPanel {
 
     private int cachedColumnCount = 1;
 
+    // True once the user has applied a sort and not yet restored order, so
+    // live-added cards can be slotted into the sorted order rather than
+    // appended at the end.
+    private boolean sorted = false;
+
     public void setTarget(
             JPanel targetPanel,
             JScrollPane targetScrollPane) {
@@ -121,6 +127,62 @@ public class QuizableSearchPanel extends JPanel {
         }
     }
 
+    /**
+     * Re-syncs after the controlled view added cards live: refreshes the
+     * column count, extends the original-order baseline with the new cards
+     * (appending rather than re-snapshotting, which would otherwise capture
+     * a sorted order as the baseline and break Restore Order), rebuilds the
+     * search index, re-applies the active sort so new cards land in sorted
+     * position, and re-applies the active query so they get highlighted.
+     */
+    @Override
+    public void quizablePanelsAdded(List<QuizablePanel> added) {
+        if (targetPanel == null) {
+            return;
+        }
+
+        cachedColumnCount = detectColumnCount();
+
+        for (QuizablePanel qp : added) {
+            if (qp == null) {
+                continue;
+            }
+            originalQuizables.add(qp.getQuizable());
+            originalTargetOrder.add(qp);
+        }
+
+        rebuildSearchIndex();
+
+        if (sorted) {
+            sortTargetPanels();
+        }
+
+        maybeRefreshSearch();
+    }
+
+    /**
+     * Re-syncs after the controlled view re-rendered cards in place (their
+     * backing quizables changed). The card instances are unchanged, but
+     * their child components — and possibly a sort-key field's value — are
+     * new, so the search index is rebuilt, an active sort is re-applied
+     * (the changed value may move the card), and the active query is
+     * re-run so highlights match the new content.
+     */
+    @Override
+    public void quizablePanelsUpdated(List<QuizablePanel> updated) {
+        if (targetPanel == null) {
+            return;
+        }
+
+        rebuildSearchIndex();
+
+        if (sorted) {
+            sortTargetPanels();
+        }
+
+        maybeRefreshSearch();
+    }
+
     private void sortTargetPanels() {
         if (targetPanel == null) {
             return;
@@ -146,6 +208,7 @@ public class QuizableSearchPanel extends JPanel {
 
         panels = searchAndSort.sortPanels(panels, sortPaths);
         applyTargetOrder(panels);
+        sorted = true;
 
         // Don't call maybeRefreshSearch() — highlights are still valid
         // because no panels were recreated, only repositioned.
@@ -774,6 +837,14 @@ public class QuizableSearchPanel extends JPanel {
         applyTargetOrder(panels);
         rebuildSearchIndex();
 
+        // EDGE CASE: this recreates the cards in original order, visually
+        // un-sorting, but deliberately leaves the `sorted` flag untouched.
+        // Consequence: if a sort was active, the next live add
+        // (quizablePanelsAdded) will re-impose it. That re-sort is the
+        // intended behavior; if you ever want View Config to clear the
+        // sort instead, set `sorted = false` here — but then a live add
+        // after a view change won't restore the user's sort. Decide
+        // explicitly rather than letting it drift.
         if (searchAfter) {
             maybeRefreshSearch();
         }
@@ -797,6 +868,7 @@ public class QuizableSearchPanel extends JPanel {
     }
 
     private void restoreOriginalTargetOrder() {
+        sorted = false;
         applyTargetOrder(originalTargetOrder);
         maybeRefreshSearch();
     }

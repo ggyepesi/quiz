@@ -12,20 +12,38 @@ public final class SparqlQueries {
 
     private SparqlQueries() {}
 
+    /**
+     * LIMIT applies inside the subquery, before the outer sort — a flat
+     * ORDER BY over a huge class (e.g. Q523 star) sorts millions of rows
+     * and times out. The sample is index-order, sorted for display only.
+     */
     public static final QueryTemplate SAMPLE_CLASS_INSTANCES =
             new QueryTemplate(
                     "Sample class instances",
                     """
-                    SELECT DISTINCT ?value ?valueLabel WHERE {
-                      BIND(wd:${classQid} AS ?root)
-                      ?value wdt:P31 ?root .
-                      ?value rdfs:label ?valueLabel .
-                      FILTER(LANG(?valueLabel) = "${lang}")
+                    SELECT * WHERE {
+                      {
+                        SELECT DISTINCT ?value ?valueLabel WHERE {
+                          BIND(wd:${classQid} AS ?root)
+                          ?value wdt:P31 ?root .
+                          ?value rdfs:label ?valueLabel .
+                          FILTER(LANG(?valueLabel) = "${lang}")
+                        }
+                        LIMIT ${limit}
+                      }
                     }
                     ORDER BY ?valueLabel
-                    LIMIT ${limit}
                     """);
 
+    /**
+     * The wikibase:directClaim join INSIDE the counting subquery is what
+     * makes this fast: the engine probes each direct property as an index
+     * range count instead of scanning every triple that points at the
+     * class item. The unrestricted form ({@code ?subject ?propUri wd:X})
+     * wades through millions of statement/reference nodes for popular
+     * classes (e.g. Q523 star) and times out. Counts are exact, and a
+     * subject filter is unnecessary — wdt: triples only have wd: subjects.
+     */
     public static final QueryTemplate DISCOVER_INCOMING_PROPERTIES_TO_CLASS =
             new QueryTemplate(
                     "Discover incoming properties to class QID",
@@ -33,14 +51,10 @@ public final class SparqlQueries {
                     SELECT ?prop ?propLabel ?type ?count
                     WHERE {
                       {
-                        SELECT ?propUri
-                               (COUNT(DISTINCT ?subject) AS ?count)
+                        SELECT ?propUri (COUNT(*) AS ?count)
                         WHERE {
+                          ?propEntity wikibase:directClaim ?propUri .
                           ?subject ?propUri wd:${classQid} .
-                          FILTER(STRSTARTS(
-                            STR(?subject),
-                            "http://www.wikidata.org/entity/Q"
-                          ))
                         }
                         GROUP BY ?propUri
                         ORDER BY DESC(?count)
@@ -57,6 +71,45 @@ public final class SparqlQueries {
                     ORDER BY DESC(?count)
                     LIMIT ${limit}
                     """);
+
+    public static final QueryTemplate SAMPLE_INSTANCES_BY_P31 =
+            new QueryTemplate(
+                    "Sample instances by P31",
+                    """
+                    SELECT ?item WHERE {
+                      ?item wdt:P31 wd:${classQid} .
+                    }
+                    LIMIT ${limit}
+                    """);
+
+    public static final QueryTemplate ENTITY_LABEL =
+            new QueryTemplate(
+                    "Entity label",
+                    """
+                    SELECT ?label WHERE {
+                      wd:${qid} rdfs:label ?label .
+                      FILTER(LANG(?label) = "${lang}")
+                    }
+                    LIMIT 1
+                    """);
+
+    public static String sampleInstancesByP31(
+            String classQid,
+            int limit) {
+
+        return SAMPLE_INSTANCES_BY_P31.render(Map.of(
+                "classQid", WikidataQueryBuilder.cleanQid(classQid),
+                "limit", Math.max(1, limit)));
+    }
+
+    public static String entityLabel(
+            String qid,
+            String lang) {
+
+        return ENTITY_LABEL.render(Map.of(
+                "qid", WikidataQueryBuilder.cleanQid(qid),
+                "lang", lang == null || lang.isBlank() ? "en" : lang));
+    }
 
     public static String sampleClassInstances(
             String classQid,

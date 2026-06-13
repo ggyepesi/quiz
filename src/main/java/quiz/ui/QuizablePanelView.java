@@ -1,9 +1,6 @@
 package quiz.ui;
 
 import aux.GridBagUtils;
-import benchmark.generated.OscarNominationFormView;
-import nobel.NobelPrize;
-import oscar.OscarNomination;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.QuizablePanelConfig;
@@ -26,7 +23,53 @@ public class QuizablePanelView {
     private JPanel cardsPanel;
     private JScrollPane cardsScrollPane;
 
+    // Shared across the initial render and any live additions so cards
+    // resolve cross-references and class configs consistently.
+    private QuizableRenderContext context;
+
+    // Column count and trailing glue filler, remembered so a live add can
+    // place the next card and keep the glue below it.
+    private int columns = 1;
+    private Component glueComponent;
+
+    private final List<QuizablePanelTargetListener> targetListeners =
+            new ArrayList<>();
+
+    // Optional externally-supplied context, shared with other views so a
+    // reference click can navigate to a card in a sibling view.
+    private QuizableRenderContext sharedContext;
+    private boolean inPlaceNavigation;
+
     public QuizablePanelView() {
+    }
+
+    /**
+     * Shares an external render context across views. All views using the
+     * same context can resolve references to each other's cards. The owner
+     * must pre-register every object (via {@link QuizableRenderContext}) so
+     * cross-references render as chips rather than embedded cards.
+     */
+    public void setRenderContext(QuizableRenderContext context) {
+        this.sharedContext = context;
+    }
+
+    /**
+     * When true, single-clicking a reference whose target is a card in this
+     * (or a shared) context navigates to it instead of opening a frame.
+     */
+    public void setInPlaceNavigation(boolean inPlaceNavigation) {
+        this.inPlaceNavigation = inPlaceNavigation;
+    }
+
+    /**
+     * Registers a listener notified when cards are added live (after the
+     * frame is showing). {@link #createFrame} registers the internal
+     * search panel automatically.
+     */
+    public void addTargetListener(QuizablePanelTargetListener listener) {
+        if (listener != null && !targetListeners.contains(listener)) {
+            targetListeners.add(listener);
+        }
     }
 
     public Map<String, JPanel> getCardsByName() {
@@ -55,6 +98,7 @@ public class QuizablePanelView {
         System.out.println(getClass().getName() + ".createCardsPanel for " + cards.size() + " cards...");
         cards.clear();
         cardsByName.clear();
+        columns = Math.max(1, numColumns);
 
         cardsPanel = new JPanel(new GridBagLayout());
         cardsScrollPane = new JScrollPane(cardsPanel);
@@ -67,13 +111,13 @@ public class QuizablePanelView {
         RepaintManager.currentManager(cardsScrollPane)
                 .setDoubleBufferingEnabled(true);
 
+        context = resolveContext();
         createCards();
 
         if (cards.isEmpty()) {
             return;
         }
 
-        int cols = Math.max(1, numColumns);
         int row = 0;
         int col = 0;
 
@@ -90,27 +134,16 @@ public class QuizablePanelView {
 
             col++;
 
-            if (col == cols) {
+            if (col == columns) {
                 col = 0;
                 row++;
             }
         }
 
-        GridBagConstraints glue = GridBagUtils.gbc(
-                0, row + 1,
-                1.0, 1.0,
-                GridBagConstraints.NORTHWEST,
-                GridBagConstraints.BOTH);
-
-        glue.gridwidth = cols;
-
-        cardsPanel.add(Box.createGlue(), glue);
+        addGlue();
     }
 
     private void createCards() {
-        QuizableRenderContext context =
-                new QuizableRenderContext(quizables);
-
         for (Quizable q : quizables) {
             if (q == null) {
                 continue;
@@ -135,17 +168,8 @@ public class QuizablePanelView {
                     }
                 }
             }
-            QuizablePanelConfig cfg =
-                    QuizablePanelConfig.all(q.getClass())
-                            .setAddListener(true)
-                            .setThumb(true);
 
-            context.putClassConfig(q.getClass(), cfg);
-            QuizablePanel panel =
-                    new QuizablePanel(q, cfg, context, false);
-            context.registerTopLevel(q, panel);
-
-            tuneCardSize(panel);
+            QuizablePanel panel = buildQuizableCard(q);
 
             cards.add(panel);
 
@@ -172,6 +196,176 @@ public class QuizablePanelView {
                 cardsByName.putIfAbsent(entry.title, holder);
             }
         }
+    }
+
+    private QuizablePanel buildQuizableCard(Quizable q) {
+        QuizablePanelConfig cfg =
+                QuizablePanelConfig.all(q.getClass())
+                        .setAddListener(true)
+                        .setThumb(true);
+
+        context.putClassConfig(q.getClass(), cfg);
+
+        QuizablePanel panel =
+                new QuizablePanel(q, cfg, context, false);
+
+        context.registerTopLevel(q, panel);
+
+        tuneCardSize(panel);
+
+        return panel;
+    }
+
+    /**
+     * Adds a card after the frame is already showing: builds it, drops it
+     * into the next grid slot, and notifies target listeners (the search
+     * panel) so it stays searchable. Call on the EDT.
+     *
+     * Falls back to a deferred add if the cards panel hasn't been built
+     * yet, in which case the card appears on the first render.
+     */
+    public void addQuizableLive(Quizable q) {
+        if (q == null) {
+            return;
+        }
+
+        quizables.add(q);
+
+        if (cardsPanel == null) {
+            return;
+        }
+
+        if (context == null) {
+            context = resolveContext();
+        } else if (sharedContext != null) {
+            sharedContext.addTopLevel(q);
+        }
+
+        QuizablePanel panel = buildQuizableCard(q);
+
+        String name = q.getName();
+        if (name != null && !name.isEmpty()) {
+            cardsByName.putIfAbsent(name, panel);
+        }
+
+        addCardToGrid(panel);
+
+        for (QuizablePanelTargetListener listener : targetListeners) {
+            listener.quizablePanelsAdded(List.of(panel));
+        }
+    }
+
+    /**
+     * Re-renders the card backing {@code q} in place after its fields
+     * changed, and notifies target listeners (the search panel) so they
+     * re-index / re-sort it. No-op if {@code q} has no card yet. Call on
+     * the EDT.
+     */
+    public void refreshQuizable(Quizable q) {
+        if (q == null || cardsPanel == null) {
+            return;
+        }
+
+        QuizablePanel card = findCard(q);
+
+        if (card == null) {
+            return;
+        }
+
+        card.refresh();
+
+        cardsPanel.revalidate();
+        cardsPanel.repaint();
+
+        for (QuizablePanelTargetListener listener : targetListeners) {
+            listener.quizablePanelsUpdated(List.of(card));
+        }
+    }
+
+    /**
+     * Refreshes {@code q}'s card if it already has one, otherwise adds it
+     * live. Convenient for incremental feeds (e.g. a query log) that don't
+     * track whether a given item has been rendered yet. Call on the EDT.
+     */
+    public void upsertQuizable(Quizable q) {
+        if (q == null || cardsPanel == null) {
+            return;
+        }
+
+        if (findCard(q) != null) {
+            refreshQuizable(q);
+        } else {
+            addQuizableLive(q);
+        }
+    }
+
+    private QuizableRenderContext resolveContext() {
+        QuizableRenderContext c =
+                sharedContext != null
+                        ? sharedContext
+                        : new QuizableRenderContext(quizables);
+
+        if (sharedContext != null) {
+            c.addTopLevels(quizables);
+        }
+
+        if (inPlaceNavigation) {
+            c.setInPlaceNavigation(true);
+        }
+
+        return c;
+    }
+
+    private QuizablePanel findCard(Quizable q) {
+        for (JPanel card : cards) {
+            if (card instanceof QuizablePanel qp && qp.getQuizable() == q) {
+                return qp;
+            }
+        }
+        return null;
+    }
+
+    private void addCardToGrid(JPanel card) {
+        int index = cards.size();
+        int col = index % columns;
+        int row = index / columns;
+
+        if (glueComponent != null) {
+            cardsPanel.remove(glueComponent);
+        }
+
+        cardsPanel.add(card,
+                GridBagUtils.gbc(
+                        col, row,
+                        1.0, 0.0,
+                        GridBagConstraints.NORTHWEST,
+                        GridBagConstraints.BOTH,
+                        new Insets(8, 8, 12, 8)));
+
+        cards.add(card);
+
+        addGlue();
+
+        cardsPanel.revalidate();
+        cardsPanel.repaint();
+    }
+
+    private void addGlue() {
+        int lastRow =
+                cards.isEmpty() ? 0 : (cards.size() - 1) / columns + 1;
+
+        if (glueComponent == null) {
+            glueComponent = Box.createGlue();
+        }
+
+        GridBagConstraints glue = GridBagUtils.gbc(
+                0, lastRow,
+                1.0, 1.0,
+                GridBagConstraints.NORTHWEST,
+                GridBagConstraints.BOTH);
+
+        glue.gridwidth = columns;
+        cardsPanel.add(glueComponent, glue);
     }
 
     public JPanel getCardsPanel() {
@@ -281,6 +475,7 @@ public class QuizablePanelView {
                     new QuizableSearchPanel(first.getClass());
 
             searchPanel.setTarget(cardsPanel, cardsScrollPane);
+            addTargetListener(searchPanel);
 
             frame.add(searchPanel, BorderLayout.NORTH);
         }

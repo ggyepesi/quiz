@@ -204,6 +204,45 @@ public class QuizablePanel extends JPanel {
         return renderedConfiguredContent;
     }
 
+    /**
+     * Rebuilds this card's content in place from the (possibly mutated)
+     * backing quizable, keeping the same panel instance so any attached
+     * search/sort/scroll/highlight state stays bound to the same card.
+     *
+     * Targets the standard field-rendered card. Compiled-view cards (which
+     * use a BorderLayout wrapper) are left untouched, since their content
+     * is an externally supplied component rather than reflected fields.
+     * Call on the Event Dispatch Thread.
+     */
+    public void refresh() {
+        if (quizable == null || !(getLayout() instanceof GridBagLayout)) {
+            return;
+        }
+
+        removeAll();
+
+        firstFieldRow = 0;
+        renderedConfiguredContent = false;
+
+        // visited/ancestors are this card's own cycle-detection sets;
+        // reset them so the rebuild re-renders nested references that the
+        // first pass had already marked as seen.
+        visited.clear();
+        ancestors.clear();
+
+        visited.add(quizable);
+        ancestors.add(quizable);
+
+        addTitleHeaderIfNeeded();
+        buildFields();
+        ensureTitleHasRoom();
+
+        ancestors.remove(quizable);
+
+        revalidate();
+        repaint();
+    }
+
     private void addTitleHeaderIfNeeded() {
         String title = getTitle();
 
@@ -371,6 +410,14 @@ public class QuizablePanel extends JPanel {
             return row;
         }
 
+        if (QuizableAdapter.isLinkField(field)
+                && value instanceof String url
+                && !url.isBlank()) {
+
+            addSingle(new QuizableLinkRow(fieldName, fieldPath, url), row++);
+            return row;
+        }
+
         QuizablePanelConfig fieldCfg = config.getFieldConfig(fieldName);
 
         if (fieldCfg == null) {
@@ -493,6 +540,14 @@ public class QuizablePanel extends JPanel {
         }
 
         if (QuizableAdapter.isQuizableReference(field)) {
+            return false;
+        }
+
+        // @Link string fields render as a dedicated clickable row rather
+        // than folding into the (drag-to-select) text block.
+        if (QuizableAdapter.isLinkField(field)
+                && value instanceof String s
+                && !s.isBlank()) {
             return false;
         }
 

@@ -3,8 +3,6 @@ package wikidata;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import javax.swing.AbstractButton;
-import javax.swing.SwingUtilities;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -30,12 +28,6 @@ public class WikidataSparqlClient implements AutoCloseable {
 
     private final Set<CompletableFuture<?>> runningQueries =
             ConcurrentHashMap.newKeySet();
-
-    private final List<AbstractButton> runButtons =
-            new CopyOnWriteArrayList<>();
-
-    private final List<AbstractButton> cancelButtons =
-            new CopyOnWriteArrayList<>();
 
     private boolean debugJson = false;
 
@@ -67,24 +59,6 @@ public class WikidataSparqlClient implements AutoCloseable {
         this.debugJson = debugJson;
     }
 
-    public void registerRunButton(AbstractButton button) {
-        if (button == null || runButtons.contains(button)) {
-            return;
-        }
-
-        runButtons.add(button);
-        updateRegisteredButtons();
-    }
-
-    public void registerCancelButton(AbstractButton button) {
-        if (button == null || cancelButtons.contains(button)) {
-            return;
-        }
-
-        cancelButtons.add(button);
-        updateRegisteredButtons();
-    }
-
     public int runningQueryCount() {
         return runningQueries.size();
     }
@@ -93,28 +67,12 @@ public class WikidataSparqlClient implements AutoCloseable {
         return !runningQueries.isEmpty();
     }
 
-    private void updateRegisteredButtons() {
-        boolean running = isQueryRunning();
-
-        SwingUtilities.invokeLater(() -> {
-            for (AbstractButton b : runButtons) {
-                b.setEnabled(!running);
-            }
-
-            for (AbstractButton b : cancelButtons) {
-                b.setEnabled(running);
-            }
-        });
-    }
-
     public void cancelCurrentQuery() {
         for (CompletableFuture<?> f : runningQueries) {
             if (f != null && !f.isDone()) {
                 f.cancel(true);
             }
         }
-
-        updateRegisteredButtons();
     }
 
     public List<WikidataBinding> query(String sparql) throws Exception {
@@ -150,7 +108,11 @@ public class WikidataSparqlClient implements AutoCloseable {
                 return CompletableFuture.completedFuture(result);
             }
 
-            if (isCancellation(error) || attemptsLeft <= 1) {
+            // A request that ran into the server timeout will time out
+            // again — retry only transient failures.
+            if (isCancellation(error)
+                    || isTimeout(error)
+                    || attemptsLeft <= 1) {
                 CompletableFuture<List<WikidataBinding>> failed =
                         new CompletableFuture<>();
                 failed.completeExceptionally(error);
@@ -208,7 +170,6 @@ public class WikidataSparqlClient implements AutoCloseable {
                     });
 
         runningQueries.add(future);
-        updateRegisteredButtons();
 
         future.whenComplete((r, e) -> {
             long ms = (System.nanoTime() - started) / 1_000_000;
@@ -228,7 +189,6 @@ public class WikidataSparqlClient implements AutoCloseable {
                                    + " timeMs=" + ms + "\n");
             }
             runningQueries.remove(future);
-            updateRegisteredButtons();
         });
 
         return future;
@@ -237,6 +197,16 @@ public class WikidataSparqlClient implements AutoCloseable {
     private static boolean isCancellation(Throwable t) {
         while (t != null) {
             if (t instanceof CancellationException) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
+    }
+
+    private static boolean isTimeout(Throwable t) {
+        while (t != null) {
+            if (t instanceof java.net.http.HttpTimeoutException) {
                 return true;
             }
             t = t.getCause();

@@ -3,9 +3,9 @@ package wikidata.explore.generation;
 import quiz.Quizable;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.result.ObjectQueryResult;
-import wikidata.explore.tree.GeneratedQuizableRuntime;
-import wikidata.explore.tree.RuleNode;
-import wikidata.explore.tree.WikidataDynamicObject;
+import wikidata.explore.codegen.GeneratedQuizableRuntime;
+import wikidata.explore.rule.RuleNode;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;
 

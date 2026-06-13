@@ -1,10 +1,15 @@
 package wikidata.explore.query.logical;
 
+import wikidata.explore.query.template.rule.RuleIncludedFieldSparql;
+import wikidata.explore.query.template.rule.RuleTreeQueries;
+import wikidata.explore.rule.RuleTreeCompiler;
+import wikidata.explore.rule.RuleIncludedField;
+import wikidata.explore.rule.RuleNode;
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
-import wikidata.explore.tree.*;
+import wikidata.explore.model.FieldSampleContext;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -58,9 +63,8 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
         }
 
         RuleNode parentSample =
-                NodeSamplePanel.sampleNode(
-                        RuleTreeCompiler.compileClass(sampleContext.ownerClass()),
-                        sampleLimit);
+                RuleTreeCompiler.compileClass(sampleContext.ownerClass())
+                                .sampleCopy(sampleLimit);
 
         RuleIncludedField includedField =
                 RuleTreeCompiler.compileField(sampleContext.field());

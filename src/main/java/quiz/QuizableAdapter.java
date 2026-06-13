@@ -55,6 +55,11 @@ public abstract class QuizableAdapter implements Quizable {
                 && field.isAnnotationPresent(QuizableReference.class);
     }
 
+    public static boolean isLinkField(Field field) {
+        return field != null
+                && field.isAnnotationPresent(Link.class);
+    }
+
     public static boolean isNotQuizableField(Field field) {
         return field != null
                 && field.isAnnotationPresent(NotQuizableField.class);

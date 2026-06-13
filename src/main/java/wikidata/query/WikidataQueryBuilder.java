@@ -1,5 +1,6 @@
 package wikidata.query;
 
+import wikidata.explore.query.template.rule.RuleTreeQueries;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;

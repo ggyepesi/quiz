@@ -35,6 +35,10 @@ public class WikidataApiClient {
     private final ObjectMapper mapper = new ObjectMapper();
     private final String userAgent;
 
+    private java.util.function.Consumer<String> log = s -> {};
+    private final java.util.concurrent.atomic.AtomicLong requestSeq =
+            new java.util.concurrent.atomic.AtomicLong();
+
 
     public static void main(String[] args) throws Exception {
         wikidata.api.WikidataApiClient api = new wikidata.api.WikidataApiClient("QuizProject/1.0");
@@ -59,6 +63,10 @@ public class WikidataApiClient {
     public WikidataApiClient(String userAgent) {
         this.userAgent = userAgent == null
                 ? "WikidataApiClient/1.0" : userAgent;
+    }
+
+    public void log(java.util.function.Consumer<String> log) {
+        this.log = log == null ? s -> {} : log;
     }
     /**
      * Searches for Wikidata entities matching a natural language expression.
@@ -341,6 +349,11 @@ public class WikidataApiClient {
 
         String url = baseUrl + "?" + query;
 
+        long id = requestSeq.incrementAndGet();
+        long started = System.nanoTime();
+
+        log.accept("\n[API " + id + "] GET " + url + "\n");
+
         java.net.URLConnection conn =
                 new java.net.URL(url).openConnection();
         conn.setRequestProperty("User-Agent", userAgent);
@@ -349,8 +362,20 @@ public class WikidataApiClient {
         conn.setReadTimeout(30_000);
 
         try (var stream = conn.getInputStream()) {
-            return mapper.readTree(stream);
+            JsonNode result = mapper.readTree(stream);
+
+            log.accept("[API " + id + "] OK timeMs="
+                               + (System.nanoTime() - started) / 1_000_000
+                               + "\n");
+
+            return result;
         } catch (IOException e) {
+            log.accept("[API " + id + "] ERROR "
+                               + e.getMessage()
+                               + " timeMs="
+                               + (System.nanoTime() - started) / 1_000_000
+                               + "\n");
+
             // Include URL in message for easier debugging
             throw new IOException(
                     e.getMessage() + " | URL: " + url, e);

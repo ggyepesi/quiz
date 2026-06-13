@@ -1,5 +1,6 @@
 package wikidata.explore.query.logical;
 
+import wikidata.explore.extract.RuleTreeExtractor;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;

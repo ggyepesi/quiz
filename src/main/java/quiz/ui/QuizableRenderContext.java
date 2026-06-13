@@ -23,7 +23,21 @@ public class QuizableRenderContext {
     private final Map<Class<?>, QuizablePanelConfig> classConfigs =
             new HashMap<>();
 
+    // When true, single-clicking a reference to an object that is top-level
+    // in this context navigates (scrolls to + flashes) its existing card
+    // instead of opening a new detail frame. Shared across the views that
+    // use this context, which is what makes cross-view navigation work.
+    private boolean inPlaceNavigation = false;
+
     public QuizableRenderContext() {
+    }
+
+    public boolean inPlaceNavigation() {
+        return inPlaceNavigation;
+    }
+
+    public void setInPlaceNavigation(boolean inPlaceNavigation) {
+        this.inPlaceNavigation = inPlaceNavigation;
     }
 
     public QuizableRenderContext(Collection<? extends Quizable> quizables) {

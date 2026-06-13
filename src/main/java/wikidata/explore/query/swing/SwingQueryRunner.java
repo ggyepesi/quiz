@@ -135,6 +135,50 @@ public class SwingQueryRunner {
         currentWorker.execute();
     }
 
+    /**
+     * Runs a cheap side query (label lookups and similar) without
+     * touching run/cancel button state and without the one-at-a-time
+     * gate. The sink is called on the worker thread, as in run().
+     */
+    public <R> void runQuiet(
+            Query<R> query,
+            QueryResultSink<R> sink,
+            java.util.function.Consumer<Exception> onError) {
+
+        QueryWorkflow<R> workflow =
+                new QueryWorkflow<>(context, sink, eventSink);
+
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                workflow.run(query);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                } catch (java.util.concurrent.CancellationException ignored) {
+                } catch (java.util.concurrent.ExecutionException ex) {
+                    Throwable cause =
+                            ex.getCause() == null ? ex : ex.getCause();
+
+                    if (!QueryWorkflow.isCancellation(cause)
+                            && onError != null) {
+                        onError.accept(cause instanceof Exception e
+                                               ? e
+                                               : ex);
+                    }
+                } catch (Exception ex) {
+                    if (onError != null) {
+                        onError.accept(ex);
+                    }
+                }
+            }
+        }.execute();
+    }
+
     public void cancel() {
         if (currentWorker != null && !currentWorker.isDone()) {
             currentWorker.cancel(true);

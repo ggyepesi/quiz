@@ -4,9 +4,8 @@ import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
-import wikidata.explore.tree.NodeSamplePanel;
-import wikidata.explore.tree.RuleNode;
-import wikidata.explore.tree.RuleTreeQueries;
+import wikidata.explore.rule.RuleNode;
+import wikidata.explore.query.template.rule.RuleTreeQueries;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -45,7 +44,7 @@ public class SampleClassQuery implements Query<TableQueryResult> {
     @Override
     public TableQueryResult execute(QueryContext context) throws Exception {
         RuleNode sample =
-                NodeSamplePanel.sampleNode(node, limit);
+                node.sampleCopy(limit);
 
         String sparql =
                 RuleTreeQueries.valuesQueryWithoutIncludedFields(sample);

@@ -90,6 +90,7 @@ public class QueryObjectResultPanel
         searchPanel.setTarget(
                 view.getCardsPanel(),
                 view.getCardsScrollPane());
+        view.addTargetListener(searchPanel);
 
         wrapped.add(searchPanel, BorderLayout.NORTH);
         wrapped.add(view.getCardsScrollPane(), BorderLayout.CENTER);

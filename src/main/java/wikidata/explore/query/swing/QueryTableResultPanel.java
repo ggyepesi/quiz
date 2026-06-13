@@ -149,9 +149,7 @@ public class QueryTableResultPanel
             url = text;
         }
 
-        try {
-            Desktop.getDesktop().browse(new java.net.URI(url));
-        } catch (Exception ignored) {}
+        aux.BrowserLauncher.open(url);
     }
 
     private static final class LinkRenderer
