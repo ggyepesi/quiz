@@ -49,7 +49,6 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
         Map<String, String> p = new LinkedHashMap<>();
         p.put("text", text);
         p.put("mode", mode.toString());
-        p.put("limit", String.valueOf(limit));
         return p;
     }
 
@@ -85,31 +84,59 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
         return result == null ? 0 : result.size();
     }
 
+    @Override
+    public String summary(TableQueryResult result) {
+        return rowCount(result) + " possibilities";
+    }
+
     private List<Row> searchApi(QueryContext context)
             throws Exception {
 
-        context.logText("Searching class/type using API: " + text);
+        return context.step(
+                "Search via API",
+                "API",
+                null,
+                Map.of("limit", String.valueOf(limit)),
+                step -> {
+                    // Capture only the HTTP URL the API client requests;
+                    // drop the "[API n] GET/OK timeMs=..." log decoration
+                    // (duration is already the step's timeMs field).
+                    context.api().log(line -> {
+                        if (line == null) {
+                            return;
+                        }
+                        int g = line.indexOf("] GET ");
+                        if (g >= 0) {
+                            step.request(line.substring(g + 6).strip());
+                        }
+                    });
 
-        List<Row> out = new ArrayList<>();
+                    try {
+                        List<Row> out = new ArrayList<>();
 
-        for (WikidataApiClient.SearchResult r :
-                context.api().searchEntities(text, limit)) {
+                        for (WikidataApiClient.SearchResult r :
+                                context.api().searchEntities(text, limit)) {
 
-            String qid = r.qid();
+                            String qid = r.qid();
 
-            if (qid == null || qid.isBlank()) {
-                continue;
-            }
+                            if (qid == null || qid.isBlank()) {
+                                continue;
+                            }
 
-            out.add(new Row(
-                    qid,
-                    r.label() == null || r.label().isBlank()
-                            ? qid
-                            : r.label(),
-                    r.description() == null ? "" : r.description()));
-        }
+                            out.add(new Row(
+                                    qid,
+                                    r.label() == null || r.label().isBlank()
+                                            ? qid
+                                            : r.label(),
+                                    r.description() == null ? "" : r.description()));
+                        }
 
-        return out;
+                        step.summary(out.size() + " results");
+                        return out;
+                    } finally {
+                        context.api().log(null);
+                    }
+                });
     }
 
     private List<Row> searchSparql(QueryContext context)
@@ -118,25 +145,32 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
         String sparql =
                 WikidataQueryBuilder.entitySearch(text, limit);
 
-        context.logText("Searching class/type using SPARQL:");
-        context.logText(sparql);
+        return context.step(
+                "Search via SPARQL",
+                "SPARQL",
+                null,
+                Map.of("limit", String.valueOf(limit)),
+                step -> {
+                    step.request(sparql);
 
-        List<Row> out = new ArrayList<>();
+                    List<Row> out = new ArrayList<>();
 
-        for (WikidataBinding b : context.sparql().query(sparql)) {
-            String qid = b.qid("item");
-            String label = b.label("item");
-            String desc = b.value("itemDescription");
+                    for (WikidataBinding b : context.sparql().query(sparql)) {
+                        String qid = b.qid("item");
+                        String label = b.label("item");
+                        String desc = b.value("itemDescription");
 
-            if (qid != null && qid.matches("Q\\d+")) {
-                out.add(new Row(
-                        qid,
-                        label == null ? qid : label,
-                        desc == null ? "" : desc));
-            }
-        }
+                        if (qid != null && qid.matches("Q\\d+")) {
+                            out.add(new Row(
+                                    qid,
+                                    label == null ? qid : label,
+                                    desc == null ? "" : desc));
+                        }
+                    }
 
-        return out;
+                    step.summary(out.size() + " results");
+                    return out;
+                });
     }
 
     private static List<Row> dedupe(

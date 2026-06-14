@@ -49,10 +49,8 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
 
         if (sampleContext != null && sampleContext.field() != null) {
             p.put("field", sampleContext.field().name());
-            p.put("pid", sampleContext.field().mapping().propertyPid());
         }
 
-        p.put("sampleLimit", String.valueOf(sampleLimit));
         return p;
     }
 
@@ -90,19 +88,28 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
         String parentSparql =
                 RuleTreeQueries.valuesQueryWithoutIncludedFields(parentSample);
 
-        context.logText("\nParent sample query\n-------------------");
-        context.logText(parentSparql);
+        List<Parent> parents = context.step(
+                "Sample parent instances",
+                "SPARQL",
+                null,
+                Map.of("sampleLimit", String.valueOf(sampleLimit)),
+                step -> {
+                    step.request(parentSparql);
 
-        List<Parent> parents = new ArrayList<>();
+                    List<Parent> result = new ArrayList<>();
 
-        for (WikidataBinding b : context.sparql().query(parentSparql)) {
-            String qid = b.qid("value");
-            String label = b.label("value");
+                    for (WikidataBinding b : context.sparql().query(parentSparql)) {
+                        String qid = b.qid("value");
+                        String label = b.label("value");
 
-            if (qid != null && qid.matches("Q\\d+")) {
-                parents.add(new Parent(qid, label == null ? "" : label));
-            }
-        }
+                        if (qid != null && qid.matches("Q\\d+")) {
+                            result.add(new Parent(qid, label == null ? "" : label));
+                        }
+                    }
+
+                    step.summary(result.size() + " parents");
+                    return result;
+                });
 
         if (parents.isEmpty()) {
             return new TableQueryResult(
@@ -122,11 +129,6 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
                         parentSample.labelConfig(),
                         sampleLimit * 3);
 
-        context.logText("\nSAMPLE selected field: "
-                                + sampleContext.field().name()
-                                + "\n----------------------");
-        context.logText(sparql);
-
         Map<String, Parent> parentByQid =
                 new LinkedHashMap<>();
 
@@ -139,32 +141,48 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
                         includedField,
                         0);
 
-        List<List<Object>> rows = new ArrayList<>();
+        Map<String, String> fieldParams = new LinkedHashMap<>();
+        fieldParams.put("pid", fieldPid);
+        fieldParams.put("sampleLimit", String.valueOf(sampleLimit));
 
-        for (WikidataBinding b : context.sparql().query(sparql)) {
-            String parentQid = b.qid("parent");
-            Parent parent = parentByQid.get(parentQid);
+        List<List<Object>> rows = context.step(
+                "Sample field values: " + sampleContext.field().name(),
+                "SPARQL",
+                null,
+                fieldParams,
+                step -> {
+                    step.request(sparql);
 
-            if (parent == null) {
-                continue;
-            }
+                    List<List<Object>> result = new ArrayList<>();
 
-            String value =
-                    includedField.isMediaField()
-                            ? b.value(var)
-                            : firstNonBlank(
-                            b.qid(var),
-                            b.value(var));
+                    for (WikidataBinding b : context.sparql().query(sparql)) {
+                        String parentQid = b.qid("parent");
+                        Parent parent = parentByQid.get(parentQid);
 
-            String label =
-                    b.value(var + "Label");
+                        if (parent == null) {
+                            continue;
+                        }
 
-            rows.add(List.of(
-                    parent.qid(),
-                    parent.label(),
-                    value == null ? "" : value,
-                    label == null ? "" : label));
-        }
+                        String value =
+                                includedField.isMediaField()
+                                        ? b.value(var)
+                                        : firstNonBlank(
+                                        b.qid(var),
+                                        b.value(var));
+
+                        String label =
+                                b.value(var + "Label");
+
+                        result.add(List.of(
+                                parent.qid(),
+                                parent.label(),
+                                value == null ? "" : value,
+                                label == null ? "" : label));
+                    }
+
+                    step.summary(result.size() + " values");
+                    return result;
+                });
 
         return new TableQueryResult(
                 columns(ownerName, fieldPid, propLabel),
@@ -174,6 +192,11 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
     @Override
     public int rowCount(TableQueryResult result) {
         return result == null ? 0 : result.size();
+    }
+
+    @Override
+    public String summary(TableQueryResult result) {
+        return rowCount(result) + " values";
     }
 
     private static List<String> columns(

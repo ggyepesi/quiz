@@ -1,20 +1,16 @@
 package wikidata.explore.workbench;
 
 import aux.SplitPaneUtils;
-import quiz.ui.QuizablePanelView;
-import quiz.ui.QuizableSearchPanel;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.RuleTreeExtractor;
 import wikidata.explore.generation.GenerationRun;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.QueryLog;
-import wikidata.explore.query.log.QueryLogSink;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
-import wikidata.explore.query.sink.CompositeQueryEventSink;
 import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.query.swing.SwingQueryRunner;
+import wikidata.explore.query.swing.WorkflowLogWindow;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.rule.RuleTreeCompiler;
 
@@ -60,10 +56,8 @@ public class ModelBuilderFrame extends JFrame {
     private final JSpinner depthSpinner =
             new JSpinner(new SpinnerNumberModel(0, 0, 5, 1));
 
-    private final QueryLogSink queryLogSink = new QueryLogSink();
-
-    private QuizablePanelView logView;
-    private JFrame logFrame;
+    private final WorkflowLogWindow logWindow =
+            new WorkflowLogWindow();
 
     public ModelBuilderFrame(WikidataSparqlClient client) {
         super("Wikidata Quizable Model Builder");
@@ -81,7 +75,9 @@ public class ModelBuilderFrame extends JFrame {
     private void buildUi() {
         setLayout(new BorderLayout(6, 6));
 
-        JPanel tb = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        JPanel tb =
+                new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+
         tb.add(generateButton);
         tb.add(cancelButton);
         tb.add(previewButton);
@@ -91,6 +87,7 @@ public class ModelBuilderFrame extends JFrame {
         tb.add(depthSpinner);
 
         cancelButton.setEnabled(false);
+
         add(tb, BorderLayout.NORTH);
 
         JSplitPane leftMiddle =
@@ -117,16 +114,13 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void wireActions() {
-        CompositeQueryEventSink eventSink =
-                new CompositeQueryEventSink();
-
-        eventSink.add(queryLogSink);
-
         QueryContext queryContext =
-                new QueryContext(client, apiClient, eventSink);
+                new QueryContext(client, apiClient);
 
         SwingQueryRunner queryRunner =
-                new SwingQueryRunner(queryContext, eventSink);
+                new SwingQueryRunner(
+                        queryContext,
+                        logWindow);
 
         queryRunner.registerCancelButton(cancelButton);
         queryRunner.registerRunButton(previewButton);
@@ -135,7 +129,8 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.setQueryRunner(queryRunner);
 
-        sourceWorkbench.afterChange(v -> classModelPanel.refresh());
+        sourceWorkbench.afterChange(v ->
+                                            classModelPanel.refresh());
 
         sourceWorkbench.afterApplyField(f -> {
             classModelPanel.refresh();
@@ -144,7 +139,8 @@ public class ModelBuilderFrame extends JFrame {
         });
 
         classModelPanel.addTreeSelectionListener(e ->
-                                                         sourceWorkbench.edit(classModelPanel.selectedUserObject()));
+                                                         sourceWorkbench.edit(
+                                                                 classModelPanel.selectedUserObject()));
 
         queryRunner.wireButton(
                 generateButton,
@@ -156,63 +152,20 @@ public class ModelBuilderFrame extends JFrame {
                             projectModel.copy(),
                             ((Number) depthSpinner.getValue()).intValue());
                 },
-                ex -> queryLogSink.text("Generate failed: " + ex.getMessage() + "\n"));
+                ex -> logWindow.info(
+                        "Generate failed: "
+                                + ex.getMessage()));
 
-        previewButton.addActionListener(e -> previewInternalSparql());
-        showGeneratedSourceButton.addActionListener(e -> showGeneratedSource());
-        showQueryLogsButton.addActionListener(e -> showQueryLogs());
+        previewButton.addActionListener(e ->
+                                                previewInternalSparql());
+
+        showGeneratedSourceButton.addActionListener(e ->
+                                                            showGeneratedSource());
+
+        showQueryLogsButton.addActionListener(e ->
+                                                      logWindow.show(this));
 
         sourceWorkbench.edit(projectModel.rootClass());
-    }
-
-    private void showQueryLogs() {
-        if (logFrame != null) {
-            logFrame.setVisible(true);
-            logFrame.toFront();
-            return;
-        }
-
-        QuizablePanelView view = new QuizablePanelView();
-
-        for (QueryLog log : queryLogSink.logs()) {
-            view.addQuizable(log);
-        }
-
-        view.createCardsPanel(1);
-
-        QuizableSearchPanel search =
-                new QuizableSearchPanel(QueryLog.class);
-        search.setTarget(view.getCardsPanel(), view.getCardsScrollPane());
-        view.addTargetListener(search);
-
-        JFrame frame = new JFrame("Query Logs");
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        frame.setLayout(new BorderLayout(6, 6));
-        frame.add(search, BorderLayout.NORTH);
-        frame.add(view.getCardsScrollPane(), BorderLayout.CENTER);
-        frame.setSize(1000, 700);
-        frame.setLocationRelativeTo(this);
-
-        this.logView = view;
-        this.logFrame = frame;
-
-        queryLogSink.setListener((log, added) ->
-                                         SwingUtilities.invokeLater(() -> {
-                                             if (logView == view) {
-                                                 view.upsertQuizable(log);
-                                             }
-                                         }));
-
-        frame.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosed(java.awt.event.WindowEvent e) {
-                queryLogSink.setListener(null);
-                logView = null;
-                logFrame = null;
-            }
-        });
-
-        frame.setVisible(true);
     }
 
     private void acceptGenerationRun(GenerationRun run) {
@@ -233,14 +186,22 @@ public class ModelBuilderFrame extends JFrame {
 
     private void showGeneratedSource() {
         if (lastRun == null) {
-            queryLogSink.text("No generated class source yet.\n");
+            logWindow.info("No generated class source yet.");
             return;
         }
 
         JTextArea area =
-                new JTextArea(lastRun.runtime().source(), 40, 120);
+                new JTextArea(
+                        lastRun.runtime().source(),
+                        40,
+                        120);
 
-        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        area.setFont(
+                new Font(
+                        Font.MONOSPACED,
+                        Font.PLAIN,
+                        12));
+
         area.setCaretPosition(0);
 
         JOptionPane.showMessageDialog(
@@ -259,20 +220,34 @@ public class ModelBuilderFrame extends JFrame {
         RuleTreeExtractor extractor =
                 new RuleTreeExtractor(client);
 
-        queryLogSink.text("\nPREVIEW internal SPARQL\n-----------------------\n");
+        StringBuilder sb =
+                new StringBuilder();
+
+        sb.append("PREVIEW internal SPARQL\n")
+          .append("-----------------------\n\n");
 
         for (String q : extractor.previewQueries(
                 root,
                 ((Number) depthSpinner.getValue()).intValue())) {
-            queryLogSink.text(q);
-            queryLogSink.text("\n");
+            sb.append(q).append("\n\n");
         }
+
+        logWindow.info(sb.toString());
+        logWindow.show(this);
     }
 
-    private static JComponent titled(String title, JComponent component) {
-        JPanel p = new JPanel(new BorderLayout());
-        p.setBorder(BorderFactory.createTitledBorder(title));
+    private static JComponent titled(
+            String title,
+            JComponent component) {
+
+        JPanel p =
+                new JPanel(new BorderLayout());
+
+        p.setBorder(
+                BorderFactory.createTitledBorder(title));
+
         p.add(component, BorderLayout.CENTER);
+
         return p;
     }
 }

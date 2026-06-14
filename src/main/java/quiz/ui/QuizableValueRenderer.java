@@ -70,15 +70,6 @@ public final class QuizableValueRenderer {
             String fieldName, List<String> fieldPath, Quizable q, QuizablePanelConfig config, boolean fill) {
         JPanel panel = basePanel(fieldName, fieldPath, q);
 
-        for (Object qu : visited) {
-            System.out.println("  visited " + qu);
-            if (((Quizable)qu).getIdentifier().equals(q.getIdentifier())) {
-                System.out.println("QuizableValueRenderer shouldn't be here " +
-                                           "field " + q.getClass() +
-                                           "." + q.getDisplayName());
-            }
-        }
-
         QuizablePanel nested = new QuizablePanel(visited, ancestors, renderContext, false, q, config, fill, fieldPath);
 
         if (!nested.hasRenderedConfiguredContent()) {
@@ -166,13 +157,35 @@ public final class QuizableValueRenderer {
 
 
         if (item instanceof Quizable q) {
-            return new QuizableReferenceRow(
-                    "",
-                    fieldPath,
-                    q,
-                    renderContext,
-                    config,
-                    q.getName());
+            boolean exp = renderContext != null && renderContext.isExpanded(q);
+
+            QuizableReferenceRow chip =
+                    new QuizableReferenceRow(
+                            "", fieldPath, q, renderContext, config, q.getName(), exp);
+
+            if (!exp) {
+                return chip;
+            }
+
+            JPanel wrap = new JPanel(new GridBagLayout());
+            wrap.setOpaque(false);
+
+            wrap.add(chip, GridBagUtils.gbc(
+                    0, 0, 1.0, 0.0,
+                    GridBagConstraints.NORTHWEST, GridBagConstraints.HORIZONTAL,
+                    new Insets(0, 0, 0, 0)));
+
+            JComponent inline = quizableComponent(
+                    visited, ancestors, renderContext, "", fieldPath, q, config, fill);
+
+            if (inline != null) {
+                wrap.add(inline, GridBagUtils.gbc(
+                        0, 1, 1.0, 0.0,
+                        GridBagConstraints.NORTHWEST, GridBagConstraints.HORIZONTAL,
+                        new Insets(0, 16, 4, 0)));
+            }
+
+            return wrap;
         }
 
         if (item instanceof Collection<?> collection) {

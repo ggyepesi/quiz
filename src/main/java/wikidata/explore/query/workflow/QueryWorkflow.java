@@ -1,89 +1,73 @@
 package wikidata.explore.query.workflow;
 
 import wikidata.explore.query.core.*;
+import wikidata.explore.query.log.LogListener;
+import wikidata.explore.query.log.WorkflowRecorder;
 
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 public class QueryWorkflow<R> {
 
-    private static final AtomicLong IDS = new AtomicLong();
-
     private final Supplier<Query<R>> querySupplier;
     private final QueryContext context;
     private final QueryResultSink<R> resultSink;
-    private final QueryEventSink eventSink;
+    private final LogListener logListener;
 
     public QueryWorkflow(
             QueryContext context,
             QueryResultSink<R> resultSink,
-            QueryEventSink eventSink) {
+            LogListener logListener) {
 
-        this(null, context, resultSink, eventSink);
+        this(null, context, resultSink, logListener);
     }
 
     public QueryWorkflow(
             Supplier<Query<R>> querySupplier,
             QueryContext context,
             QueryResultSink<R> resultSink,
-            QueryEventSink eventSink) {
+            LogListener logListener) {
 
         this.querySupplier = querySupplier;
         this.context = context;
         this.resultSink = resultSink;
-        this.eventSink = eventSink;
+        this.logListener = logListener;
     }
 
     public R run() throws Exception {
         return run(querySupplier.get());
     }
 
-    /**
-     * Runs a pre-built query. Build the query on the EDT (capturing a
-     * model snapshot and any widget state) and call this off the EDT.
-     */
     public R run(Query<R> query) throws Exception {
-        long id = IDS.incrementAndGet();
-        long start = System.currentTimeMillis();
+        WorkflowRecorder recorder =
+                WorkflowRecorder.forQuery(query);
 
-        eventSink.accept(new QueryEvent(
-                id,
-                query,
-                QueryStatus.RUNNING,
-                -1,
-                0,
-                ""));
+        recorder.setListener(logListener);
+        recorder.added();
+        recorder.start();
+
+        QueryContext runContext =
+                context.withRecorder(recorder);
 
         R result;
+
         try {
-            result = query.execute(context);
-
+            result = query.execute(runContext);
         } catch (Exception e) {
-            long ms = System.currentTimeMillis() - start;
-
-            eventSink.accept(new QueryEvent(
-                    id,
-                    query,
+            recorder.finish(
                     isCancellation(e)
                             ? QueryStatus.CANCELLED
                             : QueryStatus.FAILED,
-                    0,
-                    ms,
-                    e.getMessage() == null ? "" : e.getMessage()));
+                    null,
+                    e.getMessage());
 
             throw e;
         }
 
-        long ms = System.currentTimeMillis() - start;
-
-        eventSink.accept(new QueryEvent(
-                id,
-                query,
+        recorder.finish(
                 QueryStatus.OK,
-                query.rowCount(result),
-                ms,
-                ""));
+                query.summary(result),
+                null);
 
         resultSink.accept(result);
         return result;

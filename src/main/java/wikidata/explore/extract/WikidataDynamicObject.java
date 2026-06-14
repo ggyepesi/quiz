@@ -1,6 +1,6 @@
 package wikidata.explore.extract;
 
-import quiz.Link;
+import quiz.annotations.Link;
 import quiz.QuizableAdapter;
 
 import java.util.ArrayList;

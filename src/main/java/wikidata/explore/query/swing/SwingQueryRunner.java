@@ -2,8 +2,8 @@ package wikidata.explore.query.swing;
 
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.core.QueryEventSink;
 import wikidata.explore.query.core.QueryResultSink;
+import wikidata.explore.query.log.LogListener;
 import wikidata.explore.query.workflow.QueryWorkflow;
 
 import javax.swing.*;
@@ -11,7 +11,7 @@ import javax.swing.*;
 public class SwingQueryRunner {
 
     private final QueryContext context;
-    private final QueryEventSink eventSink;
+    private final LogListener logListener;
 
     private final java.util.List<AbstractButton> runButtons =
             new java.util.concurrent.CopyOnWriteArrayList<>();
@@ -24,9 +24,9 @@ public class SwingQueryRunner {
 
     public SwingQueryRunner(
             QueryContext context,
-            QueryEventSink eventSink) {
+            LogListener logListener) {
         this.context = context;
-        this.eventSink = eventSink;
+        this.logListener = logListener;
     }
 
     public void cancelAction(Runnable cancelAction) {
@@ -61,7 +61,7 @@ public class SwingQueryRunner {
                 new QueryWorkflow<>(
                         context,
                         sink,
-                        eventSink);
+                        logListener);
 
         button.addActionListener(e -> {
             if (isRunning()) {
@@ -110,7 +110,6 @@ public class SwingQueryRunner {
                         try {
                             get();
                         } catch (java.util.concurrent.CancellationException ignored) {
-                            // QueryWorkflow already reported CANCELLED via the event sink.
                         } catch (java.util.concurrent.ExecutionException ex) {
                             Throwable cause =
                                     ex.getCause() == null ? ex : ex.getCause();
@@ -135,18 +134,13 @@ public class SwingQueryRunner {
         currentWorker.execute();
     }
 
-    /**
-     * Runs a cheap side query (label lookups and similar) without
-     * touching run/cancel button state and without the one-at-a-time
-     * gate. The sink is called on the worker thread, as in run().
-     */
     public <R> void runQuiet(
             Query<R> query,
             QueryResultSink<R> sink,
             java.util.function.Consumer<Exception> onError) {
 
         QueryWorkflow<R> workflow =
-                new QueryWorkflow<>(context, sink, eventSink);
+                new QueryWorkflow<>(context, sink, logListener);
 
         new SwingWorker<Void, Void>() {
             @Override

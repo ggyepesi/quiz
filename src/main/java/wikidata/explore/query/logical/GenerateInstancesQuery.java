@@ -6,6 +6,7 @@ import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.GenerationRun;
+import wikidata.explore.rule.RuleNode;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -41,11 +42,7 @@ public class GenerateInstancesQuery
     @Override
     public Map<String, String> parameters() {
         Map<String, String> p = new LinkedHashMap<>();
-        p.put("rootClass", projectModel.rootClass().className());
-        p.put("rootQid", projectModel.rootClass()
-                                     .instanceMapping()
-                                     .sourceQid());
-        p.put("depth", String.valueOf(depth));
+        p.put("Class", projectModel.rootClass().className());
         return p;
     }
 
@@ -53,15 +50,48 @@ public class GenerateInstancesQuery
     public GenerationRun execute(QueryContext context)
             throws Exception {
 
-        return new GenerationPipeline().fullRun(
-                projectModel,
-                depth,
-                context.sparql(),
-                context::logText);
+        Map<String, String> stepParams = new LinkedHashMap<>();
+        stepParams.put("qid", projectModel.rootClass()
+                                          .instanceMapping()
+                                          .sourceQid());
+        stepParams.put("depth", String.valueOf(depth));
+
+        GenerationPipeline pipeline = new GenerationPipeline();
+        RuleNode plan = pipeline.plan(projectModel);
+
+        return context.step(
+                "Extract via SPARQL",
+                "SPARQL",
+                null,
+                stepParams,
+                step -> {
+                    // Request shows the actual planned SPARQL only; the
+                    // loaded-object counts are the step/workflow summary,
+                    // not request noise.
+                    step.request(String.join(
+                            "\n\n",
+                            new RuleTreeExtractor(context.sparql())
+                                    .previewQueries(plan, depth)));
+
+                    GenerationRun run =
+                            pipeline.fullRun(
+                                    projectModel,
+                                    depth,
+                                    context.sparql(),
+                                    s -> {});
+
+                    step.summary(run.size() + " objects");
+                    return run;
+                });
     }
 
     @Override
     public int rowCount(GenerationRun result) {
         return result == null ? 0 : result.size();
+    }
+
+    @Override
+    public String summary(GenerationRun result) {
+        return rowCount(result) + " objects";
     }
 }

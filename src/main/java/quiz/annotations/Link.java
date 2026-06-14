@@ -1,4 +1,4 @@
-package quiz;
+package quiz.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -16,4 +16,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 public @interface Link {
+
+    /**
+     * Optional caption shown instead of the raw URL (e.g. "Open in WDQS").
+     * The field value can also carry a per-instance caption as
+     * {@code "label|url"}; an explicit {@code text()} wins over both.
+     */
+    String text() default "";
 }

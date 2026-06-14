@@ -23,6 +23,28 @@ public class QuizableRenderContext {
     private final Map<Class<?>, QuizablePanelConfig> classConfigs =
             new HashMap<>();
 
+    // Quizable references the user has opened in place (expanded inline
+    // instead of shown as a collapsed chip). Keyed by identity so the same
+    // target stays in sync wherever it appears in the card.
+    private final Set<Object> expanded =
+            Collections.newSetFromMap(new IdentityHashMap<>());
+
+    public boolean isExpanded(Object target) {
+        return target != null && expanded.contains(target);
+    }
+
+    /** Flips the in-place expand state; returns the new state. */
+    public boolean toggleExpanded(Object target) {
+        if (target == null) {
+            return false;
+        }
+        if (expanded.remove(target)) {
+            return false;
+        }
+        expanded.add(target);
+        return true;
+    }
+
     // When true, single-clicking a reference to an object that is top-level
     // in this context navigates (scrolls to + flashes) its existing card
     // instead of opening a new detail frame. Shared across the views that

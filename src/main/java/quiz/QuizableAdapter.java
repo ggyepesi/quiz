@@ -1,5 +1,11 @@
 package quiz;
 
+import quiz.annotations.Link;
+import quiz.annotations.MinorField;
+import quiz.annotations.NotQuizableField;
+import quiz.annotations.QuizableInline;
+import quiz.annotations.QuizableReference;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,6 +59,11 @@ public abstract class QuizableAdapter implements Quizable {
     public static boolean isQuizableReference(Field field) {
         return field != null
                 && field.isAnnotationPresent(QuizableReference.class);
+    }
+
+    public static boolean isQuizableInline(Field field) {
+        return field != null
+                && field.isAnnotationPresent(QuizableInline.class);
     }
 
     public static boolean isLinkField(Field field) {

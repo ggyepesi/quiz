@@ -3,6 +3,8 @@ package quiz.ui;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -69,7 +71,30 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
 
         addMouseListener(QuizableTextCopyMouseHandler.INSTANCE);
         addMouseMotionListener(QuizableTextCopyMouseHandler.INSTANCE);
-        setToolTipText("Drag to select, right-click to copy");
+        setToolTipText("Drag to select · " + copyKeyName() + "/right-click to copy");
+
+        registerCopyShortcut();
+    }
+
+    private static String copyKeyName() {
+        return Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()
+                == java.awt.event.InputEvent.META_DOWN_MASK
+                ? "Cmd+C" : "Ctrl+C";
+    }
+
+    private void registerCopyShortcut() {
+        int menuMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+
+        getInputMap(WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_C, menuMask), "copy");
+
+        getActionMap().put("copy", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String sel = selectedText();
+                copyToClipboard(sel.isBlank() ? valueText() : sel);
+            }
+        });
     }
 
     public void beginSelection(Point p) {
@@ -94,6 +119,23 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
 
     public void endSelection(Point p) {
         updateSelection(p);
+
+        // A plain click (no drag) selects the whole value, so it's always
+        // visible what Cmd+C / "Copy" will take.
+        if (selection.isEmpty()) {
+            selectAll();
+        }
+    }
+
+    private void selectAll() {
+        List<PaintLine> lines = computePaintLines(getWidth());
+        if (lines.isEmpty()) {
+            return;
+        }
+        PaintLine last = lines.get(lines.size() - 1);
+        selection.setAnchor(0, 0);
+        selection.setFocus(last.lineIndex(), last.text().length());
+        repaint();
     }
 
     public void showCopyPopup(Point p) {
@@ -270,13 +312,26 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
                 + longest
                 + PAD_X;
 
-        int width = Math.clamp(naturalWidth, 160, MAX_PREF_WIDTH);
-        int valueWidth = Math.max(80, width - PAD_X - prefixWidth - GAP - PAD_X);
+        int prefWidth = Math.clamp(naturalWidth, 160, MAX_PREF_WIDTH);
+
+        // Wrap (and so size the height) at the width we are actually given,
+        // not the clamped preferred width, or we leave a gap below the text.
+        int layoutWidth = getWidth() > 0 ? getWidth() : prefWidth;
+        int valueWidth = Math.max(80, layoutWidth - PAD_X - prefixWidth - GAP - PAD_X);
 
         List<String> wrapped = wrappedLines(fmValue, valueWidth);
         int height = PAD_Y * 2 + wrapped.size() * fmValue.getHeight();
 
-        return new Dimension(width, height);
+        return new Dimension(prefWidth, height);
+    }
+
+    @Override
+    public void setBounds(int x, int y, int width, int height) {
+        boolean widthChanged = width != getWidth();
+        super.setBounds(x, y, width, height);
+        if (widthChanged) {
+            revalidate();
+        }
     }
 
     @Override

@@ -1,5 +1,7 @@
 package quiz;
 
+import quiz.annotations.QuizableReference;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;

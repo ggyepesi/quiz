@@ -36,8 +36,6 @@ public class SampleClassQuery implements Query<TableQueryResult> {
     public Map<String, String> parameters() {
         Map<String, String> p = new LinkedHashMap<>();
         p.put("class", node == null ? "" : node.name());
-        p.put("classQid", node == null ? "" : node.sourceQid());
-        p.put("limit", String.valueOf(limit));
         return p;
     }
 
@@ -49,27 +47,48 @@ public class SampleClassQuery implements Query<TableQueryResult> {
         String sparql =
                 RuleTreeQueries.valuesQueryWithoutIncludedFields(sample);
 
-        context.logText("\nSAMPLE class instances\n----------------------");
-        context.logText(sparql);
+        Map<String, String> stepParams = new LinkedHashMap<>();
+        stepParams.put("classQid", node == null ? "" : node.sourceQid());
+        stepParams.put("limit", String.valueOf(limit));
 
-        List<List<Object>> rows = new ArrayList<>();
+        return context.step(
+                "Sample rows via SPARQL",
+                "SPARQL",
+                null,
+                stepParams,
+                step -> {
+                    step.request(sparql);
 
-        for (WikidataBinding b : context.sparql().query(sparql)) {
-            String qid = b.qid("value");
-            String label = b.label("value");
+                    List<List<Object>> rows = new ArrayList<>();
 
-            if (qid != null && qid.matches("Q\\d+")) {
-                rows.add(List.of(qid, label == null ? "" : label, "", ""));
-            }
-        }
+                    for (WikidataBinding b : context.sparql().query(sparql)) {
+                        String qid = b.qid("value");
+                        String label = b.label("value");
 
-        return new TableQueryResult(
-                List.of("QID", node.name(), "", ""),
-                rows);
+                        if (qid != null && qid.matches("Q\\d+")) {
+                            rows.add(List.of(
+                                    qid,
+                                    label == null ? "" : label,
+                                    "",
+                                    ""));
+                        }
+                    }
+
+                    step.summary(rows.size() + " sampled");
+
+                    return new TableQueryResult(
+                            List.of("QID", node.name(), "", ""),
+                            rows);
+                });
     }
 
     @Override
     public int rowCount(TableQueryResult result) {
         return result == null ? 0 : result.size();
+    }
+
+    @Override
+    public String summary(TableQueryResult result) {
+        return rowCount(result) + " samples";
     }
 }

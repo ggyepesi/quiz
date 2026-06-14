@@ -10,7 +10,7 @@ import java.util.TreeSet;
 import language.Language;
 import quiz.QuizableGroup;
 import quiz.QuizableGroup;
-import quiz.QuizableReference;
+import quiz.annotations.QuizableReference;
 import quiz.ui.ImagePane;
 import quiz.QuizableAdapter;
 

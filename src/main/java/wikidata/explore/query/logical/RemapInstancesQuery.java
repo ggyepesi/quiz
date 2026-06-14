@@ -53,7 +53,7 @@ public class RemapInstancesQuery
     public GenerationRun execute(QueryContext context)
             throws Exception {
 
-        context.logText("Reusing "
+        context.message("Reusing "
                                 + previousRun.dynamicObjects().size()
                                 + " downloaded objects from the previous run.");
 
@@ -63,5 +63,10 @@ public class RemapInstancesQuery
     @Override
     public int rowCount(GenerationRun result) {
         return result == null ? 0 : result.size();
+    }
+
+    @Override
+    public String summary(GenerationRun result) {
+        return rowCount(result) + " objects";
     }
 }

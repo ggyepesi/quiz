@@ -6,7 +6,7 @@ public interface Query<R> {
     String purpose();
 
     /**
-     * Human-readable workflow description, not necessarily a concrete SPARQL/API template.
+     * Query skeleton/template, not workflow description.
      */
     String skeleton();
 
@@ -14,9 +14,22 @@ public interface Query<R> {
         return "Workflow";
     }
 
+    default String description() {
+        return "";
+    }
+
     Map<String, String> parameters();
 
     R execute(QueryContext context) throws Exception;
 
     int rowCount(R result);
+
+    /**
+     * Workflow-level result summary shown on the workflow log. Override to
+     * use a domain-specific unit ("92 objects", "39 possibilities"); the
+     * default counts rows.
+     */
+    default String summary(R result) {
+        return rowCount(result) + " rows";
+    }
 }

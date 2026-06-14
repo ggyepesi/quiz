@@ -3,6 +3,8 @@ package quiz.ui;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.util.*;
 import java.util.List;
 
@@ -53,7 +55,6 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
 
     private int cachedWidth = -1;
     private List<PaintLine> cachedLines = new ArrayList<>();
-    private Dimension cachedPreferredSize;
 
     public QuizableTextBlock(List<Row> rows) {
         if (rows != null) {
@@ -68,7 +69,28 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
 
         addMouseListener(QuizableTextCopyMouseHandler.INSTANCE);
         addMouseMotionListener(QuizableTextCopyMouseHandler.INSTANCE);
-        setToolTipText("Drag to select, right-click to copy");
+        setToolTipText("Drag to select · "
+                + (Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()
+                        == java.awt.event.InputEvent.META_DOWN_MASK
+                        ? "Cmd+C" : "Ctrl+C")
+                + "/right-click to copy");
+
+        registerCopyShortcut();
+    }
+
+    private void registerCopyShortcut() {
+        int menuMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+
+        getInputMap(WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_C, menuMask), "copy");
+
+        getActionMap().put("copy", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String sel = selectedText();
+                copyToClipboard(sel.isBlank() ? blockText() : sel);
+            }
+        });
     }
 
     public boolean isEmpty() {
@@ -97,6 +119,41 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
 
     public void endSelection(Point p) {
         updateSelection(p);
+
+        // A plain click (no drag) selects the whole row under the cursor,
+        // so it's always visible what Cmd+C / "Copy" will take.
+        if (selection.isEmpty()) {
+            selectRowAt(p);
+        }
+    }
+
+    private void selectRowAt(Point p) {
+        List<PaintLine> lines = computeLayout(getWidth());
+        if (lines.isEmpty()) {
+            return;
+        }
+
+        Row row = rowAt(p);
+        PaintLine first = null;
+        PaintLine last = null;
+
+        for (PaintLine line : lines) {
+            if (row == null || line.row() == row) {
+                if (first == null) {
+                    first = line;
+                }
+                last = line;
+            }
+        }
+
+        if (first == null) {
+            first = lines.get(0);
+            last = lines.get(lines.size() - 1);
+        }
+
+        selection.setAnchor(first.lineIndex(), 0);
+        selection.setFocus(last.lineIndex(), last.text().length());
+        repaint();
     }
 
     public void showCopyPopup(Point p) {
@@ -270,10 +327,6 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
 
     @Override
     public Dimension getPreferredSize() {
-        if (cachedPreferredSize != null) {
-            return cachedPreferredSize;
-        }
-
         FontMetrics fmField = getFontMetrics(fieldFont());
         FontMetrics fmValue = getFontMetrics(valueFont());
 
@@ -287,15 +340,31 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
             }
         }
 
-        int width = Math.clamp(PAD_X + longest + PAD_X, 120, MAX_PREF_WIDTH);
-        List<PaintLine> lines = computeLayout(width);
+        int naturalWidth = Math.clamp(PAD_X + longest + PAD_X, 120, MAX_PREF_WIDTH);
+
+        // Reserve height for wrapping at the width we are actually given (the
+        // card stretches us past naturalWidth). Computing height at
+        // naturalWidth would over-count lines and leave a gap below the text.
+        int layoutWidth = getWidth() > 0 ? getWidth() : naturalWidth;
+        List<PaintLine> lines = computeLayout(layoutWidth);
 
         int height = PAD_Y * 2
                 + Math.max(1, lines.size()) * fmValue.getHeight()
                 + Math.max(0, rows.size() - 1) * ROW_GAP;
 
-        cachedPreferredSize = new Dimension(width, height);
-        return cachedPreferredSize;
+        return new Dimension(naturalWidth, height);
+    }
+
+    @Override
+    public void setBounds(int x, int y, int width, int height) {
+        boolean widthChanged = width != getWidth();
+        super.setBounds(x, y, width, height);
+
+        // Height depends on wrap width, so re-lay-out once the real width is
+        // known. Converges in one extra pass (width then stays put).
+        if (widthChanged) {
+            revalidate();
+        }
     }
 
     @Override

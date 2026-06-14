@@ -37,14 +37,14 @@ public class GeneratedQuizableSourceGenerator {
                      .anyMatch(GeneratedFieldModel::renderAsReference);
 
         if (needsReferenceImport) {
-            sb.append("import quiz.QuizableReference;\n\n");
+            sb.append("import quiz.annotations.QuizableReference;\n\n");
         }
 
         sb.append("public class ").append(className)
           .append(" extends quiz.QuizableAdapter {\n\n");
 
         sb.append("    public String qid = \"\";\n");
-        sb.append("    @quiz.Link\n");
+        sb.append("    @quiz.annotations.Link\n");
         sb.append("    public String wikidataUrl = \"\";\n");
         sb.append("    public String name = \"\";\n\n");
 

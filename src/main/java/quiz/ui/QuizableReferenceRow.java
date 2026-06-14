@@ -5,6 +5,7 @@ import quiz.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -15,12 +16,15 @@ public class QuizableReferenceRow extends JComponent {
     private static final int PAD_X = 6;
     private static final int PAD_Y = 4;
     private static final int GAP = 8;
+    private static final int TRI_W = 12;
 
     private final String fieldName;
     private final Quizable target;
     private final QuizableRenderContext renderContext;
     private final QuizablePanelConfig openConfig;
     private final String openTitle;
+    private final boolean expanded;
+    private final List<String> fieldPath;
 
     private Rectangle targetBounds;
     private boolean hover = false;
@@ -30,18 +34,23 @@ public class QuizableReferenceRow extends JComponent {
                                 Quizable target,
                                 QuizableRenderContext renderContext,
                                 QuizablePanelConfig openConfig,
-                                String openTitle) {
+                                String openTitle,
+                                boolean expanded) {
         QuizablePanel.RenderStats.referenceRows++;
         this.fieldName = fieldName == null ? "" : fieldName;
         List<String> fieldPath1 = fieldPath == null ? List.of() : new ArrayList<>(fieldPath);
+        this.fieldPath = fieldPath1;
         this.target = target;
         this.renderContext = renderContext;
         this.openConfig = openConfig;
         this.openTitle = openTitle;
+        this.expanded = expanded;
 
         setOpaque(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        setToolTipText(targetName());
+        setToolTipText(expanded
+                ? "Click to collapse · shift-click to open in a window"
+                : "Click to expand in place · shift-click to open in a window");
 
         putClientProperty(QuizableSearchPanel.FIELD_NAME_PROPERTY, "name");
         putClientProperty(QuizableSearchPanel.FIELD_PATH_PROPERTY, fieldPath1);
@@ -50,21 +59,22 @@ public class QuizableReferenceRow extends JComponent {
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (targetBounds == null || !targetBounds.contains(e.getPoint())) {
+                if (SwingUtilities.isRightMouseButton(e)) {
+                    showCopyPopup(e.getPoint());
                     return;
                 }
 
-                // In-place navigation is opt-in: only when the context has
-                // it enabled does a single click jump to the existing card.
-                // The default (flag off) keeps the legacy behavior of
-                // opening a detail frame, so existing views are unaffected.
+                if (!SwingUtilities.isLeftMouseButton(e)) {
+                    return;
+                }
+
+                // Default click toggles in-place expand/collapse; the whole
+                // row is the target. Shift- or double-click still opens the
+                // object in its own detail window.
                 if (e.isShiftDown() || e.getClickCount() >= 2) {
                     openFullObject();
-                } else if (renderContext != null
-                        && renderContext.inPlaceNavigation()) {
-                    openOrFocus();
                 } else {
-                    openInContext();
+                    toggleExpansion();
                 }
             }
 
@@ -128,6 +138,66 @@ public class QuizableReferenceRow extends JComponent {
         QuizableFrame frame = new QuizableFrame(target, cfg);
     }
 
+    private void showCopyPopup(Point p) {
+        JPopupMenu menu = new JPopupMenu();
+
+        JMenuItem copyValue = new JMenuItem("Copy value");
+        copyValue.addActionListener(e -> copy(targetName()));
+        menu.add(copyValue);
+
+        if (!fieldName.isBlank()) {
+            JMenuItem copyField = new JMenuItem("Copy field name");
+            copyField.addActionListener(e -> copy(fieldName));
+
+            JMenuItem copyPath = new JMenuItem("Copy field path");
+            copyPath.addActionListener(e -> copy(String.join(".", fieldPath)));
+
+            menu.addSeparator();
+            menu.add(copyField);
+            menu.add(copyPath);
+        }
+
+        menu.addSeparator();
+        JMenuItem open = new JMenuItem("Open in window");
+        open.addActionListener(e -> openFullObject());
+        menu.add(open);
+
+        menu.show(this, p.x, p.y);
+    }
+
+    private static void copy(String text) {
+        Toolkit.getDefaultToolkit()
+               .getSystemClipboard()
+               .setContents(new StringSelection(text == null ? "" : text), null);
+    }
+
+    private void toggleExpansion() {
+        if (renderContext == null || target == null) {
+            return;
+        }
+
+        renderContext.toggleExpanded(target);
+        refreshRootCard();
+    }
+
+    // Rebuilds the whole card in place (QuizablePanel#refresh) so the
+    // toggled reference re-renders as a chip or an inline panel. More
+    // expensive than a local swap, but it reuses the existing modification
+    // path and keeps nested state consistent.
+    private void refreshRootCard() {
+        QuizablePanel root = null;
+
+        for (Container c = getParent(); c != null; c = c.getParent()) {
+            if (c instanceof QuizablePanel qp) {
+                root = qp;
+            }
+        }
+
+        if (root != null) {
+            root.refresh();
+        }
+    }
+
     private String targetName() {
         String n = target == null ? null : target.getName();
         return n == null ? "" : n;
@@ -156,7 +226,7 @@ public class QuizableReferenceRow extends JComponent {
         String prefix = fieldName.isEmpty() ? "" : fieldName + ":";
 
         int w =
-                PAD_X
+                PAD_X + TRI_W
                         + fmField.stringWidth(prefix)
                         + (prefix.isEmpty() ? 0 : GAP)
                         + fmValue.stringWidth(targetName())
@@ -190,7 +260,22 @@ public class QuizableReferenceRow extends JComponent {
             int baseline =
                     PAD_Y + Math.max(fmField.getAscent(), fmValue.getAscent());
 
-            int x = PAD_X;
+            // expand/collapse triangle
+            int triMid = baseline - fmValue.getAscent() / 2;
+            g2.setColor(new Color(120, 120, 120));
+            if (expanded) {
+                g2.fillPolygon(
+                        new int[]{PAD_X, PAD_X + 8, PAD_X + 4},
+                        new int[]{triMid - 2, triMid - 2, triMid + 3},
+                        3);
+            } else {
+                g2.fillPolygon(
+                        new int[]{PAD_X + 1, PAD_X + 1, PAD_X + 6},
+                        new int[]{triMid - 4, triMid + 4, triMid},
+                        3);
+            }
+
+            int x = PAD_X + TRI_W;
 
             if (!fieldName.isEmpty()) {
                 String prefix = fieldName + ":";

@@ -1,0 +1,202 @@
+.
+├── IncomingExtractionFrame.java
+├── WikidataBinding.java
+├── WikidataDomainDownloader.java
+├── WikidataDownloadCheckpoint.java
+├── WikidataDownloadDomain.java
+├── WikidataDownloadRule.java
+├── WikidataEntity.java
+├── WikidataEntityFilter.java
+├── WikidataGroupedDownloader.java
+├── WikidataGroupedJson.java
+├── WikidataSparqlClient.java
+├── WikidataTripleSample.java
+├── WorkbenchController.java
+├── api
+│   └── WikidataApiClient.java
+├── countries
+│   ├── CountryGeoDomain.java
+│   ├── CountryGeoDownloader.java
+│   ├── CountryGeoDownloaderMain.java
+│   ├── CountryGeoEntityFilter.java
+│   ├── CountryGeoJson.java
+│   ├── CountryGeoRule.java
+│   └── CountryGeoRules.java
+├── explore
+│   ├── CommonsMedia.java
+│   ├── WikidataIdFetcher.java
+│   ├── WikidataProperty.java
+│   ├── WikidataPropertyCacheDownloader.java
+│   ├── WikidataPropertyScore.java
+│   ├── WikidataPropertyStore.java
+│   ├── codegen
+│   │   ├── DynamicQuizable.java
+│   │   ├── GeneratedCanonicalCycleTestMain.java
+│   │   ├── GeneratedQuizableMapper.java
+│   │   ├── GeneratedQuizableRuntime.java
+│   │   ├── GeneratedQuizableRuntimeBuilder.java
+│   │   ├── GeneratedQuizableSourceGenerator.java
+│   │   └── RuntimeJavaCompiler.java
+│   ├── demo
+│   │   └── BacklinksIncomingPropertyDemo.java
+│   ├── extract
+│   │   ├── GeneratedKnowledgeSet.java
+│   │   ├── RuleTreeExtractor.java
+│   │   ├── StringUtils.java
+│   │   ├── WikidataDynamicObject.java
+│   │   ├── WikidataDynamicObjectJsonStore.java
+│   │   ├── WikidataMediaValue.java
+│   │   └── WikidataObjectRegistry.java
+│   ├── filter
+│   │   ├── ValueFilterEditorPanel.java
+│   │   ├── WikidataValueFilter.java
+│   │   ├── WikidataValueFilterOperator.java
+│   │   └── WikidataValueFilterSparql.java
+│   ├── generation
+│   │   ├── GenerationPipeline.java
+│   │   └── GenerationRun.java
+│   ├── legacy
+│   │   ├── ManualPropertyValidator.java
+│   │   ├── NodePropertyDiscoveryPanel.java
+│   │   ├── PropertyValidationResult.java
+│   │   ├── RememberedProperty.java
+│   │   ├── RememberedPropertyStore.java
+│   │   ├── RuleBuilderFrame.java
+│   │   ├── RuleNodeEditorPanel.java
+│   │   ├── RuleTreeEstimator.java
+│   │   ├── RuleTreeExtractionActions.java
+│   │   ├── RuleTreePanel.java
+│   │   ├── Timing.java
+│   │   ├── TreeExpansionUtils.java
+│   │   ├── TreeNodeUserObjects.java
+│   │   ├── WikidataItemAttributePanel.java
+│   │   ├── WikidataMediaTreeRenderer.java
+│   │   ├── WikidataObjectTreePanel.java
+│   │   ├── WikidataRuleTreeFrame.java
+│   │   ├── WikidataRuleTreeMain.java
+│   │   ├── WorkbenchState.java
+│   │   ├── qid
+│   │   │   ├── SearchableQuizableResultPanel.java
+│   │   │   ├── SparqlLogPanel.java
+│   │   │   ├── TopQidDetailsDialog.java
+│   │   │   ├── TopQidDetailsFrame.java
+│   │   │   ├── TopQidFinderFrame.java
+│   │   │   ├── TopQidFinderMain.java
+│   │   │   ├── TopQidFinderPanel.java
+│   │   │   ├── TopQidFinderQueries.java
+│   │   │   ├── TopQidResult.java
+│   │   │   └── TopQidStatement.java
+│   │   └── ui
+│   │       ├── ExploreFilterPanel.java
+│   │       ├── ExplorePanel.java
+│   │       ├── GroupedTripleTree.java
+│   │       ├── IncludedFieldEditorPanel.java
+│   │       ├── OutputPanel.java
+│   │       ├── RelationSelectionPanel.java
+│   │       ├── RootPanel.java
+│   │       ├── RuleBuilderPanel.java
+│   │       ├── RuleOptionsPanel.java
+│   │       ├── RuleTreeActions.java
+│   │       ├── SavedRulesPanel.java
+│   │       └── ValueFilterEditorPanel.java
+│   ├── model
+│   │   ├── FieldCardinality.java
+│   │   ├── FieldProductionKind.java
+│   │   ├── FieldRenderMode.java
+│   │   ├── FieldSampleContext.java
+│   │   ├── FieldSourceMapping.java
+│   │   ├── FieldSourceType.java
+│   │   ├── FieldType.java
+│   │   ├── GeneratedClassModel.java
+│   │   ├── GeneratedFieldModel.java
+│   │   ├── GeneratedProjectModel.java
+│   │   └── RuleDirection.java
+│   ├── query
+│   │   ├── core
+│   │   │   ├── Query.java
+│   │   │   ├── QueryContext.java
+│   │   │   ├── QueryDescriptor.java
+│   │   │   ├── QueryEvent.java
+│   │   │   ├── QueryEventSink.java
+│   │   │   ├── QueryExecutor.java
+│   │   │   ├── QueryKind.java
+│   │   │   ├── QueryResultSink.java
+│   │   │   ├── QueryStatus.java
+│   │   │   ├── QueryTemplate.java
+│   │   │   └── TextQueryEventSink.java
+│   │   ├── logical
+│   │   │   ├── ClassSearchQuery.java
+│   │   │   ├── DiscoverClassPropertiesQuery.java
+│   │   │   ├── EntityLabelQuery.java
+│   │   │   ├── GenerateInstancesQuery.java
+│   │   │   ├── RemapInstancesQuery.java
+│   │   │   ├── SampleClassQuery.java
+│   │   │   ├── SampleFieldQuery.java
+│   │   │   └── WikiProjectSeedQuery.java
+│   │   ├── result
+│   │   │   ├── DiscoveredProperty.java
+│   │   │   ├── ObjectQueryResult.java
+│   │   │   └── TableQueryResult.java
+│   │   ├── sink
+│   │   │   ├── CompositeQueryEventSink.java
+│   │   │   └── ConsoleQueryEventSink.java
+│   │   ├── swing
+│   │   │   ├── QueryObjectResultPanel.java
+│   │   │   ├── QueryTableResultPanel.java
+│   │   │   └── SwingQueryRunner.java
+│   │   ├── template
+│   │   │   ├── api
+│   │   │   │   └── WikidataApiQueries.java
+│   │   │   ├── rule
+│   │   │   │   ├── RuleIncludedFieldSparql.java
+│   │   │   │   ├── RuleNodeQueryBuilder.java
+│   │   │   │   └── RuleTreeQueries.java
+│   │   │   ├── sparql
+│   │   │   │   └── SparqlQueries.java
+│   │   │   └── wikiproject
+│   │   │       └── WikiProjectQueries.java
+│   │   └── workflow
+│   │       └── QueryWorkflow.java
+│   ├── rule
+│   │   ├── RuleEdge.java
+│   │   ├── RuleIncludedField.java
+│   │   ├── RuleLabelConfig.java
+│   │   ├── RuleNode.java
+│   │   ├── RuleTreeCompiler.java
+│   │   ├── RuleTreeConfig.java
+│   │   └── RuleTreeSerializer.java
+│   ├── wikiproject
+│   │   ├── WikiProjectArticle.java
+│   │   ├── WikiProjectAstronomyDemo.java
+│   │   ├── WikiProjectCategoryReader.java
+│   │   ├── WikiProjectMediaWikiClient.java
+│   │   └── WikiProjectQidResolver.java
+│   └── workbench
+│       ├── CachedPropertyQuizablePanel.java
+│       ├── ClassSourcePanel.java
+│       ├── FieldSourcePanel.java
+│       ├── ModelBuilderFrame.java
+│       ├── ModelBuilderMain.java
+│       ├── ModelSourceWorkbenchPanel.java
+│       ├── NodeSamplePanel.java
+│       ├── PropertyDiscoveryPanel.java
+│       ├── SingleRootClassModelPanel.java
+│       ├── WikiProjectSeedPanel.java
+│       └── WikidataPropertyQuizable.java
+├── query
+│   ├── WikidataExplorerQueries.java
+│   ├── WikidataQueryBuilder.java
+│   └── WikidataRootQuery.java
+├── rule
+│   ├── WikidataRuleSpec.java
+│   └── WikidataRuleSpecStore.java
+└── stellar
+    ├── StellarDomain.java
+    ├── StellarDownloader.java
+    ├── StellarDownloaderMain.java
+    ├── StellarEntityFilter.java
+    ├── StellarJson.java
+    ├── StellarRule.java
+    └── StellarRules.java
+
+31 directories, 170 files

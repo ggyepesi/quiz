@@ -1,7 +1,7 @@
 package oscar;
 
 import quiz.QuizableAdapter;
-import quiz.QuizableReference;
+import quiz.annotations.QuizableReference;
 import wikidata.WikidataEntity;
 
 public class OscarNomination extends QuizableAdapter {

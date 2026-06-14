@@ -11,6 +11,50 @@ import java.lang.reflect.Field;
 import java.util.*;
 import java.util.List;
 
+/**
+ * Renders a {@link Quizable} as a card by reflecting over its fields.
+ *
+ * <h3>Field annotations (rendering hints)</h3>
+ * <ul>
+ *   <li><b>(none)</b> — scalar leaves (String/number/enum) fold into a
+ *       shared, drag-selectable {@link QuizableTextBlock}. A nested
+ *       {@link Quizable} value — whether a single field or a member of a
+ *       collection/map, at any depth — renders as a <i>collapsed
+ *       reference chip</i>.</li>
+ *   <li>{@link quiz.annotations.QuizableInline @QuizableInline} — force the
+ *       nested Quizable(s) to render fully expanded inline (recursively). Use
+ *       only on small, bounded structures (e.g. a log tree); never on
+ *       broad/cyclic graphs.</li>
+ *   <li>{@link quiz.annotations.QuizableReference @QuizableReference} — explicit chip;
+ *       an intent-marking alias of the default. Kept for clarity and for
+ *       fields that must never be force-inlined.</li>
+ *   <li>{@link quiz.annotations.Link @Link} — a String URL field; rendered as a
+ *       clickable link row (see {@link QuizableLinkRow}).</li>
+ *   <li>{@code @NotQuizableField} — not rendered. {@code @MinorField} —
+ *       hidden unless the config opts minor fields in.</li>
+ * </ul>
+ *
+ * <h3>Reference UI behaviour</h3>
+ * A reference chip shows a ▶/▼ triangle. Left-click toggles
+ * <i>expand/collapse in place</i>: expanding flips per-target state in
+ * {@link QuizableRenderContext} and rebuilds the card via {@link
+ * #refresh()}, rendering the chip plus an inline panel below it. The
+ * inline panel's own references are themselves collapsed chips, so each
+ * click opens exactly one level — bounded and safe even for large graphs.
+ * Shift- or double-click opens the target in its own detail window.
+ *
+ * <h3>Copy</h3>
+ * Painted text rows/blocks support drag-select (or click to select all),
+ * {@code Cmd/Ctrl+C}, and a right-click copy menu; chips and link rows
+ * offer right-click copy.
+ *
+ * <h3>Components</h3>
+ * Text is drawn by lightweight painted components ({@link QuizableTextRow},
+ * {@link QuizableTextBlock}, {@link QuizableReferenceRow}, {@link
+ * QuizableLinkRow}) rather than per-value Swing widgets, so a card with
+ * tens of thousands of fields stays cheap. The only structural extra is a
+ * single top-pinning {@link Box.Filler} per root card.
+ */
 public class QuizablePanel extends JPanel {
     private final Quizable quizable;
     private final QuizablePanelConfig config;
@@ -315,7 +359,8 @@ public class QuizablePanel extends JPanel {
                         q,
                         renderContext,
                         openCfg,
-                        objectPathTitle(q)),
+                        objectPathTitle(q),
+                        false),
                 0);
 
         setMinimumSize(new Dimension(100, 42));
@@ -359,6 +404,14 @@ public class QuizablePanel extends JPanel {
                 continue;
             }
 
+            // A field that renders nothing must not break the text-block
+            // batch: a null/empty leaf (e.g. a blank error) sitting between
+            // two value leaves would otherwise split them into separate
+            // blocks and open a stray, variable vertical gap.
+            if (value == null || isEmptyCollectionOrMap(value)) {
+                continue;
+            }
+
             List<String> fieldPath = new ArrayList<>(path);
             fieldPath.add(name);
 
@@ -376,7 +429,19 @@ public class QuizablePanel extends JPanel {
         }
 
         if (!textRows.isEmpty()) {
-            addTextBlock(textRows, row);
+            row = addTextBlock(textRows, row);
+        }
+
+        // Root cards only: pin fields to the top by absorbing any extra
+        // card height in one zero-paint filler, instead of letting GridBag
+        // centre the content (which left a variable gap). Nested panels are
+        // content-sized, so they don't need it.
+        if (path.isEmpty()) {
+            add(Box.createGlue(), GridBagUtils.gbc(
+                    0, row + 1, 1.0, 1.0,
+                    GridBagConstraints.NORTHWEST,
+                    GridBagConstraints.BOTH,
+                    new Insets(0, 0, 0, 0)));
         }
     }
 
@@ -410,11 +475,36 @@ public class QuizablePanel extends JPanel {
             return row;
         }
 
+        if (QuizableAdapter.isQuizableInline(field)) {
+            JComponent comp =
+                    createInlineFieldComponent(fieldName, fieldPath, value);
+
+            if (comp != null) {
+                addSingle(comp, row++);
+            }
+
+            return row;
+        }
+
         if (QuizableAdapter.isLinkField(field)
                 && value instanceof String url
                 && !url.isBlank()) {
 
-            addSingle(new QuizableLinkRow(fieldName, fieldPath, url), row++);
+            quiz.annotations.Link link = field.getAnnotation(quiz.annotations.Link.class);
+            String label = link == null ? "" : link.text();
+            addSingle(new QuizableLinkRow(fieldName, fieldPath, url, label), row++);
+            return row;
+        }
+
+        // A bare (non-annotated) single Quizable is a collapsible chip too,
+        // matching collection members -- see the class doc.
+        if (value instanceof Quizable q) {
+            JComponent comp = collapsibleReference(fieldName, fieldPath, q);
+
+            if (comp != null) {
+                addSingle(comp, row++);
+            }
+
             return row;
         }
 
@@ -447,13 +537,7 @@ public class QuizablePanel extends JPanel {
             Object value
                                                     ) {
         if (value instanceof Quizable q) {
-            return new QuizableReferenceRow(
-                    fieldName,
-                    namePath(fieldPath),
-                    q,
-                    renderContext,
-                    configForNested(q),
-                    objectPathTitle(q));
+            return collapsibleReference(fieldName, fieldPath, q);
         }
 
         JPanel panel = new JPanel(new GridBagLayout());
@@ -479,6 +563,67 @@ public class QuizablePanel extends JPanel {
         return row == 0 ? null : panel;
     }
 
+    // Opposite of createReferenceFieldComponent: each nested Quizable is
+    // expanded fully in place rather than shown as a click-to-open chip.
+    // Only reached for @QuizableInline fields, so the broad/cyclic graphs
+    // that rely on the reference default are never expanded here.
+    private JComponent createInlineFieldComponent(
+            String fieldName,
+            List<String> fieldPath,
+            Object value) {
+
+        if (value instanceof Quizable q) {
+            return inlineQuizable(q, fieldPath);
+        }
+
+        Collection<?> items =
+                value instanceof Collection<?> c ? c
+                        : value instanceof Map<?, ?> m ? m.values()
+                        : List.of();
+
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createTitledBorder(fieldName));
+
+        int row = 0;
+
+        for (Object item : items) {
+            if (!(item instanceof Quizable q)) {
+                continue;
+            }
+
+            JComponent nested = inlineQuizable(q, fieldPath);
+
+            if (nested != null) {
+                panel.add(
+                        nested,
+                        GridBagUtils.gbc(
+                                0, row++,
+                                1.0, 0.0,
+                                GridBagConstraints.NORTHWEST,
+                                GridBagConstraints.HORIZONTAL,
+                                new Insets(2, 6, 2, 6)));
+            }
+        }
+
+        return row == 0 ? null : panel;
+    }
+
+    private JComponent inlineQuizable(Quizable q, List<String> fieldPath) {
+        QuizablePanel nested =
+                new QuizablePanel(
+                        copyVisited(),
+                        copyAncestors(),
+                        renderContext,
+                        false,
+                        q,
+                        configForNested(q),
+                        fill,
+                        fieldPath);
+
+        return nested.hasRenderedConfiguredContent() ? nested : null;
+    }
+
     private void addReferenceToPanel(
             JPanel panel,
             String fieldName,
@@ -486,24 +631,61 @@ public class QuizablePanel extends JPanel {
             List<String> fieldPath,
             int row
     ) {
-        QuizablePanelConfig openCfg = configForNested(q);
-
-        QuizableReferenceRow ref =
-                new QuizableReferenceRow(
-                        fieldName,
-                        namePath(fieldPath),
-                        q,
-                        renderContext,
-                        openCfg,
-                        objectPathTitle(q));
-
-        panel.add(ref,
+        panel.add(collapsibleReference(fieldName, fieldPath, q),
                 GridBagUtils.gbc(
                         0, row,
                         1.0, 0.0,
                         GridBagConstraints.NORTHWEST,
                         GridBagConstraints.HORIZONTAL,
                         new Insets(2, 6, 2, 6)));
+    }
+
+    // A Quizable reference renders as a collapsed chip by default; clicking
+    // it (see QuizableReferenceRow) flips renderContext expand state and
+    // rebuilds the card, so here it renders the chip plus the inline panel.
+    // Children of the inline panel are themselves collapsed chips, so only
+    // one level opens per click -- safe even for broad/cyclic graphs.
+    private JComponent collapsibleReference(
+            String fieldName,
+            List<String> fieldPath,
+            Quizable target) {
+
+        boolean exp = renderContext != null && renderContext.isExpanded(target);
+
+        QuizableReferenceRow chip =
+                new QuizableReferenceRow(
+                        fieldName,
+                        namePath(fieldPath),
+                        target,
+                        renderContext,
+                        configForNested(target),
+                        objectPathTitle(target),
+                        exp);
+
+        if (!exp) {
+            return chip;
+        }
+
+        JPanel wrap = new JPanel(new GridBagLayout());
+        wrap.setOpaque(false);
+
+        wrap.add(chip, GridBagUtils.gbc(
+                0, 0, 1.0, 0.0,
+                GridBagConstraints.NORTHWEST,
+                GridBagConstraints.HORIZONTAL,
+                new Insets(0, 0, 0, 0)));
+
+        JComponent inline = inlineQuizable(target, fieldPath);
+
+        if (inline != null) {
+            wrap.add(inline, GridBagUtils.gbc(
+                    0, 1, 1.0, 0.0,
+                    GridBagConstraints.NORTHWEST,
+                    GridBagConstraints.HORIZONTAL,
+                    new Insets(0, 16, 4, 0)));
+        }
+
+        return wrap;
     }
 
     private QuizableTextBlock.Row textBlockRow(
