@@ -2,11 +2,14 @@ package quiz.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import quiz.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.annotations.Link;
 
 import java.lang.reflect.Field;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -74,7 +77,7 @@ public final class QuizableJson {
                     continue;
                 }
 
-                QuizableView.Field field = field(f, value, visited);
+                QuizableView.Field field = field(type, id, f, value, visited);
                 if (field != null) {
                     fields.add(field);
                 }
@@ -86,8 +89,16 @@ public final class QuizableJson {
         }
     }
 
-    private static QuizableView.Field field(Field f, Object value, Set<Object> visited) {
+    private static QuizableView.Field field(
+            String ownerType, String ownerId, Field f, Object value, Set<Object> visited) {
+
         String name = f.getName();
+
+        if (value instanceof ImageRef) {
+            String url = "/api/image/"
+                    + enc(ownerType) + "/" + enc(ownerId) + "/" + enc(name);
+            return QuizableView.Field.image(name, url);
+        }
 
         if (QuizableAdapter.isLinkField(f) && value instanceof String s && !s.isBlank()) {
             Link link = f.getAnnotation(Link.class);
@@ -179,5 +190,9 @@ public final class QuizableJson {
     private static QuizableView.Ref ref(Quizable q) {
         return new QuizableView.Ref(
                 q.getIdentifier(), q.getDisplayName(), q.getClass().getSimpleName());
+    }
+
+    private static String enc(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 }

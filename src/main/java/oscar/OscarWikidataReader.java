@@ -179,9 +179,9 @@ public class OscarWikidataReader {
             boolean winner = Boolean.parseBoolean(value(b, "winner"));
 
             OscarNomination n = new OscarNomination();
-            n.setNominee(WikidataEntity.canonical(nominee, nomineeQid));
-            n.setAward(WikidataEntity.canonical(award, awardQid));
-            n.setWork(WikidataEntity.canonical(work, workQid));
+            n.setNominee(entityOrNull(nominee, nomineeQid));
+            n.setAward(entityOrNull(award, awardQid));
+            n.setWork(entityOrNull(work, workQid));
             n.setName();
             n.ceremonyYear = ceremonyYear;
             n.filmYear = filmYear;
@@ -191,6 +191,14 @@ public class OscarWikidataReader {
         }
 
         return out;
+    }
+
+    // A missing nominee/award/work just yields a null relation rather than
+    // aborting the whole award (WikidataEntity.canonical throws on blank id).
+    private static WikidataEntity entityOrNull(String label, String qid) {
+        return qid == null || qid.isBlank()
+                ? null
+                : WikidataEntity.canonical(label, qid);
     }
 
     private String value(JsonNode binding, String name) {

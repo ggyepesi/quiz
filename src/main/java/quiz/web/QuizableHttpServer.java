@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import quiz.ImageRef;
 import quiz.Quizable;
+import quiz.QuizableAdapter;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -42,6 +45,7 @@ public class QuizableHttpServer {
         server.createContext("/api/types", this::handleTypes);
         server.createContext("/api/quizables", this::handleList);
         server.createContext("/api/quizable/", this::handleDetail);
+        server.createContext("/api/image/", this::handleImage);
         server.setExecutor(null);
         server.start();
         System.out.println("Quizable API on http://localhost:" + port + "/api/types");
@@ -99,6 +103,66 @@ public class QuizableHttpServer {
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }
+    }
+
+    // GET /api/image/{type}/{id}/{field} -> PNG bytes of an ImageRef field.
+    private void handleImage(HttpExchange ex) throws IOException {
+        String path = ex.getRequestURI().getPath().substring("/api/image/".length());
+        String[] parts = path.split("/", 3);
+        if (parts.length < 3) {
+            sendStatus(ex, 400);
+            return;
+        }
+
+        String type = urlDecode(parts[0]);
+        String id = urlDecode(parts[1]);
+        String field = urlDecode(parts[2]);
+
+        try {
+            Quizable q = store.get(type, id);
+            Object value = q == null ? null : fieldValue(q, field);
+
+            if (!(value instanceof ImageRef ref)) {
+                sendStatus(ex, 404);
+                return;
+            }
+
+            byte[] png = ref.pngBytes();
+            if (png == null) {
+                sendStatus(ex, 404);
+                return;
+            }
+
+            Headers h = ex.getResponseHeaders();
+            h.add("Content-Type", "image/png");
+            h.add("Access-Control-Allow-Origin", "*");
+            h.add("Cache-Control", "public, max-age=3600");
+            ex.sendResponseHeaders(200, png.length);
+            try (OutputStream os = ex.getResponseBody()) {
+                os.write(png);
+            }
+        } catch (Exception e) {
+            sendStatus(ex, 500);
+        }
+    }
+
+    private static Object fieldValue(Quizable q, String fieldName) {
+        Field f = QuizableAdapter.getField(q.getClass(), fieldName);
+        if (f == null) {
+            return null;
+        }
+        try {
+            f.setAccessible(true);
+            return f.get(q);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void sendStatus(HttpExchange ex, int code) throws IOException {
+        ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        ex.sendResponseHeaders(code, -1);
+        ex.close();
     }
 
     private void writeJson(HttpExchange ex, int code, Object body) throws IOException {

@@ -100,7 +100,13 @@ public class SportTeams implements QuizableViews {
             System.out.println(city + ", " + country + ", " + quizable + ", " + stadium);
 
             SportTeam team = new SportTeam(name);
-            ImagePane imagePane = new ImagePane(name, null, team, true);
+            // Point the logo at the SVG resource on the classpath (the svg
+            // dir set above lives under resources/), instead of null —
+            // otherwise the displayed logo never resolves to a file.
+            java.net.URL svgRes = SportTeams.class.getClassLoader()
+                    .getResource(Constants.getSvgDirectory() + name + ".svg");
+            String svgUrl = svgRes == null ? null : svgRes.toString();
+            ImagePane imagePane = new ImagePane(name, svgUrl, team, true);
             team.setLogo(imagePane);
 
             if (quizables.put(name, team) != null) {

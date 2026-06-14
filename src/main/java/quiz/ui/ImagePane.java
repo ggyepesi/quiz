@@ -13,7 +13,9 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 
+import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
@@ -21,9 +23,11 @@ import javax.swing.SwingWorker;
 
 import aux.CachedImage;
 import aux.TitleUtils;
+import quiz.ImageRef;
 import quiz.Quizable;
 
-public class ImagePane extends JPanel implements MouseListener, MouseMotionListener {
+public class ImagePane extends JPanel
+        implements MouseListener, MouseMotionListener, ImageRef {
     public interface SelectionListener {
         void selected(ImagePane imagePane);
     }
@@ -182,7 +186,13 @@ public class ImagePane extends JPanel implements MouseListener, MouseMotionListe
         this.imageLoadFailed = false;
 
         if (this.loadPolicy == LoadPolicy.IMMEDIATE) {
-            loadDisplayImageNow();
+            // A missing/unreadable image must never abort construction (and
+            // thus a whole dataset load) — fall back to the failed state.
+            try {
+                loadDisplayImageNow();
+            } catch (Exception e) {
+                imageLoadFailed = true;
+            }
         }
 
         addMouseListener(this);
@@ -197,6 +207,35 @@ public class ImagePane extends JPanel implements MouseListener, MouseMotionListe
 
     public CachedImage getCachedImage() {
         return cachedImage;
+    }
+
+    /** Renders the (possibly SVG) image to PNG bytes for headless consumers. */
+    @Override
+    public byte[] pngBytes() throws Exception {
+        if (cachedImage == null) {
+            return null;
+        }
+
+        Image img = cachedImage.getFullImage();
+        if (img == null) {
+            return null;
+        }
+
+        BufferedImage bi;
+        if (img instanceof BufferedImage b) {
+            bi = b;
+        } else {
+            int w = Math.max(1, cachedImage.getFullImageWidth());
+            int h = Math.max(1, cachedImage.getFullImageHeight());
+            bi = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = bi.createGraphics();
+            g.drawImage(img, 0, 0, null);
+            g.dispose();
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(bi, "png", out);
+        return out.toByteArray();
     }
 
     public ImageKind getImageKind() {

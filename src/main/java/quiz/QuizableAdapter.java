@@ -102,6 +102,12 @@ public abstract class QuizableAdapter implements Quizable {
 
         while (current != null && current.getSuperclass() != null) {
             for (Field field : current.getDeclaredFields()) {
+                // static fields are class-level state (e.g. a cache), never
+                // per-instance quiz data — skip them.
+                if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
+
                 if (isNotQuizableField(field)) {
                     continue;
                 }

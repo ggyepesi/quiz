@@ -60,6 +60,11 @@ public record QuizableView(
             return new Field(name, "link", null, null, label, url, null, null, null);
         }
 
+        /** {@code url} points at the backend image endpoint that serves bytes. */
+        public static Field image(String name, String url) {
+            return new Field(name, "image", null, null, null, url, null, null, null);
+        }
+
         public static Field ref(String name, Ref ref) {
             return new Field(name, "ref", null, null, null, null, ref, null, null);
         }

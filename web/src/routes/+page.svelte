@@ -7,6 +7,7 @@
   let type = $state(null);
   let items = $state([]);
   let selected = $state(null);
+  let selectedId = $state(null);
   let loadingList = $state(false);
   let loadingCard = $state(false);
   let error = $state(null);
@@ -21,13 +22,14 @@
       types = (await getTypes()) ?? [];
       if (types.length) await selectType(types[0]);
     } catch (e) {
-      error = 'Cannot reach the API at the configured base URL. Is QuizableServerMain running?';
+      error = 'Cannot reach the API. Is QuizableServerMain running on :7070?';
     }
   });
 
   async function selectType(t) {
     type = t;
     selected = null;
+    selectedId = null;
     q = '';
     loadingList = true;
     items = (await getList(t)) ?? [];
@@ -35,95 +37,160 @@
   }
 
   async function open(item) {
+    selectedId = item.id;
     loadingCard = true;
     selected = await getQuizable(item.type, item.id);
     loadingCard = false;
   }
 </script>
 
-<header>
-  <h1>Quiz</h1>
-  <nav>
-    {#each types as t}
-      <button class:active={t === type} onclick={() => selectType(t)}>{t}</button>
-    {/each}
-  </nav>
-</header>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">Quiz<span class="dot">·</span><span class="sub">explorer</span></div>
+    <nav class="tabs">
+      {#each types as t}
+        <button class="tab" class:active={t === type} onclick={() => selectType(t)}>{t}</button>
+      {/each}
+    </nav>
+  </header>
 
-{#if error}
-  <p class="error">{error}</p>
-{/if}
+  {#if error}
+    <div class="banner">{error}</div>
+  {/if}
 
-<main>
-  <aside>
-    <input placeholder="Search…" bind:value={q} />
-    {#if loadingList}
-      <p class="muted">Loading…</p>
-    {:else}
-      <ul>
-        {#each filtered as item}
-          <li>
-            <button class:active={selected && selected.id === item.id} onclick={() => open(item)}>
+  <div class="body">
+    <aside class="sidebar">
+      <div class="search">
+        <input placeholder="Search…" bind:value={q} />
+      </div>
+      <div class="list">
+        {#if loadingList}
+          <p class="hint">Loading…</p>
+        {:else}
+          {#each filtered as item}
+            <button
+              class="row"
+              class:active={selectedId === item.id}
+              onclick={() => open(item)}
+              title={item.name}
+            >
               {item.name}
             </button>
-          </li>
-        {/each}
-      </ul>
-      <p class="muted count">{filtered.length} / {items.length}</p>
-    {/if}
-  </aside>
+          {/each}
+        {/if}
+      </div>
+      {#if !loadingList}
+        <div class="count">{filtered.length} of {items.length}</div>
+      {/if}
+    </aside>
 
-  <section>
-    {#if loadingCard}
-      <p class="muted">Loading…</p>
-    {:else if selected}
-      <QuizableCard view={selected} heading={true} />
-    {:else}
-      <p class="muted">Select an item.</p>
-    {/if}
-  </section>
-</main>
+    <main class="content">
+      {#if loadingCard}
+        <p class="hint center">Loading…</p>
+      {:else if selected}
+        <div class="content-inner">
+          <QuizableCard view={selected} heading={true} />
+        </div>
+      {:else}
+        <div class="empty">
+          <div class="empty-mark">◵</div>
+          <p>Select an item to view its card.</p>
+        </div>
+      {/if}
+    </main>
+  </div>
+</div>
 
 <style>
-  header {
+  .app { display: flex; flex-direction: column; height: 100vh; }
+
+  .topbar {
     display: flex;
-    align-items: baseline;
-    gap: 16px;
-    padding: 12px 20px;
+    align-items: center;
+    gap: 22px;
+    padding: 0 20px;
+    height: 54px;
+    background: var(--panel);
     border-bottom: 1px solid var(--line);
-    background: #fff;
+    flex: none;
   }
-  header h1 { margin: 0; font-size: 1.1rem; }
-  nav { display: flex; gap: 6px; flex-wrap: wrap; }
-  nav button { padding: 4px 10px; border-radius: 6px; }
-  nav button.active { background: var(--accent); color: #fff; }
+  .brand { font-weight: 650; font-size: 15px; letter-spacing: -0.01em; }
+  .brand .dot { color: var(--accent); margin: 0 3px; }
+  .brand .sub { color: var(--muted); font-weight: 500; }
 
-  .error { color: #b00020; padding: 10px 20px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab {
+    padding: 5px 12px;
+    border-radius: 999px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .tab:hover { background: var(--chip-bg); color: var(--fg); }
+  .tab.active { background: var(--accent); color: #fff; }
 
-  main {
+  .banner {
+    background: #fff4f4;
+    color: #b42318;
+    border-bottom: 1px solid #f3c9c4;
+    padding: 8px 20px;
+    font-size: 13px;
+  }
+
+  .body {
+    flex: 1;
     display: grid;
-    grid-template-columns: 280px 1fr;
-    gap: 18px;
-    padding: 18px 20px;
-    align-items: start;
+    grid-template-columns: 300px 1fr;
+    min-height: 0;
   }
-  aside input {
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .search { padding: 12px; border-bottom: 1px solid var(--line); }
+  .search input {
     width: 100%;
-    padding: 6px 8px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    margin-bottom: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    outline: none;
   }
-  aside ul { list-style: none; margin: 0; padding: 0; max-height: 75vh; overflow: auto; }
-  aside li button {
+  .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+
+  .list { flex: 1; overflow-y: auto; padding: 6px; }
+  .row {
     display: block;
     width: 100%;
     text-align: left;
-    padding: 4px 8px;
-    border-radius: 6px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    color: var(--fg);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
   }
-  aside li button:hover { background: var(--chip-bg); }
-  aside li button.active { background: var(--accent); color: #fff; }
-  .muted { color: var(--muted); }
-  .count { font-size: 0.8em; }
+  .row:hover { background: var(--chip-bg); }
+  .row.active { background: var(--accent-weak); color: var(--accent); font-weight: 550; }
+
+  .count { padding: 8px 12px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; }
+
+  .content { overflow-y: auto; min-height: 0; min-width: 0; }
+  .content-inner { max-width: 720px; margin: 0 auto; padding: 26px 24px; }
+
+  .hint { color: var(--muted); }
+  .hint.center { text-align: center; padding-top: 40px; }
+
+  .empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--faint);
+  }
+  .empty-mark { font-size: 34px; opacity: 0.5; }
 </style>

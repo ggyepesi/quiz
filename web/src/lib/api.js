@@ -1,6 +1,11 @@
 // Base URL of the Java QuizableHttpServer. Override with VITE_API in .env.
 const BASE = import.meta.env.VITE_API ?? 'http://localhost:7070';
 
+/** Resolve a server-relative path (e.g. an image URL) against the API base. */
+export function assetUrl(path) {
+  return `${BASE}${path}`;
+}
+
 async function json(url) {
   const r = await fetch(url);
   if (!r.ok) return null;

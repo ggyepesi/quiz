@@ -69,12 +69,24 @@ public class OscarNomination extends QuizableAdapter {
     }
 
     public String setName() {
-        String s = ceremonyYear + " " + (award == null ? "NO AWARD" : award.getName()) + " " +
-                (nominee == null ? "NO NOMINEE" : nominee.getName());
-        if (winner) {
-            s += " [winner]";
+        StringBuilder s = new StringBuilder();
+
+        if (ceremonyYear > 0) {
+            s.append(ceremonyYear).append(" · ");
         }
-        name = s.trim();
+
+        s.append(award == null ? "Award" : award.getName());
+
+        String who = nominee == null ? null : nominee.getName();
+        if (who != null && !who.isBlank()) {
+            s.append(" — ").append(who);
+        }
+
+        if (winner) {
+            s.append(" [winner]");
+        }
+
+        name = s.toString().trim();
         return name;
     }
 

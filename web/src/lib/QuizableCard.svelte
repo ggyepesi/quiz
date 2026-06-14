@@ -1,6 +1,7 @@
 <script>
   import QuizableChip from './QuizableChip.svelte';
   import Self from './QuizableCard.svelte';
+  import { assetUrl } from './api.js';
 
   let { view, heading = false } = $props();
 </script>
@@ -9,62 +10,93 @@
   {#if heading}
     <div class="title">
       <span class="name">{view.name}</span>
-      <span class="type">{view.type}</span>
+      <span class="badge">{view.type}</span>
     </div>
   {/if}
 
-  {#each view.fields ?? [] as f}
-    <div class="field">
-      <span class="fname">{f.name}</span>
-      <span class="fval">
-        {#if f.kind === 'text'}
-          {f.value}
-        {:else if f.kind === 'list'}
-          {f.values.join(', ')}
-        {:else if f.kind === 'link'}
-          <a href={f.url} target="_blank" rel="noreferrer">{f.label}</a>
-        {:else if f.kind === 'ref'}
-          <QuizableChip ref={f.ref} />
-        {:else if f.kind === 'refs'}
-          <div class="refs">
-            {#each f.refs as r}
-              <QuizableChip ref={r} />
-            {/each}
-          </div>
-        {:else if f.kind === 'inline'}
-          <div class="inline">
-            {#each f.nodes as n}
-              <Self view={n} heading={true} />
-            {/each}
-          </div>
-        {/if}
-      </span>
-    </div>
-  {/each}
+  <dl class="fields">
+    {#each view.fields ?? [] as f}
+      <div class="field">
+        <dt>{f.name}</dt>
+        <dd>
+          {#if f.kind === 'text'}
+            {f.value}
+          {:else if f.kind === 'list'}
+            <span class="chips">
+              {#each f.values as v}<span class="tag">{v}</span>{/each}
+            </span>
+          {:else if f.kind === 'image'}
+            <img class="img" src={assetUrl(f.url)} alt={f.name} loading="lazy" />
+          {:else if f.kind === 'link'}
+            <a href={f.url} target="_blank" rel="noreferrer">{f.label} ↗</a>
+          {:else if f.kind === 'ref'}
+            <QuizableChip ref={f.ref} />
+          {:else if f.kind === 'refs'}
+            <div class="refs">
+              {#each f.refs as r}<QuizableChip ref={r} />{/each}
+            </div>
+          {:else if f.kind === 'inline'}
+            <div class="inline">
+              {#each f.nodes as n}<Self view={n} heading={true} />{/each}
+            </div>
+          {/if}
+        </dd>
+      </div>
+    {/each}
+  </dl>
 </div>
 
 <style>
   .card.heading {
+    background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 12px 14px;
-    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
   }
+
   .title {
     display: flex;
     align-items: baseline;
-    gap: 8px;
-    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
   }
-  .title .name { font-weight: 600; font-size: 1.05em; }
-  .title .type { color: var(--muted); font-size: 0.8em; }
+  .title .name {
+    font-size: 1.15rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+
+  .fields { margin: 0; display: flex; flex-direction: column; }
   .field {
     display: grid;
-    grid-template-columns: 140px 1fr;
-    gap: 10px;
-    padding: 3px 0;
+    grid-template-columns: 132px 1fr;
+    gap: 14px;
+    padding: 6px 0;
     align-items: start;
   }
-  .fname { color: var(--muted); }
-  .inline { display: grid; gap: 8px; }
+  .field + .field { border-top: 1px solid #f2f3f6; }
+  dt { color: var(--muted); font-size: 0.86rem; padding-top: 1px; overflow-wrap: anywhere; }
+  dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+  .chips, .refs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    background: var(--chip-bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-size: 0.86rem;
+  }
+  .inline { display: grid; gap: 10px; }
+  .img {
+    max-width: 160px;
+    max-height: 120px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #fff;
+  }
 </style>
