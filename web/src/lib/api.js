@@ -1,13 +1,11 @@
 // Base URL of the Java QuizableHttpServer.
-// Default: the same host that served this page, on port 7070 — so it works
-// from localhost AND from a phone (Mac's LAN IP) with no config. Override
-// explicitly with VITE_API if the API runs elsewhere.
+// Default: same origin ('') — calls go to /api/... and the Vite dev server
+// proxies them to localhost:7070 (see vite.config.js). This way the API and
+// images travel through whatever serves the page (localhost, LAN IP, or a
+// single ngrok tunnel) with no CORS and no second port to expose.
+// Override with VITE_API only if the API is reached directly elsewhere.
 function apiBase() {
-  if (import.meta.env.VITE_API) return import.meta.env.VITE_API;
-  if (typeof window !== 'undefined') {
-    return `${location.protocol}//${location.hostname}:7070`;
-  }
-  return 'http://localhost:7070';
+  return import.meta.env.VITE_API ?? '';
 }
 
 /** Resolve a server-relative path (e.g. an image URL) against the API base. */
@@ -16,7 +14,10 @@ export function assetUrl(path) {
 }
 
 async function json(url) {
-  const r = await fetch(url, { cache: 'no-store' });
+  const r = await fetch(url, {
+    cache: 'no-store',
+    headers: { 'ngrok-skip-browser-warning': '1' }
+  });
   if (!r.ok) return null;
   return r.json();
 }

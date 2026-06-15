@@ -11,13 +11,15 @@ import java.util.Random;
 
 /**
  * Builds a multiple-choice {@link Quiz} from a dataset: each question shows
- * the {@code promptField} of one Quizable (e.g. its logo) and asks for its
- * {@code answerField} value, with distractors drawn from other items.
+ * the {@code promptFields} of one Quizable (e.g. its logo, or name + group)
+ * and asks for the combination of its {@code answerFields}, with distractors
+ * drawn from other items.
  */
 public final class QuizGenerator {
 
     private static final Random R = new Random();
     private static final int OPTIONS = 4;
+    private static final String JOIN = " · ";
 
     private QuizGenerator() {}
 
@@ -25,28 +27,46 @@ public final class QuizGenerator {
             QuizableStore store,
             String type,
             String group,
-            String promptField,
-            String answerField,
+            List<String> promptFields,
+            List<String> answerFields,
             int n) throws Exception {
 
         Collection<Quizable> all = store.members(type, group);
-        if (all == null) {
-            return new Quiz(type, promptField, answerField, List.of());
+        if (all == null || promptFields.isEmpty() || answerFields.isEmpty()) {
+            return new Quiz(type, join(promptFields), join(answerFields), List.of());
         }
 
-        record Entry(QuizableView.Field prompt, String answer) {}
+        record Entry(List<QuizableView.Field> prompts, String answer) {}
 
         List<Entry> entries = new ArrayList<>();
         LinkedHashSet<String> answerPool = new LinkedHashSet<>();
 
         for (Quizable q : all) {
-            QuizableView.Field prompt = QuizableJson.fieldOf(q, promptField);
-            String answer = QuizableJson.stringValue(q, answerField);
-
-            if (prompt != null && answer != null) {
-                entries.add(new Entry(prompt, answer));
-                answerPool.add(answer);
+            List<QuizableView.Field> prompts = new ArrayList<>();
+            for (String pf : promptFields) {
+                QuizableView.Field fv = QuizableJson.fieldOf(q, pf);
+                if (fv != null) {
+                    prompts.add(fv);
+                }
             }
+            if (prompts.isEmpty()) {
+                continue;
+            }
+
+            List<String> answerParts = new ArrayList<>();
+            for (String af : answerFields) {
+                String s = QuizableJson.stringValue(q, af);
+                if (s != null) {
+                    answerParts.add(s);
+                }
+            }
+            if (answerParts.isEmpty()) {
+                continue;
+            }
+
+            String answer = String.join(JOIN, answerParts);
+            entries.add(new Entry(prompts, answer));
+            answerPool.add(answer);
         }
 
         List<String> pool = new ArrayList<>(answerPool);
@@ -57,10 +77,10 @@ public final class QuizGenerator {
 
         for (int i = 0; i < count; i++) {
             Entry e = entries.get(i);
-            questions.add(new Quiz.Question(e.prompt(), options(e.answer(), pool), e.answer()));
+            questions.add(new Quiz.Question(e.prompts(), options(e.answer(), pool), e.answer()));
         }
 
-        return new Quiz(type, promptField, answerField, questions);
+        return new Quiz(type, join(promptFields), join(answerFields), questions);
     }
 
     private static List<String> options(String correct, List<String> pool) {
@@ -79,5 +99,9 @@ public final class QuizGenerator {
         List<String> list = new ArrayList<>(opts);
         Collections.shuffle(list, R);
         return list;
+    }
+
+    private static String join(List<String> fields) {
+        return String.join(", ", fields);
     }
 }

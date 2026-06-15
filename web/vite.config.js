@@ -2,5 +2,14 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [sveltekit()]
+  plugins: [sveltekit()],
+  server: {
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:7070',
+        changeOrigin: true
+      }
+    }
+  }
 });

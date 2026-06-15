@@ -1,25 +1,34 @@
 <script>
   import { onMount } from 'svelte';
   import { getTypes, getFields, getGroups, getQuiz, assetUrl } from '$lib/api.js';
+  import GroupTree from '$lib/GroupTree.svelte';
 
   // config
   let types = $state([]);
   let type = $state('');
   let fields = $state([]);
-  let groups = $state([]);
+  let groupTree = $state(null);
   let group = $state('');
-  let prompt = $state('');
-  let ask = $state('');
+  let promptFields = $state([]);
+  let answerFields = $state([]);
   let n = $state(10);
+  let loadingFields = $state(false);
 
-  function flattenGroups(node, depth, out) {
-    if (!node) return;
-    out.push({
-      fullName: node.fullName,
-      label: '  '.repeat(depth) + node.name,
-      count: node.count
-    });
-    for (const c of node.children ?? []) flattenGroups(c, depth + 1, out);
+  function togglePrompt(name, on) {
+    if (on) {
+      promptFields = [...promptFields.filter((x) => x !== name), name];
+      answerFields = answerFields.filter((x) => x !== name); // can't be both
+    } else {
+      promptFields = promptFields.filter((x) => x !== name);
+    }
+  }
+  function toggleAnswer(name, on) {
+    if (on) {
+      answerFields = [...answerFields.filter((x) => x !== name), name];
+      promptFields = promptFields.filter((x) => x !== name); // can't be both
+    } else {
+      answerFields = answerFields.filter((x) => x !== name);
+    }
   }
 
   // play
@@ -44,24 +53,45 @@
 
   async function selectType(t) {
     type = t;
-    fields = (await getFields(t)) ?? [];
-    const img = fields.find((f) => f.kind === 'image' || f.kind === 'images');
-    prompt = (img ?? fields[0])?.name ?? '';
-    const txt = fields.find((f) => f.name !== prompt && (f.kind === 'text' || f.kind === 'refs' || f.kind === 'list'));
-    ask = (txt ?? fields.find((f) => f.name !== prompt) ?? fields[0])?.name ?? '';
+    loadingFields = true;
+    fields = [];
+    groupTree = null;
+    promptFields = [];
+    answerFields = [];
 
-    const tree = await getGroups(t);
-    const flat = [];
-    flattenGroups(tree, 0, flat);
-    groups = flat;
-    group = ''; // default: whole dataset
+    try {
+      const fs = (await getFields(t)) ?? [];
+      if (type !== t) return; // user switched again — ignore stale result
+      fields = fs;
+
+      const img = fields.find((f) => f.kind === 'image' || f.kind === 'images');
+      const p = (img ?? fields[0])?.name;
+      promptFields = p ? [p] : [];
+      const txt = fields.find(
+        (f) => !promptFields.includes(f.name) && (f.kind === 'text' || f.kind === 'refs' || f.kind === 'list')
+      );
+      const a = (txt ?? fields.find((f) => !promptFields.includes(f.name)) ?? fields[0])?.name;
+      answerFields = a ? [a] : [];
+
+      const tree = await getGroups(t);
+      if (type !== t) return;
+      groupTree = tree;
+      group = tree ? tree.fullName : '';
+    } finally {
+      if (type === t) loadingFields = false;
+    }
   }
 
   async function startQuiz() {
-    if (!type || !prompt || !ask) return;
+    if (!type || !promptFields.length || !answerFields.length) return;
     loading = true;
     error = null;
-    quiz = await getQuiz(type, { prompt, ask, n, group });
+    quiz = await getQuiz(type, {
+      prompt: promptFields.join(','),
+      ask: answerFields.join(','),
+      n,
+      group
+    });
     i = 0;
     score = 0;
     picked = null;
@@ -113,34 +143,41 @@
             {#each types as t}<option value={t}>{t}</option>{/each}
           </select>
         </label>
-        {#if groups.length}
+        {#if loadingFields}
+          <p class="hint">Loading {type}…</p>
+        {:else}
+          {#if groupTree}
+            <div class="group-field">
+              <span class="field-label">Group</span>
+              <div class="group-tree">
+                <GroupTree node={groupTree} selected={group} onSelect={(fn) => (group = fn)} />
+              </div>
+            </div>
+          {/if}
+          <div class="fields">
+            <div class="fhead"><span>Field</span><span>Show</span><span>Guess</span></div>
+            {#each fields as f}
+              <div class="frow">
+                <span class="fname">{f.name} <span class="kind">{f.kind}</span></span>
+                <input
+                  type="checkbox"
+                  checked={promptFields.includes(f.name)}
+                  onchange={(e) => togglePrompt(f.name, e.currentTarget.checked)}
+                />
+                <input
+                  type="checkbox"
+                  checked={answerFields.includes(f.name)}
+                  onchange={(e) => toggleAnswer(f.name, e.currentTarget.checked)}
+                />
+              </div>
+            {/each}
+          </div>
           <label>
-            Group
-            <select bind:value={group}>
-              <option value="">All ({type})</option>
-              {#each groups as g}
-                <option value={g.fullName}>{g.label} ({g.count})</option>
-              {/each}
-            </select>
+            Questions
+            <input type="number" min="1" max="50" bind:value={n} />
           </label>
+          <button class="primary" onclick={startQuiz} disabled={!promptFields.length || !answerFields.length}>Start</button>
         {/if}
-        <label>
-          Show (prompt)
-          <select bind:value={prompt}>
-            {#each fields as f}<option value={f.name}>{f.name} · {f.kind}</option>{/each}
-          </select>
-        </label>
-        <label>
-          Guess (answer)
-          <select bind:value={ask}>
-            {#each fields as f}<option value={f.name}>{f.name} · {f.kind}</option>{/each}
-          </select>
-        </label>
-        <label>
-          Questions
-          <input type="number" min="1" max="50" bind:value={n} />
-        </label>
-        <button class="primary" onclick={startQuiz} disabled={!prompt || !ask}>Start</button>
       </div>
     {:else if done}
       <div class="results">
@@ -154,18 +191,22 @@
     {:else if q}
       <div class="card">
         <div class="prompt">
-          {#if q.prompt.kind === 'image'}
-            <img src={assetUrl(q.prompt.url)} alt="" />
-          {:else if q.prompt.kind === 'images'}
-            <img src={assetUrl(q.prompt.values[0])} alt="" />
-          {:else if q.prompt.kind === 'list'}
-            <div class="prompt-text">{q.prompt.values.join(', ')}</div>
-          {:else}
-            <div class="prompt-text">{q.prompt.value ?? ''}</div>
-          {/if}
+          {#each q.prompts as p}
+            {#if p.kind === 'image'}
+              <img src={assetUrl(p.url)} alt="" />
+            {:else if p.kind === 'images'}
+              <img src={assetUrl(p.values[0])} alt="" />
+            {:else if p.kind === 'list'}
+              <div class="prompt-line"><span class="pf">{p.name}</span>{p.values.join(', ')}</div>
+            {:else}
+              <div class="prompt-line"><span class="pf">{p.name}</span>{p.value ?? ''}</div>
+            {/if}
+          {/each}
         </div>
         <p class="ask">
-          {q.prompt.kind === 'image' || q.prompt.kind === 'images' ? 'Which one is this?' : `Which ${quiz.ask}?`}
+          {q.prompts.length === 1 && (q.prompts[0].kind === 'image' || q.prompts[0].kind === 'images')
+            ? 'Which one is this?'
+            : `Which ${quiz.ask}?`}
         </p>
 
         <div class="options">
@@ -229,6 +270,41 @@
     color: var(--fg);
     background: #fff;
   }
+  .group-field { display: flex; flex-direction: column; gap: 5px; font-size: 0.86rem; color: var(--muted); }
+  .group-tree {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    padding: 6px;
+    background: #fff;
+  }
+
+  .fields {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .fhead, .frow {
+    display: grid;
+    grid-template-columns: 1fr 46px 46px;
+    align-items: center;
+    gap: 6px;
+  }
+  .fhead {
+    font-size: 0.74rem;
+    color: var(--faint);
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2px;
+  }
+  .fhead span:not(:first-child) { justify-self: center; }
+  .frow { padding: 3px 0; }
+  .frow input { justify-self: center; }
+  .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+  .fname .kind { color: var(--faint); font-size: 0.78em; }
 
   .card {
     width: 100%;
@@ -242,15 +318,24 @@
   }
   .prompt {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 12px;
     min-height: 160px;
-    padding: 8px;
+    padding: 12px;
     background: #fff;
     border-radius: var(--radius-sm);
   }
   .prompt img { max-width: 220px; max-height: 170px; object-fit: contain; }
-  .prompt-text { font-size: 1.4rem; font-weight: 600; }
+  .prompt-line { font-size: 1.3rem; font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
+  .prompt-line .pf {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: var(--faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
   .ask { color: var(--muted); margin: 14px 0 16px; }
 
   .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

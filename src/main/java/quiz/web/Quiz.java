@@ -21,7 +21,7 @@ public record Quiz(
         List<Question> questions) {
 
     public record Question(
-            QuizableView.Field prompt,
+            List<QuizableView.Field> prompts,
             List<String> options,
             String answer) {}
 }

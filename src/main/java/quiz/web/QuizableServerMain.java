@@ -1,5 +1,6 @@
 package quiz.web;
 
+import quiz.web.sources.MythologySource;
 import quiz.web.sources.OscarSource;
 import quiz.web.sources.SportTeamSource;
 import quiz.web.sources.StateSource;
@@ -19,9 +20,14 @@ public class QuizableServerMain {
     public static void main(String[] args) throws Exception {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : 7070;
 
+        // Don't render images during dataset load — the image endpoint
+        // produces them on demand. Keeps the (image-heavy) State load fast.
+        System.setProperty("quizable.lazyImages", "true");
+
         QuizableStore store = new QuizableStore();
         store.register(new SportTeamSource());
         store.register(new StateSource());
+        store.register(new MythologySource());
         store.register(new OscarSource());
 
         new QuizableHttpServer(store).start(port);

@@ -185,7 +185,11 @@ public class ImagePane extends JPanel
         this.imageLoading = false;
         this.imageLoadFailed = false;
 
-        if (this.loadPolicy == LoadPolicy.IMMEDIATE) {
+        // Headless consumers (e.g. the web server) only need the image URL,
+        // not a rendered image — they set -Dquizable.lazyImages=true so
+        // construction stays cheap and the bytes are rendered on demand.
+        if (this.loadPolicy == LoadPolicy.IMMEDIATE
+                && !Boolean.getBoolean("quizable.lazyImages")) {
             // A missing/unreadable image must never abort construction (and
             // thus a whole dataset load) — fall back to the failed state.
             try {

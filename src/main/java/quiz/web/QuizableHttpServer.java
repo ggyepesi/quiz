@@ -255,10 +255,25 @@ public class QuizableHttpServer {
         }
 
         try {
-            writeJson(ex, 200, QuizGenerator.generate(store, type, group, prompt, ask, n));
+            writeJson(ex, 200,
+                    QuizGenerator.generate(store, type, group, csv(prompt), csv(ask), n));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }
+    }
+
+    private static List<String> csv(String s) {
+        if (s == null || s.isBlank()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (String part : s.split(",")) {
+            String t = part.trim();
+            if (!t.isEmpty()) {
+                out.add(t);
+            }
+        }
+        return out;
     }
 
     private static int intParam(HttpExchange ex, String key, int def) {
