@@ -48,6 +48,93 @@ public final class QuizableJson {
         return MAPPER;
     }
 
+    /** Render-model for a single named field of {@code owner}, or null. */
+    public static QuizableView.Field fieldOf(Quizable owner, String fieldName) {
+        // "name" is the display name (skipped as a normal field, but usable
+        // as a quiz prompt/answer).
+        if ("name".equals(fieldName)) {
+            String dn = owner.getDisplayName();
+            return dn == null || dn.isBlank() ? null : QuizableView.Field.text("name", dn);
+        }
+
+        Field f = QuizableAdapter.getField(owner.getClass(), fieldName);
+        if (f == null) {
+            return null;
+        }
+
+        Object value;
+        try {
+            f.setAccessible(true);
+            value = f.get(owner);
+        } catch (Exception e) {
+            return null;
+        }
+
+        if (!QuizableAdapter.isValidQuizValue(value)) {
+            return null;
+        }
+
+        return field(
+                owner.getClass().getSimpleName(),
+                owner.getIdentifier(),
+                f,
+                value,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
+    }
+
+    /**
+     * A plain string value of a field for use as a quiz answer/option:
+     * Quizable -> display name, collection/map -> joined items, else the
+     * value's string. Null if empty.
+     */
+    public static String stringValue(Quizable owner, String fieldName) {
+        if ("name".equals(fieldName)) {
+            String dn = owner.getDisplayName();
+            return dn == null || dn.isBlank() ? null : dn;
+        }
+
+        Field f = QuizableAdapter.getField(owner.getClass(), fieldName);
+        if (f == null) {
+            return null;
+        }
+
+        try {
+            f.setAccessible(true);
+            Object v = f.get(owner);
+            String s = asString(v);
+            return s == null || s.isBlank() ? null : s;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String asString(Object v) {
+        if (v == null) {
+            return null;
+        }
+        if (v instanceof Quizable q) {
+            return q.getDisplayName();
+        }
+        if (v instanceof Collection<?> c) {
+            return joinItems(c);
+        }
+        if (v instanceof Map<?, ?> m) {
+            return joinItems(m.values());
+        }
+        return String.valueOf(v);
+    }
+
+    private static String joinItems(Collection<?> items) {
+        List<String> parts = new ArrayList<>();
+        for (Object item : items) {
+            String s = item instanceof Quizable q ? q.getDisplayName() : String.valueOf(item);
+            if (s != null && !s.isBlank()) {
+                parts.add(s);
+            }
+        }
+        return String.join(", ", parts);
+    }
+
     private static QuizableView of(Quizable q, Set<Object> visited) {
         String id = q.getIdentifier();
         String name = q.getDisplayName();
@@ -115,25 +202,40 @@ public final class QuizableJson {
         }
 
         if (value instanceof Collection<?> c) {
-            return collectionField(name, c);
+            return collectionField(ownerType, ownerId, name, c);
         }
 
         if (value instanceof Map<?, ?> m) {
-            return collectionField(name, m.values());
+            return collectionField(ownerType, ownerId, name, m.values());
         }
 
         return QuizableView.Field.text(name, String.valueOf(value));
     }
 
-    private static QuizableView.Field collectionField(String name, Collection<?> items) {
-        List<QuizableView.Ref> refs = new ArrayList<>();
+    private static QuizableView.Field collectionField(
+            String ownerType, String ownerId, String name, Collection<?> items) {
 
+        // A collection of images (e.g. flag versions): one indexed image URL
+        // per item, by position in the collection.
+        List<String> imageUrls = new ArrayList<>();
+        int idx = 0;
+        for (Object item : items) {
+            if (item instanceof ImageRef) {
+                imageUrls.add("/api/image/"
+                        + enc(ownerType) + "/" + enc(ownerId) + "/" + enc(name) + "/" + idx);
+            }
+            idx++;
+        }
+        if (!imageUrls.isEmpty()) {
+            return QuizableView.Field.images(name, imageUrls);
+        }
+
+        List<QuizableView.Ref> refs = new ArrayList<>();
         for (Object item : items) {
             if (item instanceof Quizable q) {
                 refs.add(ref(q));
             }
         }
-
         if (!refs.isEmpty()) {
             return QuizableView.Field.refs(name, refs);
         }

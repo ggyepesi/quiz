@@ -2,6 +2,7 @@ package quiz.web;
 
 import quiz.web.sources.OscarSource;
 import quiz.web.sources.SportTeamSource;
+import quiz.web.sources.StateSource;
 
 /**
  * Launches the read-only Quizable JSON API.
@@ -20,6 +21,7 @@ public class QuizableServerMain {
 
         QuizableStore store = new QuizableStore();
         store.register(new SportTeamSource());
+        store.register(new StateSource());
         store.register(new OscarSource());
 
         new QuizableHttpServer(store).start(port);

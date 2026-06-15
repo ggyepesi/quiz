@@ -65,6 +65,11 @@ public record QuizableView(
             return new Field(name, "image", null, null, null, url, null, null, null);
         }
 
+        /** A collection of images; {@code values} are the per-image endpoint URLs. */
+        public static Field images(String name, List<String> urls) {
+            return new Field(name, "images", null, urls, null, null, null, null, null);
+        }
+
         public static Field ref(String name, Ref ref) {
             return new Field(name, "ref", null, null, null, null, ref, null, null);
         }

@@ -52,13 +52,14 @@
         <button class="tab" class:active={t === type} onclick={() => selectType(t)}>{t}</button>
       {/each}
     </nav>
+    <a class="play" href="/quiz">Play quiz →</a>
   </header>
 
   {#if error}
     <div class="banner">{error}</div>
   {/if}
 
-  <div class="body">
+  <div class="body" class:show-detail={!!selected}>
     <aside class="sidebar">
       <div class="search">
         <input placeholder="Search…" bind:value={q} />
@@ -89,6 +90,7 @@
         <p class="hint center">Loading…</p>
       {:else if selected}
         <div class="content-inner">
+          <button class="back-mobile" onclick={() => { selected = null; selectedId = null; }}>← List</button>
           <QuizableCard view={selected} heading={true} />
         </div>
       {:else}
@@ -127,6 +129,16 @@
   }
   .tab:hover { background: var(--chip-bg); color: var(--fg); }
   .tab.active { background: var(--accent); color: #fff; }
+
+  .play {
+    margin-left: auto;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .play:hover { text-decoration: none; filter: brightness(1.05); }
 
   .banner {
     background: #fff4f4;
@@ -193,4 +205,32 @@
     color: var(--faint);
   }
   .empty-mark { font-size: 34px; opacity: 0.5; }
+
+  .back-mobile {
+    display: none;
+    margin-bottom: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Phone: single column master-detail (list, then card with a back link) */
+  @media (max-width: 720px) {
+    .topbar {
+      height: auto;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      padding: 8px 14px;
+    }
+    .tabs { overflow-x: auto; max-width: 100%; }
+    .play { margin-left: auto; }
+
+    .body { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; }
+    .content { display: none; }
+    .content-inner { padding: 16px 14px; }
+
+    .body.show-detail .sidebar { display: none; }
+    .body.show-detail .content { display: block; }
+    .back-mobile { display: inline-block; }
+  }
 </style>

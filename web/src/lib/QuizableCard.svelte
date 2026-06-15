@@ -27,6 +27,12 @@
             </span>
           {:else if f.kind === 'image'}
             <img class="img" src={assetUrl(f.url)} alt={f.name} loading="lazy" />
+          {:else if f.kind === 'images'}
+            <div class="imgs">
+              {#each f.values as u}
+                <img class="img" src={assetUrl(u)} alt={f.name} loading="lazy" />
+              {/each}
+            </div>
           {:else if f.kind === 'link'}
             <a href={f.url} target="_blank" rel="noreferrer">{f.label} ↗</a>
           {:else if f.kind === 'ref'}
@@ -98,5 +104,12 @@
     object-fit: contain;
     border-radius: 6px;
     background: #fff;
+  }
+  .imgs { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 720px) {
+    .card.heading { padding: 12px 14px; }
+    .field { grid-template-columns: 1fr; gap: 2px; padding: 7px 0; }
+    dt { font-weight: 600; }
   }
 </style>

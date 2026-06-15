@@ -16,8 +16,10 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 /**
  * Minimal read-only JSON API over a {@link QuizableStore}, on the JDK's
@@ -46,7 +48,12 @@ public class QuizableHttpServer {
         server.createContext("/api/quizables", this::handleList);
         server.createContext("/api/quizable/", this::handleDetail);
         server.createContext("/api/image/", this::handleImage);
-        server.setExecutor(null);
+        server.createContext("/api/quiz", this::handleQuiz);
+        server.createContext("/api/fields", this::handleFields);
+        server.createContext("/api/groups", this::handleGroups);
+        // Real pool so concurrent clients (e.g. phone + laptop) are handled
+        // independently instead of serially on one thread.
+        server.setExecutor(Executors.newCachedThreadPool());
         server.start();
         System.out.println("Quizable API on http://localhost:" + port + "/api/types");
     }
@@ -105,10 +112,11 @@ public class QuizableHttpServer {
         }
     }
 
-    // GET /api/image/{type}/{id}/{field} -> PNG bytes of an ImageRef field.
+    // GET /api/image/{type}/{id}/{field}[/{index}] -> PNG bytes of an
+    // ImageRef field (or the index-th ImageRef of a collection field).
     private void handleImage(HttpExchange ex) throws IOException {
         String path = ex.getRequestURI().getPath().substring("/api/image/".length());
-        String[] parts = path.split("/", 3);
+        String[] parts = path.split("/", 4);
         if (parts.length < 3) {
             sendStatus(ex, 400);
             return;
@@ -117,12 +125,14 @@ public class QuizableHttpServer {
         String type = urlDecode(parts[0]);
         String id = urlDecode(parts[1]);
         String field = urlDecode(parts[2]);
+        Integer index = parts.length >= 4 ? parseIndex(urlDecode(parts[3])) : null;
 
         try {
             Quizable q = store.get(type, id);
             Object value = q == null ? null : fieldValue(q, field);
+            ImageRef ref = imageRefAt(value, index);
 
-            if (!(value instanceof ImageRef ref)) {
+            if (ref == null) {
                 sendStatus(ex, 404);
                 return;
             }
@@ -146,6 +156,29 @@ public class QuizableHttpServer {
         }
     }
 
+    private static Integer parseIndex(String s) {
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static ImageRef imageRefAt(Object value, Integer index) {
+        if (index == null) {
+            return value instanceof ImageRef r ? r : null;
+        }
+        if (value instanceof Collection<?> c) {
+            int i = 0;
+            for (Object item : c) {
+                if (i++ == index) {
+                    return item instanceof ImageRef r ? r : null;
+                }
+            }
+        }
+        return null;
+    }
+
     private static Object fieldValue(Quizable q, String fieldName) {
         Field f = QuizableAdapter.getField(q.getClass(), fieldName);
         if (f == null) {
@@ -165,11 +198,88 @@ public class QuizableHttpServer {
         ex.close();
     }
 
+    // GET /api/fields?type=T -> [{name, kind}] across a sample of the dataset,
+    // for the quiz config UI to offer prompt/answer choices.
+    private void handleFields(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+
+        try {
+            Collection<Quizable> qs = store.list(type);
+            if (qs == null) {
+                writeJson(ex, 404, Map.of("error", "unknown type: " + type));
+                return;
+            }
+
+            LinkedHashMap<String, String> kinds = new LinkedHashMap<>();
+            kinds.put("name", "text"); // display name — skipped in views, but quizzable
+            int seen = 0;
+            for (Quizable q : qs) {
+                for (QuizableView.Field field : QuizableJson.of(q).fields()) {
+                    kinds.putIfAbsent(field.name(), field.kind());
+                }
+                if (++seen >= 40) {
+                    break;
+                }
+            }
+
+            List<Map<String, String>> out = new ArrayList<>();
+            kinds.forEach((name, kind) -> out.add(Map.of("name", name, "kind", kind)));
+            writeJson(ex, 200, out);
+        } catch (Exception e) {
+            writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    // GET /api/groups?type=T -> the group tree (or null if the type has none).
+    private void handleGroups(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+        try {
+            quiz.QuizableGroup root = store.rootGroup(type);
+            writeJson(ex, 200, root == null ? null : GroupNode.of(root));
+        } catch (Exception e) {
+            writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    // GET /api/quiz?type=&group=&prompt=&ask=&n= -> a multiple-choice quiz.
+    private void handleQuiz(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+        String group = queryParam(ex, "group");
+        String prompt = queryParam(ex, "prompt");
+        String ask = queryParam(ex, "ask");
+        int n = intParam(ex, "n", 10);
+
+        if (type == null || prompt == null || ask == null) {
+            writeJson(ex, 400, Map.of("error", "need type, prompt, ask"));
+            return;
+        }
+
+        try {
+            writeJson(ex, 200, QuizGenerator.generate(store, type, group, prompt, ask, n));
+        } catch (Exception e) {
+            writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    private static int intParam(HttpExchange ex, String key, int def) {
+        String v = queryParam(ex, key);
+        if (v == null) {
+            return def;
+        }
+        try {
+            return Integer.parseInt(v.trim());
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
+
     private void writeJson(HttpExchange ex, int code, Object body) throws IOException {
         byte[] bytes = mapper.writeValueAsBytes(body);
         Headers h = ex.getResponseHeaders();
         h.add("Content-Type", "application/json; charset=utf-8");
         h.add("Access-Control-Allow-Origin", "*");
+        // Dynamic data (esp. each fresh quiz) must not be cached.
+        h.add("Cache-Control", "no-store");
         ex.sendResponseHeaders(code, bytes.length);
         try (OutputStream os = ex.getResponseBody()) {
             os.write(bytes);
