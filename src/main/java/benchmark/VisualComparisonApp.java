@@ -5,7 +5,7 @@ import oscar.OscarNomination;
 import quiz.QuizablePanelConfig;
 import quiz.QuizablePanelConfigAdapter;
 import quiz.ui.QuizablePanel;
-import wikidata.WikidataEntity;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,11 +19,11 @@ public class VisualComparisonApp {
         } catch (Exception ignored) {}
 
         // 2. Fabricate a single realistic target record matching our benchmark
-        WikidataEntity brando = WikidataEntity.canonical("Marlon Brando",
+        WikidataDynamicObject brando = WikidataDynamicObject.canonical("Marlon Brando",
                                                       "Q16122");
-        WikidataEntity award = WikidataEntity.canonical("Best Actor",
+        WikidataDynamicObject award = WikidataDynamicObject.canonical("Best Actor",
                                                         "Q103916");
-        WikidataEntity movie = WikidataEntity.canonical("The Godfather",
+        WikidataDynamicObject movie = WikidataDynamicObject.canonical("The Godfather",
                                                       "Q47703");
 
         OscarNomination targetRecord = new OscarNomination();

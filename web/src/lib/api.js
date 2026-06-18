@@ -8,8 +8,10 @@ function apiBase() {
   return import.meta.env.VITE_API ?? '';
 }
 
-/** Resolve a server-relative path (e.g. an image URL) against the API base. */
+/** Resolve a server-relative path (e.g. an image URL) against the API base.
+ *  Absolute URLs (e.g. a Wikimedia Commons chart) are returned untouched. */
 export function assetUrl(path) {
+  if (/^https?:\/\//.test(path)) return path;
   return `${apiBase()}${path}`;
 }
 
@@ -53,3 +55,32 @@ export function getQuiz(type, { prompt = 'logo', ask = 'name', n = 10, group = '
   if (group) p.set('group', group);
   return json(`${apiBase()}/api/quiz?${p}`);
 }
+
+/** @returns {Promise<object|null>} a matching game (prompts vs answers) */
+export function getPairing(type, { prompt = 'logo', ask = 'name', n = 12, group = '' } = {}) {
+  const p = new URLSearchParams({ type, prompt, ask, n: String(n) });
+  if (group) p.set('group', group);
+  return json(`${apiBase()}/api/pairing?${p}`);
+}
+
+// --- Model builder (password-gated) -------------------------------------
+
+/** Base64 Basic-auth credential for the builder endpoints. */
+export function basicCred(user, pass) {
+  return btoa(`${user}:${pass}`);
+}
+
+/** @returns {Promise<{ok:boolean, status:number, data:any}>} */
+async function builderGet(path, cred, asText = false) {
+  const r = await fetch(`${apiBase()}${path}`, {
+    cache: 'no-store',
+    headers: { Authorization: `Basic ${cred}`, 'ngrok-skip-browser-warning': '1' }
+  });
+  if (!r.ok) return { ok: false, status: r.status, data: null };
+  return { ok: true, status: r.status, data: asText ? await r.text() : await r.json() };
+}
+
+export const getBuilderModel = (cred) => builderGet('/api/builder/model', cred);
+export const getBuilderRuleTree = (cred) => builderGet('/api/builder/ruletree', cred);
+export const getBuilderSparql = (cred, depth = 0) =>
+  builderGet(`/api/builder/sparql?depth=${depth}`, cred, true);

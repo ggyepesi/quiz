@@ -6,6 +6,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
 
+/* Debugging utils, keep it even if it is not used. */
 public class DeepComponentInspector extends MouseAdapter {
 
     @Override

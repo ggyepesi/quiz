@@ -2,7 +2,7 @@ package oscar;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import wikidata.WikidataEntity;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -194,11 +194,11 @@ public class OscarWikidataReader {
     }
 
     // A missing nominee/award/work just yields a null relation rather than
-    // aborting the whole award (WikidataEntity.canonical throws on blank id).
-    private static WikidataEntity entityOrNull(String label, String qid) {
+    // aborting the whole award (WikidataDynamicObject.canonical throws on blank id).
+    private static WikidataDynamicObject entityOrNull(String label, String qid) {
         return qid == null || qid.isBlank()
                 ? null
-                : WikidataEntity.canonical(label, qid);
+                : WikidataDynamicObject.canonical(label, qid);
     }
 
     private String value(JsonNode binding, String name) {

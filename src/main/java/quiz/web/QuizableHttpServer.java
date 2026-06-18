@@ -36,10 +36,14 @@ public class QuizableHttpServer {
 
     private final QuizableStore store;
     private final ObjectMapper mapper = QuizableJson.mapper();
+    private final BlurredImageService blurService;
+    private final java.util.concurrent.ExecutorService exec =
+            Executors.newCachedThreadPool();
     private HttpServer server;
 
     public QuizableHttpServer(QuizableStore store) {
         this.store = store;
+        this.blurService = new BlurredImageService(store);
     }
 
     public void start(int port) throws IOException {
@@ -49,13 +53,33 @@ public class QuizableHttpServer {
         server.createContext("/api/quizable/", this::handleDetail);
         server.createContext("/api/image/", this::handleImage);
         server.createContext("/api/quiz", this::handleQuiz);
+        server.createContext("/api/pairing", this::handlePairing);
         server.createContext("/api/fields", this::handleFields);
         server.createContext("/api/groups", this::handleGroups);
+        server.createContext("/api/chart/", this::handleChart);
+
+        // Model-builder (workbench) endpoints — read-only first slice, gated by
+        // a password since they expose the generation model. Auth only on these
+        // contexts; the quiz API stays open.
+        ModelBuilderApi builder = new ModelBuilderApi();
+        com.sun.net.httpserver.Authenticator builderAuth = new ModelBuilderAuth();
+        secured("/api/builder/model", builder::handleModel, builderAuth);
+        secured("/api/builder/ruletree", builder::handleRuleTree, builderAuth);
+        secured("/api/builder/sparql", builder::handleSparqlPreview, builderAuth);
+
         // Real pool so concurrent clients (e.g. phone + laptop) are handled
         // independently instead of serially on one thread.
-        server.setExecutor(Executors.newCachedThreadPool());
+        server.setExecutor(exec);
         server.start();
         System.out.println("Quizable API on http://localhost:" + port + "/api/types");
+    }
+
+    // Registers a context guarded by an authenticator (password-gated routes).
+    private void secured(
+            String path,
+            com.sun.net.httpserver.HttpHandler handler,
+            com.sun.net.httpserver.Authenticator auth) {
+        server.createContext(path, handler).setAuthenticator(auth);
     }
 
     public void stop() {
@@ -81,7 +105,7 @@ public class QuizableHttpServer {
             List<QuizableView.Ref> items = new ArrayList<>();
             for (Quizable q : qs) {
                 items.add(new QuizableView.Ref(
-                        q.getIdentifier(), q.getDisplayName(), q.getClass().getSimpleName()));
+                        q.getIdentifier(), q.getDisplayName(), q.typeName()));
             }
             writeJson(ex, 200, items);
         } catch (Exception e) {
@@ -153,6 +177,45 @@ public class QuizableHttpServer {
             }
         } catch (Exception e) {
             sendStatus(ex, 500);
+        }
+    }
+
+    // GET /api/chart/{type}/{id}/{field} -> the image with its answer text
+    // (e.g. the constellation name) mosaicked out. Cached after first build.
+    private void handleChart(HttpExchange ex) throws IOException {
+        String path = ex.getRequestURI().getPath().substring("/api/chart/".length());
+        String[] parts = path.split("/", 3);
+        if (parts.length < 3) {
+            sendStatus(ex, 400);
+            return;
+        }
+        try {
+            byte[] img = blurService.blurred(
+                    urlDecode(parts[0]), urlDecode(parts[1]), urlDecode(parts[2]));
+            if (img == null) {
+                sendStatus(ex, 404);
+                return;
+            }
+            Headers h = ex.getResponseHeaders();
+            // PNG magic 0x89; otherwise assume the (unblurred) original is JPEG.
+            h.add("Content-Type", img.length > 0 && (img[0] & 0xff) == 0x89 ? "image/png" : "image/jpeg");
+            h.add("Access-Control-Allow-Origin", "*");
+            h.add("Cache-Control", "public, max-age=86400");
+            ex.sendResponseHeaders(200, img.length);
+            try (OutputStream os = ex.getResponseBody()) {
+                os.write(img);
+            }
+        } catch (Exception e) {
+            sendStatus(ex, 500);
+        }
+    }
+
+    // Build the blurred image in the background, so it's cached by the time the
+    // player reaches that question/pair.
+    private void prewarm(QuizableView.Field f) {
+        if ("image".equals(f.kind()) && f.url() != null && f.url().startsWith("/api/chart/")) {
+            String url = f.url();
+            exec.submit(() -> blurService.prewarm(url));
         }
     }
 
@@ -255,8 +318,39 @@ public class QuizableHttpServer {
         }
 
         try {
-            writeJson(ex, 200,
-                    QuizGenerator.generate(store, type, group, csv(prompt), csv(ask), n));
+            Quiz quiz = QuizGenerator.generate(store, type, group, csv(prompt), csv(ask), n);
+            for (Quiz.Question q : quiz.questions()) {
+                for (QuizableView.Field f : q.prompts()) {
+                    prewarm(f);
+                }
+            }
+            writeJson(ex, 200, quiz);
+        } catch (Exception e) {
+            writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    // GET /api/pairing?type=&group=&prompt=&ask=&n= -> a matching game.
+    private void handlePairing(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+        String group = queryParam(ex, "group");
+        String prompt = queryParam(ex, "prompt");
+        String ask = queryParam(ex, "ask");
+        int n = intParam(ex, "n", 12);
+
+        if (type == null || prompt == null || ask == null) {
+            writeJson(ex, 400, Map.of("error", "need type, prompt, ask"));
+            return;
+        }
+
+        try {
+            Pairing pairing = PairingGenerator.generate(store, type, group, csv(prompt), csv(ask), n);
+            for (Pairing.Pair p : pairing.pairs()) {
+                for (QuizableView.Field f : p.prompts()) {
+                    prewarm(f);
+                }
+            }
+            writeJson(ex, 200, pairing);
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }

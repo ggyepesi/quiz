@@ -221,7 +221,10 @@ public class PropertyDiscoveryPanel extends JPanel {
         controls.add(searchField);
         controls.add(statusLabel);
 
-        add(controls, BorderLayout.NORTH);
+        // The Discover tab is narrow, so this long control row would wrap and
+        // clip its trailing fields/buttons. Keep them reachable via a
+        // horizontal scrollbar.
+        add(aux.ScrollPaneUtils.horizontalOnly(controls), BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
 
         cancelButton.setEnabled(false);

@@ -62,6 +62,33 @@ public class QuizablePanel extends JPanel {
 
     private Color highlightColor = null;
 
+    // Minimum on-screen footprint for this card, enforced as a floor rather
+    // than a frozen preferred size: the card still grows naturally when a
+    // reference chip is expanded in place (otherwise GridBag would compress
+    // the extra content into the old height, collapsing the image and
+    // hiding rows — and the scroll pane couldn't reach the grown top).
+    private Dimension cardSizeFloor = null;
+
+    public void setCardSizeFloor(Dimension floor) {
+        this.cardSizeFloor = floor;
+        if (floor != null) {
+            setMinimumSize(new Dimension(
+                    Math.min(floor.width, 220), Math.min(floor.height, 220)));
+        }
+        revalidate();
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension d = super.getPreferredSize();
+        if (cardSizeFloor != null) {
+            return new Dimension(
+                    Math.max(d.width, cardSizeFloor.width),
+                    Math.max(d.height, cardSizeFloor.height));
+        }
+        return d;
+    }
+
     public void setHighlightColor(Color c) {
         this.highlightColor = c;
         repaint();
@@ -84,6 +111,13 @@ public class QuizablePanel extends JPanel {
     private final List<String> path;
     private int firstFieldRow = 0;
 
+    // When true, this panel skips its own title header because the name is
+    // already shown immediately above it (the reference chip that expanded
+    // into it, or a wrapper whose displayName is this object's name). Avoids
+    // echoing the same name two/three times down a card. See addRenderedField
+    // and collapsibleReference.
+    private boolean suppressTitle = false;
+
     public static <T> Set<T> identitySetOf() {
         return Collections.newSetFromMap(new IdentityHashMap<>());
     }
@@ -93,6 +127,16 @@ public class QuizablePanel extends JPanel {
                          boolean fill) {
         this(identitySetOf(), identitySetOf(), new QuizableRenderContext(),
                 true, quizable, config, fill, new ArrayList<>(), null, null);
+    }
+
+    // Root render whose own title is suppressed -- e.g. an "Open in window"
+    // frame already shows the name in its title bar.
+    public QuizablePanel(Quizable quizable,
+                         QuizablePanelConfig config,
+                         boolean fill,
+                         boolean suppressTitle) {
+        this(identitySetOf(), identitySetOf(), new QuizableRenderContext(),
+                true, quizable, config, fill, new ArrayList<>(), null, null, suppressTitle);
     }
 
     public QuizablePanel(Quizable quizable,
@@ -168,6 +212,22 @@ public class QuizablePanel extends JPanel {
                          List<String> path,
                          List<Quizable> objectPath,
                          JComponent compiledView) {
+        this(visited, ancestors, renderContext, rootRender, quizable, config,
+                fill, path, objectPath, compiledView, false);
+    }
+
+    public QuizablePanel(Set<Object> visited,
+                         Set<Object> ancestors,
+                         QuizableRenderContext renderContext,
+                         boolean rootRender,
+                         Quizable quizable,
+                         QuizablePanelConfig config,
+                         boolean fill,
+                         List<String> path,
+                         List<Quizable> objectPath,
+                         JComponent compiledView,
+                         boolean suppressTitle) {
+        this.suppressTitle = suppressTitle;
         RenderStats.panel(quizable);
         // addMouseListener(new DeepComponentInspector());
 
@@ -290,7 +350,7 @@ public class QuizablePanel extends JPanel {
     private void addTitleHeaderIfNeeded() {
         String title = getTitle();
 
-        if (title == null || title.isEmpty()) {
+        if (title == null || title.isEmpty() || suppressTitle || wrapsSameNameChild()) {
             firstFieldRow = 0;
             return;
         }
@@ -508,6 +568,11 @@ public class QuizablePanel extends JPanel {
             return row;
         }
 
+        // Quiz query panels: show the answer-hiding (masked/blurred) image.
+        if (value instanceof ImagePane ip && config.isBlurImages() && quizable != null) {
+            value = blurForQuiz(ip);
+        }
+
         QuizablePanelConfig fieldCfg = config.getFieldConfig(fieldName);
 
         if (fieldCfg == null) {
@@ -610,6 +675,12 @@ public class QuizablePanel extends JPanel {
     }
 
     private JComponent inlineQuizable(Quizable q, List<String> fieldPath) {
+        return inlineQuizable(q, fieldPath, false);
+    }
+
+    // suppressTitle: the name is already shown above (the chip that expanded
+    // into this body, or a same-named wrapper), so don't repeat it as a title.
+    private JComponent inlineQuizable(Quizable q, List<String> fieldPath, boolean suppressTitle) {
         QuizablePanel nested =
                 new QuizablePanel(
                         copyVisited(),
@@ -619,7 +690,10 @@ public class QuizablePanel extends JPanel {
                         q,
                         configForNested(q),
                         fill,
-                        fieldPath);
+                        fieldPath,
+                        null,
+                        null,
+                        suppressTitle);
 
         return nested.hasRenderedConfiguredContent() ? nested : null;
     }
@@ -675,7 +749,9 @@ public class QuizablePanel extends JPanel {
                 GridBagConstraints.HORIZONTAL,
                 new Insets(0, 0, 0, 0)));
 
-        JComponent inline = inlineQuizable(target, fieldPath);
+        // The chip directly above already shows the target's name, so the
+        // expanded body must not repeat it as its own title header.
+        JComponent inline = inlineQuizable(target, fieldPath, true);
 
         if (inline != null) {
             wrap.add(inline, GridBagUtils.gbc(
@@ -940,6 +1016,70 @@ public class QuizablePanel extends JPanel {
     private String safeName(Quizable q) {
         String n = q == null ? null : q.getName();
         return n == null ? "" : n;
+    }
+
+    // Replace a query image with its answer-hiding version (hand mask, else
+    // runtime OCR). Best-effort: returns the original ImagePane on any failure.
+    private Object blurForQuiz(ImagePane original) {
+        String type = quizable.typeName();
+        String name = quizable.getDisplayName();
+        try {
+            if (!quiz.ocr.QuizImageBlurrer.blurs(type, name)) {
+                return original;
+            }
+            java.awt.image.BufferedImage src =
+                    toBufferedImage(original.getCachedImage().getFullImage());
+            java.awt.image.BufferedImage blurred =
+                    quiz.ocr.QuizImageBlurrer.blur(type, name, src);
+            if (blurred == src) {
+                return original;
+            }
+            return new ImagePane(name, quizable, new aux.CachedImage(blurred), false, false);
+        } catch (Throwable e) {
+            return original;
+        }
+    }
+
+    private static java.awt.image.BufferedImage toBufferedImage(java.awt.Image img) {
+        if (img instanceof java.awt.image.BufferedImage b) {
+            return b;
+        }
+        java.awt.image.BufferedImage b = new java.awt.image.BufferedImage(
+                Math.max(1, img.getWidth(null)), Math.max(1, img.getHeight(null)),
+                java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = b.createGraphics();
+        g.drawImage(img, 0, 0, null);
+        g.dispose();
+        return b;
+    }
+
+    // A thin wrapper whose own name IS a single child's name (President ->
+    // Person, both "George Washington"; the name was historically the shared
+    // identifier). Drop this card's bold title so the name shows once -- on the
+    // child's chip, which keeps its Open-in-window / expand behaviour.
+    private boolean wrapsSameNameChild() {
+        if (quizable == null) {
+            return false;
+        }
+        String owner = safeName(quizable);
+        if (owner.isEmpty()) {
+            return false;
+        }
+        for (Field field : config.visibleFieldsFor(quizable.getClass())) {
+            if ("name".equals(field.getName())) {
+                continue;
+            }
+            Object value;
+            try {
+                value = field.get(quizable);
+            } catch (Exception e) {
+                continue;
+            }
+            if (value instanceof Quizable child && owner.equals(safeName(child))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Quizable getQuizable() {

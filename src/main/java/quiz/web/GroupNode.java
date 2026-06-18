@@ -15,7 +15,9 @@ import java.util.Set;
  * count} is the number of distinct members reachable under it.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record GroupNode(String name, String fullName, int count, List<GroupNode> children) {
+public record GroupNode(
+        String name, String fullName, String role, int count,
+        QuizableView.Ref ref, List<GroupNode> children) {
 
     public static GroupNode of(QuizableGroup g) {
         List<GroupNode> kids = new ArrayList<>();
@@ -26,8 +28,15 @@ public record GroupNode(String name, String fullName, int count, List<GroupNode>
         Set<String> ids = new HashSet<>();
         collectIds(g, ids);
 
+        Quizable k = g.getKeyRef();
+        QuizableView.Ref ref = k == null
+                ? null
+                : new QuizableView.Ref(
+                        k.getIdentifier(), k.getDisplayName(), k.typeName());
+
         return new GroupNode(
-                g.getName(), g.getFullName(), ids.size(), kids.isEmpty() ? null : kids);
+                g.getName(), g.getFullName(), g.getRole().name(),
+                ids.size(), ref, kids.isEmpty() ? null : kids);
     }
 
     private static void collectIds(QuizableGroup g, Set<String> ids) {

@@ -4,6 +4,7 @@ import wikidata.explore.model.FieldSampleContext;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -172,16 +173,86 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     }
 
     public void useProperty(String pid, String label) {
-        if (selected instanceof GeneratedFieldModel f) {
-            fieldSourcePanel.useProperty(pid, label);
-
-            if (f.cardinality() == FieldCardinality.AUTO) {
-                helperTabs.setSelectedComponent(samplePanel);
-                samplePanel.triggerFieldSample();
-            }
-
-            afterChange.accept(null);
+        // "Add Field" in Discover (and picking a property in Properties) always
+        // creates a NEW field for that property. It must never hijack whatever
+        // field happens to be selected: clicking "Add Field" while the
+        // neighbours field was selected used to overwrite its property (P47 ->
+        // P1813), turning it into a collection whose required flag is ignored.
+        GeneratedFieldModel f = createFieldForProperty(label);
+        if (f == null) {
+            return;
         }
+
+        fieldSourcePanel.useProperty(pid, label);
+
+        if (f.cardinality() == FieldCardinality.AUTO) {
+            helperTabs.setSelectedComponent(samplePanel);
+            samplePanel.triggerFieldSample();
+        }
+
+        afterChange.accept(null);
+    }
+
+    // Adds a fresh AUTO field (named after the property) to the selected
+    // class, or the root class if a field (or nothing) is selected, then
+    // selects it so the subsequent useProperty applies to it.
+    private GeneratedFieldModel createFieldForProperty(String label) {
+        GeneratedClassModel cls =
+                selected instanceof GeneratedClassModel c
+                        ? c
+                        : projectModel.rootClass();
+        if (cls == null) {
+            return null;
+        }
+
+        GeneratedFieldModel f = cls.addField(
+                uniqueFieldName(cls, label), FieldType.AUTO, FieldCardinality.AUTO);
+
+        selected = f;
+        fieldSourcePanel.edit(f);
+        afterApplyField.accept(f); // rebuild the class tree and select the node
+        return f;
+    }
+
+    private static String uniqueFieldName(GeneratedClassModel cls, String label) {
+        String base = toFieldName(label);
+        String name = base;
+        for (int n = 2; fieldNameExists(cls, name); n++) {
+            name = base + n;
+        }
+        return name;
+    }
+
+    private static boolean fieldNameExists(GeneratedClassModel cls, String name) {
+        for (GeneratedFieldModel f : cls.fields()) {
+            if (f != null && name.equals(f.name())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // "named after" / "shares-border-with" -> a camelCase Java identifier.
+    private static String toFieldName(String label) {
+        if (label == null || label.isBlank()) {
+            return "field";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String part : label.trim().split("[^A-Za-z0-9]+")) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            if (sb.isEmpty()) {
+                sb.append(Character.toLowerCase(part.charAt(0)));
+            } else {
+                sb.append(Character.toUpperCase(part.charAt(0)));
+            }
+            sb.append(part.substring(1));
+        }
+        if (sb.isEmpty() || !Character.isJavaIdentifierStart(sb.charAt(0))) {
+            sb.insert(0, "f");
+        }
+        return sb.toString();
     }
 
     private void buildUi() {

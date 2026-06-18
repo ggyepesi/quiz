@@ -475,10 +475,13 @@ public class ImagePane extends JPanel
 
         if (selectionListener == null) {
             try {
-                String longTitle =
-                        String.join(".", TitleUtils.getAncestorTitles(this))
-                                + ":"
-                                + key;
+                // Prefer the depicted entity's name (e.g. the person) over the
+                // structural field path ("All/CHEMISTRY, 117.laureatesWith...
+                // portrait:null"), to match the dedicated entity window.
+                String name = getName();
+                String longTitle = (name != null && !name.isBlank())
+                        ? name
+                        : String.join(".", TitleUtils.getAncestorTitles(this)) + ":" + key;
 
                 showImageView(longTitle, cachedImage.getFullImage(), true);
             } catch (Exception e) {

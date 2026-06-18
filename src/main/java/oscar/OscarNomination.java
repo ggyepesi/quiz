@@ -2,17 +2,17 @@ package oscar;
 
 import quiz.QuizableAdapter;
 import quiz.annotations.QuizableReference;
-import wikidata.WikidataEntity;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 public class OscarNomination extends QuizableAdapter {
     private String name;
 
     @QuizableReference
-    private WikidataEntity nominee;
+    private WikidataDynamicObject nominee;
     @QuizableReference
-    private WikidataEntity award;
+    private WikidataDynamicObject award;
     @QuizableReference
-    private WikidataEntity work;
+    private WikidataDynamicObject work;
 
     public int ceremonyYear;
     public int filmYear;
@@ -20,15 +20,15 @@ public class OscarNomination extends QuizableAdapter {
 
     public OscarNomination() {}
 
-    public WikidataEntity getNominee() {
+    public WikidataDynamicObject getNominee() {
         return nominee;
     }
 
-    public WikidataEntity getAward() {
+    public WikidataDynamicObject getAward() {
         return award;
     }
 
-    public WikidataEntity getWork() {
+    public WikidataDynamicObject getWork() {
         return work;
     }
 
@@ -44,15 +44,15 @@ public class OscarNomination extends QuizableAdapter {
         return winner;
     }
 
-    public void setNominee(WikidataEntity nominee) {
+    public void setNominee(WikidataDynamicObject nominee) {
         this.nominee = nominee;
     }
 
-    public void setAward(WikidataEntity award) {
+    public void setAward(WikidataDynamicObject award) {
         this.award = award;
     }
 
-    public void setWork(WikidataEntity work) {
+    public void setWork(WikidataDynamicObject work) {
         this.work = work;
     }
 

@@ -8,7 +8,7 @@ import quiz.QuizableGroup;
 import quiz.ui.ImagePane;
 import quiz.ui.QuizableGroupView;
 import quiz.ui.QuizableViews;
-import wikidata.WikidataEntity;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.io.File;
 import java.util.HashMap;
@@ -188,7 +188,7 @@ public class OscarNominations implements QuizableViews {
             root.getOrCreateChild("Ceremony Year").getOrCreateChild(String.valueOf(n.getCeremonyYear())).addMember(n);
         }
 
-        WikidataEntity award = n.getAward();
+        WikidataDynamicObject award = n.getAward();
         if (award != null && award.getName() != null && !award.getName().isBlank()) {
             root.getOrCreateChild("Award").getOrCreateChild(award.getName()).addMember(n);
         }
@@ -204,7 +204,7 @@ public class OscarNominations implements QuizableViews {
     // Views
     // ------------------------------------------------------------------
 
-    private String safeQid(WikidataEntity e) {
+    private String safeQid(WikidataDynamicObject e) {
         if (e == null) {
             return "";
         }

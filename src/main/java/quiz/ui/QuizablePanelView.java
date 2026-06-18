@@ -95,7 +95,6 @@ public class QuizablePanelView {
     }
 
     public void createCardsPanel(int numColumns) {
-        System.out.println(getClass().getName() + ".createCardsPanel for " + cards.size() + " cards...");
         cards.clear();
         cardsByName.clear();
         columns = Math.max(1, numColumns);
@@ -429,15 +428,25 @@ public class QuizablePanelView {
     }
 
     private void tuneCardSize(JPanel panel) {
-        if (containsImagePane(panel)) {
-            Dimension pref = panel.getPreferredSize();
-
-            int w = Math.max(pref.width, 260);
-            int h = Math.max(pref.height, 260);
-
-            panel.setPreferredSize(new Dimension(w, h));
-            panel.setMinimumSize(new Dimension(220, 220));
+        if (!containsImagePane(panel)) {
+            return;
         }
+
+        // A live card can be expanded in place (reference chips), so it must
+        // keep growing past its initial size. Enforce the minimum footprint as
+        // a floor that still lets the natural preferred size win, rather than
+        // freezing it with setPreferredSize.
+        if (panel instanceof QuizablePanel card) {
+            card.setCardSizeFloor(new Dimension(260, 260));
+            return;
+        }
+
+        // Static holders (raw image entries) never change, so a frozen size
+        // is fine.
+        Dimension pref = panel.getPreferredSize();
+        panel.setPreferredSize(new Dimension(
+                Math.max(pref.width, 260), Math.max(pref.height, 260)));
+        panel.setMinimumSize(new Dimension(220, 220));
     }
 
     private boolean containsImagePane(Component c) {

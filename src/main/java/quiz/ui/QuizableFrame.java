@@ -48,7 +48,9 @@ public class QuizableFrame {
                 openFrames.remove(quizable);
             }
         });
-        QuizablePanel panel = new QuizablePanel(quizable, config, true);
+        // The frame's own title bar already shows the name, so suppress the
+        // card's title header to avoid showing the same name twice.
+        QuizablePanel panel = new QuizablePanel(quizable, config, true, true);
 
         JScrollPane scroll = new JScrollPane(panel);
         frame.add(scroll);

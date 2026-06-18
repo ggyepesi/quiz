@@ -80,6 +80,21 @@ public class GeneratedQuizableMapper {
             }
             return list;
         }
+
+        // Single-valued field, but Wikidata can return several values for a
+        // property (e.g. a constellation "named after" multiple figures), which
+        // the extractor merges into a List. The generated field holds one
+        // value, so map the first mappable element and drop the rest rather
+        // than crashing on a List -> scalar assignment.
+        if (raw instanceof Iterable<?> iterable) {
+            for (Object item : iterable) {
+                Object mapped = mapSingleValue(fieldModel, item);
+                if (mapped != null) {
+                    return mapped;
+                }
+            }
+            return null;
+        }
         return mapSingleValue(fieldModel, raw);
     }
 

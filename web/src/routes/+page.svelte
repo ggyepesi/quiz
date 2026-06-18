@@ -52,7 +52,11 @@
         <button class="tab" class:active={t === type} onclick={() => selectType(t)}>{t}</button>
       {/each}
     </nav>
-    <a class="play" href="/quiz">Play quiz →</a>
+    <div class="actions">
+      <a class="play ghost" href="/builder">Builder</a>
+      <a class="play ghost" href="/pairing">Pair up →</a>
+      <a class="play" href="/quiz">Play quiz →</a>
+    </div>
   </header>
 
   {#if error}
@@ -130,14 +134,15 @@
   .tab:hover { background: var(--chip-bg); color: var(--fg); }
   .tab.active { background: var(--accent); color: #fff; }
 
+  .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
   .play {
-    margin-left: auto;
     padding: 6px 14px;
     border-radius: 999px;
     background: var(--accent);
     color: #fff;
     font-weight: 600;
   }
+  .play.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
   .play:hover { text-decoration: none; filter: brightness(1.05); }
 
   .banner {
@@ -222,7 +227,7 @@
       padding: 8px 14px;
     }
     .tabs { overflow-x: auto; max-width: 100%; }
-    .play { margin-left: auto; }
+    .actions { margin-left: auto; }
 
     .body { grid-template-columns: 1fr; }
     .sidebar { border-right: none; }

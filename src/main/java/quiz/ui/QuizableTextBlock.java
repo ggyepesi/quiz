@@ -22,6 +22,12 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
             new Color(80, 140, 255);
     private static final Color SELECTION_FOREGROUND =
             Color.WHITE;
+    // Shown while a copy popup item is hovered, so it's visible up-front what
+    // "Copy block" / "Copy row" will actually take.
+    private static final Color PREVIEW_BACKGROUND =
+            new Color(198, 219, 255);
+
+    private final Set<Integer> previewLines = new HashSet<>();
 
     @Override
     public void clearSelectionFromManager() {
@@ -163,43 +169,113 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
         JPopupMenu menu = new JPopupMenu();
 
         String selectedText = selectedText();
+        Set<Integer> blockLines = allLineIndices();
+        Set<Integer> rowLines = linesForRow(row);
 
         if (!selectedText.isBlank()) {
-            JMenuItem copySelection = new JMenuItem("Copy selection");
-            copySelection.addActionListener(e -> copyToClipboard(selectedText));
-            menu.add(copySelection);
+            // Existing drag-selection is already painted; previewing nothing
+            // keeps that selection visible while the item is hovered.
+            addCopyItem(menu, "Copy selection",
+                        () -> copyToClipboard(selectedText), Set.of());
             menu.addSeparator();
         }
 
-        JMenuItem copyBlock = new JMenuItem("Copy block");
-        copyBlock.addActionListener(e -> copyToClipboard(blockText()));
-        menu.add(copyBlock);
+        addCopyItem(menu, "Copy block",
+                    () -> copyToClipboard(blockText()), blockLines);
 
         if (row != null) {
-            JMenuItem copyRow = new JMenuItem("Copy row");
-            copyRow.addActionListener(e -> copyToClipboard(rowText(row)));
-
-            JMenuItem copyValue = new JMenuItem("Copy value");
-            copyValue.addActionListener(e -> copyToClipboard(rowValueText(row)));
-
             menu.addSeparator();
-            menu.add(copyRow);
-            menu.add(copyValue);
+            addCopyItem(menu, "Copy row",
+                        () -> copyToClipboard(rowText(row)), rowLines);
+            addCopyItem(menu, "Copy value",
+                        () -> copyToClipboard(rowValueText(row)), rowLines);
 
             if (row.fieldName() != null && !row.fieldName().isBlank()) {
-                JMenuItem copyField = new JMenuItem("Copy field name");
-                copyField.addActionListener(e -> copyToClipboard(row.fieldName()));
-
-                JMenuItem copyPath = new JMenuItem("Copy field path");
-                copyPath.addActionListener(e -> copyToClipboard(pathText(row)));
-
                 menu.addSeparator();
-                menu.add(copyField);
-                menu.add(copyPath);
+                addCopyItem(menu, "Copy field name",
+                            () -> copyToClipboard(row.fieldName()), rowLines);
+                addCopyItem(menu, "Copy field path",
+                            () -> copyToClipboard(pathText(row)), rowLines);
             }
         }
 
+        // Clear the preview once the menu goes away (selected or dismissed).
+        menu.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(
+                    javax.swing.event.PopupMenuEvent e) {
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(
+                    javax.swing.event.PopupMenuEvent e) {
+                clearPreview();
+            }
+
+            @Override
+            public void popupMenuCanceled(
+                    javax.swing.event.PopupMenuEvent e) {
+                clearPreview();
+            }
+        });
+
+        // Default highlight: whatever "Copy block" (always present) would take,
+        // so it's immediately visible even before hovering an item.
+        if (selectedText.isBlank()) {
+            setPreviewLines(blockLines);
+        }
+
         menu.show(this, p.x, p.y);
+    }
+
+    // Adds a copy item that, while hovered (armed), highlights the lines it
+    // would copy.
+    private void addCopyItem(JPopupMenu menu, String label,
+                             Runnable action, Set<Integer> previewOnHover) {
+        JMenuItem item = new JMenuItem(label);
+        item.addActionListener(e -> action.run());
+        item.getModel().addChangeListener(e -> {
+            if (item.getModel().isArmed()) {
+                setPreviewLines(previewOnHover);
+            }
+        });
+        menu.add(item);
+    }
+
+    private void setPreviewLines(Set<Integer> lines) {
+        previewLines.clear();
+        if (lines != null) {
+            previewLines.addAll(lines);
+        }
+        repaint();
+    }
+
+    private void clearPreview() {
+        if (!previewLines.isEmpty()) {
+            previewLines.clear();
+            repaint();
+        }
+    }
+
+    private Set<Integer> allLineIndices() {
+        Set<Integer> out = new HashSet<>();
+        for (PaintLine line : computeLayout(getWidth())) {
+            out.add(line.lineIndex());
+        }
+        return out;
+    }
+
+    private Set<Integer> linesForRow(Row row) {
+        Set<Integer> out = new HashSet<>();
+        if (row == null) {
+            return out;
+        }
+        for (PaintLine line : computeLayout(getWidth())) {
+            if (line.row() == row) {
+                out.add(line.lineIndex());
+            }
+        }
+        return out;
     }
 
     public Row rowAt(Point p) {
@@ -387,6 +463,14 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
 
             for (PaintLine pl : computeLayout(getWidth())) {
                 Row row = pl.row();
+
+                if (previewLines.contains(pl.lineIndex())) {
+                    int textWidth = fmValue.stringWidth(pl.text());
+                    g2.setColor(PREVIEW_BACKGROUND);
+                    g2.fillRect(PAD_X, pl.top(),
+                                Math.max(40, (pl.x() - PAD_X) + textWidth),
+                                pl.bottom() - pl.top());
+                }
 
                 if (row != previous) {
                     String prefix = prefix(row);

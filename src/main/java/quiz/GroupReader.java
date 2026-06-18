@@ -10,7 +10,7 @@ public class GroupReader {
     // Pattern for groupname (=+groupname=+)
     private static final Pattern groupPattern = Pattern.compile("(?<prefix>\\={2,})(?<group>[^\\=]+)(?<suffix>\\={2,})(?<leftover>[^=]*)");
 
-    private QuizableGroup root;
+    private final QuizableGroup root;
     private QuizableGroup group = null;
     // Current path of groups from root to group. The depth (number of = signs - 2) is the index in this list.
     private List<QuizableGroup> ancestors = new ArrayList<>();

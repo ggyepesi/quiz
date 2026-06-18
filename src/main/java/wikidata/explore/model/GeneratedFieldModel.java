@@ -11,6 +11,12 @@ public class GeneratedFieldModel {
     private FieldCardinality cardinality = FieldCardinality.AUTO;
     private FieldRenderMode renderMode = FieldRenderMode.AUTO;
 
+    // When true the field's property is a membership constraint: its triple is
+    // emitted non-OPTIONAL, so only entities that actually have the property
+    // are kept (e.g. require an IAU abbreviation P1813 to drop the 4 non-
+    // standard constellations from the 92 P31=Q8928 hits down to the IAU 88).
+    private boolean required = false;
+
     private final FieldSourceMapping mapping = new FieldSourceMapping();
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
 
@@ -74,12 +80,17 @@ public class GeneratedFieldModel {
         return renderMode == FieldRenderMode.REFERENCE;
     }
 
+    public boolean required() { return required; }
+
+    public void required(boolean required) { this.required = required; }
+
     public GeneratedFieldModel copy() {
         GeneratedFieldModel c =
                 new GeneratedFieldModel(name, type, cardinality);
 
         c.entityClassName = entityClassName;
         c.renderMode = renderMode;
+        c.required = required;
         c.mapping.copyFrom(mapping);
 
         for (GeneratedFieldModel f : fields) {
@@ -130,6 +141,10 @@ public class GeneratedFieldModel {
             s += " [reference]";
         } else if (renderMode == FieldRenderMode.INLINE) {
             s += " [inline]";
+        }
+
+        if (required) {
+            s += " [required]";
         }
 
         return s;

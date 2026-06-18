@@ -14,6 +14,15 @@ public interface Quizable {
     /** Backward-compatible bridge — delegates to getDisplayName(). */
     default String getName() { return getDisplayName(); }
 
+    /**
+     * The dataset/type name used to address this object in the web API
+     * ({@code /api/quizable/{type}/{id}}) and to key it in the store. Defaults
+     * to the class's simple name (so hand-written model classes are addressed
+     * by their class), but generated/dynamic objects — all of one Java class —
+     * override it with their domain name (e.g. "Constellation").
+     */
+    default String typeName() { return getClass().getSimpleName(); }
+
     public boolean hasField(String fieldName);
     public boolean hasAnyField();
     public boolean hasFields(Collection<String> fieldNames);

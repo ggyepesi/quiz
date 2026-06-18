@@ -1,5 +1,6 @@
 package quiz.web;
 
+import quiz.web.sources.GeneratedSource;
 import quiz.web.sources.MythologySource;
 import quiz.web.sources.OscarSource;
 import quiz.web.sources.SportTeamSource;
@@ -29,6 +30,12 @@ public class QuizableServerMain {
         store.register(new StateSource());
         store.register(new MythologySource());
         store.register(new OscarSource());
+        // Generated from Wikidata (dynamic representation) — the first
+        // generation-pipeline domain wired into the web client.
+        store.register(new GeneratedSource(
+                "Constellation",
+                new java.io.File(aux.Constants.constellationsDataDirectory
+                        + "constellations.snapshot.json")));
 
         new QuizableHttpServer(store).start(port);
 

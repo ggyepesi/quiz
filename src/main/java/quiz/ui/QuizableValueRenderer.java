@@ -68,9 +68,17 @@ public final class QuizableValueRenderer {
     private static JComponent quizableComponent(
             Set<Object> visited, Set<Object> ancestors, QuizableRenderContext renderContext,
             String fieldName, List<String> fieldPath, Quizable q, QuizablePanelConfig config, boolean fill) {
+        return quizableComponent(visited, ancestors, renderContext, fieldName, fieldPath, q, config, fill, false);
+    }
+
+    private static JComponent quizableComponent(
+            Set<Object> visited, Set<Object> ancestors, QuizableRenderContext renderContext,
+            String fieldName, List<String> fieldPath, Quizable q, QuizablePanelConfig config, boolean fill,
+            boolean suppressTitle) {
         JPanel panel = basePanel(fieldName, fieldPath, q);
 
-        QuizablePanel nested = new QuizablePanel(visited, ancestors, renderContext, false, q, config, fill, fieldPath);
+        QuizablePanel nested = new QuizablePanel(
+                visited, ancestors, renderContext, false, q, config, fill, fieldPath, null, null, suppressTitle);
 
         if (!nested.hasRenderedConfiguredContent()) {
             return null;
@@ -175,8 +183,10 @@ public final class QuizableValueRenderer {
                     GridBagConstraints.NORTHWEST, GridBagConstraints.HORIZONTAL,
                     new Insets(0, 0, 0, 0)));
 
+            // The chip above already shows the name, so suppress the expanded
+            // body's own title header (mirrors QuizablePanel.collapsibleReference).
             JComponent inline = quizableComponent(
-                    visited, ancestors, renderContext, "", fieldPath, q, config, fill);
+                    visited, ancestors, renderContext, "", fieldPath, q, config, fill, true);
 
             if (inline != null) {
                 wrap.add(inline, GridBagUtils.gbc(

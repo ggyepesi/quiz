@@ -1,5 +1,6 @@
 package quiz;
 
+import quiz.annotations.NotQuizableField;
 import quiz.annotations.QuizableReference;
 
 import java.util.Collection;
@@ -8,7 +9,31 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class QuizableGroup extends QuizableAdapter {
+
+    /**
+     * What a node means in a faceted tree:
+     * <ul>
+     *   <li>{@code UNIVERSE} — the root: all members (a valid quiz scope);</li>
+     *   <li>{@code FACET} — a dimension header (League, City): holds the whole
+     *       universe transitively, so it's <i>not</i> a useful filter — the UI
+     *       shows it as a non-selectable header;</li>
+     *   <li>{@code BUCKET} — one facet value (NBA, Boston): the real subset.</li>
+     * </ul>
+     * Hand-built trees leave every node {@code UNIVERSE} (the default), so they
+     * stay fully selectable exactly as before.
+     */
+    public enum Role { UNIVERSE, FACET, BUCKET }
+
     private final String name;
+    private Role role = Role.UNIVERSE;
+
+    /**
+     * For a reference bucket: the entity this bucket <i>stands for</i> (e.g. the
+     * {@code Language} or parent {@code Creature} its members share), so the UI
+     * can show that entity's own card. Not part of the quizable field set.
+     */
+    @NotQuizableField
+    private Quizable keyRef;
 
     @QuizableReference
     private QuizableGroup parent;
@@ -32,6 +57,24 @@ public class QuizableGroup extends QuizableAdapter {
     @Override
     public QuizableGroup createNew() {
         return new QuizableGroup("");
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public QuizableGroup role(Role role) {
+        this.role = role == null ? Role.UNIVERSE : role;
+        return this;
+    }
+
+    public Quizable getKeyRef() {
+        return keyRef;
+    }
+
+    public QuizableGroup keyRef(Quizable keyRef) {
+        this.keyRef = keyRef;
+        return this;
     }
 
     public QuizableGroup getOrCreateChild(String name) {

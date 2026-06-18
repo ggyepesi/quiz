@@ -109,7 +109,12 @@ public final class RuleNodeQueryBuilder {
         if (inlinedFields.isEmpty()) {
             q.limit(node.limit());
         } else {
-            q.groupBy("value", "valueLabel");
+            // GROUP_CONCAT folds the inlined collection(s); every other
+            // selected scalar (value, its label, and each non-inlined field +
+            // label) is non-aggregate and so must appear in GROUP BY, or
+            // Blazegraph rejects the query ("Non-aggregate variable in select
+            // expression").
+            q.groupByNonAggregateSelects();
             q.limit(node.limit());
         }
 

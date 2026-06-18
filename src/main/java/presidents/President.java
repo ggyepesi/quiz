@@ -60,8 +60,14 @@ class Term extends QuizableAdapter {
     @Override
     public String getIdentifier() { return number + ", " + party + ", " + start + "-" + end; }
 
+    // Terse label for the chip -- just the span of years; the full identifier
+    // (number, party, exact dates) is still shown in the expanded fields.
     @Override
-    public String getDisplayName() { return getIdentifier(); }
+    public String getDisplayName() {
+        String from = start == null ? "?" : String.valueOf(start.getYear());
+        String to = end == null ? "?" : String.valueOf(end.getYear());
+        return from + "–" + to;
+    }
 
     @Override
     public QuizableAdapter createNew() {

@@ -22,6 +22,8 @@ public class QuizablePanelConfig {
 
     private boolean addListener = true;
     private boolean thumb = false;
+    // Render images with their answer text blurred out (quiz query panels).
+    private boolean blurImages = false;
     private AnswerType answerType = AnswerType.AUTO;
 
     public static QuizablePanelConfig of(Class<? extends Quizable> cls) {
@@ -54,6 +56,7 @@ public class QuizablePanelConfig {
         c.allMinorFields = this.allMinorFields;
         c.addListener = this.addListener;
         c.thumb = this.thumb;
+        c.blurImages = this.blurImages;
         c.answerType = this.answerType;
 
         for (Map.Entry<String, QuizablePanelConfig> e : fields.entrySet()) {
@@ -155,6 +158,7 @@ public class QuizablePanelConfig {
 
         merged.setAddListener(merged.isAddListener() || this.isAddListener());
         merged.setThumb(merged.isThumb() || this.isThumb());
+        merged.setBlurImages(merged.isBlurImages() || this.isBlurImages());
 
         if (merged.getAnswerType() == AnswerType.AUTO) {
             merged.setAnswerType(this.getAnswerType());
@@ -220,6 +224,15 @@ public class QuizablePanelConfig {
 
     public QuizablePanelConfig setThumb(boolean v) {
         thumb = v;
+        return this;
+    }
+
+    public boolean isBlurImages() {
+        return blurImages;
+    }
+
+    public QuizablePanelConfig setBlurImages(boolean v) {
+        blurImages = v;
         return this;
     }
 

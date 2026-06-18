@@ -2,7 +2,7 @@ package benchmark;
 
 import oscar.OscarNomination;
 import quiz.QuizableFieldPaths.FieldPath;
-import wikidata.WikidataEntity;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.*;
 import java.awt.*;
@@ -78,7 +78,7 @@ public final class CompiledEmulatorView extends JPanel {
     }
 
     private String getLeafValue(Object rootObj, String leafKey) {
-        if (rootObj instanceof WikidataEntity entity) {
+        if (rootObj instanceof WikidataDynamicObject entity) {
             return switch (leafKey) {
                 case "name" -> entity.getName();
                 case "qid" -> entity.getQid();

@@ -512,6 +512,20 @@ public class WikidataQueryBuilder {
         return this;
     }
 
+    /**
+     * Groups by every plain selected variable, leaving out aggregate
+     * projections (GROUP_CONCAT/COUNT, added via {@link #selectRaw} as
+     * {@code (... AS ?x)} expressions). SPARQL requires every non-aggregate
+     * select variable to appear in GROUP BY, so when an aggregate is mixed
+     * with scalar selects this keeps the query legal.
+     */
+    public WikidataQueryBuilder groupByNonAggregateSelects() {
+        for (String s : select) {
+            if (s.startsWith("?")) groupBy.add(s);
+        }
+        return this;
+    }
+
     public WikidataQueryBuilder having(String expression) {
         if (expression != null && !expression.isBlank()) {
             if (!having.isEmpty()) having.append("\n");

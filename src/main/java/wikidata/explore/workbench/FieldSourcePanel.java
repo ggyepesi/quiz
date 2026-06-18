@@ -36,6 +36,9 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<FieldRenderMode> renderModeBox =
             new JComboBox<>(FieldRenderMode.values());
 
+    private final JCheckBox requiredBox =
+            new JCheckBox("Required (membership filter — drops entities without it)");
+
     private final JTextField propertyPidField = new JTextField(10);
     private final JLabel propertyLabel = new JLabel("(not selected)");
 
@@ -98,6 +101,8 @@ public class FieldSourcePanel extends JPanel {
         refreshObjectTypeBox(entityClassForDisplay());
         shapeBox.setSelectedItem(field.cardinality());
         renderModeBox.setSelectedItem(field.renderMode());
+        requiredBox.setSelected(field.required());
+        requiredBox.setEnabled(!field.isNameField());
 
         propertyPidField.setText(m.propertyPid());
         propertyLabel.setText(m.displayProperty());
@@ -156,6 +161,7 @@ public class FieldSourcePanel extends JPanel {
         addRow(form, c, y++, "Object type:", objectTypeBox);
         addRow(form, c, y++, "Shape:", shapeBox);
         addRow(form, c, y++, "Render mode:", renderModeBox);
+        addWide(form, c, y++, requiredBox);
 
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         propRow.add(propertyPidField);
@@ -236,6 +242,7 @@ public class FieldSourcePanel extends JPanel {
         field.entityClassName(selectedEntityClass());
         field.cardinality((FieldCardinality) shapeBox.getSelectedItem());
         field.renderMode((FieldRenderMode) renderModeBox.getSelectedItem());
+        field.required(requiredBox.isSelected());
 
         autoProduction(m);
         propertyLabel.setText(m.displayProperty());
@@ -432,6 +439,7 @@ public class FieldSourcePanel extends JPanel {
         propertyPidField.setText("");
         propertyLabel.setText("(not selected)");
         renderModeBox.setSelectedItem(FieldRenderMode.AUTO);
+        requiredBox.setSelected(false);
         recommendationLabel.setText(" ");
     }
 

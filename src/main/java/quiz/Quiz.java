@@ -47,6 +47,12 @@ public abstract class Quiz extends Thread {
                 Map<String, ? extends Quizable> quizables) {
         this.queryConfig = queryConfig == null ? new QuizablePanelConfig() : queryConfig;
         this.answerConfig = answerConfig == null ? new QuizablePanelConfig() : answerConfig;
+
+        // Quiz images hide their answer (mask/OCR) wherever they appear — query
+        // or answer. No-op unless an image has a mask or is an OCR-blur type.
+        this.queryConfig.setBlurImages(true);
+        this.answerConfig.setBlurImages(true);
+
         this.group = group;
         this.quizables = quizables == null ? Collections.emptyMap() : quizables;
 

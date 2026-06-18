@@ -1,12 +1,15 @@
 package wikidata.explore.extract;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import quiz.annotations.Link;
+import quiz.DynamicFields;
 import quiz.QuizableAdapter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Dynamic Wikidata-backed object.
@@ -19,7 +22,7 @@ import java.util.Map;
  *   1 value   -> scalar
  *   2+ values -> List
  */
-public class WikidataDynamicObject extends QuizableAdapter {
+public class WikidataDynamicObject extends QuizableAdapter implements DynamicFields {
     private String qid;
     private String name;
 
@@ -28,6 +31,11 @@ public class WikidataDynamicObject extends QuizableAdapter {
 
     private final Map<String, Object> dynamicFields =
             new LinkedHashMap<>();
+
+    // Web/runtime only (not persisted): the domain type this object is served
+    // under, since all generated objects share this one Java class.
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String type;
 
     public WikidataDynamicObject() {
         this("", "");
@@ -39,6 +47,52 @@ public class WikidataDynamicObject extends QuizableAdapter {
         this.wikidataUrl = this.qid.isBlank()
                 ? ""
                 : "https://www.wikidata.org/wiki/" + this.qid;
+    }
+
+    // One interned instance per QID, replacing the legacy
+    // WikidataEntity.canonical. Seeds a wikidata link so a bare reference's
+    // card isn't empty (the DynamicFields renderer skips declared fields).
+    private static final Map<String, WikidataDynamicObject> CACHE =
+            new ConcurrentHashMap<>();
+
+    public static WikidataDynamicObject canonical(String name, String qid) {
+        if (qid == null || qid.isBlank()) {
+            throw new IllegalArgumentException("null/blank id");
+        }
+        return CACHE.computeIfAbsent(qid, k -> {
+            WikidataDynamicObject o = new WikidataDynamicObject(k, name);
+            o.put("wikidata", o.wikidataUrl());
+            return o;
+        });
+    }
+
+    /** Alias for {@link #qid()} (legacy WikidataEntity API). Not a Jackson
+     *  property — the snapshot mapper is field-only, so this getter is ignored
+     *  and the qid field round-trips. (An @JsonIgnore here would wrongly ignore
+     *  the field too.) */
+    public String getQid() {
+        return qid;
+    }
+
+    /** Alias for {@link #wikidataUrl()} (legacy WikidataEntity API). */
+    public String getUrl() {
+        return wikidataUrl;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof WikidataDynamicObject w)) {
+            return false;
+        }
+        return qid != null && !qid.isBlank() && qid.equals(w.qid);
+    }
+
+    @Override
+    public int hashCode() {
+        return qid == null || qid.isBlank() ? System.identityHashCode(this) : qid.hashCode();
     }
 
     @Override
@@ -70,6 +124,20 @@ public class WikidataDynamicObject extends QuizableAdapter {
 
     public Map<String, Object> dynamicFields() {
         return dynamicFields;
+    }
+
+    @Override
+    public Map<String, Object> dynamicFieldValues() {
+        return dynamicFields;
+    }
+
+    public void type(String type) {
+        this.type = type;
+    }
+
+    @Override
+    public String typeName() {
+        return type == null || type.isBlank() ? getClass().getSimpleName() : type;
     }
 
     public Object get(String fieldName) {

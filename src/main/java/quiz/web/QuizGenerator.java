@@ -46,7 +46,7 @@ public final class QuizGenerator {
             for (String pf : promptFields) {
                 QuizableView.Field fv = QuizableJson.fieldOf(q, pf);
                 if (fv != null) {
-                    prompts.add(fv);
+                    prompts.add(blurredIfNeeded(type, q, pf, fv));
                 }
             }
             if (prompts.isEmpty()) {
@@ -103,5 +103,19 @@ public final class QuizGenerator {
 
     private static String join(List<String> fields) {
         return String.join(", ", fields);
+    }
+
+    // For datasets whose image embeds the answer (e.g. a constellation chart
+    // labelled with its name), point the prompt at the name-blurring endpoint.
+    static QuizableView.Field blurredIfNeeded(
+            String type, Quizable q, String field, QuizableView.Field fv) {
+        // Route through the blur endpoint when this entity actually has
+        // something to hide: a hand mask, or it's a runtime-OCR type.
+        if ("image".equals(fv.kind())
+                && quiz.ocr.QuizImageBlurrer.blurs(type, q.getDisplayName())) {
+            return QuizableView.Field.image(
+                    fv.name(), BlurredImageService.blurUrl(type, q.getIdentifier(), field));
+        }
+        return fv;
     }
 }

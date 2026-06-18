@@ -125,17 +125,26 @@ public class GeneratedQuizableSourceGenerator {
             GeneratedFieldModel field,
             GeneratedClassModel owner) {
 
+        String ownerClass = sanitizeClassName(owner.className());
         String type = field.entityClassName();
 
-        if (type == null || type.isBlank()) {
-            if (field.name().toLowerCase().contains("neigh")) {
-                type = owner.className();
-            } else {
-                type = singularClassName(field.name());
-            }
+        // Self-reference (e.g. "neighbours" -> the same class): the owner type
+        // is generated, so we can name it directly.
+        if (type != null && !type.isBlank()
+                && sanitizeClassName(type).equals(ownerClass)) {
+            return ownerClass;
+        }
+        if (field.name().toLowerCase().contains("neigh")) {
+            return ownerClass;
         }
 
-        return sanitizeClassName(type);
+        // Any other entity reference (e.g. a constellation's hemisphere or
+        // namesake) points at a wikidata entity that this single-class runtime
+        // maps to a generic generated object, not a class of its own. Inventing
+        // a per-field class name (Hemisphere, NamedAfter) yields source that
+        // references undefined types and fails to compile; type it as Quizable
+        // so it compiles and still renders as a linked reference.
+        return "quiz.Quizable";
     }
 
     public static String sanitizeClassName(String s) {

@@ -5,7 +5,7 @@ import oscar.OscarNomination;
 import quiz.QuizablePanelConfig;
 import quiz.QuizablePanelConfigAdapter;
 import quiz.ui.QuizablePanel;
-import wikidata.WikidataEntity;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -17,9 +17,9 @@ public class BenchmarkRunner {
     public static void main(String[] args) {
         System.out.println("=== Fabricating 5,000 Production-Grade Test Records ===");
 
-        WikidataEntity mockActor = WikidataEntity.canonical("Marlon Brando", "Q16122");
-        WikidataEntity mockAward = WikidataEntity.canonical("Best Actor", "Q103916");
-        WikidataEntity mockMovie = WikidataEntity.canonical("The Godfather", "Q47703");
+        WikidataDynamicObject mockActor = WikidataDynamicObject.canonical("Marlon Brando", "Q16122");
+        WikidataDynamicObject mockAward = WikidataDynamicObject.canonical("Best Actor", "Q103916");
+        WikidataDynamicObject mockMovie = WikidataDynamicObject.canonical("The Godfather", "Q47703");
 
         List<OscarNomination> dataset = new ArrayList<>(TARGET_COUNT);
         for (int i = 0; i < TARGET_COUNT; i++) {
@@ -51,18 +51,21 @@ public class BenchmarkRunner {
         List<QuizablePanel> runtimePanels = new ArrayList<>(TARGET_COUNT);
         for (OscarNomination nom : dataset) {
             // Continually performs reflective scanning and metadata lookups per object instance
-            QuizablePanel p = new QuizablePanel(nom, fullConfig, false);
-            System.out.println(p.getComponentCount() + " " + p.hasRenderedConfiguredContent());
-            for (Component c : p.getComponents()) {
-                System.out.println(c.getClass().getName());
-            }
-            runtimePanels.add(p);
+            runtimePanels.add(new QuizablePanel(nom, fullConfig, false));
         }
-        System.out.println(fullConfig);
-        System.out.println(fullConfig.visibleFieldsFor(OscarNomination.class));
 
         long endTimeRuntime = System.currentTimeMillis();
         long memAfterRuntime = getUsedMemory();
+
+        // Debug detail — printed AFTER timing so console I/O isn't counted as
+        // render time (35k println calls here dwarf the actual rendering).
+        QuizablePanel sample = runtimePanels.get(0);
+        System.out.println(sample.getComponentCount() + " " + sample.hasRenderedConfiguredContent());
+        for (Component c : sample.getComponents()) {
+            System.out.println(c.getClass().getName());
+        }
+        System.out.println(fullConfig);
+        System.out.println(fullConfig.visibleFieldsFor(OscarNomination.class));
 
 
         // =================================================================

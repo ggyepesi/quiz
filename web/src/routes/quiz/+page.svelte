@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { getTypes, getFields, getGroups, getQuiz, assetUrl } from '$lib/api.js';
   import GroupTree from '$lib/GroupTree.svelte';
+  import ZoomableImage from '$lib/ZoomableImage.svelte';
 
   // config
   let types = $state([]);
@@ -122,6 +123,7 @@
 <div class="quiz">
   <header>
     <a class="back" href="/">← Browse</a>
+    <a class="alt" href="/pairing">Pairing →</a>
     {#if quiz && !done}
       <span class="progress">Question {i + 1} / {quiz.questions.length}</span>
       <span class="score">Score {score}</span>
@@ -193,11 +195,15 @@
         <div class="prompt">
           {#each q.prompts as p}
             {#if p.kind === 'image'}
-              <img src={assetUrl(p.url)} alt="" />
+              <ZoomableImage src={assetUrl(p.url)} alt="" />
             {:else if p.kind === 'images'}
-              <img src={assetUrl(p.values[0])} alt="" />
+              <ZoomableImage src={assetUrl(p.values[0])} alt="" />
             {:else if p.kind === 'list'}
               <div class="prompt-line"><span class="pf">{p.name}</span>{p.values.join(', ')}</div>
+            {:else if p.kind === 'refs'}
+              <div class="prompt-line"><span class="pf">{p.name}</span>{p.refs.map((r) => r.name).join(', ')}</div>
+            {:else if p.kind === 'ref'}
+              <div class="prompt-line"><span class="pf">{p.name}</span>{p.ref?.name ?? ''}</div>
             {:else}
               <div class="prompt-line"><span class="pf">{p.name}</span>{p.value ?? ''}</div>
             {/if}
@@ -244,6 +250,7 @@
     background: var(--panel);
   }
   .back { font-weight: 500; }
+  .alt { font-weight: 500; color: var(--muted); }
   .progress { color: var(--muted); }
   .score { margin-left: auto; font-weight: 600; }
 

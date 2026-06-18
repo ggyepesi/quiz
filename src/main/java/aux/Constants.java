@@ -23,6 +23,8 @@ public class Constants {
     public static final String dataDirectory = "data/";
     public static final String languageDataDirectory = dataDirectory + "language/";
     public static final String oscarDataDirectory = dataDirectory + "oscar/";
+    public static final String wikidataDataDirectory = dataDirectory + "wikidata/";
+    public static final String constellationsDataDirectory = wikidataDataDirectory + "constellations/";
 
     public static float fontSizeMultiplier = 1.5F;
 

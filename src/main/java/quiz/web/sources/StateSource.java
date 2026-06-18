@@ -3,6 +3,7 @@ package quiz.web.sources;
 import flag.States;
 import quiz.Quizable;
 import quiz.QuizableGroup;
+import quiz.facet.FacetGrouper;
 import quiz.web.QuizableSource;
 
 import java.util.Collection;
@@ -14,6 +15,11 @@ import java.util.Collection;
  * <p>Heavy first load: {@code States.buildViews()} reads several data files
  * and constructs Swing image components for every flag/arms/shape, so the
  * first request can take a while. Cached thereafter (within this source).
+ *
+ * <p>The curated group tree (Continents, Colors, Objects, …) already has the
+ * faceted shape, so it just gets {@link FacetGrouper#assignRoles structural
+ * roles}: dimension nodes become non-selectable headers, leaves stay
+ * selectable buckets.
  */
 public class StateSource implements QuizableSource {
 
@@ -40,6 +46,6 @@ public class StateSource implements QuizableSource {
 
     @Override
     public QuizableGroup rootGroup() throws Exception {
-        return states().getGroupView().getRootGroup();
+        return FacetGrouper.assignRoles(states().getGroupView().getRootGroup());
     }
 }

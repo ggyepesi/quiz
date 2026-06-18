@@ -2,6 +2,7 @@ package quiz.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import quiz.DynamicFields;
 import quiz.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
@@ -57,6 +58,14 @@ public final class QuizableJson {
             return dn == null || dn.isBlank() ? null : QuizableView.Field.text("name", dn);
         }
 
+        if (owner instanceof DynamicFields dyn && dyn.dynamicFieldValues().containsKey(fieldName)) {
+            Object v = dyn.dynamicFieldValues().get(fieldName);
+            return QuizableAdapter.isValidQuizValue(v)
+                    ? dynamicField(owner.typeName(), owner.getIdentifier(),
+                            fieldName, v, Collections.newSetFromMap(new IdentityHashMap<>()))
+                    : null;
+        }
+
         Field f = QuizableAdapter.getField(owner.getClass(), fieldName);
         if (f == null) {
             return null;
@@ -75,7 +84,7 @@ public final class QuizableJson {
         }
 
         return field(
-                owner.getClass().getSimpleName(),
+                owner.typeName(),
                 owner.getIdentifier(),
                 f,
                 value,
@@ -91,6 +100,11 @@ public final class QuizableJson {
         if ("name".equals(fieldName)) {
             String dn = owner.getDisplayName();
             return dn == null || dn.isBlank() ? null : dn;
+        }
+
+        if (owner instanceof DynamicFields dyn && dyn.dynamicFieldValues().containsKey(fieldName)) {
+            String s = asString(dyn.dynamicFieldValues().get(fieldName));
+            return s == null || s.isBlank() ? null : s;
         }
 
         Field f = QuizableAdapter.getField(owner.getClass(), fieldName);
@@ -138,7 +152,7 @@ public final class QuizableJson {
     private static QuizableView of(Quizable q, Set<Object> visited) {
         String id = q.getIdentifier();
         String name = q.getDisplayName();
-        String type = q.getClass().getSimpleName();
+        String type = q.typeName();
 
         // Cycle guard: a Quizable already on the current path renders shallow.
         if (!visited.add(q)) {
@@ -146,6 +160,12 @@ public final class QuizableJson {
         }
 
         try {
+            // Generated/dynamic objects keep their data in a property map, not
+            // declared fields — render those entries as first-class fields.
+            if (q instanceof DynamicFields dyn) {
+                return new QuizableView(id, name, type, dynamicFields(type, id, dyn, visited));
+            }
+
             List<QuizableView.Field> fields = new ArrayList<>();
 
             for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
@@ -174,6 +194,107 @@ public final class QuizableJson {
         } finally {
             visited.remove(q);
         }
+    }
+
+    private static List<QuizableView.Field> dynamicFields(
+            String type, String id, DynamicFields dyn, Set<Object> visited) {
+
+        List<QuizableView.Field> fields = new ArrayList<>();
+        for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
+            Object value = e.getValue();
+            if (!QuizableAdapter.isValidQuizValue(value)) {
+                continue;
+            }
+            QuizableView.Field field = dynamicField(type, id, e.getKey(), value, visited);
+            if (field != null) {
+                fields.add(field);
+            }
+        }
+        return fields;
+    }
+
+    // Field from a raw (name, value) pair -- dynamic entries carry no @Link /
+    // @QuizableInline annotations. An http(s) value under an image-ish key is
+    // an external image (e.g. a Commons sky chart) the client loads directly.
+    private static QuizableView.Field dynamicField(
+            String ownerType, String ownerId, String name, Object value, Set<Object> visited) {
+
+        // A media value (e.g. a Commons sky chart, P18) carries its own URL;
+        // render it as an image rather than letting it fall through to text
+        // (which printed the bare filename like "CamelopardalisCC.jpg").
+        if (value instanceof wikidata.explore.extract.WikidataMediaValue media
+                && media.hasUrl()) {
+            return QuizableView.Field.image(name, httpsUrl(media.url()));
+        }
+        if (value instanceof String s && isHttp(s)) {
+            // https so it isn't mixed-content-blocked on an https page.
+            String url = httpsUrl(s);
+            return isImageKey(name)
+                    ? QuizableView.Field.image(name, url)       // e.g. a sky chart
+                    : linkField(name, url, name);               // e.g. a wikidata link
+        }
+        if (value instanceof Quizable q) {
+            return referenceOrLink(name, q);
+        }
+        if (value instanceof Collection<?> c) {
+            return collectionField(ownerType, ownerId, name, c);
+        }
+        if (value instanceof Map<?, ?> m) {
+            return collectionField(ownerType, ownerId, name, m.values());
+        }
+        return QuizableView.Field.text(name, String.valueOf(value));
+    }
+
+    // A reference to a first-class dataset entity (its type was stamped, so
+    // typeName() differs from the raw dynamic class name) is navigable in-app,
+    // so we emit a lazy ref the client resolves from the store. A bare leaf
+    // wikidata entity -- e.g. a constellation's hemisphere or its namesake --
+    // isn't in the store, so an internal ref is a dead end; if it carries an
+    // external URL (its @Link field) we link out to that page instead.
+    private static QuizableView.Field referenceOrLink(String name, Quizable q) {
+        boolean domainType = !q.typeName().equals(q.getClass().getSimpleName());
+        if (!domainType) {
+            String ext = externalUrl(q);
+            if (ext != null) {
+                return QuizableView.Field.link(name, q.getDisplayName(), ext);
+            }
+        }
+        return QuizableView.Field.ref(name, ref(q));
+    }
+
+    // The value of the first non-blank @Link (URL) field on the object, if any
+    // -- e.g. WikidataDynamicObject.wikidataUrl.
+    private static String externalUrl(Quizable q) {
+        for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
+            if (!QuizableAdapter.isLinkField(f)) {
+                continue;
+            }
+            try {
+                f.setAccessible(true);
+                if (f.get(q) instanceof String s && isHttp(s)) {
+                    return s;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    private static boolean isImageKey(String name) {
+        String n = name.toLowerCase();
+        return n.contains("chart") || n.contains("image") || n.contains("img")
+                || n.contains("photo") || n.contains("logo") || n.contains("portrait")
+                || n.contains("flag");
+    }
+
+    private static boolean isHttp(String s) {
+        return s.startsWith("http://") || s.startsWith("https://");
+    }
+
+    // Upgrade http→https so an image/link isn't mixed-content-blocked when the
+    // page itself is served over https.
+    private static String httpsUrl(String s) {
+        return s != null && s.startsWith("http://") ? "https://" + s.substring(7) : s;
     }
 
     private static QuizableView.Field field(
@@ -291,7 +412,7 @@ public final class QuizableJson {
 
     private static QuizableView.Ref ref(Quizable q) {
         return new QuizableView.Ref(
-                q.getIdentifier(), q.getDisplayName(), q.getClass().getSimpleName());
+                q.getIdentifier(), q.getDisplayName(), q.typeName());
     }
 
     private static String enc(String s) {

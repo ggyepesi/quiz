@@ -29,6 +29,7 @@ public class States implements QuizableViews {
     private final Map<String, State> states = new TreeMap<>();
     private final QuizableGroup root = new QuizableGroup("All");
     private QuizableGroupView groupView;
+    private boolean built;
 
     // state -> {state -> {imageKey starting with "Flag of " -> fullState}}
     private final Map<String, Map<String, String>> flagOfs = new TreeMap<>();
@@ -59,6 +60,9 @@ public class States implements QuizableViews {
 
     @Override
     public void buildViews() throws Exception {
+        if (built) {
+            return; // already built — QuizFactory may invoke this again per "Show"
+        }
         Constants.setSvgDirectory(Constants.flagSvgDirectory);
 
         DownloadFlagGroups.readCapitalsAndContinents(
@@ -81,6 +85,7 @@ public class States implements QuizableViews {
                                    root.getMembers().size() + " vs. " + states.size());
         mem();
         groupView = new QuizableGroupView(root);
+        built = true;
     }
 
     private void mem() {
@@ -170,8 +175,6 @@ public class States implements QuizableViews {
         return false;
     }
 
-    private final List<Thread> imageReaders = new ArrayList<>();
-
     class ImageReader implements Runnable {
         private final PrefixAndState prefixAndState;
         private final String url;
@@ -199,6 +202,10 @@ public class States implements QuizableViews {
     }
 
     public void readImagesFromFile(String filename) throws Exception {
+        // Per-call list: Threads are single-use, so storing them in an instance
+        // field made a second buildViews() re-start already-started threads
+        // (IllegalThreadStateException). Keep them scoped to this invocation.
+        List<Thread> imageReaders = new ArrayList<>();
         System.out.println("Reading images from " + filename);
         BufferedReader reader = Constants.getBufferedReaderForResource(Constants.flagDataDirectory + filename);
 

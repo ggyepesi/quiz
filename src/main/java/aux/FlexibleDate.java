@@ -29,6 +29,19 @@ public class FlexibleDate {
         this.fullDate = LocalDate.of(year, month, day);
     }
 
+    // The year, whatever precision this date was set at.
+    public int getYear() {
+        if (fullDate != null) {
+            return fullDate.getYear();
+        } else if (yearMonth != null) {
+            return yearMonth.getYear();
+        } else if (year != null) {
+            return year.getValue();
+        } else {
+            throw new IllegalStateException("No date value set");
+        }
+    }
+
     // Format method
     public String format() {
         if (fullDate != null) {

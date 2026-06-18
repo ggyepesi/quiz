@@ -1,6 +1,7 @@
 <script>
   import QuizableChip from './QuizableChip.svelte';
   import Self from './QuizableCard.svelte';
+  import ZoomableImage from './ZoomableImage.svelte';
   import { assetUrl } from './api.js';
 
   let { view, heading = false } = $props();
@@ -26,11 +27,11 @@
               {#each f.values as v}<span class="tag">{v}</span>{/each}
             </span>
           {:else if f.kind === 'image'}
-            <img class="img" src={assetUrl(f.url)} alt={f.name} loading="lazy" />
+            <ZoomableImage src={assetUrl(f.url)} alt={f.name} maxWidth="100%" maxHeight="180px" />
           {:else if f.kind === 'images'}
             <div class="imgs">
               {#each f.values as u}
-                <img class="img" src={assetUrl(u)} alt={f.name} loading="lazy" />
+                <ZoomableImage src={assetUrl(u)} alt={f.name} maxWidth="160px" maxHeight="120px" />
               {/each}
             </div>
           {:else if f.kind === 'link'}

@@ -357,7 +357,11 @@ public class QuizableSearchPanel extends JPanel
                         viewConfigButton,
                         fieldHighlightBox);
 
-        add(top, BorderLayout.NORTH);
+        // In a narrow panel (e.g. the "Generated instances" split pane) the
+        // toolbar's second row of buttons would otherwise be clipped and
+        // unreachable. A horizontal-only scroll pane keeps every control
+        // reachable while never stealing vertical room from the results.
+        add(aux.ScrollPaneUtils.horizontalOnly(top), BorderLayout.NORTH);
 
         resultsPanel.setLayout(
                 new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));

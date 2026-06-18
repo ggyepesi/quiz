@@ -46,12 +46,9 @@ public class AnswerPanelFactory {
             cfg.setThumb(true); // common for answer panels
 
             QuizablePanel qp = new QuizablePanel(q, cfg, options, false);
-            System.out.println("AnswerListener to " + q.getName());
-
             Quiz.addMouseListenerRecursively(qp, new MouseAdapter() {
                 @Override
                 public void mousePressed(MouseEvent e) {
-                    System.out.println("Clicked on " + q.getName());
                     onSelect.accept(q);
                 }
             });

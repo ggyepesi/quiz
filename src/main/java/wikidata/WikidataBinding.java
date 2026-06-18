@@ -1,5 +1,7 @@
 package wikidata;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import java.util.Map;
 
 public class WikidataBinding {
@@ -25,10 +27,10 @@ public class WikidataBinding {
         return i >= 0 ? v.substring(i + 1) : v;
     }
 
-    public WikidataEntity entity(String var) {
+    public WikidataDynamicObject entity(String var) {
         String qid = qid(var);
         if (qid == null || qid.isBlank()) return null;
-        return WikidataEntity.canonical(label(var), qid);
+        return WikidataDynamicObject.canonical(label(var), qid);
     }
 
     private static String strip(String var) {

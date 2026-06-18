@@ -17,6 +17,23 @@ public class GeneratedProjectModel {
         classes.add(rootClass);
     }
 
+    /**
+     * The Constellation domain config distilled from the hand-built
+     * tracer-bullet (see ConstellationSnapshotMain). Membership is "instance of
+     * constellation" (P31 = Q8928); the data fields are the properties we found
+     * worth keeping, each reached FROM the constellation (ROOT_TO_ITEM):
+     *
+     *   P1813 abbreviation  - IAU code; doubles as the membership filter that
+     *                         drops obsolete/duplicate constellations.
+     *   P2046 area          - solid angle in square degrees.
+     *   P18   chart         - the Commons sky-chart image (name-blurred for quiz).
+     *   P361  hemisphere     - "part of" the northern/southern sky (reference).
+     *   P138  namedAfter     - the mythological/figurative source (reference).
+     *
+     * Neighbours (a self-referential Constellation collection) and per-star
+     * brightness (P1215 magnitude, a Star sub-class) are intentionally left for
+     * the workbench to add on top of this base.
+     */
     public static GeneratedProjectModel constellationDemo() {
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.name("Constellations");
@@ -28,8 +45,40 @@ public class GeneratedProjectModel {
         c.instanceMapping().propertyLabel("instance of");
         c.instanceMapping().limit(200);
 
+        field(c, "abbreviation", FieldType.STRING, FieldCardinality.SINGLE,
+                "P1813", "IAU abbreviation", FieldRenderMode.INLINE);
+        field(c, "area", FieldType.NUMBER, FieldCardinality.SINGLE,
+                "P2046", "area (deg2)", FieldRenderMode.INLINE);
+        field(c, "chart", FieldType.IMAGE, FieldCardinality.SINGLE,
+                "P18", "image", FieldRenderMode.INLINE);
+        field(c, "hemisphere", FieldType.ENTITY, FieldCardinality.SINGLE,
+                "P361", "part of", FieldRenderMode.REFERENCE);
+        field(c, "namedAfter", FieldType.ENTITY, FieldCardinality.SINGLE,
+                "P138", "named after", FieldRenderMode.REFERENCE);
+
         p.rootClass(c);
         return p;
+    }
+
+    /**
+     * Adds one data field reached from the root entity via {@code wdt:Pxxx}
+     * (ROOT_TO_ITEM), with the property pre-filled so the workbench loads a
+     * ready-to-run mapping rather than a blank row.
+     */
+    private static void field(
+            GeneratedClassModel c,
+            String name,
+            FieldType type,
+            FieldCardinality cardinality,
+            String propertyPid,
+            String propertyLabel,
+            FieldRenderMode renderMode) {
+
+        GeneratedFieldModel f = c.addField(name, type, cardinality);
+        f.renderMode(renderMode);
+        f.mapping().propertyPid(propertyPid);
+        f.mapping().propertyLabel(propertyLabel);
+        f.mapping().direction(RuleDirection.ROOT_TO_ITEM);
     }
 
     public String name() {

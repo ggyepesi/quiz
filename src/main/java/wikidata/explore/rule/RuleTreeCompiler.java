@@ -53,7 +53,7 @@ public final class RuleTreeCompiler {
                 m.propertyPid(),
                 m.propertyLabel(),
                 fieldKindFor(field),
-                true);
+                !field.required());
 
         included.collection(field.collection());
 
