@@ -591,13 +591,14 @@ public final class RuleNodeQueryBuilder {
 
         if (node.includedFields().isEmpty()) return;
 
+        // Pass the FULL field list + the skip set (not a pre-filtered list) so
+        // the pattern var index matches the SELECT/extractor, which index over
+        // the full list with skip-and-increment. Pre-filtering would re-index
+        // later fields (e.g. image -> ?image_0 in the pattern but ?image_1 in
+        // the SELECT, so the image never binds).
         StringBuilder sb = new StringBuilder();
-        List<RuleIncludedField> filtered =
-                node.includedFields().stream()
-                        .filter(f -> f != null && !skipFields.contains(f))
-                        .toList();
-
-        RuleIncludedFieldSparql.appendWherePatterns(sb, filtered, withLabels);
+        RuleIncludedFieldSparql.appendWherePatterns(
+                sb, node.includedFields(), withLabels, skipFields);
         if (!sb.isEmpty()) q.rawWhere(sb.toString());
     }
 }

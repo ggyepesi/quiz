@@ -81,6 +81,23 @@ public final class RuleIncludedFieldSparql {
             StringBuilder sb,
             List<RuleIncludedField> fields,
             boolean withLabels) {
+        appendWherePatterns(sb, fields, withLabels, java.util.Set.of());
+    }
+
+    /**
+     * Emits the WHERE patterns for {@code fields}, skipping those in
+     * {@code skip} but STILL advancing the index — so the field variable
+     * ({@code variableName(field, i)}) matches the SELECT and the extractor,
+     * which index over the full list with skip-and-increment. Pass the FULL
+     * field list (not a pre-filtered one), or a skipped field shifts the indices
+     * of later fields and their pattern var no longer matches the select var
+     * (e.g. image selected as ?image_1 but bound as ?image_0).
+     */
+    public static void appendWherePatterns(
+            StringBuilder sb,
+            List<RuleIncludedField> fields,
+            boolean withLabels,
+            java.util.Collection<RuleIncludedField> skip) {
 
         if (fields == null || fields.isEmpty()) {
             return;
@@ -92,6 +109,11 @@ public final class RuleIncludedFieldSparql {
             if (field == null
                     || field.propertyPid() == null
                     || field.propertyPid().isBlank()) {
+                index++;
+                continue;
+            }
+
+            if (skip != null && skip.contains(field)) {
                 index++;
                 continue;
             }
