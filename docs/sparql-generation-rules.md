@@ -140,6 +140,28 @@ Format per rule: **Trigger** (when it applies) · **Rule** (what to do) ·
   binds that field's var once — `?value wdt:Pxx ?f . FILTER(?f …)` — instead of a
   second binding.
 
+## R14 — Put OPTIONAL/display joins in the OUTER part of a named subquery
+- **Trigger:** a named subquery (`WITH { … LIMIT n } AS %r`) whose inner carries
+  OPTIONAL display-only patterns (e.g. a `P18` image, optional scalar fields).
+- **Rule:** keep only the SELECTIVE/required patterns (membership, sitelink,
+  value filter, required label) in the inner; move OPTIONAL display patterns to
+  the outer `WHERE { INCLUDE %r . OPTIONAL { … } }`, so they run over the `n`
+  materialised rows, not the full inner scan.
+- **Why:** one `OPTIONAL ?value wdt:P18 ?image` in the inner added ~24s over Q523
+  (18s → 42s, timeout under load); moved outer it costs ~0 (the notable-star root
+  with image stays ~1s).
+- **Hook:** `valuesQueryForNode` (`outerFields`) + `namedSubquerySort(inner,
+  outerPatterns, orderVar)`.
+
+## R15 — Bind the membership constant directly, not via `BIND(… AS ?root)`
+- **Trigger:** root membership emitted as `BIND(wd:Qxxx AS ?root) . ?value wdt:P31
+  ?root`.
+- **Rule:** for a single membership QID, emit the constant inline:
+  `?value wdt:P31 wd:Qxxx`. (Multi-QID still needs `VALUES ?root { … }`.)
+- **Why:** the `BIND` hid the constant from the optimizer so it didn't use it (or
+  the sitelink) as the selective entry — ~18s vs ~1s for the notable-star root.
+- **Hook:** `valuesQueryForNode` single-QID membership branch.
+
 ---
 
 ## Cross-reference: the official WDQS optimization guide

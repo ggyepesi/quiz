@@ -96,12 +96,29 @@ public final class RuleNodeQueryBuilder {
         for (RuleIncludedField f : node.includedFields())
             if (f != null && sharedVars.containsKey(f.fieldName())) patternSkip.add(f);
 
+        // Optional, non-filtered display fields (e.g. a P18 image) are fetched in
+        // the OUTER part of the named subquery — over the limited rows — not in
+        // the inner scan. A single OPTIONAL P18 over Q523 added ~24s (R14). Only
+        // for the non-inlined (potentially big-class) path; the inlined path
+        // (small classes like constellations) is left unchanged.
+        List<RuleIncludedField> outerFields = new ArrayList<>();
+        if (inlinedFields.isEmpty()) {
+            for (RuleIncludedField f : node.includedFields())
+                if (f != null && f.optional()
+                        && !sharedVars.containsKey(f.fieldName()))
+                    outerFields.add(f);
+        }
+        List<RuleIncludedField> selectSkip = new ArrayList<>(inlinedFields);
+        selectSkip.addAll(outerFields);
+        List<RuleIncludedField> innerPatternSkip = new ArrayList<>(patternSkip);
+        innerPatternSkip.addAll(outerFields);
+
         WikidataQueryBuilder q = new WikidataQueryBuilder();
 
         q.select("value");
         if (!useService) q.select("valueLabel");
         appendValueFilterSelects(q, node, sharedVars.keySet());
-        appendIncludedFieldSelects(q, node, inlinedFields, !useService);
+        appendIncludedFieldSelects(q, node, selectSkip, !useService);
 
         for (RuleIncludedField field : inlinedFields) {
             q.groupConcat(
@@ -110,20 +127,22 @@ public final class RuleNodeQueryBuilder {
                     "|");
         }
 
-        if (!isVariable) {
-            // Multi-QID membership: instance-of ANY of the listed types (e.g.
-            // constellation OR zodiacal constellation). A single QID stays a
-            // plain BIND.
-            if (!node.additionalSourceQids().isEmpty()) {
+        if (!isVariable && node.additionalSourceQids().isEmpty()) {
+            // Single QID: emit the constant directly (?value wdt:P31 wd:Qxxx),
+            // NOT BIND(wd:Qxxx AS ?root) + ?value wdt:P31 ?root. The BIND makes
+            // the planner miss the constant/sitelink as the entry — ~18s vs ~1s
+            // for the notable-star root (R15).
+            q.rawWhere(node.direction().triplePattern(
+                    "wd:" + RuleNode.cleanQid(rootQidOrVar), "?value", pid));
+        } else {
+            if (!isVariable) {
+                // Multi-QID membership: instance-of ANY of the listed types.
                 q.valuesQids("root", node.allSourceQids());
             } else {
-                q.bindEntity("root", rootQidOrVar);
+                q.rawWhere("# template: ?root supplied by VALUES clause at runtime");
             }
-        } else {
-            q.rawWhere("# template: ?root supplied by VALUES clause at runtime");
+            q.rawWhere(node.direction().triplePattern("?root", "?value", pid));
         }
-
-        q.rawWhere(node.direction().triplePattern("?root", "?value", pid));
         appendMembershipFilter(q, node);
         appendSitelinkRequirement(q, node);
 
@@ -131,7 +150,7 @@ public final class RuleNodeQueryBuilder {
         appendExcludedQids(q, node);
         appendPredicateObjectExclusions(q, node);
         appendValueFilterPatterns(q, node, sharedVars);
-        appendIncludedFieldPatterns(q, node, patternSkip, !useService);
+        appendIncludedFieldPatterns(q, node, innerPatternSkip, !useService);
         appendInlinedFieldPatterns(q, inlinedFields);
         if (!useService) appendLabelPattern(q, node);
 
@@ -147,12 +166,21 @@ public final class RuleNodeQueryBuilder {
             q.limit(node.limit());
         }
 
+        // OPTIONAL display patterns for the outer part (full-list index kept).
+        StringBuilder outerSb = new StringBuilder();
+        if (!outerFields.isEmpty()) {
+            List<RuleIncludedField> outerSkip =
+                    new ArrayList<>(node.includedFields());
+            outerSkip.removeAll(outerFields);
+            RuleIncludedFieldSparql.appendWherePatterns(
+                    outerSb, node.includedFields(), !useService, outerSkip);
+        }
+
         String prefix = isVariable
                 ? "# NOTE: query template — ?root replaced by VALUES at runtime.\n\n"
                 : "";
-        return prefix + (useService
-                ? sortAfterLimitWithLabelService(q.build(), "valueLabel", labelLanguage(node))
-                : sortAfterLimit(q.build(), "valueLabel"));
+        return prefix + namedSubquerySort(
+                q.build(), outerSb.toString(), "valueLabel");
     }
 
     // Outer wrapper that labels the limited rows via the SERVICE (no inline
@@ -195,7 +223,11 @@ public final class RuleNodeQueryBuilder {
             String innerQuery,
             String orderVar) {
 
-        return namedSubquerySort(innerQuery, orderVar);
+        return namedSubquerySort(innerQuery, "", orderVar);
+    }
+
+    public static String namedSubquerySort(String innerQuery, String orderVar) {
+        return namedSubquerySort(innerQuery, "", orderVar);
     }
 
     /**
@@ -209,13 +241,17 @@ public final class RuleNodeQueryBuilder {
      */
     public static String namedSubquerySort(
             String innerQuery,
+            String outerPatterns,
             String orderVar) {
 
+        String outer = outerPatterns == null ? "" : outerPatterns;
         return "SELECT *\n"
                 + "WITH {\n"
                 + innerQuery.indent(2)
                 + "} AS %limited\n"
-                + "WHERE { INCLUDE %limited }\n"
+                + "WHERE {\n  INCLUDE %limited .\n"
+                + outer
+                + "}\n"
                 + "ORDER BY ?" + orderVar + "\n";
     }
 
