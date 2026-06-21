@@ -1,6 +1,9 @@
 package wikidata.explore.query.swing;
 
+import quiz.DynamicFields;
 import quiz.Quizable;
+import quiz.QuizableAdapter;
+import quiz.ui.MultiQuizableView;
 import quiz.ui.QuizablePanelView;
 import quiz.ui.QuizableSearchPanel;
 import wikidata.explore.query.core.QueryResultSink;
@@ -8,6 +11,17 @@ import wikidata.explore.query.result.ObjectQueryResult;
 
 import javax.swing.*;
 import java.awt.*;
+import java.lang.reflect.Field;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class QueryObjectResultPanel
         extends JPanel
@@ -50,25 +64,76 @@ public class QueryObjectResultPanel
                 return;
             }
 
-            if (viewMode == ViewMode.TYPE_PANEL_DEMO) {
-                holder.add(
-                        new JLabel(
-                                "<html>"
-                                        + "<b>Type-panel demo renderer not integrated yet.</b><br>"
-                                        + "Keep TypePanelDemo as the prototype for "
-                                        + "per-type panels and cross-reference navigation.<br>"
-                                        + "Future implementation should reuse QuizablePanel "
-                                        + "instead of hand-built JLabel rows."
-                                        + "</html>"),
-                        BorderLayout.NORTH);
-
-                holder.add(searchPanelView(result), BorderLayout.CENTER);
-            } else {
-                holder.add(searchPanelView(result), BorderLayout.CENTER);
-            }
-
+            holder.add(buildView(result), BorderLayout.CENTER);
             refresh();
         });
+    }
+
+    // When the run produced more than one class (e.g. Constellation + its
+    // child Stars), show a section per class via MultiQuizableView so each
+    // renders as its own searchable panel and cross-references between them
+    // navigate (click a constellation's star -> its Star card, and back).
+    // A single-class run keeps the simple search view.
+    private JComponent buildView(ObjectQueryResult result) {
+        Map<String, List<Quizable>> byType = groupByType(result.objects());
+        if (byType.size() <= 1) {
+            return searchPanelView(result);
+        }
+        MultiQuizableView multi = new MultiQuizableView();
+        for (Map.Entry<String, List<Quizable>> e : byType.entrySet()) {
+            multi.addSection(e.getKey(), e.getValue().get(0).getClass(), e.getValue());
+        }
+        multi.build(1);
+        return multi;
+    }
+
+    // All distinct generated objects reachable from the roots, grouped by
+    // typeName(), preserving discovery order. Bare leaf references (untyped
+    // WikidataDynamicObjects, e.g. a constellation's hemisphere) are kept out
+    // of their own section — they're navigation targets, not generated classes.
+    private Map<String, List<Quizable>> groupByType(List<Quizable> roots) {
+        Map<String, List<Quizable>> byType = new LinkedHashMap<>();
+        Set<Quizable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<Quizable> queue = new ArrayDeque<>(roots == null ? List.of() : roots);
+
+        while (!queue.isEmpty()) {
+            Quizable q = queue.poll();
+            if (q == null || !seen.add(q)) {
+                continue;
+            }
+            String type = q.typeName();
+            if (type != null && !type.isBlank()
+                    && !"WikidataDynamicObject".equals(type)) {
+                byType.computeIfAbsent(type, k -> new ArrayList<>()).add(q);
+            }
+            collectReferences(q, queue);
+        }
+        return byType;
+    }
+
+    private void collectReferences(Quizable q, Deque<Quizable> queue) {
+        if (q instanceof DynamicFields dyn) {
+            for (Object v : dyn.dynamicFieldValues().values()) {
+                addReferences(v, queue);
+            }
+        }
+        for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
+            try {
+                f.setAccessible(true);
+                addReferences(f.get(q), queue);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private void addReferences(Object v, Deque<Quizable> queue) {
+        if (v instanceof Quizable q) {
+            queue.add(q);
+        } else if (v instanceof Collection<?> c) {
+            for (Object o : c) addReferences(o, queue);
+        } else if (v instanceof Map<?, ?> m) {
+            for (Object o : m.values()) addReferences(o, queue);
+        }
     }
 
     private JComponent searchPanelView(ObjectQueryResult result) {
@@ -90,6 +155,7 @@ public class QueryObjectResultPanel
         searchPanel.setTarget(
                 view.getCardsPanel(),
                 view.getCardsScrollPane());
+        searchPanel.setRenderContext(view.getRenderContext());
         view.addTargetListener(searchPanel);
 
         wrapped.add(searchPanel, BorderLayout.NORTH);

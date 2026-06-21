@@ -65,20 +65,31 @@ public class GenerateInstancesQuery
                 null,
                 stepParams,
                 step -> {
-                    // Request shows the actual planned SPARQL only; the
-                    // loaded-object counts are the step/workflow summary,
-                    // not request noise.
-                    step.request(String.join(
-                            "\n\n",
+                    // The step's request is ONLY the root query — a single
+                    // runnable SELECT, so "Open in query service" works. The
+                    // child-edge templates were previously glued on with "\n\n",
+                    // producing a multi-SELECT block WDQS rejects; log them as
+                    // separate entries instead.
+                    java.util.List<String> previews =
                             new RuleTreeExtractor(context.sparql())
-                                    .previewQueries(plan, depth)));
+                                    .previewQueries(plan, depth);
+                    if (!previews.isEmpty()) {
+                        step.request(previews.get(0));
+                    }
+                    for (int i = 1; i < previews.size(); i++) {
+                        context.message("\n--- child-edge query template "
+                                + i + " (one runnable SELECT) ---\n"
+                                + previews.get(i) + "\n");
+                    }
 
+                    // Forward extraction progress (incl. each per-parent sub-
+                    // query) to the log window instead of discarding it.
                     GenerationRun run =
                             pipeline.fullRun(
                                     projectModel,
                                     depth,
                                     context.sparql(),
-                                    s -> {});
+                                    context::message);
 
                     step.summary(run.size() + " objects");
                     return run;

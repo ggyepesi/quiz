@@ -24,9 +24,20 @@ public class RuleNode {
 
     private String sourceQid    = "";
     private String sourceLabel  = "";
+    // Membership accepts instance-of sourceQid OR any of these (e.g. add
+    // zodiacal constellation so Aries/Cancer count as constellations).
+    private final Set<String> additionalSourceQids = new LinkedHashSet<>();
     private String propertyPid  = "";
     private String propertyLabel = "";
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
+
+    // Membership constraint on the node's values: ?value <membershipPid>
+    // <membershipQid> (e.g. P31 Q523 = "instance of star"). Used by a
+    // CHILD_OBJECTS edge so the referenced class's instances are filtered to
+    // that class — otherwise an edge like P59 "constellation" returns every
+    // object in the constellation (galaxies, nebulae, …), not just stars.
+    private String membershipPid = "";
+    private String membershipQid = "";
 
     // -----------------------------------------------------------------
     // Label config (replaces the old requireEnglishLabel boolean)
@@ -69,6 +80,11 @@ public class RuleNode {
     // -----------------------------------------------------------------
 
     private int limit = 200;
+
+    // Sort the node's entities by one of its included fields before the limit
+    // (e.g. apparentMagnitude ascending = brightest stars first). Blank = none.
+    private String  sortFieldName = "";
+    private boolean sortDescending = false;
 
     private final Set<String>  includedQids = new LinkedHashSet<>();
     private final Set<String>  excludedQids = new LinkedHashSet<>();
@@ -172,6 +188,22 @@ public class RuleNode {
     public void   sourceQid(String sourceQid)
         { this.sourceQid = cleanQid(sourceQid); }
 
+    public Set<String> additionalSourceQids() { return additionalSourceQids; }
+
+    public RuleNode addAdditionalSourceQid(String qid) {
+        qid = cleanQid(qid);
+        if (!qid.isBlank()) additionalSourceQids.add(qid);
+        return this;
+    }
+
+    /** All membership type QIDs (sourceQid + extras), in order, blanks dropped. */
+    public java.util.List<String> allSourceQids() {
+        java.util.List<String> out = new ArrayList<>();
+        if (sourceQid != null && !sourceQid.isBlank()) out.add(sourceQid);
+        for (String q : additionalSourceQids) if (q != null && !q.isBlank()) out.add(q);
+        return out;
+    }
+
     public String sourceLabel() { return sourceLabel; }
     public void   sourceLabel(String sourceLabel)
         { this.sourceLabel = sourceLabel == null ? "" : sourceLabel.trim(); }
@@ -183,6 +215,23 @@ public class RuleNode {
     public String propertyLabel() { return propertyLabel; }
     public void   propertyLabel(String propertyLabel)
         { this.propertyLabel = propertyLabel == null ? "" : propertyLabel.trim(); }
+
+    public String membershipPid() { return membershipPid; }
+    public void   membershipPid(String pid) { this.membershipPid = cleanPid(pid); }
+
+    public String membershipQid() { return membershipQid; }
+    public void   membershipQid(String qid) { this.membershipQid = cleanQid(qid); }
+
+    // "Notable only": require an English Wikipedia article (sitelink). A
+    // selective entry that bounds a huge class to its notable members.
+    private boolean requireSitelink = false;
+    public boolean requireSitelink() { return requireSitelink; }
+    public void    requireSitelink(boolean b) { this.requireSitelink = b; }
+
+    public boolean hasMembershipFilter() {
+        return membershipPid != null && !membershipPid.isBlank()
+                && membershipQid != null && !membershipQid.isBlank();
+    }
 
     public RuleDirection direction() { return direction; }
     public void direction(RuleDirection direction)
@@ -254,6 +303,12 @@ public class RuleNode {
 
     public int  limit() { return limit; }
     public void limit(int limit) { this.limit = Math.max(1, limit); }
+
+    public String  sortFieldName() { return sortFieldName == null ? "" : sortFieldName; }
+    public void    sortFieldName(String s) { this.sortFieldName = s == null ? "" : s.trim(); }
+    public boolean sortDescending() { return sortDescending; }
+    public void    sortDescending(boolean d) { this.sortDescending = d; }
+    public boolean hasSort() { return sortFieldName != null && !sortFieldName.isBlank(); }
 
     public Set<String>  includedQids() { return includedQids; }
     public Set<String>  excludedQids()  { return excludedQids; }

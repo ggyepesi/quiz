@@ -30,12 +30,13 @@ public class QuizableServerMain {
         store.register(new StateSource());
         store.register(new MythologySource());
         store.register(new OscarSource());
-        // Generated from Wikidata (dynamic representation) — the first
-        // generation-pipeline domain wired into the web client.
-        store.register(new GeneratedSource(
+        // Generated from Wikidata (dynamic representation). registerAll serves
+        // every class in the snapshot (e.g. Constellation AND its child Stars).
+        GeneratedSource.registerAll(
+                store,
                 "Constellation",
                 new java.io.File(aux.Constants.constellationsDataDirectory
-                        + "constellations.snapshot.json")));
+                        + "constellations.snapshot.json"));
 
         new QuizableHttpServer(store).start(port);
 

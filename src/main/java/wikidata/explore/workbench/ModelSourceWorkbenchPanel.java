@@ -5,6 +5,7 @@ import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
+import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -55,6 +56,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
     public void setQueryRunner(SwingQueryRunner queryRunner) {
         classSourcePanel.setQueryRunner(queryRunner);
+        fieldSourcePanel.setQueryRunner(queryRunner);
         samplePanel.setQueryRunner(queryRunner);
         discoveryPanel.setQueryRunner(queryRunner);
         wikiProjectPanel.setQueryRunner(queryRunner);
@@ -173,6 +175,10 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     }
 
     public void useProperty(String pid, String label) {
+        useProperty(pid, label, null);
+    }
+
+    public void useProperty(String pid, String label, RuleDirection direction) {
         // "Add Field" in Discover (and picking a property in Properties) always
         // creates a NEW field for that property. It must never hijack whatever
         // field happens to be selected: clicking "Add Field" while the
@@ -181,6 +187,13 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         GeneratedFieldModel f = createFieldForProperty(label);
         if (f == null) {
             return;
+        }
+
+        // An incoming discovered property (e.g. stars whose P59 = this
+        // constellation) becomes an incoming edge; outgoing stays outgoing.
+        if (direction != null) {
+            f.mapping().direction(direction);
+            fieldSourcePanel.edit(f);
         }
 
         fieldSourcePanel.useProperty(pid, label);
@@ -292,7 +305,10 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         discoveryPanel.setApplyEdits(this::applyEdits);
 
         discoveryPanel.onAddField(p -> {
-            useProperty(p.pid(), p.label());
+            RuleDirection dir = "incoming".equalsIgnoreCase(p.direction())
+                    ? RuleDirection.ITEM_TO_ROOT
+                    : RuleDirection.ROOT_TO_ITEM;
+            useProperty(p.pid(), p.label(), dir);
             afterChange.accept(null);
         });
 

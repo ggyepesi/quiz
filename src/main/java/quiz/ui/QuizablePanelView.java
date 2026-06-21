@@ -375,6 +375,10 @@ public class QuizablePanelView {
         return cardsScrollPane;
     }
 
+    public QuizableRenderContext getRenderContext() {
+        return context;
+    }
+
     private void createCardsBad() {
         QuizableRenderContext context =
                 new QuizableRenderContext(quizables);
@@ -484,6 +488,7 @@ public class QuizablePanelView {
                     new QuizableSearchPanel(first.getClass());
 
             searchPanel.setTarget(cardsPanel, cardsScrollPane);
+            searchPanel.setRenderContext(context);
             addTargetListener(searchPanel);
 
             frame.add(searchPanel, BorderLayout.NORTH);

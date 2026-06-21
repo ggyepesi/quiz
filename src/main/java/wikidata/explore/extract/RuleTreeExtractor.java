@@ -34,6 +34,9 @@ public class RuleTreeExtractor {
 
     private static final int BATCH_SIZE = 50;
     private static final int POOL_SIZE  = 3;
+    // Concurrent per-parent child queries within one edge (kept modest so we
+    // don't hammer the SPARQL endpoint).
+    private static final int EDGE_PARENT_POOL = 4;
     private static final String PIPE_REGEX = "\\|";
     private static final String PAIR_SEPARATOR = "§";
 
@@ -76,6 +79,7 @@ public class RuleTreeExtractor {
             if (edge == null || edge.childNode() == null) continue;
             RuleNode child = edge.childNode();
             if (!child.edges().isEmpty()) continue;
+            if (!child.includedFields().isEmpty()) continue; // has own fields -> full child objects
             if (!child.valueFilters().isEmpty()) continue;
             if (!child.excludedPredicateObjects().isEmpty()) continue;
             String pid = RuleNode.cleanPid(child.propertyPid());
@@ -185,9 +189,11 @@ public class RuleTreeExtractor {
             RuleNode child = edge.childNode();
             queries.add("# For each " + parentNode.name()
                     + " result, load complex edge \""
-                    + edge.fieldName() + "\" (parallel batched):\n"
-                    + RuleNodeQueryBuilder.valuesQueryForSpecificParent(
-                    child, parentVar));
+                    + edge.fieldName() + "\" (one query per parent, limit "
+                    + child.limit() + "):\n"
+                    + RuleNodeQueryBuilder.childQueryForParent(
+                            child, "Q_PARENT", child.limit())
+                            .replace("wd:Q_PARENT", "wd:<parent>"));
             appendChildPreviewQueries(
                     queries, child, complexEdges(child),
                     remainingDepth - 1, "?each_" + child.itemVar());
@@ -208,6 +214,7 @@ public class RuleTreeExtractor {
 
             WikidataDynamicObject obj = rowsByQid.computeIfAbsent(
                     qid, k -> registry.getOrCreate(qid, label));
+            obj.type(node.name()); // stamp the class so it renders as its type
 
             addValueFilterFields(obj, node, b);
             addIncludedFields(obj, node, b, inlinedFields);
@@ -294,54 +301,61 @@ public class RuleTreeExtractor {
 
         RuleNode childNode = edge.childNode();
 
-        Map<String, WikidataDynamicObject> parentByQid = new LinkedHashMap<>();
+        List<String> parentQids = new ArrayList<>();
         for (WikidataDynamicObject p : parentObjects) {
             if (p != null && p.qid() != null && p.qid().matches("Q\\d+"))
-                parentByQid.put(p.qid(), p);
+                parentQids.add(p.qid());
         }
 
-        List<String> allQids = new ArrayList<>(parentByQid.keySet());
-        int total   = allQids.size();
-        int batches = (int) Math.ceil((double) total / BATCH_SIZE);
+        int limit = childNode.limit();
 
         progress.accept("\nLoading edge \"" + edge.fieldName()
-                + "\" for " + total + " parents in "
-                + batches + " batch(es)\n");
+                + "\" for " + parentQids.size()
+                + " parents (per-parent, limit " + limit + ")\n");
 
+        // One query PER PARENT, each with its own LIMIT — the batched
+        // multi-parent query can't express a per-parent limit and so pulls
+        // every candidate (e.g. all magnitude-stars) and times out. Run them in
+        // a small pool to stay friendly to the SPARQL endpoint.
         Map<String, Map<String, WikidataDynamicObject>> childrenByParent =
-                new LinkedHashMap<>();
+                new java.util.concurrent.ConcurrentHashMap<>();
 
-        for (int i = 0; i < batches; i++) {
-            List<String> batchQids =
-                    allQids.subList(i * BATCH_SIZE,
-                            Math.min((i + 1) * BATCH_SIZE, total));
-
-            String sparql = RuleNodeQueryBuilder.batchedValuesQuery(
-                    childNode, batchQids);
-
-            progress.accept("  Batch " + (i + 1) + "/" + batches
-                    + " (" + batchQids.size() + " parents)\n");
-
-            for (WikidataBinding b : client.query(sparql)) {
-                String parentQid = b.qid("parent");
-                String childQid  = b.qid("value");
-                String childLabel = b.label("value");
-
-                if (parentQid == null || !parentQid.matches("Q\\d+")
-                        || childQid == null || !childQid.matches("Q\\d+"))
-                    continue;
-
-                WikidataDynamicObject child =
-                        childrenByParent
-                                .computeIfAbsent(parentQid,
-                                        k -> new LinkedHashMap<>())
-                                .computeIfAbsent(childQid,
-                                        k -> registry.getOrCreate(
-                                                childQid, childLabel));
-
-                addValueFilterFields(child, childNode, b);
-                addIncludedFields(child, childNode, b);
+        ExecutorService pool = Executors.newFixedThreadPool(
+                Math.min(EDGE_PARENT_POOL, Math.max(1, parentQids.size())));
+        try {
+            List<Future<?>> futures = new ArrayList<>();
+            for (String parentQid : parentQids) {
+                futures.add(pool.submit(() -> {
+                    String sparql = RuleNodeQueryBuilder.childQueryForParent(
+                            childNode, parentQid, limit);
+                    long t0 = System.currentTimeMillis();
+                    Map<String, WikidataDynamicObject> kids = new LinkedHashMap<>();
+                    for (WikidataBinding b : client.query(sparql)) {
+                        String childQid  = b.qid("value");
+                        String childLabel = b.label("value");
+                        if (childQid == null || !childQid.matches("Q\\d+"))
+                            continue;
+                        WikidataDynamicObject child = kids.computeIfAbsent(
+                                childQid, k -> registry.getOrCreate(childQid, childLabel));
+                        child.type(childNode.name()); // stamp the child class (e.g. "Star")
+                        addValueFilterFields(child, childNode, b);
+                        addIncludedFields(child, childNode, b);
+                    }
+                    if (!kids.isEmpty()) childrenByParent.put(parentQid, kids);
+                    // One concise, single-runnable log line per sub-query (the
+                    // queries run in parallel, so serialise the log writes).
+                    long ms = System.currentTimeMillis() - t0;
+                    synchronized (progress) {
+                        progress.accept("  " + edge.fieldName() + " <- " + parentQid
+                                + ": " + kids.size() + " (" + ms + " ms)\n"
+                                + sparql + "\n");
+                    }
+                    return null;
+                }));
             }
+            for (Future<?> f : futures) f.get();
+        } finally {
+            pool.shutdown();
         }
 
         return new EdgeResult(edge, childrenByParent);
@@ -403,6 +417,7 @@ public class RuleTreeExtractor {
 
             WikidataDynamicObject obj = rowsByQid.computeIfAbsent(
                     qid, k -> registry.getOrCreate(qid, label));
+            obj.type(node.name());
 
             addValueFilterFields(obj, node, b);
             addIncludedFields(obj, node, b);

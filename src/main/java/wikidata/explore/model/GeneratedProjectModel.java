@@ -9,6 +9,11 @@ public class GeneratedProjectModel {
     private String name = "Generated Wikidata Project";
     private GeneratedClassModel rootClass;
 
+    // How many levels of child-object edges generation should traverse. Stored
+    // with the project so a saved model remembers it (depth 0 skips all child
+    // edges, e.g. a constellation's stars).
+    private int generationDepth = 1;
+
     private final List<GeneratedClassModel> classes = new ArrayList<>();
 
     public GeneratedProjectModel() {
@@ -85,6 +90,14 @@ public class GeneratedProjectModel {
         return name;
     }
 
+    public int generationDepth() {
+        return generationDepth;
+    }
+
+    public void generationDepth(int depth) {
+        this.generationDepth = Math.max(0, depth);
+    }
+
     public void name(String name) {
         this.name =
                 name == null || name.isBlank()
@@ -121,6 +134,41 @@ public class GeneratedProjectModel {
         }
 
         return Collections.unmodifiableList(classes);
+    }
+
+    /** Replaces this model's contents (name + classes) with another's, in
+     *  place — so references held to this instance (the workbench panels) keep
+     *  pointing at the same object after loading a saved model. */
+    public void copyContentsFrom(GeneratedProjectModel other) {
+        if (other == null) {
+            return;
+        }
+        this.name = other.name;
+        this.generationDepth = other.generationDepth;
+        this.classes.clear();
+        this.classes.addAll(other.classes);
+
+        // Serialization has no object identity, so the root is written both as
+        // `rootClass` and inside `classes` and deserializes as two separate
+        // instances. Reconcile by name to the one already in the list, so the
+        // root isn't duplicated (which showed Constellation twice in the tree).
+        GeneratedClassModel root = other.rootClass;
+        if (root != null) {
+            GeneratedClassModel inList = findClass(root.className());
+            if (inList != null) {
+                root = inList;
+            }
+        }
+        if (root == null) {
+            root = classes.isEmpty()
+                    ? new GeneratedClassModel("GeneratedClass")
+                    : classes.getFirst();
+        }
+        this.rootClass = root;
+        this.rootClass.ensureNameField();
+        if (!classes.contains(rootClass)) {
+            classes.addFirst(rootClass);
+        }
     }
 
     public void addClass(GeneratedClassModel c) {
@@ -173,6 +221,7 @@ public class GeneratedProjectModel {
     public GeneratedProjectModel copy() {
         GeneratedProjectModel c = new GeneratedProjectModel();
         c.name = name;
+        c.generationDepth = generationDepth;
         c.classes.clear();
         c.rootClass = null;
 

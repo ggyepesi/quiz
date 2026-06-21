@@ -112,6 +112,9 @@ public class WikidataDynamicObjectJsonStore {
         Entity e = new Entity();
         e.qid = o.qid();
         e.name = o.getDisplayName();
+        String t = o.typeName();
+        e.type = (t == null || t.isBlank()
+                || "WikidataDynamicObject".equals(t)) ? null : t;
         for (Map.Entry<String, Object> entry : o.dynamicFields().entrySet()) {
             e.fields.put(entry.getKey(), encode(entry.getValue()));
         }
@@ -149,16 +152,35 @@ public class WikidataDynamicObjectJsonStore {
                 : new ArrayList<>(legacy.objects);
     }
 
-    private List<WikidataDynamicObject> loadFlat(FlatSnapshot snapshot) {
-        if (snapshot == null || snapshot.entities == null) {
+    /** Every entity in the snapshot (the whole pool — roots AND referenced
+     *  children, e.g. constellations and their stars), re-linked. */
+    public List<WikidataDynamicObject> loadAll(File file) throws IOException {
+        JsonNode tree = mapper.readTree(file);
+        if (tree == null) {
             return new ArrayList<>();
         }
+        if (tree.has("entities")) {
+            FlatSnapshot snapshot = mapper.treeToValue(tree, FlatSnapshot.class);
+            return snapshot == null
+                    ? new ArrayList<>()
+                    : new ArrayList<>(buildEntities(snapshot).values());
+        }
+        Snapshot legacy = mapper.treeToValue(tree, Snapshot.class);
+        return legacy == null || legacy.objects == null
+                ? new ArrayList<>()
+                : new ArrayList<>(legacy.objects);
+    }
 
+    private Map<String, WikidataDynamicObject> buildEntities(FlatSnapshot snapshot) {
         // Build shells first so refs (including cycles) resolve to one instance
-        // per qid.
+        // per qid; carry the persisted type so multi-class snapshots round-trip.
         Map<String, WikidataDynamicObject> byKey = new LinkedHashMap<>();
         for (Entity e : snapshot.entities) {
-            byKey.put(e.qid, new WikidataDynamicObject(e.qid, e.name));
+            WikidataDynamicObject o = new WikidataDynamicObject(e.qid, e.name);
+            if (e.type != null && !e.type.isBlank()) {
+                o.type(e.type);
+            }
+            byKey.put(e.qid, o);
         }
         for (Entity e : snapshot.entities) {
             WikidataDynamicObject o = byKey.get(e.qid);
@@ -166,6 +188,15 @@ public class WikidataDynamicObjectJsonStore {
                 o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey));
             }
         }
+        return byKey;
+    }
+
+    private List<WikidataDynamicObject> loadFlat(FlatSnapshot snapshot) {
+        if (snapshot == null || snapshot.entities == null) {
+            return new ArrayList<>();
+        }
+
+        Map<String, WikidataDynamicObject> byKey = buildEntities(snapshot);
 
         List<WikidataDynamicObject> roots = new ArrayList<>();
         List<String> rootKeys = snapshot.roots == null || snapshot.roots.isEmpty()
@@ -218,6 +249,9 @@ public class WikidataDynamicObjectJsonStore {
     public static class Entity {
         public String qid;
         public String name;
+        // The stamped domain class (e.g. "Constellation", "Star"); null for an
+        // untyped leaf reference. Lets one snapshot carry several classes.
+        public String type;
         public Map<String, Object> fields = new LinkedHashMap<>();
     }
 

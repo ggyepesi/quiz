@@ -16,7 +16,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class WikidataSparqlClient implements AutoCloseable {
-    private static final String ENDPOINT = "https://query.wikidata.org/sparql";
+    public static final String WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
+    public static final String DBPEDIA_ENDPOINT  = "https://dbpedia.org/sparql";
+
+    private final String endpoint;
 
     private final HttpClient http;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -36,6 +39,14 @@ public class WikidataSparqlClient implements AutoCloseable {
     }
 
     public WikidataSparqlClient(String userAgent, int maxParallelRequests) {
+        this(userAgent, maxParallelRequests, WIKIDATA_ENDPOINT);
+    }
+
+    /** Point the client at a different SPARQL endpoint (e.g. DBPEDIA_ENDPOINT). */
+    public WikidataSparqlClient(
+            String userAgent, int maxParallelRequests, String endpoint) {
+        this.endpoint = endpoint == null || endpoint.isBlank()
+                ? WIKIDATA_ENDPOINT : endpoint;
         this.userAgent =
                 userAgent == null || userAgent.isBlank()
                         ? "QuizBot/1.0"
@@ -143,7 +154,7 @@ public class WikidataSparqlClient implements AutoCloseable {
         HttpRequest req =
                 HttpRequest.newBuilder()
                            .uri(URI.create(
-                                   ENDPOINT
+                                   endpoint
                                            + "?query="
                                            + encoded
                                            + "&format=json"))

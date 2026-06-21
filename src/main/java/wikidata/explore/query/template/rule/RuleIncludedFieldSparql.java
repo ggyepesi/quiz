@@ -71,6 +71,16 @@ public final class RuleIncludedFieldSparql {
     public static void appendWherePatterns(
             StringBuilder sb,
             List<RuleIncludedField> fields) {
+        appendWherePatterns(sb, fields, true);
+    }
+
+    /** {@code withLabels=false} omits the inline {@code rdfs:label} blocks —
+     *  use it when the query labels via {@code SERVICE wikibase:label} instead
+     *  (the service would otherwise clash with an already-bound ?xLabel). */
+    public static void appendWherePatterns(
+            StringBuilder sb,
+            List<RuleIncludedField> fields,
+            boolean withLabels) {
 
         if (fields == null || fields.isEmpty()) {
             return;
@@ -87,6 +97,7 @@ public final class RuleIncludedFieldSparql {
             }
 
             String var = variableName(field, index);
+            boolean label = withLabels && !field.isMediaField();
 
             if (field.optional()) {
                 sb.append("  OPTIONAL {\n")
@@ -95,7 +106,7 @@ public final class RuleIncludedFieldSparql {
                   .append(" ?")
                   .append(var)
                   .append(" .\n");
-                if (!field.isMediaField()) {
+                if (label) {
                     sb.append("    OPTIONAL {\n")
                       .append("      ?")
                       .append(var)
@@ -114,7 +125,7 @@ public final class RuleIncludedFieldSparql {
                   .append(" ?")
                   .append(var)
                   .append(" .\n");
-                if (!field.isMediaField()) {
+                if (label) {
                     sb.append("  OPTIONAL {\n")
                       .append("    ?")
                       .append(var)

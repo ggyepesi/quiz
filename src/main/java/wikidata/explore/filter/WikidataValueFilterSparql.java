@@ -82,6 +82,29 @@ public final class WikidataValueFilterSparql {
         }
     }
 
+    /**
+     * Bind + filter on a SPECIFIC variable. Lets a value filter reuse an
+     * included field's variable instead of emitting a second
+     * {@code ?value wdt:Pxx ?other} that cross-products with it (SPARQL rule
+     * R13). Always required (the value is being filtered, so it must be bound).
+     */
+    public static void appendWhereOnVar(
+            StringBuilder sb, WikidataValueFilter f, String var) {
+
+        if (!isValid(f)) {
+            return;
+        }
+        sb.append("  ?value wdt:").append(f.propertyPid())
+          .append(" ?").append(var).append(" .\n")
+          .append("  FILTER(xsd:decimal(?").append(var).append(") ")
+          .append(f.operator().sparql()).append(" ")
+          .append(formatNumber(f.numericValue())).append(")\n");
+    }
+
+    public static boolean valid(WikidataValueFilter f) {
+        return isValid(f);
+    }
+
     private static boolean isValid(WikidataValueFilter f) {
         return f != null
                 && f.propertyPid() != null

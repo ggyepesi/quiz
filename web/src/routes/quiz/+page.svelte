@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { getTypes, getFields, getGroups, getQuiz, assetUrl } from '$lib/api.js';
   import GroupTree from '$lib/GroupTree.svelte';
+  import FieldPicker from '$lib/FieldPicker.svelte';
+  import ImageCarousel from '$lib/ImageCarousel.svelte';
   import ZoomableImage from '$lib/ZoomableImage.svelte';
 
   // config
@@ -123,7 +125,8 @@
 <div class="quiz">
   <header>
     <a class="back" href="/">← Browse</a>
-    <a class="alt" href="/pairing">Pairing →</a>
+    <span class="mode">ABCD quiz</span>
+    <a class="alt" href="/pairing">Switch to Pairing →</a>
     {#if quiz && !done}
       <span class="progress">Question {i + 1} / {quiz.questions.length}</span>
       <span class="score">Score {score}</span>
@@ -157,22 +160,15 @@
             </div>
           {/if}
           <div class="fields">
-            <div class="fhead"><span>Field</span><span>Show</span><span>Guess</span></div>
-            {#each fields as f}
-              <div class="frow">
-                <span class="fname">{f.name} <span class="kind">{f.kind}</span></span>
-                <input
-                  type="checkbox"
-                  checked={promptFields.includes(f.name)}
-                  onchange={(e) => togglePrompt(f.name, e.currentTarget.checked)}
-                />
-                <input
-                  type="checkbox"
-                  checked={answerFields.includes(f.name)}
-                  onchange={(e) => toggleAnswer(f.name, e.currentTarget.checked)}
-                />
-              </div>
-            {/each}
+            {#key type}
+              <FieldPicker
+                {type}
+                {promptFields}
+                {answerFields}
+                onPrompt={togglePrompt}
+                onAnswer={toggleAnswer}
+              />
+            {/key}
           </div>
           <label>
             Questions
@@ -197,7 +193,7 @@
             {#if p.kind === 'image'}
               <ZoomableImage src={assetUrl(p.url)} alt="" />
             {:else if p.kind === 'images'}
-              <ZoomableImage src={assetUrl(p.values[0])} alt="" />
+              <ImageCarousel urls={p.values} maxWidth="240px" maxHeight="180px" />
             {:else if p.kind === 'list'}
               <div class="prompt-line"><span class="pf">{p.name}</span>{p.values.join(', ')}</div>
             {:else if p.kind === 'refs'}
@@ -215,17 +211,24 @@
             : `Which ${quiz.ask}?`}
         </p>
 
-        <div class="options">
-          {#each q.options as opt}
-            <button
+        <div class="options" class:image-options={q.optionImages}>
+          {#each q.options as opt, oi}
+            <div
               class="opt"
               class:correct={picked && opt === q.answer}
               class:wrong={picked === opt && opt !== q.answer}
-              disabled={!!picked}
+              class:disabled={!!picked}
+              role="button"
+              tabindex="0"
               onclick={() => pick(opt)}
+              onkeydown={(e) => e.key === 'Enter' && pick(opt)}
             >
-              {opt}
-            </button>
+              {#if q.optionImages && q.optionImages[oi] && q.optionImages[oi].length}
+                <ImageCarousel urls={q.optionImages[oi]} maxWidth="100%" maxHeight="150px" />
+              {:else}
+                {opt}
+              {/if}
+            </div>
           {/each}
         </div>
 
@@ -250,6 +253,7 @@
     background: var(--panel);
   }
   .back { font-weight: 500; }
+  .mode { font-weight: 700; }
   .alt { font-weight: 500; color: var(--muted); }
   .progress { color: var(--muted); }
   .score { margin-left: auto; font-weight: 600; }
@@ -294,25 +298,6 @@
     max-height: 240px;
     overflow-y: auto;
   }
-  .fhead, .frow {
-    display: grid;
-    grid-template-columns: 1fr 46px 46px;
-    align-items: center;
-    gap: 6px;
-  }
-  .fhead {
-    font-size: 0.74rem;
-    color: var(--faint);
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--line);
-    margin-bottom: 2px;
-  }
-  .fhead span:not(:first-child) { justify-self: center; }
-  .frow { padding: 3px 0; }
-  .frow input { justify-self: center; }
-  .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
-  .fname .kind { color: var(--faint); font-size: 0.78em; }
-
   .card {
     width: 100%;
     max-width: 460px;
@@ -334,7 +319,6 @@
     background: #fff;
     border-radius: var(--radius-sm);
   }
-  .prompt img { max-width: 220px; max-height: 170px; object-fit: contain; }
   .prompt-line { font-size: 1.3rem; font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
   .prompt-line .pf {
     font-size: 0.66rem;
@@ -352,9 +336,11 @@
     border-radius: var(--radius-sm);
     background: #fff;
     font-weight: 500;
+    cursor: pointer;
+    text-align: center;
   }
-  .opt:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-weak); }
-  .opt:disabled { cursor: default; }
+  .opt:hover:not(.disabled) { border-color: var(--accent); background: var(--accent-weak); }
+  .opt.disabled { cursor: default; pointer-events: none; }
   .opt.correct { background: #e7f7ec; border-color: #34a853; color: #14702f; }
   .opt.wrong { background: #fdecea; border-color: #d93025; color: #b3271e; }
 
@@ -381,6 +367,5 @@
     main { padding: 18px 14px; }
     .card, .config { padding: 16px 14px; }
     .options { grid-template-columns: 1fr; }
-    .prompt img { max-width: 180px; max-height: 150px; }
   }
 </style>

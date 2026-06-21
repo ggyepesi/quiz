@@ -99,13 +99,6 @@
     font-size: 0.86rem;
   }
   .inline { display: grid; gap: 10px; }
-  .img {
-    max-width: 160px;
-    max-height: 120px;
-    object-fit: contain;
-    border-radius: 6px;
-    background: #fff;
-  }
   .imgs { display: flex; flex-wrap: wrap; gap: 8px; }
 
   @media (max-width: 720px) {

@@ -5,6 +5,10 @@ import wikidata.explore.codegen.GeneratedQuizableRuntime;
 import wikidata.explore.codegen.GeneratedQuizableMapper;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.RuleTreeExtractor;
+import wikidata.explore.extract.DBpediaEnrichment;
+import wikidata.explore.model.FieldSourceType;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.rule.RuleTreeSerializer;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
@@ -42,11 +46,48 @@ public class GenerationPipeline {
         return new RuleTreeExtractor(client).load(plan, depth, log);
     }
 
+    // Fills DBpedia-sourced root fields (Wikipedia infobox) after the Wikidata
+    // extraction, joined by owl:sameAs QID. No-op unless the root class has any
+    // DBpedia field; failures are logged, not fatal (the run still succeeds).
+    private void enrichFromDBpedia(
+            GeneratedProjectModel snapshot,
+            List<WikidataDynamicObject> roots,
+            Consumer<String> log) {
+
+        GeneratedClassModel root = snapshot.rootClass();
+        if (root == null) {
+            return;
+        }
+        boolean hasDbpedia = false;
+        for (GeneratedFieldModel f : root.fields()) {
+            if (f != null
+                    && f.mapping().sourceType() == FieldSourceType.DBPEDIA
+                    && !f.mapping().propertyPid().isBlank()) {
+                hasDbpedia = true;
+                break;
+            }
+        }
+        if (!hasDbpedia) {
+            return;
+        }
+
+        try (WikidataSparqlClient dbpedia = new WikidataSparqlClient(
+                "quiz-modelbuilder (ggyepesi@gmail.com)", 2,
+                WikidataSparqlClient.DBPEDIA_ENDPOINT)) {
+            dbpedia.log(log);
+            new DBpediaEnrichment().enrich(roots, root, dbpedia, log);
+        } catch (Exception e) {
+            log.accept("DBpedia enrichment failed: " + e.getMessage() + "\n");
+        }
+    }
+
     public GeneratedQuizableRuntime buildRuntime(
             GeneratedProjectModel snapshot) throws Exception {
 
+        // Compile every class in the project (root + e.g. Star), so a
+        // multi-class run maps each object to its own type.
         return new GeneratedQuizableRuntimeBuilder()
-                .build(snapshot.rootClass());
+                .build(snapshot);
     }
 
     public List<Quizable> materialize(
@@ -67,6 +108,8 @@ public class GenerationPipeline {
 
         List<WikidataDynamicObject> dynamicObjects =
                 extract(client, plan, depth, log);
+
+        enrichFromDBpedia(snapshot, dynamicObjects, log);
 
         GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
 

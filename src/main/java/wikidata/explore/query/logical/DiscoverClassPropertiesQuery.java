@@ -90,10 +90,10 @@ public class DiscoverClassPropertiesQuery
         String outgoingSparql =
                 SparqlQueries.discoverOutgoingProperties(qids, RESULT_LIMIT);
 
+        // Incoming = properties pointing AT sampled instances (e.g. a star's
+        // P59 -> this constellation), not at the class item itself.
         String incomingSparql =
-                SparqlQueries.discoverIncomingPropertiesToClassQid(
-                        classQid(),
-                        RESULT_LIMIT);
+                SparqlQueries.discoverIncomingProperties(qids, RESULT_LIMIT);
 
         context.message("\nDiscover: outgoing properties ("
                                 + qids.size()

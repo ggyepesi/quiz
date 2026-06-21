@@ -165,6 +165,13 @@ public final class QuizableValueRenderer {
 
 
         if (item instanceof Quizable q) {
+            // A member that is itself a top-level card navigates to it instead
+            // of expanding in place (see QuizablePanel.collapsibleReference).
+            if (renderContext != null && renderContext.isTopLevel(q)) {
+                return new QuizableReferenceRow(
+                        "", fieldPath, q, renderContext, config, q.getName(), false, true);
+            }
+
             boolean exp = renderContext != null && renderContext.isExpanded(q);
 
             QuizableReferenceRow chip =

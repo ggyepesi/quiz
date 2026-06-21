@@ -1,0 +1,126 @@
+{
+  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "version" : 1,
+  "name" : "",
+  "description" : "",
+  "root" : {
+    "@class" : "wikidata.explore.rule.RuleNode",
+    "name" : "Constellation",
+    "itemVar" : "constellation",
+    "sourceQid" : "Q8928",
+    "sourceLabel" : "constellation",
+    "propertyPid" : "P31",
+    "propertyLabel" : "instance of",
+    "direction" : "ITEM_TO_ROOT",
+    "membershipPid" : "",
+    "membershipQid" : "",
+    "labelConfig" : {
+      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "requireLabel" : true,
+      "language" : "en"
+    },
+    "includedFields" : [ "java.util.ArrayList", [ {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "abbreviation",
+      "propertyPid" : "P1813",
+      "propertyLabel" : "IAU abbreviation",
+      "kind" : "AUTO",
+      "optional" : true,
+      "collection" : false
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "area",
+      "propertyPid" : "P2046",
+      "propertyLabel" : "area (deg2)",
+      "kind" : "AUTO",
+      "optional" : true,
+      "collection" : false
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "chart",
+      "propertyPid" : "P18",
+      "propertyLabel" : "image",
+      "kind" : "MEDIA",
+      "optional" : true,
+      "collection" : false
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "hemisphere",
+      "propertyPid" : "P361",
+      "propertyLabel" : "part of",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : false
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "namedAfter",
+      "propertyPid" : "P138",
+      "propertyLabel" : "named after",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : false
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "sharesBorderWith",
+      "propertyPid" : "P47",
+      "propertyLabel" : "shares border with",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : true
+    } ] ],
+    "limit" : 200,
+    "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
+    "valueFilters" : [ "java.util.ArrayList", [ ] ],
+    "edges" : [ "java.util.ArrayList", [ {
+      "@class" : "wikidata.explore.rule.RuleEdge",
+      "fieldName" : "stars",
+      "childNode" : {
+        "@class" : "wikidata.explore.rule.RuleNode",
+        "name" : "Star",
+        "itemVar" : "stars",
+        "sourceQid" : "Q8928",
+        "sourceLabel" : "constellation",
+        "propertyPid" : "P59",
+        "propertyLabel" : "constellation",
+        "direction" : "ITEM_TO_ROOT",
+        "membershipPid" : "P31",
+        "membershipQid" : "Q523",
+        "labelConfig" : {
+          "@class" : "wikidata.explore.rule.RuleLabelConfig",
+          "requireLabel" : true,
+          "language" : "en"
+        },
+        "includedFields" : [ "java.util.ArrayList", [ {
+          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "fieldName" : "apparentMagnitude",
+          "propertyPid" : "P1215",
+          "propertyLabel" : "apparent magnitude",
+          "kind" : "AUTO",
+          "optional" : false,
+          "collection" : false
+        } ] ],
+        "limit" : 6,
+        "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
+        "valueFilters" : [ "java.util.ArrayList", [ {
+          "@class" : "wikidata.explore.filter.WikidataValueFilter",
+          "fieldName" : "apparentMagnitude",
+          "propertyPid" : "P1215",
+          "propertyLabel" : "apparent magnitude",
+          "operator" : "LE",
+          "numericValue" : 6.0,
+          "required" : true
+        } ] ],
+        "edges" : [ "java.util.ArrayList", [ ] ],
+        "requireEnglishLabel" : null,
+        "includeImage" : null
+      },
+      "collection" : true
+    } ] ],
+    "requireEnglishLabel" : null,
+    "includeImage" : null
+  }
+}

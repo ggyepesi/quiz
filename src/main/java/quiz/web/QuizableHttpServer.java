@@ -39,6 +39,7 @@ public class QuizableHttpServer {
     private final BlurredImageService blurService;
     private final java.util.concurrent.ExecutorService exec =
             Executors.newCachedThreadPool();
+    private final RequestLogFilter logFilter = new RequestLogFilter();
     private HttpServer server;
 
     public QuizableHttpServer(QuizableStore store) {
@@ -48,15 +49,15 @@ public class QuizableHttpServer {
 
     public void start(int port) throws IOException {
         server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.createContext("/api/types", this::handleTypes);
-        server.createContext("/api/quizables", this::handleList);
-        server.createContext("/api/quizable/", this::handleDetail);
-        server.createContext("/api/image/", this::handleImage);
-        server.createContext("/api/quiz", this::handleQuiz);
-        server.createContext("/api/pairing", this::handlePairing);
-        server.createContext("/api/fields", this::handleFields);
-        server.createContext("/api/groups", this::handleGroups);
-        server.createContext("/api/chart/", this::handleChart);
+        context("/api/types", this::handleTypes);
+        context("/api/quizables", this::handleList);
+        context("/api/quizable/", this::handleDetail);
+        context("/api/image/", this::handleImage);
+        context("/api/quiz", this::handleQuiz);
+        context("/api/pairing", this::handlePairing);
+        context("/api/fields", this::handleFields);
+        context("/api/groups", this::handleGroups);
+        context("/api/chart/", this::handleChart);
 
         // Model-builder (workbench) endpoints — read-only first slice, gated by
         // a password since they expose the generation model. Auth only on these
@@ -74,12 +75,19 @@ public class QuizableHttpServer {
         System.out.println("Quizable API on http://localhost:" + port + "/api/types");
     }
 
-    // Registers a context guarded by an authenticator (password-gated routes).
+    // Registers a context with request logging.
+    private void context(String path, com.sun.net.httpserver.HttpHandler handler) {
+        server.createContext(path, handler).getFilters().add(logFilter);
+    }
+
+    // Registers a context with request logging and an authenticator gate.
     private void secured(
             String path,
             com.sun.net.httpserver.HttpHandler handler,
             com.sun.net.httpserver.Authenticator auth) {
-        server.createContext(path, handler).setAuthenticator(auth);
+        com.sun.net.httpserver.HttpContext ctx = server.createContext(path, handler);
+        ctx.getFilters().add(logFilter);
+        ctx.setAuthenticator(auth);
     }
 
     public void stop() {
@@ -213,8 +221,18 @@ public class QuizableHttpServer {
     // Build the blurred image in the background, so it's cached by the time the
     // player reaches that question/pair.
     private void prewarm(QuizableView.Field f) {
-        if ("image".equals(f.kind()) && f.url() != null && f.url().startsWith("/api/chart/")) {
-            String url = f.url();
+        if ("image".equals(f.kind())) {
+            warm(f.url());
+        } else if ("images".equals(f.kind()) && f.values() != null) {
+            // A blurred member strip — warm each chart endpoint.
+            for (String u : f.values()) {
+                warm(u);
+            }
+        }
+    }
+
+    private void warm(String url) {
+        if (url != null && url.startsWith("/api/chart/")) {
             exec.submit(() -> blurService.prewarm(url));
         }
     }
@@ -265,6 +283,9 @@ public class QuizableHttpServer {
     // for the quiz config UI to offer prompt/answer choices.
     private void handleFields(HttpExchange ex) throws IOException {
         String type = queryParam(ex, "type");
+        // Optional dotted path: fields available UNDER a reference, e.g.
+        // path=namedAfter -> the fields of a constellation's named-after target.
+        String path = queryParam(ex, "path");
 
         try {
             Collection<Quizable> qs = store.list(type);
@@ -273,20 +294,29 @@ public class QuizableHttpServer {
                 return;
             }
 
+            boolean nested = path != null && !path.isBlank();
+
             LinkedHashMap<String, String> kinds = new LinkedHashMap<>();
             kinds.put("name", "text"); // display name — skipped in views, but quizzable
             int seen = 0;
             for (Quizable q : qs) {
-                for (QuizableView.Field field : QuizableJson.of(q).fields()) {
-                    kinds.putIfAbsent(field.name(), field.kind());
+                Quizable target = nested ? QuizableJson.resolvePath(q, path) : q;
+                if (target != null) {
+                    for (QuizableView.Field field : QuizableJson.of(target).fields()) {
+                        kinds.putIfAbsent(field.name(), field.kind());
+                    }
                 }
                 if (++seen >= 40) {
                     break;
                 }
             }
 
-            List<Map<String, String>> out = new ArrayList<>();
-            kinds.forEach((name, kind) -> out.add(Map.of("name", name, "kind", kind)));
+            List<Map<String, Object>> out = new ArrayList<>();
+            kinds.forEach((name, kind) -> out.add(Map.of(
+                    "name", name,
+                    "kind", kind,
+                    // ref/refs fields can be expanded to configure their own fields
+                    "expandable", "ref".equals(kind) || "refs".equals(kind))));
             writeJson(ex, 200, out);
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));

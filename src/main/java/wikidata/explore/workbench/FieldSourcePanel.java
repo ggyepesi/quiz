@@ -5,9 +5,14 @@ import wikidata.explore.rule.RuleNode;
 import wikidata.explore.WikidataProperty;
 import wikidata.explore.WikidataPropertyScore;
 import wikidata.explore.model.*;
+import wikidata.explore.query.logical.DiscoverDBpediaPropertiesQuery;
+import wikidata.explore.query.result.TableQueryResult;
+import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -17,6 +22,11 @@ public class FieldSourcePanel extends JPanel {
 
     private GeneratedFieldModel field;
     private GeneratedProjectModel projectModel;
+    private SwingQueryRunner queryRunner;
+
+    private final JButton discoverDbpediaButton = new JButton("Discover properties");
+    private final JButton examplesButton = new JButton("Examples…");
+    private final JLabel applyStatusLabel = new JLabel(" ");
 
     private Consumer<Void> afterChange = v -> {};
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
@@ -28,6 +38,14 @@ public class FieldSourcePanel extends JPanel {
     private final JLabel titleLabel = new JLabel("Field");
 
     private final JTextField fieldNameField = new JTextField(16);
+    private final JComboBox<wikidata.explore.model.EdgeMembershipMode> edgeMembershipBox =
+            new JComboBox<>(wikidata.explore.model.EdgeMembershipMode.values());
+
+    private static final String NO_SORT = "(none)";
+    private final JComboBox<String> sortFieldBox = new JComboBox<>();
+    private final JComboBox<String> sortDirBox =
+            new JComboBox<>(new String[]{"ascending", "descending"});
+
     private final JComboBox<FieldType> typeBox =
             new JComboBox<>(FieldType.values());
     private final JComboBox<String> objectTypeBox = new JComboBox<>();
@@ -38,6 +56,27 @@ public class FieldSourcePanel extends JPanel {
 
     private final JCheckBox requiredBox =
             new JCheckBox("Required (membership filter — drops entities without it)");
+
+    // Optional numeric filter on a numeric property (e.g. apparentMagnitude
+    // <= 3 to keep bright/notable stars). "—" = no filter.
+    private static final String NO_OP = "—";
+    private final JComboBox<String> filterOpBox =
+            new JComboBox<>(new String[]{NO_OP, "<=", "<", ">=", ">", "=", "!="});
+    private final JTextField filterValueField = new JTextField(6);
+
+    // Which way the property points. Only consumed for related-object edges:
+    // outgoing = this entity has the property (?this Pxx ?value); incoming =
+    // other entities point here (?value Pxx ?this), e.g. stars whose
+    // "constellation" (P59) is this constellation.
+    private final JComboBox<RuleDirection> directionBox =
+            new JComboBox<>(RuleDirection.values());
+
+    // How a related value is loaded: Auto decides; "Related objects"
+    // (CHILD_OBJECTS) fetches full sub-objects with their own fields (a
+    // sub-class, e.g. a constellation's stars with magnitude); "Related entity
+    // values" keeps just id+label references that resolve within the set.
+    private final JComboBox<FieldProductionKind> productionBox =
+            new JComboBox<>(FieldProductionKind.values());
 
     private final JTextField propertyPidField = new JTextField(10);
     private final JLabel propertyLabel = new JLabel("(not selected)");
@@ -59,6 +98,55 @@ public class FieldSourcePanel extends JPanel {
 
     public FieldSourcePanel() {
         super(new BorderLayout(4, 4));
+        directionBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(
+                    JList<?> list, Object value, int index,
+                    boolean sel, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, sel, focus);
+                if (value == RuleDirection.ROOT_TO_ITEM) {
+                    setText("outgoing — this → value");
+                } else if (value == RuleDirection.ITEM_TO_ROOT) {
+                    setText("incoming — value → this");
+                }
+                return this;
+            }
+        });
+        directionBox.setToolTipText(
+                "<html>Direction of the property — used for <b>related-object</b> "
+                + "(Entity list) fields.<br>Outgoing: this entity has the property. "
+                + "Incoming: other entities point here (e.g. stars whose "
+                + "constellation P59 = this).</html>");
+        productionBox.setToolTipText(
+                "<html>How a related value is loaded:<br>"
+                + "<b>Auto</b> — decide from type/shape.<br>"
+                + "<b>Related objects</b> — fetch full sub-objects with their own "
+                + "fields (a sub-class, e.g. a constellation's stars w/ magnitude).<br>"
+                + "<b>Related entity values</b> — keep just id+label references "
+                + "that resolve within the set.<br>"
+                + "<b>Simple property</b> — a scalar value.</html>");
+        shapeBox.setToolTipText(
+                "<html>How many values this field holds per entity:<br>"
+                + "<b>Single value</b> — at most one (e.g. area, magnitude, "
+                + "abbreviation).<br>"
+                + "<b>List</b> — possibly many (e.g. a constellation's "
+                + "sharesBorderWith / stars, a figure's children or siblings).<br>"
+                + "<b>Auto-detect</b> — decide by sampling: shows the \"Sample to "
+                + "set shape\" button, which checks real instances and picks "
+                + "List if any has more than one value, else Single.<br><br>"
+                + "If unsure, leave Auto-detect and click \"Sample to set "
+                + "shape\".</html>");
+        sampleShapeButton.setToolTipText(
+                "<html>Samples real instances for this property and sets the "
+                + "shape: <b>List</b> if any instance has more than one value, "
+                + "else <b>Single</b>. (Shown when Shape = Auto-detect.)</html>");
+        String filterTip =
+                "<html>Optional numeric filter on this property — keep only "
+                + "entities whose value satisfies it.<br>E.g. <b>apparentMagnitude "
+                + "&le; 3</b> keeps only bright/notable stars. \"—\" = no "
+                + "filter.</html>";
+        filterOpBox.setToolTipText(filterTip);
+        filterValueField.setToolTipText(filterTip);
         buildUi();
     }
 
@@ -72,6 +160,19 @@ public class FieldSourcePanel extends JPanel {
 
     public void setProjectModel(GeneratedProjectModel projectModel) {
         this.projectModel = projectModel;
+    }
+
+    public void setQueryRunner(SwingQueryRunner queryRunner) {
+        this.queryRunner = queryRunner;
+        queryRunner.wireButton(
+                discoverDbpediaButton,
+                this::acceptDbpediaProps,
+                this::buildDbpediaPropsQuery,
+                ex -> JOptionPane.showMessageDialog(
+                        this,
+                        "Discover DBpedia properties failed:\n" + ex.getMessage(),
+                        "Discover failed",
+                        JOptionPane.ERROR_MESSAGE));
     }
 
     public void onSampleRequested(Runnable r) {
@@ -103,6 +204,17 @@ public class FieldSourcePanel extends JPanel {
         renderModeBox.setSelectedItem(field.renderMode());
         requiredBox.setSelected(field.required());
         requiredBox.setEnabled(!field.isNameField());
+        edgeMembershipBox.setSelectedItem(field.edgeMembership());
+        refreshSortFieldBox(field.entityClassName());
+        sortFieldBox.setSelectedItem(
+                field.hasSort() ? field.sortFieldName() : NO_SORT);
+        sortDirBox.setSelectedItem(
+                field.sortDescending() ? "descending" : "ascending");
+        directionBox.setSelectedItem(m.direction());
+        productionBox.setSelectedItem(m.productionKind());
+        filterOpBox.setSelectedItem(symbolOf(field.filterOperator()));
+        filterValueField.setText(field.filterValue() == null
+                ? "" : trimDouble(field.filterValue()));
 
         propertyPidField.setText(m.propertyPid());
         propertyLabel.setText(m.displayProperty());
@@ -161,12 +273,39 @@ public class FieldSourcePanel extends JPanel {
         addRow(form, c, y++, "Object type:", objectTypeBox);
         addRow(form, c, y++, "Shape:", shapeBox);
         addRow(form, c, y++, "Render mode:", renderModeBox);
+        addRow(form, c, y++, "Load as:", productionBox);
+        addRow(form, c, y++, "Direction:", directionBox);
+        edgeMembershipBox.setToolTipText("<html>For a child-object field: whether "
+                + "to constrain the edge's values to the referenced class's "
+                + "membership (its P31).<br>INHERIT keeps it (e.g. only Q523 "
+                + "stars). NONE drops it — useful to include bright NAMED "
+                + "variable/double stars (typed as a subclass) via "
+                + "P59 + magnitude + label.</html>");
+        addRow(form, c, y++, "Edge membership:", edgeMembershipBox);
+
+        JPanel sortRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        sortRow.add(sortFieldBox);
+        sortRow.add(sortDirBox);
+        sortFieldBox.setToolTipText("<html>For a child-object field: sort the "
+                + "child entities by one of their fields before the per-parent "
+                + "limit, so you keep the top N.<br>e.g. sort stars by "
+                + "apparentMagnitude ascending = keep the brightest. Aggregated "
+                + "MIN (ascending) / MAX (descending) per entity.</html>");
+        addRow(form, c, y++, "Sort children by:", sortRow);
+
         addWide(form, c, y++, requiredBox);
+
+        JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        filterRow.add(filterOpBox);
+        filterRow.add(filterValueField);
+        addRow(form, c, y++, "Numeric filter:", filterRow);
 
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         propRow.add(propertyPidField);
         propRow.add(propertyLabel);
-        addRow(form, c, y++, "Wikidata property:", propRow);
+        discoverDbpediaButton.setVisible(false);
+        propRow.add(discoverDbpediaButton);
+        addRow(form, c, y++, "Property:", propRow);
 
         JPanel limitRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         limitRow.add(new JLabel("Limit per parent:"));
@@ -176,9 +315,16 @@ public class FieldSourcePanel extends JPanel {
         addWide(form, c, y++, recommendationLabel);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        examplesButton.setToolTipText(
+                "Worked, explained config recipes — apply one to this field.");
+        applyStatusLabel.setForeground(new Color(0x1a7f37));
+        buttons.add(applyStatusLabel);
+        buttons.add(examplesButton);
         buttons.add(sampleShapeButton);
         buttons.add(applyButton);
         addWide(form, c, y++, buttons);
+
+        examplesButton.addActionListener(e -> showExamplesDialog());
 
         add(scroll, BorderLayout.CENTER);
 
@@ -232,8 +378,12 @@ public class FieldSourcePanel extends JPanel {
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
         m.limit(((Number) limitSpinner.getValue()).intValue());
+        m.direction((RuleDirection) directionBox.getSelectedItem());
 
-        if (typeBox.getSelectedItem() == FieldType.AUTO) {
+        // autoAdjustFromProperty inspects a WIKIDATA property; skip it for a
+        // DBpedia infobox property (e.g. "numbermainstars" isn't a Pxx).
+        if (typeBox.getSelectedItem() == FieldType.AUTO
+                && m.sourceType() != FieldSourceType.DBPEDIA) {
             autoAdjustFromProperty(m.propertyPid(), m.propertyLabel());
         }
 
@@ -243,16 +393,39 @@ public class FieldSourcePanel extends JPanel {
         field.cardinality((FieldCardinality) shapeBox.getSelectedItem());
         field.renderMode((FieldRenderMode) renderModeBox.getSelectedItem());
         field.required(requiredBox.isSelected());
+        field.edgeMembership(
+                (wikidata.explore.model.EdgeMembershipMode)
+                        edgeMembershipBox.getSelectedItem());
+        Object sortSel = sortFieldBox.getSelectedItem();
+        field.sortFieldName(sortSel == null || NO_SORT.equals(sortSel)
+                ? "" : sortSel.toString());
+        field.sortDescending("descending".equals(sortDirBox.getSelectedItem()));
+        applyNumericFilter(field);
 
-        autoProduction(m);
+        // Honor an explicit "Load as" choice; only auto-derive when Auto.
+        m.productionKind((FieldProductionKind) productionBox.getSelectedItem());
+        if (m.productionKind() == FieldProductionKind.AUTO) {
+            autoProduction(m);
+        }
         propertyLabel.setText(m.displayProperty());
 
         titleLabel.setText("Field: " + field.name());
 
         updateRecommendation();
+        flashApplied(field.name());
 
         afterChange.accept(null);
         afterApplyField.accept(field);
+    }
+
+    // Brief "✓ Applied" confirmation so it's obvious the edit took (the change
+    // is otherwise only visible as a tree-label update).
+    private void flashApplied(String name) {
+        applyStatusLabel.setText("✓ Applied " + name);
+        javax.swing.Timer timer = new javax.swing.Timer(2500,
+                e -> applyStatusLabel.setText(" "));
+        timer.setRepeats(false);
+        timer.start();
     }
 
     private void autoAdjustFromProperty(String pid, String label) {
@@ -307,6 +480,195 @@ public class FieldSourcePanel extends JPanel {
         }
     }
 
+    // Worked, explained recipes: pick one to see its settings + the reason for
+    // each, then apply them all to the current field.
+    private void showExamplesDialog() {
+        if (field == null) {
+            return;
+        }
+
+        List<FieldRecipe> recipes = FieldRecipes.all();
+        JList<FieldRecipe> list = new JList<>(recipes.toArray(new FieldRecipe[0]));
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.setVisibleRowCount(recipes.size());
+
+        DefaultTableModel stepsModel = new DefaultTableModel(
+                new Object[]{"Setting", "Value", "Why"}, 0) {
+            @Override public boolean isCellEditable(int r, int col) { return false; }
+        };
+        JTable steps = new JTable(stepsModel);
+        steps.setRowHeight(22);
+        steps.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        steps.getColumnModel().getColumn(0).setPreferredWidth(200);
+        steps.getColumnModel().getColumn(1).setPreferredWidth(170);
+        steps.getColumnModel().getColumn(2).setPreferredWidth(380);
+
+        JLabel summary = new JLabel(" ");
+        summary.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+        JButton applyRecipe = new JButton("Apply to this field");
+        applyRecipe.setEnabled(false);
+
+        Runnable refresh = () -> {
+            FieldRecipe r = list.getSelectedValue();
+            stepsModel.setRowCount(0);
+            if (r == null) {
+                summary.setText(" ");
+                applyRecipe.setEnabled(false);
+                return;
+            }
+            summary.setText("<html><b>" + r.goal() + "</b> — " + r.summary() + "</html>");
+            for (FieldRecipe.Step s : r.steps()) {
+                stepsModel.addRow(new Object[]{s.setting(), s.value(), s.why()});
+            }
+            applyRecipe.setEnabled(true);
+        };
+        list.addListSelectionListener(e -> refresh.run());
+        if (!recipes.isEmpty()) {
+            list.setSelectedIndex(0);
+        }
+
+        JSplitPane split = new JSplitPane(
+                JSplitPane.HORIZONTAL_SPLIT,
+                new JScrollPane(list),
+                new JScrollPane(steps));
+        split.setDividerLocation(220);
+
+        JPanel center = new JPanel(new BorderLayout(0, 4));
+        center.add(summary, BorderLayout.NORTH);
+        center.add(split, BorderLayout.CENTER);
+
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Configuration examples",
+                Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setLayout(new BorderLayout(0, 6));
+        dialog.add(center, BorderLayout.CENTER);
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
+        JButton close = new JButton("Close");
+        south.add(applyRecipe);
+        south.add(close);
+        dialog.add(south, BorderLayout.SOUTH);
+
+        applyRecipe.addActionListener(ev -> {
+            FieldRecipe r = list.getSelectedValue();
+            if (r != null) {
+                r.applyTo(field, projectModel);
+                edit(field);                 // reflect the new settings
+                afterApplyField.accept(field);
+                afterChange.accept(null);
+                dialog.dispose();
+            }
+        });
+        close.addActionListener(ev -> dialog.dispose());
+
+        dialog.setPreferredSize(new Dimension(820, 380));
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    // The class that owns the field being edited (so we can sample its
+    // instances for DBpedia property discovery).
+    private GeneratedClassModel ownerClass() {
+        if (projectModel == null || field == null) {
+            return null;
+        }
+        for (GeneratedClassModel cls : projectModel.classes()) {
+            if (cls.fields().contains(field)) {
+                return cls;
+            }
+        }
+        return projectModel.rootClass();
+    }
+
+    private DiscoverDBpediaPropertiesQuery buildDbpediaPropsQuery() {
+        GeneratedClassModel owner = ownerClass();
+        String typeQid = owner == null || owner.instanceMapping() == null
+                ? "" : owner.instanceMapping().sourceQid();
+        if (typeQid == null || !typeQid.matches("Q\\d+")) {
+            JOptionPane.showMessageDialog(this,
+                    "Set the owning class's Wikidata type first.",
+                    "No class type", JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+        return new DiscoverDBpediaPropertiesQuery(typeQid, 8);
+    }
+
+    private void acceptDbpediaProps(TableQueryResult result) {
+        List<List<Object>> rows = result == null ? List.of() : result.rows();
+        SwingUtilities.invokeLater(() -> showDbpediaPropsDialog(rows));
+    }
+
+    // Each row: a DBpedia infobox property, how many sampled instances have it,
+    // and an example. Clicking "Use" fills the Property field.
+    private void showDbpediaPropsDialog(List<List<Object>> rows) {
+        if (rows.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No DBpedia infobox properties found for this class.",
+                    "Discover properties", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        String[] cols = {"Property", "Have", "Example"};
+        Object[][] data = new Object[rows.size()][3];
+        for (int i = 0; i < rows.size(); i++) {
+            List<Object> r = rows.get(i);
+            for (int j = 0; j < 3; j++) {
+                data[i][j] = j < r.size() ? r.get(j) : "";
+            }
+        }
+
+        DefaultTableModel model = new DefaultTableModel(data, cols) {
+            @Override public boolean isCellEditable(int r, int col) { return false; }
+        };
+        JTable table = new JTable(model);
+        table.setRowHeight(22);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        table.getColumnModel().getColumn(0).setPreferredWidth(220);
+        table.getColumnModel().getColumn(1).setPreferredWidth(50);
+        table.getColumnModel().getColumn(2).setPreferredWidth(320);
+
+        JScrollPane sp = new JScrollPane(table);
+        sp.setPreferredSize(new Dimension(660, 320));
+
+        JButton useButton = new JButton("Use selected property");
+        useButton.setEnabled(false);
+        table.getSelectionModel().addListSelectionListener(e ->
+                useButton.setEnabled(table.getSelectedRow() >= 0));
+
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "DBpedia infobox properties",
+                Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setLayout(new BorderLayout(0, 6));
+        dialog.add(new JLabel(
+                "  \"Have\" = how many sampled instances carry the property."),
+                BorderLayout.NORTH);
+        dialog.add(sp, BorderLayout.CENTER);
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
+        JButton closeButton = new JButton("Close");
+        south.add(useButton);
+        south.add(closeButton);
+        dialog.add(south, BorderLayout.SOUTH);
+
+        useButton.addActionListener(ev -> {
+            int row = table.getSelectedRow();
+            if (row >= 0) {
+                propertyPidField.setText(String.valueOf(table.getValueAt(row, 0)));
+                propertyLabel.setText("(DBpedia infobox property)");
+                dialog.dispose();
+            }
+        });
+        closeButton.addActionListener(ev -> dialog.dispose());
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
     private void updateRecommendation() {
         if (field == null) {
             recommendationLabel.setText(" ");
@@ -315,9 +677,20 @@ public class FieldSourcePanel extends JPanel {
         FieldSourceType sourceType =
                 (FieldSourceType) sourceTypeBox.getSelectedItem();
 
+        discoverDbpediaButton.setVisible(
+                sourceType == FieldSourceType.DBPEDIA && queryRunner != null);
+
         if (sourceType != null && !sourceType.implementedNow()) {
             recommendationLabel.setText(
                     "Source: " + sourceType + " | Not yet implemented");
+            return;
+        }
+
+        if (sourceType == FieldSourceType.DBPEDIA) {
+            recommendationLabel.setText(
+                    "DBpedia: 'Property' = the Wikipedia infobox property "
+                    + "(e.g. numbermainstars, brighteststarname). Joined by "
+                    + "owl:sameAs to the entity's Wikidata QID, after extraction.");
             return;
         }
 
@@ -394,10 +767,35 @@ public class FieldSourcePanel extends JPanel {
         return s;
     }
 
+    // Shown/selected when the field has no object type (e.g. a scalar field
+    // like name or apparent magnitude) — otherwise the box would default to
+    // the first class and misleadingly show "Constellation".
+    private static final String NO_TYPE = "(none)";
+
+    // Populates the "Sort children by" box with the child class's own
+    // (non-name) field names, so you can sort the edge's entities by e.g.
+    // apparentMagnitude. Only meaningful for a child-object field.
+    private void refreshSortFieldBox(String childClassName) {
+        sortFieldBox.removeAllItems();
+        sortFieldBox.addItem(NO_SORT);
+        if (projectModel != null && childClassName != null
+                && !childClassName.isBlank()) {
+            GeneratedClassModel cls = projectModel.findClass(childClassName);
+            if (cls != null) {
+                for (GeneratedFieldModel f : cls.fields()) {
+                    if (f != null && !f.isNameField()) {
+                        sortFieldBox.addItem(f.name());
+                    }
+                }
+            }
+        }
+    }
+
     private void refreshObjectTypeBox(String selectedClass) {
         updatingObjectTypeBox = true;
         try {
         objectTypeBox.removeAllItems();
+        objectTypeBox.addItem(NO_TYPE);
         if (projectModel != null) {
             for (GeneratedClassModel cls : projectModel.classes()) {
                 objectTypeBox.addItem(cls.className());
@@ -418,6 +816,8 @@ public class FieldSourcePanel extends JPanel {
                 objectTypeBox.insertItemAt(selectedClass, objectTypeBox.getItemCount() - 1);
             }
             objectTypeBox.setSelectedItem(selectedClass);
+        } else {
+            objectTypeBox.setSelectedItem(NO_TYPE);
         }
         } finally {
             updatingObjectTypeBox = false;
@@ -426,7 +826,7 @@ public class FieldSourcePanel extends JPanel {
 
     private String selectedEntityClass() {
         Object sel = objectTypeBox.getSelectedItem();
-        if (sel == null || NEW_CLASS_SENTINEL.equals(sel)) {
+        if (sel == null || NO_TYPE.equals(sel) || NEW_CLASS_SENTINEL.equals(sel)) {
             return "";
         }
         return (String) sel;
@@ -440,7 +840,50 @@ public class FieldSourcePanel extends JPanel {
         propertyLabel.setText("(not selected)");
         renderModeBox.setSelectedItem(FieldRenderMode.AUTO);
         requiredBox.setSelected(false);
+        directionBox.setSelectedItem(RuleDirection.ITEM_TO_ROOT);
+        productionBox.setSelectedItem(FieldProductionKind.AUTO);
+        filterOpBox.setSelectedItem(NO_OP);
+        filterValueField.setText("");
         recommendationLabel.setText(" ");
+    }
+
+    // Reads the operator + value controls onto the field. Invalid/empty = no
+    // filter.
+    private void applyNumericFilter(GeneratedFieldModel field) {
+        wikidata.explore.filter.WikidataValueFilterOperator op =
+                operatorOf((String) filterOpBox.getSelectedItem());
+        Double value = null;
+        String txt = filterValueField.getText().trim();
+        if (!txt.isEmpty()) {
+            try {
+                value = Double.parseDouble(txt);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (op == null || value == null) {
+            field.filterOperator(null);
+            field.filterValue(null);
+        } else {
+            field.filterOperator(op);
+            field.filterValue(value);
+        }
+    }
+
+    private static wikidata.explore.filter.WikidataValueFilterOperator operatorOf(String symbol) {
+        if (symbol == null) return null;
+        for (wikidata.explore.filter.WikidataValueFilterOperator o
+                : wikidata.explore.filter.WikidataValueFilterOperator.values()) {
+            if (o.sparql().equals(symbol)) return o;
+        }
+        return null;
+    }
+
+    private static String symbolOf(wikidata.explore.filter.WikidataValueFilterOperator op) {
+        return op == null ? NO_OP : op.sparql();
+    }
+
+    private static String trimDouble(double d) {
+        return d == Math.rint(d) ? Long.toString((long) d) : Double.toString(d);
     }
 
     private static void addRow(

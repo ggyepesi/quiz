@@ -49,8 +49,280 @@ public final class QuizableJson {
         return MAPPER;
     }
 
+    /** Render-model for a (possibly dotted) field path of {@code owner}, or
+     *  null. A path like {@code namedAfter.area} walks the reference(s) then
+     *  reads the leaf field — so quizzes can use nested fields. */
+    public static QuizableView.Field fieldOf(Quizable owner, String path) {
+        int dot = path == null ? -1 : path.indexOf('.');
+        if (dot < 0) {
+            return fieldOfSingle(owner, path);
+        }
+        String seg = path.substring(0, dot);
+        String rest = path.substring(dot + 1);
+
+        // Fan a collection segment out to ALL members so e.g.
+        // sharesBorderWith.chart yields every neighbour's chart (an image
+        // strip), not just the first.
+        List<Quizable> targets = stepIntoAll(owner, seg);
+        if (targets.isEmpty()) {
+            return null;
+        }
+        if (targets.size() == 1) {
+            return fieldOf(targets.get(0), rest);
+        }
+
+        List<QuizableView.Field> leaves = new ArrayList<>();
+        for (Quizable t : targets) {
+            QuizableView.Field f = fieldOf(t, rest);
+            if (f != null) {
+                leaves.add(f);
+            }
+        }
+        return combineLeaves(lastSegment(path), leaves);
+    }
+
+    private static String lastSegment(String path) {
+        int i = path.lastIndexOf('.');
+        return i < 0 ? path : path.substring(i + 1);
+    }
+
+    // Combines the same leaf field gathered from several collection members:
+    // images become one "images" strip; anything else becomes a "list" of each
+    // member's value (so e.g. sharesBorderWith.name lists every neighbour name).
+    private static QuizableView.Field combineLeaves(
+            String name, List<QuizableView.Field> leaves) {
+        if (leaves.isEmpty()) {
+            return null;
+        }
+        boolean allImages = leaves.stream().allMatch(f -> "image".equals(f.kind()));
+        if (allImages) {
+            List<String> urls = new ArrayList<>();
+            for (QuizableView.Field f : leaves) {
+                if (f.url() != null) {
+                    urls.add(f.url());
+                }
+            }
+            return urls.isEmpty() ? null : QuizableView.Field.images(name, urls);
+        }
+        List<String> vals = new ArrayList<>();
+        for (QuizableView.Field f : leaves) {
+            String s = leafText(f);
+            if (s != null && !s.isBlank()) {
+                vals.add(s);
+            }
+        }
+        return vals.isEmpty() ? null : QuizableView.Field.list(name, vals);
+    }
+
+    private static String leafText(QuizableView.Field f) {
+        if (f.value() != null) {
+            return f.value();
+        }
+        if (f.ref() != null) {
+            return f.ref().name();
+        }
+        if (f.values() != null && !f.values().isEmpty()) {
+            return String.join(", ", f.values());
+        }
+        if (f.refs() != null && !f.refs().isEmpty()) {
+            List<String> ns = new ArrayList<>();
+            for (QuizableView.Ref r : f.refs()) {
+                ns.add(r.name());
+            }
+            return String.join(", ", ns);
+        }
+        return f.label();
+    }
+
+    /** The individual member values of a (possibly dotted) field path: a
+     *  collection/map field yields one entry per member; a single field yields
+     *  one entry. Lets a quiz ask about ONE member of a set (e.g. one of a
+     *  constellation's bordering constellations) instead of the whole joined
+     *  list. */
+    public static List<String> stringValues(Quizable owner, String path) {
+        int dot = path == null ? -1 : path.indexOf('.');
+        if (dot < 0) {
+            return stringValuesSingle(owner, path);
+        }
+        Quizable target = stepInto(owner, path.substring(0, dot));
+        return target == null ? List.of() : stringValues(target, path.substring(dot + 1));
+    }
+
+    private static List<String> stringValuesSingle(Quizable owner, String fieldName) {
+        if ("name".equals(fieldName)) {
+            String dn = owner.getDisplayName();
+            return dn == null || dn.isBlank() ? List.of() : List.of(dn);
+        }
+        List<String> out = new ArrayList<>();
+        collectStrings(rawFieldValue(owner, fieldName), out);
+        return out;
+    }
+
+    private static void collectStrings(Object v, List<String> out) {
+        if (v == null) {
+            return;
+        }
+        if (v instanceof Collection<?> c) {
+            for (Object o : c) {
+                collectStrings(o, out);
+            }
+            return;
+        }
+        if (v instanceof Map<?, ?> m) {
+            for (Object o : m.values()) {
+                collectStrings(o, out);
+            }
+            return;
+        }
+        String s = asString(v);
+        if (s != null && !s.isBlank()) {
+            out.add(s);
+        }
+    }
+
+    /** A plain string value of a (possibly dotted) field path. */
+    public static String stringValue(Quizable owner, String path) {
+        int dot = path == null ? -1 : path.indexOf('.');
+        if (dot < 0) {
+            return stringValueSingle(owner, path);
+        }
+        Quizable target = stepInto(owner, path.substring(0, dot));
+        return target == null ? null : stringValue(target, path.substring(dot + 1));
+    }
+
+    /** An image strip for a collection image path (e.g. sharesBorderWith.chart)
+     *  where each member's image is the name-BLURRING chart endpoint for that
+     *  member — used when the member name isn't being revealed, so the chart
+     *  doesn't give the answer away. Null if no member has such an image. */
+    public static QuizableView.Field blurredImageStrip(Quizable owner, String path) {
+        String leaf = lastSegment(path);
+        String parent = path.contains(".")
+                ? path.substring(0, path.lastIndexOf('.'))
+                : "";
+        List<String> urls = new ArrayList<>();
+        for (Quizable m : resolveAll(owner, parent)) {
+            QuizableView.Field lf = fieldOf(m, leaf);
+            if (lf != null && "image".equals(lf.kind())) {
+                urls.add(BlurredImageService.blurUrl(m.typeName(), m.getIdentifier(), leaf));
+            }
+        }
+        if (urls.isEmpty()) {
+            return null;
+        }
+        return urls.size() == 1
+                ? QuizableView.Field.image(leaf, urls.get(0))
+                : QuizableView.Field.images(leaf, urls);
+    }
+
+    // All objects reached by walking a dotted path, fanning out at every
+    // collection segment (so the parent of a strip yields all members).
+    private static List<Quizable> resolveAll(Quizable owner, String path) {
+        List<Quizable> cur = new ArrayList<>();
+        cur.add(owner);
+        if (path == null || path.isBlank()) {
+            return cur;
+        }
+        for (String seg : path.split("\\.")) {
+            List<Quizable> next = new ArrayList<>();
+            for (Quizable o : cur) {
+                next.addAll(stepIntoAll(o, seg));
+            }
+            cur = next;
+            if (cur.isEmpty()) {
+                break;
+            }
+        }
+        return cur;
+    }
+
+    /** The object reached by walking a dotted path (every segment a reference),
+     *  or {@code owner} for an empty path, or null if a step has no target. */
+    public static Quizable resolvePath(Quizable owner, String path) {
+        if (path == null || path.isBlank()) {
+            return owner;
+        }
+        Quizable cur = owner;
+        for (String seg : path.split("\\.")) {
+            if (cur == null) {
+                return null;
+            }
+            cur = stepInto(cur, seg);
+        }
+        return cur;
+    }
+
+    // Resolves one path segment to a referenced Quizable (the first one, if the
+    // field is a collection/map of references).
+    private static Quizable stepInto(Quizable owner, String segment) {
+        if (owner == null || segment == null) {
+            return null;
+        }
+        Object v = rawFieldValue(owner, segment);
+        if (v instanceof Quizable q) {
+            return q;
+        }
+        if (v instanceof Collection<?> c) {
+            for (Object o : c) {
+                if (o instanceof Quizable q) {
+                    return q;
+                }
+            }
+        }
+        if (v instanceof Map<?, ?> m) {
+            for (Object o : m.values()) {
+                if (o instanceof Quizable q) {
+                    return q;
+                }
+            }
+        }
+        return null;
+    }
+
+    // All referenced Quizables for a path segment (every member of a
+    // collection/map, or the single referenced object).
+    private static List<Quizable> stepIntoAll(Quizable owner, String segment) {
+        if (owner == null || segment == null) {
+            return List.of();
+        }
+        Object v = rawFieldValue(owner, segment);
+        List<Quizable> out = new ArrayList<>();
+        if (v instanceof Quizable q) {
+            out.add(q);
+        } else if (v instanceof Collection<?> c) {
+            for (Object o : c) {
+                if (o instanceof Quizable q) {
+                    out.add(q);
+                }
+            }
+        } else if (v instanceof Map<?, ?> m) {
+            for (Object o : m.values()) {
+                if (o instanceof Quizable q) {
+                    out.add(q);
+                }
+            }
+        }
+        return out;
+    }
+
+    private static Object rawFieldValue(Quizable owner, String name) {
+        if (owner instanceof DynamicFields dyn
+                && dyn.dynamicFieldValues().containsKey(name)) {
+            return dyn.dynamicFieldValues().get(name);
+        }
+        Field f = QuizableAdapter.getField(owner.getClass(), name);
+        if (f == null) {
+            return null;
+        }
+        try {
+            f.setAccessible(true);
+            return f.get(owner);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /** Render-model for a single named field of {@code owner}, or null. */
-    public static QuizableView.Field fieldOf(Quizable owner, String fieldName) {
+    private static QuizableView.Field fieldOfSingle(Quizable owner, String fieldName) {
         // "name" is the display name (skipped as a normal field, but usable
         // as a quiz prompt/answer).
         if ("name".equals(fieldName)) {
@@ -96,7 +368,7 @@ public final class QuizableJson {
      * Quizable -> display name, collection/map -> joined items, else the
      * value's string. Null if empty.
      */
-    public static String stringValue(Quizable owner, String fieldName) {
+    private static String stringValueSingle(Quizable owner, String fieldName) {
         if ("name".equals(fieldName)) {
             String dn = owner.getDisplayName();
             return dn == null || dn.isBlank() ? null : dn;

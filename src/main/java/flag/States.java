@@ -67,7 +67,11 @@ public class States implements QuizableViews {
 
         DownloadFlagGroups.readCapitalsAndContinents(
                 "capitals.txt", "\t", true, root, states);
-        readImagesFromFile("flags/curatedflagsandarms.txt");
+        // Default: the full curated set. Override with a smaller file (e.g.
+        // flags/curatedtest.txt) for a fast dev/test load that fetches few
+        // images: -Dstates.imageFile=flags/curatedtest.txt
+        readImagesFromFile(System.getProperty("states.imageFile",
+                "flags/curatedflagsandarms.txt"));
         DownloadShapes.readShapes(states, root);
         cleanFlagOfs();
         if (downloadSvgs) return;

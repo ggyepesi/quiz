@@ -6,12 +6,14 @@ import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.query.logical.ClassSearchQuery;
+import wikidata.explore.query.logical.DiscoverSubtypesQuery;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +35,10 @@ public class ClassSourcePanel extends JPanel {
     private final JTextField classNameField = new JTextField(18);
     private final JTextField typeQidField = new JTextField(10);
     private final JLabel typeLabel = new JLabel("(not selected)");
+    private final JTextField additionalTypesField = new JTextField(14);
+    private final JButton discoverTypesButton = new JButton("Discover subtypes");
+    private final JCheckBox notableOnlyBox =
+            new JCheckBox("Notable only (require Wikipedia article)");
 
     private final JTextField searchTextField = new JTextField(18);
     private final JButton searchTypeButton = new JButton("Search");
@@ -100,9 +106,11 @@ public class ClassSourcePanel extends JPanel {
 
         typeQidField.setText(m.sourceQid());
         typeLabel.setText(m.displaySource());
+        additionalTypesField.setText(String.join(" ", m.additionalTypeQids()));
 
         limitSpinner.setValue(Math.max(1, m.limit()));
         requireLabelBox.setSelected(m.requireLabel());
+        notableOnlyBox.setSelected(m.requireSitelink());
         langField.setText(m.labelLanguage());
 
         updateSummary();
@@ -162,6 +170,16 @@ public class ClassSourcePanel extends JPanel {
         typeRow.add(typeLabel);
         addRow(form, c, y++, "Wikidata type/class:", typeRow);
 
+        additionalTypesField.setToolTipText("<html>Extra type QIDs (space-separated) "
+                + "for membership: an item counts if it is instance-of the type "
+                + "above OR any of these.<br>e.g. add Q4193029 (zodiacal "
+                + "constellation) so Aries &amp; Cancer — typed only as the "
+                + "subclass — are included. Avoids a slow/over-broad P279* path.</html>");
+        JPanel addTypesRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        addTypesRow.add(additionalTypesField);
+        addTypesRow.add(discoverTypesButton);
+        addRow(form, c, y++, "Also include types:", addTypesRow);
+
         JLabel relation =
                 new JLabel("Relation: item is instance of selected type (P31)");
         addWide(form, c, y++, relation);
@@ -173,6 +191,14 @@ public class ClassSourcePanel extends JPanel {
         options.add(new JLabel("lang:"));
         options.add(langField);
         addWide(form, c, y++, options);
+
+        notableOnlyBox.setToolTipText("<html>Require an English Wikipedia article "
+                + "(a sitelink). A selective entry that bounds a huge class "
+                + "(e.g. star Q523, ~3M) to its ~2886 NOTABLE members, so the "
+                + "query completes and returns famous entities instead of timing "
+                + "out. Combine with a magnitude filter + sort for the brightest "
+                + "famous ones.</html>");
+        addWide(form, c, y++, notableOnlyBox);
 
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         searchRow.add(new JLabel("Search:"));
@@ -221,6 +247,121 @@ public class ClassSourcePanel extends JPanel {
                         "Search failed:\n" + ex.getMessage(),
                         "Search failed",
                         JOptionPane.ERROR_MESSAGE));
+
+        queryRunner.wireButton(
+                discoverTypesButton,
+                this::acceptSubtypeResult,
+                this::buildSubtypeQuery,
+                ex -> JOptionPane.showMessageDialog(
+                        this,
+                        "Discover subtypes failed:\n" + ex.getMessage(),
+                        "Discover failed",
+                        JOptionPane.ERROR_MESSAGE));
+    }
+
+    private DiscoverSubtypesQuery buildSubtypeQuery() {
+        if (clazz == null) {
+            return null;
+        }
+        String base = clazz.instanceMapping().sourceQid();
+        if (base == null || base.isBlank()) {
+            JOptionPane.showMessageDialog(this,
+                    "Set the Wikidata type first, then discover its subtypes.",
+                    "No type selected", JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+        log.accept("Discover subtypes of " + base + "\n");
+        return new DiscoverSubtypesQuery(base, 40);
+    }
+
+    private void acceptSubtypeResult(TableQueryResult result) {
+        List<List<Object>> rows =
+                result == null ? List.of() : result.rows();
+        SwingUtilities.invokeLater(() -> showSubtypeDialog(rows));
+    }
+
+    // Each row: how many NEW members the subtype adds + examples; clicking
+    // "Add" appends its QID to the multi-QID membership field.
+    private void showSubtypeDialog(List<List<Object>> rows) {
+        if (rows.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No subtypes found for this type.",
+                    "Discover subtypes", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        String[] cols = {"Subtype", "Adds", "Examples", "QID"};
+        Object[][] data = new Object[rows.size()][4];
+        for (int i = 0; i < rows.size(); i++) {
+            List<Object> r = rows.get(i);
+            for (int j = 0; j < 4; j++) {
+                data[i][j] = j < r.size() ? r.get(j) : "";
+            }
+        }
+
+        DefaultTableModel model = new DefaultTableModel(data, cols) {
+            @Override public boolean isCellEditable(int r, int col) { return false; }
+        };
+        JTable table = new JTable(model);
+        table.setRowHeight(22);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        table.getColumnModel().getColumn(0).setPreferredWidth(160);
+        table.getColumnModel().getColumn(1).setPreferredWidth(50);
+        table.getColumnModel().getColumn(2).setPreferredWidth(360);
+        table.getColumnModel().getColumn(3).setPreferredWidth(80);
+
+        JScrollPane sp = new JScrollPane(table);
+        sp.setPreferredSize(new Dimension(720, 300));
+
+        JButton addButton = new JButton("Add selected to membership");
+        addButton.setEnabled(false);
+        table.getSelectionModel().addListSelectionListener(e ->
+                addButton.setEnabled(table.getSelectedRow() >= 0));
+
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Subtypes of " + clazz.instanceMapping().displaySource(),
+                Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setLayout(new BorderLayout(0, 6));
+        dialog.add(new JLabel(
+                "  \"Adds\" = entities not already members. Add the relevant subtypes."),
+                BorderLayout.NORTH);
+        dialog.add(sp, BorderLayout.CENTER);
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
+        JButton closeButton = new JButton("Close");
+        south.add(addButton);
+        south.add(closeButton);
+        dialog.add(south, BorderLayout.SOUTH);
+
+        addButton.addActionListener(ev -> {
+            int row = table.getSelectedRow();
+            if (row >= 0) {
+                addAdditionalType(String.valueOf(
+                        table.getValueAt(row, 3)));
+            }
+        });
+        closeButton.addActionListener(ev -> dialog.dispose());
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void addAdditionalType(String rawQid) {
+        String qid = RuleNode.cleanQid(rawQid);
+        if (!qid.matches("Q\\d+")) {
+            return;
+        }
+        java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+        for (String tok : additionalTypesField.getText().trim().split("[,;\\s]+")) {
+            String q = RuleNode.cleanQid(tok);
+            if (q.matches("Q\\d+")) set.add(q);
+        }
+        set.add(qid);
+        additionalTypesField.setText(String.join(" ", set));
+        apply();
+        log.accept("Added membership type " + qid + "\n");
     }
 
     private ClassSearchQuery buildSearchQuery() {
@@ -296,7 +437,9 @@ public class ClassSourcePanel extends JPanel {
     }
 
     private void updateSearchButtonState() {
-        searchTypeButton.setEnabled(clazz != null && queryRunner != null);
+        boolean ready = clazz != null && queryRunner != null;
+        searchTypeButton.setEnabled(ready);
+        discoverTypesButton.setEnabled(ready);
     }
 
     private void useSelectedSearchRow() {
@@ -367,11 +510,17 @@ public class ClassSourcePanel extends JPanel {
 
         FieldSourceMapping m = clazz.instanceMapping();
         m.sourceQid(typeQidField.getText());
+        m.additionalTypeQids().clear();
+        for (String tok : additionalTypesField.getText().trim().split("[,;\\s]+")) {
+            String qid = RuleNode.cleanQid(tok);
+            if (qid.matches("Q\\d+")) m.additionalTypeQids().add(qid);
+        }
         m.propertyPid("P31");
         m.propertyLabel("instance of");
         m.direction(RuleDirection.ITEM_TO_ROOT);
         m.limit(((Number) limitSpinner.getValue()).intValue());
         m.requireLabel(requireLabelBox.isSelected());
+        m.requireSitelink(notableOnlyBox.isSelected());
         m.labelLanguage(langField.getText());
 
         titleLabel.setText("Class: " + clazz.className());

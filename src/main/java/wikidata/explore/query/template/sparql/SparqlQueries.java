@@ -93,6 +93,66 @@ public final class SparqlQueries {
                     LIMIT 1
                     """);
 
+    /**
+     * Direct subclasses (P279) of a membership type, each with the count of
+     * instances that are NOT already members of the base type — i.e. how many
+     * NEW entities adding that subclass would pull in — plus a few examples.
+     * Powers the "Discover subtypes" helper so a user can see, e.g., that
+     * "zodiacal constellation" adds 2 (Cancer, Aries) while "Chinese
+     * constellation" adds 130, before choosing what to include.
+     */
+    public static String discoverMembershipSubtypes(
+            String baseQid,
+            int limit) {
+
+        String base = WikidataQueryBuilder.cleanQid(baseQid);
+        int n = Math.max(1, limit);
+
+        return """
+               SELECT ?type ?typeLabel (COUNT(DISTINCT ?c) AS ?nNew)
+                      (GROUP_CONCAT(DISTINCT ?cl; SEPARATOR=", ") AS ?examples)
+               WHERE {
+                 ?type wdt:P279 wd:%s .
+                 ?c wdt:P31 ?type .
+                 FILTER NOT EXISTS { ?c wdt:P31 wd:%s }
+                 ?c rdfs:label ?cl . FILTER(LANG(?cl) = "en")
+                 ?type rdfs:label ?typeLabel . FILTER(LANG(?typeLabel) = "en")
+               }
+               GROUP BY ?type ?typeLabel
+               ORDER BY DESC(?nNew)
+               LIMIT %d
+               """.formatted(base, base, n);
+    }
+
+    /**
+     * DBpedia infobox properties present on a sample of a class's instances
+     * (joined by owl:sameAs to their Wikidata QIDs), each with how many of the
+     * sampled instances have it + an example value. Powers the "Discover
+     * properties" helper for DBpedia-sourced fields. Runs against the DBPEDIA
+     * endpoint.
+     */
+    public static String discoverDBpediaProperties(Collection<String> qids) {
+        StringBuilder values = new StringBuilder();
+        for (String q : qids) {
+            values.append("<http://www.wikidata.org/entity/")
+                  .append(WikidataQueryBuilder.cleanQid(q))
+                  .append("> ");
+        }
+        return """
+               PREFIX dbp: <http://dbpedia.org/property/>
+               PREFIX owl: <http://www.w3.org/2002/07/owl#>
+               SELECT ?p (COUNT(DISTINCT ?dbr) AS ?n) (SAMPLE(?o) AS ?ex)
+               WHERE {
+                 VALUES ?wd { %s }
+                 ?dbr owl:sameAs ?wd .
+                 ?dbr ?p ?o .
+                 FILTER(STRSTARTS(STR(?p), "http://dbpedia.org/property/"))
+               }
+               GROUP BY ?p
+               ORDER BY DESC(?n)
+               """.formatted(values.toString().trim());
+    }
+
     public static String sampleInstancesByP31(
             String classQid,
             int limit) {
@@ -169,6 +229,49 @@ public final class SparqlQueries {
                 "classQid", WikidataQueryBuilder.cleanQid(classQid),
                 "innerLimit", 40,
                 "limit", n));
+    }
+
+    /**
+     * Properties pointing AT a sample of the class's instances — the mirror of
+     * {@link #discoverOutgoingProperties}. (The class-QID variant above wrongly
+     * looked for properties pointing at the class item itself, so an incoming
+     * edge like a star's P59 "constellation" was never found.)
+     */
+    public static String discoverIncomingProperties(
+            Collection<String> qids,
+            int limit) {
+
+        int n = Math.max(1, limit);
+
+        return new WikidataQueryBuilder()
+                .distinct(false)
+                .select("prop", "propLabel", "type", "count", "example")
+                .rawWhere("""
+                        {
+                          SELECT ?propUri
+                                 (COUNT(DISTINCT ?subject) AS ?count)
+                                 (SAMPLE(?subject) AS ?example)
+                          WHERE {
+                        """)
+                .valuesQids("item", qids)
+                .rawWhere("""
+                            ?subject ?propUri ?item .
+                            FILTER(STRSTARTS(
+                              STR(?propUri),
+                              "http://www.wikidata.org/prop/direct/"
+                            ))
+                          }
+                          GROUP BY ?propUri
+                          ORDER BY DESC(?count)
+                          LIMIT %d
+                        }
+                        """.formatted(n))
+                .rawWhere("?prop wikibase:directClaim ?propUri .")
+                .optional("?prop wikibase:propertyType ?type .")
+                .label("prop")
+                .orderByRaw("DESC(?count)")
+                .limit(n)
+                .build();
     }
 
     public static String outgoingTriples(

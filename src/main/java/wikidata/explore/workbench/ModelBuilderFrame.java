@@ -3,7 +3,6 @@ package wikidata.explore.workbench;
 import aux.SplitPaneUtils;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
-import wikidata.explore.extract.RuleTreeExtractor;
 import aux.Constants;
 import quiz.Quizable;
 import wikidata.explore.codegen.GeneratedQuizableRuntime;
@@ -12,6 +11,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.GenerationRun;
+import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.query.core.QueryContext;
@@ -22,6 +22,7 @@ import wikidata.explore.query.swing.WorkflowLogWindow;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleTreeConfig;
+import wikidata.explore.rule.RuleTreeExplainer;
 import wikidata.explore.rule.RuleTreeSerializer;
 
 import javax.swing.*;
@@ -50,14 +51,18 @@ public class ModelBuilderFrame extends JFrame {
     private final QueryObjectResultPanel instancesPanel =
             new QueryObjectResultPanel();
 
+    // Generated instances live in their own window (like the query logs), so
+    // the main window is all about configuration.
+    private JFrame instancesWindow;
+
     private final JButton generateButton =
             new JButton("Generate instances");
 
     private final JButton cancelButton =
             new JButton("Cancel");
 
-    private final JButton previewButton =
-            new JButton("Preview internal SPARQL");
+    private final JButton showInstancesButton =
+            new JButton("Show instances");
 
     private final JButton showGeneratedSourceButton =
             new JButton("Show generated source");
@@ -68,14 +73,20 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton showQueryLogsButton =
             new JButton("Show query logs");
 
+    private final JButton loadModelButton =
+            new JButton("Load model");
+
     private final JButton loadSavedButton =
             new JButton("Load saved");
 
     private final JButton saveEverythingButton =
             new JButton("Save everything");
 
+    // Default 1, not 0: depth 0 silently drops every child-object edge (e.g. a
+    // constellation's stars), which is a recurring "why are there no stars?"
+    // trap. One level of children is the common intent; deeper is opt-in.
     private final JSpinner depthSpinner =
-            new JSpinner(new SpinnerNumberModel(0, 0, 5, 1));
+            new JSpinner(new SpinnerNumberModel(1, 0, 5, 1));
 
     private final WorkflowLogWindow logWindow =
             new WorkflowLogWindow();
@@ -84,6 +95,10 @@ public class ModelBuilderFrame extends JFrame {
         super("Wikidata Quizable Model Builder");
 
         this.client = client;
+
+        // Continue from the saved model (so edits like sharesBorderWith / the
+        // Star class persist across restarts) instead of the hard-coded demo.
+        loadSavedModelIfPresent();
 
         buildUi();
         wireActions();
@@ -101,13 +116,23 @@ public class ModelBuilderFrame extends JFrame {
 
         tb.add(generateButton);
         tb.add(cancelButton);
-        tb.add(previewButton);
+        tb.add(showInstancesButton);
         tb.add(showGeneratedSourceButton);
         tb.add(showRuleTreeButton);
         tb.add(showQueryLogsButton);
+        tb.add(loadModelButton);
         tb.add(loadSavedButton);
         tb.add(saveEverythingButton);
-        tb.add(new JLabel("Depth:"));
+        JLabel depthLabel = new JLabel("Depth:");
+        String depthTip = "<html>How many levels of <b>child-object</b> reference "
+                + "edges to follow when generating.<br>"
+                + "0 = just the root class's instances (with scalar and inlined "
+                + "list fields).<br>"
+                + "1+ = also fetch the referenced objects' own fields, "
+                + "recursively, that many levels deep.</html>";
+        depthLabel.setToolTipText(depthTip);
+        depthSpinner.setToolTipText(depthTip);
+        tb.add(depthLabel);
         tb.add(depthSpinner);
 
         cancelButton.setEnabled(false);
@@ -116,27 +141,52 @@ public class ModelBuilderFrame extends JFrame {
         // would be clipped. Keep them reachable via a horizontal scrollbar.
         add(aux.ScrollPaneUtils.horizontalOnly(tb), BorderLayout.NORTH);
 
-        JSplitPane leftMiddle =
+        // The main window is all configuration now: class model + the
+        // production-source editor. Generated instances live in their own
+        // window (Show instances), like the query logs — so this stays focused
+        // on building the model.
+        JSplitPane main =
                 SplitPaneUtils.horizontal(
                         titled("Class model", classModelPanel),
                         titled("Production source", sourceWorkbench),
-                        0.2);
+                        0.28);
 
-        JSplitPane main =
-                SplitPaneUtils.horizontal(
-                        leftMiddle,
-                        titled("Generated instances", instancesPanel),
-                        0.6);
-
-        leftMiddle.setResizeWeight(0.2);
-        main.setResizeWeight(0.60);
+        main.setResizeWeight(0.28);
 
         add(main, BorderLayout.CENTER);
 
-        SwingUtilities.invokeLater(() -> {
-            main.setDividerLocation(0.60);
-            leftMiddle.setDividerLocation(0.2);
-        });
+        SwingUtilities.invokeLater(() -> main.setDividerLocation(0.28));
+    }
+
+    // Lazily-created window hosting the generated-instances result panel.
+    private void showInstancesWindow() {
+        if (instancesWindow == null) {
+            instancesWindow = new JFrame("Generated instances");
+            instancesWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            instancesWindow.setLayout(new BorderLayout());
+            instancesWindow.add(instancesPanel, BorderLayout.CENTER);
+            instancesWindow.setSize(1100, 850);
+            instancesWindow.setLocationByPlatform(true);
+        }
+        // Stamp the generated class (+ count) on the title — a single-class run
+        // renders as a plain search view with no type label, so without this
+        // there's no on-screen indication of which class you're looking at.
+        instancesWindow.setTitle(instancesTitle());
+        instancesWindow.setVisible(true);
+        instancesWindow.toFront();
+    }
+
+    private String instancesTitle() {
+        if (lastRun == null
+                || lastRun.modelSnapshot() == null
+                || lastRun.modelSnapshot().rootClass() == null) {
+            return "Generated instances";
+        }
+        String cls = lastRun.modelSnapshot().rootClass().className();
+        if (cls == null || cls.isBlank()) {
+            return "Generated instances";
+        }
+        return "Generated instances — " + cls + "  (" + lastRun.size() + ")";
     }
 
     private void wireActions() {
@@ -149,7 +199,6 @@ public class ModelBuilderFrame extends JFrame {
                         logWindow);
 
         queryRunner.registerCancelButton(cancelButton);
-        queryRunner.registerRunButton(previewButton);
         queryRunner.registerRunButton(showGeneratedSourceButton);
         queryRunner.cancelAction(client::cancelCurrentQuery);
 
@@ -175,17 +224,18 @@ public class ModelBuilderFrame extends JFrame {
                     sourceWorkbench.applyEdits();
 
                     return new GenerateInstancesQuery(
-                            projectModel.copy(),
+                            modelRootedAtSelected(),
                             ((Number) depthSpinner.getValue()).intValue());
                 },
                 this::reportGenerationError);
 
+        showInstancesButton.addActionListener(e -> showInstancesWindow());
+
+        loadModelButton.addActionListener(e -> loadModel());
+
         loadSavedButton.addActionListener(e -> loadSavedInstances());
 
         saveEverythingButton.addActionListener(e -> saveEverything());
-
-        previewButton.addActionListener(e ->
-                                                previewInternalSparql());
 
         showGeneratedSourceButton.addActionListener(e ->
                                                             showGeneratedSource());
@@ -209,6 +259,7 @@ public class ModelBuilderFrame extends JFrame {
             if (run != null) {
                 instancesPanel.accept(run.objectResult());
                 saveSnapshot(run);
+                showInstancesWindow(); // pop the results window on a fresh run
             } else {
                 instancesPanel.clear();
             }
@@ -262,10 +313,58 @@ public class ModelBuilderFrame extends JFrame {
     // Loads a previously saved snapshot of dynamic objects and maps them
     // through the current model -- the same materialize path as Generate, but
     // without re-querying Wikidata.
+    // On startup, restore the saved project model (config) if one exists, so
+    // edits persist across restarts rather than reverting to the demo. Best
+    // effort: a missing/corrupt file just leaves the demo in place.
+    private void loadSavedModelIfPresent() {
+        File f = modelFile();
+        if (!f.isFile()) {
+            return;
+        }
+        try {
+            projectModel.copyContentsFrom(new GeneratedProjectModelStore().load(f));
+            depthSpinner.setValue(projectModel.generationDepth());
+            classModelPanel.refresh();
+        } catch (Exception ex) {
+            System.err.println("Could not load saved model " + f.getPath()
+                    + ": " + ex.getMessage());
+        }
+    }
+
+    // Loads a project model (config) from a chosen *.model.json, replacing the
+    // current one. (Instances are reloaded separately via "Load saved".)
+    private void loadModel() {
+        JFileChooser chooser =
+                new JFileChooser(new File(Constants.wikidataDataDirectory));
+        chooser.setDialogTitle("Load model config — pick a *.model.json");
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Model config (*.model.json)", "json"));
+        File suggested = modelFile();
+        if (suggested.isFile()) {
+            chooser.setSelectedFile(suggested);
+        }
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            projectModel.copyContentsFrom(
+                    new GeneratedProjectModelStore().load(chooser.getSelectedFile()));
+            depthSpinner.setValue(projectModel.generationDepth());
+            classModelPanel.refresh();
+            sourceWorkbench.edit(projectModel.rootClass());
+            logWindow.info("Loaded model from " + chooser.getSelectedFile().getName());
+        } catch (Exception ex) {
+            reportGenerationError(ex);
+        }
+    }
+
     private void loadSavedInstances() {
         JFileChooser chooser =
                 new JFileChooser(new File(Constants.wikidataDataDirectory));
-        chooser.setDialogTitle("Load saved instances (snapshot JSON)");
+        chooser.setDialogTitle(
+                "Load saved instances — pick the *.snapshot.json (not .model/.ruletree)");
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Instance snapshot (*.snapshot.json)", "json"));
 
         File suggested = snapshotFile();
         if (suggested.isFile()) {
@@ -326,6 +425,30 @@ public class ModelBuilderFrame extends JFrame {
         }
     }
 
+    // The class the toolbar actions operate on: the one selected in the class
+    // tree (or the owner of a selected field), else the root class.
+    private GeneratedClassModel activeClass() {
+        return classModelPanel.selectedClassOrRoot();
+    }
+
+    // A detached copy of the project rooted at the selected class, so Generate/
+    // Show source/Show rule tree target whatever class is selected — not always
+    // the root. (Child-object types are derived from field configs, so the
+    // single rooted class compiles and generates standalone.)
+    private GeneratedProjectModel modelRootedAtSelected() {
+        GeneratedProjectModel sub = projectModel.copy();
+        String target = activeClass().className();
+        for (GeneratedClassModel c : sub.classes()) {
+            if (c.className().equals(target)) {
+                if (c != sub.rootClass()) {
+                    sub.rootClass(c);
+                }
+                break;
+            }
+        }
+        return sub;
+    }
+
     // The project's data directory, keyed off its name so it lands where the
     // web client looks: "Constellations" -> data/wikidata/constellations/,
     // i.e. the exact folder the web GeneratedSource and "Load saved" read.
@@ -360,10 +483,32 @@ public class ModelBuilderFrame extends JFrame {
     private void saveEverything() {
         sourceWorkbench.applyEdits();
 
+        // Confirm BEFORE writing — show the exact paths and what each will get,
+        // so Escape actually cancels (the old dialog appeared after the files
+        // were already written).
+        boolean haveInstances = lastRun != null
+                && lastRun.dynamicObjects() != null
+                && !lastRun.dynamicObjects().isEmpty();
+        String plan = "Write these files?\n\n"
+                + "Config:    " + modelFile().getPath() + "\n"
+                + "Rule tree: " + ruleTreeFile().getPath() + "\n"
+                + "Instances: " + (haveInstances
+                        ? lastRun.dynamicObjects().size() + " -> " + snapshotFile().getPath()
+                        : "(none generated yet — will be skipped)");
+        int choice = JOptionPane.showConfirmDialog(
+                this, plan, "Save everything",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) {
+            return;
+        }
+
         StringBuilder report = new StringBuilder();
         try {
             modelFile().getParentFile().mkdirs();
 
+            // Persist the current depth with the project so loading restores it.
+            projectModel.generationDepth(
+                    ((Number) depthSpinner.getValue()).intValue());
             new GeneratedProjectModelStore().save(projectModel, modelFile());
             report.append("Config:    ").append(modelFile().getPath()).append('\n');
 
@@ -410,24 +555,27 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void showGeneratedSource() {
-        // Prefer the source of the last successfully compiled run; otherwise
-        // generate it straight from the current model so the feature works for
-        // a saved/edited class that hasn't been run (or one whose last run
-        // failed to compile -- seeing the source is exactly how you debug that).
+        // Shows the source for the selected class. Prefer the last compiled
+        // run's source when it IS that class (so you see what actually compiled,
+        // incl. errors); otherwise generate a preview from the model so the
+        // feature works for a class that hasn't been run yet.
         sourceWorkbench.applyEdits();
 
+        GeneratedClassModel cls = activeClass();
         String source;
         String title;
 
-        if (lastRun != null && lastRun.runtime() != null) {
+        if (lastRun != null && lastRun.runtime() != null
+                && lastRun.modelSnapshot() != null
+                && lastRun.modelSnapshot().rootClass().className().equals(cls.className())) {
             source = lastRun.runtime().source();
             title = lastRun.runtime().qualifiedClassName();
         } else {
             GeneratedQuizableSourceGenerator gen =
                     new GeneratedQuizableSourceGenerator(
                             GeneratedQuizableSourceGenerator.GENERATED_PACKAGE);
-            source = gen.sourceFor(projectModel.rootClass());
-            title = gen.qualifiedClassName(projectModel.rootClass())
+            source = gen.sourceFor(cls);
+            title = gen.qualifiedClassName(cls)
                     + "  (preview - not yet compiled)";
         }
 
@@ -454,51 +602,45 @@ public class ModelBuilderFrame extends JFrame {
     private void showRuleTree() {
         sourceWorkbench.applyEdits();
 
-        String text;
+        String readable;
+        String json;
         try {
-            RuleNode root = RuleTreeCompiler.compileProject(projectModel);
-            text = new RuleTreeSerializer().mapper()
+            RuleNode root = RuleTreeCompiler.compileClass(activeClass(), projectModel);
+            readable = RuleTreeExplainer.explain(root);
+            json = new RuleTreeSerializer().mapper()
                     .writeValueAsString(RuleTreeConfig.of(root));
         } catch (Exception ex) {
             reportGenerationError(ex);
             return;
         }
 
-        JTextArea area = new JTextArea(text, 40, 100);
+        JTextArea area = new JTextArea(readable, 40, 100);
         area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         area.setEditable(false);
         area.setCaretPosition(0);
 
+        // Default to the plain-language plan; let the curious flip to the raw
+        // RuleTreeConfig JSON (handy when reporting a compile bug).
+        JToggleButton rawToggle = new JToggleButton("Show raw JSON");
+        rawToggle.addActionListener(e -> {
+            boolean raw = rawToggle.isSelected();
+            area.setText(raw ? json : readable);
+            area.setCaretPosition(0);
+            rawToggle.setText(raw ? "Show readable plan" : "Show raw JSON");
+        });
+
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        top.add(rawToggle);
+
+        JPanel panel = new JPanel(new BorderLayout(0, 6));
+        panel.add(top, BorderLayout.NORTH);
+        panel.add(new JScrollPane(area), BorderLayout.CENTER);
+
         JOptionPane.showMessageDialog(
                 this,
-                new JScrollPane(area),
-                "Rule tree — " + projectModel.rootClass().className(),
+                panel,
+                "Rule tree — " + activeClass().className(),
                 JOptionPane.PLAIN_MESSAGE);
-    }
-
-    private void previewInternalSparql() {
-        sourceWorkbench.applyEdits();
-
-        RuleNode root =
-                RuleTreeCompiler.compileProject(projectModel);
-
-        RuleTreeExtractor extractor =
-                new RuleTreeExtractor(client);
-
-        StringBuilder sb =
-                new StringBuilder();
-
-        sb.append("PREVIEW internal SPARQL\n")
-          .append("-----------------------\n\n");
-
-        for (String q : extractor.previewQueries(
-                root,
-                ((Number) depthSpinner.getValue()).intValue())) {
-            sb.append(q).append("\n\n");
-        }
-
-        logWindow.info(sb.toString());
-        logWindow.show(this);
     }
 
     private static JComponent titled(

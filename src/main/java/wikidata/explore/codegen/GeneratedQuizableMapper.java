@@ -38,19 +38,29 @@ public class GeneratedQuizableMapper {
         Object existing = generatedByDynamic.get(source);
         if (existing != null) return existing;
 
-        Object target = runtime.generatedClass().getDeclaredConstructor().newInstance();
+        // Map each object to the generated class for ITS type (e.g. a
+        // constellation's child stars -> the Star class), so children aren't
+        // forced into the root class. An object whose type has no generated
+        // class (a bare leaf reference) is kept as-is (renders as a link).
+        GeneratedQuizableRuntime.ClassRuntime cr = runtime.forType(source.typeName());
+        if (cr == null) {
+            generatedByDynamic.put(source, source);
+            return source;
+        }
+
+        Object target = cr.generatedClass().getDeclaredConstructor().newInstance();
         generatedByDynamic.put(source, target);
 
         setIfExists(target, "qid", source.qid());
         setIfExists(target, "wikidataUrl", source.wikidataUrl());
         setIfExists(target, "name", source.getDisplayName());
 
-        for (GeneratedFieldModel fieldModel : runtime.model().fields()) {
+        for (GeneratedFieldModel fieldModel : cr.model().fields()) {
             if (fieldModel == null || fieldModel.isNameField()) continue;
 
             String targetFieldName =
                     GeneratedQuizableSourceGenerator.sanitizeFieldName(fieldModel.name());
-            Field javaField = findField(runtime.generatedClass(), targetFieldName);
+            Field javaField = findField(cr.generatedClass(), targetFieldName);
             if (javaField == null) continue;
 
             Object raw = source.get(fieldModel.name());

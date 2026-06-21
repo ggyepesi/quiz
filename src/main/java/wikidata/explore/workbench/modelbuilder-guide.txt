@@ -1,0 +1,360 @@
+================================================================================
+ WIKIDATA MODEL BUILDER — UI GUIDE
+================================================================================
+
+The Model Builder (ModelBuilderFrame) is a desktop workbench for turning a
+Wikidata domain into a quizable dataset WITHOUT writing code. You describe a
+domain as a small "model" (classes + fields); the workbench compiles it to a
+SPARQL extraction plan, downloads instances, and saves a snapshot the web
+client serves.
+
+  GeneratedProjectModel        you edit this (classes + fields)
+     |  RuleTreeCompiler
+     v
+  RuleNode tree                the extraction plan (membership + per-field SPARQL)
+     |  RuleTreeExtractor (SPARQL)
+     v
+  WikidataDynamicObject[]      downloaded instances (dynamic; one Java class)
+     |  "Save everything"
+     v
+  <project>.snapshot.json      served by the web client (GeneratedSource)
+
+The on-disk representation is dynamic (WikidataDynamicObject): every entity is
+the same Java class carrying a property map, so a new domain needs NO new Java
+code to browse/quiz on the web.
+
+
+--------------------------------------------------------------------------------
+ WINDOW LAYOUT
+--------------------------------------------------------------------------------
+
+The main window is all configuration — two panes plus a toolbar on top:
+
+  - Class model (left)         the tree of classes and their fields. Select a
+                               node to edit it; the selection drives generation.
+  - Production source (right)  the editor for the selected class or field, with
+                               helper tabs (Sample / Discover / WikiProject /
+                               Properties) below.
+
+Generated instances and query logs each open in their OWN window (so the main
+window stays focused on building the model):
+  - Generated instances        result cards after a run (search, browse, expand
+                               references). Pops up automatically on a run; or
+                               open it with "Show instances".
+  - Query logs                 the actual SPARQL run, counts, errors — "Show
+                               query logs".
+
+Toolbar:
+
+  Generate instances    Runs extraction for the SELECTED class (or root if none
+                        selected). Async; the instances window pops up with the
+                        result; watch "Show query logs" for the SPARQL.
+  Cancel                Cancels the running query.
+  Show instances        Opens the generated-instances window (last run).
+  Show generated source The Java source the generator would compile for the
+                        selected class (preview; not needed for the web path).
+  Show rule tree        The compiled RuleNode plan (JSON) for the selected
+                        class: membership, included fields, child edges.
+  Show query logs       The workflow log window (actual SPARQL run, counts,
+                        errors).
+  Load saved            Re-loads a saved *.snapshot.json and re-maps it through
+                        the CURRENT model (no re-querying).
+  Save everything       Writes config + rule tree + instances to the project's
+                        data dir (see SAVE / LOAD).
+  Depth                 How many levels of CHILD-OBJECT edges to follow
+                        (0 = root instances only; 1+ = also their child objects,
+                        recursively).
+
+
+--------------------------------------------------------------------------------
+ CLASS MODEL PANEL
+--------------------------------------------------------------------------------
+
+Buttons: Rename class | Add class | Add field | Remove
+
+  - Add class creates a sibling class. Generation is rooted at the SELECTED
+    class (see "Generate selected class"), so a new class is only generated if
+    you select it, or an existing class references it as a "Related objects"
+    field.
+  - Add field adds an AUTO field to the selected class; configure it in the
+    field editor.
+  - A field's tree label shows its type/shape and tags: [reference], [inline],
+    [required].
+
+Generate selected class
+  "Generate instances", "Show generated source" and "Show rule tree" all operate
+  on whatever class is selected (or the owning class of a selected field), not
+  always the root — so you can build and test a Star class on its own before
+  wiring it into Constellation.
+
+
+--------------------------------------------------------------------------------
+ FIELD EDITOR (Production source -> field)
+--------------------------------------------------------------------------------
+
+  Field name        The field's name (becomes the JSON key / column).
+  Source            Where values come from (SPARQL is the default).
+  Type              String / Number / Date / Image / Entity / Auto.
+                    Entity = a reference to another item.
+  Object type       For an Entity field: which class the referenced item is
+                    (e.g. Star).
+  Shape             Single or Collection (a list of values).
+  Render mode       How the UI shows it (Auto / inline / reference).
+  Load as           How a related value is fetched (see below).
+  Direction         Which way the property points (see below).
+  Required          Make the property a MEMBERSHIP FILTER — drops entities that
+                    don't have it (emits a non-OPTIONAL triple).
+  Wikidata property The PID (e.g. P1215). Usually filled from Discover/Properties.
+  Limit             Max values (for collections / child edges).
+
+Click "Apply field source" to save your edits.
+
+"Load as" (production kind)
+  Auto                   decide from type/shape.
+  Simple property        a scalar value.
+  Related entity values  keep just id+label REFERENCES that resolve WITHIN the
+                         generated set (e.g. a constellation's sharesBorderWith
+                         neighbours, a myth figure's siblings). No sub-objects.
+  Related objects        fetch FULL sub-objects with their own fields (a
+                         sub-class), e.g. a constellation's stars each with a
+                         magnitude. Requires Object type = the sub-class and
+                         Depth >= 1 when generating.
+
+Direction (only used for related-object / entity edges)
+  outgoing — this -> value   (?this Pxx ?value): this entity has the property
+                             (constellation P138 namedAfter -> a figure).
+  incoming — value -> this   (?value Pxx ?this): other entities point here
+                             (stars whose P59 constellation = this). Discover
+                             sets this automatically for incoming properties.
+
+
+--------------------------------------------------------------------------------
+ HELPER TABS (below the field editor)
+--------------------------------------------------------------------------------
+
+  Sample      samples instances to suggest a field's shape/cardinality.
+  Discover    samples N instances of the selected class and profiles their
+              OUTGOING and INCOMING properties. Per row:
+                Add Field    creates a NEW field for that property (always new;
+                             never overwrites the selected field). Incoming
+                             properties get "incoming" direction.
+                Allow/Exclude  NOT wired into generation yet (see GOTCHAS).
+  WikiProject resolves a Wikipedia/WikiProject category to seed QIDs.
+              NOT wired into generation yet (see GOTCHAS).
+  Properties  browse the cached Wikidata property store; picking one adds a
+              field, like Discover's Add Field.
+
+
+--------------------------------------------------------------------------------
+ SAVE / LOAD
+--------------------------------------------------------------------------------
+
+"Save everything" writes three files into data/wikidata/<projectkey>/, where
+<projectkey> is the project name lower-cased (so "Constellations" ->
+data/wikidata/constellations/, the exact folder the web client reads):
+
+  <key>.snapshot.json   the instances (what the web serves and Load saved reads)
+  <key>.ruletree.json   the compiled plan
+  <key>.model.json      the editable model config
+
+"Load saved" re-loads the *.snapshot.json and re-maps it through the current
+in-memory model (no network). Pick the .snapshot.json (not .model / .ruletree).
+
+
+--------------------------------------------------------------------------------
+ RECIPES
+--------------------------------------------------------------------------------
+
+Add a scalar field
+  Add field -> Type = String/Number -> pick the property in Discover/Properties
+  -> Apply. (Mark Required to also use it as a membership filter.)
+
+Add an in-set reference collection (e.g. neighbours)
+  Add field -> Type = Entity, Shape = Collection, Load as = Related entity
+  values, Object type = the same class -> pick the property -> Apply.
+  References resolve to other items in the generated set (navigable, cycle-safe).
+
+Add child objects with their own fields (e.g. stars)
+  1. Add class "Star"; give it fields (e.g. apparent magnitude P1215, proper
+     name P2561). Optionally mark one Required to keep only notable stars.
+  2. On Constellation, Add field "stars": Type = Entity, Object type = Star,
+     Shape = Collection, property = P59, Direction = incoming,
+     Load as = Related objects, Limit = e.g. 20.
+  3. Generate at Depth >= 1 -> each constellation gets its stars with fields.
+
+Membership filter (e.g. the canonical 88 constellations)
+  P31 = Q8928 membership returns ~92; the 4 extras lack an IAU abbreviation
+  (P1813). Select the abbreviation field -> tick Required -> Apply -> regenerate
+  -> 88.
+
+
+--------------------------------------------------------------------------------
+ GOTCHAS / CURRENT LIMITATIONS
+--------------------------------------------------------------------------------
+
+  - Allow/Exclude QIDs and WikiProject seeds are NOT yet wired into the
+    generated SPARQL (RuleTreeCompiler.compileClass doesn't propagate the
+    model's allowedQids/excludedQids into the rule node). Use Required fields
+    for membership filtering for now.
+  - Required on an inlined collection (a "Related entity values" field) is a
+    no-op — required filtering only applies to scalar / non-inlined fields.
+  - Save everything keys by the PROJECT name. Generating a non-root class and
+    then Save everything writes the instances under the project's snapshot name
+    (a mismatch for non-root classes).
+  - "Brightest star" (a sort-and-pick) isn't supported — child queries don't
+    ORDER BY ... LIMIT 1. Fetch member stars and sort in the UI, or approximate.
+  - The default model loaded on startup is the hard-coded constellationDemo();
+    it is NOT loaded from constellations.model.json.
+
+
+--------------------------------------------------------------------------------
+ TIPS
+--------------------------------------------------------------------------------
+
+  - Keep Limit modest and use a Required field to filter to notable items — it
+    keeps SPARQL fast and avoids endpoint timeouts.
+  - Use "Show rule tree" before generating to sanity-check the plan.
+  - "Show query logs" shows the exact SPARQL that ran (and any errors).
+  - Self-referential relations (siblings, neighbours, named-after) cycle by
+    design; the snapshot format and the web client handle cycles — model them as
+    "Related entity values" so they resolve within the set.
+
+
+--------------------------------------------------------------------------------
+ WALKTHROUGH: PHASE 1 — CONSTELLATIONS + STARS  (ready to run)
+--------------------------------------------------------------------------------
+
+Goal: give each constellation a set of member stars, each star carrying its own
+fields (e.g. apparent magnitude). This exercises incoming edges + child objects.
+
+  1. Start the Model Builder. The default project is "Constellations".
+
+  2. Add the Star class:
+       - Class model -> Add class -> "Star".
+       - Select Star; in its instance mapping set source QID = Q523 (star),
+         property = P31 (instance of).  [class source is edited on the class node]
+
+  3. Give Star its fields (select Star, then Add field for each):
+       - "apparentMagnitude": Type = Number, property = P1215. Tick REQUIRED so
+         only stars that actually have a magnitude are kept (drops the noise).
+       - optionally "properName": Type = String, property = P2561.
+     Use the Discover tab (sample Star) to confirm the PIDs if unsure.
+     Verify with "Show rule tree" (Star selected): you should see the included
+     fields under Star.
+
+  4. Add the stars edge on Constellation:
+       - Select the Constellation (root) class -> Add field "stars".
+       - Type = Entity, Object type = Star, Shape = Collection.
+       - Wikidata property = P59 (constellation).
+       - Direction = INCOMING  (stars point at the constellation: ?star P59 ?c).
+       - Load as = Related objects  (fetch full Star sub-objects, not just refs).
+       - Limit = ~15-20 per constellation.
+
+  5. Sanity-check before running:
+       - Select Constellation, "Show rule tree": the "stars" edge should be a
+         CHILD node (Star) with includedFields = apparentMagnitude (+ properName),
+         direction item->root.
+       - Set Depth = 1 (child objects are one level down).
+
+  6. Generate instances (Constellation selected, Depth = 1). Watch "Show query
+     logs" for the per-constellation child query and counts. Expect the child
+     query to read:  ?value wdt:P59 ?root . ?value wdt:P1215 ?mag ...
+
+  7. Tune if needed:
+       - Too many / slow: lower the Limit, keep magnitude REQUIRED.
+       - stars come back with only a name (no magnitude): re-check Star's fields
+         compiled in (step 3) and that Load as = Related objects (not "Related
+         entity values").
+
+  8. Save everything -> data/wikidata/constellations/ (overwrites the snapshot
+     the web client serves). NOTE: the existing snapshot may be stale/corrupt
+     from an earlier run — regenerating + Save everything replaces it.
+
+  9. In the web client, open a Constellation: it now has a "stars" reference
+     list; expand a star to see its magnitude. Quiz idea: prompt = star (or its
+     magnitude), ask = constellation; or prompt = constellation name, ask =
+     stars (one member at a time).
+
+Then PHASE 2 (Greek mythology) follows the same shape, but relations
+(father P22, mother P25, spouse P26, children P40, siblings P3373) are
+self-referential and modelled as "Related entity values" (in-set refs), which
+needs neither incoming child-objects nor depth.
+
+
+Here's how I'd sequence it:
+
+  1. Run Phase 1 (stars) — next session, you driving the network
+  Everything's in place. In the Model Builder:
+
+  add a Star class (P1215 magnitude, P2561 name),
+
+ISSUES/QUERIES
+    TODO:  "properties between Constellation and Star" query:
+            SELECT ?p (COUNT(*) AS ?n) WHERE {
+              ?star wdt:P31 wd:Q523 .          # is a Star
+              ?star ?pd ?c .                    # some property
+              ?c   wdt:P31 wd:Q8928 .          # whose value is a Constellation
+              ?p wikibase:directClaim ?pd .
+            } GROUP BY ?p ORDER BY DESC(?n)
+
+            fix incoming property bug (Constellation P59 is missing)
+            help to decide shape (list vs single)
+
+            Apply field source still doesn't give visual feedback DONE test
+
+            issues with having stars (P59) in the generated sparql:
+                Direction (incoming)
+                Load as (Related objects) why not Relatd entity values - what
+                are these (clear meaning!)
+                depth 1!
+
+            Rule tree - give a more readable, explanatory UI! DONE, test
+
+            help in applying a filter for apparentMagnitude for example DONE
+            test
+
+            wikiproject might help for stars test for greek mythology
+
+            Stars loaded for constellations should appear in generated
+            instances of Stars (per-class panels in generated instances)
+
+            how can we get named/big/wellknown stars? ** DONE, brightness, test
+
+
+            Save everything should ask in the dialog (now it is shown after save
+             happened)
+            question: should a relation (like constellation - star) generate the
+             inverse relation i.e. star - constellation field: should be
+             configurable with many-to-many, one-to-many, one-to-one
+
+            for Antlia only 2 stars were returned, it has 42
+            abbreviation is shown with empty value
+
+
+
+            small issues:
+             1. not all queries are runnable in wikidata query service
+            (comment + a second select)
+             2. entire block still not copyable, like the entire logentry in
+             query
+             3. order of constellations is not alphabetical in client **
+             4. carousel small issue zoom should zoom the carousel itself not
+             only thee current entry (image). **
+             5. Ara image not blurred **
+ISSUES/QUERIES END
+
+
+  add a stars field on Constellation (Entity, collection, P59, incoming,Related objects, limit ~15),
+
+  mark a Star field Required to keep it notable, Generate at depth 1, then Save everything.
+
+  I expect 1–2 things to need tuning
+  (production-kind auto-detect, counts/timeouts) — exactly the stuff only a real run surfaces. I'll fix what breaks.
+
+  2. Regenerate the constellations snapshot
+  The current constellations.snapshot.json is still the corrupt/truncated one from the old depth-limit crash. Until you regenerate + Save everything, the web is
+  serving stale/broken data — worth doing as part of step 1.
+
+  3. Then Phase 2 (Greek mythology) — the relations showcase, and it's less blocked than stars (self-referential relations use the in-set DELAYED_ENTITY_FIELD path
+  that already works for sharesBorderWith).
+

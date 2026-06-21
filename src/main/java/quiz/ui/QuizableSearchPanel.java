@@ -49,6 +49,10 @@ public class QuizableSearchPanel extends JPanel
     private final JCheckBox fieldHighlightBox =
             new JCheckBox("Highlight Fields", false);
 
+    // Returns to the spot before the last "jump to its card" navigation.
+    private final JButton backButton = new JButton("← Back");
+    private QuizableRenderContext renderContext;
+
     private final JPanel resultsPanel =
             new JPanel();
 
@@ -88,6 +92,18 @@ public class QuizableSearchPanel extends JPanel
             JScrollPane targetScrollPane) {
 
         setTarget(targetPanel, targetScrollPane, true);
+    }
+
+    /** Wires the Back button to the view's navigation context, so jumping to a
+     *  referenced card (a top-level reference link) can be undone. */
+    public void setRenderContext(QuizableRenderContext context) {
+        this.renderContext = context;
+        if (context == null) {
+            backButton.setEnabled(false);
+            return;
+        }
+        context.setNavChangeListener(() -> backButton.setEnabled(context.canGoBack()));
+        backButton.setEnabled(context.canGoBack());
     }
 
     public void setTargetAndApplyViewConfig(
@@ -347,8 +363,17 @@ public class QuizableSearchPanel extends JPanel
         JButton restoreOrderButton = new JButton("Restore Order");
         JButton searchConfigButton = new JButton("Search Config...");
 
+        backButton.setEnabled(false);
+        backButton.setToolTipText("Back to where you jumped from");
+        backButton.addActionListener(e -> {
+            if (renderContext != null) {
+                renderContext.back();
+            }
+        });
+
         JPanel top =
                 new CompactQuizableSearchTopPanel(
+                        backButton,
                         searchField,
                         searchConfigButton,
                         sortConfigButton,

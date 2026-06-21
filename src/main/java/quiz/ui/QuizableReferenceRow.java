@@ -24,6 +24,11 @@ public class QuizableReferenceRow extends JComponent {
     private final QuizablePanelConfig openConfig;
     private final String openTitle;
     private final boolean expanded;
+    // When the target is itself a top-level card in this view, the row is a
+    // navigation link (jump to that card) rather than an expand-in-place chip.
+    // This avoids the per-target expand flag being shared between the card and
+    // a chip for the same object (which collapsed the outer one).
+    private final boolean navigate;
     private final List<String> fieldPath;
 
     private Rectangle targetBounds;
@@ -36,6 +41,18 @@ public class QuizableReferenceRow extends JComponent {
                                 QuizablePanelConfig openConfig,
                                 String openTitle,
                                 boolean expanded) {
+        this(fieldName, fieldPath, target, renderContext, openConfig,
+                openTitle, expanded, false);
+    }
+
+    public QuizableReferenceRow(String fieldName,
+                                List<String> fieldPath,
+                                Quizable target,
+                                QuizableRenderContext renderContext,
+                                QuizablePanelConfig openConfig,
+                                String openTitle,
+                                boolean expanded,
+                                boolean navigate) {
         QuizablePanel.RenderStats.referenceRows++;
         this.fieldName = fieldName == null ? "" : fieldName;
         List<String> fieldPath1 = fieldPath == null ? List.of() : new ArrayList<>(fieldPath);
@@ -45,10 +62,13 @@ public class QuizableReferenceRow extends JComponent {
         this.openConfig = openConfig;
         this.openTitle = openTitle;
         this.expanded = expanded;
+        this.navigate = navigate;
 
         setOpaque(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        setToolTipText(expanded
+        setToolTipText(navigate
+                ? "Click to jump to its card · shift-click to open in a window"
+                : expanded
                 ? "Click to collapse · shift-click to open in a window"
                 : "Click to expand in place · shift-click to open in a window");
 
@@ -73,6 +93,8 @@ public class QuizableReferenceRow extends JComponent {
                 // object in its own detail window.
                 if (e.isShiftDown() || e.getClickCount() >= 2) {
                     openFullObject();
+                } else if (navigate) {
+                    openOrFocus();
                 } else {
                     toggleExpansion();
                 }
@@ -260,10 +282,14 @@ public class QuizableReferenceRow extends JComponent {
             int baseline =
                     PAD_Y + Math.max(fmField.getAscent(), fmValue.getAscent());
 
-            // expand/collapse triangle
+            // Navigate links show a right-arrow (jump to its card); expandable
+            // chips show the expand/collapse triangle.
             int triMid = baseline - fmValue.getAscent() / 2;
             g2.setColor(new Color(120, 120, 120));
-            if (expanded) {
+            if (navigate) {
+                g2.setFont(valueFont.deriveFont(Font.BOLD));
+                g2.drawString("→", PAD_X, baseline); // →
+            } else if (expanded) {
                 g2.fillPolygon(
                         new int[]{PAD_X, PAD_X + 8, PAD_X + 4},
                         new int[]{triMid - 2, triMid - 2, triMid + 3},

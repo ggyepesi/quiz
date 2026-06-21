@@ -10,6 +10,7 @@ import java.awt.*;
 public class CompactQuizableSearchTopPanel extends JPanel {
 
     public CompactQuizableSearchTopPanel(
+            JButton backButton,
             JTextField searchField,
             JButton searchConfigButton,
             JButton sortConfigButton,
@@ -26,6 +27,7 @@ public class CompactQuizableSearchTopPanel extends JPanel {
         JPanel firstButtons =
                 new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
 
+        firstButtons.add(backButton);
         firstButtons.add(searchConfigButton);
 
         firstRow.add(firstButtons, BorderLayout.WEST);

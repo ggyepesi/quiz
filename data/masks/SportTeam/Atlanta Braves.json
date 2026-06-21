@@ -1,0 +1,12 @@
+{
+  "image" : "Atlanta Braves.svg",
+  "rectangles" : [ {
+    "x" : 0.08839779005524862,
+    "y" : 0.0,
+    "width" : 0.281767955801105,
+    "height" : 0.8235294117647058
+  } ],
+  "regions" : [ ],
+  "polygons" : [ ],
+  "blurComplement" : true
+}

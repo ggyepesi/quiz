@@ -17,8 +17,34 @@ public class GeneratedFieldModel {
     // standard constellations from the 92 P31=Q8928 hits down to the IAU 88).
     private boolean required = false;
 
+    // Optional numeric filter on this (numeric) property — keep only entities
+    // whose value satisfies the comparison, e.g. apparentMagnitude <= 3 to keep
+    // bright/notable stars. Null operator = no filter.
+    private wikidata.explore.filter.WikidataValueFilterOperator filterOperator;
+    private Double filterValue;
+
+    // For an entity/child-object field: whether this edge applies the referenced
+    // class's membership (P31 = its instance QID) or drops it. Dropping lets a
+    // relationship include bright NAMED stars typed as a subclass (variable /
+    // double star), reached via P59 + magnitude + label, while the root Star
+    // class keeps its Q523 membership. INHERIT = use the class's membership.
+    private EdgeMembershipMode edgeMembership = EdgeMembershipMode.INHERIT;
+
+    // For an entity/child-object field: sort the child entities by one of the
+    // child class's (numeric) fields before applying the per-parent limit, so a
+    // constellation keeps its BRIGHTEST stars, not 6 arbitrary in-range ones.
+    // Empty = no sort. Ascending by default (e.g. lowest apparentMagnitude =
+    // brightest first).
+    private String sortFieldName = "";
+    private boolean sortDescending = false;
+
     private final FieldSourceMapping mapping = new FieldSourceMapping();
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
+
+    // For deserialization (GeneratedProjectModelStore).
+    public GeneratedFieldModel() {
+        this("field", FieldType.AUTO, FieldCardinality.AUTO);
+    }
 
     public GeneratedFieldModel(
             String name,
@@ -84,6 +110,47 @@ public class GeneratedFieldModel {
 
     public void required(boolean required) { this.required = required; }
 
+    public wikidata.explore.filter.WikidataValueFilterOperator filterOperator() {
+        return filterOperator;
+    }
+
+    public void filterOperator(
+            wikidata.explore.filter.WikidataValueFilterOperator op) {
+        this.filterOperator = op;
+    }
+
+    public Double filterValue() { return filterValue; }
+
+    public void filterValue(Double v) { this.filterValue = v; }
+
+    public boolean hasValueFilter() {
+        return filterOperator != null && filterValue != null;
+    }
+
+    public EdgeMembershipMode edgeMembership() {
+        return edgeMembership == null ? EdgeMembershipMode.INHERIT : edgeMembership;
+    }
+
+    public void edgeMembership(EdgeMembershipMode mode) {
+        this.edgeMembership = mode == null ? EdgeMembershipMode.INHERIT : mode;
+    }
+
+    public String sortFieldName() {
+        return sortFieldName == null ? "" : sortFieldName;
+    }
+
+    public void sortFieldName(String name) {
+        this.sortFieldName = name == null ? "" : name.trim();
+    }
+
+    public boolean sortDescending() { return sortDescending; }
+
+    public void sortDescending(boolean desc) { this.sortDescending = desc; }
+
+    public boolean hasSort() {
+        return sortFieldName != null && !sortFieldName.isBlank();
+    }
+
     public GeneratedFieldModel copy() {
         GeneratedFieldModel c =
                 new GeneratedFieldModel(name, type, cardinality);
@@ -91,6 +158,11 @@ public class GeneratedFieldModel {
         c.entityClassName = entityClassName;
         c.renderMode = renderMode;
         c.required = required;
+        c.filterOperator = filterOperator;
+        c.filterValue = filterValue;
+        c.edgeMembership = edgeMembership;
+        c.sortFieldName = sortFieldName;
+        c.sortDescending = sortDescending;
         c.mapping.copyFrom(mapping);
 
         for (GeneratedFieldModel f : fields) {

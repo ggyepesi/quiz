@@ -74,6 +74,12 @@ public class ChartTextBlurrer {
 
     /** Returns PNG bytes with {@code name} mosaicked out, or the input unchanged. */
     public byte[] blurName(byte[] imageBytes, String name) {
+        return blurName(imageBytes, name, null);
+    }
+
+    /** As {@link #blurName(byte[], String)}, but records an OCR miss (no name
+     *  found to blur) against {@code context} so it can be fixed by hand. */
+    public byte[] blurName(byte[] imageBytes, String name, String context) {
         if (!available || imageBytes == null || name == null || name.isBlank()) {
             return imageBytes;
         }
@@ -84,6 +90,7 @@ public class ChartTextBlurrer {
             }
             List<Rect> boxes = detect(src, name);
             if (boxes.isEmpty()) {
+                OcrMissLog.record(context != null ? context : name);
                 return imageBytes;
             }
             Mat out = mosaic(src, boxes);

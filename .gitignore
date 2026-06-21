@@ -37,3 +37,5 @@ build/
 
 ### Mac OS ###
 .DS_Store
+### Downloaded media (regenerable) — keep out of git history
+data/wikidata/**/charts/

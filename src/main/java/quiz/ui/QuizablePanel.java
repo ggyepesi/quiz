@@ -724,6 +724,21 @@ public class QuizablePanel extends JPanel {
             List<String> fieldPath,
             Quizable target) {
 
+        // A reference to something that is itself a top-level card in this view
+        // is a navigation link (jump to that card) rather than an expand-in-place
+        // chip — so the same object never has two competing expand toggles.
+        if (renderContext != null && renderContext.isTopLevel(target)) {
+            return new QuizableReferenceRow(
+                    fieldName,
+                    namePath(fieldPath),
+                    target,
+                    renderContext,
+                    configForNested(target),
+                    objectPathTitle(target),
+                    false,
+                    true);
+        }
+
         boolean exp = renderContext != null && renderContext.isExpanded(target);
 
         QuizableReferenceRow chip =
@@ -1065,6 +1080,8 @@ public class QuizablePanel extends JPanel {
         if (owner.isEmpty()) {
             return false;
         }
+        boolean sameNamedChild = false;
+        int otherValuedFields = 0;
         for (Field field : config.visibleFieldsFor(quizable.getClass())) {
             if ("name".equals(field.getName())) {
                 continue;
@@ -1075,11 +1092,21 @@ public class QuizablePanel extends JPanel {
             } catch (Exception e) {
                 continue;
             }
+            if (value == null) {
+                continue;
+            }
             if (value instanceof Quizable child && owner.equals(safeName(child))) {
-                return true;
+                sameNamedChild = true;
+            } else {
+                otherValuedFields++;
             }
         }
-        return false;
+        // Only a thin wrapper whose *sole* content is the same-named child
+        // suppresses its own title (to avoid echoing the name). A full card
+        // that merely has a coincidentally same-named reference field — e.g.
+        // the constellation Andromeda whose "named after" is the figure
+        // Andromeda — must still show its title.
+        return sameNamedChild && otherValuedFields == 0;
     }
 
     public Quizable getQuizable() {

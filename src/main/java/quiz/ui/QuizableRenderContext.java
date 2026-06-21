@@ -29,6 +29,37 @@ public class QuizableRenderContext {
     private final Set<Object> expanded =
             Collections.newSetFromMap(new IdentityHashMap<>());
 
+    // Back-stack of viewport positions: each focusTopLevel() jump records where
+    // the view was before scrolling, so the user can return (see back()).
+    private final java.util.Deque<NavMark> backStack = new java.util.ArrayDeque<>();
+    private Runnable navChangeListener = () -> {};
+
+    private record NavMark(JViewport viewport, Point position) {}
+
+    public boolean canGoBack() {
+        return !backStack.isEmpty();
+    }
+
+    /** Notified (on the EDT) whenever the back-stack changes, so a Back button
+     *  can update its enabled state. */
+    public void setNavChangeListener(Runnable listener) {
+        this.navChangeListener = listener == null ? () -> {} : listener;
+    }
+
+    /** Scrolls back to the position before the last {@link #focusTopLevel} jump. */
+    public boolean back() {
+        while (!backStack.isEmpty()) {
+            NavMark mark = backStack.pop();
+            if (mark.viewport().isShowing()) {
+                mark.viewport().setViewPosition(mark.position());
+                navChangeListener.run();
+                return true;
+            }
+        }
+        navChangeListener.run();
+        return false;
+    }
+
     public boolean isExpanded(Object target) {
         return target != null && expanded.contains(target);
     }
@@ -98,6 +129,14 @@ public class QuizableRenderContext {
 
         if (component == null) {
             return false;
+        }
+
+        // Remember where we were so the user can come back to this spot.
+        JViewport viewport = (JViewport)
+                SwingUtilities.getAncestorOfClass(JViewport.class, component);
+        if (viewport != null) {
+            backStack.push(new NavMark(viewport, viewport.getViewPosition()));
+            navChangeListener.run();
         }
 
         Container parent = component.getParent();

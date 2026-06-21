@@ -39,9 +39,13 @@ export function getQuizable(type, id) {
   return json(`${apiBase()}/api/quizable/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);
 }
 
-/** @returns {Promise<Array<{name:string,kind:string}>>} fields of a type */
-export function getFields(type) {
-  return json(`${apiBase()}/api/fields?type=${encodeURIComponent(type)}`);
+/** Fields of a type, or — with a dotted `path` — the fields available under a
+ *  reference (e.g. path="namedAfter" → the target's fields), for deep config.
+ *  @returns {Promise<Array<{name:string,kind:string,expandable:boolean}>>} */
+export function getFields(type, path = '') {
+  const p = new URLSearchParams({ type });
+  if (path) p.set('path', path);
+  return json(`${apiBase()}/api/fields?${p}`);
 }
 
 /** @returns {Promise<object|null>} the group tree, or null if the type has none */

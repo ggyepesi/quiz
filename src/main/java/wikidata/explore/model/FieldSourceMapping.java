@@ -22,12 +22,25 @@ public class FieldSourceMapping {
     private boolean requireLabel = true;
     private String labelLanguage = "en";
 
+    // "Notable only": require the entity to have an English Wikipedia article.
+    // The sitelink is a selective entry that bounds a huge class (e.g. Q523
+    // star, ~3M) to its notable members (~2886), so a root query can complete
+    // and return famous entities instead of timing out on a full-class scan.
+    private boolean requireSitelink = false;
+
     private int limit = 200;
 
     private FieldProductionKind productionKind = FieldProductionKind.AUTO;
 
     private final Set<String> allowedQids = new LinkedHashSet<>();
     private final Set<String> excludedQids = new LinkedHashSet<>();
+
+    // Extra type QIDs for class membership: an entity is a member if it is
+    // instance-of the sourceQid OR any of these. Lets a class admit a specific
+    // subclass without a (slow, over-broad) P279* path — e.g. Constellation =
+    // {constellation Q8928, zodiacal constellation Q4193029} to include Aries &
+    // Cancer, which are typed only as the subclass.
+    private final Set<String> additionalTypeQids = new LinkedHashSet<>();
 
     private FieldSourceType sourceType = FieldSourceType.SPARQL;
 
@@ -62,6 +75,11 @@ public class FieldSourceMapping {
         this.requireLabel = requireLabel;
     }
 
+    public boolean requireSitelink() { return requireSitelink; }
+    public void requireSitelink(boolean requireSitelink) {
+        this.requireSitelink = requireSitelink;
+    }
+
     public String labelLanguage() { return labelLanguage; }
     public void labelLanguage(String labelLanguage) {
         this.labelLanguage =
@@ -83,6 +101,7 @@ public class FieldSourceMapping {
 
     public Set<String> allowedQids() { return allowedQids; }
     public Set<String> excludedQids() { return excludedQids; }
+    public Set<String> additionalTypeQids() { return additionalTypeQids; }
 
     public String displaySource() {
         if (sourceQid.isBlank() && sourceLabel.isBlank()) {
@@ -119,6 +138,7 @@ public class FieldSourceMapping {
         propertyLabel = other.propertyLabel;
         direction = other.direction;
         requireLabel = other.requireLabel;
+        requireSitelink = other.requireSitelink;
         labelLanguage = other.labelLanguage;
         limit = other.limit;
         productionKind = other.productionKind;
@@ -128,6 +148,8 @@ public class FieldSourceMapping {
         allowedQids.addAll(other.allowedQids);
         excludedQids.clear();
         excludedQids.addAll(other.excludedQids);
+        additionalTypeQids.clear();
+        additionalTypeQids.addAll(other.additionalTypeQids);
     }
 
     public FieldSourceType sourceType() {
