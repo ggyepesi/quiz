@@ -6,6 +6,7 @@ import wikidata.explore.codegen.GeneratedQuizableMapper;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.RuleTreeExtractor;
 import wikidata.explore.extract.DBpediaEnrichment;
+import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -41,7 +42,7 @@ public class GenerationPipeline {
             WikidataSparqlClient client,
             RuleNode plan,
             int depth,
-            Consumer<String> log) throws Exception {
+            GenerationLog log) throws Exception {
 
         return new RuleTreeExtractor(client).load(plan, depth, log);
     }
@@ -52,7 +53,7 @@ public class GenerationPipeline {
     private void enrichFromDBpedia(
             GeneratedProjectModel snapshot,
             List<WikidataDynamicObject> roots,
-            Consumer<String> log) {
+            GenerationLog log) {
 
         GeneratedClassModel root = snapshot.rootClass();
         if (root == null) {
@@ -74,10 +75,10 @@ public class GenerationPipeline {
         try (WikidataSparqlClient dbpedia = new WikidataSparqlClient(
                 "quiz-modelbuilder (ggyepesi@gmail.com)", 2,
                 WikidataSparqlClient.DBPEDIA_ENDPOINT)) {
-            dbpedia.log(log);
-            new DBpediaEnrichment().enrich(roots, root, dbpedia, log);
+            dbpedia.log(log::message);
+            new DBpediaEnrichment().enrich(roots, root, dbpedia, log::message);
         } catch (Exception e) {
-            log.accept("DBpedia enrichment failed: " + e.getMessage() + "\n");
+            log.message("DBpedia enrichment failed: " + e.getMessage() + "\n");
         }
     }
 
@@ -102,7 +103,7 @@ public class GenerationPipeline {
             GeneratedProjectModel snapshot,
             int depth,
             WikidataSparqlClient client,
-            Consumer<String> log) throws Exception {
+            GenerationLog log) throws Exception {
 
         RuleNode plan = plan(snapshot);
 

@@ -179,6 +179,30 @@ public class WorkflowRecorder {
         fire(false);
     }
 
+    /**
+     * Adds a finished sub-query node under {@code parent} and notifies the
+     * listener. Thread-safe: {@link LogNode#steps} is copy-on-write and this
+     * never touches the single-threaded step stack — so the per-parent child
+     * queries that run in a pool can each record a structured, collapsible entry
+     * instead of all appending to one ever-growing request blob.
+     */
+    public void addSubquery(
+            LogNode parent, String title, String queryType,
+            String request, String summary) {
+
+        if (parent == null) {
+            return;
+        }
+        LogNode child = new LogNode(LogKind.QUERY, title);
+        child.queryType(queryType);
+        if (request != null && !request.isBlank()) {
+            child.appendRequest(request);
+        }
+        child.complete(LogStatus.OK, summary, null);
+        parent.addStep(child);
+        fire(true);
+    }
+
     private void fire(boolean added) {
         if (listener != null) {
             listener.logChanged(root, added);

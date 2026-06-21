@@ -37,6 +37,15 @@ public final class LogStep {
         return this;
     }
 
+    /** Records a structured child sub-query under this step (collapsible in the
+     *  log), instead of appending its text to this step's request blob. */
+    public LogStep subquery(String title, String request, String summary) {
+        if (recorder != null && node != null) {
+            recorder.addSubquery(node, title, "SPARQL", request, summary);
+        }
+        return this;
+    }
+
     public LogNode node() {
         return node;
     }

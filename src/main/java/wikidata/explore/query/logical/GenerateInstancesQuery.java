@@ -1,12 +1,10 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.extract.RuleTreeExtractor;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.GenerationRun;
-import wikidata.explore.rule.RuleNode;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -57,7 +55,6 @@ public class GenerateInstancesQuery
         stepParams.put("depth", String.valueOf(depth));
 
         GenerationPipeline pipeline = new GenerationPipeline();
-        RuleNode plan = pipeline.plan(projectModel);
 
         return context.step(
                 "Extract via SPARQL",
@@ -65,31 +62,30 @@ public class GenerateInstancesQuery
                 null,
                 stepParams,
                 step -> {
-                    // The step's request is ONLY the root query — a single
-                    // runnable SELECT, so "Open in query service" works. The
-                    // child-edge templates were previously glued on with "\n\n",
-                    // producing a multi-SELECT block WDQS rejects; log them as
-                    // separate entries instead.
-                    java.util.List<String> previews =
-                            new RuleTreeExtractor(context.sparql())
-                                    .previewQueries(plan, depth);
-                    if (!previews.isEmpty()) {
-                        step.request(previews.get(0));
-                    }
-                    for (int i = 1; i < previews.size(); i++) {
-                        context.message("\n--- child-edge query template "
-                                + i + " (one runnable SELECT) ---\n"
-                                + previews.get(i) + "\n");
-                    }
+                    // The step's request is a one-line note; the actual queries
+                    // (root + each per-parent child) are recorded as structured,
+                    // collapsible SUB-QUERIES under this step rather than appended
+                    // to one ever-growing request blob.
+                    step.request("Extraction — see sub-queries below.");
 
-                    // Forward extraction progress (incl. each per-parent sub-
-                    // query) to the log window instead of discarding it.
+                    // message -> step request text; subquery -> a child log node.
+                    wikidata.explore.extract.GenerationLog genLog =
+                            new wikidata.explore.extract.GenerationLog() {
+                                @Override public void message(String text) {
+                                    context.message(text);
+                                }
+                                @Override public void subquery(
+                                        String title, String request, String summary) {
+                                    step.subquery(title, request, summary);
+                                }
+                            };
+
                     GenerationRun run =
                             pipeline.fullRun(
                                     projectModel,
                                     depth,
                                     context.sparql(),
-                                    context::message);
+                                    genLog);
 
                     step.summary(run.size() + " objects");
                     return run;

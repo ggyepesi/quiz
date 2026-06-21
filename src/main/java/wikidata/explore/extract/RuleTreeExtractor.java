@@ -41,14 +41,18 @@ public class RuleTreeExtractor {
     private static final String PAIR_SEPARATOR = "§";
 
     private final WikidataSparqlClient client;
-    private Consumer<String> log = s -> {};
+    private GenerationLog log = GenerationLog.NOOP;
 
     public RuleTreeExtractor(WikidataSparqlClient client) {
         this.client = client;
     }
 
+    public void log(GenerationLog log) {
+        this.log = log == null ? GenerationLog.NOOP : log;
+    }
+
     public void log(Consumer<String> log) {
-        this.log = log == null ? s -> {} : log;
+        this.log = GenerationLog.of(log);
     }
 
     public WikidataObjectRegistry registry() {
@@ -105,9 +109,9 @@ public class RuleTreeExtractor {
     public List<WikidataDynamicObject> load(
             RuleNode rootNode,
             int childDepth,
-            Consumer<String> progress) throws Exception {
+            GenerationLog progress) throws Exception {
 
-        if (progress == null) progress = s -> {};
+        if (progress == null) progress = GenerationLog.NOOP;
 
         List<RuleIncludedField> inlinedFields =
                 RuleNodeQueryBuilder.simpleInlinedFields(rootNode);
@@ -127,25 +131,21 @@ public class RuleTreeExtractor {
 
         if (!inlinedFields.isEmpty()) {
             String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(rootNode);
-            progress.accept("\nRoot + inlined entity-list fields query\n---------------------------------------\n");
-            progress.accept(sparql + "\n");
             roots = runFieldOptimizedQuery(rootNode, inlinedFields, sparql);
-            progress.accept("Root objects loaded (with " + inlinedFields.size()
-                    + " inlined field" + (inlinedFields.size() == 1 ? "" : "s")
-                    + "): " + roots.size() + "\n");
+            progress.subquery("Root query (+" + inlinedFields.size()
+                    + " inlined field" + (inlinedFields.size() == 1 ? "" : "s") + ")",
+                    sparql, roots.size() + " objects");
         } else {
             String sparql = RuleNodeQueryBuilder.valuesQuery(rootNode);
-            progress.accept("\nRoot node query\n---------------\n");
-            progress.accept(sparql + "\n");
             roots = runValueQuery(rootNode, sparql);
-            progress.accept("Root objects loaded: " + roots.size() + "\n");
+            progress.subquery("Root query", sparql, roots.size() + " objects");
         }
 
         if (childDepth > 0 && !complex.isEmpty()) {
             loadComplexEdgesParallel(roots, rootNode, complex,
                     childDepth, progress);
         } else if (childDepth == 0 && !rootNode.edges().isEmpty()) {
-            progress.accept("Child depth is 0; child edges were not loaded.\n");
+            progress.message("Child depth is 0; child edges were not loaded.\n");
         }
 
         return roots;
@@ -258,7 +258,7 @@ public class RuleTreeExtractor {
             RuleNode parentNode,
             List<RuleEdge> edges,
             int remainingDepth,
-            Consumer<String> progress) throws Exception {
+            GenerationLog progress) throws Exception {
 
         if (edges.isEmpty() || parentObjects.isEmpty()) return;
 
@@ -273,7 +273,7 @@ public class RuleTreeExtractor {
             for (Future<EdgeResult> future : futures) {
                 EdgeResult result = future.get();
                 applyEdgeResult(result, parentObjects);
-                progress.accept("  Edge \"" + result.edge.fieldName()
+                progress.message("  Edge \"" + result.edge.fieldName()
                         + "\" complete: " + result.totalLoaded
                         + " child objects\n");
 
@@ -297,7 +297,7 @@ public class RuleTreeExtractor {
     private EdgeResult loadEdgeBatched(
             RuleEdge edge,
             List<WikidataDynamicObject> parentObjects,
-            Consumer<String> progress) throws Exception {
+            GenerationLog progress) throws Exception {
 
         RuleNode childNode = edge.childNode();
 
@@ -309,7 +309,7 @@ public class RuleTreeExtractor {
 
         int limit = childNode.limit();
 
-        progress.accept("\nLoading edge \"" + edge.fieldName()
+        progress.message("\nLoading edge \"" + edge.fieldName()
                 + "\" for " + parentQids.size()
                 + " parents (per-parent, limit " + limit + ")\n");
 
@@ -342,13 +342,15 @@ public class RuleTreeExtractor {
                         addIncludedFields(child, childNode, b);
                     }
                     if (!kids.isEmpty()) childrenByParent.put(parentQid, kids);
-                    // One concise, single-runnable log line per sub-query (the
-                    // queries run in parallel, so serialise the log writes).
+                    // One structured, collapsible sub-query entry per parent (a
+                    // single runnable SELECT). Parents run in parallel, so the
+                    // recorder add is serialised here.
                     long ms = System.currentTimeMillis() - t0;
                     synchronized (progress) {
-                        progress.accept("  " + edge.fieldName() + " <- " + parentQid
-                                + ": " + kids.size() + " (" + ms + " ms)\n"
-                                + sparql + "\n");
+                        progress.subquery(
+                                edge.fieldName() + " <- " + parentQid,
+                                sparql,
+                                kids.size() + " (" + ms + " ms)");
                     }
                     return null;
                 }));
