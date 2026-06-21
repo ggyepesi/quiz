@@ -7,6 +7,11 @@ public class GeneratedClassModel {
 
     private String className;
 
+    // How many levels of child-object edges to traverse when generating THIS
+    // class as a root (e.g. Constellation=1 to pull stars; Star=0). Stored with
+    // the class so it's remembered per class.
+    private int generationDepth = 1;
+
     private final FieldSourceMapping instanceMapping = new FieldSourceMapping();
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
 
@@ -32,6 +37,9 @@ public class GeneratedClassModel {
                         : className.trim();
     }
 
+    public int generationDepth() { return generationDepth; }
+    public void generationDepth(int d) { this.generationDepth = Math.max(0, d); }
+
     public FieldSourceMapping instanceMapping() {
         return instanceMapping;
     }
@@ -54,6 +62,7 @@ public class GeneratedClassModel {
     public GeneratedClassModel copy() {
         GeneratedClassModel c = new GeneratedClassModel(className);
 
+        c.generationDepth = generationDepth;
         c.instanceMapping.copyFrom(instanceMapping);
 
         c.fields.clear();

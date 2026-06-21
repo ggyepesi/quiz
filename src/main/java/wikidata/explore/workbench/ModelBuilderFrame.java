@@ -87,6 +87,9 @@ public class ModelBuilderFrame extends JFrame {
     // trap. One level of children is the common intent; deeper is opt-in.
     private final JSpinner depthSpinner =
             new JSpinner(new SpinnerNumberModel(1, 0, 5, 1));
+    // True while syncing the spinner to the selected class (so the change
+    // listener doesn't write the value straight back).
+    private boolean syncingDepth = false;
 
     private final WorkflowLogWindow logWindow =
             new WorkflowLogWindow();
@@ -213,9 +216,20 @@ public class ModelBuilderFrame extends JFrame {
             sourceWorkbench.edit(f);
         });
 
-        classModelPanel.addTreeSelectionListener(e ->
-                                                         sourceWorkbench.edit(
-                                                                 classModelPanel.selectedUserObject()));
+        classModelPanel.addTreeSelectionListener(e -> {
+            sourceWorkbench.edit(classModelPanel.selectedUserObject());
+            // Per-class depth: show the newly-selected class's saved depth.
+            syncDepthSpinnerToActiveClass();
+        });
+
+        // Store depth edits onto the currently-selected class.
+        depthSpinner.addChangeListener(e -> {
+            if (syncingDepth) return;
+            GeneratedClassModel c = activeClass();
+            if (c != null) {
+                c.generationDepth(((Number) depthSpinner.getValue()).intValue());
+            }
+        });
 
         queryRunner.wireButton(
                 generateButton,
@@ -323,8 +337,8 @@ public class ModelBuilderFrame extends JFrame {
         }
         try {
             projectModel.copyContentsFrom(new GeneratedProjectModelStore().load(f));
-            depthSpinner.setValue(projectModel.generationDepth());
             classModelPanel.refresh();
+            syncDepthSpinnerToActiveClass();
         } catch (Exception ex) {
             System.err.println("Could not load saved model " + f.getPath()
                     + ": " + ex.getMessage());
@@ -349,9 +363,9 @@ public class ModelBuilderFrame extends JFrame {
         try {
             projectModel.copyContentsFrom(
                     new GeneratedProjectModelStore().load(chooser.getSelectedFile()));
-            depthSpinner.setValue(projectModel.generationDepth());
             classModelPanel.refresh();
             sourceWorkbench.edit(projectModel.rootClass());
+            syncDepthSpinnerToActiveClass();
             logWindow.info("Loaded model from " + chooser.getSelectedFile().getName());
         } catch (Exception ex) {
             reportGenerationError(ex);
@@ -431,6 +445,21 @@ public class ModelBuilderFrame extends JFrame {
         return classModelPanel.selectedClassOrRoot();
     }
 
+    // Reflects the active class's saved depth in the spinner without the change
+    // listener writing it straight back.
+    private void syncDepthSpinnerToActiveClass() {
+        GeneratedClassModel c = activeClass();
+        if (c == null) {
+            return;
+        }
+        syncingDepth = true;
+        try {
+            depthSpinner.setValue(c.generationDepth());
+        } finally {
+            syncingDepth = false;
+        }
+    }
+
     // A detached copy of the project rooted at the selected class, so Generate/
     // Show source/Show rule tree target whatever class is selected — not always
     // the root. (Child-object types are derived from field configs, so the
@@ -506,9 +535,12 @@ public class ModelBuilderFrame extends JFrame {
         try {
             modelFile().getParentFile().mkdirs();
 
-            // Persist the current depth with the project so loading restores it.
-            projectModel.generationDepth(
-                    ((Number) depthSpinner.getValue()).intValue());
+            // Depth is now per-class (saved on each class via the spinner change
+            // listener); make sure the active class has the latest spinner value.
+            GeneratedClassModel active = activeClass();
+            if (active != null) {
+                active.generationDepth(((Number) depthSpinner.getValue()).intValue());
+            }
             new GeneratedProjectModelStore().save(projectModel, modelFile());
             report.append("Config:    ").append(modelFile().getPath()).append('\n');
 
