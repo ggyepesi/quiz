@@ -30,13 +30,28 @@ public class QuizableServerMain {
         store.register(new StateSource());
         store.register(new MythologySource());
         store.register(new OscarSource());
-        // Generated from Wikidata (dynamic representation). registerAll serves
-        // every class in the snapshot (e.g. Constellation AND its child Stars).
-        GeneratedSource.registerAll(
-                store,
-                "Constellation",
-                new java.io.File(aux.Constants.constellationsDataDirectory
-                        + "constellations.snapshot.json"));
+
+        // Generated-from-Wikidata datasets: serve EVERY dataset in the registry
+        // (constellations, greekmyth, …), each via registerAll (which serves
+        // every stamped class in its snapshot, e.g. Constellation AND its Stars).
+        quiz.DatasetRegistry registry = quiz.DatasetRegistry.load();
+        if (registry.datasets().isEmpty()) {
+            // First run / no registry yet: fall back to the constellations file.
+            GeneratedSource.registerAll(store, "Constellation",
+                    new java.io.File(aux.Constants.constellationsDataDirectory
+                            + "constellations.snapshot.json"));
+        } else {
+            for (quiz.DatasetRegistry.Dataset d : registry.datasets()) {
+                java.io.File snap = new java.io.File(d.snapshotPath());
+                if (snap.isFile()) {
+                    GeneratedSource.registerAll(store,
+                            d.rootClass().isBlank() ? d.name() : d.rootClass(), snap);
+                } else {
+                    System.err.println("Dataset '" + d.name()
+                            + "': snapshot missing at " + d.snapshotPath() + " (skipped)");
+                }
+            }
+        }
 
         new QuizableHttpServer(store).start(port);
 

@@ -39,3 +39,6 @@ build/
 .DS_Store
 ### Downloaded media (regenerable) — keep out of git history
 data/wikidata/**/charts/
+
+### Generated snapshots (regenerable; tracked via the dataset registry, not git)
+*.snapshot.json

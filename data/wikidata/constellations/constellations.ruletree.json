@@ -9,6 +9,7 @@
     "itemVar" : "constellation",
     "sourceQid" : "Q8928",
     "sourceLabel" : "constellation",
+    "additionalSourceQids" : [ "java.util.LinkedHashSet", [ ] ],
     "propertyPid" : "P31",
     "propertyLabel" : "instance of",
     "direction" : "ITEM_TO_ROOT",
@@ -69,6 +70,8 @@
       "collection" : true
     } ] ],
     "limit" : 200,
+    "sortFieldName" : "",
+    "sortDescending" : false,
     "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
     "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
     "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
@@ -82,6 +85,7 @@
         "itemVar" : "stars",
         "sourceQid" : "Q8928",
         "sourceLabel" : "constellation",
+        "additionalSourceQids" : [ "java.util.LinkedHashSet", [ ] ],
         "propertyPid" : "P59",
         "propertyLabel" : "constellation",
         "direction" : "ITEM_TO_ROOT",
@@ -100,8 +104,18 @@
           "kind" : "AUTO",
           "optional" : false,
           "collection" : false
+        }, {
+          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "fieldName" : "image",
+          "propertyPid" : "P18",
+          "propertyLabel" : "image",
+          "kind" : "MEDIA",
+          "optional" : true,
+          "collection" : false
         } ] ],
         "limit" : 6,
+        "sortFieldName" : "",
+        "sortDescending" : false,
         "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
@@ -115,11 +129,13 @@
           "required" : true
         } ] ],
         "edges" : [ "java.util.ArrayList", [ ] ],
+        "requireSitelink" : false,
         "requireEnglishLabel" : null,
         "includeImage" : null
       },
       "collection" : true
     } ] ],
+    "requireSitelink" : false,
     "requireEnglishLabel" : null,
     "includeImage" : null
   }

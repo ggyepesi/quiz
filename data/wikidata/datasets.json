@@ -1,0 +1,13 @@
+{
+  "datasets" : [ {
+    "name" : "Constellations",
+    "key" : "constellations",
+    "rootClass" : "Constellation",
+    "modelPath" : "data/wikidata/constellations/constellations.model.json",
+    "ruletreePath" : "data/wikidata/constellations/constellations.ruletree.json",
+    "snapshotPath" : "data/wikidata/constellations/constellations.snapshot.json",
+    "types" : [ "Constellation", "Star" ],
+    "instanceCount" : 92,
+    "savedAt" : "2026-06-22T13:54:56.793396"
+  } ]
+}

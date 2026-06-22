@@ -4,6 +4,7 @@
   "rootClass" : {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "className" : "Constellation",
+    "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "Q8928",
@@ -13,10 +14,12 @@
       "direction" : "ITEM_TO_ROOT",
       "requireLabel" : true,
       "labelLanguage" : "en",
+      "requireSitelink" : false,
       "limit" : 200,
       "productionKind" : "AUTO",
       "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
     },
     "fields" : [ "java.util.ArrayList", [ {
@@ -29,6 +32,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -38,10 +44,12 @@
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "INLINE_VALUE",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -55,6 +63,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -64,10 +75,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -81,6 +94,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -90,10 +106,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -107,6 +125,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -116,10 +137,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -133,6 +156,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -142,10 +168,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -159,6 +187,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -168,10 +199,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -185,6 +218,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -194,10 +230,12 @@
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -211,6 +249,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -220,10 +261,12 @@
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 6,
         "productionKind" : "CHILD_OBJECTS",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -233,6 +276,7 @@
   "classes" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "className" : "Constellation",
+    "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "Q8928",
@@ -242,10 +286,12 @@
       "direction" : "ITEM_TO_ROOT",
       "requireLabel" : true,
       "labelLanguage" : "en",
+      "requireSitelink" : false,
       "limit" : 200,
       "productionKind" : "AUTO",
       "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
     },
     "fields" : [ "java.util.ArrayList", [ {
@@ -258,6 +304,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -267,10 +316,12 @@
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "INLINE_VALUE",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -284,6 +335,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -293,10 +347,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -310,6 +366,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -319,10 +378,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -336,6 +397,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -345,10 +409,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -362,6 +428,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -371,10 +440,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -388,6 +459,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -397,10 +471,12 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -414,6 +490,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -423,10 +502,12 @@
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -440,6 +521,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -449,10 +533,12 @@
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 6,
         "productionKind" : "CHILD_OBJECTS",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -460,6 +546,7 @@
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "className" : "Star",
+    "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "Q523",
@@ -469,10 +556,12 @@
       "direction" : "ITEM_TO_ROOT",
       "requireLabel" : true,
       "labelLanguage" : "en",
+      "requireSitelink" : false,
       "limit" : 200,
       "productionKind" : "AUTO",
       "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
     },
     "fields" : [ "java.util.ArrayList", [ {
@@ -485,6 +574,9 @@
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -494,10 +586,12 @@
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 200,
         "productionKind" : "INLINE_VALUE",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
@@ -511,6 +605,9 @@
       "required" : true,
       "filterOperator" : "LE",
       "filterValue" : 6.0,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
       "mapping" : {
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
@@ -520,10 +617,43 @@
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "requireSitelink" : false,
         "limit" : 10,
         "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "image",
+      "type" : "IMAGE",
+      "entityClassName" : "",
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P18",
+        "propertyLabel" : "image",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "productionKind" : "INLINE_VALUE",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]

@@ -539,9 +539,17 @@ public class ModelBuilderFrame extends JFrame {
                 n = lastRun.dynamicObjects().size();
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');
+                // Register the dataset: model + rule-tree + snapshot saved
+                // TOGETHER as one consistent triple, so the web serves it and a
+                // snapshot is never paired with a mismatched model.
+                registerDataset(n);
+                report.append("Registry:  ")
+                      .append(quiz.DatasetRegistry.defaultFile().getPath()).append('\n');
             } else {
                 report.append("Instances: (none generated yet — run "
-                                       + "\"Generate instances\" first)\n");
+                                       + "\"Generate instances\" first; not "
+                                       + "registered until model + snapshot are "
+                                       + "saved together)\n");
             }
 
             logWindow.info("Saved everything:\n" + report);
@@ -554,6 +562,33 @@ public class ModelBuilderFrame extends JFrame {
                     JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             reportGenerationError(ex);
+        }
+    }
+
+    // Upserts this project's dataset (model + rule-tree + snapshot triple) into
+    // the registry the web reads, so multiple domains coexist and are served.
+    private void registerDataset(int instanceCount) {
+        try {
+            quiz.DatasetRegistry reg = quiz.DatasetRegistry.load();
+            quiz.DatasetRegistry.Dataset d = new quiz.DatasetRegistry.Dataset();
+            d.name(projectModel.name());
+            d.key(projectKey());
+            d.rootClass(projectModel.rootClass() == null
+                    ? "" : projectModel.rootClass().className());
+            d.modelPath(modelFile().getPath());
+            d.ruletreePath(ruleTreeFile().getPath());
+            d.snapshotPath(snapshotFile().getPath());
+            d.instanceCount(instanceCount);
+            d.savedAt(java.time.LocalDateTime.now().toString());
+            java.util.List<String> types = new java.util.ArrayList<>();
+            for (GeneratedClassModel c : projectModel.classes()) {
+                if (c != null && c.className() != null) types.add(c.className());
+            }
+            d.types(types);
+            reg.upsert(d);
+            reg.save();
+        } catch (Exception ex) {
+            logWindow.info("Could not update dataset registry: " + ex.getMessage());
         }
     }
 
