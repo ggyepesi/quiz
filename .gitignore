@@ -42,3 +42,6 @@ data/wikidata/**/charts/
 
 ### Generated snapshots (regenerable; tracked via the dataset registry, not git)
 *.snapshot.json
+
+### OCR-miss staging (regenerable by ChartBlurTool)
+data/masks/needs-mask/
