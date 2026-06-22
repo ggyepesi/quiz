@@ -272,7 +272,13 @@ public class ModelBuilderFrame extends JFrame {
 
             if (run != null) {
                 instancesPanel.accept(run.objectResult());
-                saveSnapshot(run);
+                // Do NOT auto-save: generating used to silently overwrite the
+                // project snapshot (a greekmyth run clobbered constellations).
+                // The run is held in memory + shown here; persisting is explicit
+                // and confirmed via "Save everything".
+                logWindow.info("Generated " + run.size()
+                        + " objects (in memory — use \"Save everything\" to persist "
+                        + "to " + snapshotFile().getName() + ").");
                 showInstancesWindow(); // pop the results window on a fresh run
             } else {
                 instancesPanel.clear();
@@ -413,29 +419,6 @@ public class ModelBuilderFrame extends JFrame {
                                    + " instance(s).");
         } catch (Exception ex) {
             reportGenerationError(ex);
-        }
-    }
-
-    // Persists a successful run's downloaded objects so they can be reloaded
-    // later without re-querying. Best-effort: a failure here never breaks the
-    // run that just succeeded.
-    private void saveSnapshot(GenerationRun run) {
-        if (run == null || run.dynamicObjects() == null
-                || run.dynamicObjects().isEmpty()) {
-            return;
-        }
-        try {
-            File file = snapshotFile();
-            File parent = file.getParentFile();
-            if (parent != null) {
-                parent.mkdirs();
-            }
-            new WikidataDynamicObjectJsonStore()
-                    .save(run.dynamicObjects(), file);
-            logWindow.info("Saved snapshot (" + run.dynamicObjects().size()
-                                   + " objects) to " + file.getPath());
-        } catch (Exception ex) {
-            logWindow.info("Could not save snapshot: " + ex.getMessage());
         }
     }
 
