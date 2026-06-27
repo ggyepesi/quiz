@@ -1,5 +1,7 @@
 package quiz;
 
+import quiz.ui.viewconfig.QuizablePanelConfig;
+
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableCellEditor;

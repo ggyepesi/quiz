@@ -40,6 +40,12 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     private final WikiProjectSeedPanel wikiProjectPanel =
             new WikiProjectSeedPanel();
 
+    private final ExploreByExamplePanel explorePanel =
+            new ExploreByExamplePanel();
+
+    private final CategorySeedPanel categoryPanel =
+            new CategorySeedPanel();
+
     private final CachedPropertyQuizablePanel propertyPanel =
             new CachedPropertyQuizablePanel();
 
@@ -47,10 +53,22 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
     private Consumer<Void> afterChange = v -> {};
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
+    // Fired ONLY when a field is added via a tool (Discover/Properties), so the
+    // main window can come forward — unlike afterApplyField, which also fires on
+    // the implicit applyEdits before a query (that must not steal focus).
+    private Consumer<GeneratedFieldModel> onFieldAddedFromTool = f -> {};
+
+    // Raises the Explorer window when a config action jumps to a helper tab
+    // (Sample/Discover), since those tabs now live in that separate window.
+    private Runnable onShowHelperTools = () -> {};
 
     public ModelSourceWorkbenchPanel(GeneratedProjectModel projectModel) {
         super(new BorderLayout(4, 4));
         this.projectModel = projectModel;
+        classSourcePanel.baseClassCandidates(() ->
+                projectModel.classes().stream()
+                        .map(GeneratedClassModel::className)
+                        .toList());
         buildUi();
     }
 
@@ -60,6 +78,8 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         samplePanel.setQueryRunner(queryRunner);
         discoveryPanel.setQueryRunner(queryRunner);
         wikiProjectPanel.setQueryRunner(queryRunner);
+        explorePanel.setQueryRunner(queryRunner);
+        categoryPanel.setQueryRunner(queryRunner);
     }
 
     public void afterChange(Consumer<Void> afterChange) {
@@ -68,6 +88,12 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         classSourcePanel.afterChange(this.afterChange);
         fieldSourcePanel.afterChange(this.afterChange);
+    }
+
+    /** Routes the sub-panels' free-text log (e.g. the class panel's Wikidata API
+     *  requests) to a sink — wire it to the query-log window. */
+    public void log(Consumer<String> log) {
+        classSourcePanel.log(log);
     }
 
     public void afterApplyField(
@@ -91,6 +117,28 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
     public WikiProjectSeedPanel wikiProjectPanel() {
         return wikiProjectPanel;
+    }
+
+    public ExploreByExamplePanel explorePanel() {
+        return explorePanel;
+    }
+
+    public CategorySeedPanel categoryPanel() {
+        return categoryPanel;
+    }
+
+    public void onShowHelperTools(Runnable r) {
+        this.onShowHelperTools = r == null ? () -> {} : r;
+    }
+
+    public void onFieldAddedFromTool(Consumer<GeneratedFieldModel> c) {
+        this.onFieldAddedFromTool = c == null ? f -> {} : c;
+    }
+
+    /** The discovery/lookup tools, hosted in a separate Explorer window so the
+     *  main frame stays focused on the domain + class/field configuration. */
+    public JComponent helperTools() {
+        return helperTabs;
     }
 
     public CachedPropertyQuizablePanel propertyPanel() {
@@ -199,8 +247,14 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         fieldSourcePanel.useProperty(pid, label);
 
         if (f.cardinality() == FieldCardinality.AUTO) {
+            // Needs a sample to settle cardinality — stay in the Explorer's
+            // Sample tab rather than yanking to the main window.
+            onShowHelperTools.run();
             helperTabs.setSelectedComponent(samplePanel);
             samplePanel.triggerFieldSample();
+        } else {
+            // Fully configured — surface it in the main config window.
+            onFieldAddedFromTool.accept(f);
         }
 
         afterChange.accept(null);
@@ -277,6 +331,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         fieldSourcePanel.setProjectModel(projectModel);
 
         fieldSourcePanel.onSampleRequested(() -> {
+            onShowHelperTools.run();
             helperTabs.setSelectedComponent(samplePanel);
             samplePanel.triggerFieldSample();
         });
@@ -333,20 +388,15 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             afterChange.accept(null);
         });
 
+        helperTabs.addTab("Explore", explorePanel);
         helperTabs.addTab("Sample", samplePanel);
         helperTabs.addTab("Discover", discoveryPanel);
         helperTabs.addTab("WikiProject", wikiProjectPanel);
+        helperTabs.addTab("Category", categoryPanel);
         helperTabs.addTab("Properties", propertyPanel);
 
-        JSplitPane split =
-                new JSplitPane(
-                        JSplitPane.VERTICAL_SPLIT,
-                        cardPanel,
-                        helperTabs);
-
-        split.setResizeWeight(0.38);
-        split.setContinuousLayout(true);
-
-        add(split, BorderLayout.CENTER);
+        // The helper tabs live in a separate Explorer window (see
+        // helperTools()); this panel hosts only the class/field config.
+        add(cardPanel, BorderLayout.CENTER);
     }
 }

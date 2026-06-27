@@ -1,7 +1,7 @@
 package quiz.ui;
 
 import quiz.Quizable;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -62,6 +62,38 @@ public class QuizableRenderContext {
 
     public boolean isExpanded(Object target) {
         return target != null && expanded.contains(target);
+    }
+
+    // Collection/map collapse state, keyed by the collection's identity. Unlike
+    // reference chips (default collapsed), a collection's default depends on its
+    // size (small lists stay open), so this is an explicit override layered over
+    // a caller-supplied default rather than plain set membership.
+    private final Map<Object, Boolean> collectionExpanded =
+            new IdentityHashMap<>();
+
+    public boolean isCollectionExpanded(Object key, boolean defaultExpanded) {
+        if (key == null) {
+            return defaultExpanded;
+        }
+        Boolean v = collectionExpanded.get(key);
+        return v == null ? defaultExpanded : v;
+    }
+
+    /** Flips a collection's expand state (seeding from {@code defaultExpanded}
+     *  the first time it is toggled). */
+    public void toggleCollectionExpanded(Object key, boolean defaultExpanded) {
+        if (key == null) {
+            return;
+        }
+        collectionExpanded.put(key, !isCollectionExpanded(key, defaultExpanded));
+    }
+
+    /** Forces a collection's expand state (used by search to reveal a match
+     *  hidden inside a collapsed list). */
+    public void setCollectionExpanded(Object key, boolean expanded) {
+        if (key != null) {
+            collectionExpanded.put(key, expanded);
+        }
     }
 
     /** Flips the in-place expand state; returns the new state. */
@@ -141,7 +173,18 @@ public class QuizableRenderContext {
 
         Container parent = component.getParent();
 
-        if (parent instanceof JComponent jcParent) {
+        if (viewport != null && parent != null) {
+            // Align the target card's TOP to the viewport top. Plain
+            // scrollRectToVisible(card.getBounds()) lands mid-card for a card
+            // taller than the viewport.
+            Component view = viewport.getView();
+            Point pt = SwingUtilities.convertPoint(
+                    parent, component.getLocation(), view);
+            int maxY = Math.max(0,
+                    view.getHeight() - viewport.getExtentSize().height);
+            int y = Math.max(0, Math.min(pt.y, maxY));
+            viewport.setViewPosition(new Point(viewport.getViewPosition().x, y));
+        } else if (parent instanceof JComponent jcParent) {
             jcParent.scrollRectToVisible(component.getBounds());
         } else {
             component.scrollRectToVisible(

@@ -1,9 +1,8 @@
 package benchmark;
 
-import benchmark.generated.OscarNominationFormView;
 import oscar.OscarNomination;
-import quiz.QuizablePanelConfig;
-import quiz.QuizablePanelConfigAdapter;
+import quiz.ui.viewconfig.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfigAdapter;
 import quiz.ui.QuizablePanel;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -40,31 +39,20 @@ public class VisualComparisonApp {
         );
 
         // 4. Construct the Main Frame Wrapper
-        JFrame frame = new JFrame("FormStamper Visual Sync Verification");
+        JFrame frame = new JFrame("QuizablePanel Visual Verification");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLayout(new GridLayout(1, 2, 20, 0)); // Side-by-side view with a 20px gap
+        frame.setLayout(new BorderLayout());
 
-        // --- Left Panel: Your Live Runtime QuizablePanel View ---
-        JPanel leftContainer = new JPanel(new BorderLayout());
-        leftContainer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        leftContainer.add(new JLabel("1. Legacy Reflection Loop (QuizablePanel)", SwingConstants.CENTER), BorderLayout.NORTH);
+        // The live reflection-driven QuizablePanel view (the only renderer now).
+        JPanel container = new JPanel(new BorderLayout());
+        container.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        container.add(new JLabel("Reflection Loop (QuizablePanel)", SwingConstants.CENTER), BorderLayout.NORTH);
 
-        // Dynamic reflection execution block
-        QuizablePanel legacyPanel = new QuizablePanel(targetRecord, fullConfig, false);
-        leftContainer.add(legacyPanel, BorderLayout.CENTER);
-
-        // --- Right Panel: The Cleaned, Hardcoded FormView ---
-        JPanel rightContainer = new JPanel(new BorderLayout());
-        rightContainer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        rightContainer.add(new JLabel("2. Compiled Bytecode View (FormStamper)", SwingConstants.CENTER), BorderLayout.NORTH);
-
-        // FIX: No map parameters, no configuration objects passed. Just the raw data!
-        OscarNominationFormView compiledView = new OscarNominationFormView(targetRecord);
-        rightContainer.add(compiledView, BorderLayout.CENTER);
+        QuizablePanel panel = new QuizablePanel(targetRecord, fullConfig, false);
+        container.add(panel, BorderLayout.CENTER);
 
         // 5. Pack and display the frame window
-        frame.add(leftContainer);
-        frame.add(rightContainer);
+        frame.add(container, BorderLayout.CENTER);
         frame.pack();
         frame.setMinimumSize(new Dimension(800, 500));
         frame.setLocationRelativeTo(null); // Centered on window screen

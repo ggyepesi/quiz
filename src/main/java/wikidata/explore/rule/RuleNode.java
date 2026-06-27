@@ -228,6 +228,20 @@ public class RuleNode {
     public boolean requireSitelink() { return requireSitelink; }
     public void    requireSitelink(boolean b) { this.requireSitelink = b; }
 
+    // Class-level ranking: keep the top `limit` instances by this measure.
+    // rankBySitelinks → wikibase:sitelinks (notability); else rankPropertyPid
+    // (a sortable field's property, e.g. brightness/area). Empty = order by label.
+    private boolean rankBySitelinks = false;
+    private String  rankPropertyPid = "";
+    private boolean rankDescending  = true;
+    public boolean rankBySitelinks() { return rankBySitelinks; }
+    public void    rankBySitelinks(boolean b) { this.rankBySitelinks = b; }
+    public String  rankPropertyPid() { return rankPropertyPid == null ? "" : rankPropertyPid; }
+    public void    rankPropertyPid(String p) { this.rankPropertyPid = p == null ? "" : p.trim(); }
+    public boolean rankDescending() { return rankDescending; }
+    public void    rankDescending(boolean d) { this.rankDescending = d; }
+    public boolean hasRank() { return rankBySitelinks || !rankPropertyPid().isBlank(); }
+
     public boolean hasMembershipFilter() {
         return membershipPid != null && !membershipPid.isBlank()
                 && membershipQid != null && !membershipQid.isBlank();

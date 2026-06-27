@@ -40,6 +40,10 @@ public class FieldSourcePanel extends JPanel {
     private final JTextField fieldNameField = new JTextField(16);
     private final JComboBox<wikidata.explore.model.EdgeMembershipMode> edgeMembershipBox =
             new JComboBox<>(wikidata.explore.model.EdgeMembershipMode.values());
+    // Advanced: constrain related values to the chosen class's membership
+    // (checked = INHERIT, unchecked = NONE). Replaces the "Edge membership" combo.
+    private final JCheckBox onlyRelatedOfTypeBox =
+            new JCheckBox("only related items that are the chosen class", true);
 
     private static final String NO_SORT = "(none)";
     private final JComboBox<String> sortFieldBox = new JComboBox<>();
@@ -117,14 +121,25 @@ public class FieldSourcePanel extends JPanel {
                 + "(Entity list) fields.<br>Outgoing: this entity has the property. "
                 + "Incoming: other entities point here (e.g. stars whose "
                 + "constellation P59 = this).</html>");
+        // A floating explanation (with an example) per option: shown while you
+        // hover each choice in the open dropdown, and on the combo itself for
+        // the current selection.
+        productionBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(
+                    JList<?> list, Object value, int index,
+                    boolean sel, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, sel, focus);
+                if (value instanceof FieldProductionKind k) {
+                    list.setToolTipText(productionExplain(k));
+                }
+                return this;
+            }
+        });
+        productionBox.addActionListener(e -> productionBox.setToolTipText(
+                productionExplain((FieldProductionKind) productionBox.getSelectedItem())));
         productionBox.setToolTipText(
-                "<html>How a related value is loaded:<br>"
-                + "<b>Auto</b> — decide from type/shape.<br>"
-                + "<b>Related objects</b> — fetch full sub-objects with their own "
-                + "fields (a sub-class, e.g. a constellation's stars w/ magnitude).<br>"
-                + "<b>Related entity values</b> — keep just id+label references "
-                + "that resolve within the set.<br>"
-                + "<b>Simple property</b> — a scalar value.</html>");
+                productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
         shapeBox.setToolTipText(
                 "<html>How many values this field holds per entity:<br>"
                 + "<b>Single value</b> — at most one (e.g. area, magnitude, "
@@ -205,6 +220,8 @@ public class FieldSourcePanel extends JPanel {
         requiredBox.setSelected(field.required());
         requiredBox.setEnabled(!field.isNameField());
         edgeMembershipBox.setSelectedItem(field.edgeMembership());
+        onlyRelatedOfTypeBox.setSelected(field.edgeMembership()
+                != wikidata.explore.model.EdgeMembershipMode.NONE);
         refreshSortFieldBox(field.entityClassName());
         sortFieldBox.setSelectedItem(
                 field.hasSort() ? field.sortFieldName() : NO_SORT);
@@ -268,37 +285,20 @@ public class FieldSourcePanel extends JPanel {
         addWide(form, c, y++, question);
 
         addRow(form, c, y++, "Field name:", fieldNameField);
-        addRow(form, c, y++, "Source:", sourceTypeBox);
-        addRow(form, c, y++, "Type:", typeBox);
-        addRow(form, c, y++, "Object type:", objectTypeBox);
-        addRow(form, c, y++, "Shape:", shapeBox);
-        addRow(form, c, y++, "Render mode:", renderModeBox);
-        addRow(form, c, y++, "Load as:", productionBox);
-        addRow(form, c, y++, "Direction:", directionBox);
-        edgeMembershipBox.setToolTipText("<html>For a child-object field: whether "
-                + "to constrain the edge's values to the referenced class's "
-                + "membership (its P31).<br>INHERIT keeps it (e.g. only Q523 "
-                + "stars). NONE drops it — useful to include bright NAMED "
-                + "variable/double stars (typed as a subclass) via "
-                + "P59 + magnitude + label.</html>");
-        addRow(form, c, y++, "Edge membership:", edgeMembershipBox);
 
-        JPanel sortRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        sortRow.add(sortFieldBox);
-        sortRow.add(sortDirBox);
-        sortFieldBox.setToolTipText("<html>For a child-object field: sort the "
-                + "child entities by one of their fields before the per-parent "
-                + "limit, so you keep the top N.<br>e.g. sort stars by "
-                + "apparentMagnitude ascending = keep the brightest. Aggregated "
-                + "MIN (ascending) / MAX (descending) per entity.</html>");
-        addRow(form, c, y++, "Sort children by:", sortRow);
+        // --- What it holds ---
+        typeBox.setToolTipText("What this field holds: Text / Number / Date / "
+                + "Image, or an Entity (a domain class — pick it in \"Of class\").");
+        addRow(form, c, y++, "Holds:", typeBox);
+        objectTypeBox.setToolTipText("The domain class this field refers to "
+                + "(when Holds = Entity). The value is a reference to that class's "
+                + "instances — clicking navigates to them.");
+        addRow(form, c, y++, "Of class:", objectTypeBox);
+        addRow(form, c, y++, "Count:", shapeBox);
 
-        addWide(form, c, y++, requiredBox);
-
-        JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        filterRow.add(filterOpBox);
-        filterRow.add(filterValueField);
-        addRow(form, c, y++, "Numeric filter:", filterRow);
+        // --- Where it comes from ---
+        addWide(form, c, y++, sectionLabel("Source"));
+        addRow(form, c, y++, "From:", sourceTypeBox);
 
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         propRow.add(propertyPidField);
@@ -307,12 +307,25 @@ public class FieldSourcePanel extends JPanel {
         propRow.add(discoverDbpediaButton);
         addRow(form, c, y++, "Property:", propRow);
 
-        JPanel limitRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        limitRow.add(new JLabel("Limit per parent:"));
-        limitRow.add(limitSpinner);
-        addWide(form, c, y++, limitRow);
+        directionBox.setToolTipText("<html>Where the property lives:<br>"
+                + "<b>this entity</b> (outgoing, ?this P ?value)<br>"
+                + "<b>related entities</b> (incoming, ?other P ?this) — e.g. "
+                + "stars whose constellation P59 = this.</html>");
+        addRow(form, c, y++, "Found on:", directionBox);
 
-        addWide(form, c, y++, recommendationLabel);
+        // --- Refine ---
+        addWide(form, c, y++, sectionLabel("Refine"));
+        addWide(form, c, y++, requiredBox);
+
+        JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        filterRow.add(filterOpBox);
+        filterRow.add(filterValueField);
+        addRow(form, c, y++, "Numeric filter:", filterRow);
+
+        onlyRelatedOfTypeBox.setToolTipText("<html>When this field refers to a "
+                + "class, keep only related items that ARE that class (P31), "
+                + "dropping off-type values reached by the same property.</html>");
+        addWide(form, c, y++, onlyRelatedOfTypeBox);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         examplesButton.setToolTipText(
@@ -377,7 +390,6 @@ public class FieldSourcePanel extends JPanel {
         FieldSourceMapping m = field.mapping();
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
-        m.limit(((Number) limitSpinner.getValue()).intValue());
         m.direction((RuleDirection) directionBox.getSelectedItem());
 
         // autoAdjustFromProperty inspects a WIKIDATA property; skip it for a
@@ -391,22 +403,20 @@ public class FieldSourcePanel extends JPanel {
         field.type((FieldType) typeBox.getSelectedItem());
         field.entityClassName(selectedEntityClass());
         field.cardinality((FieldCardinality) shapeBox.getSelectedItem());
-        field.renderMode((FieldRenderMode) renderModeBox.getSelectedItem());
+        // Display + "load as" are inferred now (those controls were retired):
+        // an entity field is a reference (link) to its class's instances; a
+        // scalar shows inline. Per-class generation (#43) populates the refs.
+        if (typeBox.getSelectedItem() != FieldType.AUTO) {
+            field.renderMode(field.type() == FieldType.ENTITY
+                    ? FieldRenderMode.REFERENCE : FieldRenderMode.INLINE);
+        }
         field.required(requiredBox.isSelected());
-        field.edgeMembership(
-                (wikidata.explore.model.EdgeMembershipMode)
-                        edgeMembershipBox.getSelectedItem());
-        Object sortSel = sortFieldBox.getSelectedItem();
-        field.sortFieldName(sortSel == null || NO_SORT.equals(sortSel)
-                ? "" : sortSel.toString());
-        field.sortDescending("descending".equals(sortDirBox.getSelectedItem()));
+        field.edgeMembership(onlyRelatedOfTypeBox.isSelected()
+                ? wikidata.explore.model.EdgeMembershipMode.INHERIT
+                : wikidata.explore.model.EdgeMembershipMode.NONE);
         applyNumericFilter(field);
 
-        // Honor an explicit "Load as" choice; only auto-derive when Auto.
-        m.productionKind((FieldProductionKind) productionBox.getSelectedItem());
-        if (m.productionKind() == FieldProductionKind.AUTO) {
-            autoProduction(m);
-        }
+        autoProduction(m); // infer "Load as" from type/shape (sort/limit moved to class)
         propertyLabel.setText(m.displayProperty());
 
         titleLabel.setText("Field: " + field.name());
@@ -464,6 +474,32 @@ public class FieldSourcePanel extends JPanel {
 
         updateSampleButtonState();
         autoProduction(field.mapping());
+    }
+
+    // Per-"Load as" explanation + a concrete example, shown as a floating
+    // tooltip while choosing and on the selected value.
+    private static String productionExplain(FieldProductionKind kind) {
+        if (kind == null) {
+            return null;
+        }
+        return switch (kind) {
+            case INLINE_VALUE -> "<html><b>Simple property</b> — a literal value "
+                    + "stored as-is.<br><i>Example:</i> area = 1303 (number), "
+                    + "abbreviation = \"Ori\", birthDate = 1879.</html>";
+            case DELAYED_ENTITY_FIELD -> "<html><b>Related entity values</b> — the "
+                    + "target entities as id+label <b>references</b>, inlined; "
+                    + "clicking one navigates to it if it's in the set. No depth "
+                    + "needed.<br><i>Example:</i> father → Zeus; characters → "
+                    + "[Heracles, Theseus].</html>";
+            case CHILD_OBJECTS -> "<html><b>Related objects</b> — full "
+                    + "<b>sub-objects</b> with their own fields, fetched as a "
+                    + "separate per-parent query (<b>needs depth ≥ 1</b>).<br>"
+                    + "<i>Example:</i> a constellation's stars, each carrying its "
+                    + "own apparent magnitude.</html>";
+            case AUTO -> "<html><b>Auto</b> — decide from the field's type and "
+                    + "shape.<br><i>Example:</i> a number → Simple property; an "
+                    + "entity list → Related entity values.</html>";
+        };
     }
 
     private void autoProduction(FieldSourceMapping m) {
@@ -884,6 +920,15 @@ public class FieldSourcePanel extends JPanel {
 
     private static String trimDouble(double d) {
         return d == Math.rint(d) ? Long.toString((long) d) : Double.toString(d);
+    }
+
+    // A small bold section divider ("Source", "Refine").
+    private static JComponent sectionLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(l.getFont().deriveFont(Font.BOLD));
+        l.setForeground(new Color(0x55, 0x55, 0x55));
+        l.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+        return l;
     }
 
     private static void addRow(

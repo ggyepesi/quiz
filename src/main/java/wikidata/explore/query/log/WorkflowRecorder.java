@@ -189,6 +189,12 @@ public class WorkflowRecorder {
     public void addSubquery(
             LogNode parent, String title, String queryType,
             String request, String summary) {
+        addSubquery(parent, title, queryType, request, summary, LogStatus.OK);
+    }
+
+    public void addSubquery(
+            LogNode parent, String title, String queryType,
+            String request, String summary, LogStatus status) {
 
         if (parent == null) {
             return;
@@ -198,7 +204,7 @@ public class WorkflowRecorder {
         if (request != null && !request.isBlank()) {
             child.appendRequest(request);
         }
-        child.complete(LogStatus.OK, summary, null);
+        child.complete(status == null ? LogStatus.OK : status, summary, null);
         parent.addStep(child);
         fire(true);
     }

@@ -17,6 +17,8 @@ import presidents.President;
 import presidents.USPresidents;
 import quiz.ui.QuizableGroupView;
 import quiz.ui.QuizableViews;
+import quiz.ui.viewconfig.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfigEditor;
 
 import java.awt.*;
 import java.awt.event.WindowAdapter;
@@ -197,8 +199,8 @@ public class QuizFactory {
 
     public JFrame showQuizzes() {
         QuizablePanelConfig queryConfig = QuizablePanelConfig.of(cls)
-                .initializeAllFields(true)
-                .setAddListener(true);       // or false if you don’t want UI listeners
+                                                             .initializeAllFields(true)
+                                                             .setAddListener(true);       // or false if you don’t want UI listeners
         QuizablePanelConfigEditor queryEditor = new QuizablePanelConfigEditor(queryConfig);
 
         QuizablePanelConfig answerConfig = QuizablePanelConfig.of(cls)

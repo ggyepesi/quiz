@@ -1,5 +1,7 @@
 package quiz;
 
+import quiz.ui.viewconfig.QuizablePanelConfigEditor;
+
 import javax.swing.*;
 import java.awt.*;
 

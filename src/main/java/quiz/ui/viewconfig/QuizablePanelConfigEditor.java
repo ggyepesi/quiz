@@ -1,4 +1,8 @@
-package quiz;
+package quiz.ui.viewconfig;
+
+import quiz.Quizable;
+import quiz.QuizableAdapter;
+import quiz.QuizableFieldPaths;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -21,6 +25,7 @@ public class QuizablePanelConfigEditor extends JPanel {
     private final boolean minorOnly;
 
     private final JCheckBox allMinorFieldsBox = new JCheckBox("All minor fields");
+    private Runnable changeListener;
 
     public QuizablePanelConfigEditor(QuizablePanelConfig config) {
         this(config, false, false);
@@ -29,6 +34,16 @@ public class QuizablePanelConfigEditor extends JPanel {
     public QuizablePanelConfigEditor(QuizablePanelConfig config,
                                      boolean nestedDefaultNameOnly) {
         this(config, nestedDefaultNameOnly, false);
+    }
+
+    public void setChangeListener(Runnable changeListener) {
+        this.changeListener = changeListener;
+    }
+
+    private void fireConfigChanged() {
+        if (changeListener != null) {
+            changeListener.run();
+        }
     }
 
     private QuizablePanelConfigEditor(QuizablePanelConfig config,
@@ -45,8 +60,10 @@ public class QuizablePanelConfigEditor extends JPanel {
 
         if (!minorOnly) {
             allMinorFieldsBox.setSelected(sourceConfig.isAllMinorFields());
-            allMinorFieldsBox.addActionListener(e -> tableModel.fireTableDataChanged());
-
+            allMinorFieldsBox.addActionListener(e -> {
+                tableModel.fireTableDataChanged();
+                fireConfigChanged();
+            });
             JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
             top.add(allMinorFieldsBox);
             add(top, BorderLayout.NORTH);
@@ -208,6 +225,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         out.setAddListener(src.isAddListener());
         out.setThumb(src.isThumb());
         out.setAnswerType(src.getAnswerType());
+        out.setBlurImages(src.isBlurImages());
 
         return out;
     }
@@ -236,6 +254,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         if (viewRow >= 0) {
             table.getSelectionModel().setSelectionInterval(viewRow, viewRow);
         }
+        fireConfigChanged();
     }
 
     private void openMinorEditor(Row row) {
@@ -263,6 +282,7 @@ public class QuizablePanelConfigEditor extends JPanel {
             allMinorFieldsBox.setSelected(cfg.isAllMinorFields());
             dialog.dispose();
             tableModel.fireTableDataChanged();
+            fireConfigChanged();
         });
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -318,11 +338,13 @@ public class QuizablePanelConfigEditor extends JPanel {
             row.childEditor = null;
             dialog.dispose();
             tableModel.fireTableDataChanged();
+            fireConfigChanged();
         });
 
         okButton.addActionListener(e -> {
             dialog.dispose();
             tableModel.fireTableDataChanged();
+            fireConfigChanged();
         });
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -469,17 +491,18 @@ public class QuizablePanelConfigEditor extends JPanel {
             if (row.minorBlock && columnIndex == 2) {
                 allMinorFieldsBox.setSelected(Boolean.TRUE.equals(value));
                 fireTableRowsUpdated(rowIndex, rowIndex);
+                fireConfigChanged();
                 return;
             }
 
             if (columnIndex == 2) {
                 row.use = Boolean.TRUE.equals(value);
-
                 if (!row.use) {
                     row.childEditor = null;
                 }
 
                 fireTableRowsUpdated(rowIndex, rowIndex);
+                fireConfigChanged();
             }
         }
 

@@ -1,6 +1,7 @@
 package quiz;
 
 import org.junit.jupiter.api.Test;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import java.util.*;
 

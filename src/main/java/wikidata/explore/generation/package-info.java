@@ -9,6 +9,6 @@
  * without re-fetching.
  *
  * <p>{@code GenerationRun} carries the run's provenance (model snapshot, plan,
- * dynamic objects, runtime, instances) for the UI and "Save everything".
+ * dynamic objects, runtime, instances) for the UI and "Save domain".
  */
 package wikidata.explore.generation;

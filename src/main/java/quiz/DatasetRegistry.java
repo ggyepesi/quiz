@@ -31,6 +31,10 @@ public final class DatasetRegistry {
         private List<String> types = new ArrayList<>();
         private int instanceCount = 0;
         private String savedAt = "";
+        // Signature (rule-tree hash) of the model the saved snapshot was
+        // generated from — so a later load can detect the model drifted past
+        // the instances. Blank for pre-signature datasets.
+        private String modelSignature = "";
 
         public Dataset() {}
 
@@ -52,6 +56,8 @@ public final class DatasetRegistry {
         public void instanceCount(int v) { instanceCount = v; }
         public String savedAt() { return savedAt; }
         public void savedAt(String v) { savedAt = v == null ? "" : v; }
+        public String modelSignature() { return modelSignature; }
+        public void modelSignature(String v) { modelSignature = v == null ? "" : v; }
     }
 
     private final List<Dataset> datasets = new ArrayList<>();

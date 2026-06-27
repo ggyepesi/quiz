@@ -1,5 +1,7 @@
 package quiz;
 
+import quiz.ui.viewconfig.QuizablePanelConfig;
+
 /**
  * Bundled configurations for viewing, searching, and sorting quiz data.
  */

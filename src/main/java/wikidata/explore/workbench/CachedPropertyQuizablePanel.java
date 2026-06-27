@@ -1,7 +1,7 @@
 package wikidata.explore.workbench;
 
 import quiz.Quizable;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 import quiz.ui.QuizablePanel;
 import quiz.ui.QuizableRenderContext;
 import quiz.ui.QuizableSearchPanel;

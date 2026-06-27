@@ -1,5 +1,6 @@
-package quiz;
+package quiz.ui.viewconfig;
 
+import quiz.Quizable;
 import quiz.ui.ImagePane;
 
 import java.util.Collection;
@@ -9,9 +10,9 @@ public final class QuizablePanelConfigAdapter {
     private QuizablePanelConfigAdapter() {}
 
     public static QuizablePanelConfig fromOldArgs(Quizable q,
-                                                boolean showNames,
-                                                boolean showImages,
-                                                boolean expand) {
+                                                  boolean showNames,
+                                                  boolean showImages,
+                                                  boolean expand) {
 
         if (q == null) {
             return QuizablePanelConfig.leaf();

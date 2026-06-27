@@ -7,6 +7,7 @@ import org.jgrapht.alg.shortestpath.BFSShortestPath;
 import quiz.graph.QuizableEdge;
 import quiz.graph.QuizableGraphBuilder;
 import quiz.ui.QuizablePanel;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;

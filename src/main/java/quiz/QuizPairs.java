@@ -3,6 +3,7 @@ package quiz;
 import aux.GridBagUtils;
 import quiz.ui.PairingManager;
 import quiz.ui.QuizablePanel;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;

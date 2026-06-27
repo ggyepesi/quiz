@@ -3,7 +3,7 @@ package quiz.ui;
 import quiz.ListField;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;

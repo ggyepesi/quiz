@@ -1,7 +1,7 @@
 package quiz.ui;
 
 import quiz.Quizable;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -73,7 +73,13 @@ public class QuizableReferenceRow extends JComponent {
                 : "Click to expand in place · shift-click to open in a window");
 
         putClientProperty(QuizableSearchPanel.FIELD_NAME_PROPERTY, "name");
-        putClientProperty(QuizableSearchPanel.FIELD_PATH_PROPERTY, fieldPath1);
+        // The searchable value is the TARGET's name, so the path must end in
+        // "name" to match the model search's leaf path (QuizableFieldPaths emits
+        // e.g. ["episodes","name"]). Stamping just ["episodes"] meant samePath
+        // failed and the row was never highlighted (it became a "hidden hit").
+        List<String> searchPath = new ArrayList<>(fieldPath1);
+        searchPath.add("name");
+        putClientProperty(QuizableSearchPanel.FIELD_PATH_PROPERTY, searchPath);
         putClientProperty(QuizableSearchPanel.FIELD_VALUE_PROPERTY, targetName());
 
         addMouseListener(new MouseAdapter() {

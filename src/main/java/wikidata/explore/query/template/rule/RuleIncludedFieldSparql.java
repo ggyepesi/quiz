@@ -120,14 +120,21 @@ public final class RuleIncludedFieldSparql {
 
             String var = variableName(field, index);
             boolean label = withLabels && !field.isMediaField();
+            // ROOT_TO_ITEM: ?value wdt:P ?var ; ITEM_TO_ROOT: ?var wdt:P ?value.
+            String triple = field.direction()
+                    .triplePattern("?value", "?" + var, field.propertyPid());
+            // Constrain the value to the referenced class's type, if requested.
+            String typeConstraint = field.hasMembership()
+                    ? "?" + var + " wdt:" + field.membershipPid()
+                            + " wd:" + field.membershipQid() + " .\n"
+                    : "";
 
             if (field.optional()) {
                 sb.append("  OPTIONAL {\n")
-                  .append("    ?value wdt:")
-                  .append(field.propertyPid())
-                  .append(" ?")
-                  .append(var)
-                  .append(" .\n");
+                  .append("    ").append(triple).append("\n");
+                if (!typeConstraint.isEmpty()) {
+                    sb.append("    ").append(typeConstraint);
+                }
                 if (label) {
                     sb.append("    OPTIONAL {\n")
                       .append("      ?")
@@ -142,11 +149,10 @@ public final class RuleIncludedFieldSparql {
                 }
                 sb.append("  }\n");
             } else {
-                sb.append("  ?value wdt:")
-                  .append(field.propertyPid())
-                  .append(" ?")
-                  .append(var)
-                  .append(" .\n");
+                sb.append("  ").append(triple).append("\n");
+                if (!typeConstraint.isEmpty()) {
+                    sb.append("  ").append(typeConstraint);
+                }
                 if (label) {
                     sb.append("  OPTIONAL {\n")
                       .append("    ?")

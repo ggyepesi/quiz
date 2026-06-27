@@ -115,10 +115,24 @@ public final class RuleNodeQueryBuilder {
 
         WikidataQueryBuilder q = new WikidataQueryBuilder();
 
+        // The grouped path (GROUP_CONCAT inlining) GROUP BYs by every non-
+        // aggregate select. A single-valued field whose property is actually
+        // multi-valued (e.g. a film's many P577 release dates / P495 countries)
+        // would then cross-product the rows, and the inner LIMIT — counting ROWS,
+        // not distinct entities — gets exhausted by a handful of entities (98
+        // Best-Picture films collapsed to ~4). SAMPLE the scalar fields so they
+        // aggregate to one value per entity and GROUP BY reduces to ?value (R11/
+        // R13-style; same fix childQueryForParent already applies to child edges).
+        boolean grouped = !inlinedFields.isEmpty();
+
         q.select("value");
         if (!useService) q.select("valueLabel");
         appendValueFilterSelects(q, node, sharedVars.keySet());
-        appendIncludedFieldSelects(q, node, selectSkip, !useService);
+        if (grouped) {
+            appendGroupedScalarSelects(q, node, selectSkip, !useService);
+        } else {
+            appendIncludedFieldSelects(q, node, selectSkip, !useService);
+        }
 
         for (RuleIncludedField field : inlinedFields) {
             q.groupConcat(
@@ -127,7 +141,29 @@ public final class RuleNodeQueryBuilder {
                     "|");
         }
 
-        if (!isVariable && node.additionalSourceQids().isEmpty()) {
+        boolean blankMembership = !isVariable
+                && node.additionalSourceQids().isEmpty()
+                && RuleNode.cleanQid(node.sourceQid()).isBlank();
+
+        // No membership AND no seed QIDs: there's nothing to populate the class
+        // from. Without a real constraint, ?value is unbound and the label
+        // pattern below matches EVERY labelled entity — a full-database scan that
+        // returns arbitrary junk (Q27168368 …). Bind ?value to the empty set so
+        // the result is genuinely empty (and cheap), as the class definition
+        // implies. (A class meant to be materialised by a Transform — e.g. an
+        // Oscar/Nomination event — has no Wikidata membership and should not be
+        // generated directly; it'll come from the Transform, not this query.)
+        boolean emptyResult = blankMembership && node.includedQids().isEmpty();
+
+        if (blankMembership) {
+            // No class membership: the instances ARE the seed QIDs, bound by the
+            // VALUES ?value {…} that appendAllowedQids emits below. Emit no
+            // membership triple (which would be a broken "wd: ?value …").
+            if (node.includedQids().isEmpty()) {
+                q.rawWhere("# no membership and no seed QIDs — empty result\n"
+                        + "  VALUES ?value { }");
+            }
+        } else if (!isVariable && node.additionalSourceQids().isEmpty()) {
             // Single QID: emit the constant directly (?value wdt:P31 wd:Qxxx),
             // NOT BIND(wd:Qxxx AS ?root) + ?value wdt:P31 ?root. The BIND makes
             // the planner miss the constant/sitelink as the entry — ~18s vs ~1s
@@ -150,11 +186,34 @@ public final class RuleNodeQueryBuilder {
         appendExcludedQids(q, node);
         appendPredicateObjectExclusions(q, node);
         appendValueFilterPatterns(q, node, sharedVars);
-        appendIncludedFieldPatterns(q, node, innerPatternSkip, !useService);
+        if (grouped) {
+            appendGroupedScalarPatterns(q, node, innerPatternSkip, !useService);
+        } else {
+            appendIncludedFieldPatterns(q, node, innerPatternSkip, !useService);
+        }
         appendInlinedFieldPatterns(q, inlinedFields);
-        if (!useService) appendLabelPattern(q, node);
+        // Skip the label pattern for the empty case — with ?value bound to the
+        // empty set it would add nothing, but emitting it invites a full label
+        // scan if a planner ignores the empty VALUES.
+        if (!useService && !emptyResult) appendLabelPattern(q, node);
 
-        if (inlinedFields.isEmpty()) {
+        if (node.hasRank()) {
+            // Class-level importance ranking: keep the top `limit` by a measure.
+            // ORDER BY goes INSIDE the limited subquery (R11) so the LIMIT picks
+            // the top-N, not an arbitrary N. Group so a multi-valued measure
+            // aggregates to one row per entity.
+            if (node.rankBySitelinks()) {
+                q.rawWhere("?value wikibase:sitelinks ?rankMeasure .");
+            } else {
+                q.rawWhere("OPTIONAL { ?value wdt:"
+                        + RuleNode.cleanPid(node.rankPropertyPid())
+                        + " ?rankMeasure . }");
+            }
+            q.groupByNonAggregateSelects();
+            q.orderByRaw((node.rankDescending() ? "DESC" : "ASC")
+                    + "(MAX(?rankMeasure))");
+            q.limit(node.limit());
+        } else if (inlinedFields.isEmpty()) {
             q.limit(node.limit());
         } else {
             // GROUP_CONCAT folds the inlined collection(s); every other
@@ -467,19 +526,28 @@ public final class RuleNodeQueryBuilder {
             String valueVar = inlinedValueVar(field);
             String labelVar = inlinedLabelVar(field);
             String pairVar = inlinedPairVar(field);
+            // ROOT_TO_ITEM: ?value wdt:P ?x_gc ; ITEM_TO_ROOT: ?x_gc wdt:P ?value
+            // (incoming, e.g. "episode in"/"facet of" pointing AT this entity).
+            String triple = field.direction().triplePattern("?value", valueVar, pid);
+            // Constrain the value to the referenced class's type, if requested
+            // (e.g. keep only P31=Episode, dropping videogames/novels).
+            String typeConstraint = field.hasMembership()
+                    ? "  " + valueVar + " wdt:" + field.membershipPid()
+                            + " wd:" + field.membershipQid() + " .\n"
+                    : "";
 
             q.rawWhere("""
                 OPTIONAL {
-                  ?value wdt:%s %s .
-                  OPTIONAL {
+                  %s
+                %s  OPTIONAL {
                     %s rdfs:label %s .
                     FILTER(LANG(%s) = "en")
                   }
                   BIND(CONCAT(STR(%s), "§", COALESCE(%s, "")) AS ?%s)
                 }
                 """.formatted(
-                    pid,
-                    valueVar,
+                    triple,
+                    typeConstraint,
                     valueVar,
                     labelVar,
                     labelVar,
@@ -551,6 +619,87 @@ public final class RuleNodeQueryBuilder {
             String var = RuleIncludedFieldSparql.variableName(field, index);
             q.select(var);
             if (withLabels && !field.isMediaField()) q.select(var + "Label");
+            index++;
+        }
+    }
+
+    // Grouped-path selects: SAMPLE each single-valued field (so it aggregates to
+    // one value per entity and drops out of GROUP BY); a non-inlined COLLECTION
+    // field stays a plain non-aggregate select (its multiplicity is intended).
+    // The SAMPLE source is ?<var>_s, projected back AS ?<var> so the SELECT name
+    // and the extractor's index-based var are unchanged.
+    private static void appendGroupedScalarSelects(
+            WikidataQueryBuilder q, RuleNode node,
+            List<RuleIncludedField> skipFields, boolean withLabels) {
+
+        if (node.includedFields().isEmpty()) return;
+        int index = 0;
+        for (RuleIncludedField field : node.includedFields()) {
+            if (field == null) { index++; continue; }
+            if (skipFields.contains(field)) { index++; continue; }
+            String var = RuleIncludedFieldSparql.variableName(field, index);
+            if (field.collection()) {
+                q.select(var);
+                if (withLabels && !field.isMediaField()) q.select(var + "Label");
+            } else {
+                q.selectRaw("(SAMPLE(?" + var + "_s) AS ?" + var + ")");
+                if (withLabels && !field.isMediaField()) {
+                    q.selectRaw("(SAMPLE(?" + var + "_sLabel) AS ?" + var + "Label)");
+                }
+            }
+            index++;
+        }
+    }
+
+    // Grouped-path patterns matching {@link #appendGroupedScalarSelects}: scalar
+    // fields bind ?<var>_s (SAMPLE source); collection fields keep the shared
+    // util's plain binding. Honours direction, optionality, a membership type
+    // constraint, and media (no label).
+    private static void appendGroupedScalarPatterns(
+            WikidataQueryBuilder q, RuleNode node,
+            List<RuleIncludedField> skipFields, boolean withLabels) {
+
+        if (node.includedFields().isEmpty()) return;
+
+        // Collection (non-inlined) fields: delegate to the shared util, skipping
+        // every scalar so only collections are emitted with plain vars.
+        List<RuleIncludedField> scalarSkip = new ArrayList<>(skipFields);
+        for (RuleIncludedField f : node.includedFields()) {
+            if (f != null && !f.collection()) scalarSkip.add(f);
+        }
+        StringBuilder collSb = new StringBuilder();
+        RuleIncludedFieldSparql.appendWherePatterns(
+                collSb, node.includedFields(), withLabels, scalarSkip);
+        if (!collSb.isEmpty()) q.rawWhere(collSb.toString());
+
+        // Scalar fields: emit with the ?<var>_s SAMPLE source var.
+        int index = 0;
+        for (RuleIncludedField field : node.includedFields()) {
+            if (field == null
+                    || field.propertyPid() == null || field.propertyPid().isBlank()
+                    || field.collection() || skipFields.contains(field)) {
+                index++;
+                continue;
+            }
+            String var = RuleIncludedFieldSparql.variableName(field, index) + "_s";
+            boolean label = withLabels && !field.isMediaField();
+            String triple = field.direction()
+                    .triplePattern("?value", "?" + var, field.propertyPid());
+            StringBuilder sb = new StringBuilder();
+            sb.append("  OPTIONAL {\n    ").append(triple).append("\n");
+            if (field.hasMembership()) {
+                sb.append("    ?").append(var).append(" wdt:")
+                  .append(field.membershipPid()).append(" wd:")
+                  .append(field.membershipQid()).append(" .\n");
+            }
+            if (label) {
+                sb.append("    OPTIONAL { ?").append(var)
+                  .append(" rdfs:label ?").append(var)
+                  .append("Label . FILTER(LANG(?").append(var)
+                  .append("Label) = \"en\") }\n");
+            }
+            sb.append("  }\n");
+            q.rawWhere(sb.toString());
             index++;
         }
     }

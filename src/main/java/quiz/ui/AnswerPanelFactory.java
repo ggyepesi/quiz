@@ -3,7 +3,7 @@ package quiz.ui;
 import aux.GridBagUtils;
 import quiz.Quiz;
 import quiz.Quizable;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;

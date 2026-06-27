@@ -34,31 +34,23 @@ public class WikiProjectCategoryReader {
     public List<WikiProjectArticle> categoryMembers(
             String category,
             int limit) throws Exception {
+        // ns 1 (Talk) — WikiProject assessment categories hold Talk pages.
+        return categoryMembers(category, limit, 1);
+    }
+
+    /** Members in a given namespace: ns 1 (Talk) for assessment categories,
+     *  ns 0 (article) for a plain content category (e.g. Labours of Hercules). */
+    public List<WikiProjectArticle> categoryMembers(
+            String category,
+            int limit,
+            int namespace) throws Exception {
 
         List<WikiProjectArticle> out = new ArrayList<>();
         String cmcontinue = null;
 
         while (out.size() < limit) {
-            StringBuilder qs = new StringBuilder();
-
-            qs.append("action=query");
-            qs.append("&format=json");
-            qs.append("&list=categorymembers");
-            qs.append("&cmnamespace=1"); // Talk namespace
-            qs.append("&cmtype=page");
-            qs.append("&cmlimit=")
-              .append(Math.clamp(limit - out.size(), 1, 500));
-            qs.append("&cmprop=")
-              .append(WikiProjectMediaWikiClient.enc("ids|title"));
-            qs.append("&cmtitle=")
-              .append(WikiProjectMediaWikiClient.enc(category));
-
-            if (cmcontinue != null && !cmcontinue.isBlank()) {
-                qs.append("&cmcontinue=")
-                  .append(WikiProjectMediaWikiClient.enc(cmcontinue));
-            }
-
-            String json = client.get(qs.toString());
+            String json = client.get(
+                    buildQueryString(category, limit - out.size(), cmcontinue, namespace));
 
             if (debug) {
                 System.out.println("WikiProjectCategoryReader json:");
@@ -81,6 +73,34 @@ public class WikiProjectCategoryReader {
         }
 
         return out;
+    }
+
+    /** The (first-page) MediaWiki API URL this reader would hit for a category
+     *  — for logging the request as a runnable link. */
+    public String firstRequestUrl(String category, int limit) {
+        return firstRequestUrl(category, limit, 1);
+    }
+
+    public String firstRequestUrl(String category, int limit, int namespace) {
+        return WikiProjectMediaWikiClient.url(
+                buildQueryString(category, limit, null, namespace));
+    }
+
+    private static String buildQueryString(
+            String category, int remaining, String cmcontinue, int namespace) {
+        StringBuilder qs = new StringBuilder();
+        qs.append("action=query");
+        qs.append("&format=json");
+        qs.append("&list=categorymembers");
+        qs.append("&cmnamespace=").append(namespace);
+        qs.append("&cmtype=page");
+        qs.append("&cmlimit=").append(Math.clamp(remaining, 1, 500));
+        qs.append("&cmprop=").append(WikiProjectMediaWikiClient.enc("ids|title"));
+        qs.append("&cmtitle=").append(WikiProjectMediaWikiClient.enc(category));
+        if (cmcontinue != null && !cmcontinue.isBlank()) {
+            qs.append("&cmcontinue=").append(WikiProjectMediaWikiClient.enc(cmcontinue));
+        }
+        return qs.toString();
     }
 
     public List<WikiProjectArticle> topImportanceAstronomyDemo(

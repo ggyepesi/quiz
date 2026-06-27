@@ -1,6 +1,7 @@
 package quiz.ui;
 
 import quiz.*;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -131,7 +132,9 @@ public class QuizablePanelSearchAndSort {
             Object value =
                     extractValue(panel.getQuizable(), f.path());
 
-            sb.append(sortableString(value))
+            // A @Numeric leaf field sorts by its leading number ("1538 K" ->
+            // 1538), not lexically — driven by the annotation, not the value type.
+            sb.append(sortKey(f.leafField(), value))
               .append('\u0000');
         }
 
@@ -283,6 +286,48 @@ public class QuizablePanelSearchAndSort {
         return true;
     }
 
+    private String sortKey(Field leafField, Object value) {
+        return isNumericField(leafField)
+                ? numericSortKey(value)
+                : sortableString(value);
+    }
+
+    private static boolean isNumericField(Field field) {
+        return field != null
+                && field.isAnnotationPresent(quiz.annotations.Numeric.class);
+    }
+
+    private static final java.util.regex.Pattern LEADING_NUMBER =
+            java.util.regex.Pattern.compile("-?\\d+(?:\\.\\d+)?");
+
+    // Leading number of the value's text, as a fixed-width offset key so
+    // lexicographic order == numeric order (for |x| < 1e12).
+    private String numericSortKey(Object value) {
+        Double n = leadingNumber(value);
+        return n == null ? "" : String.format("%026.6f", n + 1e12);
+    }
+
+    private Double leadingNumber(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number num) {
+            return num.doubleValue();
+        }
+        if (value instanceof Collection<?> c) {
+            for (Object o : c) {
+                Double d = leadingNumber(o);
+                if (d != null) {
+                    return d;
+                }
+            }
+            return null;
+        }
+        java.util.regex.Matcher m =
+                LEADING_NUMBER.matcher(String.valueOf(value).trim());
+        return m.lookingAt() ? Double.valueOf(m.group()) : null;
+    }
+
     private String sortableString(Object value) {
         if (value == null) {
             return "";
@@ -317,7 +362,6 @@ public class QuizablePanelSearchAndSort {
         if (o == null) {
             return "";
         }
-
         return o instanceof Quizable q
                 ? normalize(q.getName())
                 : normalize(String.valueOf(o));

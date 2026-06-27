@@ -30,6 +30,14 @@ public class FieldSourceMapping {
 
     private int limit = 200;
 
+    // Class-level ranking: which instances of the class to KEEP (top `limit`).
+    // "" = none (order by label); "__sitelinks" = by Wikipedia sitelink count
+    // (notability/importance); otherwise the NAME of a sortable field of the
+    // class (its property is used, e.g. brightness/area/population). Replaces
+    // per-field "sort children by".
+    private String rankBy = "";
+    private boolean rankDescending = true;
+
     private FieldProductionKind productionKind = FieldProductionKind.AUTO;
 
     private final Set<String> allowedQids = new LinkedHashSet<>();
@@ -41,6 +49,12 @@ public class FieldSourceMapping {
     // {constellation Q8928, zodiacal constellation Q4193029} to include Aries &
     // Cancer, which are typed only as the subclass.
     private final Set<String> additionalTypeQids = new LinkedHashSet<>();
+
+    // Type QIDs to EXCLUDE from membership: drop any entity that is instance-of
+    // (P31) one of these, even if it matched the membership above — e.g. exclude
+    // Roman deity (Q11688446) from a Greek-character class. Emitted as
+    // FILTER NOT EXISTS { ?value wdt:P31 wd:Qexcluded }.
+    private final Set<String> excludedTypeQids = new LinkedHashSet<>();
 
     private FieldSourceType sourceType = FieldSourceType.SPARQL;
 
@@ -102,6 +116,13 @@ public class FieldSourceMapping {
     public Set<String> allowedQids() { return allowedQids; }
     public Set<String> excludedQids() { return excludedQids; }
     public Set<String> additionalTypeQids() { return additionalTypeQids; }
+    public Set<String> excludedTypeQids() { return excludedTypeQids; }
+
+    public String rankBy() { return rankBy; }
+    public void rankBy(String v) { rankBy = v == null ? "" : v.trim(); }
+    public boolean rankDescending() { return rankDescending; }
+    public void rankDescending(boolean v) { rankDescending = v; }
+    public static final String RANK_BY_SITELINKS = "__sitelinks";
 
     public String displaySource() {
         if (sourceQid.isBlank() && sourceLabel.isBlank()) {
@@ -150,6 +171,10 @@ public class FieldSourceMapping {
         excludedQids.addAll(other.excludedQids);
         additionalTypeQids.clear();
         additionalTypeQids.addAll(other.additionalTypeQids);
+        excludedTypeQids.clear();
+        excludedTypeQids.addAll(other.excludedTypeQids);
+        rankBy = other.rankBy;
+        rankDescending = other.rankDescending;
     }
 
     public FieldSourceType sourceType() {

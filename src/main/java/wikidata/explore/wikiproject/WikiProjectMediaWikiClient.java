@@ -71,6 +71,12 @@ public class WikiProjectMediaWikiClient {
         return body;
     }
 
+    /** The full GET URL for a query string — so a request can be logged as a
+     *  runnable link (open it in a browser to see the JSON). */
+    public static String url(String queryString) {
+        return ENDPOINT + "?" + (queryString == null ? "" : queryString);
+    }
+
     public static String enc(String s) {
         return URLEncoder.encode(
                 s == null ? "" : s,

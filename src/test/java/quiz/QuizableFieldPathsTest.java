@@ -2,6 +2,7 @@ package quiz;
 
 import org.junit.jupiter.api.Test;
 import quiz.ui.ImagePane;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import java.util.List;
 import java.util.Set;

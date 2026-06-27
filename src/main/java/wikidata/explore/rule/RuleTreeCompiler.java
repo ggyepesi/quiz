@@ -34,7 +34,8 @@ public final class RuleTreeCompiler {
             GeneratedProjectModel project,
             Set<String> visited) {
 
-        FieldSourceMapping m = clazz.instanceMapping();
+        // Inherit the base class's membership when this class defines none.
+        FieldSourceMapping m = clazz.effectiveInstanceMapping(project);
 
         RuleNode node = new RuleNode(clazz.className(), decap(clazz.className()));
 
@@ -44,6 +45,15 @@ public final class RuleTreeCompiler {
         // (e.g. + zodiacal constellation to admit Aries/Cancer).
         for (String extra : m.additionalTypeQids()) {
             node.addAdditionalSourceQid(extra);
+        }
+        // Excluded types: drop entities that are instance-of (P31) one of these
+        // (e.g. exclude Roman deities from a Greek-character class).
+        for (String exq : m.excludedTypeQids()) {
+            String qid = RuleNode.cleanQid(exq);
+            if (qid.matches("Q\\d+")) {
+                node.excludedPredicateObjects().add(
+                        new RuleNode.PredicateObjectExclusion("P31", qid));
+            }
         }
         node.propertyPid(m.propertyPid().isBlank() ? "P31" : m.propertyPid());
         node.propertyLabel(m.propertyLabel().isBlank()
@@ -56,9 +66,32 @@ public final class RuleTreeCompiler {
                 m.requireLabel(),
                 m.labelLanguage()));
 
+        // Explicit instance QIDs: when membership is blank these ARE the
+        // instances (VALUES ?value {…}); with a type they restrict it.
+        for (String qid : clazz.seedQids()) {
+            node.addIncludedQid(qid);
+        }
+
+        // Class-level ranking: keep the top `limit` by notability (sitelinks)
+        // or a sortable field's property.
+        node.rankDescending(m.rankDescending());
+        String rankBy = m.rankBy();
+        if (FieldSourceMapping.RANK_BY_SITELINKS.equals(rankBy)) {
+            node.rankBySitelinks(true);
+        } else if (rankBy != null && !rankBy.isBlank()) {
+            for (GeneratedFieldModel rf : clazz.effectiveFields(project)) {
+                if (rf != null && rankBy.equals(rf.name())
+                        && !rf.mapping().propertyPid().isBlank()) {
+                    node.rankPropertyPid(rf.mapping().propertyPid());
+                    break;
+                }
+            }
+        }
+
         visited.add(clazz.className());
 
-        for (GeneratedFieldModel f : clazz.fields()) {
+        // Effective fields = inherited (from the extends chain) + own.
+        for (GeneratedFieldModel f : clazz.effectiveFields(project)) {
             if (f.isNameField()) {
                 continue;
             }
@@ -85,6 +118,7 @@ public final class RuleTreeCompiler {
                 !field.required());
 
         included.collection(field.collection());
+        included.direction(m.direction());
 
         return included;
     }
@@ -155,7 +189,7 @@ public final class RuleTreeCompiler {
                 // the root class keeps it — so a constellation's "stars" can
                 // include bright NAMED variable/double stars (typed as a
                 // subclass, not Q523) reached via P59 + magnitude + label.
-                FieldSourceMapping cm = childClass.instanceMapping();
+                FieldSourceMapping cm = childClass.effectiveInstanceMapping(project);
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
                         && cm != null && !cm.sourceQid().isBlank()) {
                     child.membershipPid(cm.propertyPid().isBlank()
@@ -170,7 +204,7 @@ public final class RuleTreeCompiler {
                 }
 
                 visited.add(childClass.className());
-                for (GeneratedFieldModel cf : childClass.fields()) {
+                for (GeneratedFieldModel cf : childClass.effectiveFields(project)) {
                     if (cf.isNameField()) {
                         continue;
                     }
@@ -188,6 +222,24 @@ public final class RuleTreeCompiler {
         RuleIncludedField included = compileField(field);
 
         if (included != null) {
+            // Constrain the OTHER end to the referenced class's type, when the
+            // field refers to a class and "only related of that class" is on
+            // (edgeMembership INHERIT) — e.g. episodes (P674) restricted to
+            // Episode (P31=Q63143903), dropping videogames/novels that also list
+            // the character via P674.
+            if (!field.entityClassName().isBlank()
+                    && field.edgeMembership() == EdgeMembershipMode.INHERIT
+                    && project != null) {
+                GeneratedClassModel refClass = project.findClass(field.entityClassName());
+                if (refClass != null) {
+                    FieldSourceMapping cm = refClass.effectiveInstanceMapping(project);
+                    if (cm != null && !cm.sourceQid().isBlank()) {
+                        included.membershipPid(cm.propertyPid().isBlank()
+                                ? "P31" : cm.propertyPid());
+                        included.membershipQid(cm.sourceQid());
+                    }
+                }
+            }
             parent.includedFields().add(included);
         }
     }

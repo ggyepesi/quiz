@@ -71,14 +71,34 @@ public class WikiProjectSeedQuery
                 break;
             }
 
-            String category = "Category:" + cls + "-Class " + project
-                    + " articles of " + importance + "-importance";
-
-            context.message("WikiProject: reading " + category + "\n");
+            // Combined intersection categories ("…articles of X-importance")
+            // exist only for some projects (e.g. Astronomy), not others (e.g.
+            // Mythology). "Any"/blank importance uses the class-only category,
+            // which every project has.
+            boolean anyImportance =
+                    importance.isBlank() || importance.equalsIgnoreCase("Any");
+            String category = anyImportance
+                    ? "Category:" + cls + "-Class " + project + " articles"
+                    : "Category:" + cls + "-Class " + project
+                            + " articles of " + importance + "-importance";
 
             int remaining = Math.max(1, limit - out.size());
-            List<WikiProjectArticle> categoryArticles =
-                    reader.categoryMembers(category, remaining);
+            final String cat = category;
+            // Log the category read as its own step carrying the runnable
+            // MediaWiki API URL (queryType "API" → "Open request" link), just
+            // like a SPARQL step carries its query.
+            List<WikiProjectArticle> categoryArticles = context.step(
+                    "WikiProject category: " + cat,
+                    "API",
+                    "categorymembers -> Talk pages",
+                    Map.of("category", cat, "limit", String.valueOf(remaining)),
+                    step -> {
+                        step.request(reader.firstRequestUrl(cat, remaining));
+                        List<WikiProjectArticle> got =
+                                reader.categoryMembers(cat, remaining);
+                        step.summary(got.size() + " pages");
+                        return got;
+                    });
 
             for (WikiProjectArticle article : categoryArticles) {
                 if (article.title() == null || article.title().isBlank()) {

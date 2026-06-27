@@ -23,7 +23,7 @@ public class GeneratedQuizableRuntimeBuilder {
     private static final Path OUTPUT_ROOT = createOutputRoot();
 
     public GeneratedQuizableRuntime build(GeneratedClassModel model) throws Exception {
-        Compiled c = compileOne(model);
+        Compiled c = compileOne(model, null);
         return new GeneratedQuizableRuntime(
                 model, c.qcn, c.source, c.compiledClass, c.loader);
     }
@@ -34,30 +34,44 @@ public class GeneratedQuizableRuntimeBuilder {
      * dependencies), keyed by class name. The root class drives the previews.
      */
     public GeneratedQuizableRuntime build(GeneratedProjectModel project) throws Exception {
-        GeneratedClassModel root = project.rootClass();
+        int generation = GENERATIONS.incrementAndGet();
+        String packageName =
+                GeneratedQuizableSourceGenerator.GENERATED_PACKAGE + ".g" + generation;
+
+        GeneratedQuizableSourceGenerator gen =
+                new GeneratedQuizableSourceGenerator(packageName);
+        RuntimeJavaCompiler compiler =
+                new RuntimeJavaCompiler(OUTPUT_ROOT.resolve("g" + generation).toFile());
+
+        // Generate every class into the SAME package and compile them in one
+        // pass, so typed cross-references (e.g. Character <-> Episode) resolve.
+        // That is what lets QuizableFieldPaths recurse into a referenced class's
+        // fields for nested search/sort/config, and keeps cross-refs typed (not
+        // raw) when mapped.
+        Map<String, String> sources = new LinkedHashMap<>();           // qcn -> source
+        Map<String, GeneratedClassModel> modelByQcn = new LinkedHashMap<>();
+        for (GeneratedClassModel cls : project.classes()) {
+            String qcn = gen.qualifiedClassName(cls);
+            sources.put(qcn, gen.sourceFor(cls, project));
+            modelByQcn.put(qcn, cls);
+        }
+
+        RuntimeJavaCompiler.CompiledClasses compiled = compiler.compileAll(sources);
 
         Map<String, GeneratedQuizableRuntime.ClassRuntime> byType = new LinkedHashMap<>();
-        Compiled rootCompiled = null;
-
-        for (GeneratedClassModel cls : project.classes()) {
-            Compiled c = compileOne(cls);
-            byType.put(cls.className(),
+        for (Map.Entry<String, GeneratedClassModel> e : modelByQcn.entrySet()) {
+            byType.put(e.getValue().className(),
                     new GeneratedQuizableRuntime.ClassRuntime(
-                            cls, c.compiledClass, c.loader));
-            if (cls.className().equals(root.className())) {
-                rootCompiled = c;
-            }
-        }
-        if (rootCompiled == null) {
-            rootCompiled = compileOne(root);
-            byType.put(root.className(),
-                    new GeneratedQuizableRuntime.ClassRuntime(
-                            root, rootCompiled.compiledClass, rootCompiled.loader));
+                            e.getValue(),
+                            compiled.classes().get(e.getKey()),
+                            compiled.loader()));
         }
 
+        GeneratedClassModel root = project.rootClass();
+        String rootQcn = gen.qualifiedClassName(root);
         return new GeneratedQuizableRuntime(
-                root, rootCompiled.qcn, rootCompiled.source,
-                rootCompiled.compiledClass, rootCompiled.loader, byType);
+                root, rootQcn, sources.get(rootQcn),
+                compiled.classes().get(rootQcn), compiled.loader(), byType);
     }
 
     private record Compiled(String qcn, String source,
@@ -65,7 +79,8 @@ public class GeneratedQuizableRuntimeBuilder {
                             java.net.URLClassLoader loader) {
     }
 
-    private Compiled compileOne(GeneratedClassModel model) throws Exception {
+    private Compiled compileOne(GeneratedClassModel model, GeneratedProjectModel project)
+            throws Exception {
         int generation = GENERATIONS.incrementAndGet();
 
         String packageName =
@@ -80,7 +95,7 @@ public class GeneratedQuizableRuntimeBuilder {
                         OUTPUT_ROOT.resolve("g" + generation).toFile());
 
         String qcn = sourceGenerator.qualifiedClassName(model);
-        String source = sourceGenerator.sourceFor(model);
+        String source = sourceGenerator.sourceFor(model, project);
 
         RuntimeJavaCompiler.CompiledClass compiled =
                 compiler.compile(qcn, source);

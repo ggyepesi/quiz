@@ -38,6 +38,10 @@ public class GeneratedFieldModel {
     private String sortFieldName = "";
     private boolean sortDescending = false;
 
+    // Unit symbol for a quantity field (e.g. "K", "g/cm³"), resolved once for
+    // the whole field — Wikidata's truthy value drops it. Blank = dimensionless.
+    private String unit = "";
+
     private final FieldSourceMapping mapping = new FieldSourceMapping();
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
 
@@ -151,6 +155,14 @@ public class GeneratedFieldModel {
         return sortFieldName != null && !sortFieldName.isBlank();
     }
 
+    public String unit() {
+        return unit == null ? "" : unit;
+    }
+
+    public void unit(String unit) {
+        this.unit = unit == null ? "" : unit.trim();
+    }
+
     public GeneratedFieldModel copy() {
         GeneratedFieldModel c =
                 new GeneratedFieldModel(name, type, cardinality);
@@ -163,6 +175,7 @@ public class GeneratedFieldModel {
         c.edgeMembership = edgeMembership;
         c.sortFieldName = sortFieldName;
         c.sortDescending = sortDescending;
+        c.unit = unit;
         c.mapping.copyFrom(mapping);
 
         for (GeneratedFieldModel f : fields) {

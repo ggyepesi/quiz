@@ -69,15 +69,26 @@ public class MultiQuizableView extends JPanel {
         }
 
         List<JComponent> bodies = new ArrayList<>();
+        List<QuizableSearchPanel> engines = new ArrayList<>();
         for (Section s : sections) {
-            bodies.add(buildSection(s, columnsPerView));
+            bodies.add(buildSection(s, columnsPerView, engines));
         }
 
-        add(layout(bodies), BorderLayout.CENTER);
+        // One search bar across all sections (each section keeps its own class
+        // config); the bar fans the query out, every section highlights its own
+        // matches, and navigation is unified.
+        JPanel root = new JPanel(new BorderLayout(0, 4));
+        if (!engines.isEmpty()) {
+            root.add(new MultiSearchBar(engines), BorderLayout.NORTH);
+        }
+        root.add(layout(bodies), BorderLayout.CENTER);
+
+        add(root, BorderLayout.CENTER);
         revalidate();
     }
 
-    private JComponent buildSection(Section s, int columns) {
+    private JComponent buildSection(
+            Section s, int columns, List<QuizableSearchPanel> engines) {
         QuizablePanelView view = new QuizablePanelView();
         view.setRenderContext(context);
 
@@ -90,11 +101,19 @@ public class MultiQuizableView extends JPanel {
         body.setBorder(BorderFactory.createTitledBorder(s.title()));
 
         if (!s.objects().isEmpty()) {
-            QuizableSearchPanel search =
+            // A per-section search engine in coordinated mode: its own input +
+            // config toolbar is hidden (the shared bar owns those), but it keeps
+            // its own per-field results panel + per-panel navigation, and
+            // highlights this section's cards. Driven by the shared bar.
+            QuizableSearchPanel engine =
                     new QuizableSearchPanel(s.type());
-            search.setTarget(view.getCardsPanel(), view.getCardsScrollPane());
-            view.addTargetListener(search);
-            body.add(search, BorderLayout.NORTH);
+            engine.setTarget(view.getCardsPanel(), view.getCardsScrollPane());
+            engine.setRenderContext(context);
+            engine.setCoordinated(true);
+            view.addTargetListener(engine);
+            engines.add(engine);
+
+            body.add(engine, BorderLayout.NORTH);
         }
 
         body.add(view.getCardsScrollPane(), BorderLayout.CENTER);

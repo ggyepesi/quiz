@@ -2,6 +2,7 @@ package quiz;
 
 import quiz.ui.QuizablePanel;
 import quiz.ui.QuizableRenderContext;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import java.awt.*;
 import java.awt.event.MouseListener;

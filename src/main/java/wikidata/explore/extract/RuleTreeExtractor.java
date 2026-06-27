@@ -29,8 +29,11 @@ import java.util.function.Consumer;
  * - complex child edges -> batched child queries
  */
 public class RuleTreeExtractor {
-    private final WikidataObjectRegistry registry =
-            new WikidataObjectRegistry();
+    // Not final: a shared registry can be injected so several class runs
+    // (a whole-domain generation) pool into one graph — an entity referenced by
+    // one class and generated as another's root is then a single, type-stamped
+    // object, with references already linked.
+    private final WikidataObjectRegistry registry;
 
     private static final int BATCH_SIZE = 50;
     private static final int POOL_SIZE  = 3;
@@ -44,7 +47,13 @@ public class RuleTreeExtractor {
     private GenerationLog log = GenerationLog.NOOP;
 
     public RuleTreeExtractor(WikidataSparqlClient client) {
+        this(client, new WikidataObjectRegistry());
+    }
+
+    /** Shares {@code registry} across runs (whole-domain generation). */
+    public RuleTreeExtractor(WikidataSparqlClient client, WikidataObjectRegistry registry) {
         this.client = client;
+        this.registry = registry == null ? new WikidataObjectRegistry() : registry;
     }
 
     public void log(GenerationLog log) {
@@ -329,28 +338,43 @@ public class RuleTreeExtractor {
                     String sparql = RuleNodeQueryBuilder.childQueryForParent(
                             childNode, parentQid, limit);
                     long t0 = System.currentTimeMillis();
-                    Map<String, WikidataDynamicObject> kids = new LinkedHashMap<>();
-                    for (WikidataBinding b : client.query(sparql)) {
-                        String childQid  = b.qid("value");
-                        String childLabel = b.label("value");
-                        if (childQid == null || !childQid.matches("Q\\d+"))
-                            continue;
-                        WikidataDynamicObject child = kids.computeIfAbsent(
-                                childQid, k -> registry.getOrCreate(childQid, childLabel));
-                        child.type(childNode.name()); // stamp the child class (e.g. "Star")
-                        addValueFilterFields(child, childNode, b);
-                        addIncludedFields(child, childNode, b);
-                    }
-                    if (!kids.isEmpty()) childrenByParent.put(parentQid, kids);
-                    // One structured, collapsible sub-query entry per parent (a
-                    // single runnable SELECT). Parents run in parallel, so the
-                    // recorder add is serialised here.
-                    long ms = System.currentTimeMillis() - t0;
-                    synchronized (progress) {
-                        progress.subquery(
-                                edge.fieldName() + " <- " + parentQid,
-                                sparql,
-                                kids.size() + " (" + ms + " ms)");
+                    String title = edge.fieldName() + " <- " + parentQid;
+                    try {
+                        Map<String, WikidataDynamicObject> kids = new LinkedHashMap<>();
+                        for (WikidataBinding b : client.query(sparql)) {
+                            String childQid  = b.qid("value");
+                            String childLabel = b.label("value");
+                            if (childQid == null || !childQid.matches("Q\\d+"))
+                                continue;
+                            WikidataDynamicObject child = kids.computeIfAbsent(
+                                    childQid, k -> registry.getOrCreate(childQid, childLabel));
+                            child.type(childNode.name()); // stamp the child class (e.g. "Star")
+                            addValueFilterFields(child, childNode, b);
+                            addIncludedFields(child, childNode, b);
+                        }
+                        if (!kids.isEmpty()) childrenByParent.put(parentQid, kids);
+                        // One structured, collapsible sub-query entry per parent (a
+                        // single runnable SELECT). Parents run in parallel, so the
+                        // recorder add is serialised here.
+                        long ms = System.currentTimeMillis() - t0;
+                        synchronized (progress) {
+                            progress.subquery(title, sparql, kids.size() + " (" + ms + " ms)");
+                        }
+                    } catch (InterruptedException ie) {
+                        // A real cancellation (the user stopped the run) must abort,
+                        // not be swallowed as a per-parent failure.
+                        Thread.currentThread().interrupt();
+                        throw ie;
+                    } catch (Exception ex) {
+                        // One parent timing out / failing must NOT abort the whole
+                        // domain run (and must not leave the other parents firing as
+                        // orphaned queries). Record it as a FAILED child step under
+                        // the same log entry, then continue with the rest.
+                        long ms = System.currentTimeMillis() - t0;
+                        synchronized (progress) {
+                            progress.subqueryFailed(title, sparql,
+                                    ex.getMessage() + " (" + ms + " ms)");
+                        }
                     }
                     return null;
                 }));

@@ -79,12 +79,20 @@ public class WikidataApiClient {
      */
     public List<SearchResult> searchEntities(
             String query, int limit) throws Exception {
+        return searchEntities(query, limit, "item");
+    }
+
+    /** Search Wikidata entities of a given {@code type} ("item" or "property").
+     *  Property search ({@code type=property}) lets the user find a PID by name
+     *  (e.g. "nominated for" → P1411). */
+    public List<SearchResult> searchEntities(
+            String query, int limit, String type) throws Exception {
 
         Map<String, String> params = new LinkedHashMap<>();
         params.put("action",   "wbsearchentities");
         params.put("search",   encode(query));
         params.put("language", "en");
-        params.put("type",     "item");
+        params.put("type",     type == null || type.isBlank() ? "item" : type);
         params.put("limit",    String.valueOf(Math.min(limit, 50)));
         params.put("format",   "json");
 

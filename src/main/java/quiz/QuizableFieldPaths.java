@@ -1,6 +1,7 @@
 package quiz;
 
 import quiz.ui.ImagePane;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -141,6 +142,11 @@ public final class QuizableFieldPaths {
                                      FieldFilter filter,
                                      List<FieldPath> out) {
         if (field == null || !filter.accept(field)) {
+            return;
+        }
+        // Provenance (the Source chip) is metadata, not a searchable/sortable
+        // domain field — keep it out of the field paths.
+        if (QuizableAdapter.isProvenanceField(field)) {
             return;
         }
 

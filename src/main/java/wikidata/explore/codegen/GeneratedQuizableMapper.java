@@ -34,15 +34,29 @@ public class GeneratedQuizableMapper {
     }
 
     private Object mapObject(WikidataDynamicObject source) throws Exception {
+        return mapObject(source, null);
+    }
+
+    private Object mapObject(WikidataDynamicObject source, String preferredType)
+            throws Exception {
         if (source == null) return null;
         Object existing = generatedByDynamic.get(source);
         if (existing != null) return existing;
 
-        // Map each object to the generated class for ITS type (e.g. a
-        // constellation's child stars -> the Star class), so children aren't
-        // forced into the root class. An object whose type has no generated
-        // class (a bare leaf reference) is kept as-is (renders as a link).
-        GeneratedQuizableRuntime.ClassRuntime cr = runtime.forType(source.typeName());
+        // Choose the target class: prefer the referencing field's declared class
+        // (its "Of class") over the object's stamped typeName, so a reference
+        // whose target wasn't stamped (typeName "WikidataDynamicObject") still
+        // maps to the typed class the field declares — keeping cross-references
+        // typed instead of raw. Falls back to the stamped type for roots.
+        String type = preferredType != null && !preferredType.isBlank()
+                && runtime.forType(preferredType) != null
+                ? preferredType
+                : source.typeName();
+
+        // Map each object to its generated class (e.g. a constellation's child
+        // stars -> Star). An object whose type has no generated class (a true
+        // bare leaf reference) is kept as-is (renders as a link).
+        GeneratedQuizableRuntime.ClassRuntime cr = runtime.forType(type);
         if (cr == null) {
             generatedByDynamic.put(source, source);
             return source;
@@ -54,6 +68,12 @@ public class GeneratedQuizableMapper {
         setIfExists(target, "qid", source.qid());
         setIfExists(target, "wikidataUrl", source.wikidataUrl());
         setIfExists(target, "name", source.getDisplayName());
+        // Group QID/URL into the collapsed provenance chip, same as the dynamic
+        // object — so typed roots and dynamic references render alike.
+        if (source.qid() != null && !source.qid().isBlank()) {
+            setIfExists(target, "source",
+                    new quiz.source.WikidataSource(source.qid(), source.wikidataUrl()));
+        }
 
         for (GeneratedFieldModel fieldModel : cr.model().fields()) {
             if (fieldModel == null || fieldModel.isNameField()) continue;
@@ -69,7 +89,13 @@ public class GeneratedQuizableMapper {
             Object mapped = mapFieldValue(fieldModel, raw);
             if (mapped != null) {
                 javaField.setAccessible(true);
-                javaField.set(target, mapped);
+                try {
+                    javaField.set(target, mapped);
+                } catch (IllegalArgumentException typeMismatch) {
+                    // The extracted value doesn't fit the generated field's type
+                    // (e.g. an "unknown value"/genid for an entity field that
+                    // came through as text). Skip it rather than abort the run.
+                }
             }
         }
 
@@ -122,16 +148,52 @@ public class GeneratedQuizableMapper {
             return null;
         }
 
-        if (fieldModel.type() == FieldType.ENTITY || raw instanceof WikidataDynamicObject) {
-            return raw instanceof WikidataDynamicObject dyn ? mapObject(dyn) : raw;
+        if (fieldModel.type() == FieldType.ENTITY) {
+            // An entity field must hold a Quizable. A non-entity value (e.g. a
+            // P61 "unknown value"/genid that arrived as text) can't go into a
+            // quiz.Quizable field — drop it rather than crash the run.
+            if (raw instanceof WikidataDynamicObject dyn) {
+                return mapObject(dyn, fieldModel.entityClassName());
+            }
+            return raw instanceof Quizable ? raw : null;
+        }
+        if (raw instanceof WikidataDynamicObject dyn) {
+            return mapObject(dyn, fieldModel.entityClassName());
         }
         if (fieldModel.type() == FieldType.NUMBER) {
-            if (raw instanceof Number n) return n.doubleValue();
-            try { return Double.parseDouble(String.valueOf(raw)); }
+            String unit = fieldModel.unit();   // resolved once per field
+            if (raw instanceof quiz.Quantity q) return q;
+            if (raw instanceof Number n) return new quiz.Quantity(n.doubleValue(), unit);
+            try { return new quiz.Quantity(Double.parseDouble(String.valueOf(raw)), unit); }
             catch (Exception ignored) { return null; }
+        }
+        if (effectiveType(fieldModel) == FieldType.DATE) {
+            return formatWikidataDate(String.valueOf(raw));
         }
 
         return raw;
+    }
+
+    // Wikidata times are [+-]YYYY-MM-DDThh:mm:ssZ; the truthy value loses the
+    // precision, so collapse the common year-precision form (…-01-01T…) to just
+    // the year ("1875", "5000 BC") and otherwise drop the time-of-day.
+    private static final java.util.regex.Pattern WD_TIME =
+            java.util.regex.Pattern.compile("^([+-]?)0*(\\d+)-(\\d{2})-(\\d{2})T");
+
+    static String formatWikidataDate(String s) {
+        if (s == null) return null;
+        java.util.regex.Matcher m = WD_TIME.matcher(s);
+        if (!m.find()) {
+            return s;
+        }
+        boolean bc = "-".equals(m.group(1));
+        String year = m.group(2);
+        String mm = m.group(3);
+        String dd = m.group(4);
+        String body = (mm.equals("01") && dd.equals("01"))
+                ? year                                   // year precision
+                : year + "-" + mm + (dd.equals("01") ? "" : "-" + dd);
+        return bc ? body + " BC" : body;
     }
 
     private FieldType effectiveType(GeneratedFieldModel field) {
@@ -147,7 +209,6 @@ public class GeneratedQuizableMapper {
 
     private ImagePane toImagePane(WikidataMediaValue media) {
         try {
-            System.out.println("Mapper.toImagePane lazy " + media.url());
             return new ImagePane(
                     media.label(),
                     media.url(),

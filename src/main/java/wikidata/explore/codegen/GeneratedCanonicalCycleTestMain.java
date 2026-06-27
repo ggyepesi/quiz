@@ -3,7 +3,7 @@ package wikidata.explore.codegen;
 import wikidata.explore.extract.WikidataObjectRegistry;
 import wikidata.explore.extract.WikidataDynamicObject;
 import quiz.Quizable;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 import quiz.ui.QuizableFrame;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;

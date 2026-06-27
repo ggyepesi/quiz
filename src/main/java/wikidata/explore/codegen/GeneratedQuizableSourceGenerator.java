@@ -4,9 +4,12 @@ import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class GeneratedQuizableSourceGenerator {
     public static final String GENERATED_PACKAGE = "wikidata.generated";
@@ -25,14 +28,37 @@ public class GeneratedQuizableSourceGenerator {
     }
 
     public String sourceFor(GeneratedClassModel model) {
+        return sourceFor(model, null);
+    }
+
+    /**
+     * Source for a class. With a {@code project}, its <b>effective</b> fields
+     * (inherited from the {@code extends} base chain + its own) are emitted —
+     * the generated runtime compiles each class independently (no cross-class
+     * Java inheritance), so inherited fields must be flattened in as real
+     * declared fields or the mapper would drop them. Inherited fields are
+     * tagged with a comment so the source still shows where they came from.
+     */
+    public String sourceFor(GeneratedClassModel model, GeneratedProjectModel project) {
         String className = sanitizeClassName(model.className());
+
+        List<GeneratedFieldModel> fields =
+                project == null ? model.fields() : model.effectiveFields(project);
+
+        // Own (non-inherited) field names, to tag inherited ones in the source.
+        Set<String> ownNames = new HashSet<>();
+        for (GeneratedFieldModel f : model.fields()) {
+            if (f != null && f.name() != null) {
+                ownNames.add(f.name());
+            }
+        }
 
         StringBuilder sb = new StringBuilder();
 
         sb.append("package ").append(packageName).append(";\n\n");
 
         boolean needsReferenceImport =
-                model.fields().stream()
+                fields.stream()
                      .filter(f -> f != null && !f.isNameField())
                      .anyMatch(GeneratedFieldModel::renderAsReference);
 
@@ -43,22 +69,42 @@ public class GeneratedQuizableSourceGenerator {
         sb.append("public class ").append(className)
           .append(" extends quiz.QuizableAdapter {\n\n");
 
+        if (model.hasBase()) {
+            sb.append("    // extends ").append(model.baseClassName())
+              .append(" — base fields below are inherited (flattened in;\n")
+              .append("    // the generated runtime compiles each class standalone).\n");
+        }
+
+        // QID stays the identity (getIdentifier), but the raw QID/URL are
+        // hidden from the card (@NotQuizableField) and surfaced together as one
+        // collapsed "source" chip below — mirrors WikidataDynamicObject so typed
+        // and dynamic instances render the same.
+        sb.append("    @quiz.annotations.NotQuizableField\n");
         sb.append("    public String qid = \"\";\n");
+        sb.append("    @quiz.annotations.NotQuizableField\n");
         sb.append("    @quiz.annotations.Link\n");
         sb.append("    public String wikidataUrl = \"\";\n");
         sb.append("    public String name = \"\";\n\n");
 
-        for (GeneratedFieldModel field : model.fields()) {
+        for (GeneratedFieldModel field : fields) {
             if (field == null || field.isNameField()) {
                 continue;
+            }
+
+            if (!ownNames.contains(field.name())) {
+                sb.append("    // inherited from ").append(model.baseClassName()).append("\n");
             }
 
             if (field.renderAsReference()) {
                 sb.append("    @QuizableReference\n");
             }
+            // Quantity fields sort by their leading number, not lexically.
+            if (effectiveType(field) == FieldType.NUMBER) {
+                sb.append("    @quiz.annotations.Numeric\n");
+            }
 
             sb.append("    public ")
-              .append(javaType(field, model))
+              .append(javaType(field, model, project))
               .append(" ")
               .append(sanitizeFieldName(field.name()));
 
@@ -72,6 +118,15 @@ public class GeneratedQuizableSourceGenerator {
 
             sb.append(";\n");
         }
+
+        // Provenance LAST so it renders as an unobtrusive footer chip below the
+        // real fields (the QID/URL above are hidden via @NotQuizableField).
+        // @Provenance drives the collapsed-chip rendering and keeps Source out
+        // of entity-type grouping. Populated by GeneratedQuizableMapper.
+        sb.append("\n");
+        sb.append("    @quiz.annotations.Provenance\n");
+        sb.append("    @com.fasterxml.jackson.annotation.JsonIgnore\n");
+        sb.append("    public quiz.source.Source source;\n");
 
         sb.append("\n");
         sb.append("    public ").append(className).append("() {}\n\n");
@@ -96,13 +151,22 @@ public class GeneratedQuizableSourceGenerator {
     public String javaType(
             GeneratedFieldModel field,
             GeneratedClassModel owner) {
+        return javaType(field, owner, null);
+    }
+
+    public String javaType(
+            GeneratedFieldModel field,
+            GeneratedClassModel owner,
+            GeneratedProjectModel project) {
 
         String base =
                 switch (effectiveType(field)) {
                     case IMAGE -> "quiz.ui.ImagePane";
-                    case NUMBER -> "Double";
+                    // quiz.Quantity carries the unit (e.g. "1538 K") yet sorts
+                    // numerically; dimensionless numbers render as the bare value.
+                    case NUMBER -> "quiz.Quantity";
                     case DATE, STRING, TEXT, AUTO -> "String";
-                    case ENTITY -> objectType(field, owner);
+                    case ENTITY -> objectType(field, owner, project);
                 };
 
         return field.cardinality() == FieldCardinality.COLLECTION
@@ -123,7 +187,8 @@ public class GeneratedQuizableSourceGenerator {
 
     private String objectType(
             GeneratedFieldModel field,
-            GeneratedClassModel owner) {
+            GeneratedClassModel owner,
+            GeneratedProjectModel project) {
 
         String ownerClass = sanitizeClassName(owner.className());
         String type = field.entityClassName();
@@ -138,12 +203,25 @@ public class GeneratedQuizableSourceGenerator {
             return ownerClass;
         }
 
+        // A cross-reference to another class IN THIS PROJECT: the whole domain
+        // is compiled together in one package, so name the target class directly
+        // (e.g. an Episode's "characters" -> Character). This is what lets
+        // QuizableFieldPaths recurse into the referenced class's fields for
+        // nested search/sort/config.
+        if (project != null && type != null && !type.isBlank()) {
+            String sanitized = sanitizeClassName(type);
+            for (GeneratedClassModel cls : project.classes()) {
+                if (cls != null
+                        && sanitizeClassName(cls.className()).equals(sanitized)) {
+                    return sanitized;
+                }
+            }
+        }
+
         // Any other entity reference (e.g. a constellation's hemisphere or
-        // namesake) points at a wikidata entity that this single-class runtime
-        // maps to a generic generated object, not a class of its own. Inventing
-        // a per-field class name (Hemisphere, NamedAfter) yields source that
-        // references undefined types and fails to compile; type it as Quizable
-        // so it compiles and still renders as a linked reference.
+        // namesake) points at a wikidata entity that has no class of its own —
+        // type it as Quizable so it compiles and still renders as a linked
+        // reference (and maps to a raw object, a navigation target).
         return "quiz.Quizable";
     }
 

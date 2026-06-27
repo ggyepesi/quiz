@@ -14,6 +14,14 @@ public interface GenerationLog {
 
     void subquery(String title, String request, String summary);
 
+    /** Records ONE sub-query that FAILED (e.g. a per-parent timeout) as a
+     *  structured child entry, so the failing step is visible under the same
+     *  log entry instead of vanishing when the query throws. Default keeps
+     *  text-only sinks working by flattening into {@link #subquery}. */
+    default void subqueryFailed(String title, String request, String error) {
+        subquery(title, request, "FAILED: " + (error == null ? "" : error));
+    }
+
     GenerationLog NOOP = new GenerationLog() {
         @Override public void message(String text) {}
         @Override public void subquery(String t, String r, String s) {}

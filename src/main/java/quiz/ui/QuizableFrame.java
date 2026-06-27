@@ -1,15 +1,13 @@
 package quiz.ui;
 
 import quiz.Quizable;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Map;
 
 public class QuizableFrame {

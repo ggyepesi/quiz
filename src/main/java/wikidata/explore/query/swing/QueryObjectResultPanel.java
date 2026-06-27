@@ -35,6 +35,15 @@ public class QueryObjectResultPanel
     private ViewMode viewMode = ViewMode.SEARCH_PANEL;
     private final JPanel holder = new JPanel(new BorderLayout());
 
+    // The render context backing the currently-shown cards, so other views
+    // (e.g. the name-collision panel) can share it and navigate to a card here.
+    private quiz.ui.QuizableRenderContext activeContext;
+
+    /** Render context of the cards currently shown, or null if none. */
+    public quiz.ui.QuizableRenderContext activeRenderContext() {
+        return activeContext;
+    }
+
     public QueryObjectResultPanel() {
         super(new BorderLayout());
         add(holder, BorderLayout.CENTER);
@@ -84,6 +93,7 @@ public class QueryObjectResultPanel
             multi.addSection(e.getKey(), e.getValue().get(0).getClass(), e.getValue());
         }
         multi.build(1);
+        activeContext = multi.context();
         return multi;
     }
 
@@ -99,6 +109,14 @@ public class QueryObjectResultPanel
         while (!queue.isEmpty()) {
             Quizable q = queue.poll();
             if (q == null || !seen.add(q)) {
+                continue;
+            }
+            // A raw WikidataDynamicObject that survived mapping is an unmapped
+            // reference (its type has no generated class, or it wasn't stamped),
+            // not a domain entity — never give it a card/section, whatever its
+            // stamped typeName. The typed instances are the cards; raw objects
+            // are navigation targets reachable through them.
+            if (q instanceof wikidata.explore.extract.WikidataDynamicObject) {
                 continue;
             }
             String type = q.typeName();
@@ -118,6 +136,12 @@ public class QueryObjectResultPanel
             }
         }
         for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
+            // Provenance (@Provenance Source) is an inline chip on its owner's
+            // card, not a domain entity — don't descend into it, so it never
+            // gets its own type section.
+            if (QuizableAdapter.isProvenanceField(f)) {
+                continue;
+            }
             try {
                 f.setAccessible(true);
                 addReferences(f.get(q), queue);
@@ -139,7 +163,18 @@ public class QueryObjectResultPanel
     private JComponent searchPanelView(ObjectQueryResult result) {
         QuizablePanelView view = new QuizablePanelView();
 
+        // Show typed instances only; raw WikidataDynamicObjects are unmapped
+        // references, not domain cards. Fall back to the raw objects only if
+        // mapping produced nothing typed (so the panel isn't blank).
+        List<Quizable> typed = new ArrayList<>();
         for (Quizable q : result.objects()) {
+            if (!(q instanceof wikidata.explore.extract.WikidataDynamicObject)) {
+                typed.add(q);
+            }
+        }
+        List<Quizable> shown = typed.isEmpty() ? result.objects() : typed;
+
+        for (Quizable q : shown) {
             view.addQuizable(q);
         }
 
@@ -147,7 +182,7 @@ public class QueryObjectResultPanel
 
         JPanel wrapped = new JPanel(new BorderLayout());
 
-        Quizable first = result.objects().getFirst();
+        Quizable first = shown.getFirst();
 
         QuizableSearchPanel searchPanel =
                 new QuizableSearchPanel(first.getClass());
@@ -157,6 +192,7 @@ public class QueryObjectResultPanel
                 view.getCardsScrollPane());
         searchPanel.setRenderContext(view.getRenderContext());
         view.addTargetListener(searchPanel);
+        activeContext = view.getRenderContext();
 
         wrapped.add(searchPanel, BorderLayout.NORTH);
         wrapped.add(view.getCardsScrollPane(), BorderLayout.CENTER);

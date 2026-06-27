@@ -2,8 +2,12 @@ package wikidata.explore.extract;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import quiz.annotations.Link;
+import quiz.annotations.NotQuizableField;
+import quiz.annotations.Provenance;
 import quiz.DynamicFields;
 import quiz.QuizableAdapter;
+import quiz.source.Source;
+import quiz.source.WikidataSource;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,9 +27,16 @@ import java.util.concurrent.ConcurrentHashMap;
  *   2+ values -> List
  */
 public class WikidataDynamicObject extends QuizableAdapter implements DynamicFields {
+    // Identity + provenance. Hidden from the card (@NotQuizableField) because
+    // they're surfaced together as one collapsed "source" chip below — the raw
+    // QID and wiki URL no longer clutter every card's top level. The QID is
+    // still the canonical key (equals/hashCode, snapshots, web serving); these
+    // annotations only affect Quizable rendering, not Jackson persistence.
+    @NotQuizableField
     private String qid;
     private String name;
 
+    @NotQuizableField
     @Link
     private String wikidataUrl;
 
@@ -37,6 +48,18 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String type;
 
+    // Provenance grouped as one nested Quizable: renders as a collapsed
+    // "source: Wikidata" chip that expands to the QID + link. Declared LAST so
+    // it renders as an unobtrusive footer below the real fields (reflection
+    // preserves declaration order). Derived from the QID, so it is rebuilt by
+    // the constructor / qid setter and never persisted (the snapshot store
+    // rebuilds objects through the constructor). @Provenance drives both: render
+    // as a collapsed chip (QuizablePanel) and exclude from entity-type grouping
+    // (QueryObjectResultPanel).
+    @Provenance
+    @JsonIgnore
+    private transient Source source;
+
     public WikidataDynamicObject() {
         this("", "");
     }
@@ -47,6 +70,19 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
         this.wikidataUrl = this.qid.isBlank()
                 ? ""
                 : "https://www.wikidata.org/wiki/" + this.qid;
+        rebuildSource();
+    }
+
+    // (Re)builds the grouped provenance from the current QID. Null for a blank
+    // QID so an empty shell renders no source chip.
+    private void rebuildSource() {
+        this.source = qid == null || qid.isBlank()
+                ? null
+                : new WikidataSource(qid, wikidataUrl);
+    }
+
+    public Source source() {
+        return source;
     }
 
     // One interned instance per QID, replacing the legacy
@@ -112,6 +148,7 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
         this.wikidataUrl = this.qid.isBlank()
                 ? ""
                 : "https://www.wikidata.org/wiki/" + this.qid;
+        rebuildSource();
     }
 
     public void name(String name) {

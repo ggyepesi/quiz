@@ -1,8 +1,7 @@
 package quiz.ui;
 
 import quiz.Quizable;
-import quiz.QuizableAdapter;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import java.lang.reflect.Field;
 import java.util.*;

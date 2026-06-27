@@ -46,6 +46,18 @@ public final class LogStep {
         return this;
     }
 
+    /** Like {@link #subquery} but marks the child step FAILED, so a per-parent
+     *  timeout (or other failure) is visible under this step instead of being
+     *  lost when the query throws. */
+    public LogStep subqueryFailed(String title, String request, String error) {
+        if (recorder != null && node != null) {
+            recorder.addSubquery(node, title, "SPARQL", request,
+                    error == null || error.isBlank() ? "FAILED" : "FAILED: " + error,
+                    LogStatus.FAILED);
+        }
+        return this;
+    }
+
     public LogNode node() {
         return node;
     }

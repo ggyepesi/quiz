@@ -7,7 +7,63 @@
     "ruletreePath" : "data/wikidata/constellations/constellations.ruletree.json",
     "snapshotPath" : "data/wikidata/constellations/constellations.snapshot.json",
     "types" : [ "Constellation", "Star" ],
-    "instanceCount" : 92,
-    "savedAt" : "2026-06-22T13:54:56.793396"
+    "instanceCount" : 760,
+    "savedAt" : "2026-06-25T14:52:43.635642",
+    "modelSignature" : "0f472b4b0ec8191792746677f207e939c4bfb9fe71a5d0742689bbe29aa580a8"
+  }, {
+    "name" : "Mythology",
+    "key" : "mythology",
+    "rootClass" : "Character",
+    "modelPath" : "data/wikidata/mythology/mythology.model.json",
+    "ruletreePath" : "data/wikidata/mythology/mythology.ruletree.json",
+    "snapshotPath" : "data/wikidata/mythology/mythology.snapshot.json",
+    "types" : [ "Character", "Episode" ],
+    "instanceCount" : 2056,
+    "savedAt" : "2026-06-25T15:33:28.374105",
+    "modelSignature" : "47b9c0ea3dd809ef915c9b7a168a95b4ce28e86302b11f49128c30852005171a"
+  }, {
+    "name" : "Periodic Table",
+    "key" : "elements",
+    "rootClass" : "Element",
+    "modelPath" : "data/wikidata/elements/elements.model.json",
+    "ruletreePath" : "data/wikidata/elements/elements.ruletree.json",
+    "snapshotPath" : "data/wikidata/elements/elements.snapshot.json",
+    "types" : [ "Element" ],
+    "instanceCount" : 0,
+    "savedAt" : "2026-06-26T01:15:45.133466",
+    "modelSignature" : ""
+  }, {
+    "name" : "Periodic Table",
+    "key" : "periodictable",
+    "rootClass" : "Element",
+    "modelPath" : "data/wikidata/periodictable/periodictable.model.json",
+    "ruletreePath" : "data/wikidata/periodictable/periodictable.ruletree.json",
+    "snapshotPath" : "data/wikidata/periodictable/periodictable.snapshot.json",
+    "types" : [ "Element" ],
+    "instanceCount" : 209,
+    "savedAt" : "2026-06-26T14:45:02.793070",
+    "modelSignature" : "fd33e95c5c7eaebc3682c12e310c088e572baafbf52fa100195e6823a011c803"
+  }, {
+    "name" : "Oscars",
+    "key" : "oscars",
+    "rootClass" : "Film",
+    "modelPath" : "data/wikidata/oscars/oscars.model.json",
+    "ruletreePath" : "data/wikidata/oscars/oscars.ruletree.json",
+    "snapshotPath" : "data/wikidata/oscars/oscars.snapshot.json",
+    "types" : [ "Film" ],
+    "instanceCount" : 0,
+    "savedAt" : "2026-06-26T16:04:32.853390",
+    "modelSignature" : ""
+  }, {
+    "name" : "oscarnominations",
+    "key" : "oscarnominations",
+    "rootClass" : "Oscarnominations",
+    "modelPath" : "data/wikidata/oscarnominations/oscarnominations.model.json",
+    "ruletreePath" : "data/wikidata/oscarnominations/oscarnominations.ruletree.json",
+    "snapshotPath" : "data/wikidata/oscarnominations/oscarnominations.snapshot.json",
+    "types" : [ "Oscarnominations" ],
+    "instanceCount" : 5000,
+    "savedAt" : "2026-06-27T10:20:33.406181",
+    "modelSignature" : "69a06dab5462541656dffbfd6bf99c01fc31cac7768378ae2fa50ce943995a6e"
   } ]
 }

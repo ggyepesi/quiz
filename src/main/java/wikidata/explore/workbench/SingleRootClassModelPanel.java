@@ -72,6 +72,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
     public void refresh() {
         Object selected = selectedUserObject();
+        java.util.Set<java.util.List<String>> expanded = expandedPaths();
 
         for (GeneratedClassModel c : projectModel.classes()) {
             c.ensureNameField();
@@ -81,7 +82,7 @@ public class SingleRootClassModelPanel extends JPanel {
         treeModel.setRoot(rootTreeNode);
         treeModel.reload();
 
-        expandAll();
+        restoreExpanded(expanded);
 
         if (selected instanceof GeneratedFieldModel f) {
             selectField(f);
@@ -134,7 +135,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
     private DefaultMutableTreeNode buildTree() {
         DefaultMutableTreeNode projectNode =
-                new DefaultMutableTreeNode(projectModel.name());
+                new DefaultMutableTreeNode("Domain: " + projectModel.name());
 
         for (GeneratedClassModel cls : projectModel.classes()) {
             cls.ensureNameField();
@@ -304,6 +305,47 @@ public class SingleRootClassModelPanel extends JPanel {
     private void expandAll() {
         for (int i = 0; i < tree.getRowCount(); i++) {
             tree.expandRow(i);
+        }
+    }
+
+    // The currently-expanded paths, keyed by their node labels — so expansion
+    // survives a refresh() rebuild (which creates fresh node instances).
+    private java.util.Set<java.util.List<String>> expandedPaths() {
+        java.util.Set<java.util.List<String>> out = new java.util.HashSet<>();
+        for (int i = 0; i < tree.getRowCount(); i++) {
+            TreePath p = tree.getPathForRow(i);
+            if (p != null && tree.isExpanded(p)) {
+                out.add(pathLabels(p));
+            }
+        }
+        return out;
+    }
+
+    private static java.util.List<String> pathLabels(TreePath p) {
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        for (Object o : p.getPath()) {
+            labels.add(String.valueOf(o));
+        }
+        return labels;
+    }
+
+    // Re-expand the paths that were open before the rebuild; collapsed branches
+    // stay collapsed. First build (nothing captured) expands all as a default.
+    private void restoreExpanded(java.util.Set<java.util.List<String>> expanded) {
+        if (expanded.isEmpty()) {
+            expandAll();
+            return;
+        }
+        int i = 0;
+        while (i < tree.getRowCount()) {
+            TreePath p = tree.getPathForRow(i);
+            if (p != null && expanded.contains(pathLabels(p))) {
+                tree.expandPath(p);
+            }
+            i++;
+        }
+        if (tree.getRowCount() > 0) {
+            tree.expandRow(0); // always show the domain's classes
         }
     }
 }

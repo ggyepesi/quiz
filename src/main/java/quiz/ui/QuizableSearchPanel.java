@@ -2,6 +2,8 @@ package quiz.ui;
 
 import aux.GridBagUtils;
 import quiz.*;
+import quiz.ui.viewconfig.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfigEditor;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -32,10 +34,12 @@ public class QuizableSearchPanel extends JPanel
 
     private static final Color CARD_HIT_BACKGROUND =
             new Color(255, 248, 200);
+    // The actual hit (field / text) is red-ish so it stands out clearly from
+    // the card's pale-yellow tint.
     private static final Color FIELD_HIT_BACKGROUND =
-            new Color(255, 225, 120);
+            new Color(255, 188, 170);
     private static final Color TEXT_HIGHLIGHT_BACKGROUND =
-            new Color(255, 245, 120);
+            new Color(255, 150, 130);
     private static final Color HIDDEN_HIT_BADGE_COLOR =
             new Color(120, 80, 0);
 
@@ -79,6 +83,19 @@ public class QuizableSearchPanel extends JPanel
     private JDialog sortDialog;
     private JDialog viewDialog;
     private JComponent currentHit;
+
+    // Coordinated mode: this panel is one section's search ENGINE driven by a
+    // shared MultiSearchBar (shared input + config), while it keeps its own
+    // per-field results panel + per-panel navigation + highlighting.
+    private boolean suppressSearchEvents = false;
+
+    // The class this section searches (for the shared config's per-class tab).
+    private Class<? extends Quizable> searchClass;
+
+    // The top toolbar (search input + config buttons); hidden in coordinated
+    // mode, where the shared MultiSearchBar owns the input + config and each
+    // section keeps only its own per-field results/navigation.
+    private JComponent topControls;
 
     private int cachedColumnCount = 1;
 
@@ -310,6 +327,7 @@ public class QuizableSearchPanel extends JPanel
 
 
     public QuizableSearchPanel(Class<? extends Quizable> cls) {
+        this.searchClass = cls;
         setLayout(new BorderLayout(6, 6));
 
         QuizablePanelConfig nameOnly =
@@ -386,7 +404,8 @@ public class QuizableSearchPanel extends JPanel
         // toolbar's second row of buttons would otherwise be clipped and
         // unreachable. A horizontal-only scroll pane keeps every control
         // reachable while never stealing vertical room from the results.
-        add(aux.ScrollPaneUtils.horizontalOnly(top), BorderLayout.NORTH);
+        topControls = aux.ScrollPaneUtils.horizontalOnly(top);
+        add(topControls, BorderLayout.NORTH);
 
         resultsPanel.setLayout(
                 new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));
@@ -521,7 +540,57 @@ public class QuizableSearchPanel extends JPanel
     }
 
     private void asyncSearch() {
+        if (suppressSearchEvents) {
+            return;
+        }
         debounceTimer.restart();
+    }
+
+    // ---- Coordinated (multi-section) search API ----------------------------
+
+    /** Driven by a shared {@link MultiSearchBar}: hides this engine's own input
+     *  + config toolbar (the bar owns those), while it keeps its own per-field
+     *  results panel and per-panel navigation. */
+    public void setCoordinated(boolean coordinated) {
+        if (topControls != null) {
+            topControls.setVisible(!coordinated);
+        }
+    }
+
+    /** Runs the query against this section synchronously (highlighting its
+     *  cards) without stealing navigation. Keeps the (hidden) field in sync so
+     *  live-add re-search uses the right text. */
+    public void runCoordinatedSearch(String query) {
+        suppressSearchEvents = true;
+        try {
+            searchField.setText(query == null ? "" : query);
+        } finally {
+            suppressSearchEvents = false;
+        }
+        clearHighlights();
+        rebuildSearchIndex();
+        searchSync(query == null ? "" : query);
+    }
+
+    /** The class this section searches (for the shared config's per-class tab). */
+    public String sectionTypeName() {
+        return searchClass == null ? "" : searchClass.getSimpleName();
+    }
+
+    // Editors + apply hooks, so a single shared dialog (classes as roots) can
+    // host every section's search/sort/view config and re-run on apply.
+    public QuizablePanelConfigEditor searchEditor() { return searchEditor; }
+    public QuizablePanelConfigEditor sortEditor() { return sortEditor; }
+    public QuizablePanelConfigEditor viewEditor() { return viewEditor; }
+
+    public void applySort() { sortTargetPanels(); }
+    public void applyView() { applyViewConfig(); }
+
+    /** Sets the field-highlight option from the shared bar and re-runs. */
+    public void setFieldHighlight(boolean on) {
+        if (fieldHighlightBox.isSelected() != on) {
+            fieldHighlightBox.setSelected(on);
+        }
     }
 
     private void refreshSearch() {
@@ -611,6 +680,30 @@ public class QuizableSearchPanel extends JPanel
             pathByTitle.put(fp.title(), fp);
         }
 
+        // Pre-pass: a match can sit inside a collapsed collection (e.g. a
+        // Character's collapsed "episodes", or an Episode's "characters"). Expand
+        // the collapsed collections on each matching card's matching path so the
+        // rows render, then refresh those cards once — otherwise the hit can't be
+        // highlighted or scrolled to.
+        Set<QuizablePanel> toRefresh =
+                Collections.newSetFromMap(new IdentityHashMap<>());
+
+        for (Map.Entry<String, List<QuizablePanel>> e
+                : matchesByField.entrySet()) {
+            QuizableFieldPaths.FieldPath fp = pathByTitle.get(e.getKey());
+            if (fp == null) {
+                continue;
+            }
+            for (QuizablePanel qp : e.getValue()) {
+                if (qp.expandCollectionsOnPath(fp.path())) {
+                    toRefresh.add(qp);
+                }
+            }
+        }
+        for (QuizablePanel qp : toRefresh) {
+            qp.refresh();
+        }
+
         for (Map.Entry<String, List<QuizablePanel>> e
                 : matchesByField.entrySet()) {
 
@@ -634,6 +727,14 @@ public class QuizableSearchPanel extends JPanel
                                 qp,
                                 fp.path(),
                                 queryTokens);
+
+                // The precise field rows ARE the hits — drop the coarse card
+                // placeholder so a card with rows isn't counted (and navigated)
+                // twice. If no rows were found (e.g. a text-only match), the card
+                // stays as the hit.
+                if (!fieldHits.isEmpty()) {
+                    group.hits.remove(qp);
+                }
 
                 for (JComponent hit : fieldHits) {
                     if (!group.hits.contains(hit)) {
@@ -1412,34 +1513,23 @@ public class QuizableSearchPanel extends JPanel
         if (targetScrollPane == null || c == null) {
             return;
         }
-
-        Component card =
-                c;
-
-        while (card != null
-                && !(card instanceof QuizablePanel)
-                && card.getParent() != targetPanel) {
-
-            card = card.getParent();
-        }
-
-        if (card instanceof JComponent jc) {
-            Rectangle rect =
-                    SwingUtilities.convertRectangle(
-                            jc.getParent(),
-                            jc.getBounds(),
-                            targetPanel);
-
-            targetPanel.scrollRectToVisible(rect);
-        } else {
+        // Deferred: revealing a hit inside a collapsed collection rebuilds/
+        // relayouts the card, so the component's bounds aren't final on this
+        // pass — converting them now would scroll to a stale (often zero)
+        // position. Run after the pending layout so the hit lands in view.
+        SwingUtilities.invokeLater(() -> {
+            if (c.getParent() == null) {
+                return;
+            }
             Rectangle rect =
                     SwingUtilities.convertRectangle(
                             c.getParent(),
                             c.getBounds(),
                             targetPanel);
-
+            rect.y -= 24;
+            rect.height += 48;
             targetPanel.scrollRectToVisible(rect);
-        }
+        });
     }
 
     private void clearResults() {

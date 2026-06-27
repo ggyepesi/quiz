@@ -56,3 +56,4 @@ Per-edge membership override — done
 
     Natural next candidates, when you're ready: #19 (DBpedia/Wikipedia infobox — biggest new capability), #7 (the variable-star aggregate refinement for sorting), or smaller polish like #2
     (Apply-field feedback) / #4 (Save confirm-before-write). Want to pick one, or pause and regenerate to enjoy the result first?
+

@@ -1,4 +1,7 @@
-package quiz;
+package quiz.ui.viewconfig;
+
+import quiz.Quizable;
+import quiz.QuizableAdapter;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -92,6 +95,16 @@ public class QuizablePanelConfig {
         }
 
         return this;
+    }
+
+    public void clearCache() {
+        visibleFieldsCache.clear();
+
+        for (QuizablePanelConfig child : fields.values()) {
+            if (child != null) {
+                child.clearCache();
+            }
+        }
     }
 
     private QuizablePanelConfig defaultChildConfigForField(Field f) {

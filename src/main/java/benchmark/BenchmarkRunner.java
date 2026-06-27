@@ -1,9 +1,8 @@
 package benchmark;
 
-import benchmark.generated.OscarNominationFormView;
 import oscar.OscarNomination;
-import quiz.QuizablePanelConfig;
-import quiz.QuizablePanelConfigAdapter;
+import quiz.ui.viewconfig.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfigAdapter;
 import quiz.ui.QuizablePanel;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -67,31 +66,13 @@ public class BenchmarkRunner {
         System.out.println(fullConfig);
         System.out.println(fullConfig.visibleFieldsFor(OscarNomination.class));
 
-
-        // =================================================================
-        // Pass 2: The Generated Code View Loop (FormStamper Compiled)
-        // =================================================================
-        resetHeapMemory();
-        long memBeforeCompiled = getUsedMemory();
-        long startTimeCompiled = System.currentTimeMillis();
-
-        List<OscarNominationFormView> compiledViews = new ArrayList<>(TARGET_COUNT);
-        for (OscarNomination nom : dataset) {
-            // No configuration mappings passed, no maps in constructors. Just unrolled bytecode!
-            compiledViews.add(new OscarNominationFormView(nom));
-        }
-
-        long endTimeCompiled = System.currentTimeMillis();
-        long memAfterCompiled = getUsedMemory();
         QuizablePanel.RenderStats.print();
 
         System.out.println("\n=================================================");
-        System.out.println("   TRUE STATIC CODE GENERATION PERFORMANCE TRACE ");
+        System.out.println("        QuizablePanel RENDER PERFORMANCE TRACE    ");
         System.out.println("=================================================");
-        System.out.printf("1. Runtime QuizablePanel Loop    : %4d ms | Heap Alloc: %3d MB\n",
+        System.out.printf("Runtime QuizablePanel Loop : %4d ms | Heap Alloc: %3d MB\n",
                 (endTimeRuntime - startTimeRuntime), Math.max(0, (memAfterRuntime - memBeforeRuntime) / 1024 / 1024));
-        System.out.printf("2. True Generated FormView Class : %4d ms | Heap Alloc: %3d MB\n",
-                (endTimeCompiled - startTimeCompiled), Math.max(0, (memAfterCompiled - memBeforeCompiled) / 1024 / 1024));
         System.out.println("=================================================");
     }
 

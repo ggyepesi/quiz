@@ -94,12 +94,19 @@ public final class SparqlQueries {
                     """);
 
     /**
-     * Direct subclasses (P279) of a membership type, each with the count of
-     * instances that are NOT already members of the base type — i.e. how many
-     * NEW entities adding that subclass would pull in — plus a few examples.
-     * Powers the "Discover subtypes" helper so a user can see, e.g., that
-     * "zodiacal constellation" adds 2 (Cancer, Aries) while "Chinese
-     * constellation" adds 130, before choosing what to include.
+     * Direct subclasses (P279) of a membership type, each with its instance
+     * count and one example, ordered by count. Powers the "Discover subtypes"
+     * helper so a user can see, e.g., that "zodiacal constellation" has 12 while
+     * "Chinese constellation" has 130, before choosing what to include.
+     *
+     * <p>Counts <b>total</b> instances of each subtype (≈ how many it adds;
+     * overlap with the base is usually tiny). The earlier query also did
+     * {@code FILTER NOT EXISTS} (exact "new") and a per-instance label join +
+     * GROUP_CONCAT — both scan every instance and <b>timed out for huge classes
+     * (Star Q523, ~3M)</b>. The grouped count alone is cheap (~2s); the label
+     * join and NOT EXISTS were the killers. So: count in a bounded inner
+     * subquery (no labels), take one {@code SAMPLE} example, and label only the
+     * top-N types + their one example via {@code SERVICE} (#47).
      */
     public static String discoverMembershipSubtypes(
             String baseQid,
@@ -109,19 +116,24 @@ public final class SparqlQueries {
         int n = Math.max(1, limit);
 
         return """
-               SELECT ?type ?typeLabel (COUNT(DISTINCT ?c) AS ?nNew)
-                      (GROUP_CONCAT(DISTINCT ?cl; SEPARATOR=", ") AS ?examples)
-               WHERE {
-                 ?type wdt:P279 wd:%s .
-                 ?c wdt:P31 ?type .
-                 FILTER NOT EXISTS { ?c wdt:P31 wd:%s }
-                 ?c rdfs:label ?cl . FILTER(LANG(?cl) = "en")
-                 ?type rdfs:label ?typeLabel . FILTER(LANG(?typeLabel) = "en")
+               SELECT ?type ?typeLabel ?nNew ?examples WHERE {
+                 {
+                   SELECT ?type (COUNT(?c) AS ?nNew) (SAMPLE(?c) AS ?example) WHERE {
+                     ?type wdt:P279 wd:%s .
+                     ?c wdt:P31 ?type .
+                   }
+                   GROUP BY ?type
+                   ORDER BY DESC(?nNew)
+                   LIMIT %d
+                 }
+                 SERVICE wikibase:label {
+                   bd:serviceParam wikibase:language "en".
+                   ?type rdfs:label ?typeLabel .
+                   ?example rdfs:label ?examples .
+                 }
                }
-               GROUP BY ?type ?typeLabel
                ORDER BY DESC(?nNew)
-               LIMIT %d
-               """.formatted(base, base, n);
+               """.formatted(base, n);
     }
 
     /**

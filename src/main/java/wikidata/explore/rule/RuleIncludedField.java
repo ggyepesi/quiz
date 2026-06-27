@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import wikidata.explore.model.RuleDirection;
+
 public class RuleIncludedField {
 
     public enum FieldKind {
@@ -14,6 +16,9 @@ public class RuleIncludedField {
     private FieldKind kind = FieldKind.AUTO;
     private boolean optional = true;
     private boolean collection = false;
+    // ROOT_TO_ITEM = outgoing (?value wdt:P ?x); ITEM_TO_ROOT = incoming
+    // (?x wdt:P ?value), e.g. "episode in" / "facet of" pointing AT this entity.
+    private RuleDirection direction = RuleDirection.ROOT_TO_ITEM;
 
     public boolean collection() {
         return collection;
@@ -21,6 +26,31 @@ public class RuleIncludedField {
 
     public void collection(boolean collection) {
         this.collection = collection;
+    }
+
+    public RuleDirection direction() {
+        return direction == null ? RuleDirection.ROOT_TO_ITEM : direction;
+    }
+
+    public void direction(RuleDirection direction) {
+        this.direction = direction == null ? RuleDirection.ROOT_TO_ITEM : direction;
+    }
+
+    public boolean incoming() {
+        return direction() == RuleDirection.ITEM_TO_ROOT;
+    }
+
+    // Optional type constraint on the field's VALUE (the other end): keep only
+    // values that are instance-of (membershipPid) the referenced class's type
+    // (membershipQid). Blank = no constraint.
+    private String membershipPid = "";
+    private String membershipQid = "";
+    public String membershipPid() { return membershipPid == null ? "" : membershipPid; }
+    public void   membershipPid(String p) { this.membershipPid = cleanPid(p); }
+    public String membershipQid() { return membershipQid == null ? "" : membershipQid; }
+    public void   membershipQid(String q) { this.membershipQid = q == null ? "" : q.trim(); }
+    public boolean hasMembership() {
+        return !membershipQid().isBlank() && membershipQid().matches("Q\\d+");
     }
 
     public RuleIncludedField() {

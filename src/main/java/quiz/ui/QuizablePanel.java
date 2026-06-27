@@ -3,7 +3,7 @@ package quiz.ui;
 import aux.GridBagUtils;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.QuizablePanelConfig;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -56,6 +56,11 @@ import java.util.List;
  * single top-pinning {@link Box.Filler} per root card.
  */
 public class QuizablePanel extends JPanel {
+    // A complex collection/map field renders under a collapsible header,
+    // collapsed by default (threshold 0 => no list auto-expands); click the
+    // header to expand. Toggleable per collection.
+    private static final int COLLECTION_COLLAPSE_THRESHOLD = 0;
+
     private final Quizable quizable;
     private final QuizablePanelConfig config;
     private final boolean fill;
@@ -524,7 +529,29 @@ public class QuizablePanel extends JPanel {
         List<String> fieldPath = new ArrayList<>(path);
         fieldPath.add(fieldName);
 
-        if (QuizableAdapter.isQuizableReference(field)) {
+        // @Provenance (a Source) renders like @QuizableReference: a collapsed
+        // chip, never force-inlined — the annotation drives the chipping.
+        //
+        // The dynamic-field container map of a DynamicFields object (e.g. a raw
+        // WikidataDynamicObject) must NOT be treated as one collapsible group —
+        // its entries ARE the object's fields, so collapsing it hides all the
+        // content behind a "dynamicFields (n)" header. Render it normally; only
+        // genuine value collections/maps collapse.
+        boolean isDynamicContainer =
+                quizable instanceof quiz.DynamicFields df
+                        && value == df.dynamicFieldValues();
+        boolean isCollectionOrMap =
+                (value instanceof Collection<?> || value instanceof Map<?, ?>)
+                        && !isDynamicContainer;
+
+        if (QuizableAdapter.isQuizableReference(field)
+                || QuizableAdapter.isProvenanceField(field)) {
+            if (isCollectionOrMap) {
+                // The header labels the field; build the items borderless.
+                Object v = value;
+                return addCollapsibleCollection(fieldName, fieldPath, value, row,
+                        () -> createReferenceFieldComponent("", fieldPath, v));
+            }
             JComponent comp =
                     createReferenceFieldComponent(fieldName, fieldPath, value);
 
@@ -535,6 +562,9 @@ public class QuizablePanel extends JPanel {
             return row;
         }
 
+        // @QuizableInline means "always render fully expanded inline" (e.g. a
+        // query-log step tree) — never collapse it, or the nested content (the
+        // SPARQL, child steps) hides behind a collapsed header.
         if (QuizableAdapter.isQuizableInline(field)) {
             JComponent comp =
                     createInlineFieldComponent(fieldName, fieldPath, value);
@@ -579,6 +609,18 @@ public class QuizablePanel extends JPanel {
             fieldCfg = defaultConfigForValue(value);
         }
 
+        // A complex collection/map (simple ones already folded into a text
+        // block) renders under a collapsible header; build the items borderless
+        // (the header carries the field name) and only when expanded.
+        if (isCollectionOrMap) {
+            QuizablePanelConfig cfg = fieldCfg;
+            Object collValue = value;
+            return addCollapsibleCollection(fieldName, fieldPath, value, row,
+                    () -> QuizableValueRenderer.createFieldComponent(
+                            copyVisited(), copyAncestors(), renderContext,
+                            "", fieldPath, collValue, cfg, fill));
+        }
+
         JComponent comp = QuizableValueRenderer.createFieldComponent(
                 copyVisited(),
                 copyAncestors(),
@@ -596,6 +638,62 @@ public class QuizablePanel extends JPanel {
         return row;
     }
 
+    // Renders a complex collection/map field as a collapsible group: a clickable
+    // "{field} (N)" header plus, when expanded, the items built by {@code body}.
+    // Lists over COLLECTION_COLLAPSE_THRESHOLD start collapsed; the per-collection
+    // toggle is remembered in the render context (keyed by the collection's
+    // identity), and the body is built only when expanded so a collapsed long
+    // list stays cheap.
+    private int addCollapsibleCollection(
+            String fieldName,
+            List<String> fieldPath,
+            Object value,
+            int row,
+            java.util.function.Supplier<JComponent> body) {
+
+        int count = value instanceof Collection<?> c ? c.size()
+                : value instanceof Map<?, ?> m ? m.size()
+                : 0;
+        if (count == 0) {
+            return row;
+        }
+
+        boolean defaultExpanded = count <= COLLECTION_COLLAPSE_THRESHOLD;
+        boolean expanded =
+                renderContext.isCollectionExpanded(value, defaultExpanded);
+
+        QuizableCollectionHeader header = new QuizableCollectionHeader(
+                fieldName, fieldPath, count, expanded, value,
+                defaultExpanded, renderContext);
+
+        if (!expanded) {
+            addSingle(header, row++);
+            return row;
+        }
+
+        JComponent items = body.get();
+        if (items == null) {
+            addSingle(header, row++);
+            return row;
+        }
+
+        JPanel wrap = new JPanel(new GridBagLayout());
+        wrap.setOpaque(false);
+        wrap.add(header, GridBagUtils.gbc(
+                0, 0, 1.0, 0.0,
+                GridBagConstraints.NORTHWEST,
+                GridBagConstraints.HORIZONTAL,
+                new Insets(0, 0, 0, 0)));
+        wrap.add(items, GridBagUtils.gbc(
+                0, 1, 1.0, 0.0,
+                GridBagConstraints.NORTHWEST,
+                GridBagConstraints.HORIZONTAL,
+                new Insets(0, 16, 2, 0)));
+
+        addSingle(wrap, row++);
+        return row;
+    }
+
     private JComponent createReferenceFieldComponent(
             String fieldName,
             List<String> fieldPath,
@@ -607,7 +705,9 @@ public class QuizablePanel extends JPanel {
 
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createTitledBorder(fieldName));
+        if (fieldName != null && !fieldName.isBlank()) {
+            panel.setBorder(BorderFactory.createTitledBorder(fieldName));
+        }
 
         int row = 0;
 
@@ -648,7 +748,9 @@ public class QuizablePanel extends JPanel {
 
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createTitledBorder(fieldName));
+        if (fieldName != null && !fieldName.isBlank()) {
+            panel.setBorder(BorderFactory.createTitledBorder(fieldName));
+        }
 
         int row = 0;
 
@@ -812,7 +914,8 @@ public class QuizablePanel extends JPanel {
             return false;
         }
 
-        if (QuizableAdapter.isQuizableReference(field)) {
+        if (QuizableAdapter.isQuizableReference(field)
+                || QuizableAdapter.isProvenanceField(field)) {
             return false;
         }
 
@@ -1111,6 +1214,72 @@ public class QuizablePanel extends JPanel {
 
     public Quizable getQuizable() {
         return quizable;
+    }
+
+    /**
+     * Expands any collapsed collection/map lying on {@code path} (relative to
+     * this card's quizable), so a search match hidden inside a collapsed list
+     * becomes rendered (and thus highlightable / scrollable). Only flips
+     * currently-collapsed collections; returns true if anything changed, so the
+     * caller can {@link #refresh()} once. Does not itself refresh.
+     */
+    public boolean expandCollectionsOnPath(List<String> searchPath) {
+        if (searchPath == null || searchPath.isEmpty() || quizable == null) {
+            return false;
+        }
+        return expandCollectionsAlong(quizable, searchPath, 0);
+    }
+
+    private boolean expandCollectionsAlong(Object obj, List<String> path, int idx) {
+        if (obj == null || idx > path.size()) {
+            return false;
+        }
+
+        if (obj instanceof Collection<?> c) {
+            boolean changed = expandIfCollapsed(obj, c.size());
+            for (Object item : c) {
+                changed |= expandCollectionsAlong(item, path, idx);
+            }
+            return changed;
+        }
+
+        if (obj instanceof Map<?, ?> m) {
+            boolean changed = expandIfCollapsed(obj, m.size());
+            for (Object v : m.values()) {
+                changed |= expandCollectionsAlong(v, path, idx);
+            }
+            return changed;
+        }
+
+        if (idx >= path.size()) {
+            return false;
+        }
+
+        String part = path.get(idx);
+        // "name" is a synthetic leaf (Quizable.getName()), not a real field.
+        if ("name".equals(part)) {
+            return false;
+        }
+
+        Field f = QuizableAdapter.getField(obj.getClass(), part);
+        if (f == null) {
+            return false;
+        }
+        try {
+            f.setAccessible(true);
+            return expandCollectionsAlong(f.get(obj), path, idx + 1);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean expandIfCollapsed(Object collectionKey, int count) {
+        boolean defaultExpanded = count <= COLLECTION_COLLAPSE_THRESHOLD;
+        if (!renderContext.isCollectionExpanded(collectionKey, defaultExpanded)) {
+            renderContext.setCollectionExpanded(collectionKey, true);
+            return true;
+        }
+        return false;
     }
 
     public String getTitle() {

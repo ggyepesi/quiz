@@ -323,7 +323,8 @@ ISSUES/QUERIES
 
             Save everything should ask in the dialog (now it is shown after save
              happened)
-            question: should a relation (like constellation - star) generate the
+            question: should  a relation (like constellation - star) generate
+            the
              inverse relation i.e. star - constellation field: should be
              configurable with many-to-many, one-to-many, one-to-one
 

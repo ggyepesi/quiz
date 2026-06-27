@@ -4,6 +4,7 @@ import aux.GridBagUtils;
 import quiz.model.QuizMode;
 import quiz.ui.AnswerPanelFactory;
 import quiz.ui.QuizablePanel;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;

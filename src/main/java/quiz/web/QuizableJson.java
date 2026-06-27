@@ -7,6 +7,8 @@ import quiz.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.annotations.Link;
+import quiz.ui.viewconfig.QuizablePanelConfigJsonIO;
+import quiz.ui.viewconfig.QuizablePanelConfigJsonIO.JsonConfig;
 
 import java.lang.reflect.Field;
 import java.net.URLEncoder;
@@ -15,9 +17,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Builds a {@link QuizableView} from any {@link Quizable} by reflecting over
@@ -435,7 +439,8 @@ public final class QuizableJson {
             // Generated/dynamic objects keep their data in a property map, not
             // declared fields — render those entries as first-class fields.
             if (q instanceof DynamicFields dyn) {
-                return new QuizableView(id, name, type, dynamicFields(type, id, dyn, visited));
+                return new QuizableView(id, name, type,
+                        applyViewConfig(type, dynamicFields(type, id, dyn, visited)));
             }
 
             List<QuizableView.Field> fields = new ArrayList<>();
@@ -462,10 +467,60 @@ public final class QuizableJson {
                 }
             }
 
-            return new QuizableView(id, name, type, fields);
+            return new QuizableView(id, name, type, applyViewConfig(type, fields));
         } finally {
             visited.remove(q);
         }
+    }
+
+    // ---- View config (shared with the desktop) -----------------------------
+
+    // Per-type view config, keyed by domain typeName so one config drives both
+    // surfaces. A sentinel marks "looked up, none found" so we don't re-read.
+    private static final JsonConfig NO_CONFIG = new JsonConfig();
+    private static final Map<String, JsonConfig> CONFIG_CACHE =
+            new ConcurrentHashMap<>();
+
+    private static JsonConfig configFor(String typeName) {
+        if (typeName == null || typeName.isBlank()) {
+            return null;
+        }
+        JsonConfig c = CONFIG_CACHE.computeIfAbsent(typeName, t -> {
+            JsonConfig loaded =
+                    QuizablePanelConfigJsonIO.loadJson(
+                            QuizablePanelConfigJsonIO.fileForType(t));
+            return loaded == null ? NO_CONFIG : loaded;
+        });
+        return c == NO_CONFIG ? null : c;
+    }
+
+    /** Applies the per-type view config to the serialized fields: configured
+     *  fields first in config order; the rest appended only when allFields is
+     *  set (else hidden). No config -> unchanged (show everything). */
+    private static List<QuizableView.Field> applyViewConfig(
+            String type, List<QuizableView.Field> fields) {
+
+        JsonConfig cfg = configFor(type);
+        if (cfg == null || cfg.fields == null || cfg.fields.isEmpty()) {
+            return fields;
+        }
+
+        Map<String, QuizableView.Field> byName = new LinkedHashMap<>();
+        for (QuizableView.Field f : fields) {
+            byName.put(f.name(), f);
+        }
+
+        List<QuizableView.Field> out = new ArrayList<>();
+        for (String fieldName : cfg.fields.keySet()) {
+            QuizableView.Field f = byName.remove(fieldName);
+            if (f != null) {
+                out.add(f);
+            }
+        }
+        if (cfg.allFields) {
+            out.addAll(byName.values());
+        }
+        return out;
     }
 
     private static List<QuizableView.Field> dynamicFields(

@@ -8,8 +8,11 @@ import wikidata.explore.extract.RuleTreeExtractor;
 import wikidata.explore.extract.DBpediaEnrichment;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.model.FieldSourceType;
+import wikidata.explore.model.FieldSourceMapping;
+import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.WikidataBinding;
 import wikidata.explore.rule.RuleTreeSerializer;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
@@ -45,6 +48,22 @@ public class GenerationPipeline {
             GenerationLog log) throws Exception {
 
         return new RuleTreeExtractor(client).load(plan, depth, log);
+    }
+
+    /** Extracts into a SHARED registry so several class runs (a whole-domain
+     *  generation) pool into one graph keyed by QID — an entity referenced by
+     *  one class and generated as another's root becomes a single, type-stamped
+     *  object with references already linked. */
+    public List<WikidataDynamicObject> extract(
+            WikidataSparqlClient client,
+            RuleNode plan,
+            int depth,
+            GenerationLog log,
+            wikidata.explore.extract.WikidataObjectRegistry registry) throws Exception {
+
+        RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry);
+        extractor.log(log);
+        return extractor.load(plan, depth, log);
     }
 
     // Fills DBpedia-sourced root fields (Wikipedia infobox) after the Wikidata
@@ -99,6 +118,73 @@ public class GenerationPipeline {
                 .mapRoots(dynamicObjects);
     }
 
+    /**
+     * Resolves each quantity (NUMBER) field's unit ONCE for the whole field —
+     * the truthy value drops the unit, so one small aggregate query per field
+     * fetches the dominant unit symbol (P5061) over the class's members. Sets it
+     * on the field model so the mapper can render "1538 K". Best-effort: a
+     * failed/empty lookup just leaves the field dimensionless.
+     */
+    public void resolveUnits(
+            GeneratedProjectModel project,
+            WikidataSparqlClient client,
+            GenerationLog log) {
+
+        if (project == null || client == null) {
+            return;
+        }
+        for (GeneratedClassModel cls : project.classes()) {
+            String members = membershipPattern(cls, project);
+            if (members == null) {
+                continue;
+            }
+            for (GeneratedFieldModel f : cls.fields()) {
+                if (f == null || f.type() != FieldType.NUMBER || !f.unit().isBlank()) {
+                    continue;
+                }
+                String pid = f.mapping() == null
+                        ? "" : RuleNode.cleanPid(f.mapping().propertyPid());
+                if (pid == null || !pid.matches("P\\d+")) {
+                    continue;
+                }
+                // P5061 unit symbols are monolingual; prefer the English one
+                // (e.g. "g/cm³", not a localized "g/sm³").
+                String q = "SELECT ?sym (COUNT(*) AS ?n) WHERE { "
+                        + members
+                        + " ?value p:" + pid + "/psv:" + pid + "/wikibase:quantityUnit ?u ."
+                        + " ?u wdt:P5061 ?sym . FILTER(LANG(?sym) = \"en\") }"
+                        + " GROUP BY ?sym ORDER BY DESC(?n) LIMIT 1";
+                try {
+                    List<WikidataBinding> rows = client.query(q);
+                    if (!rows.isEmpty()) {
+                        String sym = rows.get(0).value("sym");
+                        if (sym != null && !sym.isBlank()) {
+                            f.unit(sym);
+                            if (log != null) {
+                                log.message("Unit " + f.name() + " = " + sym + "\n");
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    if (log != null) {
+                        log.message("Unit lookup failed for " + f.name()
+                                + ": " + e.getMessage() + "\n");
+                    }
+                }
+            }
+        }
+    }
+
+    private String membershipPattern(
+            GeneratedClassModel cls, GeneratedProjectModel project) {
+        FieldSourceMapping im = cls.effectiveInstanceMapping(project);
+        if (im != null && !im.sourceQid().isBlank() && !im.propertyPid().isBlank()) {
+            return "?value wdt:" + RuleNode.cleanPid(im.propertyPid())
+                    + " wd:" + im.sourceQid() + " .";
+        }
+        return null;
+    }
+
     public GenerationRun fullRun(
             GeneratedProjectModel snapshot,
             int depth,
@@ -113,6 +199,7 @@ public class GenerationPipeline {
         enrichFromDBpedia(snapshot, dynamicObjects, log);
 
         GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
+        resolveUnits(snapshot, client, log);
 
         List<Quizable> instances =
                 materialize(runtime, dynamicObjects);
