@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +56,7 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
                            List<String> fieldPath,
                            List<String> lines) {
         QuizablePanel.RenderStats.textRows++;
+
         this.fieldName = fieldName == null ? "" : fieldName;
         this.fieldPath = fieldPath == null
                 ? List.of()
@@ -64,7 +66,7 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
         setOpaque(false);
         setFocusable(true);
 
-        putClientProperty(QuizableSearchPanel.FIELD_NAME_PROPERTY, fieldName);
+        putClientProperty(QuizableSearchPanel.FIELD_NAME_PROPERTY, this.fieldName);
         putClientProperty(QuizableSearchPanel.FIELD_PATH_PROPERTY, this.fieldPath);
         putClientProperty(QuizableSearchPanel.FIELD_VALUE_PROPERTY,
                           String.join(" ", this.lines));
@@ -74,6 +76,43 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
         setToolTipText("Drag to select · " + copyKeyName() + "/right-click to copy");
 
         registerCopyShortcut();
+    }
+
+    protected Color valueColor() {
+        return getForeground();
+    }
+
+    protected boolean underlineValue() {
+        return false;
+    }
+
+    protected int underlineThickness() {
+        return 1;
+    }
+
+    protected void valueClicked(MouseEvent e) {
+    }
+
+    protected void addExtraCopyMenuItems(JPopupMenu menu) {
+    }
+
+    /** Width reserved at the far left for a leading glyph (e.g. an expand
+     *  triangle); 0 by default. Subclasses that draw one override this AND
+     *  {@link #paintLeadingGlyph}. */
+    protected int leadingGlyphWidth() {
+        return 0;
+    }
+
+    /** Paint a leading glyph at {@code x} (the left pad), aligned to the first
+     *  line's {@code baseline} / {@code ascent}. No-op by default. */
+    protected void paintLeadingGlyph(Graphics2D g2, int x, int baseline, int ascent) {
+    }
+
+    protected void copyToClipboard(String text) {
+        Toolkit.getDefaultToolkit()
+               .getSystemClipboard()
+               .setContents(new StringSelection(text == null ? "" : text),
+                            null);
     }
 
     private static String copyKeyName() {
@@ -100,11 +139,19 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
     public void beginSelection(Point p) {
         QuizableTextSelectionManager.activate(this);
 
+        pressPoint = p;
         requestFocusInWindow();
         TextPosition pos = positionAt(p, computePaintLines(getWidth()));
         selection.setAnchor(pos.lineIndex(), pos.offset());
         repaint();
     }
+
+    // The press point, so a near-stationary release counts as a CLICK even if it
+    // lands on a different character offset (a hand-click wobbles a pixel or two;
+    // without this it was mistaken for a text-selection drag and the click — e.g. a
+    // reference navigation — silently did nothing).
+    private Point pressPoint;
+    private static final int CLICK_SLOP = 4;   // px
 
     public void updateSelection(Point p) {
         if (!selection.hasAnchor()) {
@@ -120,18 +167,29 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
     public void endSelection(Point p) {
         updateSelection(p);
 
-        // A plain click (no drag) selects the whole value, so it's always
-        // visible what Cmd+C / "Copy" will take.
-        if (selection.isEmpty()) {
+        boolean nearStationary = pressPoint != null && p.distance(pressPoint) <= CLICK_SLOP;
+        boolean click = selection.isEmpty() || nearStationary;
+        if (NAV_DEBUG) {
+            System.err.println("[click] end on '" + valueText() + "' empty="
+                    + selection.isEmpty() + " moved="
+                    + (pressPoint == null ? "?" : (int) p.distance(pressPoint))
+                    + (click ? " -> valueClicked" : " -> text SELECTION (no click)"));
+        }
+        pressPoint = null;
+        if (click) {
             selectAll();
+            valueClicked(null);
         }
     }
+
+    static final boolean NAV_DEBUG = Boolean.getBoolean("quiz.nav.debug");
 
     private void selectAll() {
         List<PaintLine> lines = computePaintLines(getWidth());
         if (lines.isEmpty()) {
             return;
         }
+
         PaintLine last = lines.get(lines.size() - 1);
         selection.setAnchor(0, 0);
         selection.setFocus(last.lineIndex(), last.text().length());
@@ -171,6 +229,8 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
             menu.add(copyField);
             menu.add(copyPath);
         }
+
+        addExtraCopyMenuItems(menu);
 
         menu.show(this, p.x, p.y);
     }
@@ -222,13 +282,6 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
         return String.join(".", fieldPath);
     }
 
-    private void copyToClipboard(String text) {
-        Toolkit.getDefaultToolkit()
-               .getSystemClipboard()
-               .setContents(new StringSelection(text == null ? "" : text),
-                            null);
-    }
-
     private List<String> wrappedLines(FontMetrics fm, int valueWidth) {
         List<String> out = new ArrayList<>();
 
@@ -261,6 +314,7 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
                 if (!current.isEmpty()) {
                     out.add(current.toString());
                 }
+
                 current.setLength(0);
                 current.append(word);
             }
@@ -283,13 +337,17 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
 
     private Font fieldFont() {
         Font base = UIManager.getFont("Label.font");
-        if (base == null) base = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        if (base == null) {
+            base = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        }
         return base.deriveFont(Font.BOLD);
     }
 
     private Font valueFont() {
         Font base = UIManager.getFont("Label.font");
-        if (base == null) base = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        if (base == null) {
+            base = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        }
         return base;
     }
 
@@ -300,6 +358,7 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
 
         String prefix = fieldName.isEmpty() ? "" : fieldName + ":";
         int prefixWidth = fmField.stringWidth(prefix);
+        int lead = leadingGlyphWidth();
 
         int longest = 0;
         for (String line : lines) {
@@ -307,6 +366,7 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
         }
 
         int naturalWidth = PAD_X
+                + lead
                 + prefixWidth
                 + (prefix.isEmpty() ? 0 : GAP)
                 + longest
@@ -314,10 +374,10 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
 
         int prefWidth = Math.clamp(naturalWidth, 160, MAX_PREF_WIDTH);
 
-        // Wrap (and so size the height) at the width we are actually given,
-        // not the clamped preferred width, or we leave a gap below the text.
         int layoutWidth = getWidth() > 0 ? getWidth() : prefWidth;
-        int valueWidth = Math.max(80, layoutWidth - PAD_X - prefixWidth - GAP - PAD_X);
+        int valueWidth = Math.max(
+                80,
+                layoutWidth - PAD_X - lead - prefixWidth - GAP - PAD_X);
 
         List<String> wrapped = wrappedLines(fmValue, valueWidth);
         int height = PAD_Y * 2 + wrapped.size() * fmValue.getHeight();
@@ -329,7 +389,10 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
     public void setBounds(int x, int y, int width, int height) {
         boolean widthChanged = width != getWidth();
         super.setBounds(x, y, width, height);
+
         if (widthChanged) {
+            cachedWidth = -1;
+            cachedPaintLines = new ArrayList<>();
             revalidate();
         }
     }
@@ -354,24 +417,30 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
 
             String prefix = fieldName.isEmpty() ? "" : fieldName + ":";
 
-            int x = PAD_X;
-            int valueX = x;
+            int lead = leadingGlyphWidth();
+            int firstBaseline = PAD_Y + fmValue.getAscent();
+
+            if (lead > 0) {
+                paintLeadingGlyph(g2, PAD_X, firstBaseline, fmValue.getAscent());
+            }
+
+            int x = PAD_X + lead;
 
             if (!prefix.isEmpty()) {
                 g2.setFont(fieldFont);
                 g2.setColor(getForeground());
-
-                int prefixBaseline = PAD_Y + fmValue.getAscent();
-                g2.drawString(prefix, x, prefixBaseline);
-
-                valueX += fmField.stringWidth(prefix) + GAP;
+                g2.drawString(prefix, x, firstBaseline);
             }
 
             g2.setFont(valueFont);
 
             for (PaintLine line : computePaintLines(getWidth())) {
-                paintTextLine(g2, line.text(), line.x(), line.baseline(),
-                              fmValue, line.lineIndex());
+                paintTextLine(g2,
+                              line.text(),
+                              line.x(),
+                              line.baseline(),
+                              fmValue,
+                              line.lineIndex());
             }
         } finally {
             g2.dispose();
@@ -388,7 +457,8 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
 
         String prefix = fieldName.isEmpty() ? "" : fieldName + ":";
         int prefixWidth = fmField.stringWidth(prefix);
-        int valueX = PAD_X + (prefix.isEmpty() ? 0 : prefixWidth + GAP);
+        int valueX = PAD_X + leadingGlyphWidth()
+                + (prefix.isEmpty() ? 0 : prefixWidth + GAP);
         int valueWidth = Math.max(80, width - valueX - PAD_X);
 
         List<String> wrapped = wrappedLines(fmValue, valueWidth);
@@ -416,7 +486,7 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
                                int baseline,
                                FontMetrics fm,
                                int lineIndex) {
-        if (text == null) {
+        if (text == null || text.isEmpty()) {
             return;
         }
 
@@ -425,8 +495,12 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
         int selectedStart = selection.selectedStartForLine(lineIndex);
         int selectedEnd = selection.selectedEndForLine(lineIndex, text.length());
 
-        selectedStart = selectedStart < 0 ? -1 : clamp(selectedStart, 0, text.length());
-        selectedEnd = selectedEnd < 0 ? -1 : clamp(selectedEnd, 0, text.length());
+        selectedStart = selectedStart < 0
+                ? -1
+                : clamp(selectedStart, 0, text.length());
+        selectedEnd = selectedEnd < 0
+                ? -1
+                : clamp(selectedEnd, 0, text.length());
 
         int pos = 0;
 
@@ -441,9 +515,9 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
             while (pos < text.length()
                     && searchMark[pos] == highlighted
                     && ((selectedStart >= 0
-                         && selectedEnd >= 0
-                         && pos >= selectedStart
-                         && pos < selectedEnd) == selected)) {
+                    && selectedEnd >= 0
+                    && pos >= selectedStart
+                    && pos < selectedEnd) == selected)) {
                 pos++;
             }
 
@@ -453,17 +527,28 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
 
             if (selected) {
                 g2.setColor(SELECTION_BACKGROUND);
-                g2.fillRect(partX, baseline - fm.getAscent(), partW, fm.getHeight());
+                g2.fillRect(partX,
+                            baseline - fm.getAscent(),
+                            partW,
+                            fm.getHeight());
                 g2.setColor(SELECTION_FOREGROUND);
             } else {
                 if (highlighted) {
                     g2.setColor(SEARCH_HIGHLIGHT);
-                    g2.fillRect(partX, baseline - fm.getAscent(), partW, fm.getHeight());
+                    g2.fillRect(partX,
+                                baseline - fm.getAscent(),
+                                partW,
+                                fm.getHeight());
                 }
-                g2.setColor(getForeground());
+                g2.setColor(valueColor());
             }
 
             g2.drawString(part, partX, baseline);
+
+            if (!selected && underlineValue()) {
+                int underY = baseline + 1;
+                g2.fillRect(partX, underY, partW, underlineThickness());
+            }
         }
     }
 
@@ -480,7 +565,9 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
             int idx = 0;
 
             while ((idx = lower.indexOf(tok, idx)) >= 0) {
-                for (int i = idx; i < idx + tok.length() && i < mark.length; i++) {
+                for (int i = idx;
+                     i < idx + tok.length() && i < mark.length;
+                     i++) {
                     mark[i] = true;
                 }
 
@@ -537,7 +624,6 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
     private static int clamp(int v, int min, int max) {
         return Math.max(min, Math.min(max, v));
     }
-
 
     @Override
     public void clearSelectionFromManager() {

@@ -1,0 +1,83 @@
+{
+  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "version" : 1,
+  "name" : "",
+  "description" : "",
+  "root" : {
+    "@class" : "wikidata.explore.rule.RuleNode",
+    "name" : "Character",
+    "itemVar" : "character",
+    "sourceQid" : "Q22988604",
+    "sourceLabel" : "mythological Greek character",
+    "additionalSourceQids" : [ "java.util.LinkedHashSet", [ "Q22989102", "Q12502038", "Q23015925" ] ],
+    "propertyPid" : "P31",
+    "propertyLabel" : "instance of",
+    "direction" : "ITEM_TO_ROOT",
+    "membershipPid" : "",
+    "membershipQid" : "",
+    "labelConfig" : {
+      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "requireLabel" : true,
+      "language" : "en"
+    },
+    "includedFields" : [ "java.util.ArrayList", [ {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "father",
+      "propertyPid" : "P22",
+      "propertyLabel" : "father",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : true,
+      "direction" : "ROOT_TO_ITEM",
+      "membershipPid" : "P31",
+      "membershipQid" : "Q22988604"
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "mother",
+      "propertyPid" : "P25",
+      "propertyLabel" : "",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : true,
+      "direction" : "ROOT_TO_ITEM",
+      "membershipPid" : "P31",
+      "membershipQid" : "Q22988604"
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "child",
+      "propertyPid" : "P40",
+      "propertyLabel" : "child",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : true,
+      "direction" : "ROOT_TO_ITEM",
+      "membershipPid" : "P31",
+      "membershipQid" : "Q22988604"
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "episodes",
+      "propertyPid" : "P674",
+      "propertyLabel" : "",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : true,
+      "direction" : "ITEM_TO_ROOT",
+      "membershipPid" : "P31",
+      "membershipQid" : "Q63143903"
+    } ] ],
+    "limit" : 500,
+    "sortFieldName" : "",
+    "sortDescending" : false,
+    "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
+    "valueFilters" : [ "java.util.ArrayList", [ ] ],
+    "edges" : [ "java.util.ArrayList", [ ] ],
+    "requireSitelink" : true,
+    "rankBySitelinks" : false,
+    "rankPropertyPid" : "",
+    "rankDescending" : true,
+    "requireEnglishLabel" : null,
+    "includeImage" : null
+  }
+}

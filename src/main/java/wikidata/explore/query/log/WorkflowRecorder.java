@@ -145,7 +145,7 @@ public class WorkflowRecorder {
         node.complete(
                 status,
                 summary,
-                error == null ? null : error.getMessage());
+                describeError(error));
 
         stack.remove(node);
         fire(false);
@@ -223,5 +223,37 @@ public class WorkflowRecorder {
             }
         }
         return LogStatus.FAILED;
+    }
+
+    /**
+     * A human-readable error string that is never blank — so a failed step shows
+     * <em>why</em> it failed instead of a bare "Failed". Walks the cause chain
+     * (e.g. ExecutionException → RuntimeException → HttpTimeoutException) and falls
+     * back to the exception's simple class name when its message is empty (a
+     * dropped connection / timeout often has a null message).
+     */
+    static String describeError(Throwable error) {
+        if (error == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        Throwable prev = null;
+        for (Throwable t = error; t != null && t != prev && sb.length() < 800;
+             prev = t, t = t.getCause()) {
+            String msg = t.getMessage();
+            String part = msg == null || msg.isBlank()
+                    ? t.getClass().getSimpleName()
+                    : msg;
+            if (sb.length() > 0) {
+                // Skip a cause that adds nothing — a wrapper's message often
+                // already embeds the cause's toString().
+                if (sb.toString().contains(part)) {
+                    continue;
+                }
+                sb.append("\n  caused by: ");
+            }
+            sb.append(part);
+        }
+        return sb.length() == 0 ? error.getClass().getSimpleName() : sb.toString();
     }
 }

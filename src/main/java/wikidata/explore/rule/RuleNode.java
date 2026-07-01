@@ -115,6 +115,14 @@ public class RuleNode {
 
         s.sourceQid(sourceQid);
         s.sourceLabel(sourceLabel);
+        // Multi-target membership (e.g. P1411 -> 59 award categories, all in the
+        // additional set with a blank sourceQid): without these the sample copy
+        // has NO membership and its query becomes "VALUES ?value { }" -> 0 rows,
+        // so Discover/Sample find nothing for a multi-target class.
+        additionalSourceQids().forEach(s::addAdditionalSourceQid);
+        s.membershipPid(membershipPid());
+        s.membershipQid(membershipQid());
+        s.requireSitelink(requireSitelink());
         s.propertyPid(propertyPid);
         s.propertyLabel(propertyLabel);
         s.direction(direction());

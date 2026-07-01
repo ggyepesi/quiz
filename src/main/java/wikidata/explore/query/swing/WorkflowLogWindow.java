@@ -32,9 +32,29 @@ public class WorkflowLogWindow implements LogListener {
             }
 
             if (view != null) {
+                // Tail behaviour: follow the newest entry during generation, but
+                // only when already at the bottom — so scrolling up to read isn't
+                // yanked back.
+                JScrollBar bar = verticalBar();
+                boolean atBottom = bar == null
+                        || bar.getValue() + bar.getVisibleAmount() >= bar.getMaximum() - 48;
+
                 view.upsertQuizable(root);
+
+                if (atBottom && bar != null) {
+                    // After the upsert lays out, jump to the (new) bottom.
+                    SwingUtilities.invokeLater(() -> bar.setValue(bar.getMaximum()));
+                }
             }
         });
+    }
+
+    private JScrollBar verticalBar() {
+        if (view == null) {
+            return null;
+        }
+        Component sp = view.getCardsScrollPane();
+        return sp instanceof JScrollPane jsp ? jsp.getVerticalScrollBar() : null;
     }
 
     public void show(Component owner) {

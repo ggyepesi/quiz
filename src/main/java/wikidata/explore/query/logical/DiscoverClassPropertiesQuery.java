@@ -163,8 +163,14 @@ public class DiscoverClassPropertiesQuery
                     sampleSize);
             var = "item";
         } else {
-            sparql = RuleNodeQueryBuilder.valuesQuery(
-                    node.sampleCopy(sampleSize));
+            // Multi-target membership (e.g. P1411 -> many award categories): take
+            // one representative per target so all categories are profiled, not a
+            // flat LIMIT that could come entirely from one category.
+            String stratified =
+                    RuleNodeQueryBuilder.stratifiedSampleQuery(node.sampleCopy(sampleSize));
+            sparql = stratified != null
+                    ? stratified
+                    : RuleNodeQueryBuilder.valuesQuery(node.sampleCopy(sampleSize));
             var = "value";
         }
 

@@ -528,6 +528,11 @@ public final class QuizableJson {
 
         List<QuizableView.Field> fields = new ArrayList<>();
         for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
+            // "__"-prefixed keys are internal plumbing (e.g. the reify's
+            // "__Nomination" statement-list scratch field), never user-facing data.
+            if (e.getKey() != null && e.getKey().startsWith("__")) {
+                continue;
+            }
             Object value = e.getValue();
             if (!QuizableAdapter.isValidQuizValue(value)) {
                 continue;

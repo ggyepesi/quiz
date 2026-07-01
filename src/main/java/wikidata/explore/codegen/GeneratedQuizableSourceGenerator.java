@@ -84,6 +84,10 @@ public class GeneratedQuizableSourceGenerator {
         sb.append("    @quiz.annotations.NotQuizableField\n");
         sb.append("    @quiz.annotations.Link\n");
         sb.append("    public String wikidataUrl = \"\";\n");
+        // Identity/display name = the card TITLE, re-injected once as an identity
+        // field by getConfigurableFields; without @NotQuizableField it also leaks
+        // into getAllFields and shows up TWICE in sort/search/viewconfig.
+        sb.append("    @quiz.annotations.NotQuizableField\n");
         sb.append("    public String name = \"\";\n\n");
 
         for (GeneratedFieldModel field : fields) {

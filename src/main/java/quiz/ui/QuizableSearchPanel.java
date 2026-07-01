@@ -77,7 +77,8 @@ public class QuizableSearchPanel extends JPanel
 
     private final javax.swing.Timer debounceTimer;
 
-    private JPanel targetPanel;
+    private JComponent targetPanel;
+    private VirtualizedCardList virtualList;   // non-null when the target is virtualized
     private JScrollPane targetScrollPane;
     private JDialog searchDialog;
     private JDialog sortDialog;
@@ -105,7 +106,7 @@ public class QuizableSearchPanel extends JPanel
     private boolean sorted = false;
 
     public void setTarget(
-            JPanel targetPanel,
+            JComponent targetPanel,
             JScrollPane targetScrollPane) {
 
         setTarget(targetPanel, targetScrollPane, true);
@@ -124,32 +125,22 @@ public class QuizableSearchPanel extends JPanel
     }
 
     public void setTargetAndApplyViewConfig(
-            JPanel targetPanel,
+            JComponent targetPanel,
             JScrollPane targetScrollPane) {
 
         setTarget(targetPanel, targetScrollPane, true);
     }
 
     private void setTarget(
-            JPanel targetPanel,
+            JComponent targetPanel,
             JScrollPane targetScrollPane,
             boolean applyViewConfig) {
 
         this.targetPanel = targetPanel;
+        this.virtualList = targetPanel instanceof VirtualizedCardList vcl ? vcl : null;
         this.targetScrollPane = targetScrollPane;
 
-        // Snapshot column count from existing GBL before touching anything
-        if (targetPanel != null
-                && targetPanel.getLayout() instanceof GridBagLayout gbl) {
-            int maxX = 0;
-            for (Component c : targetPanel.getComponents()) {
-                if (c instanceof QuizablePanel) {
-                    GridBagConstraints gbc = gbl.getConstraints(c);
-                    maxX = Math.max(maxX, gbc.gridx);
-                }
-            }
-            cachedColumnCount = Math.max(1, maxX + 1);
-        }
+        cachedColumnCount = detectColumnCount();
 
         rememberOriginalTargetsFromCurrentPanel();
         rebuildSearchIndex();
@@ -230,6 +221,27 @@ public class QuizableSearchPanel extends JPanel
             return;
         }
 
+        // Virtualized: sort the DATA (all fields of every quizable), then re-render
+        // the visible window in the new order — O(N) on data + O(visible) render,
+        // no component shuffle.
+        if (virtualList != null) {
+            // Keep your place across the resort: anchor on the highlighted search
+            // hit if any, else the card currently at the top of the viewport, and
+            // re-pin it at the top in the new order.
+            Quizable anchor = currentHit instanceof QuizablePanel qp
+                    ? qp.getQuizable()
+                    : virtualList.topVisibleItem();
+
+            List<Quizable> ordered =
+                    searchAndSort.sortQuizables(virtualList.items(), sortPaths);
+            virtualList.setItems(ordered);
+            if (anchor != null) {
+                virtualList.navigateToTop(anchor);
+            }
+            sorted = true;
+            return;
+        }
+
         List<QuizablePanel> panels =
                 new ArrayList<>();
 
@@ -247,82 +259,42 @@ public class QuizableSearchPanel extends JPanel
         // because no panels were recreated, only repositioned.
     }
 
+    // CardStackLayout lays out in component order, so reordering for sort is just
+    // re-adding the cards in the new order (cheap — the layout is O(n) arithmetic).
     private void applyTargetOrder(List<? extends Component> order) {
-        long start = System.currentTimeMillis();
         if (targetPanel == null) {
             return;
         }
 
-        if (!(targetPanel.getLayout() instanceof GridBagLayout gbl)) {
-            return;
+        List<Component> filtered = new ArrayList<>();
+        for (Component c : order) {
+            if (c instanceof QuizablePanel) {
+                filtered.add(c);
+            }
         }
 
-        List<? extends Component> filtered = order.stream()
-                                                  .filter(c -> c instanceof QuizablePanel)
-                                                  .toList();
-
-        // Skip rebuild if order hasn't changed
+        // Skip if the order hasn't changed (avoid a needless removeAll/relayout).
         Component[] current = targetPanel.getComponents();
-        if (current.length > 0) {
-            int panelCount = 0;
+        if (current.length == filtered.size()) {
             boolean same = true;
-            int fi = 0;
-            for (Component c : current) {
-                if (!(c instanceof QuizablePanel)) {
-                    continue;
-                }
-                if (fi >= filtered.size() || c != filtered.get(fi)) {
+            for (int i = 0; i < current.length; i++) {
+                if (current[i] != filtered.get(i)) {
                     same = false;
                     break;
                 }
-                fi++;
-                panelCount++;
             }
-            if (same && panelCount == filtered.size()) {
+            if (same) {
                 return;
             }
         }
 
-        int cols = cachedColumnCount;
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.weightx = 1.0;
-        gbc.weighty = 0.0;
-        gbc.anchor  = GridBagConstraints.NORTHWEST;
-        gbc.fill    = GridBagConstraints.BOTH;
-        gbc.insets  = new Insets(8, 8, 12, 8);
-
-        for (int i = 0; i < filtered.size(); i++) {
-            gbc.gridx = i % cols;
-            gbc.gridy = i / cols;
-            gbl.setConstraints(filtered.get(i), gbc);
-        }
-
-        // Reposition the glue row below the last panel row
-        int lastRow = filtered.isEmpty()
-                ? 0
-                : (filtered.size() - 1) / cols + 1;
-
-        for (Component c : targetPanel.getComponents()) {
-            if (c instanceof QuizablePanel) {
-                continue;
-            }
-
-            GridBagConstraints glue = new GridBagConstraints();
-            glue.gridx     = 0;
-            glue.gridy     = lastRow;
-            glue.gridwidth = cols;
-            glue.weightx   = 1.0;
-            glue.weighty   = 1.0;
-            glue.anchor    = GridBagConstraints.NORTHWEST;
-            glue.fill      = GridBagConstraints.BOTH;
-            gbl.setConstraints(c, glue);
-            break;
+        targetPanel.removeAll();
+        for (Component c : filtered) {
+            targetPanel.add(c);
         }
 
         targetPanel.revalidate();
         targetPanel.repaint();
-        System.out.println("QuizableSearchPanel applyTargetOrder in " + (System.currentTimeMillis() - start));
     }
 
 
@@ -444,6 +416,12 @@ public class QuizableSearchPanel extends JPanel
     private void rememberOriginalTargetsFromCurrentPanel() {
         originalQuizables.clear();
         originalTargetOrder.clear();
+
+        // Virtualized: the baseline is the full data list (most cards aren't built).
+        if (virtualList != null) {
+            originalQuizables.addAll(virtualList.items());
+            return;
+        }
 
         if (targetPanel == null) {
             return;
@@ -624,6 +602,13 @@ public class QuizableSearchPanel extends JPanel
                 tokens(text);
 
         if (queryTokens.isEmpty()) {
+            return;
+        }
+
+        // Virtualized view: only the visible cards exist as components, so search
+        // the DATA and navigate hits one at a time (building each card on demand).
+        if (virtualList != null) {
+            searchSyncVirtual(queryTokens);
             return;
         }
 
@@ -999,6 +984,15 @@ public class QuizableSearchPanel extends JPanel
 
     private void restoreOriginalTargetOrder() {
         sorted = false;
+
+        // Virtualized: restore the original data order (a data swap, not a
+        // component shuffle).
+        if (virtualList != null) {
+            virtualList.setItems(originalQuizables);
+            maybeRefreshSearch();
+            return;
+        }
+
         applyTargetOrder(originalTargetOrder);
         maybeRefreshSearch();
     }
@@ -1010,25 +1004,10 @@ public class QuizableSearchPanel extends JPanel
     }
 
     private int detectColumnCount() {
-        if (targetPanel == null
-                || !(targetPanel.getLayout() instanceof GridBagLayout gbl)) {
-            return 1;
-        }
-
-        int maxX =
-                0;
-
-        for (Component c : targetPanel.getComponents()) {
-            if (c instanceof QuizablePanel) {
-                GridBagConstraints gbc =
-                        gbl.getConstraints(c);
-
-                maxX =
-                        Math.max(maxX, gbc.gridx);
-            }
-        }
-
-        return Math.max(1, maxX + 1);
+        return targetPanel != null
+                && targetPanel.getLayout() instanceof CardStackLayout csl
+                ? csl.columns()
+                : 1;
     }
 
     private boolean matchesWithTokens(
@@ -1588,6 +1567,132 @@ public class QuizableSearchPanel extends JPanel
 
         markCurrentHit(target);
         scrollTo(target);
+    }
+
+    // --- Virtualized (data-centric) search: hits are quizables, navigated one at
+    // a time; each card is built on demand by the VirtualizedCardList. ---
+
+    private void searchSyncVirtual(List<String> queryTokens) {
+        Map<String, List<Quizable>> matchesByField =
+                searchAndSort.searchQuizables(
+                        virtualList.items(),
+                        queryTokens,
+                        getSearchConfig());
+
+        Map<String, HitGroupQ> groups = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Quizable>> e : matchesByField.entrySet()) {
+            HitGroupQ g = new HitGroupQ(e.getKey());
+            g.hits.addAll(e.getValue());
+            groups.put(e.getKey(), g);
+        }
+
+        showSearchResultsVirtual(groups);
+    }
+
+    private void showSearchResultsVirtual(Map<String, HitGroupQ> groups) {
+        resultsPanel.removeAll();
+
+        HitGroupQ first = null;
+        for (HitGroupQ g : groups.values()) {
+            if (g.hits.isEmpty()) {
+                continue;
+            }
+            addHitGroupRowVirtual(g);
+            if (first == null) {
+                first = g;
+            }
+        }
+
+        resultsPanel.revalidate();
+        resultsPanel.repaint();
+
+        if (first != null) {
+            first.index = 0;
+            first.updateLabel();
+            navigateToCurrentVirtual(first);
+        }
+    }
+
+    private void addHitGroupRowVirtual(HitGroupQ g) {
+        JPanel row = new JPanel(new BorderLayout(4, 0));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+
+        g.label = new JLabel();
+        g.updateLabel();
+
+        JButton prevBtn = new JButton("<");
+        JButton nextBtn = new JButton(">");
+        prevBtn.setMargin(new Insets(2, 4, 2, 4));
+        nextBtn.setMargin(new Insets(2, 4, 2, 4));
+        prevBtn.addActionListener(e -> navigateVirtual(g, -1));
+        nextBtn.addActionListener(e -> navigateVirtual(g, 1));
+
+        JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        navPanel.add(prevBtn);
+        navPanel.add(nextBtn);
+
+        row.add(g.label, BorderLayout.CENTER);
+        row.add(navPanel, BorderLayout.EAST);
+
+        resultsPanel.add(row);
+    }
+
+    private void navigateVirtual(HitGroupQ g, int delta) {
+        if (g.hits.isEmpty()) {
+            return;
+        }
+        g.index = Math.floorMod(g.index + delta, g.hits.size());
+        g.updateLabel();
+        navigateToCurrentVirtual(g);
+    }
+
+    /** Builds the current hit's card on demand, scrolls to it, and highlights it —
+     *  exactly one hit highlighted at a time (the previous one is restored first). */
+    private void navigateToCurrentVirtual(HitGroupQ g) {
+        clearHighlights();
+
+        Quizable q = g.hits.get(g.index);
+        // Pin the hit exactly at the viewport top (real-height layout from it),
+        // instead of the estimate-based scrollRectToVisible that could drift.
+        JComponent card = virtualList.navigateToTop(q);
+        if (card == null) {
+            return;
+        }
+
+        if (card instanceof QuizablePanel qp) {
+            highlightCard(qp);
+        }
+        markCurrentHitVirtual(card);
+
+        targetPanel.revalidate();
+        targetPanel.repaint();
+    }
+
+    private void markCurrentHitVirtual(JComponent c) {
+        currentHit = c;
+        remember(c);
+        c.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0xFF8800), 3, true),
+                c.getBorder()));
+        c.repaint();
+    }
+
+    private static class HitGroupQ {
+        final String title;
+        final List<Quizable> hits = new ArrayList<>();
+        int index = 0;
+        JLabel label;
+
+        HitGroupQ(String title) {
+            this.title = title;
+        }
+
+        void updateLabel() {
+            if (label != null) {
+                int displayIndex = hits.isEmpty() ? 0 : index + 1;
+                label.setText(title + " (" + displayIndex + "/" + hits.size() + ")");
+            }
+        }
     }
 
     private static class HitGroup {

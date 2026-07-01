@@ -5,34 +5,37 @@ import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class QuizableReferenceRow extends JComponent {
-    private static final int PAD_X = 6;
-    private static final int PAD_Y = 4;
-    private static final int GAP = 8;
-    private static final int TRI_W = 12;
+/**
+ * A reference to another {@link Quizable}, rendered on top of {@link QuizableTextRow}
+ * (inheriting selection, search highlight, wrapping, keyboard + popup copy) with a
+ * leading expand/collapse triangle. Left-click toggles in-place expansion — or jumps
+ * to the target's card when it's itself a top-level card ({@code navigate}); the copy
+ * menu can open it in its own window.
+ *
+ * <p>Collapsed, it's just a painted text row sharing the static mouse handler — no
+ * per-instance listeners, tooltips, or component baggage — so a card full of
+ * references stays cheap to build. It only becomes a real nested panel once expanded
+ * (handled by {@link QuizablePanel}), which is the rare case.
+ */
+public class QuizableReferenceRow extends QuizableTextRow {
 
-    private final String fieldName;
+    private static final int TRI_W = 12;
+    private static final Color VALUE_COLOR = new Color(0, 80, 180);
+    private static final Color TRI_COLOR = new Color(120, 120, 120);
+
     private final Quizable target;
     private final QuizableRenderContext renderContext;
     private final QuizablePanelConfig openConfig;
     private final String openTitle;
     private final boolean expanded;
-    // When the target is itself a top-level card in this view, the row is a
-    // navigation link (jump to that card) rather than an expand-in-place chip.
-    // This avoids the per-target expand flag being shared between the card and
-    // a chip for the same object (which collapsed the outer one).
+    // When the target is itself a top-level card, the row navigates to it rather
+    // than expanding in place (avoids the per-target expand flag being shared
+    // between the card and a chip for the same object).
     private final boolean navigate;
-    private final List<String> fieldPath;
-
-    private Rectangle targetBounds;
-    private boolean hover = false;
 
     public QuizableReferenceRow(String fieldName,
                                 List<String> fieldPath,
@@ -53,10 +56,11 @@ public class QuizableReferenceRow extends JComponent {
                                 String openTitle,
                                 boolean expanded,
                                 boolean navigate) {
+        super(fieldName,
+                fieldPath == null ? List.of() : new ArrayList<>(fieldPath),
+                List.of(name(target)));
         QuizablePanel.RenderStats.referenceRows++;
-        this.fieldName = fieldName == null ? "" : fieldName;
-        List<String> fieldPath1 = fieldPath == null ? List.of() : new ArrayList<>(fieldPath);
-        this.fieldPath = fieldPath1;
+
         this.target = target;
         this.renderContext = renderContext;
         this.openConfig = openConfig;
@@ -64,285 +68,97 @@ public class QuizableReferenceRow extends JComponent {
         this.expanded = expanded;
         this.navigate = navigate;
 
-        setOpaque(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         setToolTipText(navigate
-                ? "Click to jump to its card · shift-click to open in a window"
+                ? "Click to jump to its card · right-click for more"
                 : expanded
-                ? "Click to collapse · shift-click to open in a window"
-                : "Click to expand in place · shift-click to open in a window");
+                ? "Click to collapse · right-click for more"
+                : "Click to expand in place · right-click for more");
 
-        putClientProperty(QuizableSearchPanel.FIELD_NAME_PROPERTY, "name");
         // The searchable value is the TARGET's name, so the path must end in
         // "name" to match the model search's leaf path (QuizableFieldPaths emits
-        // e.g. ["episodes","name"]). Stamping just ["episodes"] meant samePath
-        // failed and the row was never highlighted (it became a "hidden hit").
-        List<String> searchPath = new ArrayList<>(fieldPath1);
+        // e.g. ["episodes","name"]). Otherwise the row is never highlighted.
+        List<String> searchPath = new ArrayList<>(
+                fieldPath == null ? List.of() : fieldPath);
         searchPath.add("name");
         putClientProperty(QuizableSearchPanel.FIELD_PATH_PROPERTY, searchPath);
-        putClientProperty(QuizableSearchPanel.FIELD_VALUE_PROPERTY, targetName());
-
-        addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (SwingUtilities.isRightMouseButton(e)) {
-                    showCopyPopup(e.getPoint());
-                    return;
-                }
-
-                if (!SwingUtilities.isLeftMouseButton(e)) {
-                    return;
-                }
-
-                // Default click toggles in-place expand/collapse; the whole
-                // row is the target. Shift- or double-click still opens the
-                // object in its own detail window.
-                if (e.isShiftDown() || e.getClickCount() >= 2) {
-                    openFullObject();
-                } else if (navigate) {
-                    openOrFocus();
-                } else {
-                    toggleExpansion();
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                if (hover) {
-                    hover = false;
-                    repaint();
-                }
-            }
-        });
-
-        addMouseMotionListener(new MouseMotionAdapter() {
-            @Override
-            public void mouseMoved(MouseEvent e) {
-                boolean newHover =
-                        targetBounds != null && targetBounds.contains(e.getPoint());
-
-                if (newHover != hover) {
-                    hover = newHover;
-                    repaint();
-                }
-            }
-        });
     }
 
-    private void openInContext() {
+    @Override
+    protected Color valueColor() {
+        return VALUE_COLOR;
+    }
+
+    @Override
+    protected int leadingGlyphWidth() {
+        return TRI_W;
+    }
+
+    @Override
+    protected void paintLeadingGlyph(Graphics2D g2, int x, int baseline, int ascent) {
+        int triMid = baseline - ascent / 2;
+        g2.setColor(TRI_COLOR);
+        if (navigate) {
+            g2.drawString("→", x, baseline);   // →
+        } else if (expanded) {
+            g2.fillPolygon(
+                    new int[]{x, x + 8, x + 4},
+                    new int[]{triMid - 2, triMid - 2, triMid + 3},
+                    3);
+        } else {
+            g2.fillPolygon(
+                    new int[]{x + 1, x + 1, x + 6},
+                    new int[]{triMid - 4, triMid + 4, triMid},
+                    3);
+        }
+    }
+
+    // Plain click: expand/collapse, or navigate to the target's own card. (Open
+    // in a window stays on the right-click menu.)
+    @Override
+    protected void valueClicked(MouseEvent e) {
+        if (NAV_DEBUG) {
+            System.err.println("[nav] ref valueClicked navigate=" + navigate
+                    + " target='" + (target == null ? "null" : target.getDisplayName())
+                    + "'");
+        }
+        if (navigate) {
+            openOrFocus();
+        } else {
+            toggleExpansion();
+        }
+    }
+
+    @Override
+    protected void addExtraCopyMenuItems(JPopupMenu menu) {
         if (target == null) {
             return;
         }
-        QuizablePanelConfig cfg = openConfig == null
-                ? null
-                : openConfig.copy();
-
-        if (cfg == null && renderContext != null) {
-            cfg = renderContext.configFor(target.getClass());
-        }
-
-        if (cfg == null) {
-            cfg = QuizablePanelConfig.allWithMinorFields(target.getClass());
-        }
-
-        cfg.setAddListener(true);
-
-        String title = openTitle == null || openTitle.isBlank()
-                ? target.getName()
-                : openTitle;
-
-        QuizableFrame frame = new QuizableFrame(title, target, cfg);
-    }
-
-    private void openFullObject() {
-        if (target == null) {
-            return;
-        }
-
-        QuizablePanelConfig cfg =
-                QuizablePanelConfig.allWithMinorFields(target.getClass())
-                                   .setAddListener(true)
-                                   .setThumb(true);
-        QuizableFrame frame = new QuizableFrame(target, cfg);
-    }
-
-    private void showCopyPopup(Point p) {
-        JPopupMenu menu = new JPopupMenu();
-
-        JMenuItem copyValue = new JMenuItem("Copy value");
-        copyValue.addActionListener(e -> copy(targetName()));
-        menu.add(copyValue);
-
-        if (!fieldName.isBlank()) {
-            JMenuItem copyField = new JMenuItem("Copy field name");
-            copyField.addActionListener(e -> copy(fieldName));
-
-            JMenuItem copyPath = new JMenuItem("Copy field path");
-            copyPath.addActionListener(e -> copy(String.join(".", fieldPath)));
-
-            menu.addSeparator();
-            menu.add(copyField);
-            menu.add(copyPath);
-        }
-
         menu.addSeparator();
         JMenuItem open = new JMenuItem("Open in window");
         open.addActionListener(e -> openFullObject());
         menu.add(open);
-
-        menu.show(this, p.x, p.y);
-    }
-
-    private static void copy(String text) {
-        Toolkit.getDefaultToolkit()
-               .getSystemClipboard()
-               .setContents(new StringSelection(text == null ? "" : text), null);
     }
 
     private void toggleExpansion() {
         if (renderContext == null || target == null) {
             return;
         }
-
         renderContext.toggleExpanded(target);
         refreshRootCard();
     }
 
-    // Rebuilds the whole card in place (QuizablePanel#refresh) so the
-    // toggled reference re-renders as a chip or an inline panel. More
-    // expensive than a local swap, but it reuses the existing modification
-    // path and keeps nested state consistent.
+    // Rebuilds the whole card in place (QuizablePanel#refresh) so the toggled
+    // reference re-renders as a chip or an inline panel.
     private void refreshRootCard() {
         QuizablePanel root = null;
-
         for (Container c = getParent(); c != null; c = c.getParent()) {
             if (c instanceof QuizablePanel qp) {
                 root = qp;
             }
         }
-
         if (root != null) {
             root.refresh();
-        }
-    }
-
-    private String targetName() {
-        String n = target == null ? null : target.getName();
-        return n == null ? "" : n;
-    }
-
-    private Font baseFont() {
-        Font base = UIManager.getFont("Label.font");
-        return base == null
-                ? new Font(Font.SANS_SERIF, Font.PLAIN, 12)
-                : base;
-    }
-
-    private Font fieldFont() {
-        return baseFont().deriveFont(Font.BOLD);
-    }
-
-    private Font valueFont() {
-        return baseFont();
-    }
-
-    @Override
-    public Dimension getPreferredSize() {
-        FontMetrics fmField = getFontMetrics(fieldFont());
-        FontMetrics fmValue = getFontMetrics(valueFont());
-
-        String prefix = fieldName.isEmpty() ? "" : fieldName + ":";
-
-        int w =
-                PAD_X + TRI_W
-                        + fmField.stringWidth(prefix)
-                        + (prefix.isEmpty() ? 0 : GAP)
-                        + fmValue.stringWidth(targetName())
-                        + PAD_X;
-
-        int h =
-                Math.max(fmField.getHeight(), fmValue.getHeight())
-                        + 2 * PAD_Y;
-
-        return new Dimension(Math.max(100, w), h);
-    }
-
-    @Override
-    public Dimension getMinimumSize() {
-        return new Dimension(80, getPreferredSize().height);
-    }
-
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-
-        Graphics2D g2 = (Graphics2D) g.create();
-
-        try {
-            Font fieldFont = fieldFont();
-            Font valueFont = valueFont();
-
-            FontMetrics fmField = g2.getFontMetrics(fieldFont);
-            FontMetrics fmValue = g2.getFontMetrics(valueFont);
-
-            int baseline =
-                    PAD_Y + Math.max(fmField.getAscent(), fmValue.getAscent());
-
-            // Navigate links show a right-arrow (jump to its card); expandable
-            // chips show the expand/collapse triangle.
-            int triMid = baseline - fmValue.getAscent() / 2;
-            g2.setColor(new Color(120, 120, 120));
-            if (navigate) {
-                g2.setFont(valueFont.deriveFont(Font.BOLD));
-                g2.drawString("→", PAD_X, baseline); // →
-            } else if (expanded) {
-                g2.fillPolygon(
-                        new int[]{PAD_X, PAD_X + 8, PAD_X + 4},
-                        new int[]{triMid - 2, triMid - 2, triMid + 3},
-                        3);
-            } else {
-                g2.fillPolygon(
-                        new int[]{PAD_X + 1, PAD_X + 1, PAD_X + 6},
-                        new int[]{triMid - 4, triMid + 4, triMid},
-                        3);
-            }
-
-            int x = PAD_X + TRI_W;
-
-            if (!fieldName.isEmpty()) {
-                String prefix = fieldName + ":";
-
-                g2.setFont(fieldFont);
-                g2.setColor(getForeground());
-                g2.drawString(prefix, x, baseline);
-
-                x += fmField.stringWidth(prefix) + GAP;
-            }
-
-            String text = targetName();
-
-            targetBounds = new Rectangle(
-                    x,
-                    baseline - fmValue.getAscent(),
-                    fmValue.stringWidth(text),
-                    fmValue.getHeight());
-
-            if (hover && targetBounds.width > 0) {
-                g2.setColor(new Color(220, 235, 255));
-                g2.fillRoundRect(
-                        targetBounds.x - 2,
-                        targetBounds.y - 1,
-                        targetBounds.width + 4,
-                        targetBounds.height + 2,
-                        6,
-                        6);
-            }
-
-            g2.setFont(valueFont);
-            g2.setColor(new Color(0, 80, 180));
-            g2.drawString(text, x, baseline);
-        } finally {
-            g2.dispose();
         }
     }
 
@@ -350,15 +166,31 @@ public class QuizableReferenceRow extends JComponent {
         if (target == null) {
             return;
         }
-
-        if (renderContext != null && renderContext.focusTopLevel(target)) {
+        boolean focused = renderContext != null && renderContext.focusTopLevel(target);
+        if (NAV_DEBUG) {
+            System.err.println("[nav] openOrFocus target='" + target.getDisplayName()
+                    + "' focused=" + focused
+                    + (focused ? "" : " -> opening a window"));
+        }
+        if (focused) {
             return;
         }
+        openFullObject();
+    }
 
+    private void openFullObject() {
+        if (target == null) {
+            return;
+        }
         new QuizableFrame(
                 target,
                 QuizablePanelConfig.allWithMinorFields(target.getClass())
                         .setAddListener(true)
                         .setThumb(true));
+    }
+
+    private static String name(Quizable target) {
+        String n = target == null ? null : target.getName();
+        return n == null ? "" : n;
     }
 }

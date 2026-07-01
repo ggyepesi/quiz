@@ -25,6 +25,55 @@ public final class RuleNodeQueryBuilder {
         return valuesQueryForNode(node, node.sourceQid(), List.of());
     }
 
+    /**
+     * Stratified sample for a MULTI-target membership: one representative instance
+     * per membership target (e.g. one nominee per Oscar category), via
+     * {@code GROUP BY ?target / SAMPLE(?instance)}. A flat LIMIT could draw every
+     * sample row from one target and miss the rest, so property discovery would
+     * not see the class's full diversity (its subclass structure). Returns null
+     * when there's only one (or no) target — the plain valuesQuery is fine then.
+     */
+    public static String stratifiedSampleQuery(RuleNode node) {
+        if (node == null) {
+            return null;
+        }
+        String pid = RuleNode.cleanPid(node.propertyPid());
+        List<String> targets = new ArrayList<>();
+        for (String t : node.allSourceQids()) {
+            String q = RuleNode.cleanQid(t);
+            if (q.matches("Q\\d+")) {
+                targets.add(q);
+            }
+        }
+        if (targets.size() < 2 || !pid.matches("P\\d+")) {
+            return null;
+        }
+        StringBuilder values = new StringBuilder();
+        for (String q : targets) {
+            values.append("wd:").append(q).append(' ');
+        }
+        // direction: ITEM_TO_ROOT -> ?inst wdt:pid ?target ; ROOT_TO_ITEM -> reverse
+        String triple = node.direction().triplePattern("?target", "?inst", pid);
+        String memberFilter = node.hasMembershipFilter()
+                ? "      ?inst wdt:" + node.membershipPid()
+                        + " wd:" + node.membershipQid() + " .\n"
+                : "";
+        // hint:optimizer "None" forces the written join order so the VALUES
+        // binds ?target FIRST, then the predicate is looked up per bound target.
+        // Without it the planner may scan every statement of a generic membership
+        // predicate (e.g. P1411 "nominated for" — used by Grammy/Emmy/Nobel/…
+        // across all of Wikidata) before filtering to these targets, which is the
+        // worst-case that intermittently times the sample query out.
+        return "SELECT ?value WHERE {\n"
+                + "  { SELECT (SAMPLE(?inst) AS ?value) WHERE {\n"
+                + "      hint:Query hint:optimizer \"None\" .\n"
+                + "      VALUES ?target { " + values.toString().trim() + " }\n"
+                + "      " + triple + "\n"
+                + memberFilter
+                + "    } GROUP BY ?target }\n"
+                + "}";
+    }
+
     public static String valuesQueryForSpecificParent(
             RuleNode node, String parentQid) {
         return valuesQueryForNode(node, parentQid, List.of());
@@ -141,9 +190,17 @@ public final class RuleNodeQueryBuilder {
                     "|");
         }
 
+        // A child edge generated for a SPECIFIC parent is bound by the EDGE
+        // (?value <pid> wd:<parent>), so it has a real constraint even with no
+        // type membership of its own (e.g. a category's nominees, reached via
+        // incoming P1411 to a relational class). Treating that as the empty case
+        // is what dropped such children entirely.
+        boolean parentAnchored = !isVariable
+                && RuleNode.cleanQid(rootQidOrVar).matches("Q\\d+");
         boolean blankMembership = !isVariable
                 && node.additionalSourceQids().isEmpty()
-                && RuleNode.cleanQid(node.sourceQid()).isBlank();
+                && RuleNode.cleanQid(node.sourceQid()).isBlank()
+                && !parentAnchored;
 
         // No membership AND no seed QIDs: there's nothing to populate the class
         // from. Without a real constraint, ?value is unbound and the label

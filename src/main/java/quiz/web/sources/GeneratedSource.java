@@ -9,6 +9,10 @@ import quiz.web.QuizableSource;
 import quiz.web.QuizableStore;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.GeneratedProjectModelStore;
+import wikidata.explore.view.DomainFacets;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,11 +41,17 @@ public class GeneratedSource implements QuizableSource {
 
     private final String type;
     private final File file;
+    private final File modelFile;   // optional: the dataset's saved model (declared facets)
     private List<WikidataDynamicObject> members;
 
     public GeneratedSource(String type, File file) {
+        this(type, file, null);
+    }
+
+    public GeneratedSource(String type, File file, File modelFile) {
         this.type = type;
         this.file = file;
+        this.modelFile = modelFile;
     }
 
     @Override
@@ -89,6 +99,11 @@ public class GeneratedSource implements QuizableSource {
      */
     public static void registerAll(QuizableStore store, String defaultType, File file)
             throws Exception {
+        registerAll(store, defaultType, file, null);
+    }
+
+    public static void registerAll(QuizableStore store, String defaultType,
+                                   File file, File modelFile) throws Exception {
         Set<String> types = new LinkedHashSet<>();
         if (file.isFile()) {
             for (WikidataDynamicObject o
@@ -97,7 +112,7 @@ public class GeneratedSource implements QuizableSource {
             }
         }
         if (types.isEmpty()) types.add(defaultType);
-        for (String t : types) store.register(new GeneratedSource(t, file));
+        for (String t : types) store.register(new GeneratedSource(t, file, modelFile));
     }
 
     @Override
@@ -108,7 +123,30 @@ public class GeneratedSource implements QuizableSource {
     @Override
     public QuizableGroup rootGroup() throws Exception {
         Collection<? extends Quizable> all = load();
-        return FacetGrouper.group("All " + type, all, autoFacets(all));
+        // Prefer the grouping the user DECLARED on the model. Declared facets are an
+        // ordered drill-down (e.g. category → year → the nominations), so nest them;
+        // auto-derived facets are independent browse dimensions, so keep them flat.
+        List<Facet> declared = declaredFacets();
+        return declared.isEmpty()
+                ? FacetGrouper.group("All " + type, all, autoFacets(all))
+                : FacetGrouper.groupNested("All " + type, all, declared);
+    }
+
+    /** The class's declared {@link GeneratedFacet}s (translated to runtime facets),
+     *  or empty if there's no model file or no facets declared for this type. */
+    private List<Facet> declaredFacets() {
+        if (modelFile == null || !modelFile.isFile()) {
+            return List.of();
+        }
+        try {
+            GeneratedProjectModel model =
+                    new GeneratedProjectModelStore().load(modelFile);
+            GeneratedClassModel clazz = model.findClass(type);
+            return clazz == null ? List.of() : DomainFacets.toFacets(clazz);
+        } catch (Exception e) {
+            // A missing/older model shouldn't break browsing — auto-derive instead.
+            return List.of();
+        }
     }
 
     /** Derive facets from the dynamic schema over a sample of the data. */

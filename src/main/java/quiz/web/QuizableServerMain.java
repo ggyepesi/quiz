@@ -31,7 +31,8 @@ public class QuizableServerMain {
         store.register(new MythologySource());
         store.register(new OscarSource());
 
-        // Generated-from-Wikidata datasets: serve EVERY dataset in the registry
+        // Generated-from-Wikidata datasets: serve EVERY dataset in
+        // the registry
         // (constellations, greekmyth, …), each via registerAll (which serves
         // every stamped class in its snapshot, e.g. Constellation AND its Stars).
         quiz.DatasetRegistry registry = quiz.DatasetRegistry.load();
@@ -44,8 +45,11 @@ public class QuizableServerMain {
             for (quiz.DatasetRegistry.Dataset d : registry.datasets()) {
                 java.io.File snap = new java.io.File(d.snapshotPath());
                 if (snap.isFile()) {
+                    java.io.File model = d.modelPath().isBlank()
+                            ? null : new java.io.File(d.modelPath());
                     GeneratedSource.registerAll(store,
-                            d.rootClass().isBlank() ? d.name() : d.rootClass(), snap);
+                            d.rootClass().isBlank() ? d.name() : d.rootClass(),
+                            snap, model);
                 } else {
                     System.err.println("Dataset '" + d.name()
                             + "': snapshot missing at " + d.snapshotPath() + " (skipped)");
@@ -53,7 +57,35 @@ public class QuizableServerMain {
             }
         }
 
-        new QuizableHttpServer(store).start(port);
+        // Group served types by domain so the web client can list classes per
+        // domain (it grows past a flat list). Registry datasets give the grouping;
+        // any leftover type (the hand-built sources) goes under "Other".
+        java.util.LinkedHashMap<String, java.util.List<String>> domains =
+                new java.util.LinkedHashMap<>();
+        java.util.Set<String> claimed = new java.util.HashSet<>();
+        for (quiz.DatasetRegistry.Dataset d : registry.datasets()) {
+            java.util.List<String> ts = new java.util.ArrayList<>();
+            for (String t : d.types()) {
+                if (store.types().contains(t)) {
+                    ts.add(t);
+                    claimed.add(t);
+                }
+            }
+            if (!ts.isEmpty()) {
+                domains.put(d.name(), ts);
+            }
+        }
+        java.util.List<String> other = new java.util.ArrayList<>();
+        for (String t : store.types()) {
+            if (!claimed.contains(t)) {
+                other.add(t);
+            }
+        }
+        if (!other.isEmpty()) {
+            domains.put("Other", other);
+        }
+
+        new QuizableHttpServer(store).domains(domains).start(port);
 
         // keep the JVM alive
         Thread.currentThread().join();

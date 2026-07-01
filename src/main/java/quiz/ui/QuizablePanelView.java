@@ -20,17 +20,16 @@ public class QuizablePanelView {
     private final List<JPanel> cards = new ArrayList<>();
     private final Map<String, JPanel> cardsByName = new TreeMap<>();
 
-    private JPanel cardsPanel;
     private JScrollPane cardsScrollPane;
+    private VirtualizedCardList virtualList;
 
     // Shared across the initial render and any live additions so cards
     // resolve cross-references and class configs consistently.
     private QuizableRenderContext context;
 
     // Column count and trailing glue filler, remembered so a live add can
-    // place the next card and keep the glue below it.
+    // place the next card.
     private int columns = 1;
-    private Component glueComponent;
 
     private final List<QuizablePanelTargetListener> targetListeners =
             new ArrayList<>();
@@ -99,47 +98,44 @@ public class QuizablePanelView {
         cardsByName.clear();
         columns = Math.max(1, numColumns);
 
-        cardsPanel = new JPanel(new GridBagLayout());
-        cardsScrollPane = new JScrollPane(cardsPanel);
+        context = resolveContext();
+        // Register every quizable as top-level up front, so a reference chip
+        // navigates (isTopLevel is data-based, not panel-based) even to a card
+        // that hasn't been built yet; the resolver builds it on demand.
+        context.addTopLevels(quizables);
 
+        // Virtualized: only the cards in (or near) the viewport are built. Scroll,
+        // sort and re-layout are O(visible), not O(N), so it stays fast at tens of
+        // thousands of cards.
+        virtualList = new VirtualizedCardList(this::buildVirtualCard);
+        // One resolver per section; the shared context tries each, so a reference to
+        // a card in ANY section resolves (not just the last section to register).
+        context.addTopLevelResolver(o ->
+                o instanceof Quizable q ? virtualList.buildIfNeeded(q) : null);
+
+        cardsScrollPane = new JScrollPane();
         cardsScrollPane.setDoubleBuffered(true);
         cardsScrollPane.getVerticalScrollBar().setUnitIncrement(20);
-        cardsScrollPane.getHorizontalScrollBar().setUnitIncrement(20);
-        cardsScrollPane.getVerticalScrollBar().setBlockIncrement(20);
-
         RepaintManager.currentManager(cardsScrollPane)
                 .setDoubleBufferingEnabled(true);
 
-        context = resolveContext();
-        createCards();
+        virtualList.install(cardsScrollPane);
+        virtualList.setItems(new ArrayList<>(quizables));
+    }
 
-        if (cards.isEmpty()) {
-            return;
+    // Card factory for the virtualized list: build the card, register it, and
+    // index it by name for getCardsByName.
+    private javax.swing.JComponent buildVirtualCard(Quizable q) {
+        QuizablePanel panel = buildQuizableCard(q);
+        String name = q.getName();
+        if (name != null && !name.isEmpty()) {
+            cardsByName.putIfAbsent(name, panel);
         }
+        return panel;
+    }
 
-        int row = 0;
-        int col = 0;
-
-        for (JPanel card : cards) {
-            tuneCardSize(card);
-
-            cardsPanel.add(card,
-                    GridBagUtils.gbc(
-                            col, row,
-                            1.0, 0.0,
-                            GridBagConstraints.NORTHWEST,
-                            GridBagConstraints.BOTH,
-                            new Insets(8, 8, 12, 8)));
-
-            col++;
-
-            if (col == columns) {
-                col = 0;
-                row++;
-            }
-        }
-
-        addGlue();
+    public VirtualizedCardList getVirtualList() {
+        return virtualList;
     }
 
     private void createCards() {
@@ -230,27 +226,24 @@ public class QuizablePanelView {
 
         quizables.add(q);
 
-        if (cardsPanel == null) {
+        if (virtualList == null) {
             return;
         }
 
         if (context == null) {
             context = resolveContext();
-        } else if (sharedContext != null) {
-            sharedContext.addTopLevel(q);
         }
+        context.addTopLevel(q);
 
-        QuizablePanel panel = buildQuizableCard(q);
+        virtualList.appendItem(q);
 
-        String name = q.getName();
-        if (name != null && !name.isEmpty()) {
-            cardsByName.putIfAbsent(name, panel);
-        }
-
-        addCardToGrid(panel);
-
+        // The card may not have been built yet (off-screen); notify with it if it
+        // was, so the search panel can index it. A data-centric listener re-reads
+        // the item list anyway.
+        QuizablePanel panel = virtualList.builtCard(q) instanceof QuizablePanel p
+                ? p : null;
         for (QuizablePanelTargetListener listener : targetListeners) {
-            listener.quizablePanelsAdded(List.of(panel));
+            listener.quizablePanelsAdded(panel != null ? List.of(panel) : List.of());
         }
     }
 
@@ -261,20 +254,20 @@ public class QuizablePanelView {
      * the EDT.
      */
     public void refreshQuizable(Quizable q) {
-        if (q == null || cardsPanel == null) {
+        if (q == null || virtualList == null) {
             return;
         }
 
         QuizablePanel card = findCard(q);
 
         if (card == null) {
-            return;
+            return;   // not on screen — it rebuilds fresh when scrolled into view
         }
 
         card.refresh();
 
-        cardsPanel.revalidate();
-        cardsPanel.repaint();
+        virtualList.revalidate();
+        virtualList.repaint();
 
         for (QuizablePanelTargetListener listener : targetListeners) {
             listener.quizablePanelsUpdated(List.of(card));
@@ -287,11 +280,18 @@ public class QuizablePanelView {
      * track whether a given item has been rendered yet. Call on the EDT.
      */
     public void upsertQuizable(Quizable q) {
-        if (q == null || cardsPanel == null) {
+        if (q == null || virtualList == null) {
             return;
         }
 
-        if (findCard(q) != null) {
+        boolean known = false;
+        for (Quizable item : virtualList.items()) {
+            if (item == q) {
+                known = true;
+                break;
+            }
+        }
+        if (known) {
             refreshQuizable(q);
         } else {
             addQuizableLive(q);
@@ -316,59 +316,12 @@ public class QuizablePanelView {
     }
 
     private QuizablePanel findCard(Quizable q) {
-        for (JPanel card : cards) {
-            if (card instanceof QuizablePanel qp && qp.getQuizable() == q) {
-                return qp;
-            }
-        }
-        return null;
+        return virtualList != null && virtualList.builtCard(q) instanceof QuizablePanel qp
+                ? qp : null;
     }
 
-    private void addCardToGrid(JPanel card) {
-        int index = cards.size();
-        int col = index % columns;
-        int row = index / columns;
-
-        if (glueComponent != null) {
-            cardsPanel.remove(glueComponent);
-        }
-
-        cardsPanel.add(card,
-                GridBagUtils.gbc(
-                        col, row,
-                        1.0, 0.0,
-                        GridBagConstraints.NORTHWEST,
-                        GridBagConstraints.BOTH,
-                        new Insets(8, 8, 12, 8)));
-
-        cards.add(card);
-
-        addGlue();
-
-        cardsPanel.revalidate();
-        cardsPanel.repaint();
-    }
-
-    private void addGlue() {
-        int lastRow =
-                cards.isEmpty() ? 0 : (cards.size() - 1) / columns + 1;
-
-        if (glueComponent == null) {
-            glueComponent = Box.createGlue();
-        }
-
-        GridBagConstraints glue = GridBagUtils.gbc(
-                0, lastRow,
-                1.0, 1.0,
-                GridBagConstraints.NORTHWEST,
-                GridBagConstraints.BOTH);
-
-        glue.gridwidth = columns;
-        cardsPanel.add(glueComponent, glue);
-    }
-
-    public JPanel getCardsPanel() {
-        return cardsPanel;
+    public javax.swing.JComponent getCardsPanel() {
+        return virtualList;
     }
 
     public JScrollPane getCardsScrollPane() {
@@ -470,13 +423,13 @@ public class QuizablePanelView {
     }
 
     public void createFrame(String title, int numColumns) {
-        if (cardsPanel == null) {
+        if (virtualList == null) {
             createCardsPanel(numColumns);
         }
         frame = new JFrame(
-                cards.size() == 1
+                quizables.size() == 1
                         ? title
-                        : (title + ", " + cards.size()));
+                        : (title + ", " + quizables.size()));
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setLayout(new BorderLayout(6, 6));
@@ -487,7 +440,7 @@ public class QuizablePanelView {
             QuizableSearchPanel searchPanel =
                     new QuizableSearchPanel(first.getClass());
 
-            searchPanel.setTarget(cardsPanel, cardsScrollPane);
+            searchPanel.setTarget(getCardsPanel(), cardsScrollPane);
             searchPanel.setRenderContext(context);
             addTargetListener(searchPanel);
 

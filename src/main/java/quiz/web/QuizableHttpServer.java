@@ -42,14 +42,32 @@ public class QuizableHttpServer {
     private final RequestLogFilter logFilter = new RequestLogFilter();
     private HttpServer server;
 
+    // Domain → its type names, for grouping the client's class list as the number
+    // of domains grows. Insertion-ordered; set by the bootstrap from the registry.
+    private java.util.List<java.util.Map<String, Object>> domains =
+            java.util.List.of();
+
     public QuizableHttpServer(QuizableStore store) {
         this.store = store;
         this.blurService = new BlurredImageService(store);
     }
 
+    /** Groups served types by domain ({@code [{name, types:[…]}]}) for /api/domains. */
+    public QuizableHttpServer domains(
+            java.util.LinkedHashMap<String, java.util.List<String>> byDomain) {
+        java.util.List<java.util.Map<String, Object>> out = new java.util.ArrayList<>();
+        if (byDomain != null) {
+            byDomain.forEach((name, types) -> out.add(
+                    java.util.Map.of("name", name, "types", types)));
+        }
+        this.domains = out;
+        return this;
+    }
+
     public void start(int port) throws IOException {
         server = HttpServer.create(new InetSocketAddress(port), 0);
         context("/api/types", this::handleTypes);
+        context("/api/domains", this::handleDomains);
         context("/api/quizables", this::handleList);
         context("/api/quizable/", this::handleDetail);
         context("/api/image/", this::handleImage);
@@ -98,6 +116,10 @@ public class QuizableHttpServer {
 
     private void handleTypes(HttpExchange ex) throws IOException {
         writeJson(ex, 200, store.types());
+    }
+
+    private void handleDomains(HttpExchange ex) throws IOException {
+        writeJson(ex, 200, domains);
     }
 
     private void handleList(HttpExchange ex) throws IOException {

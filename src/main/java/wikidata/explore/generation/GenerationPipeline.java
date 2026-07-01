@@ -69,6 +69,16 @@ public class GenerationPipeline {
     // Fills DBpedia-sourced root fields (Wikipedia infobox) after the Wikidata
     // extraction, joined by owl:sameAs QID. No-op unless the root class has any
     // DBpedia field; failures are logged, not fatal (the run still succeeds).
+    // Build every production = INVERT field from the forward references already in
+    // the pool (e.g. Category.nominees = reverse of Oscarnominations.categories).
+    private void applyModelInverts(
+            GeneratedProjectModel snapshot,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log) {
+
+        wikidata.explore.transform.ModelInverts.apply(snapshot, pool, log);
+    }
+
     private void enrichFromDBpedia(
             GeneratedProjectModel snapshot,
             List<WikidataDynamicObject> roots,
@@ -198,6 +208,13 @@ public class GenerationPipeline {
 
         enrichFromDBpedia(snapshot, dynamicObjects, log);
 
+        // Derived (production = INVERT) fields: build each as the reverse of a
+        // forward reference already in the pool — no query, no extra depth.
+        applyModelInverts(snapshot, dynamicObjects, log);
+
+        // displayName from each class's CanonicalSpec (see Canonicalization).
+        wikidata.explore.transform.Canonicalization.apply(snapshot, dynamicObjects, log);
+
         GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
         resolveUnits(snapshot, client, log);
 
@@ -214,6 +231,11 @@ public class GenerationPipeline {
 
         RuleNode plan = plan(snapshot);
         GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
+
+        // Re-apply canonicalization so a CanonicalSpec edited since the last
+        // generation updates the pool's displayNames on a remap (no re-extract).
+        wikidata.explore.transform.Canonicalization.apply(
+                snapshot, previous.dynamicObjects(), null);
 
         List<Quizable> instances =
                 materialize(runtime, previous.dynamicObjects());

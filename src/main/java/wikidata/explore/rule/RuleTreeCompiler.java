@@ -66,6 +66,16 @@ public final class RuleTreeCompiler {
                 m.requireLabel(),
                 m.labelLanguage()));
 
+        // Subclass discriminator: NARROW the inherited membership to instances
+        // that also have ?value wdt:<pid> wd:<qid> (e.g. Person = the nominee
+        // membership AND P31=human), via the node's secondary membership filter —
+        // the intersection plain `extends` (inherit OR replace) can't express. The
+        // property defaults to P31 but can be any relation (a non-type-like axis).
+        if (clazz.hasDiscriminator()) {
+            node.membershipPid(clazz.effectiveDiscriminatorPid());
+            node.membershipQid(RuleNode.cleanQid(clazz.discriminatorQid()));
+        }
+
         // Explicit instance QIDs: when membership is blank these ARE the
         // instances (VALUES ?value {…}); with a type they restrict it.
         for (String qid : clazz.seedQids()) {
@@ -143,6 +153,12 @@ public final class RuleTreeCompiler {
         FieldProductionKind kind = resolvedProductionKind(field);
         FieldSourceMapping m = field.mapping();
 
+        // INVERT fields are DERIVED post-extraction (ModelInverts → applyInvert),
+        // not fetched — so they don't belong in the query plan at all.
+        if (kind == FieldProductionKind.INVERT) {
+            return;
+        }
+
         // A numeric filter on this field (e.g. apparentMagnitude <= 3) constrains
         // the owning class's instances to those that satisfy it.
         if (field.hasValueFilter()) {
@@ -162,8 +178,11 @@ public final class RuleTreeCompiler {
                             : field.entityClassName(),
                     decap(field.name()));
 
-            child.sourceQid(parent.sourceQid());
-            child.sourceLabel(parent.sourceLabel());
+            // The child's TYPE comes from the referenced class (applied below as
+            // a membership filter), NOT from the parent — inheriting the parent's
+            // sourceQid wrongly stamps e.g. a category's Q19020 onto its nominees.
+            // For a relational referenced class (blank sourceQid) the edge alone
+            // defines the child (?value <prop> ?parent), so leave sourceQid blank.
             child.propertyPid(m.propertyPid());
             child.propertyLabel(m.propertyLabel());
             child.direction(m.direction());

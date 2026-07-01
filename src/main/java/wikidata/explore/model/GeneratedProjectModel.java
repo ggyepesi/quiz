@@ -193,6 +193,14 @@ public class GeneratedProjectModel {
                 return c;
             }
         }
+        // Case-insensitive fallback: class-name references (a field's "Of class",
+        // a "Reifies statements of") are user labels, and a rename that only
+        // changed the case shouldn't silently break them.
+        for (GeneratedClassModel c : classes) {
+            if (name.equalsIgnoreCase(c.className())) {
+                return c;
+            }
+        }
 
         return null;
     }

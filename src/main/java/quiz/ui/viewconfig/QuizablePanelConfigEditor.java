@@ -124,7 +124,7 @@ public class QuizablePanelConfigEditor extends JPanel {
     }
 
     private void addFieldRows(Class<? extends Quizable> cls, boolean minor) {
-        for (Field field : QuizableAdapter.getAllFields(cls)) {
+        for (Field field : QuizableAdapter.getConfigurableFields(cls)) {
             if (Modifier.isStatic(field.getModifiers())) {
                 continue;
             }

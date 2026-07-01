@@ -74,6 +74,22 @@ public class QuizablePanel extends JPanel {
     // hiding rows — and the scroll pane couldn't reach the grown top).
     private Dimension cardSizeFloor = null;
 
+    // Cached result of the (expensive) super.getPreferredSize() — measuring a card
+    // walks all its rows (FontMetrics + wrapping). The parent's GridBagLayout calls
+    // getPreferredSize() on EVERY card whenever ANYTHING revalidates (e.g. one card
+    // expands), so without this a re-layout re-measures all ~22k cards = freeze.
+    // Cleared on invalidate(), which Swing fires when this card's own content/size
+    // actually changes — so only the changed card re-measures; the rest return the
+    // cached size. Width-dependent height self-corrects: a width change resizes the
+    // card, which invalidates it, dropping the cache.
+    private Dimension cachedPreferred = null;
+
+    @Override
+    public void invalidate() {
+        cachedPreferred = null;
+        super.invalidate();
+    }
+
     public void setCardSizeFloor(Dimension floor) {
         this.cardSizeFloor = floor;
         if (floor != null) {
@@ -85,13 +101,17 @@ public class QuizablePanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        Dimension d = super.getPreferredSize();
+        Dimension d = cachedPreferred;
+        if (d == null) {
+            d = new Dimension(super.getPreferredSize());
+            cachedPreferred = d;
+        }
         if (cardSizeFloor != null) {
             return new Dimension(
                     Math.max(d.width, cardSizeFloor.width),
                     Math.max(d.height, cardSizeFloor.height));
         }
-        return d;
+        return new Dimension(d);
     }
 
     public void setHighlightColor(Color c) {

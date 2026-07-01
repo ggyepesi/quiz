@@ -83,6 +83,9 @@ public class FieldSourcePanel extends JPanel {
             new JComboBox<>(FieldProductionKind.values());
 
     private final JTextField propertyPidField = new JTextField(10);
+    // For a field of a statement-reification class: the qualifier PID this field
+    // draws from (e.g. P585 → year). Blank = a direct/value field.
+    private final JTextField qualifierPidField = new JTextField(6);
     private final JLabel propertyLabel = new JLabel("(not selected)");
 
     private final JSpinner limitSpinner =
@@ -234,6 +237,7 @@ public class FieldSourcePanel extends JPanel {
                 ? "" : trimDouble(field.filterValue()));
 
         propertyPidField.setText(m.propertyPid());
+        qualifierPidField.setText(m.qualifierPid());
         propertyLabel.setText(m.displayProperty());
 
         limitSpinner.setValue(Math.max(1, m.limit()));
@@ -295,6 +299,7 @@ public class FieldSourcePanel extends JPanel {
                 + "instances — clicking navigates to them.");
         addRow(form, c, y++, "Of class:", objectTypeBox);
         addRow(form, c, y++, "Count:", shapeBox);
+        addRow(form, c, y++, "Load as:", productionBox);
 
         // --- Where it comes from ---
         addWide(form, c, y++, sectionLabel("Source"));
@@ -306,6 +311,12 @@ public class FieldSourcePanel extends JPanel {
         discoverDbpediaButton.setVisible(false);
         propRow.add(discoverDbpediaButton);
         addRow(form, c, y++, "Property:", propRow);
+        qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
+                + "reification</b> class (the class \"Reifies statements of\" "
+                + "another): the <b>qualifier</b> PID this field draws from "
+                + "(e.g. P585 → year, P1686 → for work, P2453 → nominee). "
+                + "Blank = a direct/value field.</html>");
+        addRow(form, c, y++, "Qualifier of:", qualifierPidField);
 
         directionBox.setToolTipText("<html>Where the property lives:<br>"
                 + "<b>this entity</b> (outgoing, ?this P ?value)<br>"
@@ -390,6 +401,7 @@ public class FieldSourcePanel extends JPanel {
         FieldSourceMapping m = field.mapping();
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
+        m.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
         m.direction((RuleDirection) directionBox.getSelectedItem());
 
         // autoAdjustFromProperty inspects a WIKIDATA property; skip it for a
@@ -416,7 +428,10 @@ public class FieldSourcePanel extends JPanel {
                 : wikidata.explore.model.EdgeMembershipMode.NONE);
         applyNumericFilter(field);
 
-        autoProduction(m); // infer "Load as" from type/shape (sort/limit moved to class)
+        // The "Load as" dropdown is authoritative — the user's explicit choice
+        // (e.g. "Related objects" for a large collection) wins. autoProduction only
+        // seeds a sensible DEFAULT into the dropdown when a property is picked.
+        m.productionKind((FieldProductionKind) productionBox.getSelectedItem());
         propertyLabel.setText(m.displayProperty());
 
         titleLabel.setText("Field: " + field.name());
@@ -473,7 +488,8 @@ public class FieldSourcePanel extends JPanel {
         refreshObjectTypeBox(field.entityClassName());
 
         updateSampleButtonState();
-        autoProduction(field.mapping());
+        autoProduction(field.mapping());            // seed a default…
+        productionBox.setSelectedItem(field.mapping().productionKind()); // …show it
     }
 
     // Per-"Load as" explanation + a concrete example, shown as a floating
@@ -496,6 +512,11 @@ public class FieldSourcePanel extends JPanel {
                     + "separate per-parent query (<b>needs depth ≥ 1</b>).<br>"
                     + "<i>Example:</i> a constellation's stars, each carrying its "
                     + "own apparent magnitude.</html>";
+            case INVERT -> "<html><b>Invert</b> — <b>derived</b>, not fetched: the "
+                    + "reverse of a forward reference on the referenced class, built "
+                    + "in memory from data already generated (no query, no depth, no "
+                    + "cycle).<br><i>Example:</i> Category.nominees = the reverse of "
+                    + "Oscarnominations.categories.</html>";
             case AUTO -> "<html><b>Auto</b> — decide from the field's type and "
                     + "shape.<br><i>Example:</i> a number → Simple property; an "
                     + "entity list → Related entity values.</html>";
@@ -508,7 +529,17 @@ public class FieldSourcePanel extends JPanel {
         }
 
         if (field.type() == FieldType.ENTITY && field.collection()) {
-            m.productionKind(FieldProductionKind.DELAYED_ENTITY_FIELD);
+            // A collection that references a CLASS is a child-object edge →
+            // generate it as a SEPARATE batched query (safe for large sets, gives
+            // typed child objects). A bare entity collection (no class) stays an
+            // inlined value list — fine for the small sets that suits.
+            // Inlining a large class-collection (e.g. a category's 1000+ nominees)
+            // via GROUP_CONCAT overflows the named subquery and returns nothing.
+            boolean typed = field.entityClassName() != null
+                    && !field.entityClassName().isBlank();
+            m.productionKind(typed
+                    ? FieldProductionKind.CHILD_OBJECTS
+                    : FieldProductionKind.DELAYED_ENTITY_FIELD);
         } else if (field.type() == FieldType.IMAGE) {
             m.productionKind(FieldProductionKind.INLINE_VALUE);
         } else {

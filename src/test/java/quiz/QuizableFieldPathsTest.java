@@ -99,4 +99,77 @@ class QuizableFieldPathsTest {
         @Override public String getIdentifier() { return name; }
         @Override public String getDisplayName() { return name; }
     }
+
+    // Mirrors WikidataDynamicObject: identity fields hidden from the card, and a
+    // bare reference has no other fields.
+    @SuppressWarnings("unused")
+    private static class EntityCard extends QuizableAdapter {
+        @quiz.annotations.NotQuizableField private String qid;
+        @quiz.annotations.NotQuizableField private String name;
+
+        @Override public String getIdentifier() { return qid; }
+        @Override public String getDisplayName() { return name; }
+    }
+
+    @Test
+    void entityObjectAlwaysOffersNameAndQid() {
+        // A bare reference (no selected/dynamic fields) must still be configurable
+        // by its identity in search/sort/viewconfig.
+        QuizablePanelConfig config = QuizablePanelConfig.of(EntityCard.class);
+        config.setAllFields(false);
+
+        Set<String> paths = pathStrings(QuizableFieldPaths.collect(
+                config, QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS));
+
+        assertTrue(paths.contains("name"), paths.toString());
+        assertTrue(paths.contains("qid"), paths.toString());
+    }
+
+    @Test
+    void dedupByPathKeepsFirstOfEachDistinctPath() {
+        QuizableFieldPaths.FieldPath name =
+                new QuizableFieldPaths.FieldPath("name", List.of("name"), null);
+        QuizableFieldPaths.FieldPath nameAgain =
+                new QuizableFieldPaths.FieldPath("name (dup)", List.of("name"), null);
+        QuizableFieldPaths.FieldPath code =
+                new QuizableFieldPaths.FieldPath("code", List.of("code"), null);
+
+        List<QuizableFieldPaths.FieldPath> out =
+                QuizableFieldPaths.dedupByPath(List.of(name, nameAgain, code));
+
+        assertEquals(2, out.size());
+        assertSame(name, out.get(0), "first occurrence of the duplicated path is kept");
+        assertEquals(List.of("code"), out.get(1).path());
+    }
+
+    @Test
+    void collectSurfacesIdentityExactlyOnce() {
+        // Identity (name + qid) must appear once each — never doubled — so a
+        // duplicated field can't build an inconsistent composite sort/search key.
+        QuizablePanelConfig config = QuizablePanelConfig.of(EntityCard.class);
+
+        List<QuizableFieldPaths.FieldPath> paths = QuizableFieldPaths.collect(
+                config, QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS);
+
+        List<List<String>> allPaths = paths.stream()
+                .map(QuizableFieldPaths.FieldPath::path)
+                .collect(Collectors.toList());
+
+        assertEquals(allPaths.stream().distinct().count(), allPaths.size(),
+                "no duplicate paths: " + allPaths);
+        assertEquals(1, allPaths.stream().filter(p -> p.equals(List.of("name"))).count());
+        assertEquals(1, allPaths.stream().filter(p -> p.equals(List.of("qid"))).count());
+    }
+
+    @Test
+    void nonEntityDoesNotGetSyntheticQid() {
+        // No qid field → identity-field injection is a no-op (existing behavior).
+        QuizablePanelConfig config = QuizablePanelConfig.of(TestChild.class);
+        config.setAllFields(false);
+
+        Set<String> paths = pathStrings(QuizableFieldPaths.collect(
+                config, QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS));
+
+        assertFalse(paths.contains("qid"), paths.toString());
+    }
 }

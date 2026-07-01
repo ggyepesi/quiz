@@ -3,6 +3,8 @@ package wikidata.explore.workbench;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.model.RuleDirection;
+import wikidata.explore.model.CanonicalSpec;
+import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -13,7 +15,6 @@ import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.api.WikidataApiClient;
 
-import java.net.URI;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -44,6 +45,17 @@ public class ClassSourcePanel extends JPanel {
     private static final String NO_BASE = "(none)";
     private final JComboBox<String> baseClassBox = new JComboBox<>();
     private Supplier<List<String>> baseClassCandidates = List::of;
+    // Subclass discriminator: a (property, value) pair narrowing the inherited
+    // membership to instances that also have ?value wdt:<pid> wd:<qid> (Person =
+    // nominee membership AND P31=human). Property defaults to P31 but can be any.
+    private final JTextField discriminatorPidField = new JTextField("P31", 5);
+    private final JTextField discriminatorQidField = new JTextField(8);
+    private final JLabel discriminatorLabel = new JLabel(" ");
+    // STATEMENT reification: instances of this class are the statements of the
+    // relation property on each member of the named class (e.g. Nomination = the
+    // P1411 statements of Oscarnominations). Its fields draw from the value (ps:)
+    // and qualifiers (pq:, set per-field). Blank = a normal class.
+    private final JTextField statementSourceField = new JTextField(12);
 
     private final JTextField typeQidField = new JTextField(10);
     private final JLabel typeLabel = new JLabel("(not selected)");
@@ -64,6 +76,10 @@ public class ClassSourcePanel extends JPanel {
     private final JTextField additionalTypesField = new JTextField(14);
     private final JTextField excludeTypesField = new JTextField(14);
     private final JButton discoverTypesButton = new JButton("Discover subtypes");
+    // Discover the membership targets from a parent's "has part(s)" relation —
+    // e.g. Academy Awards (Q19020) wdt:P527 → its award categories — so the
+    // multi-QID membership is data-driven instead of a hand-pasted QID list.
+    private final JButton fromPartsButton = new JButton("From parts…");
     private final JCheckBox notableOnlyBox =
             new JCheckBox("Notable only (require Wikipedia article)");
 
@@ -85,13 +101,29 @@ public class ClassSourcePanel extends JPanel {
     private final JButton useSelectedButton = new JButton("Use selected");
 
     private final JSpinner limitSpinner =
-            new JSpinner(new SpinnerNumberModel(200, 1, 10000, 10));
+            new JSpinner(new SpinnerNumberModel(200, 1, 1_000_000, 10));
 
     private final JCheckBox requireLabelBox =
             new JCheckBox("Require label", true);
 
     private final JTextField langField =
             new JTextField("en", 4);
+
+    // --- Identity & label (canonicalization) ---
+    private static final String KIND_ENTITY = "Wikidata entity (qid + label)";
+    private static final String KIND_DERIVED = "Derived (key + field/template)";
+    private static final String DN_LABEL = "Label";
+    private static final String DN_FIELD = "Field";
+    private static final String DN_TEMPLATE = "Template";
+
+    private final JComboBox<String> canonicalKindBox =
+            new JComboBox<>(new String[]{KIND_ENTITY, KIND_DERIVED});
+    private final JComboBox<String> displayNameModeBox =
+            new JComboBox<>(new String[]{DN_LABEL, DN_FIELD, DN_TEMPLATE});
+    private final JComboBox<String> displayNameFieldBox = new JComboBox<>();
+    private final JTextField displayNameTemplateField = new JTextField(18);
+    private final JTextField keyFieldsField = new JTextField(18);
+    private final JLabel canonicalHint = new JLabel(" ");
 
     private final JButton applyButton =
             new JButton("Apply class source");
@@ -164,6 +196,7 @@ public class ClassSourcePanel extends JPanel {
         langField.setText(m.labelLanguage());
         seedQidsArea.setText(String.join(" ", clazz.seedQids()));
         populateRankBy(m);
+        loadCanonical();
 
         updateSummary();
         updateSearchButtonState();
@@ -182,6 +215,9 @@ public class ClassSourcePanel extends JPanel {
         }
         String base = clazz == null ? "" : clazz.baseClassName();
         baseClassBox.setSelectedItem(base == null || base.isBlank() ? NO_BASE : base);
+        discriminatorPidField.setText(clazz == null ? "P31" : clazz.effectiveDiscriminatorPid());
+        discriminatorQidField.setText(clazz == null ? "" : clazz.discriminatorQid());
+        statementSourceField.setText(clazz == null ? "" : clazz.statementSourceClass());
     }
 
     // Rank-by options: none, notability, and the class's sortable (number/date)
@@ -263,6 +299,31 @@ public class ClassSourcePanel extends JPanel {
                 + "base (e.g. Person) be reused and extended per domain.</html>");
         addRow(form, c, y++, "Extends:", baseClassBox);
 
+        discriminatorPidField.setToolTipText("Discriminator property — defaults to "
+                + "P31 (instance of); set another relation to subclass on a "
+                + "non-type axis.");
+        discriminatorQidField.setToolTipText("<html>Subclass discriminator value "
+                + "(e.g. Q5 human, Q11424 film). The subclass = the inherited "
+                + "membership <b>AND</b> ?value wdt:&lt;prop&gt; wd:&lt;this&gt;. "
+                + "Blank for a non-discriminated class.</html>");
+        WikidataLinks.linkify(discriminatorLabel,
+                () -> RuleNode.cleanQid(discriminatorQidField.getText()));
+        JPanel discRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        discRow.add(discriminatorPidField);
+        discRow.add(new JLabel("="));
+        discRow.add(discriminatorQidField);
+        discRow.add(discriminatorLabel);
+        addRow(form, c, y++, "Subtype:", discRow);
+
+        statementSourceField.setToolTipText("<html>Make this a <b>statement "
+                + "reification</b>: instances are the statements of the "
+                + "<b>Relation property</b> below on each member of the named class "
+                + "(e.g. <i>Nomination</i> = the P1411 statements of "
+                + "<i>Oscarnominations</i>). Fields draw from the statement value "
+                + "and its qualifiers (\"Qualifier of\" per field). Blank = normal "
+                + "class.</html>");
+        addRow(form, c, y++, "Reifies statements of:", statementSourceField);
+
         JPanel typeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         typeRow.add(typeQidField);
         typeRow.add(typeLabel);
@@ -276,6 +337,11 @@ public class ClassSourcePanel extends JPanel {
         JPanel addTypesRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         addTypesRow.add(additionalTypesField);
         addTypesRow.add(discoverTypesButton);
+        fromPartsButton.setToolTipText("<html>Fill the membership from a parent "
+                + "entity's parts: e.g. Academy Awards (Q19020) <b>P527</b> (has "
+                + "part) → its award categories. Data-driven instead of a pasted "
+                + "QID list.</html>");
+        addTypesRow.add(fromPartsButton);
         addRow(form, c, y++, "Also include types:", addTypesRow);
 
         excludeTypesField.setToolTipText("<html>Type QIDs (space-separated) to "
@@ -307,8 +373,8 @@ public class ClassSourcePanel extends JPanel {
                 });
         updateTypeRowLabel();
         // Both the type and relation labels link to their Wikidata page.
-        linkify(typeLabel, () -> RuleNode.cleanQid(typeQidField.getText()));
-        linkify(relationLabel, () -> RuleNode.cleanPid(relationPidField.getText()));
+        WikidataLinks.linkify(typeLabel, () -> RuleNode.cleanQid(typeQidField.getText()));
+        WikidataLinks.linkify(relationLabel, () -> RuleNode.cleanPid(relationPidField.getText()));
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         options.add(new JLabel("Limit:"));
@@ -366,6 +432,39 @@ public class ClassSourcePanel extends JPanel {
         useRow.add(useSelectedButton);
         addWide(form, c, y++, useRow);
 
+        // --- Identity & label section ---
+        JLabel canonHeader = new JLabel("Identity & label");
+        canonHeader.setFont(canonHeader.getFont().deriveFont(Font.BOLD, 13f));
+        addWide(form, c, y++, canonHeader);
+
+        canonicalKindBox.setToolTipText("<html><b>Wikidata entity</b>: identity = "
+                + "qid, display name = the Wikidata label.<br><b>Derived</b>: for "
+                + "reified/composed classes (e.g. Nomination) — identity = the key "
+                + "fields (grain), display name = a single field or a template.</html>");
+        addRow(form, c, y++, "Kind:", canonicalKindBox);
+
+        displayNameModeBox.setToolTipText("How to make the display name of a "
+                + "derived class: a single field's value, or a template.");
+        addRow(form, c, y++, "Display name:", displayNameModeBox);
+
+        displayNameFieldBox.setToolTipText("Single-valued field to show as the "
+                + "label (a reference shows its own name).");
+        addRow(form, c, y++, "  from field:", displayNameFieldBox);
+
+        displayNameTemplateField.setToolTipText("e.g. {nominee} · {category} {year} "
+                + "— {field} is replaced by that field's label.");
+        addRow(form, c, y++, "  template:", displayNameTemplateField);
+
+        keyFieldsField.setToolTipText("Identity key fields (space-separated) — the "
+                + "grain that makes one instance unique. Prefilled from the class.");
+        addRow(form, c, y++, "Identity key fields:", keyFieldsField);
+
+        canonicalHint.setForeground(new Color(0xB00020));
+        addWide(form, c, y++, canonicalHint);
+
+        canonicalKindBox.addActionListener(e -> updateCanonicalEnablement());
+        displayNameModeBox.addActionListener(e -> updateCanonicalEnablement());
+
         addWide(form, c, y++, summaryLabel);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
@@ -404,6 +503,126 @@ public class ClassSourcePanel extends JPanel {
                         "Discover subtypes failed:\n" + ex.getMessage(),
                         "Discover failed",
                         JOptionPane.ERROR_MESSAGE));
+
+        queryRunner.wireButton(
+                fromPartsButton,
+                this::acceptPartsResult,
+                this::buildPartsQuery,
+                ex -> JOptionPane.showMessageDialog(
+                        this,
+                        "Discover from parts failed:\n" + ex.getMessage(),
+                        "Discover failed",
+                        JOptionPane.ERROR_MESSAGE));
+    }
+
+    // The parent + parts pid the user last entered, for the result-dialog title.
+    private String partsParentQid = "";
+    private String partsParentLabel = "";
+
+    private wikidata.explore.query.logical.RelationMembersQuery buildPartsQuery() {
+        if (clazz == null) {
+            return null;
+        }
+        JTextField parentField = new JTextField(
+                RuleNode.cleanQid(typeQidField.getText()), 12);
+        JTextField pidField = new JTextField("P527", 6);
+        JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 4, 4));
+        form.add(new JLabel("Parent entity QID:"));
+        form.add(parentField);
+        form.add(new JLabel("Parts property (P527 = has part):"));
+        form.add(pidField);
+        int ok = JOptionPane.showConfirmDialog(this, form,
+                "Discover membership from parent's parts",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (ok != JOptionPane.OK_OPTION) {
+            return null;
+        }
+        String parent = RuleNode.cleanQid(parentField.getText());
+        String pid = RuleNode.cleanPid(pidField.getText());
+        if (!parent.matches("Q\\d+") || !pid.matches("P\\d+")) {
+            JOptionPane.showMessageDialog(this,
+                    "Enter a parent QID (e.g. Q19020) and a parts property "
+                            + "(e.g. P527).",
+                    "Discover from parts", JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+        partsParentQid = parent;
+        partsParentLabel = parent;
+        log.accept("Discover membership: " + parent + " " + pid + " → members\n");
+        return new wikidata.explore.query.logical.RelationMembersQuery(
+                parent, pid, false, 1000);
+    }
+
+    private void acceptPartsResult(TableQueryResult result) {
+        List<List<Object>> rows = result == null ? List.of() : result.rows();
+        SwingUtilities.invokeLater(() -> showPartsDialog(rows));
+    }
+
+    // RelationMembersQuery rows are [QID, Label]; "Add all" / "Add selected"
+    // append to the multi-QID membership field — the data-driven category list.
+    private void showPartsDialog(List<List<Object>> rows) {
+        if (rows.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No members found for " + partsParentQid + ".",
+                    "Discover from parts", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        String[] cols = {"Label", "QID"};
+        Object[][] data = new Object[rows.size()][2];
+        for (int i = 0; i < rows.size(); i++) {
+            List<Object> r = rows.get(i);
+            data[i][0] = r.size() > 1 ? r.get(1) : "";
+            data[i][1] = r.size() > 0 ? r.get(0) : "";
+        }
+        DefaultTableModel model = new DefaultTableModel(data, cols) {
+            @Override public boolean isCellEditable(int r, int col) { return false; }
+        };
+        JTable table = new JTable(model);
+        table.setRowHeight(22);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        table.getColumnModel().getColumn(0).setPreferredWidth(320);
+        table.getColumnModel().getColumn(1).setPreferredWidth(90);
+        WikidataLinks.installOnColumn(table, 1);
+
+        JScrollPane sp = new JScrollPane(table);
+        sp.setPreferredSize(new Dimension(560, 320));
+
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Parts of " + partsParentQid + " (" + rows.size() + ")",
+                Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setLayout(new BorderLayout(0, 6));
+        dialog.add(new JLabel("  Add these as membership targets "
+                + "(\"Also include types\")."), BorderLayout.NORTH);
+        dialog.add(sp, BorderLayout.CENTER);
+
+        JButton addSelected = new JButton("Add selected");
+        addSelected.setEnabled(false);
+        table.getSelectionModel().addListSelectionListener(e ->
+                addSelected.setEnabled(table.getSelectedRow() >= 0));
+        JButton addAll = new JButton("Add all " + rows.size());
+        JButton close = new JButton("Close");
+        addSelected.addActionListener(ev -> {
+            for (int viewRow : table.getSelectedRows()) {
+                addAdditionalType(String.valueOf(table.getValueAt(viewRow, 1)));
+            }
+        });
+        addAll.addActionListener(ev -> {
+            for (int i = 0; i < table.getRowCount(); i++) {
+                addAdditionalType(String.valueOf(table.getValueAt(i, 1)));
+            }
+            dialog.dispose();
+        });
+        close.addActionListener(ev -> dialog.dispose());
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
+        south.add(addSelected);
+        south.add(addAll);
+        south.add(close);
+        dialog.add(south, BorderLayout.SOUTH);
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     private DiscoverSubtypesQuery buildSubtypeQuery() {
@@ -456,6 +675,7 @@ public class ClassSourcePanel extends JPanel {
         table.getColumnModel().getColumn(1).setPreferredWidth(50);
         table.getColumnModel().getColumn(2).setPreferredWidth(360);
         table.getColumnModel().getColumn(3).setPreferredWidth(80);
+        WikidataLinks.installOnColumn(table, 3); // QID column → clickable link
 
         JScrollPane sp = new JScrollPane(table);
         sp.setPreferredSize(new Dimension(720, 300));
@@ -587,6 +807,7 @@ public class ClassSourcePanel extends JPanel {
         boolean ready = clazz != null && queryRunner != null;
         searchTypeButton.setEnabled(ready);
         discoverTypesButton.setEnabled(ready);
+        fromPartsButton.setEnabled(ready);
     }
 
     private void useSelectedSearchRow() {
@@ -613,39 +834,7 @@ public class ClassSourcePanel extends JPanel {
         searchTable.getColumnModel().getColumn(2)
                    .setPreferredWidth(420);
 
-        searchTable.getColumnModel().getColumn(0)
-                   .setCellRenderer(new QidLinkRenderer());
-
-        searchTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                int viewRow = searchTable.rowAtPoint(e.getPoint());
-                int viewCol = searchTable.columnAtPoint(e.getPoint());
-
-                if (viewRow < 0 || viewCol != 0) {
-                    return;
-                }
-
-                Object val = searchTable.getValueAt(viewRow, viewCol);
-                String qid = val == null ? "" : val.toString();
-
-                if (qid.matches("Q\\d+")) {
-                    openInBrowser("https://www.wikidata.org/wiki/" + qid);
-                }
-            }
-        });
-
-        searchTable.addMouseMotionListener(
-                new java.awt.event.MouseMotionAdapter() {
-                    @Override
-                    public void mouseMoved(java.awt.event.MouseEvent e) {
-                        int col = searchTable.columnAtPoint(e.getPoint());
-
-                        searchTable.setCursor(col == 0
-                                                      ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-                                                      : Cursor.getDefaultCursor());
-                    }
-                });
+        WikidataLinks.installOnColumn(searchTable, 0); // QID column → clickable link
     }
 
     private void apply() {
@@ -657,6 +846,9 @@ public class ClassSourcePanel extends JPanel {
 
         Object base = baseClassBox.getSelectedItem();
         clazz.baseClassName(base == null || NO_BASE.equals(base) ? "" : base.toString());
+        clazz.discriminatorPid(RuleNode.cleanPid(discriminatorPidField.getText()));
+        clazz.discriminatorQid(RuleNode.cleanQid(discriminatorQidField.getText()));
+        clazz.statementSourceClass(statementSourceField.getText().trim());
 
         FieldSourceMapping m = clazz.instanceMapping();
         m.sourceQid(typeQidField.getText());
@@ -681,6 +873,12 @@ public class ClassSourcePanel extends JPanel {
         m.propertyLabel(relPid.equals("P31") ? "instance of"
                 : (relLabelText.isEmpty() ? "" : relLabelText));
         m.direction(RuleDirection.ITEM_TO_ROOT);
+        // Commit a value typed into the spinner editor but not yet entered, so
+        // Apply reads what's on screen (an out-of-range value otherwise reverts).
+        try {
+            limitSpinner.commitEdit();
+        } catch (java.text.ParseException ignore) {
+        }
         m.limit(((Number) limitSpinner.getValue()).intValue());
         m.requireLabel(requireLabelBox.isSelected());
         m.requireSitelink(notableOnlyBox.isSelected());
@@ -707,8 +905,129 @@ public class ClassSourcePanel extends JPanel {
         titleLabel.setText("Class: " + clazz.className());
         typeLabel.setText(m.displaySource());
 
+        // Multi-target/-type membership → auto-add the intrinsic grouping fields
+        // (type, and target for a relation) as real, editable model fields.
+        java.util.List<String> added =
+                wikidata.explore.model.MembershipFields.ensure(clazz);
+        if (!added.isEmpty()) {
+            log.accept("Added membership fields: " + String.join(", ", added)
+                    + " (edit/remove in the class)\n");
+        }
+
+        applyCanonical();
+
         updateSummary();
         afterChange.accept(null);
+    }
+
+    // --- Identity & label (canonicalization) ---
+
+    /** Loads the class's canonical spec (explicit or inferred) into the section. */
+    private void loadCanonical() {
+        populateDisplayNameFields();
+
+        CanonicalSpec spec = clazz == null
+                ? new CanonicalSpec()
+                : clazz.effectiveCanonical();
+
+        canonicalKindBox.setSelectedItem(spec.isDerived() ? KIND_DERIVED : KIND_ENTITY);
+        displayNameModeBox.setSelectedItem(switch (spec.displayNameMode()) {
+            case FIELD -> DN_FIELD;
+            case TEMPLATE -> DN_TEMPLATE;
+            case LABEL -> DN_LABEL;
+        });
+        displayNameFieldBox.setSelectedItem(spec.displayNameField());
+        displayNameTemplateField.setText(spec.displayNameTemplate());
+        keyFieldsField.setText(String.join(" ", spec.keyFields()));
+
+        updateCanonicalEnablement();
+    }
+
+    // Only SINGLE-cardinality, non-identity fields can be a Field-mode display name.
+    private void populateDisplayNameFields() {
+        displayNameFieldBox.removeAllItems();
+        if (clazz == null) {
+            return;
+        }
+        for (GeneratedFieldModel f : clazz.fields()) {
+            if (f != null && !f.isNameField()
+                    && f.cardinality() != FieldCardinality.COLLECTION) {
+                displayNameFieldBox.addItem(f.name());
+            }
+        }
+    }
+
+    private void updateCanonicalEnablement() {
+        boolean derived = KIND_DERIVED.equals(canonicalKindBox.getSelectedItem());
+
+        // An entity's display name is always its Wikidata label.
+        displayNameModeBox.setEnabled(derived);
+        if (!derived) {
+            displayNameModeBox.setSelectedItem(DN_LABEL);
+        }
+
+        String mode = (String) displayNameModeBox.getSelectedItem();
+        displayNameFieldBox.setEnabled(derived && DN_FIELD.equals(mode));
+        displayNameTemplateField.setEnabled(derived && DN_TEMPLATE.equals(mode));
+        keyFieldsField.setEnabled(derived);
+
+        canonicalHint.setText(canonicalWarning(derived, mode));
+    }
+
+    // A derived class must resolve a non-empty display name.
+    private String canonicalWarning(boolean derived, String mode) {
+        if (!derived) {
+            return " ";
+        }
+        if (DN_FIELD.equals(mode) && displayNameFieldBox.getItemCount() == 0) {
+            return "No single-valued field to use as the display name — add one or use a template.";
+        }
+        if (DN_TEMPLATE.equals(mode) && displayNameTemplateField.getText().isBlank()) {
+            return "Template is empty — the display name won't resolve.";
+        }
+        if (DN_LABEL.equals(mode)) {
+            return "A derived class has no Wikidata label — pick Field or Template.";
+        }
+        return " ";
+    }
+
+    private void applyCanonical() {
+        if (clazz == null) {
+            return;
+        }
+        boolean derived = KIND_DERIVED.equals(canonicalKindBox.getSelectedItem());
+        String mode = (String) displayNameModeBox.getSelectedItem();
+
+        CanonicalSpec spec = new CanonicalSpec()
+                .kind(derived ? CanonicalSpec.Kind.DERIVED
+                        : CanonicalSpec.Kind.WIKIDATA_ENTITY);
+
+        if (!derived) {
+            spec.displayNameMode(CanonicalSpec.DisplayNameMode.LABEL)
+                    .labelLanguage(langField.getText());
+        } else if (DN_TEMPLATE.equals(mode)) {
+            spec.displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
+                    .displayNameTemplate(displayNameTemplateField.getText());
+        } else if (DN_FIELD.equals(mode)) {
+            Object f = displayNameFieldBox.getSelectedItem();
+            spec.displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
+                    .displayNameField(f == null ? "" : f.toString());
+        } else {
+            spec.displayNameMode(CanonicalSpec.DisplayNameMode.LABEL);
+        }
+
+        for (String tok : keyFieldsField.getText().trim().split("[,;\\s]+")) {
+            if (!tok.isBlank() && !spec.keyFields().contains(tok.trim())) {
+                spec.keyFields().add(tok.trim());
+            }
+        }
+
+        clazz.canonical(spec);
+
+        String warning = canonicalWarning(derived, mode);
+        if (warning != null && !warning.isBlank()) {
+            log.accept("Identity & label: " + warning + "\n");
+        }
     }
 
     private void updateSummary() {
@@ -784,43 +1103,6 @@ public class ClassSourcePanel extends JPanel {
         }
     }
 
-    private static final class QidLinkRenderer
-            extends DefaultTableCellRenderer {
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean selected,
-                boolean focus,
-                int row,
-                int col) {
-
-            super.getTableCellRendererComponent(
-                    table,
-                    value,
-                    selected,
-                    focus,
-                    row,
-                    col);
-
-            String text = value == null ? "" : value.toString();
-
-            if (!selected && text.matches("Q\\d+")) {
-                setForeground(new Color(0, 80, 200));
-                setText("<html><u>" + text + "</u></html>");
-            } else {
-                setText(text);
-            }
-
-            return this;
-        }
-    }
-
-    private static void openInBrowser(String url) {
-        aux.BrowserLauncher.open(url);
-    }
-
     // The source-QID field is a "type/class" only with the default P31 relation.
     // For any other relation it holds the relation's TARGET (e.g. P166 → the award
     // won), so relabel it to match — this is exactly the confusion P1411 caused.
@@ -853,12 +1135,13 @@ public class ClassSourcePanel extends JPanel {
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 "Find relation property", Dialog.ModalityType.APPLICATION_MODAL);
 
-        // Seed the search from the resolved label if we have one, else from
-        // whatever is already in the relation field (e.g. a hand-typed "P1411"),
-        // so opening Find immediately searches instead of showing a blank list.
-        String seed = relationLabel.getText().trim();
+        // Seed the search from the PID already in the relation field — a PID is an
+        // exact match (just that property), which is clearer than seeding the
+        // label (a fuzzy text match that also pulls in related properties). Fall
+        // back to the resolved label only when there's no PID yet.
+        String seed = relationPidField.getText().trim();
         if (seed.isEmpty()) {
-            seed = relationPidField.getText().trim();
+            seed = relationLabel.getText().trim();
         }
         JTextField input = new JTextField(seed, 20);
         JButton searchBtn = new JButton("Search");
@@ -967,26 +1250,6 @@ public class ClassSourcePanel extends JPanel {
         }
         SwingUtilities.invokeLater(input::requestFocusInWindow);
         dialog.setVisible(true);
-    }
-
-    // Make a label act as a link to the Wikidata page of the id supplied at
-    // click-time (a PID or QID); no-op when there's no valid id.
-    private void linkify(JLabel label, Supplier<String> idSupplier) {
-        label.setForeground(new Color(0x1a0dab));
-        label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        label.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
-                String id = idSupplier.get();
-                if (id == null || !id.matches("[PQ]\\d+")) return;
-                try {
-                    Desktop.getDesktop().browse(
-                            URI.create("https://www.wikidata.org/wiki/"
-                                    + (id.startsWith("P") ? "Property:" : "") + id));
-                } catch (Exception ex) {
-                    log.accept("Could not open " + id + ": " + ex.getMessage() + "\n");
-                }
-            }
-        });
     }
 
     private static String esc(String s) {

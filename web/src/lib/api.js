@@ -29,6 +29,22 @@ export function getTypes() {
   return json(`${apiBase()}/api/types`);
 }
 
+/**
+ * Types grouped by domain: [{ name, types: [...] }]. Falls back to a single
+ * "All" group on an older server that lacks /api/domains.
+ * @returns {Promise<Array<{name:string,types:string[]}>>}
+ */
+export async function getDomains() {
+  try {
+    const d = await json(`${apiBase()}/api/domains`);
+    if (Array.isArray(d) && d.length) return d;
+  } catch (_) {
+    /* fall through to flat list */
+  }
+  const types = (await getTypes()) ?? [];
+  return types.length ? [{ name: 'All', types }] : [];
+}
+
 /** @returns {Promise<Array<{id:string,name:string,type:string}>>} shallow list */
 export function getList(type) {
   return json(`${apiBase()}/api/quizables?type=${encodeURIComponent(type)}`);

@@ -6,7 +6,9 @@ import quiz.QuizableGroup.Role;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Builds (or tags) a {@link QuizableGroup} tree from members and facet
@@ -35,6 +37,66 @@ public final class FacetGrouper {
             }
         }
         return addFacets(root, members, facets);
+    }
+
+    /**
+     * Build a NESTED drill-down tree: the facets apply in order, each one
+     * partitioning the buckets produced by the previous — e.g. {@code [category,
+     * year]} yields {@code root -> "by category" -> "Best Actress" -> "by decade"
+     * -> "1980s" -> the nominations}. This is the hierarchical counterpart to
+     * {@link #group} (which lays every facet out as a flat, parallel dimension off
+     * the root). Use it when the facet ORDER is meaningful (a declared drill-down).
+     */
+    public static QuizableGroup groupNested(
+            String rootName,
+            Collection<? extends Quizable> members,
+            List<Facet> facets) {
+
+        QuizableGroup root = new QuizableGroup(rootName).role(Role.UNIVERSE);
+        for (Quizable m : members) {
+            if (m != null) {
+                root.addMember(m);
+            }
+        }
+        nest(root, members, facets, 0);
+        return root;
+    }
+
+    // Partition `members` by facets[depth] under `parent`, then recurse into each
+    // resulting bucket with the next facet. addMember bubbles to ancestors, so the
+    // universe + every intermediate bucket still hold the full union below them.
+    private static void nest(QuizableGroup parent,
+                             Collection<? extends Quizable> members,
+                             List<Facet> facets, int depth) {
+        if (facets == null || depth >= facets.size()) {
+            return;
+        }
+        Facet facet = facets.get(depth);
+        QuizableGroup facetNode = parent.getOrCreateChild(facet.label()).role(Role.FACET);
+
+        Map<String, QuizableGroup> buckets = new LinkedHashMap<>();
+        Map<String, List<Quizable>> bucketMembers = new LinkedHashMap<>();
+        for (Quizable m : members) {
+            if (m == null) {
+                continue;
+            }
+            for (FacetKey key : facet.keys().apply(m)) {
+                if (key == null || !key.isUsable()) {
+                    continue;
+                }
+                QuizableGroup bucket =
+                        facetNode.getOrCreateChild(key.name()).role(Role.BUCKET);
+                if (key.ref() != null) {
+                    bucket.keyRef(key.ref());
+                }
+                bucket.addMember(m);
+                buckets.putIfAbsent(key.name(), bucket);
+                bucketMembers.computeIfAbsent(key.name(), k -> new ArrayList<>()).add(m);
+            }
+        }
+        for (Map.Entry<String, QuizableGroup> e : buckets.entrySet()) {
+            nest(e.getValue(), bucketMembers.get(e.getKey()), facets, depth + 1);
+        }
     }
 
     /**

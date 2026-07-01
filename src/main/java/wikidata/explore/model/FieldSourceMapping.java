@@ -17,6 +17,12 @@ public class FieldSourceMapping {
     private String propertyPid = "";
     private String propertyLabel = "";
 
+    // For a field of a STATEMENT-reification class (see GeneratedClassModel.
+    // statementSourceClass): when set, this field's value is this QUALIFIER of the
+    // reified statement (e.g. P585 → year, P1686 → for work) rather than a direct
+    // claim. Blank = not a qualifier field.
+    private String qualifierPid = "";
+
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
 
     private boolean requireLabel = true;
@@ -77,6 +83,14 @@ public class FieldSourceMapping {
     public String propertyLabel() { return propertyLabel; }
     public void propertyLabel(String propertyLabel) {
         this.propertyLabel = propertyLabel == null ? "" : propertyLabel.trim();
+    }
+
+    public String qualifierPid() { return qualifierPid; }
+    public void qualifierPid(String qualifierPid) {
+        this.qualifierPid = qualifierPid == null ? "" : qualifierPid.trim();
+    }
+    public boolean isQualifier() {
+        return qualifierPid != null && qualifierPid.trim().matches("(?i)P\\d+");
     }
 
     public RuleDirection direction() { return direction; }
@@ -157,6 +171,7 @@ public class FieldSourceMapping {
         sourceLabel = other.sourceLabel;
         propertyPid = other.propertyPid;
         propertyLabel = other.propertyLabel;
+        qualifierPid = other.qualifierPid;
         direction = other.direction;
         requireLabel = other.requireLabel;
         requireSitelink = other.requireSitelink;

@@ -4,8 +4,11 @@ import wikidata.explore.extract.WikidataMediaValue;
 import wikidata.explore.extract.WikidataDynamicObject;
 import quiz.Quizable;
 import quiz.ui.ImagePane;
+import wikidata.explore.model.CanonicalSpec;
+import wikidata.explore.model.Canonicalizer;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
+import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 
 import java.lang.reflect.Field;
@@ -40,18 +43,28 @@ public class GeneratedQuizableMapper {
     private Object mapObject(WikidataDynamicObject source, String preferredType)
             throws Exception {
         if (source == null) return null;
+
+        boolean typedRequested = preferredType != null && !preferredType.isBlank()
+                && runtime.forType(preferredType) != null;
+
         Object existing = generatedByDynamic.get(source);
-        if (existing != null) return existing;
+        if (existing != null
+                && (!typedRequested || !(existing instanceof WikidataDynamicObject))) {
+            return existing;
+        }
+        // If we reach here with a cached entry, it's a RAW bare-reference object
+        // (the source's own type has no generated class, so an earlier untyped map
+        // — e.g. a root pass — cached it raw), but now a typed reference needs the
+        // declared class. Re-map to that class and replace the cache, so the typed
+        // field gets a typed instance instead of dropping it on the type-mismatch
+        // (this is what made P2453-only nominees like a co-writer never render).
 
         // Choose the target class: prefer the referencing field's declared class
         // (its "Of class") over the object's stamped typeName, so a reference
         // whose target wasn't stamped (typeName "WikidataDynamicObject") still
         // maps to the typed class the field declares — keeping cross-references
         // typed instead of raw. Falls back to the stamped type for roots.
-        String type = preferredType != null && !preferredType.isBlank()
-                && runtime.forType(preferredType) != null
-                ? preferredType
-                : source.typeName();
+        String type = typedRequested ? preferredType : source.typeName();
 
         // Map each object to its generated class (e.g. a constellation's child
         // stars -> Star). An object whose type has no generated class (a true
@@ -69,8 +82,12 @@ public class GeneratedQuizableMapper {
         setIfExists(target, "wikidataUrl", source.wikidataUrl());
         setIfExists(target, "name", source.getDisplayName());
         // Group QID/URL into the collapsed provenance chip, same as the dynamic
-        // object — so typed roots and dynamic references render alike.
-        if (source.qid() != null && !source.qid().isBlank()) {
+        // object — so typed roots and dynamic references render alike. Only a REAL
+        // entity QID (Q123) gets a source chip; a synthetic keyed by a statement
+        // GUID (Q123-<guid>, e.g. a reified Nomination) isn't a Wikidata page, so a
+        // chip would just show the GUID + an empty url (mirrors the guard in
+        // WikidataDynamicObject, which this path bypasses by building its own Source).
+        if (source.qid() != null && source.qid().matches("Q\\d+")) {
             setIfExists(target, "source",
                     new quiz.source.WikidataSource(source.qid(), source.wikidataUrl()));
         }
@@ -99,7 +116,56 @@ public class GeneratedQuizableMapper {
             }
         }
 
+        // Canonicalization: a DERIVED class's displayName comes from its spec (a
+        // field or template), not the loaded label — so reified atoms show e.g. the
+        // nominee, never the poisoned/loaded name. Only an EXPLICIT spec applies,
+        // so legacy models are unchanged until reconfigured. Reads the mapped target
+        // value (a proper Quizable), falling back to the raw source value.
+        final Object mappedTarget = target;
+        Canonicalizer.FieldReader reader = fieldName -> {
+            Field jf = findField(cr.generatedClass(),
+                    GeneratedQuizableSourceGenerator.sanitizeFieldName(fieldName));
+            if (jf != null) {
+                try {
+                    jf.setAccessible(true);
+                    Object v = jf.get(mappedTarget);
+                    if (v != null) {
+                        return v;
+                    }
+                } catch (IllegalAccessException ignored) {
+                    // fall back to the source value
+                }
+            }
+            return source.get(fieldName);
+        };
+        String override = canonicalDisplayNameOverride(
+                cr.model(), reader, source.getDisplayName());
+        if (override != null) {
+            setIfExists(target, "name", override);
+        }
+
         return target;
+    }
+
+    /** The displayName to force onto a materialized object from its class's
+     *  {@link CanonicalSpec}, or null to leave the default (the loaded label). Only
+     *  an EXPLICIT spec on a DERIVED class with a FIELD/TEMPLATE displayName
+     *  overrides; entities and legacy (spec-less) models are untouched. */
+    static String canonicalDisplayNameOverride(
+            GeneratedClassModel model,
+            Canonicalizer.FieldReader reader,
+            String fallbackLabel) {
+
+        if (model == null || !model.hasCanonical()) {
+            return null;
+        }
+        CanonicalSpec spec = model.canonical();
+        if (!spec.isDerived()
+                || spec.displayNameMode() == CanonicalSpec.DisplayNameMode.LABEL) {
+            return null;
+        }
+        String dn = Canonicalizer.displayName(spec, reader, fallbackLabel);
+        return dn == null || dn.isBlank() ? null : dn;
     }
 
     private Object mapFieldValue(GeneratedFieldModel fieldModel, Object raw) throws Exception {

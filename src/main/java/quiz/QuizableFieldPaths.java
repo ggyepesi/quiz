@@ -51,6 +51,28 @@ public final class QuizableFieldPaths {
                 filter == null ? ALL_FIELDS : filter,
                 out);
 
+        ensureIdentityFields(config.getCls(), out);
+
+        return dedupByPath(out);
+    }
+
+    /**
+     * Keeps the first {@link FieldPath} for each distinct access path, dropping
+     * later duplicates. Two entries with the same path address the same value, so
+     * surfacing both only lets a stray/duplicated field (classically a second
+     * {@code name}, before canonicalization) double the identity in sort/search/
+     * config — with an inconsistent composite sort key as the symptom. The first
+     * occurrence wins, so the canonical/identity entry (emitted first) is the one
+     * kept. See docs/canonicalization-model.md.
+     */
+    static List<FieldPath> dedupByPath(List<FieldPath> paths) {
+        List<FieldPath> out = new ArrayList<>();
+        Set<List<String>> seen = new LinkedHashSet<>();
+        for (FieldPath p : paths) {
+            if (p != null && seen.add(p.path())) {
+                out.add(p);
+            }
+        }
         return out;
     }
 
@@ -133,6 +155,47 @@ public final class QuizableFieldPaths {
                 : titlePrefix + ".name";
 
         out.add(new FieldPath(title, namePath, null));
+    }
+
+    // Identity fields (name + qid) are @NotQuizableField — hidden from the CARD
+    // (they're the title/identity) but still meaningful to search/sort/configure
+    // by. Without this a bare reference object (a WikidataDynamicObject with no
+    // dynamic fields) offers nothing to configure. Scoped to entity objects (those
+    // that declare a `qid` field) so non-Wikidata Quizables are untouched.
+    private static void ensureIdentityFields(Class<?> cls, List<FieldPath> out) {
+        Field qid = rawDeclaredField(cls, "qid");
+        if (qid == null) {
+            return;
+        }
+        if (!hasRootPath(out, "name")) {
+            out.add(new FieldPath("name", List.of("name"), null));
+        }
+        if (!hasRootPath(out, "qid")) {
+            qid.setAccessible(true);
+            out.add(new FieldPath("qid", List.of("qid"), qid));
+        }
+    }
+
+    private static boolean hasRootPath(List<FieldPath> out, String name) {
+        for (FieldPath p : out) {
+            if (p.path().size() == 1 && name.equals(p.path().get(0))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Finds a declared field by name up the hierarchy, INCLUDING @NotQuizableField
+    // ones (which QuizableAdapter.getField deliberately omits).
+    private static Field rawDeclaredField(Class<?> cls, String name) {
+        for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
+            try {
+                return c.getDeclaredField(name);
+            } catch (NoSuchFieldException ignored) {
+                // keep walking up
+            }
+        }
+        return null;
     }
 
     private static void collectField(Field field,

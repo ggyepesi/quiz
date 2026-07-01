@@ -17,6 +17,7 @@ import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.logical.GenerateDomainQuery;
+import wikidata.explore.query.logical.RemapInstancesQuery;
 import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.explore.query.swing.WorkflowLogWindow;
@@ -74,6 +75,11 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton generateDomainButton =
             new JButton("Generate domain");
 
+    // Re-materialize the LAST download with the current model (no re-fetch) — picks
+    // up canonicalization / display-name / mapping edits fast.
+    private final JButton remapButton =
+            new JButton("Remap (no download)");
+
     private final JButton cancelButton =
             new JButton("Cancel");
 
@@ -92,9 +98,22 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton showExplorerButton =
             new JButton("Explorer tools");
 
+    private final JButton showGraphButton =
+            new JButton("Model graph");
+
+    private final JButton showGuideButton =
+            new JButton("Guide…");
+
+    private JFrame guideWindow;
+    private ModelingGuidePanel guidePanel;
+
     // Companion window holding the discovery tools (Explore/Sample/Discover/
     // WikiProject/Properties), like the instances + logs windows.
     private JFrame explorerWindow;
+
+    // Graph view of the model (classes = nodes, reference fields = edges).
+    private JFrame graphWindow;
+    private final RuleTreeGraphPanel graphPanel = new RuleTreeGraphPanel();
 
     // Domain = the whole project (name + its classes), keyed by name. The combo
     // lists every domain in the dataset registry; New/Rename/Delete manage them.
@@ -209,6 +228,10 @@ public class ModelBuilderFrame extends JFrame {
         JPanel runRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow1.add(generateButton);
         runRow1.add(generateDomainButton);
+        remapButton.setToolTipText("Re-materialize the last download with the "
+                + "current model — applies display-name / canonicalization / mapping "
+                + "edits without re-fetching from Wikidata.");
+        runRow1.add(remapButton);
         runRow1.add(cancelButton);
         runRow1.add(depthLabel);
         runRow1.add(depthSpinner);
@@ -235,6 +258,10 @@ public class ModelBuilderFrame extends JFrame {
         header.add(showGeneratedSourceButton);
         header.add(showRuleTreeButton);
         header.add(showExplorerButton);
+        header.add(showGraphButton);
+        showGuideButton.setToolTipText("Guided build steps for the selected class: "
+                + "what's done, what's next, the tool for it, and the hint");
+        header.add(showGuideButton);
 
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.add(header, BorderLayout.NORTH);
@@ -292,6 +319,46 @@ public class ModelBuilderFrame extends JFrame {
         explorerWindow.toFront();
     }
 
+    // Model-as-graph view: classes are nodes, entity-reference fields are edges.
+    // Clicking a node selects that class in the workbench (the graph is a map +
+    // selector, not an editor — the class/field panels stay where they are).
+    private void showGraphWindow() {
+        if (graphWindow == null) {
+            graphWindow = new JFrame("Model graph");
+            graphWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            graphWindow.setLayout(new BorderLayout());
+            graphWindow.add(new JScrollPane(graphPanel), BorderLayout.CENTER);
+            graphWindow.setSize(720, 600);
+            graphWindow.setLocationByPlatform(true);
+            graphPanel.onClassSelected(name -> {
+                GeneratedClassModel c = classByName(name);
+                if (c != null) {
+                    classModelPanel.selectClass(c); // fires the tree listener
+                }
+            });
+            // Double-click a node → jump into live Explore of that class's
+            // membership target (its Wikidata type/award), unifying the model
+            // graph with the navigation canvas.
+            graphPanel.onClassExplore(name -> {
+                GeneratedClassModel c = classByName(name);
+                if (c == null) {
+                    return;
+                }
+                String qid = c.effectiveInstanceMapping(projectModel).sourceQid();
+                if (qid == null || !qid.matches("Q\\d+")) {
+                    logWindow.info("Class \"" + name + "\" has no membership target "
+                            + "QID to explore — set a Relation target first.");
+                    return;
+                }
+                showExplorerWindow();
+                sourceWorkbench.explorePanel().exploreQid(qid, name);
+            });
+        }
+        graphPanel.setModel(projectModel);
+        graphWindow.setVisible(true);
+        graphWindow.toFront();
+    }
+
     private String instancesTitle() {
         if (lastRun == null
                 || lastRun.modelSnapshot() == null
@@ -321,8 +388,13 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.setQueryRunner(queryRunner);
         sourceWorkbench.log(logWindow::info);
 
-        sourceWorkbench.afterChange(v ->
-                                            classModelPanel.refresh());
+        sourceWorkbench.afterChange(v -> {
+            classModelPanel.refresh();
+            // Keep the (possibly open) model graph in sync with edits.
+            if (graphWindow != null && graphWindow.isVisible()) {
+                graphPanel.setModel(projectModel);
+            }
+        });
 
         sourceWorkbench.afterApplyField(f -> {
             classModelPanel.refresh();
@@ -347,6 +419,9 @@ public class ModelBuilderFrame extends JFrame {
             sourceWorkbench.edit(classModelPanel.selectedUserObject());
             // Per-class depth: show the newly-selected class's saved depth.
             syncDepthSpinnerToActiveClass();
+            // Mirror the selection onto the graph (the two-way "connection").
+            GeneratedClassModel sel = activeClass();
+            graphPanel.setSelectedClass(sel == null ? "" : sel.className());
         });
 
         // Store depth edits onto the currently-selected class.
@@ -400,9 +475,28 @@ public class ModelBuilderFrame extends JFrame {
                 },
                 this::reportGenerationError);
 
+        queryRunner.wireButton(
+                remapButton,
+                this::acceptGenerationRun,
+                () -> {
+                    sourceWorkbench.applyEdits();
+                    if (lastRun == null) {
+                        warnNothingToGenerate(
+                                "Nothing to remap yet — run Generate domain (or "
+                                        + "instances) first.");
+                        return null;
+                    }
+                    // Reuse the last download; re-materialize with the current model
+                    // so canonicalization / display-name edits apply without a
+                    // re-fetch. Valid for local edits (same extraction).
+                    return new RemapInstancesQuery(lastRun, projectModel.copy());
+                },
+                this::reportGenerationError);
+
         showInstancesButton.addActionListener(e -> showInstancesWindow());
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());
+        showGraphButton.addActionListener(e -> showGraphWindow());
 
         // Wire the WikiProject seed panel to the selected class: pick one entity
         // as the membership type, or add/replace the class's seed-QID set.
@@ -415,6 +509,7 @@ public class ModelBuilderFrame extends JFrame {
 
         ExploreByExamplePanel ex = sourceWorkbench.explorePanel();
         ex.onAddSeedQids(qids -> addSeedQids(qids, false));
+        ex.onAddRelationTargets(this::addRelationTargets);
         ex.onUseAsSourceQid(this::useSourceQid);
 
         CategorySeedPanel cat = sourceWorkbench.categoryPanel();
@@ -445,6 +540,7 @@ public class ModelBuilderFrame extends JFrame {
                                                             showGeneratedSource());
 
         showRuleTreeButton.addActionListener(e -> showRuleTree());
+        showGuideButton.addActionListener(e -> showGuide());
 
         showQueryLogsButton.addActionListener(e ->
                                                       logWindow.show(this));
@@ -599,11 +695,47 @@ public class ModelBuilderFrame extends JFrame {
                 + "type/class QID (or a relation + target), or add Seed QIDs.";
     }
 
+    private GeneratedClassModel classByName(String name) {
+        if (name == null) {
+            return null;
+        }
+        for (GeneratedClassModel c : projectModel.classes()) {
+            if (c != null && name.equals(c.className())) {
+                return c;
+            }
+        }
+        return null;
+    }
+
     private void warnNothingToGenerate(String message) {
         logWindow.info(message);
         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
                 this, message, "Nothing to generate",
                 JOptionPane.INFORMATION_MESSAGE));
+    }
+
+    // Guided build-steps for the active class: the model-builder explaining itself.
+    private void showGuide() {
+        if (guideWindow == null) {
+            guidePanel = new ModelingGuidePanel(this::guideContext);
+            guideWindow = new JFrame("Build guide");
+            guideWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            guideWindow.setContentPane(guidePanel);
+            guideWindow.setSize(460, 460);
+            guideWindow.setLocationRelativeTo(this);
+        }
+        guidePanel.refresh();
+        guideWindow.setVisible(true);
+        guideWindow.toFront();
+    }
+
+    // The decision context = current project + active class + saved Transform.
+    private wikidata.explore.advisor.DecisionContext guideContext() {
+        GeneratedClassModel active = activeClass();
+        wikidata.explore.transform.TransformConfig tc =
+                wikidata.explore.transform.TransformConfigStore.load(
+                        transformFile(projectModel.name()));
+        return new wikidata.explore.advisor.DecisionContext(projectModel, active, tc);
     }
 
     // The domain's Transform file, alongside its model: <domain>.transform.json.
@@ -1185,6 +1317,12 @@ public class ModelBuilderFrame extends JFrame {
             List<WikidataDynamicObject> objects =
                     new WikidataDynamicObjectJsonStore().load(file);
 
+            // Apply the current model's canonicalization to the loaded pool, so a
+            // display-name spec set/edited after this snapshot was saved takes
+            // effect on load (e.g. a Nomination shows its nominee) — no re-download.
+            wikidata.explore.transform.Canonicalization.apply(snapshot, objects,
+                    wikidata.explore.extract.GenerationLog.of(logWindow::info));
+
             GenerationPipeline pipeline = new GenerationPipeline();
             RuleNode plan = pipeline.plan(snapshot);
             GeneratedQuizableRuntime runtime = pipeline.buildRuntime(snapshot);
@@ -1238,6 +1376,27 @@ public class ModelBuilderFrame extends JFrame {
                 + c.className() + "\": " + added + " (total "
                 + c.seedQids().size() + "). Empty the Wikidata type to use only "
                 + "these as instances.");
+    }
+
+    // Add explored members to the active class's membership-relation targets
+    // (the "Also include types" set), so all targets live in one place — no need
+    // to seed-and-cut/paste, and the main "Relation target" field can stay blank.
+    private void addRelationTargets(List<String> qids) {
+        GeneratedClassModel c = activeClass();
+        var targets = c.instanceMapping().additionalTypeQids();
+        int added = 0;
+        for (String qid : qids) {
+            if (qid != null && qid.matches("Q\\d+") && !targets.contains(qid)) {
+                targets.add(qid);
+                added++;
+            }
+        }
+        sourceWorkbench.edit(c);
+        classModelPanel.refresh();
+        logWindow.info("Added " + added + " relation target(s) to \""
+                + c.className() + "\" (total " + targets.size()
+                + "). They join the membership relation (" + c.instanceMapping()
+                .propertyPid() + ") as additional targets.");
     }
 
     // The class the toolbar actions operate on: the one selected in the class

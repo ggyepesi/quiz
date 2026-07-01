@@ -26,6 +26,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *   1 value   -> scalar
  *   2+ values -> List
  */
+// Tolerate extra fields on read: derived getters (getUrl→"url", getIdentifier,
+// getDisplayName, …) get serialized but aren't settable, so an older/foreign
+// JSON (e.g. a saved OscarNomination cache) carries "url" that we must skip
+// rather than fail on. Only "name"/"qid" round-trip.
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class WikidataDynamicObject extends QuizableAdapter implements DynamicFields {
     // Identity + provenance. Hidden from the card (@NotQuizableField) because
     // they're surfaced together as one collapsed "source" chip below — the raw
@@ -34,6 +39,11 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     // annotations only affect Quizable rendering, not Jackson persistence.
     @NotQuizableField
     private String qid;
+    // Identity/display name — the card TITLE, not a field row. Like qid it is
+    // re-injected once as an identity field by getConfigurableFields; without
+    // @NotQuizableField it also leaks into getAllFields, so `name` showed up TWICE
+    // in sort/search/viewconfig (and as a redundant field row).
+    @NotQuizableField
     private String name;
 
     @NotQuizableField
@@ -67,16 +77,20 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     public WikidataDynamicObject(String qid, String name) {
         this.qid = qid == null ? "" : qid;
         this.name = name == null || name.isBlank() ? this.qid : name;
-        this.wikidataUrl = this.qid.isBlank()
-                ? ""
-                : "https://www.wikidata.org/wiki/" + this.qid;
+        // Only a real entity QID (Q123) gets a Wikidata link/source. A synthetic
+        // object keyed by a statement GUID (Q123-<guid>, e.g. a reified Nomination)
+        // is NOT a Wikidata page — a link built from its key 404s.
+        this.wikidataUrl = this.qid.matches("Q\\d+")
+                ? "https://www.wikidata.org/wiki/" + this.qid
+                : "";
         rebuildSource();
     }
 
-    // (Re)builds the grouped provenance from the current QID. Null for a blank
-    // QID so an empty shell renders no source chip.
+    // (Re)builds the grouped provenance from the current QID. Null unless the QID
+    // is a real entity (so a blank shell or a statement-keyed synthetic renders no
+    // source chip / link).
     private void rebuildSource() {
-        this.source = qid == null || qid.isBlank()
+        this.source = wikidataUrl == null || wikidataUrl.isBlank()
                 ? null
                 : new WikidataSource(qid, wikidataUrl);
     }
@@ -179,6 +193,13 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
 
     public Object get(String fieldName) {
         return dynamicFields.get(fieldName);
+    }
+
+    /** Removes a field entirely (put ignores nulls, so this is the way to clear). */
+    public void remove(String fieldName) {
+        if (fieldName != null) {
+            dynamicFields.remove(fieldName);
+        }
     }
 
     public void put(String fieldName, Object value) {

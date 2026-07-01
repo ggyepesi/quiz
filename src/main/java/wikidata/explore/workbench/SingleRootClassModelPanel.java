@@ -20,6 +20,7 @@ public class SingleRootClassModelPanel extends JPanel {
     private final JButton renameClassButton = new JButton("Rename class");
     private final JButton addClassButton = new JButton("Add class");
     private final JButton addFieldButton = new JButton("Add field");
+    private final JButton suggestFacetsButton = new JButton("Suggest facets");
     private final JButton removeButton = new JButton("Remove");
 
     public SingleRootClassModelPanel(GeneratedProjectModel projectModel) {
@@ -114,11 +115,15 @@ public class SingleRootClassModelPanel extends JPanel {
         tree.setToggleClickCount(0);
         tree.setRowHeight(28);
         tree.setFont(tree.getFont().deriveFont(14f));
+        tree.setCellRenderer(new ClassPatternTreeRenderer());
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         buttons.add(renameClassButton);
         buttons.add(addClassButton);
         buttons.add(addFieldButton);
+        suggestFacetsButton.setToolTipText("Propose grouping facets from this "
+                + "class's fields (by type, by the membership target, by decade)");
+        buttons.add(suggestFacetsButton);
         buttons.add(removeButton);
 
         // This panel lives in the narrow left split, so the button row would
@@ -130,7 +135,32 @@ public class SingleRootClassModelPanel extends JPanel {
         renameClassButton.addActionListener(e -> renameClass());
         addClassButton.addActionListener(e -> addClass());
         addFieldButton.addActionListener(e -> addField());
+        suggestFacetsButton.addActionListener(e -> suggestFacets());
         removeButton.addActionListener(e -> removeSelected());
+    }
+
+    // Add proposed grouping facets to the selected class (deduped by field+bucketing).
+    private void suggestFacets() {
+        GeneratedClassModel cls = selectedClassOrRoot();
+        int added = 0;
+        for (GeneratedFacet s : wikidata.explore.view.DomainFacets.suggestFor(cls)) {
+            boolean exists = cls.facets().stream().anyMatch(f ->
+                    f.fieldName().equals(s.fieldName())
+                            && f.bucketing() == s.bucketing());
+            if (!exists) {
+                cls.facets().add(s);
+                added++;
+            }
+        }
+        if (added == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "No new facets to suggest for " + cls.className()
+                            + " (need a type / membership-target / date field).",
+                    "Suggest facets", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        refresh();
+        selectClass(cls);
     }
 
     private DefaultMutableTreeNode buildTree() {
@@ -152,6 +182,11 @@ public class SingleRootClassModelPanel extends JPanel {
                 }
 
                 classNode.add(fieldNode);
+            }
+
+            // Declared grouping facets, after the fields.
+            for (GeneratedFacet facet : cls.facets()) {
+                classNode.add(new DefaultMutableTreeNode(facet));
             }
 
             projectNode.add(classNode);
@@ -253,6 +288,16 @@ public class SingleRootClassModelPanel extends JPanel {
 
             projectModel.removeClass(c);
             refresh();
+            return;
+        }
+
+        if (selected instanceof GeneratedFacet facet) {
+            for (GeneratedClassModel c : projectModel.classes()) {
+                if (c.facets().remove(facet)) {
+                    break;
+                }
+            }
+            refresh();
         }
     }
 
@@ -346,6 +391,37 @@ public class SingleRootClassModelPanel extends JPanel {
         }
         if (tree.getRowCount() > 0) {
             tree.expandRow(0); // always show the domain's classes
+        }
+    }
+
+    // Shows each class node's membership PATTERN (and extends base) inline, so the
+    // configuration shape — "Multi-target relation", "Type + subtypes", … — is
+    // visible without opening the class. Display-only: the node's userObject (and
+    // toString, used for expansion-path keys) is untouched.
+    private static final class ClassPatternTreeRenderer
+            extends javax.swing.tree.DefaultTreeCellRenderer {
+        @Override public Component getTreeCellRendererComponent(
+                JTree tree, Object value, boolean sel, boolean expanded,
+                boolean leaf, int row, boolean focus) {
+            super.getTreeCellRendererComponent(
+                    tree, value, sel, expanded, leaf, row, focus);
+            Object uo = value instanceof DefaultMutableTreeNode dn
+                    ? dn.getUserObject() : null;
+            if (uo instanceof GeneratedClassModel cls) {
+                StringBuilder t = new StringBuilder(cls.className());
+                if (cls.hasBase()) {
+                    t.append(" : ").append(cls.baseClassName());
+                }
+                t.append("   [").append(MembershipPattern.describe(cls)).append(']');
+                setText(t.toString());
+                setForeground(sel ? getTextSelectionColor()
+                        : new Color(60, 90, 120));
+            } else if (uo instanceof GeneratedFacet facet) {
+                setText("⊞ " + facet);   // grouping dimension, distinct from fields
+                setForeground(sel ? getTextSelectionColor()
+                        : new Color(120, 90, 60));
+            }
+            return this;
         }
     }
 }

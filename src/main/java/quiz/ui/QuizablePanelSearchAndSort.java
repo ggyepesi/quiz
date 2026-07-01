@@ -33,7 +33,7 @@ public class QuizablePanelSearchAndSort {
             new ArrayList<>();
 
     public void rebuildSearchIndex(
-            JPanel targetPanel,
+            JComponent targetPanel,
             QuizablePanelConfig searchConfig) {
 
         searchIndex.clear();
@@ -96,6 +96,49 @@ public class QuizablePanelSearchAndSort {
         return out;
     }
 
+    /** Data-centric search for the virtualized view: match the quizables themselves
+     *  (not live components, of which only the visible ones exist) and return the
+     *  matching quizables per field title, in field-then-data order. The caller
+     *  navigates these hits one at a time, building each card on demand. */
+    public Map<String, List<quiz.Quizable>> searchQuizables(
+            List<quiz.Quizable> quizables,
+            List<String> queryTokens,
+            QuizablePanelConfig searchConfig) {
+
+        Map<String, List<quiz.Quizable>> out = new LinkedHashMap<>();
+
+        if (quizables == null || searchConfig == null
+                || queryTokens == null || queryTokens.isEmpty()) {
+            return out;
+        }
+
+        List<QuizableFieldPaths.FieldPath> paths =
+                QuizableFieldPaths.collect(
+                        searchConfig,
+                        QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS);
+
+        for (QuizableFieldPaths.FieldPath fp : paths) {
+            List<quiz.Quizable> hits = null;
+
+            for (quiz.Quizable q : quizables) {
+                Object value = extractValue(q, fp.path());
+
+                if (containsAllTokens(normalize(flattenForSearch(value)), queryTokens)) {
+                    if (hits == null) {
+                        hits = new ArrayList<>();
+                    }
+                    hits.add(q);
+                }
+            }
+
+            if (hits != null) {
+                out.put(fp.title(), hits);
+            }
+        }
+
+        return out;
+    }
+
     public List<QuizablePanel> sortPanels(
             List<QuizablePanel> panels,
             List<QuizableFieldPaths.FieldPath> sortPaths) {
@@ -140,6 +183,31 @@ public class QuizablePanelSearchAndSort {
 
         sb.append(sortableString(panel.getQuizable()));
 
+        return sb.toString();
+    }
+
+    /** Data-centric sort: order the quizables themselves by the sort paths — used
+     *  by the virtualized view, which sorts data (not live components) then
+     *  re-virtualizes. Reuses the same key logic, read straight from the quizable. */
+    public List<quiz.Quizable> sortQuizables(
+            List<quiz.Quizable> quizables,
+            List<QuizableFieldPaths.FieldPath> sortPaths) {
+
+        List<quiz.Quizable> out = new ArrayList<>(quizables);
+        out.sort(Comparator.comparing(q -> buildSortKeyQ(q, sortPaths)));
+        return out;
+    }
+
+    private String buildSortKeyQ(
+            quiz.Quizable quizable,
+            List<QuizableFieldPaths.FieldPath> paths) {
+
+        StringBuilder sb = new StringBuilder();
+        for (QuizableFieldPaths.FieldPath f : paths) {
+            Object value = extractValue(quizable, f.path());
+            sb.append(sortKey(f.leafField(), value)).append((char) 0);
+        }
+        sb.append(sortableString(quizable));
         return sb.toString();
     }
 

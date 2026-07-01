@@ -1,9 +1,9 @@
 <script>
   import { onMount } from 'svelte';
-  import { getTypes, getList, getQuizable } from '$lib/api.js';
+  import { getDomains, getList, getQuizable } from '$lib/api.js';
   import QuizableCard from '$lib/QuizableCard.svelte';
 
-  let types = $state([]);
+  let domains = $state([]);
   let type = $state(null);
   let items = $state([]);
   let selected = $state(null);
@@ -19,8 +19,9 @@
 
   onMount(async () => {
     try {
-      types = (await getTypes()) ?? [];
-      if (types.length) await selectType(types[0]);
+      domains = (await getDomains()) ?? [];
+      const first = domains.find((d) => d.types?.length);
+      if (first) await selectType(first.types[0]);
     } catch (e) {
       error = 'Cannot reach the API. Is QuizableServerMain running on :7070?';
     }
@@ -48,8 +49,13 @@
   <header class="topbar">
     <div class="brand">Quiz<span class="dot">·</span><span class="sub">explorer</span></div>
     <nav class="tabs">
-      {#each types as t}
-        <button class="tab" class:active={t === type} onclick={() => selectType(t)}>{t}</button>
+      {#each domains as d}
+        <div class="domain" title={d.name}>
+          <span class="domain-name">{d.name}</span>
+          {#each d.types as t}
+            <button class="tab" class:active={t === type} onclick={() => selectType(t)}>{t}</button>
+          {/each}
+        </div>
       {/each}
     </nav>
     <div class="actions">
@@ -124,7 +130,16 @@
   .brand .dot { color: var(--accent); margin: 0 3px; }
   .brand .sub { color: var(--muted); font-weight: 500; }
 
-  .tabs { display: flex; gap: 4px; }
+  .tabs { display: flex; gap: 14px; align-items: center; }
+  .domain { display: flex; align-items: center; gap: 4px; }
+  .domain + .domain { border-left: 1px solid var(--border, #2a2a2a); padding-left: 14px; }
+  .domain-name {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin-right: 2px;
+  }
   .tab {
     padding: 5px 12px;
     border-radius: 999px;

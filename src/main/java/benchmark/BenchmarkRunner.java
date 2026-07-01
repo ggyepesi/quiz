@@ -14,7 +14,7 @@ public class BenchmarkRunner {
     private static final int TARGET_COUNT = 5000;
 
     public static void main(String[] args) {
-        System.out.println("=== Fabricating 5,000 Production-Grade Test Records ===");
+        System.out.println("=== Fabricating " + TARGET_COUNT + " Production-Grade Test Records ===");
 
         WikidataDynamicObject mockActor = WikidataDynamicObject.canonical("Marlon Brando", "Q16122");
         WikidataDynamicObject mockAward = WikidataDynamicObject.canonical("Best Actor", "Q103916");

@@ -20,6 +20,32 @@ public class QuizableRenderContext {
     private final Map<Object, JComponent> topLevelComponents =
             new IdentityHashMap<>();
 
+    // When the view is virtualized, a top-level target may not have a live card
+    // (it's off-screen). A resolver builds + positions it on demand so navigation
+    // (focusTopLevel) can still scroll to it. There is one resolver PER virtualized
+    // section (a MultiQuizableView shares one context across several sections), so
+    // focusTopLevel tries each until one owns the target.
+    private final java.util.List<java.util.function.Function<Object, JComponent>>
+            topLevelResolvers = new java.util.ArrayList<>();
+
+    public void addTopLevelResolver(
+            java.util.function.Function<Object, JComponent> resolver) {
+        if (resolver != null) {
+            topLevelResolvers.add(resolver);
+        }
+    }
+
+    private JComponent resolveTopLevel(Object object) {
+        for (java.util.function.Function<Object, JComponent> resolver
+                : topLevelResolvers) {
+            JComponent c = resolver.apply(object);
+            if (c != null) {
+                return c;
+            }
+        }
+        return null;
+    }
+
     private final Map<Class<?>, QuizablePanelConfig> classConfigs =
             new HashMap<>();
 
@@ -156,8 +182,35 @@ public class QuizableRenderContext {
         topLevelComponents.put(object, component);
     }
 
+    private static final boolean NAV_DEBUG = Boolean.getBoolean("quiz.nav.debug");
+
     public boolean focusTopLevel(Object object) {
-        JComponent component = topLevelComponents.get(object);
+        JComponent fromMap = topLevelComponents.get(object);
+        JComponent component = fromMap;
+
+        // A cached top-level component can be STALE: virtualization recycles
+        // off-screen cards (their parent becomes null) but the map entry lingers.
+        // Using it would leave component.getParent() == null, so navigateToTop is
+        // never reached and the click silently does nothing. Discard a detached
+        // one and resolve the object fresh in its owning list (object-centric).
+        if (component != null && component.getParent() == null) {
+            component = null;
+        }
+
+        // Virtualized view: the target card isn't built (off-screen) — build +
+        // position it on demand so we can scroll to it.
+        if (component == null) {
+            component = resolveTopLevel(object);
+        }
+
+        if (NAV_DEBUG) {
+            System.err.println("[nav] focusTopLevel object='"
+                    + (object instanceof Quizable q ? q.getDisplayName() : object)
+                    + "' fromMap=" + (fromMap != null)
+                    + " resolved=" + (component != null)
+                    + " parent=" + (component == null || component.getParent() == null
+                            ? "-" : component.getParent().getClass().getSimpleName()));
+        }
 
         if (component == null) {
             return false;
@@ -173,7 +226,16 @@ public class QuizableRenderContext {
 
         Container parent = component.getParent();
 
-        if (viewport != null && parent != null) {
+        if (parent instanceof VirtualizedCardList vcl
+                && object instanceof Quizable q) {
+            // Variable-height virtualization: the card's absolute offset shifts as
+            // scrolling measures its neighbours, so delegate to a stabilizing scroll
+            // (a plain setViewPosition lands a few cards off, intermittently).
+            JComponent settled = vcl.navigateToTop(q);
+            if (settled != null) {
+                component = settled;
+            }
+        } else if (viewport != null && parent != null) {
             // Align the target card's TOP to the viewport top. Plain
             // scrollRectToVisible(card.getBounds()) lands mid-card for a card
             // taller than the viewport.

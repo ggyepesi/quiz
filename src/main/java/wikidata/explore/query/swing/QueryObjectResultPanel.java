@@ -32,21 +32,22 @@ public class QueryObjectResultPanel
         TYPE_PANEL_DEMO
     }
 
+    private static final int MAX_CARDS = Integer.MAX_VALUE;
+
     private ViewMode viewMode = ViewMode.SEARCH_PANEL;
-    private final JPanel holder = new JPanel(new BorderLayout());
 
-    // The render context backing the currently-shown cards, so other views
-    // (e.g. the name-collision panel) can share it and navigate to a card here.
+    private final JPanel holder =
+            new JPanel(new BorderLayout());
+
     private quiz.ui.QuizableRenderContext activeContext;
-
-    /** Render context of the cards currently shown, or null if none. */
-    public quiz.ui.QuizableRenderContext activeRenderContext() {
-        return activeContext;
-    }
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
         add(holder, BorderLayout.CENTER);
+    }
+
+    public quiz.ui.QuizableRenderContext activeRenderContext() {
+        return activeContext;
     }
 
     public void viewMode(ViewMode viewMode) {
@@ -55,93 +56,114 @@ public class QueryObjectResultPanel
     }
 
     public void clear() {
+        activeContext = null;
         holder.removeAll();
-        holder.revalidate();
         holder.repaint();
     }
 
     @Override
     public void accept(ObjectQueryResult result) {
         SwingUtilities.invokeLater(() -> {
-            clear();
+            holder.setVisible(false);
+            holder.removeAll();
+            activeContext = null;
 
             if (result == null
                     || result.objects() == null
                     || result.objects().isEmpty()) {
                 holder.add(new JLabel("No objects."), BorderLayout.CENTER);
-                refresh();
-                return;
+            } else {
+                holder.add(buildView(result), BorderLayout.CENTER);
             }
 
-            holder.add(buildView(result), BorderLayout.CENTER);
-            refresh();
+            holder.setVisible(true);
+
+            // One layout pass after the full replacement.
+            holder.validate();
+            holder.repaint();
         });
     }
 
-    // When the run produced more than one class (e.g. Constellation + its
-    // child Stars), show a section per class via MultiQuizableView so each
-    // renders as its own searchable panel and cross-references between them
-    // navigate (click a constellation's star -> its Star card, and back).
-    // A single-class run keeps the simple search view.
     private JComponent buildView(ObjectQueryResult result) {
-        Map<String, List<Quizable>> byType = groupByType(result.objects());
+        Map<String, List<Quizable>> byType =
+                groupByType(result.objects());
+
         if (byType.size() <= 1) {
             return searchPanelView(result);
         }
-        MultiQuizableView multi = new MultiQuizableView();
+
+        MultiQuizableView multi =
+                new MultiQuizableView();
+
         for (Map.Entry<String, List<Quizable>> e : byType.entrySet()) {
-            multi.addSection(e.getKey(), e.getValue().get(0).getClass(), e.getValue());
+            List<Quizable> full = e.getValue();
+
+            if (full.isEmpty()) {
+                continue;
+            }
+
+            multi.addSection(
+                    sectionTitle(e.getKey(), full.size()),
+                    full.getFirst().getClass(),
+                    capped(full));
         }
+
         multi.build(1);
         activeContext = multi.context();
+
         return multi;
     }
 
-    // All distinct generated objects reachable from the roots, grouped by
-    // typeName(), preserving discovery order. Bare leaf references (untyped
-    // WikidataDynamicObjects, e.g. a constellation's hemisphere) are kept out
-    // of their own section — they're navigation targets, not generated classes.
     private Map<String, List<Quizable>> groupByType(List<Quizable> roots) {
-        Map<String, List<Quizable>> byType = new LinkedHashMap<>();
-        Set<Quizable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        Deque<Quizable> queue = new ArrayDeque<>(roots == null ? List.of() : roots);
+        Map<String, List<Quizable>> byType =
+                new LinkedHashMap<>();
+
+        Set<Quizable> seen =
+                Collections.newSetFromMap(new IdentityHashMap<>());
+
+        Deque<Quizable> queue =
+                new ArrayDeque<>(roots == null ? List.of() : roots);
 
         while (!queue.isEmpty()) {
             Quizable q = queue.poll();
+
             if (q == null || !seen.add(q)) {
                 continue;
             }
-            // A raw WikidataDynamicObject that survived mapping is an unmapped
-            // reference (its type has no generated class, or it wasn't stamped),
-            // not a domain entity — never give it a card/section, whatever its
-            // stamped typeName. The typed instances are the cards; raw objects
-            // are navigation targets reachable through them.
+
             if (q instanceof wikidata.explore.extract.WikidataDynamicObject) {
                 continue;
             }
+
             String type = q.typeName();
-            if (type != null && !type.isBlank()
+
+            if (type != null
+                    && !type.isBlank()
                     && !"WikidataDynamicObject".equals(type)) {
                 byType.computeIfAbsent(type, k -> new ArrayList<>()).add(q);
             }
+
             collectReferences(q, queue);
         }
+
         return byType;
     }
 
-    private void collectReferences(Quizable q, Deque<Quizable> queue) {
+    private void collectReferences(
+            Quizable q,
+            Deque<Quizable> queue) {
+
         if (q instanceof DynamicFields dyn) {
             for (Object v : dyn.dynamicFieldValues().values()) {
                 addReferences(v, queue);
             }
         }
+
         for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
-            // Provenance (@Provenance Source) is an inline chip on its owner's
-            // card, not a domain entity — don't descend into it, so it never
-            // gets its own type section.
             if (QuizableAdapter.isProvenanceField(f)) {
                 continue;
             }
+
             try {
                 f.setAccessible(true);
                 addReferences(f.get(q), queue);
@@ -150,29 +172,46 @@ public class QueryObjectResultPanel
         }
     }
 
-    private void addReferences(Object v, Deque<Quizable> queue) {
+    private void addReferences(
+            Object v,
+            Deque<Quizable> queue) {
+
         if (v instanceof Quizable q) {
             queue.add(q);
         } else if (v instanceof Collection<?> c) {
-            for (Object o : c) addReferences(o, queue);
+            for (Object o : c) {
+                addReferences(o, queue);
+            }
         } else if (v instanceof Map<?, ?> m) {
-            for (Object o : m.values()) addReferences(o, queue);
+            for (Object o : m.values()) {
+                addReferences(o, queue);
+            }
         }
     }
 
     private JComponent searchPanelView(ObjectQueryResult result) {
-        QuizablePanelView view = new QuizablePanelView();
+        QuizablePanelView view =
+                new QuizablePanelView();
 
-        // Show typed instances only; raw WikidataDynamicObjects are unmapped
-        // references, not domain cards. Fall back to the raw objects only if
-        // mapping produced nothing typed (so the panel isn't blank).
-        List<Quizable> typed = new ArrayList<>();
+        List<Quizable> typed =
+                new ArrayList<>();
+
         for (Quizable q : result.objects()) {
             if (!(q instanceof wikidata.explore.extract.WikidataDynamicObject)) {
                 typed.add(q);
             }
         }
-        List<Quizable> shown = typed.isEmpty() ? result.objects() : typed;
+
+        List<Quizable> full =
+                typed.isEmpty() ? result.objects() : typed;
+
+        List<Quizable> shown =
+                capped(full);
+
+        if (shown.isEmpty()) {
+            activeContext = null;
+            return new JLabel("No typed objects.");
+        }
 
         for (Quizable q : shown) {
             view.addQuizable(q);
@@ -180,9 +219,11 @@ public class QueryObjectResultPanel
 
         view.createCardsPanel(1);
 
-        JPanel wrapped = new JPanel(new BorderLayout());
+        JPanel wrapped =
+                new JPanel(new BorderLayout());
 
-        Quizable first = shown.getFirst();
+        Quizable first =
+                shown.getFirst();
 
         QuizableSearchPanel searchPanel =
                 new QuizableSearchPanel(first.getClass());
@@ -190,18 +231,56 @@ public class QueryObjectResultPanel
         searchPanel.setTarget(
                 view.getCardsPanel(),
                 view.getCardsScrollPane());
-        searchPanel.setRenderContext(view.getRenderContext());
-        view.addTargetListener(searchPanel);
-        activeContext = view.getRenderContext();
 
-        wrapped.add(searchPanel, BorderLayout.NORTH);
+        searchPanel.setRenderContext(
+                view.getRenderContext());
+
+        view.addTargetListener(searchPanel);
+
+        activeContext =
+                view.getRenderContext();
+
+        JComponent north =
+                searchPanel;
+
+        if (full.size() > MAX_CARDS) {
+            JPanel header =
+                    new JPanel(new BorderLayout());
+
+            header.add(
+                    new JLabel(cappedNote(full.size())),
+                    BorderLayout.NORTH);
+
+            header.add(
+                    searchPanel,
+                    BorderLayout.CENTER);
+
+            north = header;
+        }
+
+        wrapped.add(north, BorderLayout.NORTH);
         wrapped.add(view.getCardsScrollPane(), BorderLayout.CENTER);
 
         return wrapped;
     }
 
-    private void refresh() {
-        holder.revalidate();
-        holder.repaint();
+    private static List<Quizable> capped(List<Quizable> objects) {
+        return objects.size() <= MAX_CARDS
+                ? objects
+                : new ArrayList<>(objects.subList(0, MAX_CARDS));
+    }
+
+    private static String sectionTitle(
+            String type,
+            int total) {
+
+        return total <= MAX_CARDS
+                ? type
+                : type + "  (showing " + MAX_CARDS + " of " + total + ")";
+    }
+
+    private static String cappedNote(int total) {
+        return "Showing first " + MAX_CARDS + " of " + total
+                + " — full set is saved + served in the web.";
     }
 }
