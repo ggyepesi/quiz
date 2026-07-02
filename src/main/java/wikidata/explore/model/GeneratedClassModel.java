@@ -68,8 +68,6 @@ public class GeneratedClassModel {
                 className == null || className.isBlank()
                         ? "GeneratedClass"
                         : className.trim();
-
-        ensureNameField();
     }
 
     public String className() { return className; }
@@ -127,7 +125,6 @@ public class GeneratedClassModel {
 
     /** This class's own (non-inherited) fields. */
     public List<GeneratedFieldModel> fields() {
-        ensureNameField();
         return fields;
     }
 
@@ -148,7 +145,6 @@ public class GeneratedClassModel {
 
     private List<GeneratedFieldModel> effectiveFields(
             GeneratedProjectModel project, Set<String> visited) {
-        ensureNameField();
         // visited guards against an extends-cycle (A extends B extends A).
         if (baseClassName.isEmpty() || project == null || !visited.add(className)) {
             return new ArrayList<>(fields);
@@ -244,16 +240,6 @@ public class GeneratedClassModel {
         return spec;
     }
 
-    public void ensureNameField() {
-        for (GeneratedFieldModel f : fields) {
-            if (f != null && f.isNameField()) {
-                return;
-            }
-        }
-
-        fields.add(0, GeneratedFieldModel.nameField());
-    }
-
     public GeneratedClassModel copy() {
         GeneratedClassModel c = new GeneratedClassModel(className);
 
@@ -269,7 +255,10 @@ public class GeneratedClassModel {
 
         c.fields.clear();
         for (GeneratedFieldModel f : fields) {
-            if (f != null) {
+            // Drop any vestigial legacy `name` field (identity/display now comes
+            // from CanonicalSpec + the generated @NotQuizableField name), so it can
+            // never resurface as a duplicate on the generation path.
+            if (f != null && !f.isNameField()) {
                 c.fields.add(f.copy());
             }
         }
@@ -281,8 +270,6 @@ public class GeneratedClassModel {
             String name,
             FieldType type,
             FieldCardinality cardinality) {
-
-        ensureNameField();
 
         GeneratedFieldModel f =
                 new GeneratedFieldModel(reservedSafeFieldName(name), type, cardinality);

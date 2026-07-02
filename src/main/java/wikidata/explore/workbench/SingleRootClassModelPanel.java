@@ -75,10 +75,6 @@ public class SingleRootClassModelPanel extends JPanel {
         Object selected = selectedUserObject();
         java.util.Set<java.util.List<String>> expanded = expandedPaths();
 
-        for (GeneratedClassModel c : projectModel.classes()) {
-            c.ensureNameField();
-        }
-
         rootTreeNode = buildTree();
         treeModel.setRoot(rootTreeNode);
         treeModel.reload();
@@ -168,8 +164,6 @@ public class SingleRootClassModelPanel extends JPanel {
                 new DefaultMutableTreeNode("Domain: " + projectModel.name());
 
         for (GeneratedClassModel cls : projectModel.classes()) {
-            cls.ensureNameField();
-
             DefaultMutableTreeNode classNode =
                     new DefaultMutableTreeNode(cls);
 

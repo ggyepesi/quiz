@@ -18,7 +18,6 @@ public class GeneratedProjectModel {
 
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
-        rootClass.ensureNameField();
         classes.add(rootClass);
     }
 
@@ -106,7 +105,6 @@ public class GeneratedProjectModel {
     }
 
     public GeneratedClassModel rootClass() {
-        rootClass.ensureNameField();
         return rootClass;
     }
 
@@ -118,7 +116,6 @@ public class GeneratedProjectModel {
                         ? new GeneratedClassModel("GeneratedClass")
                         : rootClass;
 
-        this.rootClass.ensureNameField();
 
         if (oldRoot != null && oldRoot != this.rootClass) {
             classes.remove(oldRoot);
@@ -129,10 +126,6 @@ public class GeneratedProjectModel {
     }
 
     public List<GeneratedClassModel> classes() {
-        for (GeneratedClassModel c : classes) {
-            c.ensureNameField();
-        }
-
         return Collections.unmodifiableList(classes);
     }
 
@@ -165,7 +158,6 @@ public class GeneratedProjectModel {
                     : classes.getFirst();
         }
         this.rootClass = root;
-        this.rootClass.ensureNameField();
         if (!classes.contains(rootClass)) {
             classes.addFirst(rootClass);
         }
@@ -176,7 +168,6 @@ public class GeneratedProjectModel {
             return;
         }
 
-        c.ensureNameField();
 
         if (!classes.contains(c)) {
             classes.add(c);

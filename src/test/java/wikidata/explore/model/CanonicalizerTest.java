@@ -122,10 +122,26 @@ class CanonicalizerTest {
         assertEquals("nameValue", nameData.name());
         assertEquals("qidValue", qidData.name());
 
-        // Exactly one identity name field remains (the canonical one, name "name").
+        // After 3d there is NO model-level `name` field: identity/display name comes
+        // from CanonicalSpec + the generated @NotQuizableField `name`. A data field
+        // named name/qid was renamed away, so nothing is left that isNameField.
         long identityNames = c.fields().stream()
                 .filter(GeneratedFieldModel::isNameField)
                 .count();
-        assertEquals(1, identityNames);
+        assertEquals(0, identityNames, "no vestigial model-level name field");
+    }
+
+    @Test
+    void copyDropsAVestigialLegacyNameField() {
+        // A model loaded from a pre-canonicalization file may still carry a `name`
+        // field; copy() (the generation path) drops it so it can't resurface.
+        GeneratedClassModel c = new GeneratedClassModel("Legacy");
+        c.fields().add(GeneratedFieldModel.nameField());   // simulate a legacy name field
+        assertEquals(1, c.fields().stream().filter(GeneratedFieldModel::isNameField).count());
+
+        GeneratedClassModel copy = c.copy();
+        assertEquals(0, copy.fields().stream()
+                .filter(GeneratedFieldModel::isNameField).count(),
+                "copy strips the legacy name field");
     }
 }
