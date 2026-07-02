@@ -170,6 +170,7 @@ public class GeneratedQuizableSourceGenerator {
                     // numerically; dimensionless numbers render as the bare value.
                     case NUMBER -> "quiz.Quantity";
                     case DATE, STRING, TEXT, AUTO -> "String";
+                    case BOOLEAN -> "Boolean";
                     case ENTITY -> objectType(field, owner, project);
                 };
 

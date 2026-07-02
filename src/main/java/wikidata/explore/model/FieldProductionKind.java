@@ -9,6 +9,12 @@ public enum FieldProductionKind {
      *  query. E.g. {@code Category.nominees} = the reverse of
      *  {@code Oscarnominations.categories}. */
     INVERT,
+    /** DERIVED, not fetched as a value: a BOOLEAN that is true iff a companion
+     *  statement ({@code companionProperty[value, roleQualifier]}) exists on this
+     *  record's subject with the same value and role. E.g. {@code Nomination.won} =
+     *  a P166/P1346 award-received companion to the P1411/P2453 nomination. Generic
+     *  field-value match (see CompanionMatcher); the two PIDs are the only inputs. */
+    COMPANION_MATCH,
     AUTO;
 
     @Override
@@ -18,6 +24,7 @@ public enum FieldProductionKind {
             case DELAYED_ENTITY_FIELD -> "Related entity values";
             case CHILD_OBJECTS -> "Related objects";
             case INVERT -> "Invert (reverse of another field)";
+            case COMPANION_MATCH -> "Companion match (outcome flag)";
             case AUTO -> "Auto";
         };
     }

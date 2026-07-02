@@ -7,6 +7,7 @@ public enum FieldType {
     NUMBER,
     DATE,
     TEXT,
+    BOOLEAN,
     AUTO;
 
     @Override
@@ -18,6 +19,7 @@ public enum FieldType {
             case NUMBER -> "Number";
             case DATE -> "Date";
             case TEXT -> "Text";
+            case BOOLEAN -> "Boolean";
             case AUTO -> "Auto";
         };
     }

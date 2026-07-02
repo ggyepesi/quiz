@@ -517,6 +517,13 @@ public class FieldSourcePanel extends JPanel {
                     + "in memory from data already generated (no query, no depth, no "
                     + "cycle).<br><i>Example:</i> Category.nominees = the reverse of "
                     + "Oscarnominations.categories.</html>";
+            case COMPANION_MATCH -> "<html><b>Companion match</b> — a <b>Boolean</b> "
+                    + "that is true iff a companion statement "
+                    + "(<i>Companion&nbsp;property</i>[value, <i>Role&nbsp;qualifier</i>]) "
+                    + "exists on this record's subject with the same value and role. A "
+                    + "generic field-value match, no value fetched.<br><i>Example:</i> "
+                    + "Nomination.won = a P166/P1346 award-received companion to the "
+                    + "P1411/P2453 nomination.</html>";
             case AUTO -> "<html><b>Auto</b> — decide from the field's type and "
                     + "shape.<br><i>Example:</i> a number → Simple property; an "
                     + "entity list → Related entity values.</html>";

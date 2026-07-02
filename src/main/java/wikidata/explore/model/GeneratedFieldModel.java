@@ -210,6 +210,7 @@ public class GeneratedFieldModel {
                     case NUMBER -> "Number";
                     case DATE -> "Date";
                     case TEXT -> "Text";
+                    case BOOLEAN -> "Boolean";
                     case AUTO -> entityClassName == null || entityClassName.isBlank()
                             ? "Auto"
                             : entityClassName;
