@@ -142,6 +142,13 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.transform.Canonicalization.apply(
                             project, reified, genLog);
 
+                    // Companion-match (production = COMPANION_MATCH) boolean fields
+                    // (e.g. Nomination.won): load each field's companion statements
+                    // (P166/P1346 wins) for the reified subjects and mark matches.
+                    // Runs before materialize so the flag is on the atom when typed.
+                    wikidata.explore.transform.CompanionMatch.apply(
+                            project, reified, context.sparql(), genLog);
+
                     // ONE shared mapper over ALL roots: each QID -> one typed
                     // instance, and cross-class references resolve to those same
                     // typed instances (no duplicates, no raw cross-refs).
