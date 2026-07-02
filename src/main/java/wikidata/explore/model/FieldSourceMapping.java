@@ -23,6 +23,13 @@ public class FieldSourceMapping {
     // claim. Blank = not a qualifier field.
     private String qualifierPid = "";
 
+    // COMPANION_MATCH only: which of THIS record's fields form the match key. The
+    // outcome is true iff a companion statement (propertyPid[ps=value, qualifierPid
+    // =role]) exists on the record's subject with the same value and role. Subject
+    // is the reify source (not configured here). Blank = derive from the grain.
+    private String matchValueField = "";
+    private String matchRoleField = "";
+
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
 
     private boolean requireLabel = true;
@@ -92,6 +99,12 @@ public class FieldSourceMapping {
     public boolean isQualifier() {
         return qualifierPid != null && qualifierPid.trim().matches("(?i)P\\d+");
     }
+
+    public String matchValueField() { return matchValueField; }
+    public void matchValueField(String v) { matchValueField = v == null ? "" : v.trim(); }
+
+    public String matchRoleField() { return matchRoleField; }
+    public void matchRoleField(String v) { matchRoleField = v == null ? "" : v.trim(); }
 
     public RuleDirection direction() { return direction; }
     public void direction(RuleDirection direction) {
@@ -172,6 +185,8 @@ public class FieldSourceMapping {
         propertyPid = other.propertyPid;
         propertyLabel = other.propertyLabel;
         qualifierPid = other.qualifierPid;
+        matchValueField = other.matchValueField;
+        matchRoleField = other.matchRoleField;
         direction = other.direction;
         requireLabel = other.requireLabel;
         requireSitelink = other.requireSitelink;

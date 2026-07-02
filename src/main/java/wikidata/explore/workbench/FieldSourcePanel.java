@@ -88,6 +88,12 @@ public class FieldSourcePanel extends JPanel {
     private final JTextField qualifierPidField = new JTextField(6);
     private final JLabel propertyLabel = new JLabel("(not selected)");
 
+    // COMPANION_MATCH: which of THIS record's fields form the match key — the value
+    // (matched to the companion's ps value) and the role (matched to the companion's
+    // role qualifier). Subject is the reify source (not configured).
+    private final JComboBox<String> matchValueBox = new JComboBox<>();
+    private final JComboBox<String> matchRoleBox = new JComboBox<>();
+
     private final JSpinner limitSpinner =
             new JSpinner(new SpinnerNumberModel(50, 1, 10000, 10));
 
@@ -139,8 +145,11 @@ public class FieldSourcePanel extends JPanel {
                 return this;
             }
         });
-        productionBox.addActionListener(e -> productionBox.setToolTipText(
-                productionExplain((FieldProductionKind) productionBox.getSelectedItem())));
+        productionBox.addActionListener(e -> {
+            productionBox.setToolTipText(
+                    productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
+            refreshCompanionRows();
+        });
         productionBox.setToolTipText(
                 productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
         shapeBox.setToolTipText(
@@ -242,8 +251,42 @@ public class FieldSourcePanel extends JPanel {
 
         limitSpinner.setValue(Math.max(1, m.limit()));
 
+        refreshCompanionRows();
         updateRecommendation();
         updateSampleButtonState();
+    }
+
+    // Populate the COMPANION_MATCH match-field pickers from the owning class's
+    // sibling fields, select the saved ones, and enable them only in that mode.
+    private void refreshCompanionRows() {
+        matchValueBox.removeAllItems();
+        matchRoleBox.removeAllItems();
+
+        GeneratedClassModel owner = ownerClass();
+        if (owner != null) {
+            for (GeneratedFieldModel f : owner.fields()) {
+                if (f == null || f == field) {
+                    continue;
+                }
+                matchValueBox.addItem(f.name());
+                matchRoleBox.addItem(f.name());
+            }
+        }
+
+        if (field != null) {
+            FieldSourceMapping m = field.mapping();
+            if (!m.matchValueField().isEmpty()) {
+                matchValueBox.setSelectedItem(m.matchValueField());
+            }
+            if (!m.matchRoleField().isEmpty()) {
+                matchRoleBox.setSelectedItem(m.matchRoleField());
+            }
+        }
+
+        boolean companion =
+                productionBox.getSelectedItem() == FieldProductionKind.COMPANION_MATCH;
+        matchValueBox.setEnabled(companion);
+        matchRoleBox.setEnabled(companion);
     }
 
     public void useProperty(String pid, String label) {
@@ -317,6 +360,18 @@ public class FieldSourcePanel extends JPanel {
                 + "(e.g. P585 → year, P1686 → for work, P2453 → nominee). "
                 + "Blank = a direct/value field.</html>");
         addRow(form, c, y++, "Qualifier of:", qualifierPidField);
+
+        // COMPANION_MATCH rows: Property = companion property (e.g. P166 award
+        // received), Qualifier of = the companion role qualifier (e.g. P1346 winner);
+        // these two pick which of this record's fields to match on.
+        matchValueBox.setToolTipText("<html>Companion match: this record's field "
+                + "whose value must equal the companion statement's value "
+                + "(e.g. <b>category</b>).</html>");
+        addRow(form, c, y++, "Match value field:", matchValueBox);
+        matchRoleBox.setToolTipText("<html>Companion match: this record's field "
+                + "matched against the companion's role qualifier "
+                + "(e.g. <b>nominee</b> vs the winner).</html>");
+        addRow(form, c, y++, "Match role field:", matchRoleBox);
 
         directionBox.setToolTipText("<html>Where the property lives:<br>"
                 + "<b>this entity</b> (outgoing, ?this P ?value)<br>"
@@ -402,6 +457,12 @@ public class FieldSourcePanel extends JPanel {
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
         m.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
+        if (productionBox.getSelectedItem() == FieldProductionKind.COMPANION_MATCH) {
+            Object v = matchValueBox.getSelectedItem();
+            Object r = matchRoleBox.getSelectedItem();
+            m.matchValueField(v == null ? "" : v.toString());
+            m.matchRoleField(r == null ? "" : r.toString());
+        }
         m.direction((RuleDirection) directionBox.getSelectedItem());
 
         // autoAdjustFromProperty inspects a WIKIDATA property; skip it for a
