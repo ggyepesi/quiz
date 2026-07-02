@@ -256,13 +256,9 @@ public class SingleRootClassModelPanel extends JPanel {
         Object selected = selectedUserObject();
 
         if (selected instanceof GeneratedFieldModel f) {
-            if (f.isNameField()) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "The name field is required and cannot be removed.");
-                return;
-            }
-
+            // The `name` field is vestigial now (identity/display comes from the
+            // CanonicalSpec + the generated @NotQuizableField name), so it's freely
+            // removable — and won't be re-added (ensureNameField is gone).
             GeneratedClassModel owner = owningClassOf(f);
             if (owner != null) {
                 owner.fields().remove(f);

@@ -50,6 +50,26 @@ public final class GeneratedProjectModelStore {
     }
 
     public GeneratedProjectModel load(File file) throws IOException {
-        return mapper.readValue(file, GeneratedProjectModel.class);
+        GeneratedProjectModel model = mapper.readValue(file, GeneratedProjectModel.class);
+        stripLegacyNameFields(model);
+        return model;
+    }
+
+    // A model saved before canonicalization carries a vestigial `name` field per
+    // class (identity/display now comes from CanonicalSpec + the generated
+    // @NotQuizableField name). Drop them on load so the editor and generation see a
+    // clean model — you don't have to hand-delete per class.
+    private static void stripLegacyNameFields(GeneratedProjectModel model) {
+        if (model == null) {
+            return;
+        }
+        if (model.rootClass() != null) {
+            model.rootClass().fields().removeIf(f -> f != null && f.isNameField());
+        }
+        for (GeneratedClassModel c : model.classes()) {
+            if (c != null) {
+                c.fields().removeIf(f -> f != null && f.isNameField());
+            }
+        }
     }
 }
