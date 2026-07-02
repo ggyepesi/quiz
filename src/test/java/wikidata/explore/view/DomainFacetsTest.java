@@ -51,6 +51,24 @@ class DomainFacetsTest {
         assertTrue(fields.contains("type"), fields.toString());
     }
 
+    @Test void booleanBucketReadsAsFlagNotTrueFalse() {
+        assertEquals("Won", DomainFacets.booleanBucket("true", "won"));
+        assertEquals("Not won", DomainFacets.booleanBucket("false", "won"));
+        assertEquals("Won", DomainFacets.booleanBucket("1", "won"));
+        assertEquals(null, DomainFacets.booleanBucket("", "won"));
+    }
+
+    @Test void suggestsAFacetForBooleanFields() {
+        GeneratedClassModel c = new GeneratedClassModel();
+        c.className("Nomination");
+        c.fields().add(new GeneratedFieldModel(
+                "won", FieldType.BOOLEAN, FieldCardinality.SINGLE));
+
+        List<GeneratedFacet> s = DomainFacets.suggestFor(c);
+        assertTrue(s.stream().anyMatch(g -> g.fieldName().equals("won")
+                && g.bucketing() == GeneratedFacet.Bucketing.VALUE), s.toString());
+    }
+
     @Test void entityValueFacetUsesReference() {
         GeneratedClassModel c = new GeneratedClassModel();
         c.className("X");

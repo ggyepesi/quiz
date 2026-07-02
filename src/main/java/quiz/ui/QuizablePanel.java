@@ -500,6 +500,17 @@ public class QuizablePanel extends JPanel {
             List<String> fieldPath = new ArrayList<>(path);
             fieldPath.add(name);
 
+            // A boolean flag reads as a badge, not "won: true": render nothing
+            // when false, and just the humanized field name when true.
+            if (value instanceof Boolean flag) {
+                if (flag) {
+                    textRows.add(new QuizableTextBlock.Row(
+                            null, fieldPath, value,
+                            List.of(quiz.FieldLabels.humanize(name))));
+                }
+                continue;
+            }
+
             if (isTextBlockCandidate(field, value)) {
                 textRows.add(textBlockRow(name, fieldPath, value));
                 continue;

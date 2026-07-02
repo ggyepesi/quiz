@@ -45,9 +45,17 @@ public final class DomainFacets {
         String field = spec.fieldName();
         String label = spec.name().isBlank() ? field : spec.name();
         return switch (spec.bucketing()) {
-            case VALUE -> isEntityField(clazz, field)
-                    ? Facet.reference(field, label)   // buckets carry the entity
-                    : Facet.field(field, label);
+            case VALUE -> {
+                if (isEntityField(clazz, field)) {
+                    yield Facet.reference(field, label);   // buckets carry the entity
+                }
+                if (isBooleanField(clazz, field)) {
+                    // "won" -> "Won" / "Not won" buckets (a Winners grouping),
+                    // not the raw "true" / "false".
+                    yield Facet.mapped(label, field, v -> booleanBucket(v, field));
+                }
+                yield Facet.field(field, label);
+            }
             case FIRST_LETTER -> Facet.mapped(label, field, DomainFacets::firstLetter);
             case RANGE -> {
                 int size = spec.rangeSize();
@@ -78,6 +86,10 @@ public final class DomainFacets {
                 out.add(new GeneratedFacet("by type", name, GeneratedFacet.Bucketing.VALUE));
                 used.add(name);
             } else if (!relationPid.isEmpty() && pid.equals(relationPid)) {
+                out.add(new GeneratedFacet("by " + name, name,
+                        GeneratedFacet.Bucketing.VALUE));
+                used.add(name);
+            } else if (f.type() == FieldType.BOOLEAN) {
                 out.add(new GeneratedFacet("by " + name, name,
                         GeneratedFacet.Bucketing.VALUE));
                 used.add(name);
@@ -119,6 +131,26 @@ public final class DomainFacets {
         long n = Long.parseLong(m.group());
         long start = Math.floorDiv(n, s) * s;
         return s == 10 ? start + "s" : start + "–" + (start + s - 1);
+    }
+
+    /** true/1/yes → the humanized field name; else "Not <name>". */
+    static String booleanBucket(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String v = value.trim();
+        boolean truthy = v.equalsIgnoreCase("true")
+                || v.equals("1") || v.equalsIgnoreCase("yes");
+        return quiz.FieldLabels.booleanLabel(truthy, fieldName);
+    }
+
+    private static boolean isBooleanField(GeneratedClassModel clazz, String fieldName) {
+        for (GeneratedFieldModel f : clazz.fields()) {
+            if (fieldName.equals(f.name())) {
+                return f.type() == FieldType.BOOLEAN;
+            }
+        }
+        return false;
     }
 
     private static boolean isEntityField(GeneratedClassModel clazz, String fieldName) {
