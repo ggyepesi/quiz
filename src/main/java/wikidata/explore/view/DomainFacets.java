@@ -135,13 +135,7 @@ public final class DomainFacets {
 
     /** true/1/yes → the humanized field name; else "Not <name>". */
     static String booleanBucket(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        String v = value.trim();
-        boolean truthy = v.equalsIgnoreCase("true")
-                || v.equals("1") || v.equalsIgnoreCase("yes");
-        return quiz.FieldLabels.booleanLabel(truthy, fieldName);
+        return quiz.FieldLabels.booleanBucket(value, fieldName);
     }
 
     private static boolean isBooleanField(GeneratedClassModel clazz, String fieldName) {

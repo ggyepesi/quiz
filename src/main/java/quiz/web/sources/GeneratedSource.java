@@ -152,6 +152,7 @@ public class GeneratedSource implements QuizableSource {
     /** Derive facets from the dynamic schema over a sample of the data. */
     private static List<Facet> autoFacets(Collection<? extends Quizable> all) {
         Map<String, Boolean> isRef = new LinkedHashMap<>();
+        Map<String, Boolean> isBool = new LinkedHashMap<>();
         Map<String, Set<String>> distinct = new LinkedHashMap<>();
         int seen = 0;
 
@@ -163,6 +164,7 @@ public class GeneratedSource implements QuizableSource {
                 String name = e.getKey();
                 Object v = e.getValue();
                 isRef.merge(name, hasReference(v), Boolean::logicalOr);
+                isBool.merge(name, v instanceof Boolean, Boolean::logicalAnd);
                 distinct.computeIfAbsent(name, k -> new HashSet<>()).addAll(scalarKeys(v));
             }
             if (++seen >= 300) {
@@ -177,6 +179,10 @@ public class GeneratedSource implements QuizableSource {
             }
             if (Boolean.TRUE.equals(isRef.get(name))) {
                 facets.add(Facet.reference(name, name));
+            } else if (Boolean.TRUE.equals(isBool.get(name))) {
+                // "Won" / "Not won" buckets (a Winners grouping), not true/false.
+                facets.add(Facet.mapped(name, name,
+                        v -> quiz.FieldLabels.booleanBucket(v, name)));
             } else {
                 int d = distinct.getOrDefault(name, Set.of()).size();
                 if (d >= 2 && d <= MAX_BUCKETS) {

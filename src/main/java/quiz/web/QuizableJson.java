@@ -574,7 +574,16 @@ public final class QuizableJson {
         if (value instanceof Map<?, ?> m) {
             return collectionField(ownerType, ownerId, name, m.values());
         }
+        if (value instanceof Boolean flag) {
+            return booleanField(name, flag);
+        }
         return QuizableView.Field.text(name, String.valueOf(value));
+    }
+
+    // A boolean flag reads as a badge: the humanized field name when true,
+    // omitted (null) when false — never "true"/"false".
+    private static QuizableView.Field booleanField(String name, boolean flag) {
+        return flag ? QuizableView.Field.text(name, quiz.FieldLabels.humanize(name)) : null;
     }
 
     // A reference to a first-class dataset entity (its type was stamped, so
@@ -660,6 +669,10 @@ public final class QuizableJson {
 
         if (value instanceof Map<?, ?> m) {
             return collectionField(ownerType, ownerId, name, m.values());
+        }
+
+        if (value instanceof Boolean flag) {
+            return booleanField(name, flag);
         }
 
         return QuizableView.Field.text(name, String.valueOf(value));

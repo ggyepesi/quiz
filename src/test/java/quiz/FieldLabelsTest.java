@@ -17,4 +17,11 @@ class FieldLabelsTest {
         assertEquals("Won", FieldLabels.booleanLabel(true, "won"));
         assertEquals("Not won", FieldLabels.booleanLabel(false, "won"));
     }
+
+    @Test void booleanBucketParsesStringValues() {
+        assertEquals("Won", FieldLabels.booleanBucket("true", "won"));
+        assertEquals("Won", FieldLabels.booleanBucket("1", "won"));
+        assertEquals("Not won", FieldLabels.booleanBucket("false", "won"));
+        assertEquals(null, FieldLabels.booleanBucket("  ", "won"));
+    }
 }

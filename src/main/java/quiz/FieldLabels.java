@@ -34,4 +34,20 @@ public final class FieldLabels {
         String name = humanize(fieldName);
         return truthy ? name : "Not " + name.toLowerCase(Locale.ROOT);
     }
+
+    /** true/1/yes → {@link #booleanLabel} truthy; blank → null; else falsey. */
+    public static String booleanBucket(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return booleanLabel(isTruthy(value), fieldName);
+    }
+
+    public static boolean isTruthy(String value) {
+        if (value == null) {
+            return false;
+        }
+        String v = value.trim();
+        return v.equalsIgnoreCase("true") || v.equals("1") || v.equalsIgnoreCase("yes");
+    }
 }
