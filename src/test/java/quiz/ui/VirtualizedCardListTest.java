@@ -124,6 +124,29 @@ class VirtualizedCardListTest {
                 "card must be pinned at the viewport top" + ctx);
     }
 
+    @Test
+    void heightEstimateMedianIsStableAndOutlierResistant() {
+        VirtualizedCardList.HeightEstimate est = new VirtualizedCardList.HeightEstimate();
+
+        for (int i = 0; i < 10; i++) {
+            est.addSample(200);            // fill the window with normal heights
+        }
+        assertEquals(200, est.value());
+
+        est.addSample(2000);               // an expanded/outlier card
+        assertEquals(200, est.value(),
+                "an outlier > 2x the estimate must not move it");
+
+        est.addSample(210);                // a near-normal sample is accepted
+        int v = est.value();
+        assertTrue(v >= 195 && v <= 215, "estimate stays near the norm: " + v);
+
+        for (int i = 0; i < 10; i++) {
+            est.addSample(120);            // the window slides to a new norm
+        }
+        assertEquals(120, est.value(), "after refilling with 120s the median is 120");
+    }
+
     /** Runs {@code body} on the EDT (like the real app), so async revalidate/layout
      *  doesn't race the test thread. */
     private static void onEdt(Runnable body) {
