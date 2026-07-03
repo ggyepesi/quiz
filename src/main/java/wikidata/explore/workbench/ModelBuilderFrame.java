@@ -360,16 +360,30 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private String instancesTitle() {
-        if (lastRun == null
-                || lastRun.modelSnapshot() == null
-                || lastRun.modelSnapshot().rootClass() == null) {
+        if (lastRun == null) {
             return "Generated instances";
         }
-        String cls = lastRun.modelSnapshot().rootClass().className();
-        if (cls == null || cls.isBlank()) {
-            return "Generated instances";
+        // Per-class counts, biggest first — the total alone was misleading (it
+        // reads as if every instance is the root class, when it's the whole pool
+        // across classes, e.g. films + nominations + categories).
+        java.util.Map<String, Integer> byType = new java.util.LinkedHashMap<>();
+        if (lastRun.dynamicObjects() != null) {
+            for (WikidataDynamicObject o : lastRun.dynamicObjects()) {
+                if (o == null || o.typeName() == null || o.typeName().isBlank()) {
+                    continue;
+                }
+                byType.merge(o.typeName(), 1, Integer::sum);
+            }
         }
-        return "Generated instances — " + cls + "  (" + lastRun.size() + ")";
+        if (byType.isEmpty()) {
+            return "Generated instances  (" + lastRun.size() + ")";
+        }
+        String breakdown = byType.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .map(e -> e.getKey() + " " + e.getValue())
+                .collect(java.util.stream.Collectors.joining(", "));
+        return "Generated instances — " + breakdown
+                + "  (" + lastRun.size() + " total)";
     }
 
     private void wireActions() {
