@@ -369,7 +369,10 @@ public class ModelBuilderFrame extends JFrame {
         java.util.Map<String, Integer> byType = new java.util.LinkedHashMap<>();
         if (lastRun.dynamicObjects() != null) {
             for (WikidataDynamicObject o : lastRun.dynamicObjects()) {
-                if (o == null || o.typeName() == null || o.typeName().isBlank()) {
+                if (o == null || o.typeName() == null || o.typeName().isBlank()
+                        // untyped sentinel: demoted duplicate statements / bare
+                        // reference children, not first-class class instances.
+                        || "WikidataDynamicObject".equals(o.typeName())) {
                     continue;
                 }
                 byType.merge(o.typeName(), 1, Integer::sum);
