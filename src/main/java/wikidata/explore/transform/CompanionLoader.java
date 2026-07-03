@@ -27,7 +27,10 @@ import java.util.Set;
  */
 public final class CompanionLoader {
 
-    private static final int BATCH = 200;
+    // One query per value (per award category): each is a small, reliable fetch
+    // (~tens–hundreds of winners) and a transient WDQS timeout costs only that one
+    // category, not the whole load (the per-batch catch below skips + logs it).
+    private static final int BATCH = 1;
 
     private CompanionLoader() {}
 
@@ -65,8 +68,8 @@ public final class CompanionLoader {
             String query = buildQuery(batch, companionProperty, roleQualifier);
             int before = out.size();
             String label = "Companion load " + (++idx) + "/" + total + " ("
-                    + companionProperty + "/" + roleQualifier + ", " + batch.size()
-                    + " values)";
+                    + companionProperty + "/" + roleQualifier + ", "
+                    + (batch.size() == 1 ? batch.get(0) : batch.size() + " values") + ")";
             try {
                 for (WikidataBinding row : client.query(query)) {
                     String subj = row.qid("subj");
