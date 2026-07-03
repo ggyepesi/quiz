@@ -70,6 +70,8 @@ public final class CompanionLoader {
             String label = "Companion load " + (++idx) + "/" + total + " ("
                     + companionProperty + "/" + roleQualifier + ", "
                     + (batch.size() == 1 ? batch.get(0) : batch.size() + " values") + ")";
+            GenerationLog.Running running = log == null
+                    ? null : log.subqueryStarted(label, query);
             try {
                 for (WikidataBinding row : client.query(query)) {
                     String subj = row.qid("subj");
@@ -87,13 +89,13 @@ public final class CompanionLoader {
                         out.add(List.of(subj, value, role));
                     }
                 }
-                if (log != null) {
-                    log.subquery(label, query, (out.size() - before) + " companions");
+                if (running != null) {
+                    running.done((out.size() - before) + " companions");
                 }
             } catch (Exception e) {
                 // One bad batch (timeout/502) shouldn't sink the rest.
-                if (log != null) {
-                    log.subqueryFailed(label, query, e.getMessage());
+                if (running != null) {
+                    running.failed(e.getMessage());
                 }
             }
         }

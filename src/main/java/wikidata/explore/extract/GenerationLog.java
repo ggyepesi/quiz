@@ -22,6 +22,31 @@ public interface GenerationLog {
         subquery(title, request, "FAILED: " + (error == null ? "" : error));
     }
 
+    /** A sub-query shown in the log WHILE it runs: {@link #done}/{@link #failed}
+     *  finish it. Returned by {@link #subqueryStarted}. */
+    interface Running {
+        void done(String summary);
+        void failed(String error);
+    }
+
+    /**
+     * Opens a sub-query in the log <em>before</em> it is issued, so the running
+     * query is visible instead of appearing only once it returns. The caller must
+     * finish it via the returned handle. Default: no live node — the handle records
+     * the query atomically on {@link Running#done}/{@link Running#failed}, so sinks
+     * that don't support a running state behave exactly as before.
+     */
+    default Running subqueryStarted(String title, String request) {
+        return new Running() {
+            @Override public void done(String summary) {
+                subquery(title, request, summary);
+            }
+            @Override public void failed(String error) {
+                subqueryFailed(title, request, error);
+            }
+        };
+    }
+
     GenerationLog NOOP = new GenerationLog() {
         @Override public void message(String text) {}
         @Override public void subquery(String t, String r, String s) {}

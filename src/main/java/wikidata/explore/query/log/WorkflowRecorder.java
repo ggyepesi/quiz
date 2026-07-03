@@ -209,6 +209,38 @@ public class WorkflowRecorder {
         fire(true);
     }
 
+    /**
+     * Adds a sub-query node in the RUNNING state and notifies the listener — so
+     * the query is visible in the log <em>while</em> it executes, not only once it
+     * returns. Finish it with {@link #completeSubquery}. Same copy-on-write safety
+     * as {@link #addSubquery}.
+     */
+    public LogNode beginSubquery(
+            LogNode parent, String title, String queryType, String request) {
+
+        if (parent == null) {
+            return null;
+        }
+        LogNode child = new LogNode(LogKind.QUERY, title);
+        child.queryType(queryType);
+        if (request != null && !request.isBlank()) {
+            child.appendRequest(request);
+        }
+        child.start();
+        parent.addStep(child);
+        fire(true);
+        return child;
+    }
+
+    /** Completes a node opened by {@link #beginSubquery} and notifies the listener. */
+    public void completeSubquery(LogNode child, String summary, LogStatus status) {
+        if (child == null) {
+            return;
+        }
+        child.complete(status == null ? LogStatus.OK : status, summary, null);
+        fire(false);
+    }
+
     private void fire(boolean added) {
         if (listener != null) {
             listener.logChanged(root, added);

@@ -221,15 +221,18 @@ public class RuleTreeExtractor {
     private List<WikidataDynamicObject> runRootQuery(
             String title, String sparql, GenerationLog progress, RootQuery body)
             throws Exception {
+        // Open the node BEFORE issuing, so the (often slow) root query shows in the
+        // log while it runs instead of only once it returns.
+        GenerationLog.Running running = progress.subqueryStarted(title, sparql);
         long start = System.currentTimeMillis();
         try {
             List<WikidataDynamicObject> roots = body.run();
-            progress.subquery(title, sparql, roots.size() + " objects");
+            running.done(roots.size() + " objects");
             return roots;
         } catch (Exception e) {
             long ms = System.currentTimeMillis() - start;
             String msg = e.getMessage();
-            progress.subqueryFailed(title, sparql,
+            running.failed(
                     (msg == null || msg.isBlank() ? e.getClass().getSimpleName() : msg)
                             + " (after " + ms + " ms)");
             throw e;
@@ -366,6 +369,12 @@ public class RuleTreeExtractor {
                             childNode, parentQid, limit);
                     long t0 = System.currentTimeMillis();
                     String title = edge.fieldName() + " <- " + parentQid;
+                    // Show the per-parent query while it runs (parents run in
+                    // parallel, so the recorder mutation is serialised on progress).
+                    GenerationLog.Running running;
+                    synchronized (progress) {
+                        running = progress.subqueryStarted(title, sparql);
+                    }
                     try {
                         Map<String, WikidataDynamicObject> kids = new LinkedHashMap<>();
                         for (WikidataBinding b : client.query(sparql)) {
@@ -385,7 +394,7 @@ public class RuleTreeExtractor {
                         // recorder add is serialised here.
                         long ms = System.currentTimeMillis() - t0;
                         synchronized (progress) {
-                            progress.subquery(title, sparql, kids.size() + " (" + ms + " ms)");
+                            running.done(kids.size() + " (" + ms + " ms)");
                         }
                     } catch (InterruptedException ie) {
                         // A real cancellation (the user stopped the run) must abort,
@@ -399,8 +408,7 @@ public class RuleTreeExtractor {
                         // the same log entry, then continue with the rest.
                         long ms = System.currentTimeMillis() - t0;
                         synchronized (progress) {
-                            progress.subqueryFailed(title, sparql,
-                                    ex.getMessage() + " (" + ms + " ms)");
+                            running.failed(ex.getMessage() + " (" + ms + " ms)");
                         }
                     }
                     return null;

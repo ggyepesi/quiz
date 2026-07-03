@@ -58,6 +58,29 @@ public final class LogStep {
         return this;
     }
 
+    /** Opens a child sub-query in the RUNNING state (visible while it executes);
+     *  finish it with {@link #completeSubquery} / {@link #failSubquery}. Returns
+     *  null when logging is disabled, which the finish calls tolerate. */
+    public LogNode beginSubquery(String title, String request) {
+        return recorder != null && node != null
+                ? recorder.beginSubquery(node, title, "SPARQL", request)
+                : null;
+    }
+
+    public void completeSubquery(LogNode child, String summary) {
+        if (recorder != null) {
+            recorder.completeSubquery(child, summary, LogStatus.OK);
+        }
+    }
+
+    public void failSubquery(LogNode child, String error) {
+        if (recorder != null) {
+            recorder.completeSubquery(child,
+                    error == null || error.isBlank() ? "FAILED" : "FAILED: " + error,
+                    LogStatus.FAILED);
+        }
+    }
+
     public LogNode node() {
         return node;
     }

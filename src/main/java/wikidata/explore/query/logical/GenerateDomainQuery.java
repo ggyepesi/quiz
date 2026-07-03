@@ -68,6 +68,19 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 String title, String request, String error) {
                             step.subqueryFailed(title, request, error);
                         }
+                        @Override public Running subqueryStarted(
+                                String title, String request) {
+                            wikidata.explore.query.log.LogNode child =
+                                    step.beginSubquery(title, request);
+                            return new Running() {
+                                @Override public void done(String summary) {
+                                    step.completeSubquery(child, summary);
+                                }
+                                @Override public void failed(String error) {
+                                    step.failSubquery(child, error);
+                                }
+                            };
+                        }
                     };
 
                     GenerationPipeline pipeline = new GenerationPipeline();
