@@ -24,9 +24,14 @@ public class FieldSourceMapping {
     private String qualifierPid = "";
 
     // COMPANION_MATCH only: which of THIS record's fields form the match key. The
-    // outcome is true iff a companion statement (propertyPid[ps=value, qualifierPid
-    // =role]) exists on the record's subject with the same value and role. Subject
-    // is the reify source (not configured here). Blank = derive from the grain.
+    // outcome is true iff a companion statement (subject propertyPid [ps=value,
+    // qualifierPid=role]) exists with the same (subject, value, role). The companion
+    // SUBJECT is the entity in subjectField (blank = the reify "source"); e.g. an
+    // Oscar win is on the NOMINEE (P166 category [P1686 for-work=film]), so
+    // subjectField=nominee, matchValueField=category, matchRoleField=source. The
+    // role is COALESCE(the qualifier, the subject) so a win with no for-work (on the
+    // work itself, e.g. Best Picture) still keys back to the work.
+    private String subjectField = "";
     private String matchValueField = "";
     private String matchRoleField = "";
 
@@ -99,6 +104,9 @@ public class FieldSourceMapping {
     public boolean isQualifier() {
         return qualifierPid != null && qualifierPid.trim().matches("(?i)P\\d+");
     }
+
+    public String subjectField() { return subjectField; }
+    public void subjectField(String v) { subjectField = v == null ? "" : v.trim(); }
 
     public String matchValueField() { return matchValueField; }
     public void matchValueField(String v) { matchValueField = v == null ? "" : v.trim(); }
@@ -185,6 +193,7 @@ public class FieldSourceMapping {
         propertyPid = other.propertyPid;
         propertyLabel = other.propertyLabel;
         qualifierPid = other.qualifierPid;
+        subjectField = other.subjectField;
         matchValueField = other.matchValueField;
         matchRoleField = other.matchRoleField;
         direction = other.direction;

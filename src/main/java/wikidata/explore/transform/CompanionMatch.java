@@ -20,16 +20,17 @@ import java.util.Set;
  * fields (e.g. {@code Nomination.won}): loads the companion-set for each such
  * field ({@link CompanionLoader}) and marks the records ({@link CompanionMatcher}).
  *
- * <p>Subject = the reify source field ({@code "source"}, from ModelStatementReifications).
- * Value/role = the field's configured {@code matchValueField}/{@code matchRoleField};
- * companion property + role qualifier = the field's {@code propertyPid}/{@code qualifierPid}.
- * Generic — nothing award-specific.
+ * <p>Subject = the field's configured {@code subjectField} (blank → the reify
+ * {@code "source"}). Value/role = its {@code matchValueField}/{@code matchRoleField};
+ * companion property + role qualifier = its {@code propertyPid}/{@code qualifierPid}.
+ * The load is anchored on the VALUE set (the distinct {@code matchValueField} values,
+ * e.g. the categories), not the subjects. Generic — nothing award-specific.
  */
 public final class CompanionMatch {
 
-    // The reify stores the statement subject under this field (ReifyConstruct
-    // sourceField in ModelStatementReifications).
-    static final String SUBJECT_FIELD = "source";
+    // Fallback subject when subjectField is unset: the reify source field
+    // (ReifyConstruct sourceField in ModelStatementReifications).
+    static final String DEFAULT_SUBJECT_FIELD = "source";
 
     private CompanionMatch() {}
 
@@ -62,6 +63,8 @@ public final class CompanionMatch {
         FieldSourceMapping m = f.mapping();
         String companionProperty = m.propertyPid();
         String roleQualifier = m.qualifierPid();
+        String subjectField = m.subjectField().isBlank()
+                ? DEFAULT_SUBJECT_FIELD : m.subjectField();
         String valueField = m.matchValueField();
         String roleField = m.matchRoleField();
         String outcomeField = f.name();
@@ -78,15 +81,16 @@ public final class CompanionMatch {
             return;
         }
 
-        // The records of THIS class, and the subjects to query.
+        // The records of THIS class, and the distinct VALUES to anchor the load
+        // (e.g. the categories the nominations are in).
         List<WikidataDynamicObject> records = new ArrayList<>();
-        Set<String> subjects = new LinkedHashSet<>();
+        Set<String> values = new LinkedHashSet<>();
         for (WikidataDynamicObject o : pool) {
             if (o != null && c.className().equals(o.typeName())) {
                 records.add(o);
-                String subj = qid(o.get(SUBJECT_FIELD));
-                if (!subj.isEmpty()) {
-                    subjects.add(subj);
+                String v = qid(o.get(valueField));
+                if (!v.isEmpty()) {
+                    values.add(v);
                 }
             }
         }
@@ -95,9 +99,9 @@ public final class CompanionMatch {
         }
 
         Set<List<String>> companions =
-                CompanionLoader.load(subjects, companionProperty, roleQualifier, client, log);
+                CompanionLoader.load(values, companionProperty, roleQualifier, client, log);
 
-        CompanionMatcher.apply(records, companions, SUBJECT_FIELD,
+        CompanionMatcher.apply(records, companions, subjectField,
                 valueField, roleField, outcomeField, log);
     }
 

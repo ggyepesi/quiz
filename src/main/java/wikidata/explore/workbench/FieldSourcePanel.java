@@ -88,9 +88,11 @@ public class FieldSourcePanel extends JPanel {
     private final JTextField qualifierPidField = new JTextField(6);
     private final JLabel propertyLabel = new JLabel("(not selected)");
 
-    // COMPANION_MATCH: which of THIS record's fields form the match key — the value
-    // (matched to the companion's ps value) and the role (matched to the companion's
-    // role qualifier). Subject is the reify source (not configured).
+    // COMPANION_MATCH: which of THIS record's fields form the match key — the
+    // subject (the entity that carries the companion statement, e.g. nominee), the
+    // value (matched to the companion's ps value), and the role (matched to the
+    // companion's role qualifier). Subject blank = the reify source.
+    private final JComboBox<String> subjectBox = new JComboBox<>();
     private final JComboBox<String> matchValueBox = new JComboBox<>();
     private final JComboBox<String> matchRoleBox = new JComboBox<>();
 
@@ -259,15 +261,19 @@ public class FieldSourcePanel extends JPanel {
     // Populate the COMPANION_MATCH match-field pickers from the owning class's
     // sibling fields, select the saved ones, and enable them only in that mode.
     private void refreshCompanionRows() {
+        subjectBox.removeAllItems();
         matchValueBox.removeAllItems();
         matchRoleBox.removeAllItems();
 
+        // Subject may be a sibling field OR the reify "source" — offer both.
+        subjectBox.addItem("source");
         GeneratedClassModel owner = ownerClass();
         if (owner != null) {
             for (GeneratedFieldModel f : owner.fields()) {
                 if (f == null || f == field) {
                     continue;
                 }
+                subjectBox.addItem(f.name());
                 matchValueBox.addItem(f.name());
                 matchRoleBox.addItem(f.name());
             }
@@ -275,6 +281,8 @@ public class FieldSourcePanel extends JPanel {
 
         if (field != null) {
             FieldSourceMapping m = field.mapping();
+            subjectBox.setSelectedItem(
+                    m.subjectField().isEmpty() ? "source" : m.subjectField());
             if (!m.matchValueField().isEmpty()) {
                 matchValueBox.setSelectedItem(m.matchValueField());
             }
@@ -285,6 +293,7 @@ public class FieldSourcePanel extends JPanel {
 
         boolean companion =
                 productionBox.getSelectedItem() == FieldProductionKind.COMPANION_MATCH;
+        subjectBox.setEnabled(companion);
         matchValueBox.setEnabled(companion);
         matchRoleBox.setEnabled(companion);
     }
@@ -362,15 +371,21 @@ public class FieldSourcePanel extends JPanel {
         addRow(form, c, y++, "Qualifier of:", qualifierPidField);
 
         // COMPANION_MATCH rows: Property = companion property (e.g. P166 award
-        // received), Qualifier of = the companion role qualifier (e.g. P1346 winner);
-        // these two pick which of this record's fields to match on.
+        // received), Qualifier of = the companion role qualifier (e.g. P1686 for
+        // work); Subject/value/role pick which of this record's fields to match on.
+        subjectBox.setToolTipText("<html>Companion match: this record's field "
+                + "holding the entity that <b>carries</b> the companion statement "
+                + "(e.g. <b>nominee</b> — the Oscar win P166 is on the winner). "
+                + "<b>source</b> = the reify subject.</html>");
+        addRow(form, c, y++, "Subject field:", subjectBox);
         matchValueBox.setToolTipText("<html>Companion match: this record's field "
                 + "whose value must equal the companion statement's value "
                 + "(e.g. <b>category</b>).</html>");
         addRow(form, c, y++, "Match value field:", matchValueBox);
         matchRoleBox.setToolTipText("<html>Companion match: this record's field "
-                + "matched against the companion's role qualifier "
-                + "(e.g. <b>nominee</b> vs the winner).</html>");
+                + "matched against the companion's role qualifier — or the "
+                + "companion subject when that qualifier is absent "
+                + "(e.g. <b>source</b> vs the win's for-work/film).</html>");
         addRow(form, c, y++, "Match role field:", matchRoleBox);
 
         directionBox.setToolTipText("<html>Where the property lives:<br>"
@@ -458,8 +473,12 @@ public class FieldSourcePanel extends JPanel {
         m.propertyPid(propertyPidField.getText());
         m.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
         if (productionBox.getSelectedItem() == FieldProductionKind.COMPANION_MATCH) {
+            Object s = subjectBox.getSelectedItem();
             Object v = matchValueBox.getSelectedItem();
             Object r = matchRoleBox.getSelectedItem();
+            // "source" is the default subject — store blank so it stays the fallback.
+            String subj = s == null ? "" : s.toString();
+            m.subjectField("source".equals(subj) ? "" : subj);
             m.matchValueField(v == null ? "" : v.toString());
             m.matchRoleField(r == null ? "" : r.toString());
         }
