@@ -164,6 +164,48 @@ class OscarReifyTest {
         assertEquals(2, created.size(), "two independent nominations stay separate");
     }
 
+    @Test void personBackReferenceCollapsesIntoTheWorkNomination() {
+        // Katharine Hepburn case: the nominee (person) ALSO carries a P1411
+        // "nominated for" statement (pq:P1686 = the film) — a back-reference copy of
+        // the film's own nomination. Both survive canonicalize-by-list (both name a
+        // nominee), identical on (category, year, forWork, nominee) but with
+        // different source. They must collapse to ONE, keeping the WORK-anchored copy
+        // (source == forWork), not the person's self-copy.
+        WikidataDynamicObject film = obj("Q736969", "The Lion in Winter", "Oscarnominations");
+        WikidataDynamicObject hepburn = obj("Q56016", "Katharine Hepburn", "Oscarnominations");
+        WikidataDynamicObject bestActress = obj("Q103618", "Best Actress", "Award");
+
+        // Film side: nominee = Hepburn; no forWork (the role falls back to the film).
+        WikidataDynamicObject filmStmt = obj("st-film", "Best Actress", "Statement");
+        filmStmt.put("category", bestActress);
+        filmStmt.merge("nominee", hepburn);
+        filmStmt.put("year", 1968);
+        film.put("noms", List.of(filmStmt));
+
+        // Person side: same nominee (herself) + forWork = the film (real P1686).
+        WikidataDynamicObject personStmt = obj("st-person", "Best Actress", "Statement");
+        personStmt.put("category", bestActress);
+        personStmt.merge("nominee", hepburn);
+        personStmt.put("forWork", film);
+        personStmt.put("year", 1968);
+        hepburn.put("noms", List.of(personStmt));
+
+        ReifyConstruct reify = new ReifyConstruct(
+                "Oscarnominations", "noms", "Nomination", "source", "value", true,
+                List.of(new ReifyConstruct.Role("forWork", "forWork", true)),
+                List.of("category", "year", "forWork", "nominee"), "nominee");
+
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(film, hepburn));
+        List<WikidataDynamicObject> created =
+                new TransformEngine().applyReify(pool, reify);
+
+        assertEquals(1, created.size(), "person back-reference collapses into the work's");
+        assertSame(film, created.get(0).get("source"), "the kept copy is work-anchored");
+        assertSame(film, created.get(0).get("forWork"));
+        assertEquals(1, pool.stream().filter(o -> "Nomination".equals(o.typeName())).count(),
+                "only the work-anchored copy is served");
+    }
+
     @Test void workLessNominationMakesSubjectTheNominee() {
         // Honorary award to a person: no work-side statement, no forWork, no nominee
         // qualifier → the subject is the sole nominee.
