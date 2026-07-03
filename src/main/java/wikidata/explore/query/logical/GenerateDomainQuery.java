@@ -147,10 +147,18 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // statements of Oscarnominations, with year/forWork/nominee
                     // qualifier fields): load the qualifiers + reify into records.
                     // The registry has no add, so carry the new records alongside.
+                    // Split enrich (network) / reify (pure) so we can cache the
+                    // ENRICHED pool for an offline Remap re-transform. Deep-copy it
+                    // BEFORE reify mutates the statements in place.
+                    List<WikidataDynamicObject> reifyPool =
+                            new ArrayList<>(shared.values());
+                    wikidata.explore.transform.ModelStatementReifications.enrich(
+                            project, reifyPool, context.sparql(), genLog);
+                    List<WikidataDynamicObject> enrichedSnapshot =
+                            wikidata.explore.transform.PoolCopy.deepCopy(shared.values());
                     List<WikidataDynamicObject> reified =
-                            wikidata.explore.transform.ModelStatementReifications.apply(
-                                    project, new ArrayList<>(shared.values()),
-                                    context.sparql(), genLog);
+                            wikidata.explore.transform.ModelStatementReifications.reify(
+                                    project, reifyPool, genLog);
                     allRoots.addAll(reified);
 
                     // Enforce per-field allowedQids (the query layer doesn't): e.g.
@@ -175,11 +183,14 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             project, reified, genLog);
 
                     // Companion-match (production = COMPANION_MATCH) boolean fields
-                    // (e.g. Nomination.won): load each field's companion statements
-                    // (P166/P1346 wins) for the reified subjects and mark matches.
-                    // Runs before materialize so the flag is on the atom when typed.
-                    wikidata.explore.transform.CompanionMatch.apply(
-                            project, reified, context.sparql(), genLog);
+                    // (e.g. Nomination.won). Load the sets (network), then match
+                    // (pure) — caching the sets so a Remap re-matches offline.
+                    java.util.Map<String, java.util.Set<java.util.List<String>>>
+                            companionSets =
+                            wikidata.explore.transform.CompanionMatch.loadSets(
+                                    project, reified, context.sparql(), genLog);
+                    wikidata.explore.transform.CompanionMatch.applyWithSets(
+                            project, reified, companionSets, genLog);
 
                     // ONE shared mapper over ALL roots: each QID -> one typed
                     // instance, and cross-class references resolve to those same
@@ -195,7 +206,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     step.summary(pool.size() + " objects across "
                             + classesRun + " class(es)");
                     return new GenerationRun(
-                            project, 0, rootPlan, pool, runtime, allInstances);
+                            project, 0, rootPlan, pool, runtime, allInstances,
+                            new GenerationRun.RemapState(enrichedSnapshot, companionSets));
                 });
     }
 

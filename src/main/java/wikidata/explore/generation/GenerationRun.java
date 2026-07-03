@@ -8,6 +8,8 @@ import wikidata.explore.rule.RuleNode;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Everything one generation produced, end to end: the model snapshot it
@@ -22,7 +24,24 @@ public record GenerationRun(
         RuleNode plan,
         List<WikidataDynamicObject> dynamicObjects,
         GeneratedQuizableRuntime runtime,
-        List<Quizable> instances) {
+        List<Quizable> instances,
+        RemapState remapState) {
+
+    /** Back-compat: a run with no cached transform inputs (remap = display-only). */
+    public GenerationRun(GeneratedProjectModel modelSnapshot, int depth, RuleNode plan,
+                         List<WikidataDynamicObject> dynamicObjects,
+                         GeneratedQuizableRuntime runtime, List<Quizable> instances) {
+        this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, null);
+    }
+
+    /**
+     * The cached inputs a domain Remap re-transforms offline: the ENRICHED pool
+     * (post qualifier-load, pre-reify — a deep copy, since the transforms mutate)
+     * and the companion-match sets (so `won` re-computes without re-fetching P166).
+     */
+    public record RemapState(
+            List<WikidataDynamicObject> enrichedPool,
+            Map<String, Set<List<String>>> companionSets) {}
 
     public int size() {
         return instances == null ? 0 : instances.size();

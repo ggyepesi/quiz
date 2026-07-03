@@ -232,8 +232,14 @@ public class GenerationPipeline {
         RuleNode plan = plan(snapshot);
         GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
 
+        GenerationRun.RemapState rs = previous.remapState();
+        if (rs != null && rs.enrichedPool() != null && !rs.enrichedPool().isEmpty()) {
+            return retransform(previous, snapshot, plan, runtime, rs);
+        }
+
+        // No cached transform inputs (e.g. a single-class run): display-only remap.
         // Re-apply canonicalization so a CanonicalSpec edited since the last
-        // generation updates the pool's displayNames on a remap (no re-extract).
+        // generation updates the pool's displayNames without a re-extract.
         wikidata.explore.transform.Canonicalization.apply(
                 snapshot, previous.dynamicObjects(), null);
 
@@ -241,12 +247,40 @@ public class GenerationPipeline {
                 materialize(runtime, previous.dynamicObjects());
 
         return new GenerationRun(
-                snapshot,
-                previous.depth(),
-                plan,
-                previous.dynamicObjects(),
-                runtime,
-                instances);
+                snapshot, previous.depth(), plan,
+                previous.dynamicObjects(), runtime, instances, rs);
+    }
+
+    /**
+     * Offline re-transform: run the PURE transforms (reify → restrictions →
+     * inverts → canonicalize → companion-match) on a fresh deep copy of the cached
+     * ENRICHED pool, so model edits to reify/dedup/canonical/facet config take
+     * effect without re-fetching. Only the companion sets are reused (no P166
+     * refetch). Mirrors GenerateDomainQuery's transform block.
+     */
+    private GenerationRun retransform(
+            GenerationRun previous, GeneratedProjectModel snapshot,
+            RuleNode plan, GeneratedQuizableRuntime runtime,
+            GenerationRun.RemapState rs) throws Exception {
+
+        List<WikidataDynamicObject> pool =
+                wikidata.explore.transform.PoolCopy.deepCopy(rs.enrichedPool());
+
+        List<WikidataDynamicObject> reified =
+                wikidata.explore.transform.ModelStatementReifications.reify(
+                        snapshot, pool, null);   // pool.addAll(reified) inside
+
+        wikidata.explore.transform.FieldValueRestrictions.apply(snapshot, pool);
+        wikidata.explore.transform.ModelInverts.apply(snapshot, pool, null);
+        wikidata.explore.transform.Canonicalization.apply(snapshot, pool, null);
+        wikidata.explore.transform.Canonicalization.apply(snapshot, reified, null);
+        wikidata.explore.transform.CompanionMatch.applyWithSets(
+                snapshot, reified, rs.companionSets(), null);
+
+        List<Quizable> instances = materialize(runtime, pool);
+
+        return new GenerationRun(
+                snapshot, previous.depth(), plan, pool, runtime, instances, rs);
     }
 
     /**
