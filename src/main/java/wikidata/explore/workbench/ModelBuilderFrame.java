@@ -593,6 +593,13 @@ public class ModelBuilderFrame extends JFrame {
             if (name == null || name.isBlank() || qid == null || qid.isBlank()) {
                 continue;
             }
+            // Only real ENTITIES (pure Q-ids). Reified statement atoms
+            // (Q123-UUID / Q123__Q456) are named by a shared field on purpose
+            // (e.g. a Nomination shows its nominee), so a person with many
+            // nominations would otherwise look like a huge "collision".
+            if (!qid.matches("Q\\d+")) {
+                continue;
+            }
             byName.computeIfAbsent(name, k -> new java.util.LinkedHashSet<>()).add(qid);
         }
         java.util.List<java.util.Map.Entry<String, java.util.LinkedHashSet<String>>> collisions =
@@ -618,9 +625,11 @@ public class ModelBuilderFrame extends JFrame {
             if (shown++ >= cap) {
                 break;
             }
+            int n = e.getValue().size();
+            // Name + count only; no QID dump (that swamped the row). The QIDs are
+            // clickable via the "Name collisions" button.
             rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
-                    e.getKey(), "×" + e.getValue().size(),
-                    String.join("\n", e.getValue())));
+                    e.getKey(), n + " entities share this name", ""));
         }
         if (collisions.size() > cap) {
             rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(

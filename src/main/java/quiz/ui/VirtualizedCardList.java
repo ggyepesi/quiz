@@ -251,8 +251,24 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
         return Math.max(0, Math.min(tops[i], maxScrollY()));
     }
 
+    // The furthest you can scroll. Two needs, whichever is larger:
+    //  - pin ANY card's top to the viewport top (navigation) -> the last card's
+    //    top, tops[size-1];
+    //  - reach the BOTTOM of a last card taller than the viewport (reading) ->
+    //    content height minus one viewport.
+    // Using only the last card's top left a tall last card's bottom unreachable.
     private int maxScrollY() {
-        return items.isEmpty() ? 0 : tops[items.size() - 1];
+        if (items.isEmpty()) {
+            return 0;
+        }
+        int extent = viewport != null ? viewport.getExtentSize().height : 0;
+        int lastTop = tops[items.size() - 1];
+        return Math.max(lastTop, Math.max(0, contentHeight() - extent));
+    }
+
+    // Total laid-out height: the sentinel tops[size] is the bottom of the last card.
+    private int contentHeight() {
+        return items.isEmpty() ? 0 : tops[items.size()];
     }
 
     private int preferredContentHeight() {

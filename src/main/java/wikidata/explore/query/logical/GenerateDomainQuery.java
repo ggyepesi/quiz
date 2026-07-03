@@ -52,7 +52,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
     public GenerationRun execute(QueryContext context) throws Exception {
         return context.step(
                 "Generate domain \"" + project.name() + "\"",
-                "SPARQL",
+                "Domain",   // container node, not a SPARQL query (no "Open in query service")
                 null,
                 Map.of("domain", project.name()),
                 step -> {

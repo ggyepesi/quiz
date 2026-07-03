@@ -58,7 +58,7 @@ public class GenerateInstancesQuery
 
         return context.step(
                 "Extract via SPARQL",
-                "SPARQL",
+                "Extract",   // container node; the real SPARQL is in the child subqueries
                 null,
                 stepParams,
                 step -> {
