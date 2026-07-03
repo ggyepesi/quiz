@@ -1,9 +1,8 @@
 package quiz.transform.app;
 
 import quiz.QuizableGroup;
-import quiz.facet.Facet;
-import quiz.transform.ClassTransformPlan;
 import quiz.transform.View;
+import quiz.transform.ViewSpec;
 import quiz.ui.QuizablePanelView;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
@@ -15,10 +14,9 @@ import java.util.List;
 
 /**
  * Standalone view-layer app over a SAVED domain snapshot (no model builder, no
- * re-fetch): load the instances, apply a {@link View} (filter + project + group),
- * render the result. The view runs on {@code quiz.transform} directly over the
- * {@link WikidataDynamicObject} snapshot (FieldAccess is DynamicFields-aware).
- * Example: Oscar winners per category per year.
+ * re-fetch): load the instances, edit a {@link ViewSpec} on the left
+ * ({@link ViewConfigPanel}), render the grouped result on the right. Views run on
+ * {@code quiz.transform} directly over the {@link WikidataDynamicObject} snapshot.
  */
 public final class DomainViewApp {
 
@@ -30,30 +28,61 @@ public final class DomainViewApp {
 
         List<WikidataDynamicObject> pool =
                 new WikidataDynamicObjectJsonStore().loadAll(snapshot);
+        DomainSchema schema = new DomainSchema(pool);
 
-        // A view over the domain instances: keep the winners, project the fields
-        // we group/show, then group per category, then per year.
-        View winnersView = new View("Oscar winners", WikidataDynamicObject.class)
-                .plan(ClassTransformPlan.keeping(WikidataDynamicObject.class)
-                        .whereFieldEquals("won", Boolean.TRUE))
-                .groupBy(Facet.reference("category"), Facet.field("year"));
-
-        QuizableGroup root = winnersView.render(pool);
-
-        SwingUtilities.invokeLater(() -> show(root, snapshot.getName()));
+        SwingUtilities.invokeLater(() -> show(snapshot.getName(), pool, schema));
     }
 
-    private static void show(QuizableGroup root, String title) {
-        QuizablePanelView view = new QuizablePanelView();
-        view.addQuizable(root);
-        view.createCardsPanel(1);
+    private static void show(String title, List<WikidataDynamicObject> pool,
+                             DomainSchema schema) {
+
+        ViewConfigPanel config = new ViewConfigPanel(schema, defaultSpec(schema));
+
+        JPanel renderHolder = new JPanel(new BorderLayout());
+        config.setOnRender(() -> render(renderHolder, config.buildSpec(), pool));
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, config, renderHolder);
+        split.setResizeWeight(0.34);
 
         JFrame frame = new JFrame("Domain View — " + title);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
-        frame.add(view.getCardsScrollPane(), BorderLayout.CENTER);
-        frame.setSize(1000, 850);
+        frame.add(split, BorderLayout.CENTER);
+        frame.setSize(1300, 850);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+
+        render(renderHolder, config.buildSpec(), pool);
+    }
+
+    private static void render(JPanel holder, ViewSpec spec,
+                               List<WikidataDynamicObject> pool) {
+        View view = spec.build(WikidataDynamicObject.class);
+        QuizableGroup root = view.render(pool);
+
+        QuizablePanelView v = new QuizablePanelView();
+        v.addQuizable(root);
+        v.createCardsPanel(1);
+
+        holder.removeAll();
+        holder.add(v.getCardsScrollPane(), BorderLayout.CENTER);
+        holder.revalidate();
+        holder.repaint();
+    }
+
+    /** A ready-to-run example if the snapshot has a Nomination.won field. */
+    private static ViewSpec defaultSpec(DomainSchema schema) {
+        ViewSpec spec = new ViewSpec();
+        if (schema.types().contains("Nomination")
+                && schema.fields("Nomination").contains("won")) {
+            spec.name = "Oscar winners";
+            spec.memberType = "Nomination";
+            spec.filters.add(new ViewSpec.Filter("won", Boolean.TRUE));
+            spec.grouping.add(new ViewSpec.GroupBy("category", "REFERENCE"));
+            spec.grouping.add(new ViewSpec.GroupBy("year", "VALUE"));
+        } else if (!schema.types().isEmpty()) {
+            spec.memberType = schema.types().get(0);
+        }
+        return spec;
     }
 }
