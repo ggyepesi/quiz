@@ -178,6 +178,19 @@ public class TransformEngine {
                                        hadInverseQual)
                         : c.dedupBy().isEmpty() ? created : dedup(created, c.dedupBy());
 
+        // The SAME nomination can still arrive from both the work's statement and
+        // the nominee's own back-reference — a person's P1411 "nominated for" with
+        // pq:P1686=work (Katharine Hepburn's 12 Best Actress statements, one per
+        // film). Those copies are identical on the dedup key (category, year,
+        // forWork, nominee) but differ in source, and canonicalize-by-list keeps
+        // both. Collapse them, keeping the WORK-anchored copy: the one whose source
+        // equals a role value (source==forWork), not the nominee's self-copy
+        // (source==the list). Uses the final field values, so it's robust to when
+        // the qualifiers were loaded.
+        if (!c.dedupBy().isEmpty()) {
+            result = dedupPreferringWorkAnchored(result, c.dedupBy(), srcField, c.roles());
+        }
+
         // Dedup must remove duplicates from the SERVED set, not merely the returned
         // list. A promoted statement is type-stamped IN PLACE (and is also reachable
         // from its source's list field + the pool), so a dropped duplicate stays
@@ -247,6 +260,51 @@ public class TransformEngine {
             byKey.putIfAbsent(keyOf(o, keyFields), o);
         }
         return new ArrayList<>(byKey.values());
+    }
+
+    /**
+     * Collapse records equal on {@code keyFields}, preferring the WORK-anchored
+     * copy: the one whose {@code srcField} value equals one of its role values
+     * (e.g. source==forWork — the work's own statement) over a nominee's
+     * denormalized back-reference (source==the nominee). Robust to qualifier-load
+     * timing since it reads final field values, not the reify-time inverse flag.
+     */
+    private static List<WikidataDynamicObject> dedupPreferringWorkAnchored(
+            List<WikidataDynamicObject> objs, List<String> keyFields,
+            String srcField, List<ReifyConstruct.Role> roles) {
+        java.util.Map<String, WikidataDynamicObject> byKey =
+                new java.util.LinkedHashMap<>();
+        for (WikidataDynamicObject o : objs) {
+            String k = keyOf(o, keyFields);
+            WikidataDynamicObject cur = byKey.get(k);
+            if (cur == null
+                    || (!workAnchored(cur, srcField, roles)
+                        && workAnchored(o, srcField, roles))) {
+                byKey.put(k, o);
+            }
+        }
+        return new ArrayList<>(byKey.values());
+    }
+
+    // The source is (also) a role value — e.g. source==forWork: the statement sits
+    // on the work, so this is the canonical copy (not a nominee's back-reference).
+    private static boolean workAnchored(
+            WikidataDynamicObject o, String srcField, List<ReifyConstruct.Role> roles) {
+        String src = refQid(o.get(srcField));
+        if (src == null || src.isBlank() || roles == null) {
+            return false;
+        }
+        for (ReifyConstruct.Role r : roles) {
+            if (r != null && r.field() != null && !r.field().isBlank()
+                    && src.equals(refQid(o.get(r.field())))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String refQid(Object v) {
+        return v instanceof WikidataDynamicObject w ? w.qid() : null;
     }
 
     private static String keyOf(WikidataDynamicObject o, List<String> fields) {
