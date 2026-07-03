@@ -63,6 +63,36 @@ class ModelStatementReificationsTest {
                 reify.dedupBy().toString());
     }
 
+    @Test void derivedCompanionMatchFieldIsNotAReifyQualifier() {
+        // `won` is a COMPANION_MATCH flag whose qualifierPid (P1686) is the
+        // companion's role qualifier — NOT a statement qualifier. It must be
+        // excluded from the qualifier load and the dedup key (else it would be
+        // set to P1686 on the person-side copy but null on the work-side, splitting
+        // the two and blocking dedup).
+        GeneratedClassModel oscar = new GeneratedClassModel("Oscarnominations");
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSourceClass("Oscarnominations");
+        nom.instanceMapping().propertyPid("P1411");
+        nom.fields().add(field("category", FieldType.ENTITY, "P1411", ""));
+        nom.fields().add(field("forWork", FieldType.ENTITY, "", "P1686"));
+        GeneratedFieldModel won = field("won", FieldType.BOOLEAN, "P166", "P1686");
+        won.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.COMPANION_MATCH);
+        nom.fields().add(won);
+
+        GeneratedProjectModel p = new GeneratedProjectModel();
+        p.rootClass(oscar);
+        p.addClass(nom);
+
+        List<ModelStatementReifications.Reification> rs =
+                ModelStatementReifications.derive(p);
+        assertEquals(1, rs.size());
+        assertTrue(rs.get(0).load().qualifiers().stream().noneMatch(
+                q -> q.fieldName().equals("won")), "won must not be loaded as a qualifier");
+        assertTrue(!rs.get(0).reify().dedupBy().contains("won"),
+                "won must not be in the dedup key: " + rs.get(0).reify().dedupBy());
+    }
+
     @Test void noReificationWithoutStatementSource() {
         GeneratedClassModel plain = new GeneratedClassModel("Person");
         plain.instanceMapping().propertyPid("P31");

@@ -58,6 +58,16 @@ public final class ModelStatementReifications {
                 if (f == null || f.isNameField()) {
                     continue;
                 }
+                // Derived fields (COMPANION_MATCH flags like `won`, INVERT
+                // reverse-refs) are produced by later passes — NOT statement
+                // qualifiers. `won` carries P1686 as its companion role qualifier,
+                // which would otherwise be mis-loaded as a qualifier value AND put
+                // in the dedup key, splitting the work/person copies at reify time
+                // (won=null vs won=<work>) so they never collapse.
+                if (f.mapping().productionKind()
+                        != wikidata.explore.model.FieldProductionKind.AUTO) {
+                    continue;
+                }
                 if (f.mapping().isQualifier()) {
                     QualifierLoadConfig.Kind kind = kindFor(f.type());
                     boolean multi = f.cardinality() != null
