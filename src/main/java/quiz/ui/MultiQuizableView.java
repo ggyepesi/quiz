@@ -98,7 +98,10 @@ public class MultiQuizableView extends JPanel {
         view.createCardsPanel(Math.max(1, columns));
 
         JPanel body = new JPanel(new BorderLayout(4, 4));
-        body.setBorder(BorderFactory.createTitledBorder(s.title()));
+        // Class name + instance count on the section border, so each class shows
+        // its own total in place instead of only in the window caption.
+        body.setBorder(BorderFactory.createTitledBorder(
+                s.title() + "  (" + s.objects().size() + ")"));
 
         if (!s.objects().isEmpty()) {
             // A per-section search engine in coordinated mode: its own input +

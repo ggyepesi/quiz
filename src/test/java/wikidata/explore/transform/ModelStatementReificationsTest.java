@@ -59,8 +59,12 @@ class ModelStatementReificationsTest {
         // the ENTITY qualifier becomes a subject-fallback role; dedup spans value+quals
         assertTrue(reify.roles().stream().anyMatch(
                 r -> r.field().equals("nominee") && r.fallbackToSource()));
-        assertTrue(reify.dedupBy().containsAll(List.of("category", "year", "nominee")),
+        // Identity = value + entity qualifiers; the DATE qualifier (year) is an
+        // attribute, not part of the key.
+        assertTrue(reify.dedupBy().containsAll(List.of("category", "nominee")),
                 reify.dedupBy().toString());
+        assertTrue(!reify.dedupBy().contains("year"),
+                "year (DATE) must not be in the dedup key: " + reify.dedupBy());
     }
 
     @Test void derivedCompanionMatchFieldIsNotAReifyQualifier() {

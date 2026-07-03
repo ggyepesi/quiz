@@ -74,7 +74,13 @@ public final class ModelStatementReifications {
                             && f.cardinality().isCollection();
                     quals.add(new QualifierLoadConfig.Qualifier(
                             clean(f.mapping().qualifierPid()), f.name(), kind, multi));
-                    dedup.add(f.name());
+                    // A DATE qualifier (the ceremony/event date) is an ATTRIBUTE of
+                    // the statement, not part of its identity — and it's often
+                    // missing on one denormalized copy, which would split otherwise
+                    // identical work/person copies. Keep it as a field, not a key.
+                    if (kind != QualifierLoadConfig.Kind.YEAR) {
+                        dedup.add(f.name());
+                    }
                     if (kind == QualifierLoadConfig.Kind.ENTITY) {
                         if (multi && primaryListField.isEmpty()) {
                             // A multi ENTITY qualifier (the shared-award nominee
