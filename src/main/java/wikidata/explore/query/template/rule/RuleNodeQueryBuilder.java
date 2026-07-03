@@ -248,7 +248,11 @@ public final class RuleNodeQueryBuilder {
         } else {
             appendIncludedFieldPatterns(q, node, innerPatternSkip, !useService);
         }
-        appendInlinedFieldPatterns(q, inlinedFields);
+        // ?root is a bound variable only in the multi-QID / template branch
+        // above (not the single-constant case, which emits wd:Qxxx directly).
+        boolean rootBound = !blankMembership
+                && (isVariable || !node.additionalSourceQids().isEmpty());
+        appendInlinedFieldPatterns(q, inlinedFields, node, rootBound);
         // Skip the label pattern for the empty case — with ?value bound to the
         // empty set it would add nothing, but emitting it invites a full label
         // scan if a planner ignores the empty VALUES.
@@ -576,13 +580,43 @@ public final class RuleNodeQueryBuilder {
 
     private static void appendInlinedFieldPatterns(
             WikidataQueryBuilder q,
-            List<RuleIncludedField> inlinedFields) {
+            List<RuleIncludedField> inlinedFields,
+            RuleNode node,
+            boolean rootBound) {
+
+        // The class membership traverses this predicate/direction from ?value.
+        String memberTriple = node.direction().triplePattern(
+                "?root", "?value", RuleNode.cleanPid(node.propertyPid()));
 
         for (RuleIncludedField field : inlinedFields) {
             String pid = RuleNode.cleanPid(field.propertyPid());
             String valueVar = inlinedValueVar(field);
             String labelVar = inlinedLabelVar(field);
             String pairVar = inlinedPairVar(field);
+
+            // If this inlined field walks the SAME predicate/direction from ?value
+            // as the membership, its values ARE the matched ?root(s): reuse the
+            // already-bound ?root instead of a second self-join over that predicate.
+            // The self-join cross-products (N roots x M targets) per value AND
+            // re-fetches values outside the root set that get restricted back to it
+            // anyway — reuse both restores correctness and is far cheaper (Oscars
+            // P1411 target: ~62s -> ~10s). Same predicate + direction => the field's
+            // object variable is interchangeable with ?root.
+            boolean reuseRoot = rootBound
+                    && !field.hasMembership()
+                    && memberTriple.equals(
+                            field.direction().triplePattern("?value", "?root", pid));
+            if (reuseRoot) {
+                q.rawWhere("""
+                    OPTIONAL {
+                      ?root rdfs:label %s .
+                      FILTER(LANG(%s) = "en")
+                    }
+                    BIND(CONCAT(STR(?root), "§", COALESCE(%s, "")) AS ?%s)
+                    """.formatted(labelVar, labelVar, labelVar, pairVar));
+                continue;
+            }
+
             // ROOT_TO_ITEM: ?value wdt:P ?x_gc ; ITEM_TO_ROOT: ?x_gc wdt:P ?value
             // (incoming, e.g. "episode in"/"facet of" pointing AT this entity).
             String triple = field.direction().triplePattern("?value", valueVar, pid);

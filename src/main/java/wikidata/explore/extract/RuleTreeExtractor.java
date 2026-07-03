@@ -140,14 +140,14 @@ public class RuleTreeExtractor {
 
         if (!inlinedFields.isEmpty()) {
             String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(rootNode);
-            roots = runFieldOptimizedQuery(rootNode, inlinedFields, sparql);
-            progress.subquery("Root query (+" + inlinedFields.size()
-                    + " inlined field" + (inlinedFields.size() == 1 ? "" : "s") + ")",
-                    sparql, roots.size() + " objects");
+            String title = "Root query (+" + inlinedFields.size()
+                    + " inlined field" + (inlinedFields.size() == 1 ? "" : "s") + ")";
+            roots = runRootQuery(title, sparql, progress,
+                    () -> runFieldOptimizedQuery(rootNode, inlinedFields, sparql));
         } else {
             String sparql = RuleNodeQueryBuilder.valuesQuery(rootNode);
-            roots = runValueQuery(rootNode, sparql);
-            progress.subquery("Root query", sparql, roots.size() + " objects");
+            roots = runRootQuery("Root query", sparql, progress,
+                    () -> runValueQuery(rootNode, sparql));
         }
 
         if (childDepth > 0 && !complex.isEmpty()) {
@@ -206,6 +206,33 @@ public class RuleTreeExtractor {
             appendChildPreviewQueries(
                     queries, child, complexEdges(child),
                     remainingDepth - 1, "?each_" + child.itemVar());
+        }
+    }
+
+    @FunctionalInterface
+    private interface RootQuery {
+        List<WikidataDynamicObject> run() throws Exception;
+    }
+
+    // Runs the root query and records it in the log EITHER way: a successful
+    // subquery with its row count, or a subqueryFailed carrying the SPARQL so a
+    // timeout is debuggable from the UI (it used to log only on success, so a
+    // timed-out root query left no query text in the log at all).
+    private List<WikidataDynamicObject> runRootQuery(
+            String title, String sparql, GenerationLog progress, RootQuery body)
+            throws Exception {
+        long start = System.currentTimeMillis();
+        try {
+            List<WikidataDynamicObject> roots = body.run();
+            progress.subquery(title, sparql, roots.size() + " objects");
+            return roots;
+        } catch (Exception e) {
+            long ms = System.currentTimeMillis() - start;
+            String msg = e.getMessage();
+            progress.subqueryFailed(title, sparql,
+                    (msg == null || msg.isBlank() ? e.getClass().getSimpleName() : msg)
+                            + " (after " + ms + " ms)");
+            throw e;
         }
     }
 
