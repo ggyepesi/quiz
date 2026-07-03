@@ -50,6 +50,17 @@ public class ClassTransformPlan<S, T> {
         return this;
     }
 
+    public <R> ClassTransformPlan<S, T> invertCollection(String sourceCollectionPath,
+                                                         Class<R> referencedTargetClass,
+                                                         String referencedTargetCollectionField) {
+        transforms.add(new InvertCollectionTransform<>(
+                sourceCollectionPath,
+                referencedTargetClass,
+                referencedTargetCollectionField
+        ));
+        return this;
+    }
+
     void applyIfMatches(Object source, TransformContext context) {
         if (!sourceClass.isInstance(source)) {
             return;
