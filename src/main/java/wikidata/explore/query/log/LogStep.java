@@ -81,6 +81,23 @@ public final class LogStep {
         }
     }
 
+    /** Opens a child GROUP node (RUNNING) and returns a step bound to it, so
+     *  sub-queries logged on the returned step nest under the group. Finalize with
+     *  {@link #completeGroup}. Returns a disabled step when logging is off. */
+    public LogStep beginGroup(String title) {
+        LogNode g = recorder != null && node != null
+                ? recorder.beginSubquery(node, title, "", null)
+                : null;
+        return g == null ? disabled() : new LogStep(recorder, g);
+    }
+
+    /** Completes THIS step's own node (used to close a group step). */
+    public void completeGroup(String summary) {
+        if (recorder != null && node != null) {
+            recorder.completeSubquery(node, summary, LogStatus.OK);
+        }
+    }
+
     public LogNode node() {
         return node;
     }

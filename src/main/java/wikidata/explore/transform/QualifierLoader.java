@@ -75,22 +75,24 @@ public class QualifierLoader {
         int batchSize = valueAnchored ? VALUE_BATCH : BATCH;
         int total = (anchors.size() + batchSize - 1) / batchSize;
         int idx = 0;
-        for (int from = 0; from < anchors.size(); from += batchSize) {
-            if (Thread.currentThread().isInterrupted()) {
-                if (log != null) {
-                    log.message("Qualifier load cancelled.\n");
+        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
+        // One collapsible group over all the statement+qualifier batches.
+        try (GenerationLog.Group g = sink.group("Qualifier load " + cfg.entityType()
+                + " " + cfg.propertyPid() + " (" + anchors.size() + " "
+                + (valueAnchored ? "values" : "entities") + ")")) {
+            for (int from = 0; from < anchors.size(); from += batchSize) {
+                if (Thread.currentThread().isInterrupted()) {
+                    g.message("Qualifier load cancelled.\n");
+                    break;
                 }
-                break;
+                List<String> batch = new ArrayList<>(
+                        anchors.subList(from, Math.min(from + batchSize, anchors.size())));
+                // A heavy statement+qualifier query can overrun WDQS (HTTP 502 /
+                // timeout); halve-and-retry so one fat batch doesn't sink the rest.
+                loadWithSplit(client, cfg, batch, byQid, valueField, stmtType, created,
+                        g, (++idx) + "/" + total, valueAnchored);
             }
-            List<String> batch = new ArrayList<>(
-                    anchors.subList(from, Math.min(from + batchSize, anchors.size())));
-            // A heavy statement+qualifier query can overrun WDQS (HTTP 502 /
-            // timeout); halve-and-retry so one fat batch doesn't sink the rest.
-            loadWithSplit(client, cfg, batch, byQid, valueField, stmtType, created,
-                    log, (++idx) + "/" + total, valueAnchored);
-        }
-        if (log != null) {
-            log.message("Qualifier load " + cfg.entityType() + " "
+            g.message("Qualifier load " + cfg.entityType() + " "
                     + cfg.propertyPid() + " -> " + created.size() + " "
                     + stmtType + " statements\n");
         }

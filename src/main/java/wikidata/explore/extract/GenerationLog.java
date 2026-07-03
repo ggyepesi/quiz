@@ -47,6 +47,38 @@ public interface GenerationLog {
         };
     }
 
+    /**
+     * A named, collapsible group of sub-entries: sub-queries/messages logged on it
+     * nest under one parent node, so a batched load (Qualifier load 1/8, 2/8, …)
+     * reads as one expandable top-level item instead of N flat rows. Close it
+     * (try-with-resources) to finalize the parent.
+     */
+    interface Group extends GenerationLog, AutoCloseable {
+        @Override void close();
+    }
+
+    /**
+     * Opens a {@link Group} titled {@code title}. Default: no nesting — a
+     * pass-through that logs onto {@code this} and closes as a no-op, so text
+     * sinks and NOOP are unaffected.
+     */
+    default Group group(String title) {
+        GenerationLog self = this;
+        return new Group() {
+            @Override public void message(String t) { self.message(t); }
+            @Override public void subquery(String ti, String r, String s) {
+                self.subquery(ti, r, s);
+            }
+            @Override public void subqueryFailed(String ti, String r, String e) {
+                self.subqueryFailed(ti, r, e);
+            }
+            @Override public Running subqueryStarted(String ti, String r) {
+                return self.subqueryStarted(ti, r);
+            }
+            @Override public void close() {}
+        };
+    }
+
     GenerationLog NOOP = new GenerationLog() {
         @Override public void message(String text) {}
         @Override public void subquery(String t, String r, String s) {}

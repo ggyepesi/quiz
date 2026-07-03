@@ -70,14 +70,33 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         }
                         @Override public Running subqueryStarted(
                                 String title, String request) {
-                            wikidata.explore.query.log.LogNode child =
-                                    step.beginSubquery(title, request);
-                            return new Running() {
-                                @Override public void done(String summary) {
-                                    step.completeSubquery(child, summary);
+                            return running(step, title, request);
+                        }
+                        @Override public Group group(String title) {
+                            wikidata.explore.query.log.LogStep sub =
+                                    step.beginGroup(title);
+                            return new Group() {
+                                private int n = 0;
+                                @Override public void message(String t) {
+                                    context.message(t);
                                 }
-                                @Override public void failed(String error) {
-                                    step.failSubquery(child, error);
+                                @Override public void subquery(
+                                        String ti, String r, String s) {
+                                    sub.subquery(ti, r, s);
+                                    n++;
+                                }
+                                @Override public void subqueryFailed(
+                                        String ti, String r, String e) {
+                                    sub.subqueryFailed(ti, r, e);
+                                    n++;
+                                }
+                                @Override public Running subqueryStarted(
+                                        String ti, String r) {
+                                    n++;
+                                    return running(sub, ti, r);
+                                }
+                                @Override public void close() {
+                                    sub.completeGroup(n + " request(s)");
                                 }
                             };
                         }
@@ -178,6 +197,20 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     return new GenerationRun(
                             project, 0, rootPlan, pool, runtime, allInstances);
                 });
+    }
+
+    // A running sub-query node under {@code step}, finished via the handle.
+    private static GenerationLog.Running running(
+            wikidata.explore.query.log.LogStep step, String title, String request) {
+        wikidata.explore.query.log.LogNode child = step.beginSubquery(title, request);
+        return new GenerationLog.Running() {
+            @Override public void done(String summary) {
+                step.completeSubquery(child, summary);
+            }
+            @Override public void failed(String error) {
+                step.failSubquery(child, error);
+            }
+        };
     }
 
     // Generatable = has something to query: a membership type, extra types, or

@@ -54,54 +54,47 @@ public final class CompanionLoader {
             return out;
         }
 
-        int total = (values.size() + BATCH - 1) / BATCH;
-        int idx = 0;
-        for (int from = 0; from < values.size(); from += BATCH) {
-            if (Thread.currentThread().isInterrupted()) {
-                if (log != null) {
-                    log.message("Companion load cancelled.\n");
+        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
+        // One collapsible group over all per-value batches.
+        try (GenerationLog.Group g = sink.group("Companion load "
+                + companionProperty + "/" + roleQualifier
+                + " (" + values.size() + " values)")) {
+            for (int from = 0; from < values.size(); from += BATCH) {
+                if (Thread.currentThread().isInterrupted()) {
+                    g.message("Companion load cancelled.\n");
+                    break;
                 }
-                break;
-            }
-            List<String> batch = values.subList(
-                    from, Math.min(from + BATCH, values.size()));
-            String query = buildQuery(batch, companionProperty, roleQualifier);
-            int before = out.size();
-            String label = "Companion load " + (++idx) + "/" + total + " ("
-                    + companionProperty + "/" + roleQualifier + ", "
-                    + (batch.size() == 1 ? batch.get(0) : batch.size() + " values") + ")";
-            GenerationLog.Running running = log == null
-                    ? null : log.subqueryStarted(label, query);
-            try {
-                for (WikidataBinding row : client.query(query)) {
-                    String subj = row.qid("subj");
-                    String value = row.qid("value");
-                    String role = row.qid("role");
-                    // COALESCE(role, subject): a companion with no role qualifier
-                    // (the outcome recorded on the value's own subject) keys back
-                    // to the subject.
-                    if (role == null || role.isBlank()) {
-                        role = subj;
+                List<String> batch = values.subList(
+                        from, Math.min(from + BATCH, values.size()));
+                String query = buildQuery(batch, companionProperty, roleQualifier);
+                int before = out.size();
+                String label = batch.size() == 1
+                        ? batch.get(0) : batch.size() + " values";
+                GenerationLog.Running running = g.subqueryStarted(label, query);
+                try {
+                    for (WikidataBinding row : client.query(query)) {
+                        String subj = row.qid("subj");
+                        String value = row.qid("value");
+                        String role = row.qid("role");
+                        // COALESCE(role, subject): a companion with no role
+                        // qualifier (recorded on the value's own subject) keys back
+                        // to the subject.
+                        if (role == null || role.isBlank()) {
+                            role = subj;
+                        }
+                        if (subj != null && !subj.isBlank()
+                                && value != null && !value.isBlank()
+                                && role != null && !role.isBlank()) {
+                            out.add(List.of(subj, value, role));
+                        }
                     }
-                    if (subj != null && !subj.isBlank()
-                            && value != null && !value.isBlank()
-                            && role != null && !role.isBlank()) {
-                        out.add(List.of(subj, value, role));
-                    }
-                }
-                if (running != null) {
                     running.done((out.size() - before) + " companions");
-                }
-            } catch (Exception e) {
-                // One bad batch (timeout/502) shouldn't sink the rest.
-                if (running != null) {
+                } catch (Exception e) {
+                    // One bad batch (timeout/502) shouldn't sink the rest.
                     running.failed(e.getMessage());
                 }
             }
-        }
-
-        if (log != null) {
-            log.message("Companion load " + companionProperty + "/" + roleQualifier
+            g.message("Companion load " + companionProperty + "/" + roleQualifier
                     + " -> " + out.size() + " (subject,value,role) tuples\n");
         }
         return out;
