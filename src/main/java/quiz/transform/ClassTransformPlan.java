@@ -15,9 +15,25 @@ public class ClassTransformPlan<S, T> {
     // inverts / grouping) — e.g. keep only winners (won == true).
     private final List<Predicate<S>> filters = new ArrayList<>();
 
+    // Identity/filter mode: the source IS the member (no projection), so filtered
+    // instances keep their real display name + references — for filter-only views.
+    private final boolean identity;
+
     public ClassTransformPlan(Class<S> sourceClass, Class<T> targetClass) {
+        this(sourceClass, targetClass, false);
+    }
+
+    private ClassTransformPlan(Class<S> sourceClass, Class<T> targetClass,
+                               boolean identity) {
         this.sourceClass = sourceClass;
         this.targetClass = targetClass;
+        this.identity = identity;
+    }
+
+    /** A filter-only plan: matching sources are kept AS-IS as the members (no new
+     *  target object), preserving their display name and references. */
+    public static <X> ClassTransformPlan<X, X> keeping(Class<X> cls) {
+        return new ClassTransformPlan<>(cls, cls, true);
     }
 
     /** Keep only sources matching {@code predicate}. */
@@ -74,6 +90,12 @@ public class ClassTransformPlan<S, T> {
             if (!filter.test(s)) {
                 return;
             }
+        }
+
+        // Filter-only: keep the source itself as the member (no projection).
+        if (identity) {
+            context.register(s, targetClass);
+            return;
         }
 
         T target = context.getOrCreate(s, targetClass);

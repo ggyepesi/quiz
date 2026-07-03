@@ -26,6 +26,16 @@ public class TransformContext {
         return created;
     }
 
+    /** Register {@code source} as its own target of {@code targetClass} (identity /
+     *  filter-only plans) — the member is the source itself, not a projection. */
+    public void register(Object source, Class<?> targetClass) {
+        if (source == null || sourceToTarget.containsKey(source)) {
+            return;
+        }
+        sourceToTarget.put(source, source);
+        targetsByClass.computeIfAbsent(targetClass, k -> new ArrayList<>()).add(source);
+    }
+
     public <T> List<T> targets(Class<T> targetClass) {
         return targetsByClass.getOrDefault(targetClass, List.of())
                              .stream()

@@ -1,9 +1,9 @@
 package quiz.transform.app;
 
-import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.facet.Facet;
-import quiz.facet.FacetGrouper;
+import quiz.transform.ClassTransformPlan;
+import quiz.transform.View;
 import quiz.ui.QuizablePanelView;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
@@ -15,11 +15,10 @@ import java.util.List;
 
 /**
  * Standalone view-layer app over a SAVED domain snapshot (no model builder, no
- * re-fetch): load the instances, apply a view (filter + group), render the
- * result. First slice — a hard-coded "Oscar winners per category per year" view
- * working directly on the {@link WikidataDynamicObject} snapshot; the transform
- * plumbing ({@code quiz.transform}) plugs in next once FieldAccess is
- * DynamicFields-aware.
+ * re-fetch): load the instances, apply a {@link View} (filter + project + group),
+ * render the result. The view runs on {@code quiz.transform} directly over the
+ * {@link WikidataDynamicObject} snapshot (FieldAccess is DynamicFields-aware).
+ * Example: Oscar winners per category per year.
  */
 public final class DomainViewApp {
 
@@ -32,19 +31,14 @@ public final class DomainViewApp {
         List<WikidataDynamicObject> pool =
                 new WikidataDynamicObjectJsonStore().loadAll(snapshot);
 
-        // View: keep the winners (Nomination.won == true) …
-        List<Quizable> winners = pool.stream()
-                .filter(o -> o != null
-                        && "Nomination".equals(o.typeName())
-                        && Boolean.TRUE.equals(o.get("won")))
-                .map(o -> (Quizable) o)
-                .toList();
+        // A view over the domain instances: keep the winners, project the fields
+        // we group/show, then group per category, then per year.
+        View winnersView = new View("Oscar winners", WikidataDynamicObject.class)
+                .plan(ClassTransformPlan.keeping(WikidataDynamicObject.class)
+                        .whereFieldEquals("won", Boolean.TRUE))
+                .groupBy(Facet.reference("category"), Facet.field("year"));
 
-        // … then group per category, then per year.
-        QuizableGroup root = FacetGrouper.groupNested(
-                "Oscar winners  (" + winners.size() + ")",
-                winners,
-                List.of(Facet.reference("category"), Facet.field("year")));
+        QuizableGroup root = winnersView.render(pool);
 
         SwingUtilities.invokeLater(() -> show(root, snapshot.getName()));
     }
