@@ -191,6 +191,21 @@ public class TransformEngine {
             result = dedupPreferringWorkAnchored(result, c.dedupBy(), srcField, c.roles());
         }
 
+        // TEMP diagnostic: why doesn't the reify collapse the work/person copies?
+        if (c.promote()) {
+            java.util.Set<String> ks = new java.util.HashSet<>();
+            for (WikidataDynamicObject o : created) {
+                ks.add(keyOf(o, c.dedupBy()));
+            }
+            WikidataDynamicObject s = created.isEmpty() ? null : created.get(0);
+            System.out.println("[reify " + c.targetType() + "] created=" + created.size()
+                    + " result=" + result.size()
+                    + " canonByList=" + c.canonicalizesByList()
+                    + " distinctKeys=" + ks.size()
+                    + " dedupBy=" + c.dedupBy()
+                    + (s == null ? "" : " sampleKey='" + keyOf(s, c.dedupBy()) + "'"));
+        }
+
         // Dedup must remove duplicates from the SERVED set, not merely the returned
         // list. A promoted statement is type-stamped IN PLACE (and is also reachable
         // from its source's list field + the pool), so a dropped duplicate stays
