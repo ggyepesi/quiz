@@ -1,0 +1,58 @@
+package quiz.transform;
+
+import quiz.QuizableAdapter;
+
+import java.lang.reflect.Constructor;
+import java.util.*;
+
+public class TransformContext {
+
+    private final Map<Object, Object> sourceToTarget = new IdentityHashMap<>();
+    private final Map<Class<?>, List<Object>> targetsByClass = new LinkedHashMap<>();
+
+    public <T> T getOrCreate(Object source, Class<T> targetClass) {
+        if (source == null) {
+            return null;
+        }
+
+        Object existing = sourceToTarget.get(source);
+        if (existing != null) {
+            return targetClass.cast(existing);
+        }
+
+        T created = newTargetInstance(targetClass);
+        sourceToTarget.put(source, created);
+        targetsByClass.computeIfAbsent(targetClass, k -> new ArrayList<>()).add(created);
+        return created;
+    }
+
+    public <T> List<T> targets(Class<T> targetClass) {
+        return targetsByClass.getOrDefault(targetClass, List.of())
+                             .stream()
+                             .map(targetClass::cast)
+                             .toList();
+    }
+
+    private static <T> T newTargetInstance(Class<T> cls) {
+        try {
+            if (QuizableAdapter.class.isAssignableFrom(cls)) {
+                @SuppressWarnings("unchecked")
+                Class<? extends QuizableAdapter> qaClass =
+                        (Class<? extends QuizableAdapter>) cls;
+
+                Constructor<? extends QuizableAdapter> ctor =
+                        qaClass.getDeclaredConstructor();
+                ctor.setAccessible(true);
+                return cls.cast(ctor.newInstance());
+            }
+
+            Constructor<T> ctor = cls.getDeclaredConstructor();
+            ctor.setAccessible(true);
+            return ctor.newInstance();
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Target class needs accessible no-arg constructor: " + cls.getName(), e);
+        }
+    }
+}
