@@ -121,4 +121,36 @@ public class WorkflowLogWindow implements LogListener {
         recorder.message(text);
         recorder.finish(QueryStatus.OK, null, null);
     }
+
+    /** One collapsible row of a {@link #structuredEntry}. */
+    public record Row(String title, String summary, String detail) {}
+
+    /**
+     * Adds a single structured entry: a titled root with a short {@code summary}
+     * and one collapsible child {@link Row} per item — instead of one giant text
+     * blob. Keeps long lists (e.g. every colliding QID) off the top level so a
+     * specific entry stays reachable.
+     */
+    public void structuredEntry(String title, String summary, List<Row> rows) {
+        WorkflowRecorder recorder =
+                new WorkflowRecorder(
+                        new LogNode(LogKind.MESSAGE, title == null ? "" : title));
+
+        recorder.setListener(this);
+        recorder.added();
+        recorder.start();
+        LogNode root = recorder.root();
+        if (rows != null) {
+            for (Row r : rows) {
+                if (r == null) {
+                    continue;
+                }
+                recorder.addSubquery(
+                        root, r.title(), "",
+                        r.detail() == null ? "" : r.detail(),
+                        r.summary());
+            }
+        }
+        recorder.finish(QueryStatus.OK, summary, null);
+    }
 }

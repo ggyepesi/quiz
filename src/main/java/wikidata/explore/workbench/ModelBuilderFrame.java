@@ -605,17 +605,34 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         int instances = collisions.stream().mapToInt(e -> e.getValue().size()).sum();
-        StringBuilder sb = new StringBuilder();
-        sb.append("⚠ ").append(collisions.size())
-          .append(" name(s) map to multiple entities (")
-          .append(instances).append(" instances share a name). ")
-          .append("Quiz answers on these are ambiguous — disambiguate or "
-                  + "Exclude types:\n");
+
+        // Structured, collapsible entry — one row per colliding name (name ×count),
+        // biggest first — instead of one blob listing every QID (which buried the
+        // rest of the log). The QIDs themselves are inspectable, clickable, via the
+        // "Name collisions" button; the row detail keeps them collapsed.
+        int cap = 100;
+        java.util.List<wikidata.explore.query.swing.WorkflowLogWindow.Row> rows =
+                new java.util.ArrayList<>();
+        int shown = 0;
         for (var e : collisions) {
-            sb.append("  ").append(e.getKey()).append(" → ")
-              .append(String.join(", ", e.getValue())).append("\n");
+            if (shown++ >= cap) {
+                break;
+            }
+            rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
+                    e.getKey(), "×" + e.getValue().size(),
+                    String.join("\n", e.getValue())));
         }
-        logWindow.info(sb.toString());
+        if (collisions.size() > cap) {
+            rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
+                    "… and " + (collisions.size() - cap) + " more name(s)",
+                    "open \"Name collisions\" to see all", ""));
+        }
+        logWindow.structuredEntry(
+                "⚠ " + collisions.size() + " name collision(s) — "
+                        + instances + " instances share a name",
+                "Ambiguous quiz answers — disambiguate or Exclude types; open "
+                        + "\"Name collisions (" + collisions.size() + ")\" to inspect.",
+                rows);
 
         // Map each generated instance by its QID, so a colliding entry links to
         // the actual entity used in the instances (click through), falling back
