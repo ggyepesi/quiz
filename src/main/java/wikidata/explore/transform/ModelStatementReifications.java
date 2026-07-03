@@ -123,14 +123,40 @@ public final class ModelStatementReifications {
             List<WikidataDynamicObject> pool,
             WikidataSparqlClient client,
             GenerationLog log) {
-        List<WikidataDynamicObject> created = new ArrayList<>();
+        enrich(project, pool, client, log);
+        return reify(project, pool, log);
+    }
+
+    /**
+     * NETWORK stage: load each reification's qualifier values onto the statement
+     * objects in {@code pool}. Split from {@link #reify} so a Remap can re-run the
+     * pure reify on a cached copy of the enriched pool without re-fetching.
+     */
+    public static void enrich(
+            GeneratedProjectModel project,
+            List<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log) {
         if (client == null) {
-            return created;
+            return;
         }
         QualifierLoader loader = new QualifierLoader();
-        TransformEngine engine = new TransformEngine();
         for (Reification r : derive(project)) {
             loader.enrich(pool, r.load(), client, log);
+        }
+    }
+
+    /**
+     * PURE stage: reify the (already enriched) statements into records. No network,
+     * so it can be re-run on a cached enriched pool.
+     */
+    public static List<WikidataDynamicObject> reify(
+            GeneratedProjectModel project,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log) {
+        List<WikidataDynamicObject> created = new ArrayList<>();
+        TransformEngine engine = new TransformEngine();
+        for (Reification r : derive(project)) {
             List<WikidataDynamicObject> records = engine.applyReify(pool, r.reify());
             created.addAll(records);
             if (log != null) {
