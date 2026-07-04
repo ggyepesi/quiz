@@ -41,7 +41,7 @@
     "snapshotPath" : "data/wikidata/oscarnominations/oscarnominations.snapshot.json",
     "types" : [ "OscarNominations", "Category", "Type", "Nomination" ],
     "instanceCount" : 26332,
-    "savedAt" : "2026-07-04T10:07:17.481621",
-    "modelSignature" : "063187e627f839586b3e008a133b58ec6a9d93326bac33931deb41321c303a87"
+    "savedAt" : "2026-07-04T10:28:23.200304",
+    "modelSignature" : "57b792707062e4d6d3deb9694402ace575ccc52b50082c780932a82212b29a09"
   } ]
 }

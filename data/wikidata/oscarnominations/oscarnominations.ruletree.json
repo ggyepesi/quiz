@@ -40,8 +40,8 @@
       "optional" : true,
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
-      "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipPid" : "P31",
+      "membershipQid" : "Q19020"
     } ] ],
     "limit" : 12000,
     "sortFieldName" : "",

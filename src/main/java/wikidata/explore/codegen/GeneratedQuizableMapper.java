@@ -21,6 +21,10 @@ public class GeneratedQuizableMapper {
     private final GeneratedQuizableRuntime runtime;
     private final Map<WikidataDynamicObject, Object> generatedByDynamic =
             new IdentityHashMap<>();
+    // Real entities (Q\d+) are identified by QID: the same entity arriving as
+    // several WDO copies (a root + inline-field references) maps to ONE typed
+    // instance (see mapObject). Statement atoms (Q\d+-<guid>) keep per-atom identity.
+    private final Map<String, Object> generatedByQid = new java.util.HashMap<>();
 
     public GeneratedQuizableMapper(GeneratedQuizableRuntime runtime) {
         this.runtime = runtime;
@@ -29,9 +33,15 @@ public class GeneratedQuizableMapper {
     public List<Quizable> mapRoots(List<WikidataDynamicObject> roots) throws Exception {
         List<Quizable> out = new ArrayList<>();
         if (roots == null) return out;
+        // Distinct instances: two roots that are the same entity (same qid, e.g. a
+        // work + its inline-reference copy) map to ONE instance — add it once.
+        java.util.Set<Object> added =
+                java.util.Collections.newSetFromMap(new IdentityHashMap<>());
         for (WikidataDynamicObject root : roots) {
             Object mapped = mapObject(root);
-            if (mapped instanceof Quizable q) out.add(q);
+            if (mapped instanceof Quizable q && added.add(q)) {
+                out.add(q);
+            }
         }
         return out;
     }
@@ -75,8 +85,26 @@ public class GeneratedQuizableMapper {
             return source;
         }
 
+        // QID identity for real entities: the same entity arriving as several WDO
+        // copies (a root + inline-field references) maps to ONE typed instance —
+        // merging any fields this copy adds. This is what collapses the same
+        // category / nominee referenced from many places instead of duplicating it.
+        String entityQid = source.qid();
+        boolean realEntity = entityQid != null && entityQid.matches("Q\\d+");
+        if (realEntity) {
+            Object byQid = generatedByQid.get(entityQid);
+            if (byQid != null && !(byQid instanceof WikidataDynamicObject)) {
+                generatedByDynamic.put(source, byQid);
+                applyFields(cr, byQid, source, true);   // fill any missing fields
+                return byQid;
+            }
+        }
+
         Object target = cr.generatedClass().getDeclaredConstructor().newInstance();
         generatedByDynamic.put(source, target);
+        if (realEntity) {
+            generatedByQid.put(entityQid, target);
+        }
 
         setIfExists(target, "qid", source.qid());
         setIfExists(target, "wikidataUrl", source.wikidataUrl());
@@ -92,29 +120,7 @@ public class GeneratedQuizableMapper {
                     new quiz.source.WikidataSource(source.qid(), source.wikidataUrl()));
         }
 
-        for (GeneratedFieldModel fieldModel : cr.model().fields()) {
-            if (fieldModel == null || fieldModel.isNameField()) continue;
-
-            String targetFieldName =
-                    GeneratedQuizableSourceGenerator.sanitizeFieldName(fieldModel.name());
-            Field javaField = findField(cr.generatedClass(), targetFieldName);
-            if (javaField == null) continue;
-
-            Object raw = source.get(fieldModel.name());
-            if (raw == null) continue;
-
-            Object mapped = mapFieldValue(fieldModel, raw);
-            if (mapped != null) {
-                javaField.setAccessible(true);
-                try {
-                    javaField.set(target, mapped);
-                } catch (IllegalArgumentException typeMismatch) {
-                    // The extracted value doesn't fit the generated field's type
-                    // (e.g. an "unknown value"/genid for an entity field that
-                    // came through as text). Skip it rather than abort the run.
-                }
-            }
-        }
+        applyFields(cr, target, source, false);
 
         // Canonicalization: a DERIVED class's displayName comes from its spec (a
         // field or template), not the loaded label — so reified atoms show e.g. the
@@ -145,6 +151,42 @@ public class GeneratedQuizableMapper {
         }
 
         return target;
+    }
+
+    /**
+     * Copies {@code source}'s field values into {@code target} per the class model.
+     * With {@code onlyIfNull} it fills only fields not yet set — used to MERGE a
+     * second WDO copy of the same entity into its existing typed instance without
+     * clobbering already-mapped values.
+     */
+    private void applyFields(GeneratedQuizableRuntime.ClassRuntime cr, Object target,
+                             WikidataDynamicObject source, boolean onlyIfNull)
+            throws Exception {
+        for (GeneratedFieldModel fieldModel : cr.model().fields()) {
+            if (fieldModel == null || fieldModel.isNameField()) continue;
+
+            String targetFieldName =
+                    GeneratedQuizableSourceGenerator.sanitizeFieldName(fieldModel.name());
+            Field javaField = findField(cr.generatedClass(), targetFieldName);
+            if (javaField == null) continue;
+            javaField.setAccessible(true);
+
+            if (onlyIfNull && javaField.get(target) != null) continue;
+
+            Object raw = source.get(fieldModel.name());
+            if (raw == null) continue;
+
+            Object mapped = mapFieldValue(fieldModel, raw);
+            if (mapped != null) {
+                try {
+                    javaField.set(target, mapped);
+                } catch (IllegalArgumentException typeMismatch) {
+                    // The extracted value doesn't fit the generated field's type
+                    // (e.g. an "unknown value"/genid for an entity field that
+                    // came through as text). Skip it rather than abort the run.
+                }
+            }
+        }
     }
 
     /** The displayName to force onto a materialized object from its class's
