@@ -139,11 +139,34 @@ public class RuleTreeExtractor {
         List<WikidataDynamicObject> roots;
 
         if (!inlinedFields.isEmpty()) {
+            // Two-phase root load. Phase 1 — a LIGHT membership backbone: sampleCopy
+            // keeps all membership semantics (multi-target QIDs, value filters,
+            // sitelink, exclusions) but drops the included fields, so its query has
+            // no GROUP_CONCAT and reliably returns the COMPLETE member set. Phase 2 —
+            // the heavy field-optimized query enriches those same registry objects
+            // (shared by qid) with the inlined fields in place.
+            //
+            // Splitting them makes the served roots deterministic: membership no
+            // longer rides on the heavy query, which soft-times-out on WDQS and
+            // returns a different partial row set each run (the 11076-vs-11142 drift).
+            RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
+            String backboneSparql = RuleNodeQueryBuilder.valuesQuery(backbone);
+            List<WikidataDynamicObject> members = runRootQuery(
+                    "Root membership (backbone)", backboneSparql, progress,
+                    () -> runValueQuery(backbone, backboneSparql));
+
             String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(rootNode);
-            String title = "Root query (+" + inlinedFields.size()
+            String title = "Root enrichment (+" + inlinedFields.size()
                     + " inlined field" + (inlinedFields.size() == 1 ? "" : "s") + ")";
-            roots = runRootQuery(title, sparql, progress,
+            List<WikidataDynamicObject> enriched = runRootQuery(title, sparql, progress,
                     () -> runFieldOptimizedQuery(rootNode, inlinedFields, sparql));
+
+            // Union by qid (both share registry instances): a member either query
+            // found is a root, so a partial enrichment never drops a member.
+            LinkedHashMap<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
+            for (WikidataDynamicObject o : members) byQid.put(o.qid(), o);
+            for (WikidataDynamicObject o : enriched) byQid.putIfAbsent(o.qid(), o);
+            roots = new ArrayList<>(byQid.values());
         } else {
             String sparql = RuleNodeQueryBuilder.valuesQuery(rootNode);
             roots = runRootQuery("Root query", sparql, progress,
