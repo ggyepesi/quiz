@@ -25,6 +25,16 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     private final FieldSourcePanel fieldSourcePanel =
             new FieldSourcePanel();
 
+    // Statement-reification classes (statement-id identity) get their own panel,
+    // distinct from the qid-identity ClassSourcePanel; a kind toggle switches.
+    private final StatementSourcePanel statementSourcePanel =
+            new StatementSourcePanel();
+    private final JComboBox<String> kindBox =
+            new JComboBox<>(new String[]{"Source class", "Statement class"});
+    private final JPanel kindHeader =
+            new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+    private boolean updatingKind = false;
+
     private final JPanel cardPanel =
             new JPanel(new CardLayout());
 
@@ -69,6 +79,10 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                 projectModel.classes().stream()
                         .map(GeneratedClassModel::className)
                         .toList());
+        statementSourcePanel.sourceClassCandidates(() ->
+                projectModel.classes().stream()
+                        .map(GeneratedClassModel::className)
+                        .toList());
         buildUi();
     }
 
@@ -88,6 +102,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         classSourcePanel.afterChange(this.afterChange);
         fieldSourcePanel.afterChange(this.afterChange);
+        statementSourcePanel.afterChange(this.afterChange);
     }
 
     /** Routes the sub-panels' free-text log (e.g. the class panel's Wikidata API
@@ -152,12 +167,23 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                 (CardLayout) cardPanel.getLayout();
 
         if (selected instanceof GeneratedClassModel c) {
-            classSourcePanel.edit(c);
-            layout.show(cardPanel, "class");
+            updatingKind = true;
+            kindBox.setSelectedIndex(c.reifiesStatements() ? 1 : 0);
+            updatingKind = false;
+            kindHeader.setVisible(true);
+            if (c.reifiesStatements()) {
+                statementSourcePanel.edit(c);
+                layout.show(cardPanel, "statement");
+            } else {
+                classSourcePanel.edit(c);
+                layout.show(cardPanel, "class");
+            }
         } else if (selected instanceof GeneratedFieldModel f) {
+            kindHeader.setVisible(false);
             fieldSourcePanel.edit(f);
             layout.show(cardPanel, "field");
         } else {
+            kindHeader.setVisible(false);
             layout.show(cardPanel, "empty");
         }
 
@@ -192,7 +218,11 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
     public void applyEdits() {
         if (selected instanceof GeneratedClassModel) {
-            classSourcePanel.applyEdits();
+            if (kindBox.getSelectedIndex() == 1) {
+                statementSourcePanel.applyEdits();
+            } else {
+                classSourcePanel.applyEdits();
+            }
         } else if (selected instanceof GeneratedFieldModel) {
             fieldSourcePanel.applyEdits();
         }
@@ -324,8 +354,46 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
     private void buildUi() {
         cardPanel.add(classSourcePanel, "class");
+        cardPanel.add(statementSourcePanel, "statement");
         cardPanel.add(fieldSourcePanel, "field");
         cardPanel.add(new JLabel("Select the class or a field."), "empty");
+
+        // Kind toggle: a class is either a SOURCE class (qid identity, upsert) or a
+        // STATEMENT class (statement-id identity + dedup). Switching converts the
+        // model and swaps the config panel. Hidden unless a class is selected.
+        kindHeader.add(new JLabel("Class kind:"));
+        kindHeader.add(kindBox);
+        kindHeader.setVisible(false);
+        kindBox.addActionListener(e -> {
+            if (updatingKind || !(selected instanceof GeneratedClassModel c)) {
+                return;
+            }
+            CardLayout layout = (CardLayout) cardPanel.getLayout();
+            boolean toStatement = kindBox.getSelectedIndex() == 1;
+            if (toStatement) {
+                // Flush any pending source edits, then seed the statement source
+                // from the domain root so the reify has a "reify from" default.
+                if (!c.reifiesStatements()) {
+                    classSourcePanel.applyEdits();
+                    String seed = projectModel.classes().stream()
+                            .map(GeneratedClassModel::className)
+                            .filter(n -> n != null && !n.isBlank()
+                                    && !n.equals(c.className()))
+                            .findFirst().orElse("");
+                    c.statementSourceClass(seed);
+                }
+                statementSourcePanel.edit(c);
+                layout.show(cardPanel, "statement");
+            } else {
+                if (c.reifiesStatements()) {
+                    statementSourcePanel.applyEdits();
+                    c.statementSourceClass("");
+                }
+                classSourcePanel.edit(c);
+                layout.show(cardPanel, "class");
+            }
+            afterChange.accept(null);
+        });
 
         fieldSourcePanel.setPropertyCache(propertyPanel.propertyCache());
         fieldSourcePanel.setProjectModel(projectModel);
@@ -397,6 +465,10 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         // The helper tabs live in a separate Explorer window (see
         // helperTools()); this panel hosts only the class/field config.
-        add(cardPanel, BorderLayout.CENTER);
+        // The kind toggle sits above the config card (visible for classes).
+        JPanel config = new JPanel(new BorderLayout());
+        config.add(kindHeader, BorderLayout.NORTH);
+        config.add(cardPanel, BorderLayout.CENTER);
+        add(config, BorderLayout.CENTER);
     }
 }
