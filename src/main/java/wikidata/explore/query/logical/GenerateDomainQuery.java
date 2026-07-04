@@ -115,7 +115,6 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // drops it), so the mapper can render "1538 K".
                     pipeline.resolveUnits(project, context.sparql(), genLog);
 
-                    List<WikidataDynamicObject> allRoots = new ArrayList<>();
                     RuleNode rootPlan = null;
                     int classesRun = 0;
 
@@ -133,7 +132,6 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         List<WikidataDynamicObject> roots = pipeline.extract(
                                 context.sparql(), plan, cls.generationDepth(),
                                 genLog, shared);
-                        allRoots.addAll(roots);
                         genLog.message("  -> " + roots.size() + " "
                                 + cls.className() + "\n");
 
@@ -162,7 +160,6 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     List<WikidataDynamicObject> reified =
                             wikidata.explore.transform.ModelStatementReifications.reify(
                                     project, reifyPool, genLog, demoted);
-                    allRoots.addAll(reified);
 
                     // Enforce per-field allowedQids (the query layer doesn't): e.g.
                     // the auto-injected `target` field restricted to the membership's
@@ -206,7 +203,6 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     java.util.Set<WikidataDynamicObject> deadStubs =
                             wikidata.explore.transform.DeadStubPrune.apply(
                                     everything, genLog);
-                    allRoots.removeIf(deadStubs::contains);
 
                     // The served/saved pool: the whole shared pool (every class's
                     // roots + their referenced children) minus demoted reified
@@ -220,28 +216,14 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     pool.addAll(reified);
 
-                    // ONE shared mapper over the SERVED POOL (not the extractor's
-                    // allRoots): each QID -> one typed instance, cross-refs resolve
-                    // to those same instances. Mapping the pool makes the generation
-                    // preview identical to load/serve — otherwise a qid stamped as a
-                    // class root in allRoots but stored untyped in the pool shows at
-                    // generation yet vanishes on reload (the 11142-vs-9261 gap).
+                    // ONE shared mapper over the SERVED POOL: each QID -> one typed
+                    // instance, cross-refs resolve to those same instances. Mapping
+                    // the pool (rather than the extractor's roots) makes the
+                    // generation preview identical to load/serve — otherwise a qid
+                    // stamped as a class root but stored untyped in the pool would
+                    // show at generation yet vanish on reload.
                     List<Quizable> allInstances =
                             pipeline.materialize(runtime, pool);
-
-                    // Log-only (still useful): what the extractor's allRoots reaches
-                    // that the served pool doesn't — EXCLUDING demoted reified
-                    // duplicates (intentionally dropped) so the line shows only
-                    // genuine stamp-loss: qids extracted as a class root yet stored
-                    // untyped in the pool.
-                    List<WikidataDynamicObject> genuineRoots = new ArrayList<>();
-                    for (WikidataDynamicObject o : allRoots) {
-                        if (!demoted.contains(o)) {
-                            genuineRoots.add(o);
-                        }
-                    }
-                    wikidata.explore.transform.PoolCoverageDiagnostic.log(
-                            genuineRoots, pool, genLog);
 
                     step.summary(pool.size() + " objects across "
                             + classesRun + " class(es)");

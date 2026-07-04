@@ -40,8 +40,8 @@
     "ruletreePath" : "data/wikidata/oscarnominations/oscarnominations.ruletree.json",
     "snapshotPath" : "data/wikidata/oscarnominations/oscarnominations.snapshot.json",
     "types" : [ "OscarNominations", "Category", "Type", "Nomination" ],
-    "instanceCount" : 26332,
-    "savedAt" : "2026-07-04T10:28:23.200304",
-    "modelSignature" : "57b792707062e4d6d3deb9694402ace575ccc52b50082c780932a82212b29a09"
+    "instanceCount" : 26340,
+    "savedAt" : "2026-07-04T23:54:45.188188",
+    "modelSignature" : "93436d81857dd0bd95252b177e80a9b37f395904762fd9e8e471bac3cae8a13a"
   } ]
 }

@@ -574,18 +574,6 @@ public class ModelBuilderFrame extends JFrame {
             lastRun = run;
 
             if (run != null) {
-                // TRACE (temporary): distinct `type` values straight from the pool
-                // that gets saved — prints the count in BOTH the generate and load
-                // apps' consoles, below all rendering, to compare 39 vs 32.
-                try {
-                    wikidata.explore.transform.FieldValueDump.dump(
-                            run.dynamicObjects(), "type",
-                            new java.io.File(System.getProperty("java.io.tmpdir"),
-                                    "pool_types.txt"));
-                } catch (Exception traceEx) {
-                    logWindow.info("type trace failed: " + traceEx.getMessage());
-                }
-
                 instancesPanel.accept(run.objectResult());
                 // Do NOT auto-save: generating used to silently overwrite the
                 // project snapshot (a greekmyth run clobbered constellations).
@@ -1669,20 +1657,6 @@ public class ModelBuilderFrame extends JFrame {
                 new WikidataDynamicObjectJsonStore()
                         .save(lastRun.dynamicObjects(), snapshotFile());
                 n = lastRun.dynamicObjects().size();
-
-                // TRACE (temporary): reload the file we just wrote and count its
-                // distinct `type` values — same run, so any drop vs the in-memory
-                // pool's 38 is a pure save/load fidelity loss (no non-determinism,
-                // no stale file). Prints "[field-dump] N ... saved_types.txt".
-                try {
-                    java.util.List<WikidataDynamicObject> reloaded =
-                            new WikidataDynamicObjectJsonStore().loadAll(snapshotFile());
-                    wikidata.explore.transform.FieldValueDump.dumpLost(
-                            lastRun.dynamicObjects(), reloaded, "type",
-                            msg -> { System.out.println(msg); logWindow.info(msg); });
-                } catch (Exception traceEx) {
-                    logWindow.info("saved-type trace failed: " + traceEx.getMessage());
-                }
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');
                 // Register the dataset: model + rule-tree + snapshot saved

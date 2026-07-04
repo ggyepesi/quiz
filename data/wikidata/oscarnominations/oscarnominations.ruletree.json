@@ -27,7 +27,7 @@
       "propertyLabel" : "",
       "kind" : "ENTITY",
       "optional" : true,
-      "collection" : false,
+      "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
       "membershipQid" : ""

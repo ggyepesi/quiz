@@ -38,7 +38,7 @@
       "name" : "type",
       "type" : "ENTITY",
       "entityClassName" : "Type",
-      "cardinality" : "SINGLE",
+      "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
       "filterOperator" : null,
@@ -174,7 +174,7 @@
       "name" : "type",
       "type" : "ENTITY",
       "entityClassName" : "Type",
-      "cardinality" : "SINGLE",
+      "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
       "filterOperator" : null,
@@ -275,7 +275,7 @@
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "className" : "Category",
     "baseClassName" : "",
-    "discriminatorPid" : "",
+    "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "statementSourceClass" : "",
     "generationDepth" : 2,
@@ -306,7 +306,15 @@
     "fields" : [ "java.util.ArrayList", [ ] ],
     "facets" : [ "java.util.ArrayList", [ ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "canonical" : null
+    "canonical" : {
+      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "kind" : "WIKIDATA_ENTITY",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en"
+    }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "className" : "Type",
