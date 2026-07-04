@@ -41,15 +41,44 @@ public final class FieldValueDump {
                                 java.util.function.Consumer<String> log) {
         Map<String, String> b = distinctValues(before, field);
         Map<String, String> a = distinctValues(after, field);
+
+        Map<String, String> afterByQid = new LinkedHashMap<>();
+        for (WikidataDynamicObject o : after) {
+            if (o != null && o.qid() != null) {
+                afterByQid.put(o.qid(), o.getDisplayName());
+            }
+        }
+
         java.util.List<String> lost = new java.util.ArrayList<>();
         for (Map.Entry<String, String> e : b.entrySet()) {
-            if (!a.containsKey(e.getKey())) {
-                lost.add(e.getKey() + " (" + e.getValue() + ")");
+            String q = e.getKey();
+            if (a.containsKey(q)) {
+                continue;
             }
+            // Find a carrier of this value in `before`, and whether the value
+            // and the carrier survived into `after` (by qid), and how the value
+            // is held (scalar vs list) on the carrier.
+            String carrierQid = "?";
+            String held = "?";
+            for (WikidataDynamicObject o : before) {
+                if (o == null) continue;
+                Object tv = o.get(field);
+                if (holdsQid(tv, q)) {
+                    carrierQid = o.qid();
+                    held = (tv instanceof Collection<?>) ? "list" : "scalar";
+                    break;
+                }
+            }
+            boolean valueSaved = afterByQid.containsKey(q);
+            boolean carrierSaved = afterByQid.containsKey(carrierQid);
+            lost.add(q + " (" + e.getValue() + ") [held=" + held
+                    + ", carrier=" + carrierQid
+                    + (carrierSaved ? ",carrier-SAVED" : ",carrier-DROPPED")
+                    + (valueSaved ? ",value-SAVED" : ",value-DROPPED") + "]");
         }
         log.accept("[field-lost] '" + field + "' before=" + b.size()
                 + " after=" + a.size() + " lost=" + lost.size()
-                + ": " + String.join(", ", lost));
+                + ": " + String.join("; ", lost));
     }
 
     public static void dump(Collection<WikidataDynamicObject> pool,
@@ -63,6 +92,18 @@ public final class FieldValueDump {
         Files.write(out.toPath(), lines);
         System.out.println("[field-dump] " + lines.size() + " distinct '" + field
                 + "' value(s) -> " + out.getAbsolutePath());
+    }
+
+    private static boolean holdsQid(Object v, String qid) {
+        if (v instanceof WikidataDynamicObject w) {
+            return qid.equals(w.qid());
+        }
+        if (v instanceof Collection<?> col) {
+            for (Object x : col) {
+                if (holdsQid(x, qid)) return true;
+            }
+        }
+        return false;
     }
 
     private static void collect(Object v, Map<String, String> byQid) {
