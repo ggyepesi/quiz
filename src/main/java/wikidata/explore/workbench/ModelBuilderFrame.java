@@ -1669,6 +1669,20 @@ public class ModelBuilderFrame extends JFrame {
                 new WikidataDynamicObjectJsonStore()
                         .save(lastRun.dynamicObjects(), snapshotFile());
                 n = lastRun.dynamicObjects().size();
+
+                // TRACE (temporary): reload the file we just wrote and count its
+                // distinct `type` values — same run, so any drop vs the in-memory
+                // pool's 38 is a pure save/load fidelity loss (no non-determinism,
+                // no stale file). Prints "[field-dump] N ... saved_types.txt".
+                try {
+                    wikidata.explore.transform.FieldValueDump.dump(
+                            new WikidataDynamicObjectJsonStore().loadAll(snapshotFile()),
+                            "type",
+                            new java.io.File(System.getProperty("java.io.tmpdir"),
+                                    "saved_types.txt"));
+                } catch (Exception traceEx) {
+                    logWindow.info("saved-type trace failed: " + traceEx.getMessage());
+                }
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');
                 // Register the dataset: model + rule-tree + snapshot saved
