@@ -574,6 +574,18 @@ public class ModelBuilderFrame extends JFrame {
             lastRun = run;
 
             if (run != null) {
+                // TRACE (temporary): distinct `type` values straight from the pool
+                // that gets saved — prints the count in BOTH the generate and load
+                // apps' consoles, below all rendering, to compare 39 vs 32.
+                try {
+                    wikidata.explore.transform.FieldValueDump.dump(
+                            run.dynamicObjects(), "type",
+                            new java.io.File(System.getProperty("java.io.tmpdir"),
+                                    "pool_types.txt"));
+                } catch (Exception traceEx) {
+                    logWindow.info("type trace failed: " + traceEx.getMessage());
+                }
+
                 instancesPanel.accept(run.objectResult());
                 // Do NOT auto-save: generating used to silently overwrite the
                 // project snapshot (a greekmyth run clobbered constellations).
