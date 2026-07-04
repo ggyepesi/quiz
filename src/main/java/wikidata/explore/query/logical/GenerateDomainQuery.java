@@ -230,10 +230,18 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             pipeline.materialize(runtime, pool);
 
                     // Log-only (still useful): what the extractor's allRoots reaches
-                    // that the served pool doesn't — e.g. qids extracted as a class
-                    // root but stored untyped, the remaining stamp-loss to chase.
+                    // that the served pool doesn't — EXCLUDING demoted reified
+                    // duplicates (intentionally dropped) so the line shows only
+                    // genuine stamp-loss: qids extracted as a class root yet stored
+                    // untyped in the pool.
+                    List<WikidataDynamicObject> genuineRoots = new ArrayList<>();
+                    for (WikidataDynamicObject o : allRoots) {
+                        if (!demoted.contains(o)) {
+                            genuineRoots.add(o);
+                        }
+                    }
                     wikidata.explore.transform.PoolCoverageDiagnostic.log(
-                            allRoots, pool, genLog);
+                            genuineRoots, pool, genLog);
 
                     step.summary(pool.size() + " objects across "
                             + classesRun + " class(es)");
