@@ -50,6 +50,7 @@ public final class ModelStatementReifications {
 
             String valueField = null;
             String primaryListField = "";
+            List<String> valueQids = new ArrayList<>();
             List<QualifierLoadConfig.Qualifier> quals = new ArrayList<>();
             List<ReifyConstruct.Role> roles = new ArrayList<>();
             List<String> dedup = new ArrayList<>();
@@ -98,6 +99,15 @@ public final class ModelStatementReifications {
                 } else if (valueField == null
                         && stmtProp.equals(clean(f.mapping().propertyPid()))) {
                     valueField = f.name();      // the statement's ps: value
+                    // Its allowed QIDs (e.g. the 59 Oscar categories) pin the
+                    // statement value, so the qualifier load joins on an explicit
+                    // set — tight + deterministic — not a broad P31 type.
+                    for (String q : f.mapping().allowedQids()) {
+                        String cq = clean(q);
+                        if (cq.matches("Q\\d+")) {
+                            valueQids.add(cq);
+                        }
+                    }
                 }
             }
             if (valueField == null) {
@@ -120,7 +130,7 @@ public final class ModelStatementReifications {
             QualifierLoadConfig load = new QualifierLoadConfig(
                     sourceClass, stmtProp, "__" + n.className(), n.className(),
                     valueField, valueTypeQid.matches("Q\\d+") ? valueTypeQid : "",
-                    quals);
+                    quals, valueQids);
             ReifyConstruct reify = new ReifyConstruct(
                     sourceClass, "__" + n.className(), n.className(),
                     "source", "value", true, roles, dedup, primaryListField);

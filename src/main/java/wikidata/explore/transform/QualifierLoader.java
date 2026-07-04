@@ -4,6 +4,7 @@ import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.query.template.sparql.SparqlValues;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -63,12 +64,12 @@ public class QualifierLoader {
         String stmtType = cfg.statementType() == null || cfg.statementType().isBlank()
                 ? cfg.statementField() : cfg.statementType();
 
-        // Anchor on the VALUE set (e.g. the ~58 Oscar categories) when there's a
-        // value-type filter — a handful of queries — instead of the ENTITY set
-        // (every nominee), which re-walks the same P1411 edges over hundreds of
-        // batches. The statements are the same either way; we just drive from the
-        // small end. Rows still carry ?e, so they attach to the pooled entities.
-        boolean valueAnchored = cfg.hasValueType();
+        // With the EXPLICIT allowed values (the categories), drive from the ENTITY
+        // pool and pin those categories in every query — a tight two-sided join
+        // (VALUES ?e + VALUES ?value) that only loads pool entities' statements and
+        // reliably completes. Otherwise anchor on the VALUE set via the broad P31
+        // type (a handful of queries) rather than re-walking every nominee.
+        boolean valueAnchored = cfg.hasValueType() && !cfg.hasValueQids();
         List<String> anchors = valueAnchored
                 ? fetchValueQids(client, cfg.valueTypeQid(), log)
                 : new ArrayList<>(byQid.keySet());
@@ -267,14 +268,10 @@ public class QualifierLoader {
         return out;
     }
 
-    private static String buildQuery(QualifierLoadConfig cfg, List<String> qids,
+    static String buildQuery(QualifierLoadConfig cfg, List<String> qids,
                                      boolean valueAnchored) {
         String pid = cfg.propertyPid();
         String anchorVar = valueAnchored ? "value" : "e";
-        StringBuilder values = new StringBuilder();
-        for (String q : qids) {
-            values.append("wd:").append(q).append(' ');
-        }
 
         StringBuilder sb = new StringBuilder();
         sb.append("SELECT ?e ?st ?value ?valueLabel");
@@ -291,13 +288,19 @@ public class QualifierLoader {
             }
         }
         sb.append(" WHERE {\n");
-        sb.append("  VALUES ?").append(anchorVar).append(" { ")
-          .append(values.toString().trim()).append(" }\n");
+        sb.append("  ").append(SparqlValues.clause(anchorVar, qids)).append("\n");
+        // Explicit allowed values (the categories) pin ?value directly — a tight
+        // two-sided join with the entity batch, and no need for a P31 type filter.
+        if (cfg.hasValueQids()) {
+            sb.append("  ").append(SparqlValues.clause("value", cfg.valueQids()))
+              .append("\n");
+        }
         sb.append("  ?e p:").append(pid).append(" ?st .\n");
         sb.append("  ?st ps:").append(pid).append(" ?value .\n");
-        // Anchored on the entity: filter the value by type. Anchored on the value:
-        // the VALUES already pins the categories, so no type filter is needed.
-        if (!valueAnchored && cfg.hasValueType()) {
+        // Anchored on the entity with only a P31 type (no explicit categories):
+        // filter the value by type. Value-anchored or explicit-category joins
+        // already pin ?value, so no type filter is needed.
+        if (!valueAnchored && cfg.hasValueType() && !cfg.hasValueQids()) {
             sb.append("  ?value wdt:P31 wd:").append(cfg.valueTypeQid()).append(" .\n");
         }
         if (cfg.qualifiers() != null) {

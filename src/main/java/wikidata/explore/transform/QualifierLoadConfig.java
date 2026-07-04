@@ -24,14 +24,23 @@ public record QualifierLoadConfig(
         String statementType,
         String valueField,
         String valueTypeQid,
-        List<Qualifier> qualifiers) {
+        List<Qualifier> qualifiers,
+        List<String> valueQids) {
+
+    /** Back-compat 7-arg form (no explicit value QIDs). */
+    public QualifierLoadConfig(String entityType, String propertyPid,
+            String statementField, String statementType, String valueField,
+            String valueTypeQid, List<Qualifier> qualifiers) {
+        this(entityType, propertyPid, statementField, statementType, valueField,
+                valueTypeQid, qualifiers, List.of());
+    }
 
     /** Back-compat 6-arg form (no value-type filter). */
     public QualifierLoadConfig(String entityType, String propertyPid,
             String statementField, String statementType, String valueField,
             List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                "", qualifiers);
+                "", qualifiers, List.of());
     }
 
     /** When set (e.g. Q19020 "Academy Awards"), keep only statements whose main
@@ -39,6 +48,14 @@ public record QualifierLoadConfig(
      *  every other award a winner also received. */
     public boolean hasValueType() {
         return valueTypeQid != null && valueTypeQid.matches("Q\\d+");
+    }
+
+    /** The EXPLICIT allowed value QIDs (e.g. the 59 Oscar categories). When
+     *  present, the loader pins {@code VALUES ?value { … }} — a tighter, more
+     *  deterministic join than the broad {@code wdt:P31} type filter, and it
+     *  drops statements whose value isn't one of these. */
+    public boolean hasValueQids() {
+        return valueQids != null && !valueQids.isEmpty();
     }
 
     public enum Kind {

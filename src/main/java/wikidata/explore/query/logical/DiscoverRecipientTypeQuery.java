@@ -71,10 +71,6 @@ public class DiscoverRecipientTypeQuery implements Query<TableQueryResult> {
                 null,
                 Map.of("targets", String.valueOf(targets.size())),
                 step -> {
-                    StringBuilder vals = new StringBuilder();
-                    for (String q : targets) {
-                        vals.append("wd:").append(q).append(' ');
-                    }
                     String triple = node.direction()
                             .triplePattern("?target", "?inst", pid);
 
@@ -85,7 +81,8 @@ public class DiscoverRecipientTypeQuery implements Query<TableQueryResult> {
                             + " (GROUP_CONCAT(DISTINCT ?inst; SEPARATOR=\" \") AS ?insts)"
                             + " WHERE {\n"
                             + "  hint:Query hint:optimizer \"None\" .\n"
-                            + "  VALUES ?target { " + vals.toString().trim() + " }\n"
+                            + "  " + wikidata.explore.query.template.sparql.SparqlValues
+                                    .clause("target", targets) + "\n"
                             + "  " + triple + "\n"
                             + "} GROUP BY ?target";
                     step.subquery("instances per target (keep " + perTarget + ")",

@@ -48,10 +48,6 @@ public final class RuleNodeQueryBuilder {
         if (targets.size() < 2 || !pid.matches("P\\d+")) {
             return null;
         }
-        StringBuilder values = new StringBuilder();
-        for (String q : targets) {
-            values.append("wd:").append(q).append(' ');
-        }
         // direction: ITEM_TO_ROOT -> ?inst wdt:pid ?target ; ROOT_TO_ITEM -> reverse
         String triple = node.direction().triplePattern("?target", "?inst", pid);
         String memberFilter = node.hasMembershipFilter()
@@ -67,7 +63,8 @@ public final class RuleNodeQueryBuilder {
         return "SELECT ?value WHERE {\n"
                 + "  { SELECT (SAMPLE(?inst) AS ?value) WHERE {\n"
                 + "      hint:Query hint:optimizer \"None\" .\n"
-                + "      VALUES ?target { " + values.toString().trim() + " }\n"
+                + "      " + wikidata.explore.query.template.sparql.SparqlValues
+                        .clause("target", targets) + "\n"
                 + "      " + triple + "\n"
                 + memberFilter
                 + "    } GROUP BY ?target }\n"
