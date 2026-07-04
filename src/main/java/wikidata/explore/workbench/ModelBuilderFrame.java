@@ -1675,11 +1675,11 @@ public class ModelBuilderFrame extends JFrame {
                 // pool's 38 is a pure save/load fidelity loss (no non-determinism,
                 // no stale file). Prints "[field-dump] N ... saved_types.txt".
                 try {
-                    wikidata.explore.transform.FieldValueDump.dump(
-                            new WikidataDynamicObjectJsonStore().loadAll(snapshotFile()),
-                            "type",
-                            new java.io.File(System.getProperty("java.io.tmpdir"),
-                                    "saved_types.txt"));
+                    java.util.List<WikidataDynamicObject> reloaded =
+                            new WikidataDynamicObjectJsonStore().loadAll(snapshotFile());
+                    wikidata.explore.transform.FieldValueDump.dumpLost(
+                            lastRun.dynamicObjects(), reloaded, "type",
+                            msg -> { System.out.println(msg); logWindow.info(msg); });
                 } catch (Exception traceEx) {
                     logWindow.info("saved-type trace failed: " + traceEx.getMessage());
                 }

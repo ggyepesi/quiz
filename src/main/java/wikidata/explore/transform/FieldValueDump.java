@@ -21,15 +21,40 @@ public final class FieldValueDump {
 
     private FieldValueDump() {}
 
-    public static void dump(Collection<WikidataDynamicObject> pool,
-                            String field, File out) throws IOException {
+    /** field name -> distinct entity values (qid -> displayName). */
+    public static Map<String, String> distinctValues(
+            Collection<WikidataDynamicObject> pool, String field) {
         Map<String, String> byQid = new LinkedHashMap<>();
         for (WikidataDynamicObject o : pool) {
-            if (o == null) {
-                continue;
+            if (o != null) {
+                collect(o.get(field), byQid);
             }
-            collect(o.get(field), byQid);
         }
+        return byQid;
+    }
+
+    /** Log the values present in {@code before} but not {@code after} — the ones
+     *  a save/load round-trip dropped. */
+    public static void dumpLost(Collection<WikidataDynamicObject> before,
+                                Collection<WikidataDynamicObject> after,
+                                String field,
+                                java.util.function.Consumer<String> log) {
+        Map<String, String> b = distinctValues(before, field);
+        Map<String, String> a = distinctValues(after, field);
+        java.util.List<String> lost = new java.util.ArrayList<>();
+        for (Map.Entry<String, String> e : b.entrySet()) {
+            if (!a.containsKey(e.getKey())) {
+                lost.add(e.getKey() + " (" + e.getValue() + ")");
+            }
+        }
+        log.accept("[field-lost] '" + field + "' before=" + b.size()
+                + " after=" + a.size() + " lost=" + lost.size()
+                + ": " + String.join(", ", lost));
+    }
+
+    public static void dump(Collection<WikidataDynamicObject> pool,
+                            String field, File out) throws IOException {
+        Map<String, String> byQid = distinctValues(pool, field);
         java.util.List<String> lines = new java.util.ArrayList<>();
         for (Map.Entry<String, String> e : byQid.entrySet()) {
             lines.add(e.getKey() + "\t" + e.getValue());
