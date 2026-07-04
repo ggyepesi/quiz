@@ -195,6 +195,19 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.transform.CompanionMatch.applyWithSets(
                             project, reified, companionSets, genLog);
 
+                    // Prune dead-stub ghosts (a QID whose page is gone: no label,
+                    // no fields) after all fields are populated but before mapping —
+                    // unlinks them from every ref (e.g. a nominee's `type`) so they
+                    // don't materialize as phantom types and so generation agrees
+                    // with the (deduped, reachability-based) saved snapshot.
+                    List<WikidataDynamicObject> everything =
+                            new ArrayList<>(shared.values());
+                    everything.addAll(reified);
+                    java.util.Set<WikidataDynamicObject> deadStubs =
+                            wikidata.explore.transform.DeadStubPrune.apply(
+                                    everything, genLog);
+                    allRoots.removeIf(deadStubs::contains);
+
                     // ONE shared mapper over ALL roots: each QID -> one typed
                     // instance, and cross-class references resolve to those same
                     // typed instances (no duplicates, no raw cross-refs).
@@ -207,7 +220,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // serve as duplicate untyped cards, e.g. a nominee's own copies).
                     List<WikidataDynamicObject> pool = new ArrayList<>();
                     for (WikidataDynamicObject o : shared.values()) {
-                        if (!demoted.contains(o)) {
+                        if (!demoted.contains(o) && !deadStubs.contains(o)) {
                             pool.add(o);
                         }
                     }
