@@ -225,6 +225,13 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         }
                     }
                     pool.addAll(reified);
+
+                    // Log-only: which distinct field values are reachable while
+                    // mapping but don't survive into the served/saved pool (why a
+                    // generation count can exceed the snapshot count).
+                    wikidata.explore.transform.PoolCoverageDiagnostic.log(
+                            allRoots, pool, genLog);
+
                     step.summary(pool.size() + " objects across "
                             + classesRun + " class(es)");
                     return new GenerationRun(
