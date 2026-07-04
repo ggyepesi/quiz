@@ -46,6 +46,18 @@ public class RuleTreeExtractor {
     private final WikidataSparqlClient client;
     private GenerationLog log = GenerationLog.NOOP;
 
+    // Per-parent child queries that fail (timeout / error) are caught so one
+    // parent doesn't abort the run — but they're COUNTED so a partial extraction
+    // is surfaced loudly, not silent (a swallowed failure = missing children).
+    private final java.util.concurrent.atomic.AtomicInteger childQueryFailures =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /** Child (per-parent edge) queries that failed during this run — a non-zero
+     *  count means the extracted pool is PARTIAL. */
+    public int childQueryFailures() {
+        return childQueryFailures.get();
+    }
+
     public RuleTreeExtractor(WikidataSparqlClient client) {
         this(client, new WikidataObjectRegistry());
     }
@@ -178,6 +190,13 @@ public class RuleTreeExtractor {
                     childDepth, progress);
         } else if (childDepth == 0 && !rootNode.edges().isEmpty()) {
             progress.message("Child depth is 0; child edges were not loaded.\n");
+        }
+
+        if (childQueryFailures.get() > 0) {
+            progress.message("WARNING: " + childQueryFailures.get()
+                    + " child query(ies) FAILED during \"" + rootNode.name()
+                    + "\" extraction — the result is PARTIAL for those parents "
+                    + "(not silently complete). Re-run if completeness matters.\n");
         }
 
         return roots;
@@ -382,6 +401,9 @@ public class RuleTreeExtractor {
         Map<String, Map<String, WikidataDynamicObject>> childrenByParent =
                 new java.util.concurrent.ConcurrentHashMap<>();
 
+        java.util.concurrent.atomic.AtomicInteger edgeFailures =
+                new java.util.concurrent.atomic.AtomicInteger();
+
         ExecutorService pool = Executors.newFixedThreadPool(
                 Math.min(EDGE_PARENT_POOL, Math.max(1, parentQids.size())));
         try {
@@ -399,17 +421,19 @@ public class RuleTreeExtractor {
                         running = progress.subqueryStarted(title, sparql);
                     }
                     try {
-                        Map<String, WikidataDynamicObject> kids = new LinkedHashMap<>();
-                        for (WikidataBinding b : client.query(sparql)) {
-                            String childQid  = b.qid("value");
-                            String childLabel = b.label("value");
-                            if (childQid == null || !childQid.matches("Q\\d+"))
-                                continue;
-                            WikidataDynamicObject child = kids.computeIfAbsent(
-                                    childQid, k -> registry.getOrCreate(childQid, childLabel));
-                            child.type(childNode.name()); // stamp the child class (e.g. "Star")
-                            addValueFilterFields(child, childNode, b);
-                            addIncludedFields(child, childNode, b);
+                        Map<String, WikidataDynamicObject> kids;
+                        String note = "";
+                        try {
+                            kids = queryParentChildren(childNode, sparql);
+                        } catch (InterruptedException ie) {
+                            throw ie;
+                        } catch (Exception firstAttempt) {
+                            // One retry for a transient hiccup (the client already
+                            // retries its classified-transient failures; this covers
+                            // the rest) before giving up on this parent.
+                            Thread.sleep(500);
+                            kids = queryParentChildren(childNode, sparql);
+                            note = " (retry)";
                         }
                         if (!kids.isEmpty()) childrenByParent.put(parentQid, kids);
                         // One structured, collapsible sub-query entry per parent (a
@@ -417,7 +441,7 @@ public class RuleTreeExtractor {
                         // recorder add is serialised here.
                         long ms = System.currentTimeMillis() - t0;
                         synchronized (progress) {
-                            running.done(kids.size() + " (" + ms + " ms)");
+                            running.done(kids.size() + note + " (" + ms + " ms)");
                         }
                     } catch (InterruptedException ie) {
                         // A real cancellation (the user stopped the run) must abort,
@@ -428,7 +452,10 @@ public class RuleTreeExtractor {
                         // One parent timing out / failing must NOT abort the whole
                         // domain run (and must not leave the other parents firing as
                         // orphaned queries). Record it as a FAILED child step under
-                        // the same log entry, then continue with the rest.
+                        // the same log entry, COUNT it (so the partial result is
+                        // surfaced, not silent), then continue with the rest.
+                        edgeFailures.incrementAndGet();
+                        childQueryFailures.incrementAndGet();
                         long ms = System.currentTimeMillis() - t0;
                         synchronized (progress) {
                             running.failed(ex.getMessage() + " (" + ms + " ms)");
@@ -442,7 +469,35 @@ public class RuleTreeExtractor {
             pool.shutdown();
         }
 
+        int failed = edgeFailures.get();
+        if (failed > 0) {
+            progress.message("WARNING: " + failed + " of " + parentQids.size()
+                    + " \"" + edge.fieldName() + "\" child queries FAILED — the pool "
+                    + "is INCOMPLETE for those parents (they contribute no children). "
+                    + "Re-run, reduce depth, or narrow the field.\n");
+        }
+
         return new EdgeResult(edge, childrenByParent);
+    }
+
+    /** Runs one parent's child query and collects the children (stamped + fields).
+     *  Extracted so the caller can retry it once on a transient failure. */
+    private Map<String, WikidataDynamicObject> queryParentChildren(
+            RuleNode childNode, String sparql) throws Exception {
+        Map<String, WikidataDynamicObject> kids = new LinkedHashMap<>();
+        for (WikidataBinding b : client.query(sparql)) {
+            String childQid  = b.qid("value");
+            String childLabel = b.label("value");
+            if (childQid == null || !childQid.matches("Q\\d+")) {
+                continue;
+            }
+            WikidataDynamicObject child = kids.computeIfAbsent(
+                    childQid, k -> registry.getOrCreate(childQid, childLabel));
+            child.type(childNode.name());   // stamp the child class (e.g. "Star")
+            addValueFilterFields(child, childNode, b);
+            addIncludedFields(child, childNode, b);
+        }
+        return kids;
     }
 
     private void applyEdgeResult(
