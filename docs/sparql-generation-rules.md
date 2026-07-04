@@ -164,6 +164,52 @@ Format per rule: **Trigger** (when it applies) · **Rule** (what to do) ·
 
 ---
 
+## R16 — Pin BOTH ends of a join with two `VALUES` (determinism)
+- **Trigger:** a statement/qualifier join anchored on only one side (e.g. only
+  the categories via `VALUES ?value` + a broad predicate `?e p:P1411 ?st`), so the
+  intermediate spans all of Wikidata's P1411 subjects.
+- **Rule:** when both the entity set (a pool batch) and the value set (allowed
+  QIDs, e.g. the 59 Oscar categories) are known, emit `VALUES ?e { … }` AND
+  `VALUES ?value { … }`. The two-sided bound shrinks the intermediate so the query
+  reliably COMPLETES, and it only loads pool entities' statements. Replaces a
+  broad `wdt:P31 <type>` value filter.
+- **Why:** a one-sided heavy join soft-times-out on WDQS and returns a DIFFERENT
+  partial row set each run (the 11076-vs-11142 drift). Bounding both ends removes
+  the non-determinism at the source.
+- **Hook:** `QualifierLoader.buildQuery` (entity-anchored + `cfg.hasValueQids()`);
+  `QualifierLoadConfig.valueQids` plumbed from the value field's `allowedQids`.
+
+## R17 — Split a light membership BACKBONE from heavy field enrichment
+- **Trigger:** the root query fetches membership AND inlined fields
+  (`GROUP_CONCAT` + labels) in one query over a large membership predicate.
+- **Rule:** run a LIGHT membership query first (no fields → no `GROUP_CONCAT`) to
+  get the COMPLETE member set, then enrich the same registry objects in a second
+  query; roots = union by qid so a partial enrichment never drops a member.
+- **Why:** the combined query soft-times-out and drops members; the light query
+  reliably completes, so membership (what's served) no longer rides on the heavy
+  query. `RuleNode.sampleCopy` already yields the fields-stripped backbone.
+- **Hook:** `RuleTreeExtractor.load` inlined-fields branch (backbone + enrichment).
+
+## R18 — A soft-timeout is an HTTP 200 with PARTIAL results (silent)
+- **Trigger:** WDQS hits its deadline mid-stream and returns `200` with a
+  truncated-but-valid result set; the client checks only `statusCode == 200` and
+  parses the body, so it's treated as complete (a hard `500` timeout is retried,
+  not silent). The extractor ALSO swallows per-parent child-query failures
+  (`RuleTreeExtractor` parallel child load) and continues.
+- **Rule:** a valid-JSON partial can't be detected from the body, so DON'T rely on
+  the heavy query completing — apply R16/R17 to make queries light enough to
+  finish. Make failures LOUD: retry (halve-and-retry) and surface an aggregate
+  "N batches/parents failed" so a partial run is visible, not silent.
+- **Hook:** `WikidataSparqlClient` (no truncation check); `RuleTreeExtractor`
+  per-parent `catch … continue`.
+
+### Reusable assembly helper
+`SparqlValues.clause(var, qids)` builds `VALUES ?var { wd:Q… }` (cleans + dedups
+prefix handling) — the one place hand-assembled VALUES clauses go, used by
+`QualifierLoader`, `DiscoverRecipientTypeQuery`, and the stratified sample.
+
+---
+
 ## Cross-reference: the official WDQS optimization guide
 
 [Wikidata:SPARQL_query_service/query_optimization](https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/query_optimization)
