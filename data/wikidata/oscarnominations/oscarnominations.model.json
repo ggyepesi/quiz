@@ -126,7 +126,15 @@
       "rangeSize" : 10
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "canonical" : null
+    "canonical" : {
+      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "kind" : "WIKIDATA_ENTITY",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en"
+    }
   },
   "generationDepth" : 1,
   "classes" : [ "java.util.ArrayList", [ {
@@ -254,7 +262,15 @@
       "rangeSize" : 10
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "canonical" : null
+    "canonical" : {
+      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "kind" : "WIKIDATA_ENTITY",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en"
+    }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "className" : "Category",

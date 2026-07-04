@@ -17,6 +17,18 @@ import java.util.List;
  * extra plumbing.
  */
 public class TransformEngine {
+
+    // Duplicate reified records dropped by dedup/canonicalize and un-stamped: they
+    // must NOT be served (they'd show as duplicate untyped cards). Collected here so
+    // the caller can also EXCLUDE them from the pool, not just leave them un-typed.
+    private final java.util.Set<WikidataDynamicObject> demoted =
+            java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+    /** Reified records dropped as duplicates (un-stamped) — exclude from the pool. */
+    public java.util.Set<WikidataDynamicObject> demoted() {
+        return demoted;
+    }
+
     /**
      * Applies a domain's whole Transform to the pool, returning the objects it
      * created (the reified ones; inverts mutate existing objects in place). The
@@ -201,9 +213,27 @@ public class TransformEngine {
             java.util.Set<WikidataDynamicObject> keep =
                     java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
             keep.addAll(result);
+            java.util.Set<WikidataDynamicObject> dropped =
+                    java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
             for (WikidataDynamicObject o : created) {
                 if (!keep.contains(o)) {
                     o.type(null);   // anonymous referenced child, not a served event
+                    demoted.add(o); // …and drop from the served pool, not just untype
+                    dropped.add(o);
+                }
+            }
+            // Unlink dropped stubs from their source's list field (e.g.
+            // OscarNominations.__Nomination), so they're unreachable and never
+            // serialized/served as duplicate untyped cards.
+            for (WikidataDynamicObject src : sources) {
+                Object lst = src.get(c.listField());
+                if (lst instanceof java.util.Collection<?> col) {
+                    try {
+                        col.removeIf(dropped::contains);
+                    } catch (UnsupportedOperationException immutable) {
+                        src.put(c.listField(), new ArrayList<>(col).stream()
+                                .filter(x -> !dropped.contains(x)).toList());
+                    }
                 }
             }
         }

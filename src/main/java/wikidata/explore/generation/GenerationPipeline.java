@@ -266,9 +266,11 @@ public class GenerationPipeline {
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(rs.enrichedPool());
 
+        java.util.Set<WikidataDynamicObject> demoted =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         List<WikidataDynamicObject> reified =
                 wikidata.explore.transform.ModelStatementReifications.reify(
-                        snapshot, pool, null);   // pool.addAll(reified) inside
+                        snapshot, pool, null, demoted);   // pool.addAll(reified) inside
 
         wikidata.explore.transform.FieldValueRestrictions.apply(snapshot, pool);
         wikidata.explore.transform.ModelInverts.apply(snapshot, pool, null);
@@ -276,6 +278,9 @@ public class GenerationPipeline {
         wikidata.explore.transform.Canonicalization.apply(snapshot, reified, null);
         wikidata.explore.transform.CompanionMatch.applyWithSets(
                 snapshot, reified, rs.companionSets(), null);
+
+        // Drop the dropped-duplicate stubs from the served pool (not just untype).
+        pool.removeIf(demoted::contains);
 
         List<Quizable> instances = materialize(runtime, pool);
 

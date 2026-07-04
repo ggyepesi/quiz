@@ -156,9 +156,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             project, reifyPool, context.sparql(), genLog);
                     List<WikidataDynamicObject> enrichedSnapshot =
                             wikidata.explore.transform.PoolCopy.deepCopy(shared.values());
+                    java.util.Set<WikidataDynamicObject> demoted =
+                            java.util.Collections.newSetFromMap(
+                                    new java.util.IdentityHashMap<>());
                     List<WikidataDynamicObject> reified =
                             wikidata.explore.transform.ModelStatementReifications.reify(
-                                    project, reifyPool, genLog);
+                                    project, reifyPool, genLog, demoted);
                     allRoots.addAll(reified);
 
                     // Enforce per-field allowedQids (the query layer doesn't): e.g.
@@ -199,9 +202,15 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             pipeline.materialize(runtime, allRoots);
 
                     // The snapshot is the whole shared pool (every class's roots +
-                    // their referenced children) plus the reified records.
-                    List<WikidataDynamicObject> pool =
-                            new ArrayList<>(shared.values());
+                    // their referenced children) plus the reified records — but
+                    // NOT the duplicate reified stubs the dedup dropped (they'd
+                    // serve as duplicate untyped cards, e.g. a nominee's own copies).
+                    List<WikidataDynamicObject> pool = new ArrayList<>();
+                    for (WikidataDynamicObject o : shared.values()) {
+                        if (!demoted.contains(o)) {
+                            pool.add(o);
+                        }
+                    }
                     pool.addAll(reified);
                     step.summary(pool.size() + " objects across "
                             + classesRun + " class(es)");

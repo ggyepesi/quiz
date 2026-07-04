@@ -71,6 +71,47 @@ class OscarReifyTest {
         assertEquals(1, demoted, "the dropped duplicate is un-stamped");
     }
 
+    @Test void droppedDuplicatesAreCollectedAndUnlinkedFromSourceList() {
+        WikidataDynamicObject film = obj("Q214013", "21 Grams", "Oscarnominations");
+        WikidataDynamicObject watts = obj("Q132616", "Naomi Watts", "Oscarnominations");
+        WikidataDynamicObject bestActress = obj("Q103618", "Best Actress", "Award");
+
+        WikidataDynamicObject filmStmt = obj("stmt-film", "Best Actress", "Statement");
+        filmStmt.put("category", bestActress);
+        filmStmt.put("nominee", watts);
+        filmStmt.put("year", 2004);
+        film.put("nominations", new ArrayList<>(List.of(filmStmt)));
+
+        // The nominee's own back-reference copy (source = the person).
+        WikidataDynamicObject personStmt = obj("stmt-person", "Best Actress", "Statement");
+        personStmt.put("category", bestActress);
+        personStmt.put("forWork", film);
+        personStmt.put("year", 2004);
+        watts.put("nominations", new ArrayList<>(List.of(personStmt)));
+
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(film, watts));
+        ReifyConstruct reify = new ReifyConstruct(
+                "Oscarnominations", "nominations", "Oscar", "source", "value", true,
+                List.of(new ReifyConstruct.Role("nominee", "nominee", true),
+                        new ReifyConstruct.Role("work", "forWork", true)),
+                List.of("nominee", "category", "work", "year"));
+
+        TransformEngine engine = new TransformEngine();
+        List<WikidataDynamicObject> created = engine.applyReify(pool, reify);
+
+        assertEquals(1, created.size(), "collapses to one");
+        assertEquals(1, engine.demoted().size(), "the person-side copy is demoted");
+
+        // The demoted stub is UNLINKED from its source's list field, so it can't be
+        // served/serialized as a duplicate untyped card.
+        WikidataDynamicObject dropped = engine.demoted().iterator().next();
+        assertSame(personStmt, dropped);
+        Object wattsNoms = watts.get("nominations");
+        assertTrue(wattsNoms instanceof java.util.Collection<?>);
+        assertTrue(!((java.util.Collection<?>) wattsNoms).contains(dropped),
+                "dropped stub unlinked from Naomi Watts' nomination list");
+    }
+
     @Test void workCategoryNominationKeepsFilmAsNominee() {
         // Best Picture: the film is the nominee (no nominee qualifier).
         WikidataDynamicObject film = obj("Q47703", "Chicago", "Oscarnominations");

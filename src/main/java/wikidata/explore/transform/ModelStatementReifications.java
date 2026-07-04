@@ -170,6 +170,20 @@ public final class ModelStatementReifications {
             GeneratedProjectModel project,
             List<WikidataDynamicObject> pool,
             GenerationLog log) {
+        return reify(project, pool, log, null);
+    }
+
+    /**
+     * As {@link #reify(GeneratedProjectModel, List, GenerationLog)}, additionally
+     * collecting into {@code demotedOut} the duplicate records the dedup dropped
+     * (un-stamped) — so the caller can EXCLUDE them from the served pool instead of
+     * leaving them as duplicate untyped cards.
+     */
+    public static List<WikidataDynamicObject> reify(
+            GeneratedProjectModel project,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log,
+            java.util.Set<WikidataDynamicObject> demotedOut) {
         List<WikidataDynamicObject> created = new ArrayList<>();
         TransformEngine engine = new TransformEngine();
         for (Reification r : derive(project)) {
@@ -179,6 +193,9 @@ public final class ModelStatementReifications {
                 log.message("Reify " + r.load().propertyPid() + " statements -> "
                         + r.reify().targetType() + ": " + records.size() + " records\n");
             }
+        }
+        if (demotedOut != null) {
+            demotedOut.addAll(engine.demoted());
         }
         return created;
     }
