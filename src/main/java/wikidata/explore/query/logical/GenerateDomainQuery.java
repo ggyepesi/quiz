@@ -208,16 +208,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     everything, genLog);
                     allRoots.removeIf(deadStubs::contains);
 
-                    // ONE shared mapper over ALL roots: each QID -> one typed
-                    // instance, and cross-class references resolve to those same
-                    // typed instances (no duplicates, no raw cross-refs).
-                    List<Quizable> allInstances =
-                            pipeline.materialize(runtime, allRoots);
-
-                    // The snapshot is the whole shared pool (every class's roots +
-                    // their referenced children) plus the reified records — but
-                    // NOT the duplicate reified stubs the dedup dropped (they'd
-                    // serve as duplicate untyped cards, e.g. a nominee's own copies).
+                    // The served/saved pool: the whole shared pool (every class's
+                    // roots + their referenced children) minus demoted reified
+                    // duplicates and dead stubs, plus the reified records. This IS
+                    // the artifact the web serves and reload maps, so build it first.
                     List<WikidataDynamicObject> pool = new ArrayList<>();
                     for (WikidataDynamicObject o : shared.values()) {
                         if (!demoted.contains(o) && !deadStubs.contains(o)) {
@@ -226,9 +220,18 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     pool.addAll(reified);
 
-                    // Log-only: which distinct field values are reachable while
-                    // mapping but don't survive into the served/saved pool (why a
-                    // generation count can exceed the snapshot count).
+                    // ONE shared mapper over the SERVED POOL (not the extractor's
+                    // allRoots): each QID -> one typed instance, cross-refs resolve
+                    // to those same instances. Mapping the pool makes the generation
+                    // preview identical to load/serve — otherwise a qid stamped as a
+                    // class root in allRoots but stored untyped in the pool shows at
+                    // generation yet vanishes on reload (the 11142-vs-9261 gap).
+                    List<Quizable> allInstances =
+                            pipeline.materialize(runtime, pool);
+
+                    // Log-only (still useful): what the extractor's allRoots reaches
+                    // that the served pool doesn't — e.g. qids extracted as a class
+                    // root but stored untyped, the remaining stamp-loss to chase.
                     wikidata.explore.transform.PoolCoverageDiagnostic.log(
                             allRoots, pool, genLog);
 
