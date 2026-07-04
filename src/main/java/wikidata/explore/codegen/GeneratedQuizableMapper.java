@@ -171,20 +171,38 @@ public class GeneratedQuizableMapper {
             if (javaField == null) continue;
             javaField.setAccessible(true);
 
-            if (onlyIfNull && javaField.get(target) != null) continue;
+            boolean collection =
+                    fieldModel.cardinality() == FieldCardinality.COLLECTION;
+            Object existing = javaField.get(target);
+
+            // On MERGE (onlyIfNull), a scalar that's already set stays. A
+            // collection, however, is UNIONED: the same entity arrives as several
+            // WDO copies, each carrying only its own subset (e.g. one category per
+            // nomination), so first-wins would drop the rest of the targets.
+            if (onlyIfNull && existing != null && !collection) continue;
 
             Object raw = source.get(fieldModel.name());
             if (raw == null) continue;
 
             Object mapped = mapFieldValue(fieldModel, raw);
-            if (mapped != null) {
-                try {
-                    javaField.set(target, mapped);
-                } catch (IllegalArgumentException typeMismatch) {
-                    // The extracted value doesn't fit the generated field's type
-                    // (e.g. an "unknown value"/genid for an entity field that
-                    // came through as text). Skip it rather than abort the run.
+            if (mapped == null) continue;
+
+            if (onlyIfNull && collection
+                    && existing instanceof List<?> && mapped instanceof List<?>) {
+                @SuppressWarnings("unchecked")
+                List<Object> existingList = (List<Object>) existing;
+                for (Object item : (List<?>) mapped) {
+                    if (!existingList.contains(item)) existingList.add(item);
                 }
+                continue;
+            }
+
+            try {
+                javaField.set(target, mapped);
+            } catch (IllegalArgumentException typeMismatch) {
+                // The extracted value doesn't fit the generated field's type
+                // (e.g. an "unknown value"/genid for an entity field that
+                // came through as text). Skip it rather than abort the run.
             }
         }
     }
