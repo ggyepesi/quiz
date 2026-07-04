@@ -68,11 +68,17 @@ public class WikidataDynamicObjectJsonStore {
             parent.mkdirs();
         }
 
-        // Collect every reachable object once (deduped by qid), following
-        // object-valued fields through cycles.
-        LinkedHashMap<String, WikidataDynamicObject> pool = new LinkedHashMap<>();
+        // Group EVERY reachable instance by qid (following object-valued fields
+        // through cycles). A qid can have several instances — a rich carrier plus
+        // field-poor reference copies made outside the registry — so we MERGE their
+        // fields (union) into one entity, keeping the richest data. Otherwise a poor
+        // copy reached first would overwrite the carrier, dropping e.g. its `type`.
+        LinkedHashMap<String, List<WikidataDynamicObject>> byQid =
+                new LinkedHashMap<>();
+        java.util.Set<WikidataDynamicObject> visited =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         for (WikidataDynamicObject o : objects) {
-            collect(o, pool);
+            collect(o, byQid, visited);
         }
 
         FlatSnapshot snapshot = new FlatSnapshot();
@@ -81,51 +87,109 @@ public class WikidataDynamicObjectJsonStore {
             String k = keyOf(o);
             if (k != null) snapshot.roots.add(k);
         }
-        for (WikidataDynamicObject o : pool.values()) {
-            snapshot.entities.add(toEntity(o));
+        for (List<WikidataDynamicObject> instances : byQid.values()) {
+            snapshot.entities.add(toEntity(instances));
         }
 
         mapper.writeValue(file, snapshot);
     }
 
     private void collect(
-            WikidataDynamicObject o, Map<String, WikidataDynamicObject> pool) {
-        if (o == null) return;
+            WikidataDynamicObject o,
+            Map<String, List<WikidataDynamicObject>> byQid,
+            java.util.Set<WikidataDynamicObject> visited) {
+        if (o == null || !visited.add(o)) return;
         String key = keyOf(o);
-        if (key == null || pool.containsKey(key)) return;
-        pool.put(key, o);
+        if (key != null) {
+            byQid.computeIfAbsent(key, k -> new ArrayList<>()).add(o);
+        }
         for (Object v : o.dynamicFields().values()) {
-            collectValue(v, pool);
+            collectValue(v, byQid, visited);
         }
     }
 
-    private void collectValue(Object v, Map<String, WikidataDynamicObject> pool) {
+    private void collectValue(Object v,
+            Map<String, List<WikidataDynamicObject>> byQid,
+            java.util.Set<WikidataDynamicObject> visited) {
         if (v instanceof WikidataDynamicObject w) {
-            collect(w, pool);
-        } else if (v instanceof List<?> list) {
-            for (Object e : list) collectValue(e, pool);
+            collect(w, byQid, visited);
+        } else if (v instanceof java.util.Collection<?> col) {
+            for (Object e : col) collectValue(e, byQid, visited);
         }
     }
 
-    // An entity DTO whose object-valued fields are replaced by qid refs.
-    private Entity toEntity(WikidataDynamicObject o) {
+    // One entity DTO per qid, MERGING all instances of that qid: a resolved label
+    // over the bare qid, a real class stamp over the untyped sentinel, and the
+    // UNION of every field's values (so a rich carrier's `type` isn't lost to a
+    // field-poor reference copy). Object-valued fields become qid refs.
+    private Entity toEntity(List<WikidataDynamicObject> instances) {
+        WikidataDynamicObject first = instances.get(0);
         Entity e = new Entity();
-        e.qid = o.qid();
-        e.name = o.getDisplayName();
-        String t = o.typeName();
-        e.type = (t == null || t.isBlank()
-                || "WikidataDynamicObject".equals(t)) ? null : t;
-        for (Map.Entry<String, Object> entry : o.dynamicFields().entrySet()) {
-            e.fields.put(entry.getKey(), encode(entry.getValue()));
+        e.qid = first.qid();
+
+        e.name = first.getDisplayName();
+        for (WikidataDynamicObject o : instances) {
+            String n = o.getDisplayName();
+            if (n != null && !n.equals(e.qid)) { e.name = n; break; }
+        }
+
+        e.type = null;
+        for (WikidataDynamicObject o : instances) {
+            String t = o.typeName();
+            if (t != null && !t.isBlank() && !"WikidataDynamicObject".equals(t)) {
+                e.type = t;
+                break;
+            }
+        }
+
+        Map<String, Object> merged = new LinkedHashMap<>();
+        for (WikidataDynamicObject o : instances) {
+            for (Map.Entry<String, Object> f : o.dynamicFields().entrySet()) {
+                merged.merge(f.getKey(), f.getValue(),
+                        WikidataDynamicObjectJsonStore::unionValues);
+            }
+        }
+        for (Map.Entry<String, Object> f : merged.entrySet()) {
+            e.fields.put(f.getKey(), encode(f.getValue()));
         }
         return e;
+    }
+
+    /** Union two values of one field across duplicate instances: flatten to a
+     *  deduped element list (WDOs by qid, scalars by equals); one element stays a
+     *  scalar, several become a list — matching how the pool stores multiplicity. */
+    private static Object unionValues(Object a, Object b) {
+        List<Object> out = new ArrayList<>();
+        addFlattened(out, a);
+        addFlattened(out, b);
+        return out.size() == 1 ? out.get(0) : out;
+    }
+
+    private static void addFlattened(List<Object> out, Object v) {
+        if (v instanceof java.util.Collection<?> col) {
+            for (Object e : col) addFlattened(out, e);
+        } else if (v != null) {
+            for (Object existing : out) {
+                if (sameValue(existing, v)) return;
+            }
+            out.add(v);
+        }
+    }
+
+    private static boolean sameValue(Object a, Object b) {
+        if (a == b) return true;
+        if (a instanceof WikidataDynamicObject wa
+                && b instanceof WikidataDynamicObject wb) {
+            return wa.qid() != null && wa.qid().equals(wb.qid());
+        }
+        return a != null && a.equals(b);
     }
 
     private Object encode(Object v) {
         if (v instanceof WikidataDynamicObject w) {
             return new Ref(keyOf(w));
         }
-        if (v instanceof List<?> list) {
+        if (v instanceof java.util.Collection<?> list) {
             List<Object> out = new ArrayList<>(list.size());
             for (Object e : list) out.add(encode(e));
             return out;
