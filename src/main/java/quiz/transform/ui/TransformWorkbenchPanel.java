@@ -27,7 +27,7 @@ import java.util.List;
  */
 public final class TransformWorkbenchPanel extends JPanel {
 
-    private final DomainModel domain;
+    private final WorkingDomain domain;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private final JComboBox<OperationKind> operationCombo =
@@ -36,7 +36,8 @@ public final class TransformWorkbenchPanel extends JPanel {
     private final DefaultListModel<DomainField> fieldListModel = new DefaultListModel<>();
     private final JList<DomainField> fieldList = new JList<>(fieldListModel);
 
-    private final JTextField valueField = new JTextField(14);
+    private final JTextField valueField = new JTextField(12);
+    private final JTextField newClassField = new JTextField(12);
 
     private final List<OperationSpec> pipeline = new ArrayList<>();
     private final DefaultListModel<OperationSpec> pipelineModel = new DefaultListModel<>();
@@ -45,7 +46,7 @@ public final class TransformWorkbenchPanel extends JPanel {
     private final JPanel renderHolder = new JPanel(new BorderLayout());
 
     public TransformWorkbenchPanel(DomainModel domain) {
-        this.domain = domain;
+        this.domain = new WorkingDomain(domain);
         setLayout(new BorderLayout(8, 8));
 
         for (String t : domain.types()) {
@@ -77,6 +78,8 @@ public final class TransformWorkbenchPanel extends JPanel {
         JPanel argBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         argBar.add(new JLabel("Value:"));
         argBar.add(valueField);
+        argBar.add(new JLabel("New class:"));
+        argBar.add(newClassField);
         JButton add = new JButton("Add operation");
         add.addActionListener(e -> addOperation());
         argBar.add(add);
@@ -115,6 +118,10 @@ public final class TransformWorkbenchPanel extends JPanel {
         }
         OperationSignature sig = OperationSignature.of(kind);
         valueField.setEnabled(sig.needsValue());
+        newClassField.setEnabled(sig.multiField());
+        fieldList.setSelectionMode(sig.multiField()
+                ? ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+                : ListSelectionModel.SINGLE_SELECTION);
         for (DomainField df : domain.fields(type)) {
             if (sig.fieldNeed().accepts(df)) {
                 fieldListModel.addElement(df);
@@ -132,9 +139,36 @@ public final class TransformWorkbenchPanel extends JPanel {
     }
 
     private void addOperation() {
-        DomainField field = fieldList.getSelectedValue();
         OperationKind kind = (OperationKind) operationCombo.getSelectedItem();
-        if (field == null || kind == null) {
+        String memberType = (String) memberTypeCombo.getSelectedItem();
+        if (kind == null || memberType == null) {
+            return;
+        }
+
+        // PROJECT is a DOMAIN mutation: materialize a new class from the selected
+        // fields and feed it back into the pool — not a step in the view pipeline.
+        if (kind == OperationKind.PROJECT) {
+            List<DomainField> selected = fieldList.getSelectedValuesList();
+            String newType = newClassField.getText().trim();
+            if (selected.isEmpty() || newType.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Select the fields to project and enter a new class name.");
+                return;
+            }
+            DerivedClass derived = Projector.project(domain, memberType, selected, newType);
+            domain.add(derived);
+            if (!comboHas(memberTypeCombo, newType)) {
+                memberTypeCombo.addItem(newType);
+            }
+            newClassField.setText("");
+            JOptionPane.showMessageDialog(this, "Created class \"" + newType + "\"  ("
+                    + derived.instances().size() + " instances, "
+                    + derived.fields().size() + " fields) — select it as Members.");
+            return;
+        }
+
+        DomainField field = fieldList.getSelectedValue();
+        if (field == null) {
             JOptionPane.showMessageDialog(this, "Select a field for the operation.");
             return;
         }
@@ -144,6 +178,15 @@ public final class TransformWorkbenchPanel extends JPanel {
         pipeline.add(new OperationSpec(kind, field, value));
         refreshPipeline();
         render();
+    }
+
+    private static boolean comboHas(JComboBox<String> combo, String item) {
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            if (item.equals(combo.getItemAt(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void move(int delta) {

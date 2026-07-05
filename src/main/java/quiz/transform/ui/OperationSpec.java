@@ -28,6 +28,7 @@ public class OperationSpec {
             case FILTER -> "filter  " + field.path() + " == " + value;
             case GROUP_BY_VALUE -> "group by value  " + field.path();
             case GROUP_BY_REFERENCE -> "invert / group by  " + field.path();
+            case PROJECT -> "project  " + field.path();
         };
     }
 }

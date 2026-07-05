@@ -34,25 +34,32 @@ public final class OperationSignature {
     private final OperationKind kind;
     private final List<Slot> slots;
     private final boolean needsValue;
+    private final boolean multiField;
 
-    private OperationSignature(OperationKind kind, List<Slot> slots, boolean needsValue) {
+    private OperationSignature(OperationKind kind, List<Slot> slots,
+                              boolean needsValue, boolean multiField) {
         this.kind = kind;
         this.slots = slots;
         this.needsValue = needsValue;
+        this.multiField = multiField;
     }
 
     public OperationKind kind() { return kind; }
     public List<Slot> slots() { return slots; }
     public boolean needsValue() { return needsValue; }
+    /** The operation takes SEVERAL fields (the projected columns), not one. */
+    public boolean multiField() { return multiField; }
 
     public static OperationSignature of(OperationKind kind) {
         return switch (kind) {
             case FILTER -> new OperationSignature(kind,
-                    List.of(new Slot("Field", Need.ANY)), true);
+                    List.of(new Slot("Field", Need.ANY)), true, false);
             case GROUP_BY_VALUE -> new OperationSignature(kind,
-                    List.of(new Slot("Group field", Need.SCALAR)), false);
+                    List.of(new Slot("Group field", Need.SCALAR)), false, false);
             case GROUP_BY_REFERENCE -> new OperationSignature(kind,
-                    List.of(new Slot("Reference field", Need.REFERENCE)), false);
+                    List.of(new Slot("Reference field", Need.REFERENCE)), false, false);
+            case PROJECT -> new OperationSignature(kind,
+                    List.of(new Slot("Projected fields", Need.ANY)), false, true);
         };
     }
 
