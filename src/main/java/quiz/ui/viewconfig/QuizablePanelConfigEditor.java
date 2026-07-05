@@ -46,6 +46,11 @@ public class QuizablePanelConfigEditor extends JPanel {
         this(config, false, false, sample);
     }
 
+    public QuizablePanelConfigEditor(QuizablePanelConfig config,
+                                     boolean nestedDefaultNameOnly, Quizable sample) {
+        this(config, nestedDefaultNameOnly, false, sample);
+    }
+
     public void setChangeListener(Runnable changeListener) {
         this.changeListener = changeListener;
     }

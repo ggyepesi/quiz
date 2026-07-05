@@ -299,6 +299,13 @@ public class QuizableSearchPanel extends JPanel
 
 
     public QuizableSearchPanel(Class<? extends Quizable> cls) {
+        this(cls, null);
+    }
+
+    /** @param sample a sample instance for a DYNAMIC type (WDO/DynamicQuizable), so
+     *                the search/sort/view-config editors enumerate its map-held
+     *                fields; null for a reflection type. */
+    public QuizableSearchPanel(Class<? extends Quizable> cls, Quizable sample) {
         this.searchClass = cls;
         setLayout(new BorderLayout(6, 6));
 
@@ -309,13 +316,13 @@ public class QuizableSearchPanel extends JPanel
                 QuizablePanelConfig.all(cls);
 
         searchEditor =
-                new QuizablePanelConfigEditor(nameOnly.copy(), true);
+                new QuizablePanelConfigEditor(nameOnly.copy(), true, sample);
 
         sortEditor =
-                new QuizablePanelConfigEditor(nameOnly.copy(), true);
+                new QuizablePanelConfigEditor(nameOnly.copy(), true, sample);
 
         viewEditor =
-                new QuizablePanelConfigEditor(viewBase.copy(), false);
+                new QuizablePanelConfigEditor(viewBase.copy(), false, sample);
 
         debounceTimer =
                 new javax.swing.Timer(

@@ -337,7 +337,18 @@ public final class TransformWorkbenchPanel extends JPanel {
                     QuizablePanelView v = new QuizablePanelView();
                     v.addQuizable(root);
                     v.createCardsPanel(1);
+
                     renderHolder.removeAll();
+                    // Unified instance view: the shared search + sort + view-config
+                    // panel over the result (sample-driven, so it's dynamic-aware).
+                    Quizable sample = sampleOf(type);
+                    if (sample != null) {
+                        quiz.ui.QuizableSearchPanel engine =
+                                new quiz.ui.QuizableSearchPanel(sampleClass(sample), sample);
+                        engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
+                        v.addTargetListener(engine);
+                        renderHolder.add(engine, BorderLayout.NORTH);
+                    }
                     renderHolder.add(v.getCardsScrollPane(), BorderLayout.CENTER);
                 } catch (Exception ex) {
                     renderHolder.removeAll();
