@@ -417,6 +417,10 @@ public class ImagePane extends JPanel
     }
 
     private void showImageView(String title, Image image, boolean addListeners) {
+        if (image == null) {
+            java.awt.Toolkit.getDefaultToolkit().beep();   // nothing to enlarge
+            return;
+        }
         QuizablePanelView v = new QuizablePanelView();
         try {
             ImagePane pane = new ImagePane(
@@ -428,9 +432,14 @@ public class ImagePane extends JPanel
                     ImageKind.FULL,
                     LoadPolicy.IMMEDIATE);
             pane.dragEnabled = addListeners;
+            // A still-loading image reports width/height -1; a zero/negative
+            // preferred size collapses the frame to nothing. Fall back to a sane
+            // default so the enlarged view is never empty.
+            int w = image.getWidth(null);
+            int h = image.getHeight(null);
             pane.setPreferredSize(new Dimension(
-                    image.getWidth(null),
-                    image.getHeight(null)));
+                    w > 0 ? w : 400,
+                    h > 0 ? h : 400));
 
             v.addImagePane(title, pane);
         } catch (Exception e) {
@@ -483,7 +492,14 @@ public class ImagePane extends JPanel
                         ? name
                         : String.join(".", TitleUtils.getAncestorTitles(this)) + ":" + key;
 
-                showImageView(longTitle, cachedImage.getFullImage(), true);
+                // The full image may not be loaded in every context (e.g. a logo
+                // shown via the transform view); fall back to the painted image so
+                // a double-click never opens an empty frame.
+                Image full = cachedImage == null ? null : cachedImage.getFullImage();
+                if (full == null) {
+                    full = displayImage;
+                }
+                showImageView(longTitle, full, true);
             } catch (Exception e) {
                 e.printStackTrace();
             }
