@@ -20,6 +20,7 @@ public final class DomainSchema {
 
     private final Map<String, Set<String>> fieldsByType = new LinkedHashMap<>();
     private final Set<String> referenceFields = new LinkedHashSet<>();
+    private final Set<String> collectionFields = new LinkedHashSet<>();
 
     public DomainSchema(Collection<WikidataDynamicObject> pool) {
         for (WikidataDynamicObject o : pool) {
@@ -30,11 +31,19 @@ public final class DomainSchema {
                     o.typeName(), k -> new LinkedHashSet<>());
             for (Map.Entry<String, Object> e : o.dynamicFieldValues().entrySet()) {
                 fields.add(e.getKey());
+                String key = o.typeName() + "." + e.getKey();
                 if (isReference(e.getValue())) {
-                    referenceFields.add(o.typeName() + "." + e.getKey());
+                    referenceFields.add(key);
+                }
+                if (e.getValue() instanceof Collection<?>) {
+                    collectionFields.add(key);
                 }
             }
         }
+    }
+
+    public boolean isCollection(String type, String field) {
+        return collectionFields.contains(type + "." + field);
     }
 
     public List<String> types() {
