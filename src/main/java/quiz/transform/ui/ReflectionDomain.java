@@ -2,7 +2,9 @@ package quiz.transform.ui;
 
 import quiz.Quizable;
 import quiz.QuizableAdapter;
+import quiz.QuizableFieldPaths;
 import quiz.ui.QuizableViews;
+import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -27,9 +29,7 @@ import java.util.Set;
 public final class ReflectionDomain implements DomainModel {
 
     private final List<Quizable> instances;
-    private final Map<String, List<String>> fieldsByType = new LinkedHashMap<>();
-    private final Set<String> referenceFields = new LinkedHashSet<>();
-    private final Set<String> collectionFields = new LinkedHashSet<>();
+    private final Map<String, List<DomainField>> fieldsByType = new LinkedHashMap<>();
 
     public ReflectionDomain(Collection<? extends Quizable> instances) {
         this.instances = new ArrayList<>(instances);
@@ -50,21 +50,23 @@ public final class ReflectionDomain implements DomainModel {
         return new ReflectionDomain(views.getQuizables().values());
     }
 
+    @SuppressWarnings("unchecked")
     private void index(Class<?> cls) {
         String type = cls.getSimpleName();
-        if (fieldsByType.containsKey(type)) {
+        if (fieldsByType.containsKey(type) || !Quizable.class.isAssignableFrom(cls)) {
             return;
         }
-        List<String> fields = new ArrayList<>();
-        for (Field f : QuizableAdapter.getAllFields(cls)) {
-            fields.add(f.getName());
-            String key = type + "." + f.getName();
-            if (isReferenceField(f)) {
-                referenceFields.add(key);
-            }
-            if (isCollectionField(f)) {
-                collectionFields.add(key);
-            }
+        List<DomainField> fields = new ArrayList<>();
+        // QuizableFieldPaths gives the NESTED field paths (e.g. nominee.name) the
+        // config editor renders — so nested/cross-class arguments appear for free.
+        QuizablePanelConfig config =
+                QuizablePanelConfig.all((Class<? extends Quizable>) cls);
+        for (QuizableFieldPaths.FieldPath fp : QuizableFieldPaths.collect(config)) {
+            String path = String.join(".", fp.path());
+            Field leaf = fp.leafField();
+            boolean ref = leaf != null && isReferenceField(leaf);
+            boolean col = leaf != null && isCollectionField(leaf);
+            fields.add(new DomainField(type, path, ref, col));
         }
         fieldsByType.put(type, fields);
     }
@@ -93,11 +95,9 @@ public final class ReflectionDomain implements DomainModel {
     }
 
     @Override public List<String> types() { return new ArrayList<>(fieldsByType.keySet()); }
-    @Override public List<String> fields(String type) {
+    @Override public List<DomainField> fields(String type) {
         return new ArrayList<>(fieldsByType.getOrDefault(type, List.of()));
     }
-    @Override public boolean isReference(String t, String f) { return referenceFields.contains(t + "." + f); }
-    @Override public boolean isCollection(String t, String f) { return collectionFields.contains(t + "." + f); }
     @Override public Collection<? extends Quizable> instances() { return instances; }
     @Override public Class<? extends Quizable> universe() { return Quizable.class; }
 }

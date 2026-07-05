@@ -16,11 +16,9 @@ public interface DomainModel {
 
     List<String> types();
 
-    List<String> fields(String type);
-
-    boolean isReference(String type, String field);
-
-    boolean isCollection(String type, String field);
+    /** The fields of a type — possibly NESTED paths (e.g. {@code nominee.name}) —
+     *  each carrying its dotted path and leaf shape (reference/collection). */
+    List<DomainField> fields(String type);
 
     /** The instances to run the view over. */
     Collection<? extends Quizable> instances();

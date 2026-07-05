@@ -65,6 +65,28 @@ class ViewCompilerTest {
         }
     }
 
+    @Test void groupsByNestedPathFanningOutThroughACollection() {
+        // A State with two languages; group by the NESTED path languages.iso —
+        // the member lands under each language's iso code.
+        WikidataDynamicObject en = new WikidataDynamicObject("Q2", "English");
+        en.put("iso", "en");
+        WikidataDynamicObject fr = new WikidataDynamicObject("Q3", "French");
+        fr.put("iso", "fr");
+        WikidataDynamicObject state = new WikidataDynamicObject("Q1", "Wonderland");
+        state.type("State");
+        state.merge("languages", en);
+        state.merge("languages", fr);
+
+        View view = ViewCompiler.compile("langs", "State", List.of(
+                new OperationSpec(OperationKind.GROUP_BY_VALUE,
+                        new DomainField("State", "languages.iso", false, false), null)));
+
+        QuizableGroup root = view.render(List.of(state, en, fr));
+        java.util.Set<String> labels = new java.util.HashSet<>();
+        collectLabels(root, labels);
+        assertTrue(labels.contains("en") && labels.contains("fr"), labels.toString());
+    }
+
     @Test void memberTypeFilterExcludesOtherClasses() {
         WikidataDynamicObject cat = new WikidataDynamicObject("Q1", "Best Picture");
         List<WikidataDynamicObject> pool = List.of(

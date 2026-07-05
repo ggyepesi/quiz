@@ -15,36 +15,72 @@ final class FacetKeys {
 
     private FacetKeys() {}
 
-    static List<String> fromField(Quizable q, String fieldName) {
-        if (q instanceof DynamicFields dyn && dyn.dynamicFieldValues().containsKey(fieldName)) {
-            return keysOf(dyn.dynamicFieldValues().get(fieldName));
+    static List<String> fromField(Quizable q, String fieldPath) {
+        List<String> out = new ArrayList<>();
+        for (Object leaf : resolve(q, fieldPath)) {
+            out.addAll(keysOf(leaf));
         }
-        Field f = QuizableAdapter.getField(q.getClass(), fieldName);
-        if (f == null) {
-            return List.of();
-        }
-        try {
-            f.setAccessible(true);
-            return keysOf(f.get(q));
-        } catch (Exception e) {
-            return List.of();
-        }
+        return out;
     }
 
     /** The {@link Quizable} value(s) of a field — for reference facets. */
-    static List<Quizable> refsFromField(Quizable q, String fieldName) {
-        if (q instanceof DynamicFields dyn && dyn.dynamicFieldValues().containsKey(fieldName)) {
-            return refsOf(dyn.dynamicFieldValues().get(fieldName));
+    static List<Quizable> refsFromField(Quizable q, String fieldPath) {
+        List<Quizable> out = new ArrayList<>();
+        for (Object leaf : resolve(q, fieldPath)) {
+            out.addAll(refsOf(leaf));
         }
-        Field f = QuizableAdapter.getField(q.getClass(), fieldName);
+        return out;
+    }
+
+    /**
+     * Resolves a (possibly dotted) field path to its leaf value(s), fanning OUT
+     * through collections/maps at each hop — so {@code languages.name} yields every
+     * language's name, and {@code nominee.name} the nominee's name. A single-segment
+     * path returns that field's value(s), identical to a direct read.
+     */
+    private static List<Object> resolve(Quizable q, String fieldPath) {
+        List<Object> current = new ArrayList<>();
+        current.add(q);
+        for (String segment : fieldPath.split("\\.")) {
+            List<Object> next = new ArrayList<>();
+            for (Object obj : current) {
+                addFlattened(next, readField(obj, segment));
+            }
+            current = next;
+        }
+        return current;
+    }
+
+    private static Object readField(Object obj, String name) {
+        if (obj instanceof DynamicFields dyn && dyn.dynamicFieldValues().containsKey(name)) {
+            return dyn.dynamicFieldValues().get(name);
+        }
+        Field f = QuizableAdapter.getField(obj.getClass(), name);
         if (f == null) {
-            return List.of();
+            return null;
         }
         try {
             f.setAccessible(true);
-            return refsOf(f.get(q));
+            return f.get(obj);
         } catch (Exception e) {
-            return List.of();
+            return null;
+        }
+    }
+
+    private static void addFlattened(List<Object> out, Object v) {
+        if (v == null) {
+            return;
+        }
+        if (v instanceof Collection<?> c) {
+            for (Object item : c) {
+                addFlattened(out, item);
+            }
+        } else if (v instanceof Map<?, ?> m) {
+            for (Object item : m.values()) {
+                addFlattened(out, item);
+            }
+        } else {
+            out.add(v);
         }
     }
 

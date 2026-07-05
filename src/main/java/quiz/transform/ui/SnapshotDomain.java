@@ -19,9 +19,16 @@ public final class SnapshotDomain implements DomainModel {
     }
 
     @Override public List<String> types() { return schema.types(); }
-    @Override public List<String> fields(String type) { return schema.fields(type); }
-    @Override public boolean isReference(String t, String f) { return schema.isReference(t, f); }
-    @Override public boolean isCollection(String t, String f) { return schema.isCollection(t, f); }
+
+    @Override public List<DomainField> fields(String type) {
+        List<DomainField> out = new java.util.ArrayList<>();
+        for (String f : schema.fields(type)) {
+            out.add(new DomainField(type, f,
+                    schema.isReference(type, f), schema.isCollection(type, f)));
+        }
+        return out;
+    }
+
     @Override public Collection<? extends Quizable> instances() { return pool; }
     @Override public Class<? extends Quizable> universe() { return WikidataDynamicObject.class; }
 }

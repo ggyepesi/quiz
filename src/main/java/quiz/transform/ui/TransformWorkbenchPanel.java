@@ -115,13 +115,20 @@ public final class TransformWorkbenchPanel extends JPanel {
         }
         OperationSignature sig = OperationSignature.of(kind);
         valueField.setEnabled(sig.needsValue());
-        for (String f : domain.fields(type)) {
-            DomainField df = new DomainField(type, f,
-                    domain.isReference(type, f), domain.isCollection(type, f));
+        for (DomainField df : domain.fields(type)) {
             if (sig.fieldNeed().accepts(df)) {
                 fieldListModel.addElement(df);
             }
         }
+    }
+
+    private DomainField field(String type, String path) {
+        for (DomainField df : domain.fields(type)) {
+            if (df.field().equals(path)) {
+                return df;
+            }
+        }
+        return null;
     }
 
     private void addOperation() {
@@ -181,21 +188,18 @@ public final class TransformWorkbenchPanel extends JPanel {
         if (!domain.types().contains("Nomination")) {
             return;
         }
-        List<String> nf = domain.fields("Nomination");
         memberTypeCombo.setSelectedItem("Nomination");
-        if (nf.contains("won")) {
-            pipeline.add(new OperationSpec(OperationKind.FILTER,
-                    new DomainField("Nomination", "won", false, false), Boolean.TRUE));
+        DomainField won = field("Nomination", "won");
+        DomainField category = field("Nomination", "category");
+        DomainField year = field("Nomination", "year");
+        if (won != null) {
+            pipeline.add(new OperationSpec(OperationKind.FILTER, won, Boolean.TRUE));
         }
-        if (nf.contains("category")) {
-            pipeline.add(new OperationSpec(OperationKind.GROUP_BY_REFERENCE,
-                    new DomainField("Nomination", "category",
-                            domain.isReference("Nomination", "category"),
-                            domain.isCollection("Nomination", "category")), null));
+        if (category != null) {
+            pipeline.add(new OperationSpec(OperationKind.GROUP_BY_REFERENCE, category, null));
         }
-        if (nf.contains("year")) {
-            pipeline.add(new OperationSpec(OperationKind.GROUP_BY_VALUE,
-                    new DomainField("Nomination", "year", false, false), null));
+        if (year != null) {
+            pipeline.add(new OperationSpec(OperationKind.GROUP_BY_VALUE, year, null));
         }
         refreshPipeline();
     }
