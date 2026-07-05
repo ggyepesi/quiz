@@ -23,6 +23,16 @@ public final class FieldAccess {
             if (current == null) {
                 return null;
             }
+            // A collection/map intermediate (e.g. languages.name): descend into a
+            // representative element so a nested path resolves instead of crashing.
+            if (current instanceof Collection<?> c) {
+                current = c.isEmpty() ? null : c.iterator().next();
+            } else if (current instanceof Map<?, ?> m) {
+                current = m.isEmpty() ? null : m.values().iterator().next();
+            }
+            if (current == null) {
+                return null;
+            }
             current = readField(current, part);
         }
         return current;
@@ -73,12 +83,21 @@ public final class FieldAccess {
                 throw new RuntimeException("Cannot read " + name + " from " + obj, e);
             }
         }
-        // A dynamic object simply doesn't carry this field (yet).
-        if (obj instanceof DynamicFields) {
-            return null;
+        // Identity / display come from the Quizable contract, not a raw field: for a
+        // dynamic object `name`/`qid` aren't in the property map (they're identity,
+        // @NotQuizableField), so getDisplayName()/getIdentifier() are the right source.
+        if (obj instanceof quiz.Quizable q) {
+            if ("name".equals(name)) {
+                return q.getDisplayName();
+            }
+            if ("qid".equals(name) || "id".equals(name) || "identifier".equals(name)) {
+                return q.getIdentifier();
+            }
         }
-        throw new IllegalArgumentException(
-                "No field " + obj.getClass().getName() + "." + name);
+        // The field isn't present (a dynamic object without it, a heterogeneous
+        // nested value, a JDK type, …). Reading is tolerant — return null rather
+        // than crash the caller enumerating/inspecting arbitrary domains.
+        return null;
     }
 
     private static void writeField(Object obj, String name, Object value) {
