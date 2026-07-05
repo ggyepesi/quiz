@@ -1,33 +1,32 @@
 package quiz.transform.ui;
 
+import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.transform.View;
-import quiz.transform.app.ViewSpecJsonIO;
 import quiz.ui.QuizablePanelView;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Structural transform workbench over a {@link DomainModel} — a Wikidata snapshot
- * ({@link SnapshotDomain}) or a hand-written Quizable domain like Nobel / State /
- * SportTeam ({@link ReflectionDomain}). Pick a member class, then build a pipeline
- * of operations: each operation's SIGNATURE narrows the fields pane to only the
- * fields that can be its argument (per shape), and every operation compiles to a
- * real {@link View} — filters and facet groupings — whose grouped result (the
- * derived subdomain) renders live on the right via the shared card content view.
+ * Structural transform workbench over a {@link DomainModel} — a Wikidata snapshot or
+ * a hand-written Quizable domain like Nobel / State / SportTeam
+ * ({@link ReflectionDomain}). Pick a member class, then build a pipeline of
+ * operations: each operation's SIGNATURE narrows the fields pane to only the fields
+ * that can be its argument (per shape), and every operation compiles to a real
+ * {@link View} — filters and facet groupings — whose grouped result (the derived
+ * subdomain) renders live on the right via the shared card content view.
  *
- * <p>Current ops (filter + group/invert) operate on the member class's own fields.
- * Multi-argument, cross-class operations (whose result is a new class fed back into
- * the field pool) build on the same signature/slot model.
+ * <p>This package has NO backing dependency: saving a result goes through an
+ * injected {@link DomainWriter}, and parsing a filter value through a small local
+ * helper — so the workbench can be factored out and reused independently.
  */
 public final class TransformWorkbenchPanel extends JPanel {
 
     private final WorkingDomain domain;
+    private final DomainWriter writer;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private final JComboBox<OperationKind> operationCombo =
@@ -46,7 +45,12 @@ public final class TransformWorkbenchPanel extends JPanel {
     private final JPanel renderHolder = new JPanel(new BorderLayout());
 
     public TransformWorkbenchPanel(DomainModel domain) {
+        this(domain, null);
+    }
+
+    public TransformWorkbenchPanel(DomainModel domain, DomainWriter writer) {
         this.domain = new WorkingDomain(domain);
+        this.writer = writer;
         setLayout(new BorderLayout(8, 8));
 
         for (String t : domain.types()) {
@@ -148,7 +152,7 @@ public final class TransformWorkbenchPanel extends JPanel {
 
         // PROJECT is a DOMAIN mutation: materialize a new class from the selected
         // fields and feed it back into the pool — not a step in the view pipeline.
-        if (kind == OperationKind.PROJECT) {
+        if (kind == OperationKind.PROJECT_TO_CLASS) {
             List<DomainField> selected = fieldList.getSelectedValuesList();
             String newType = newClassField.getText().trim();
             if (selected.isEmpty() || newType.isEmpty()) {
@@ -174,11 +178,24 @@ public final class TransformWorkbenchPanel extends JPanel {
             return;
         }
         Object value = OperationSignature.of(kind).needsValue()
-                ? ViewSpecJsonIO.parseValue(valueField.getText().trim())
+                ? parseValue(valueField.getText().trim())
                 : null;
         pipeline.add(new OperationSpec(kind, field, value));
         refreshPipeline();
         render();
+    }
+
+    /** Parse a filter literal: true/false, int, double, else the trimmed string. */
+    static Object parseValue(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String s = text.trim();
+        if (s.equalsIgnoreCase("true")) return Boolean.TRUE;
+        if (s.equalsIgnoreCase("false")) return Boolean.FALSE;
+        try { return Integer.valueOf(s); } catch (NumberFormatException ignored) { }
+        try { return Double.valueOf(s); } catch (NumberFormatException ignored) { }
+        return s;
     }
 
     private static boolean comboHas(JComboBox<String> combo, String item) {
@@ -210,21 +227,41 @@ public final class TransformWorkbenchPanel extends JPanel {
         }
     }
 
+    /** Compile + group OFF the EDT (a big domain can be slow), then swap in the
+     *  rendered cards on the EDT. */
     private void render() {
         String type = (String) memberTypeCombo.getSelectedItem();
         String name = (type == null ? "View" : type)
                 + (pipeline.isEmpty() ? "" : " · " + pipeline.size() + " op");
-        View view = ViewCompiler.compile(name, type, pipeline, domain.universe());
-        QuizableGroup root = view.render(domain.instances());
-
-        QuizablePanelView v = new QuizablePanelView();
-        v.addQuizable(root);
-        v.createCardsPanel(1);
+        List<OperationSpec> ops = new ArrayList<>(pipeline);
 
         renderHolder.removeAll();
-        renderHolder.add(v.getCardsScrollPane(), BorderLayout.CENTER);
+        renderHolder.add(new JLabel("  Rendering…"), BorderLayout.NORTH);
         renderHolder.revalidate();
         renderHolder.repaint();
+
+        new SwingWorker<QuizableGroup, Void>() {
+            @Override protected QuizableGroup doInBackground() {
+                View view = ViewCompiler.compile(name, type, ops, domain.universe());
+                return view.render(domain.instances());
+            }
+            @Override protected void done() {
+                try {
+                    QuizableGroup root = get();
+                    QuizablePanelView v = new QuizablePanelView();
+                    v.addQuizable(root);
+                    v.createCardsPanel(1);
+                    renderHolder.removeAll();
+                    renderHolder.add(v.getCardsScrollPane(), BorderLayout.CENTER);
+                } catch (Exception ex) {
+                    renderHolder.removeAll();
+                    renderHolder.add(new JLabel("  Render failed: " + ex.getMessage()),
+                            BorderLayout.NORTH);
+                }
+                renderHolder.revalidate();
+                renderHolder.repaint();
+            }
+        }.execute();
     }
 
     /** Persist the current view's members (the filtered / projected result) as a
@@ -235,6 +272,11 @@ public final class TransformWorkbenchPanel extends JPanel {
         if (type == null) {
             return;
         }
+        if (writer == null) {
+            JOptionPane.showMessageDialog(this,
+                    "No domain writer configured for this session.");
+            return;
+        }
         String suggested = type + (pipeline.isEmpty() ? "" : " view");
         String name = JOptionPane.showInputDialog(this,
                 "Save the current result as a domain named:", suggested);
@@ -243,12 +285,9 @@ public final class TransformWorkbenchPanel extends JPanel {
         }
         try {
             View view = ViewCompiler.compile(name, type, pipeline, domain.universe());
-            List<? extends quiz.Quizable> members = view.members(domain.instances());
-            var d = DomainSaver.save(name, members);
-            JOptionPane.showMessageDialog(this,
-                    "Saved \"" + d.name() + "\"  (" + members.size() + " members, types "
-                            + d.types() + ")\n" + d.snapshotPath()
-                            + "\nRegistered — it now appears in the navigator and the web.");
+            List<? extends Quizable> members = view.members(domain.instances());
+            String message = writer.save(name, members);
+            JOptionPane.showMessageDialog(this, message);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
                     "Save failed", JOptionPane.ERROR_MESSAGE);
@@ -278,22 +317,17 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     /** Open the workbench in a frame over any domain. */
     public static void launch(DomainModel domain, String title) {
+        launch(domain, title, null);
+    }
+
+    public static void launch(DomainModel domain, String title, DomainWriter writer) {
         SwingUtilities.invokeLater(() -> {
             JFrame f = new JFrame("Transform Workbench — " + title);
-            f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            f.add(new TransformWorkbenchPanel(domain));
+            f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            f.add(new TransformWorkbenchPanel(domain, writer));
             f.setSize(1400, 900);
             f.setLocationRelativeTo(null);
             f.setVisible(true);
         });
-    }
-
-    /** Default: over a Wikidata snapshot. For a hand-written Quizable domain, e.g.
-     *  {@code launch(ReflectionDomain.of(new SportTeams()), "Sport Teams")}. */
-    public static void main(String[] args) throws Exception {
-        File snapshot = new File(args.length > 0 ? args[0]
-                : "data/wikidata/oscarnominations/oscarnominations.snapshot.json");
-        launch(new SnapshotDomain(
-                new WikidataDynamicObjectJsonStore().loadAll(snapshot)), snapshot.getName());
     }
 }

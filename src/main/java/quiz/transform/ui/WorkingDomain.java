@@ -53,6 +53,8 @@ public final class WorkingDomain implements DomainModel {
     }
 
     @Override public Class<? extends Quizable> universe() {
-        return base.universe();
+        // Broad enough to keep BOTH base instances and PROJECT-derived
+        // DynamicQuizables (which the base universe, e.g. a snapshot's WDO, excludes).
+        return Quizable.class;
     }
 }

@@ -5,26 +5,24 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * First-navigation screen for the transform workbench: lists every domain in the
- * {@link DomainCatalog} — generated Wikidata datasets AND the built-in Quizable
- * domains (Nobel, State, SportTeam, …) — and opens the chosen one in a
- * {@link TransformWorkbenchPanel}. The (possibly heavy) domain load runs off the
- * EDT so the picker stays responsive.
+ * First-navigation screen for the transform workbench: lists the given
+ * {@link DomainEntry} catalog and opens the chosen domain in a
+ * {@link TransformWorkbenchPanel} (loading off the EDT so the picker stays
+ * responsive). Backing-agnostic — the caller supplies the entries and the
+ * {@link DomainWriter}.
  */
 public final class DomainNavigator {
 
     private DomainNavigator() {}
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(DomainNavigator::show);
+    public static void show(List<DomainEntry> entries, DomainWriter writer) {
+        SwingUtilities.invokeLater(() -> build(entries, writer));
     }
 
-    private static void show() {
-        List<DomainCatalog.Entry> entries = DomainCatalog.all();
-
-        DefaultListModel<DomainCatalog.Entry> model = new DefaultListModel<>();
+    private static void build(List<DomainEntry> entries, DomainWriter writer) {
+        DefaultListModel<DomainEntry> model = new DefaultListModel<>();
         entries.forEach(model::addElement);
-        JList<DomainCatalog.Entry> list = new JList<>(model);
+        JList<DomainEntry> list = new JList<>(model);
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         if (!entries.isEmpty()) {
             list.setSelectedIndex(0);
@@ -34,7 +32,7 @@ public final class DomainNavigator {
         JButton open = new JButton("Open in Transform Workbench");
 
         Runnable openSelected = () -> {
-            DomainCatalog.Entry e = list.getSelectedValue();
+            DomainEntry e = list.getSelectedValue();
             if (e == null) {
                 return;
             }
@@ -46,7 +44,7 @@ public final class DomainNavigator {
                 }
                 @Override protected void done() {
                     try {
-                        TransformWorkbenchPanel.launch(get(), e.name());
+                        TransformWorkbenchPanel.launch(get(), e.name(), writer);
                         status.setText(entries.size() + " domain(s)");
                     } catch (Exception ex) {
                         Throwable cause = ex.getCause() != null ? ex.getCause() : ex;

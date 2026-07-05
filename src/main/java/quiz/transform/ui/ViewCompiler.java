@@ -4,7 +4,6 @@ import quiz.Quizable;
 import quiz.facet.Facet;
 import quiz.transform.ClassTransformPlan;
 import quiz.transform.View;
-import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -19,11 +18,6 @@ import java.util.function.Predicate;
 public final class ViewCompiler {
 
     private ViewCompiler() {}
-
-    /** Compile over a Wikidata snapshot (the default universe). */
-    public static View compile(String name, String memberType, List<OperationSpec> ops) {
-        return compile(name, memberType, ops, WikidataDynamicObject.class);
-    }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static View compile(String name, String memberType, List<OperationSpec> ops,

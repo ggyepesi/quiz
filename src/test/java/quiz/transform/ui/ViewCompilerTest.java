@@ -44,7 +44,8 @@ class ViewCompilerTest {
                 new OperationSpec(OperationKind.GROUP_BY_VALUE,
                         new DomainField("Nomination", "year", false, false), null));
 
-        View view = ViewCompiler.compile("winners", "Nomination", ops);
+        View view = ViewCompiler.compile("winners", "Nomination", ops,
+                WikidataDynamicObject.class);
 
         // FILTER won == true keeps N1 and N3 (not N2, not the category entity).
         assertEquals(2, view.members(pool).size());
@@ -79,7 +80,8 @@ class ViewCompilerTest {
 
         View view = ViewCompiler.compile("langs", "State", List.of(
                 new OperationSpec(OperationKind.GROUP_BY_VALUE,
-                        new DomainField("State", "languages.iso", false, false), null)));
+                        new DomainField("State", "languages.iso", false, false), null)),
+                WikidataDynamicObject.class);
 
         QuizableGroup root = view.render(List.of(state, en, fr));
         java.util.Set<String> labels = new java.util.HashSet<>();
@@ -92,7 +94,8 @@ class ViewCompilerTest {
         List<WikidataDynamicObject> pool = List.of(
                 cat, nomination("N1", true, cat, 2000));
 
-        View view = ViewCompiler.compile("v", "Nomination", List.of());
+        View view = ViewCompiler.compile("v", "Nomination", List.of(),
+                WikidataDynamicObject.class);
         // Only the Nomination is a member; the category entity is not.
         assertEquals(1, view.members(pool).size());
         assertTrue(view.members(pool).get(0).getIdentifier().equals("N1"));

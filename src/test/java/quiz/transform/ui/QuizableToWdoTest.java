@@ -3,6 +3,7 @@ package quiz.transform.ui;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.QuizableAdapter;
+import quiz.transform.app.QuizableToWdo;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 

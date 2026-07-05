@@ -58,7 +58,7 @@ public final class OperationSignature {
                     List.of(new Slot("Group field", Need.SCALAR)), false, false);
             case GROUP_BY_REFERENCE -> new OperationSignature(kind,
                     List.of(new Slot("Reference field", Need.REFERENCE)), false, false);
-            case PROJECT -> new OperationSignature(kind,
+            case PROJECT_TO_CLASS -> new OperationSignature(kind,
                     List.of(new Slot("Projected fields", Need.ANY)), false, true);
         };
     }

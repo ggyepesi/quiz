@@ -1,8 +1,8 @@
 package quiz.transform.ui;
 
 import quiz.Quizable;
+import quiz.transform.DynamicQuizable;
 import quiz.transform.FieldAccess;
-import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,7 +16,8 @@ import java.util.Set;
  * {@code newType} carrying the selected fields' values (read by dotted path, so
  * nested/cross-class fields flatten in). The new instances are plain
  * {@link WikidataDynamicObject}s stamped with the new type — a first-class derived
- * class the {@link WorkingDomain} feeds back into the field pool.
+ * class the {@link WorkingDomain} feeds back into the field pool. The new instances
+ * are backing-agnostic {@link DynamicQuizable}s (no Wikidata dependency).
  */
 public final class Projector {
 
@@ -41,8 +42,8 @@ public final class Projector {
             if (q == null || !memberType.equals(q.typeName())) {
                 continue;
             }
-            WikidataDynamicObject o =
-                    new WikidataDynamicObject(q.getIdentifier(), q.getDisplayName());
+            DynamicQuizable o =
+                    new DynamicQuizable(q.getIdentifier(), q.getDisplayName());
             o.type(newType);
             for (Map.Entry<DomainField, String> e : names.entrySet()) {
                 Object v = FieldAccess.getPath(q, e.getKey().field());

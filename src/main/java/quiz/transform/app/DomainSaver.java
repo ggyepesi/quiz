@@ -1,32 +1,27 @@
-package quiz.transform.ui;
+package quiz.transform.app;
 
 import quiz.DatasetRegistry;
 import quiz.Quizable;
+import quiz.transform.ui.DomainWriter;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * Saves a transform RESULT (the current view's members — a filtered subset or a
- * PROJECT-derived class) as a first-class domain: a snapshot on disk plus a
- * {@link DatasetRegistry} entry. Once registered it appears in the
- * {@link DomainCatalog} (so it re-opens in the workbench) and is served by the web
- * exactly like a generated dataset — turning the workbench into a producer.
+ * The wikidata {@link DomainWriter}: saves a transform result (the current view's
+ * members) as a snapshot + {@link DatasetRegistry} entry, so it re-appears in the
+ * catalog/navigator and is served by the web like a generated dataset — the
+ * producer loop.
  */
-public final class DomainSaver {
+public final class DomainSaver implements DomainWriter {
 
-    private DomainSaver() {}
-
-    public static DatasetRegistry.Dataset save(String name,
-                                               Collection<? extends Quizable> members)
-            throws IOException {
-
+    @Override
+    public String save(String name, Collection<? extends Quizable> members) throws Exception {
         String key = sanitize(name);
         List<WikidataDynamicObject> pool = QuizableToWdo.pool(members);
 
@@ -35,7 +30,6 @@ public final class DomainSaver {
         WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
         store.save(pool, file);
 
-        // Types = the distinct stamped types actually written (members + refs).
         Set<String> types = new LinkedHashSet<>();
         for (WikidataDynamicObject o : store.loadAll(file)) {
             if (o.typeName() != null && !o.typeName().isBlank()
@@ -54,7 +48,10 @@ public final class DomainSaver {
         DatasetRegistry reg = DatasetRegistry.load();
         reg.upsert(d);
         reg.save();
-        return d;
+
+        return "Saved \"" + name + "\"  (" + members.size() + " members, types "
+                + types + ")\n" + file.getPath()
+                + "\nRegistered — now in the navigator and served by the web.";
     }
 
     private static String sanitize(String name) {

@@ -1,5 +1,6 @@
-package quiz.transform.ui;
+package quiz.transform.app;
 
+import quiz.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -13,18 +14,16 @@ import java.util.Map;
 
 /**
  * Converts a Quizable graph to a {@link WikidataDynamicObject} pool so a transform
- * result can be SAVED as a snapshot (the snapshot store is WDO-based). A member
- * that is already a WDO passes through; a hand-written Quizable (State, NobelPrize,
- * …) is materialized field-by-field (reflection), its Quizable-valued fields
- * converted recursively to WDO refs (deduped by identity, cycle-safe). The result
- * is a first-class domain the web can serve.
+ * result can be SAVED as a snapshot (the store is WDO-based). A WDO passes through;
+ * a {@link DynamicFields} object (e.g. a PROJECT-derived DynamicQuizable) copies its
+ * property map; a hand-written Quizable (State, NobelPrize, …) is materialized by
+ * reflection. Quizable-valued fields are converted recursively (deduped by
+ * identity, cycle-safe). The wikidata bridge for the transform layer.
  */
 public final class QuizableToWdo {
 
     private QuizableToWdo() {}
 
-    /** The root WDOs for {@code members}; referenced WDOs are reachable from them
-     *  (the snapshot store follows refs when saving). */
     public static List<WikidataDynamicObject> pool(Collection<? extends Quizable> members) {
         Map<Object, WikidataDynamicObject> seen = new IdentityHashMap<>();
         List<WikidataDynamicObject> roots = new ArrayList<>();
@@ -42,7 +41,7 @@ public final class QuizableToWdo {
             return null;
         }
         if (v instanceof WikidataDynamicObject w) {
-            return w;   // already a snapshot object
+            return w;
         }
         if (v instanceof Quizable q) {
             WikidataDynamicObject cached = seen.get(q);
@@ -56,15 +55,24 @@ public final class QuizableToWdo {
             WikidataDynamicObject o = new WikidataDynamicObject(id, q.getDisplayName());
             o.type(q.typeName());
             seen.put(q, o);
-            for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
-                try {
-                    f.setAccessible(true);
-                    Object converted = convert(f.get(q), seen);
-                    if (converted != null) {
-                        o.put(f.getName(), converted);
+            if (q instanceof DynamicFields dyn) {
+                for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
+                    Object cv = convert(e.getValue(), seen);
+                    if (cv != null) {
+                        o.put(e.getKey(), cv);
                     }
-                } catch (Exception ignored) {
-                    // skip unreadable fields
+                }
+            } else {
+                for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
+                    try {
+                        f.setAccessible(true);
+                        Object cv = convert(f.get(q), seen);
+                        if (cv != null) {
+                            o.put(f.getName(), cv);
+                        }
+                    } catch (Exception ignored) {
+                        // skip unreadable fields
+                    }
                 }
             }
             return o;
@@ -73,9 +81,7 @@ public final class QuizableToWdo {
             List<Object> out = new ArrayList<>();
             for (Object item : c) {
                 Object cv = convert(item, seen);
-                if (cv != null) {
-                    out.add(cv);
-                }
+                if (cv != null) out.add(cv);
             }
             return out;
         }
@@ -83,12 +89,10 @@ public final class QuizableToWdo {
             List<Object> out = new ArrayList<>();
             for (Object item : m.values()) {
                 Object cv = convert(item, seen);
-                if (cv != null) {
-                    out.add(cv);
-                }
+                if (cv != null) out.add(cv);
             }
             return out;
         }
-        return v;   // scalar
+        return v;
     }
 }

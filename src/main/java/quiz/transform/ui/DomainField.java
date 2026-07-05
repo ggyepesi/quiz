@@ -1,9 +1,8 @@
 package quiz.transform.ui;
 
 /**
- * One field of a domain class, as derived from a loaded snapshot's
- * {@link quiz.transform.app.DomainSchema} — the domain-wide pool an operation
- * picks its arguments from. A field belongs to a class ({@code type}) and is
+ * One field of a domain class — the domain-wide pool an operation picks its
+ * arguments from. A field belongs to a class ({@code type}) and is
  * either a reference (entity-valued), a collection, or a scalar; those shapes are
  * what {@link OperationSignature} slots filter on.
  */

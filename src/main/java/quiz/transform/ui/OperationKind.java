@@ -13,7 +13,7 @@ public enum OperationKind {
     FILTER("Filter — keep where field == value"),
     GROUP_BY_VALUE("Group by value — a scalar field's value → buckets"),
     GROUP_BY_REFERENCE("Group by reference (invert) — a member under each referenced entity"),
-    PROJECT("Project — a NEW class from the selected fields (fed back into the field pool)");
+    PROJECT_TO_CLASS("Project to class — a NEW class from the selected fields (fed back into the pool)");
 
     private final String label;
 

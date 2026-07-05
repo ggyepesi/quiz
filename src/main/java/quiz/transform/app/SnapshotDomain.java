@@ -1,13 +1,15 @@
-package quiz.transform.ui;
+package quiz.transform.app;
 
 import quiz.Quizable;
-import quiz.transform.app.DomainSchema;
+import quiz.transform.ui.DomainField;
+import quiz.transform.ui.DomainModel;
 import wikidata.explore.extract.WikidataDynamicObject;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-/** A {@link DomainModel} over a loaded Wikidata snapshot pool. */
+/** A {@link DomainModel} over a loaded Wikidata snapshot pool (the wikidata bridge). */
 public final class SnapshotDomain implements DomainModel {
 
     private final List<WikidataDynamicObject> pool;
@@ -21,7 +23,7 @@ public final class SnapshotDomain implements DomainModel {
     @Override public List<String> types() { return schema.types(); }
 
     @Override public List<DomainField> fields(String type) {
-        List<DomainField> out = new java.util.ArrayList<>();
+        List<DomainField> out = new ArrayList<>();
         for (String f : schema.fields(type)) {
             out.add(new DomainField(type, f,
                     schema.isReference(type, f), schema.isCollection(type, f)));

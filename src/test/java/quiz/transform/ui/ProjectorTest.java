@@ -3,7 +3,9 @@ package quiz.transform.ui;
 import org.junit.jupiter.api.Test;
 import quiz.Quizable;
 import quiz.QuizableGroup;
+import quiz.transform.DynamicQuizable;
 import quiz.transform.View;
+import quiz.transform.app.SnapshotDomain;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;
@@ -35,7 +37,7 @@ class ProjectorTest {
         assertEquals(2, nom.instances().size());
         Quizable first = nom.instances().get(0);
         assertEquals("Nom", first.typeName());
-        assertEquals(2000, ((WikidataDynamicObject) first).get("year"));
+        assertEquals(2000, ((DynamicQuizable) first).get("year"));
 
         // Fed back: the new type + its fields are in the working domain.
         assertTrue(domain.types().contains("Nom"));
