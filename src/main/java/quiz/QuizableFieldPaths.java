@@ -16,7 +16,26 @@ import java.util.Set;
 public final class QuizableFieldPaths {
     private QuizableFieldPaths() {}
 
-    public record FieldPath(String title, List<String> path, Field leafField) {}
+    public record FieldPath(String title, List<String> path, Field leafField) {
+
+        /** The dotted access path, e.g. {@code nominee.name}. */
+        public String dotted() {
+            return String.join(".", path);
+        }
+
+        /** The last segment (the leaf field name). */
+        public String leaf() {
+            return path.isEmpty() ? "" : path.get(path.size() - 1);
+        }
+
+        /** A FieldPath from a dotted string (no reflection {@link Field}). */
+        public static FieldPath of(String dotted) {
+            List<String> segments = dotted == null || dotted.isBlank()
+                    ? List.of()
+                    : List.of(dotted.split("\\."));
+            return new FieldPath(dotted == null ? "" : dotted, segments, null);
+        }
+    }
 
     public interface FieldFilter {
         boolean accept(Field field);

@@ -107,11 +107,10 @@ public final class ReflectionDomain implements DomainModel {
         QuizablePanelConfig config =
                 QuizablePanelConfig.all((Class<? extends Quizable>) cls);
         for (QuizableFieldPaths.FieldPath fp : QuizableFieldPaths.collect(config)) {
-            String path = String.join(".", fp.path());
             Field leaf = fp.leafField();
             boolean ref = leaf != null && isReferenceField(leaf);
             boolean col = leaf != null && isCollectionField(leaf);
-            fields.add(new DomainField(type, path, ref, col));
+            fields.add(new DomainField(type, fp, ref, col));
         }
         fieldsByType.put(type, fields);
     }

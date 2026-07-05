@@ -41,12 +41,11 @@ public final class SnapshotDomain implements DomainModel {
         List<DomainField> out = new ArrayList<>();
         for (QuizableFieldPaths.FieldPath fp
                 : QuizableFieldPaths.collectFromSample(sample, QuizableFieldPaths.ALL_FIELDS)) {
-            String path = String.join(".", fp.path());
-            Object value = FieldAccess.getPath(sample, path);
+            Object value = FieldAccess.getPath(sample, fp.dotted());
             boolean ref = value instanceof Quizable
                     || (value instanceof Collection<?> c && anyQuizable(c));
             boolean col = value instanceof Collection<?>;
-            out.add(new DomainField(type, path, ref, col));
+            out.add(new DomainField(type, fp, ref, col));
         }
         return out;
     }
