@@ -92,6 +92,7 @@ public final class TransformWorkbenchPanel extends JPanel {
         stepBar.add(button("Remove", () -> { int r = pipelineList.getSelectedIndex(); if (r >= 0) { pipeline.remove(r); refreshPipeline(); render(); } }));
         stepBar.add(button("Up", () -> move(-1)));
         stepBar.add(button("Down", () -> move(1)));
+        stepBar.add(button("Save as domain…", this::saveAsDomain));
         steps.add(stepBar, BorderLayout.SOUTH);
 
         JPanel left = new JPanel(new BorderLayout(6, 6));
@@ -224,6 +225,34 @@ public final class TransformWorkbenchPanel extends JPanel {
         renderHolder.add(v.getCardsScrollPane(), BorderLayout.CENTER);
         renderHolder.revalidate();
         renderHolder.repaint();
+    }
+
+    /** Persist the current view's members (the filtered / projected result) as a
+     *  first-class domain — a snapshot + registry entry the web serves and the
+     *  navigator lists. */
+    private void saveAsDomain() {
+        String type = (String) memberTypeCombo.getSelectedItem();
+        if (type == null) {
+            return;
+        }
+        String suggested = type + (pipeline.isEmpty() ? "" : " view");
+        String name = JOptionPane.showInputDialog(this,
+                "Save the current result as a domain named:", suggested);
+        if (name == null || name.isBlank()) {
+            return;
+        }
+        try {
+            View view = ViewCompiler.compile(name, type, pipeline, domain.universe());
+            List<? extends quiz.Quizable> members = view.members(domain.instances());
+            var d = DomainSaver.save(name, members);
+            JOptionPane.showMessageDialog(this,
+                    "Saved \"" + d.name() + "\"  (" + members.size() + " members, types "
+                            + d.types() + ")\n" + d.snapshotPath()
+                            + "\nRegistered — it now appears in the navigator and the web.");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
+                    "Save failed", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /** A ready-to-run "Oscar winners by category by year" if the snapshot supports it. */
