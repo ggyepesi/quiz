@@ -153,6 +153,13 @@ public abstract class QuizableAdapter implements Quizable {
         List<Field> fields = new ArrayList<>();
 
         while (current != null && current.getSuperclass() != null) {
+            // Don't reflect into JDK classes (e.g. a Quizable that extends
+            // ArrayList): their fields aren't quiz data, and setAccessible on them
+            // throws InaccessibleObjectException under JPMS (java.base doesn't open
+            // java.util). Stop the walk here — the remaining superclasses are JDK too.
+            if (isSystemClass(current)) {
+                break;
+            }
             for (Field field : current.getDeclaredFields()) {
                 // static fields are class-level state (e.g. a cache), never
                 // per-instance quiz data — skip them.
@@ -164,12 +171,22 @@ public abstract class QuizableAdapter implements Quizable {
                     continue;
                 }
 
-                field.setAccessible(true);
+                try {
+                    field.setAccessible(true);
+                } catch (RuntimeException inaccessible) {
+                    continue;   // e.g. a JDK/module-closed field — skip it
+                }
                 fields.add(field);
             }
             current = current.getSuperclass();
         }
         return Collections.unmodifiableList(fields);
+    }
+
+    private static boolean isSystemClass(Class<?> cls) {
+        String pkg = cls.getPackageName();
+        return pkg.startsWith("java.") || pkg.startsWith("javax.")
+                || pkg.startsWith("jdk.") || pkg.startsWith("sun.");
     }
 
     public static Field getField(Class<?> cls, String name) {
