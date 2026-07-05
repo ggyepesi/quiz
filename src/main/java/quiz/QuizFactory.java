@@ -48,6 +48,19 @@ public class QuizFactory {
             new QuizOption("🗣️", "Oscars", new OscarNominations(), OscarNomination.class)
     );
 
+    /** A built-in Quizable domain (icon, name, builder) — exposed so the transform
+     *  domain navigator (and later the web server) can offer the same domains as
+     *  the quiz, alongside the generated Wikidata datasets. */
+    public record BuiltInDomain(String icon, String name, QuizableViews views) {}
+
+    public static List<BuiltInDomain> builtInDomains() {
+        List<BuiltInDomain> out = new java.util.ArrayList<>();
+        for (QuizOption o : quizOptions) {
+            out.add(new BuiltInDomain(o.icon(), o.name(), o.views()));
+        }
+        return out;
+    }
+
     private static final String PREF_LAST_QUIZ = "lastQuizIndex";
     private static final Preferences PREFS =
             Preferences.userNodeForPackage(QuizFactory.class);
