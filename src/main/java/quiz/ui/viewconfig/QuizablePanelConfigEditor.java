@@ -81,7 +81,9 @@ public class QuizablePanelConfigEditor extends JPanel {
 
         setLayout(new BorderLayout(8, 8));
 
-        if (!minorOnly) {
+        // A dynamic (map-held) type has no minor-field concept — that's a card
+        // rendering distinction; here every field is shown, so no checkbox.
+        if (!minorOnly && !(sample instanceof quiz.DynamicFields)) {
             allMinorFieldsBox.setSelected(sourceConfig.isAllMinorFields());
             allMinorFieldsBox.addActionListener(e -> {
                 tableModel.fireTableDataChanged();
@@ -150,13 +152,23 @@ public class QuizablePanelConfigEditor extends JPanel {
             String name = e.getKey();
             Object value = e.getValue();
             Quizable child = firstQuizable(value);
+            // Only offer expand (nested) when the referenced value actually has
+            // fields — a bare reference (e.g. a WDO with no dynamic fields) would
+            // otherwise open an empty child editor.
             Class<? extends Quizable> nested =
-                    child == null ? null : asQuizableClass(child.getClass());
+                    child != null && hasFields(child) ? asQuizableClass(child.getClass()) : null;
 
             Row row = Row.dynamic(name, dynamicTypeLabel(value, child), nested, child);
             row.use = sourceConfig.showsFieldByName(name);
             rows.add(row);
         }
+    }
+
+    private static boolean hasFields(Quizable q) {
+        if (q instanceof quiz.DynamicFields d) {
+            return !d.dynamicFieldValues().isEmpty();
+        }
+        return !QuizableAdapter.getAllFields(q.getClass()).isEmpty();
     }
 
     private static Quizable firstQuizable(Object v) {
