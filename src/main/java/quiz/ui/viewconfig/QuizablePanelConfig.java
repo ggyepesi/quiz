@@ -141,6 +141,12 @@ public class QuizablePanelConfig {
         return minor ? allMinorFields : allFields;
     }
 
+    /** Show-decision by field NAME — for a dynamic (map-held) field with no
+     *  declared {@link Field} (no minor-field concept). */
+    public boolean showsFieldByName(String name) {
+        return name != null && (fields.containsKey(name) || allFields);
+    }
+
     /**
      * Returns a configuration suitable for rendering a child field.
      * Child parameters override the parent, but display flags cascade down.

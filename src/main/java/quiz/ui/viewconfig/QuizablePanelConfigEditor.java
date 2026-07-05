@@ -12,7 +12,9 @@ import java.awt.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class QuizablePanelConfigEditor extends JPanel {
 
@@ -23,17 +25,25 @@ public class QuizablePanelConfigEditor extends JPanel {
     private final JTable table = new JTable(tableModel);
     private final boolean nestedDefaultNameOnly;
     private final boolean minorOnly;
+    // A sample instance for a DYNAMIC (map-held) type — enumerate its fields from
+    // the property map rather than declared Java fields. Null = reflection type.
+    private final Quizable sample;
 
     private final JCheckBox allMinorFieldsBox = new JCheckBox("All minor fields");
     private Runnable changeListener;
 
     public QuizablePanelConfigEditor(QuizablePanelConfig config) {
-        this(config, false, false);
+        this(config, false, false, null);
     }
 
     public QuizablePanelConfigEditor(QuizablePanelConfig config,
                                      boolean nestedDefaultNameOnly) {
-        this(config, nestedDefaultNameOnly, false);
+        this(config, nestedDefaultNameOnly, false, null);
+    }
+
+    /** Dynamic: enumerate {@code sample}'s map-held fields (a WDO/DynamicQuizable). */
+    public QuizablePanelConfigEditor(QuizablePanelConfig config, Quizable sample) {
+        this(config, false, false, sample);
     }
 
     public void setChangeListener(Runnable changeListener) {
@@ -49,12 +59,20 @@ public class QuizablePanelConfigEditor extends JPanel {
     private QuizablePanelConfigEditor(QuizablePanelConfig config,
                                       boolean nestedDefaultNameOnly,
                                       boolean minorOnly) {
+        this(config, nestedDefaultNameOnly, minorOnly, null);
+    }
+
+    private QuizablePanelConfigEditor(QuizablePanelConfig config,
+                                      boolean nestedDefaultNameOnly,
+                                      boolean minorOnly,
+                                      Quizable sample) {
         this.sourceConfig = config == null
                 ? new QuizablePanelConfig()
                 : config.copy();
 
         this.nestedDefaultNameOnly = nestedDefaultNameOnly;
         this.minorOnly = minorOnly;
+        this.sample = sample;
 
         setLayout(new BorderLayout(8, 8));
 
@@ -97,6 +115,13 @@ public class QuizablePanelConfigEditor extends JPanel {
     private void buildRows() {
         rows.clear();
 
+        // A dynamic sample: enumerate its map-held fields (no declared Java fields,
+        // no minor-field concept). Reflection types keep the original path exactly.
+        if (sample instanceof quiz.DynamicFields) {
+            addDynamicFieldRows(sample);
+            return;
+        }
+
         Class<? extends Quizable> cls = sourceConfig.getCls();
         if (cls == null) {
             return;
@@ -111,6 +136,55 @@ public class QuizablePanelConfigEditor extends JPanel {
                 rows.add(Row.minorBlock());
             }
         }
+    }
+
+    private void addDynamicFieldRows(Quizable dynamicSample) {
+        quiz.DynamicFields dyn = (quiz.DynamicFields) dynamicSample;
+        for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
+            String name = e.getKey();
+            Object value = e.getValue();
+            Quizable child = firstQuizable(value);
+            Class<? extends Quizable> nested =
+                    child == null ? null : asQuizableClass(child.getClass());
+
+            Row row = Row.dynamic(name, dynamicTypeLabel(value, child), nested, child);
+            row.use = sourceConfig.showsFieldByName(name);
+            rows.add(row);
+        }
+    }
+
+    private static Quizable firstQuizable(Object v) {
+        if (v instanceof Quizable q) {
+            return q;
+        }
+        if (v instanceof Collection<?> c) {
+            for (Object i : c) {
+                if (i instanceof Quizable q) return q;
+            }
+        }
+        if (v instanceof Map<?, ?> m) {
+            for (Object i : m.values()) {
+                if (i instanceof Quizable q) return q;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<? extends Quizable> asQuizableClass(Class<?> cls) {
+        return (Class<? extends Quizable>) cls;
+    }
+
+    private static String dynamicTypeLabel(Object value, Quizable child) {
+        if (child != null) {
+            return value instanceof Collection<?>
+                    ? "Collection<" + child.typeName() + ">"
+                    : child.typeName();
+        }
+        if (value instanceof Collection<?>) {
+            return "Collection";
+        }
+        return value == null ? "" : value.getClass().getSimpleName();
     }
 
     private boolean hasMinorFields(Class<? extends Quizable> cls) {
@@ -138,7 +212,7 @@ public class QuizablePanelConfigEditor extends JPanel {
             Class<? extends Quizable> nestedClass =
                     QuizableFieldPaths.nestedQuizableClass(field);
 
-            Row row = Row.field(field, nestedClass);
+            Row row = Row.field(field, describeFieldType(field), nestedClass);
             row.use = sourceConfig.showsField(field);
 
             if (selectedChild != null
@@ -168,12 +242,12 @@ public class QuizablePanelConfigEditor extends JPanel {
             // If "all minor fields" is checked, no need to explicitly store every minor field.
             if (!minorOnly
                     && out.isAllMinorFields()
-                    && QuizableAdapter.isMinorField(row.field)
-                    && sourceConfig.getFieldConfig(row.field.getName()) == null) {
+                    && row.isMinor()
+                    && sourceConfig.getFieldConfig(row.fieldName) == null) {
                 continue;
             }
 
-            out.addField(row.field.getName(), childConfigFor(row));
+            out.addField(row.fieldName, childConfigFor(row));
         }
 
         if (!minorOnly) {
@@ -308,7 +382,7 @@ public class QuizablePanelConfigEditor extends JPanel {
 
         if (row.childEditor == null) {
             QuizablePanelConfig childConfig =
-                    sourceConfig.getFieldConfig(row.field.getName());
+                    sourceConfig.getFieldConfig(row.fieldName);
 
             if (childConfig == null || childConfig.getCls() == null) {
                 childConfig = nestedDefaultNameOnly
@@ -318,14 +392,15 @@ public class QuizablePanelConfigEditor extends JPanel {
                 childConfig = childConfig.copy();
             }
 
+            // A dynamic reference carries a nested SAMPLE so the child editor can
+            // enumerate the referenced object's map-held fields.
             row.childEditor = new QuizablePanelConfigEditor(
-                    childConfig,
-                    nestedDefaultNameOnly);
+                    childConfig, nestedDefaultNameOnly, false, row.nestedSample);
         }
 
         JDialog dialog = new JDialog(
                 SwingUtilities.getWindowAncestor(this),
-                row.field.getName() + " : " + row.nestedClass.getSimpleName(),
+                row.fieldName + " : " + row.nestedClass.getSimpleName(),
                 Dialog.ModalityType.APPLICATION_MODAL);
 
         dialog.setLayout(new BorderLayout(8, 8));
@@ -458,8 +533,8 @@ public class QuizablePanelConfigEditor extends JPanel {
             }
 
             return switch (columnIndex) {
-                case 0 -> row.field.getName();
-                case 1 -> describeFieldType(row.field);
+                case 0 -> row.fieldName;
+                case 1 -> row.typeLabel;
                 case 2 -> row.use;
                 case 3 -> "↑";
                 case 4 -> "↓";
@@ -641,28 +716,42 @@ public class QuizablePanelConfigEditor extends JPanel {
     private static class Row {
         final boolean special;
         final boolean minorBlock;
-        final Field field;
+        final Field field;                 // null for a dynamic (map-held) field
+        final String fieldName;
+        final String typeLabel;
         final Class<? extends Quizable> nestedClass;
+        final Quizable nestedSample;        // a sample of the referenced value (dynamic)
 
         boolean use;
         QuizablePanelConfigEditor childEditor;
 
-        private Row(boolean special,
-                    boolean minorBlock,
-                    Field field,
-                    Class<? extends Quizable> nestedClass) {
+        private Row(boolean special, boolean minorBlock, Field field, String fieldName,
+                    String typeLabel, Class<? extends Quizable> nestedClass,
+                    Quizable nestedSample) {
             this.special = special;
             this.minorBlock = minorBlock;
             this.field = field;
+            this.fieldName = fieldName;
+            this.typeLabel = typeLabel;
             this.nestedClass = nestedClass;
+            this.nestedSample = nestedSample;
+        }
+
+        boolean isMinor() {
+            return field != null && QuizableAdapter.isMinorField(field);
         }
 
         static Row minorBlock() {
-            return new Row(true, true, null, null);
+            return new Row(true, true, null, "Minor fields", "", null, null);
         }
 
-        static Row field(Field field, Class<? extends Quizable> nestedClass) {
-            return new Row(false, false, field, nestedClass);
+        static Row field(Field field, String typeLabel, Class<? extends Quizable> nestedClass) {
+            return new Row(false, false, field, field.getName(), typeLabel, nestedClass, null);
+        }
+
+        static Row dynamic(String name, String typeLabel,
+                           Class<? extends Quizable> nestedClass, Quizable nestedSample) {
+            return new Row(false, false, null, name, typeLabel, nestedClass, nestedSample);
         }
     }
 }
