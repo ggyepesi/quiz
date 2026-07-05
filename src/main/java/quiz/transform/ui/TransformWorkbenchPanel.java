@@ -99,6 +99,8 @@ public final class TransformWorkbenchPanel extends JPanel {
 
         JPanel steps = new JPanel(new BorderLayout(4, 4));
         steps.setBorder(BorderFactory.createTitledBorder("Pipeline (in order → derived subdomain)"));
+        pipelineList.setCellRenderer(new PipelineRenderer());
+        pipelineList.setFixedCellHeight(24);
         steps.add(new JScrollPane(pipelineList), BorderLayout.CENTER);
         JPanel stepBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         stepBar.add(button("Remove", () -> { int r = pipelineList.getSelectedIndex(); if (r >= 0) { pipeline.remove(r); refreshPipeline(); render(); } }));
@@ -254,6 +256,32 @@ public final class TransformWorkbenchPanel extends JPanel {
         try { return Integer.valueOf(s); } catch (NumberFormatException ignored) { }
         try { return Double.valueOf(s); } catch (NumberFormatException ignored) { }
         return s;
+    }
+
+    /** Organized pipeline rows: "N.  <op>  field  = value" with a coloured op tag. */
+    private static final class PipelineRenderer extends DefaultListCellRenderer {
+        @Override public Component getListCellRendererComponent(
+                JList<?> list, Object value, int index, boolean sel, boolean focus) {
+            JLabel l = (JLabel) super.getListCellRendererComponent(list, value, index, sel, focus);
+            if (value instanceof OperationSpec op && op.kind != null) {
+                String tag; String color;
+                switch (op.kind) {
+                    case FILTER -> { tag = "filter"; color = "#b26a00"; }
+                    case GROUP_BY_VALUE -> { tag = "group"; color = "#2f6fb0"; }
+                    case GROUP_BY_REFERENCE -> { tag = "invert"; color = "#6a3fb0"; }
+                    case PROJECT_TO_CLASS -> { tag = "project"; color = "#0a7a4a"; }
+                    default -> { tag = "op"; color = "#555555"; }
+                }
+                String field = op.field == null ? "" : op.field.field();
+                String val = op.kind == OperationKind.FILTER
+                        ? " <font color='#999999'>= " + op.value + "</font>" : "";
+                l.setText("<html><b>" + (index + 1) + ".</b> &nbsp;"
+                        + "<font color='" + color + "'><b>" + tag + "</b></font> &nbsp;"
+                        + "<font color='#222222'>" + field + "</font>" + val + "</html>");
+            }
+            l.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+            return l;
+        }
     }
 
     private static boolean comboHas(JComboBox<String> combo, String item) {

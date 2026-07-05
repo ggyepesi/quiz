@@ -94,10 +94,11 @@ public class QuizablePanelConfigEditor extends JPanel {
 
         table.getColumnModel().getColumn(0).setPreferredWidth(260);
         table.getColumnModel().getColumn(1).setPreferredWidth(160);
-        table.getColumnModel().getColumn(2).setPreferredWidth(60);
-        table.getColumnModel().getColumn(3).setPreferredWidth(60);
-        table.getColumnModel().getColumn(4).setPreferredWidth(60);
-        table.getColumnModel().getColumn(5).setPreferredWidth(100);
+        table.getColumnModel().getColumn(2).setPreferredWidth(48);
+        // Compact up/down (thin arrows) + a small expand chip.
+        setFixedWidth(table.getColumnModel().getColumn(3), 30);
+        setFixedWidth(table.getColumnModel().getColumn(4), 30);
+        table.getColumnModel().getColumn(5).setPreferredWidth(72);
 
         for (int col : new int[]{3, 4, 5}) {
             table.getColumnModel().getColumn(col).setCellRenderer(new ButtonRenderer());
@@ -532,6 +533,21 @@ public class QuizablePanelConfigEditor extends JPanel {
         return count;
     }
 
+    private static void setFixedWidth(javax.swing.table.TableColumn col, int w) {
+        col.setMinWidth(w);
+        col.setMaxWidth(w);
+        col.setPreferredWidth(w);
+    }
+
+    /** Style a table button as a compact, flat chip. */
+    private static void chipify(JButton b) {
+        b.setFont(b.getFont().deriveFont(Font.PLAIN, 11f));
+        b.setMargin(new Insets(1, 6, 1, 6));
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setContentAreaFilled(false);
+    }
+
     private class RowTableModel extends AbstractTableModel {
         private final String[] columns = {
                 "Field", "Type", "Use", "Up", "Down", "Expand"
@@ -562,11 +578,11 @@ public class QuizablePanelConfigEditor extends JPanel {
                 case 0 -> row.fieldName;
                 case 1 -> row.typeLabel;
                 case 2 -> row.use;
-                case 3 -> "↑";
-                case 4 -> "↓";
+                case 3 -> "▴";
+                case 4 -> "▾";
                 case 5 -> row.nestedClass == null
                         ? ""
-                        : row.childEditor == null ? "Expand" : "Edit...";
+                        : row.childEditor == null ? "＋ fields" : "✎ edit";
                 default -> null;
             };
         }
@@ -647,6 +663,7 @@ public class QuizablePanelConfigEditor extends JPanel {
     private class ButtonRenderer extends JButton implements TableCellRenderer {
         ButtonRenderer() {
             setOpaque(true);
+            chipify(this);
         }
 
         @Override
@@ -675,6 +692,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         private boolean opening = false;
 
         ButtonEditor() {
+            chipify(button);
             button.addActionListener(e -> {
                 if (opening) return;
 
