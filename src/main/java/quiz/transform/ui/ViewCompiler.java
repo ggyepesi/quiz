@@ -20,10 +20,15 @@ public final class ViewCompiler {
 
     private ViewCompiler() {}
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    /** Compile over a Wikidata snapshot (the default universe). */
     public static View compile(String name, String memberType, List<OperationSpec> ops) {
-        ClassTransformPlan plan =
-                ClassTransformPlan.keeping(WikidataDynamicObject.class);
+        return compile(name, memberType, ops, WikidataDynamicObject.class);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static View compile(String name, String memberType, List<OperationSpec> ops,
+                               Class<? extends Quizable> universe) {
+        ClassTransformPlan plan = ClassTransformPlan.keeping((Class) universe);
 
         if (memberType != null && !memberType.isBlank()) {
             String type = memberType;
@@ -36,7 +41,7 @@ public final class ViewCompiler {
             }
         }
 
-        View view = new View(name, WikidataDynamicObject.class).plan(plan);
+        View view = new View(name, universe).plan(plan);
 
         for (OperationSpec op : ops) {
             if (op == null || op.field == null) {

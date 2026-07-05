@@ -2,10 +2,8 @@ package quiz.transform.ui;
 
 import quiz.QuizableGroup;
 import quiz.transform.View;
-import quiz.transform.app.DomainSchema;
 import quiz.transform.app.ViewSpecJsonIO;
 import quiz.ui.QuizablePanelView;
-import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import javax.swing.*;
@@ -15,12 +13,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Structural transform workbench over a loaded snapshot. Pick a member class, then
- * build a pipeline of operations: each operation's SIGNATURE narrows the fields
- * pane to only the fields that can be its argument (per shape), and every operation
- * compiles to a real {@link View} — filters and facet groupings — whose grouped
- * result (the derived subdomain) renders live on the right, reusing the same
- * card content view as the standalone view app.
+ * Structural transform workbench over a {@link DomainModel} — a Wikidata snapshot
+ * ({@link SnapshotDomain}) or a hand-written Quizable domain like Nobel / State /
+ * SportTeam ({@link ReflectionDomain}). Pick a member class, then build a pipeline
+ * of operations: each operation's SIGNATURE narrows the fields pane to only the
+ * fields that can be its argument (per shape), and every operation compiles to a
+ * real {@link View} — filters and facet groupings — whose grouped result (the
+ * derived subdomain) renders live on the right via the shared card content view.
  *
  * <p>Current ops (filter + group/invert) operate on the member class's own fields.
  * Multi-argument, cross-class operations (whose result is a new class fed back into
@@ -28,8 +27,7 @@ import java.util.List;
  */
 public final class TransformWorkbenchPanel extends JPanel {
 
-    private final List<WikidataDynamicObject> pool;
-    private final DomainSchema schema;
+    private final DomainModel domain;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private final JComboBox<OperationKind> operationCombo =
@@ -46,12 +44,11 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     private final JPanel renderHolder = new JPanel(new BorderLayout());
 
-    public TransformWorkbenchPanel(List<WikidataDynamicObject> pool, DomainSchema schema) {
-        this.pool = pool;
-        this.schema = schema;
+    public TransformWorkbenchPanel(DomainModel domain) {
+        this.domain = domain;
         setLayout(new BorderLayout(8, 8));
 
-        for (String t : schema.types()) {
+        for (String t : domain.types()) {
             memberTypeCombo.addItem(t);
         }
 
@@ -118,9 +115,9 @@ public final class TransformWorkbenchPanel extends JPanel {
         }
         OperationSignature sig = OperationSignature.of(kind);
         valueField.setEnabled(sig.needsValue());
-        for (String f : schema.fields(type)) {
+        for (String f : domain.fields(type)) {
             DomainField df = new DomainField(type, f,
-                    schema.isReference(type, f), schema.isCollection(type, f));
+                    domain.isReference(type, f), domain.isCollection(type, f));
             if (sig.fieldNeed().accepts(df)) {
                 fieldListModel.addElement(df);
             }
@@ -166,8 +163,8 @@ public final class TransformWorkbenchPanel extends JPanel {
         String type = (String) memberTypeCombo.getSelectedItem();
         String name = (type == null ? "View" : type)
                 + (pipeline.isEmpty() ? "" : " · " + pipeline.size() + " op");
-        View view = ViewCompiler.compile(name, type, pipeline);
-        QuizableGroup root = view.render(pool);
+        View view = ViewCompiler.compile(name, type, pipeline, domain.universe());
+        QuizableGroup root = view.render(domain.instances());
 
         QuizablePanelView v = new QuizablePanelView();
         v.addQuizable(root);
@@ -181,10 +178,10 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     /** A ready-to-run "Oscar winners by category by year" if the snapshot supports it. */
     private void seedDefault() {
-        if (!schema.types().contains("Nomination")) {
+        if (!domain.types().contains("Nomination")) {
             return;
         }
-        List<String> nf = schema.fields("Nomination");
+        List<String> nf = domain.fields("Nomination");
         memberTypeCombo.setSelectedItem("Nomination");
         if (nf.contains("won")) {
             pipeline.add(new OperationSpec(OperationKind.FILTER,
@@ -193,8 +190,8 @@ public final class TransformWorkbenchPanel extends JPanel {
         if (nf.contains("category")) {
             pipeline.add(new OperationSpec(OperationKind.GROUP_BY_REFERENCE,
                     new DomainField("Nomination", "category",
-                            schema.isReference("Nomination", "category"),
-                            schema.isCollection("Nomination", "category")), null));
+                            domain.isReference("Nomination", "category"),
+                            domain.isCollection("Nomination", "category")), null));
         }
         if (nf.contains("year")) {
             pipeline.add(new OperationSpec(OperationKind.GROUP_BY_VALUE,
@@ -203,20 +200,24 @@ public final class TransformWorkbenchPanel extends JPanel {
         refreshPipeline();
     }
 
-    public static void main(String[] args) throws Exception {
-        File snapshot = new File(args.length > 0 ? args[0]
-                : "data/wikidata/oscarnominations/oscarnominations.snapshot.json");
-        List<WikidataDynamicObject> pool =
-                new WikidataDynamicObjectJsonStore().loadAll(snapshot);
-        DomainSchema schema = new DomainSchema(pool);
-
+    /** Open the workbench in a frame over any domain. */
+    public static void launch(DomainModel domain, String title) {
         SwingUtilities.invokeLater(() -> {
-            JFrame f = new JFrame("Transform Workbench — " + snapshot.getName());
+            JFrame f = new JFrame("Transform Workbench — " + title);
             f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            f.add(new TransformWorkbenchPanel(pool, schema));
+            f.add(new TransformWorkbenchPanel(domain));
             f.setSize(1400, 900);
             f.setLocationRelativeTo(null);
             f.setVisible(true);
         });
+    }
+
+    /** Default: over a Wikidata snapshot. For a hand-written Quizable domain, e.g.
+     *  {@code launch(ReflectionDomain.of(new SportTeams()), "Sport Teams")}. */
+    public static void main(String[] args) throws Exception {
+        File snapshot = new File(args.length > 0 ? args[0]
+                : "data/wikidata/oscarnominations/oscarnominations.snapshot.json");
+        launch(new SnapshotDomain(
+                new WikidataDynamicObjectJsonStore().loadAll(snapshot)), snapshot.getName());
     }
 }
