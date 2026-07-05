@@ -31,16 +31,61 @@ public final class ReflectionDomain implements DomainModel {
     private final List<Quizable> instances;
     private final Map<String, List<DomainField>> fieldsByType = new LinkedHashMap<>();
 
-    public ReflectionDomain(Collection<? extends Quizable> instances) {
-        this.instances = new ArrayList<>(instances);
+    public ReflectionDomain(Collection<? extends Quizable> roots) {
+        // Walk the whole reachable graph so EVERY class in the old data — the main
+        // class AND its referenced ones (Person, Terms, Language, …) — becomes a
+        // selectable type with its own instances, not just the top-level roots.
+        java.util.Set<Object> seen =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        java.util.Deque<Quizable> queue = new java.util.ArrayDeque<>(roots);
+        List<Quizable> closure = new ArrayList<>();
         Set<Class<?>> classes = new LinkedHashSet<>();
-        for (Quizable q : this.instances) {
-            if (q != null) {
-                classes.add(q.getClass());
+        while (!queue.isEmpty()) {
+            Quizable q = queue.poll();
+            if (q == null || !seen.add(q)) {
+                continue;
             }
+            closure.add(q);
+            classes.add(q.getClass());
+            queue.addAll(referencedQuizables(q));
         }
+        this.instances = closure;
         for (Class<?> cls : classes) {
             index(cls);
+        }
+    }
+
+    /** Quizables reachable through {@code q}'s fields — declared (reflection) and,
+     *  for a dynamic object, its property map. */
+    private static List<Quizable> referencedQuizables(Quizable q) {
+        List<Quizable> out = new ArrayList<>();
+        if (q instanceof quiz.DynamicFields dyn) {
+            for (Object v : dyn.dynamicFieldValues().values()) {
+                addQuizables(v, out);
+            }
+        }
+        for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
+            try {
+                f.setAccessible(true);
+                addQuizables(f.get(q), out);
+            } catch (Exception ignored) {
+                // skip unreadable
+            }
+        }
+        return out;
+    }
+
+    private static void addQuizables(Object v, List<Quizable> out) {
+        if (v instanceof Quizable c) {
+            out.add(c);
+        } else if (v instanceof Collection<?> col) {
+            for (Object i : col) {
+                if (i instanceof Quizable c) out.add(c);
+            }
+        } else if (v instanceof Map<?, ?> m) {
+            for (Object i : m.values()) {
+                if (i instanceof Quizable c) out.add(c);
+            }
         }
     }
 
