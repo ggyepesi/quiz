@@ -76,6 +76,102 @@ public final class QuizableFieldPaths {
         return out;
     }
 
+    /** How deep to follow references when enumerating from a sample instance. */
+    private static final int SAMPLE_MAX_DEPTH = 2;
+
+    /**
+     * Field paths enumerated from a SAMPLE INSTANCE — so a {@link DynamicFields}
+     * object (a snapshot WDO, a DynamicQuizable) whose fields live in a property map
+     * (not declared Java fields) still yields its fields, with nested paths followed
+     * through reference values up to {@link #SAMPLE_MAX_DEPTH}. A reflection Quizable
+     * falls back to its declared fields. Branch-cycle-safe. This makes the nested,
+     * typed field model work over dynamic domains, not just reflected ones.
+     */
+    public static List<FieldPath> collectFromSample(Quizable sample, FieldFilter filter) {
+        List<FieldPath> out = new ArrayList<>();
+        if (sample == null) {
+            return out;
+        }
+        out.add(new FieldPath("name", List.of("name"), null));   // identity/display
+        collectSample(sample, new ArrayList<>(), "",
+                filter == null ? ALL_FIELDS : filter,
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()),
+                out);
+        return dedupByPath(out);
+    }
+
+    private static void collectSample(Quizable obj, List<String> prefix, String titlePrefix,
+                                      FieldFilter filter, Set<Object> branch, List<FieldPath> out) {
+        if (obj == null || !branch.add(obj)) {
+            return;
+        }
+        try {
+            if (obj instanceof DynamicFields dyn) {
+                for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
+                    addSampleField(e.getKey(), e.getValue(), null,
+                            prefix, titlePrefix, filter, branch, out);
+                }
+            } else {
+                for (Field field : QuizableAdapter.getAllFields(obj.getClass())) {
+                    if (!filter.accept(field) || QuizableAdapter.isProvenanceField(field)) {
+                        continue;
+                    }
+                    Object v;
+                    try {
+                        field.setAccessible(true);
+                        v = field.get(obj);
+                    } catch (Exception ex) {
+                        v = null;
+                    }
+                    addSampleField(field.getName(), v, field,
+                            prefix, titlePrefix, filter, branch, out);
+                }
+            }
+        } finally {
+            branch.remove(obj);
+        }
+    }
+
+    private static void addSampleField(String name, Object value, Field leaf,
+                                       List<String> prefix, String titlePrefix,
+                                       FieldFilter filter, Set<Object> branch, List<FieldPath> out) {
+        List<String> path = new ArrayList<>(prefix);
+        path.add(name);
+        String title = titlePrefix.isEmpty() ? name : titlePrefix + "." + name;
+
+        Quizable child = firstQuizable(value);
+        if (child != null) {
+            // A reference: offer the reference ITSELF (for invert / group-by-
+            // reference), its display name, and (bounded) its nested fields.
+            out.add(new FieldPath(title, path, leaf));
+            List<String> namePath = new ArrayList<>(path);
+            namePath.add("name");
+            out.add(new FieldPath(title + ".name", namePath, leaf));
+            if (prefix.size() < SAMPLE_MAX_DEPTH) {
+                collectSample(child, path, title, filter, branch, out);
+            }
+        } else {
+            out.add(new FieldPath(title, path, leaf));
+        }
+    }
+
+    private static Quizable firstQuizable(Object v) {
+        if (v instanceof Quizable q) {
+            return q;
+        }
+        if (v instanceof Collection<?> c) {
+            for (Object i : c) {
+                if (i instanceof Quizable q) return q;
+            }
+        }
+        if (v instanceof Map<?, ?> m) {
+            for (Object i : m.values()) {
+                if (i instanceof Quizable q) return q;
+            }
+        }
+        return null;
+    }
+
     private static void collect(QuizablePanelConfig config,
                                 Class<?> cls,
                                 List<String> prefix,
