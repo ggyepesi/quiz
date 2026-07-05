@@ -32,8 +32,11 @@ public final class TransformWorkbenchPanel extends JPanel {
     private final JComboBox<OperationKind> operationCombo =
             new JComboBox<>(OperationKind.values());
 
-    private final DefaultListModel<DomainField> fieldListModel = new DefaultListModel<>();
-    private final JList<DomainField> fieldList = new JList<>(fieldListModel);
+    // The fields pane is the SHARED rich field panel (nested/typed, expand/collapse,
+    // no class-name repetition) — check the argument field(s) for the operation.
+    private final JPanel fieldsHolder = new JPanel(new BorderLayout());
+    private quiz.ui.viewconfig.QuizablePanelConfigEditor fieldEditor;
+    private final JLabel slotHint = new JLabel(" ");
 
     private final JTextField valueField = new JTextField(12);
     private final JTextField newClassField = new JTextField(12);
@@ -61,11 +64,15 @@ public final class TransformWorkbenchPanel extends JPanel {
         split.setResizeWeight(0.42);
         add(split, BorderLayout.CENTER);
 
-        memberTypeCombo.addActionListener(e -> { pipeline.clear(); pipelineModel.clear(); reloadFields(); render(); });
-        operationCombo.addActionListener(e -> reloadFields());
+        memberTypeCombo.addActionListener(e -> {
+            pipeline.clear(); pipelineModel.clear();
+            rebuildFieldEditor(); updateSlotUi(); render();
+        });
+        operationCombo.addActionListener(e -> updateSlotUi());
 
         seedDefault();
-        reloadFields();
+        rebuildFieldEditor();
+        updateSlotUi();
         render();
     }
 
@@ -77,9 +84,10 @@ public final class TransformWorkbenchPanel extends JPanel {
         top.add(operationCombo);
 
         JPanel fields = new JPanel(new BorderLayout(4, 4));
-        fields.setBorder(BorderFactory.createTitledBorder("Fields — valid arguments for the operation"));
-        fields.add(new JScrollPane(fieldList), BorderLayout.CENTER);
+        fields.setBorder(BorderFactory.createTitledBorder("Fields — check the argument(s) for the operation"));
+        fields.add(fieldsHolder, BorderLayout.CENTER);
         JPanel argBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        argBar.add(slotHint);
         argBar.add(new JLabel("Value:"));
         argBar.add(valueField);
         argBar.add(new JLabel("New class:"));
@@ -113,34 +121,78 @@ public final class TransformWorkbenchPanel extends JPanel {
         return b;
     }
 
-    /** Narrow the fields pane to the member class's fields that fit the operation's slot. */
-    private void reloadFields() {
-        fieldListModel.clear();
-        String type = (String) memberTypeCombo.getSelectedItem();
+    /** Value/new-class enablement + the slot hint for the selected operation. */
+    private void updateSlotUi() {
         OperationKind kind = (OperationKind) operationCombo.getSelectedItem();
-        if (type == null || kind == null) {
+        if (kind == null) {
             return;
         }
         OperationSignature sig = OperationSignature.of(kind);
         valueField.setEnabled(sig.needsValue());
         newClassField.setEnabled(sig.multiField());
-        fieldList.setSelectionMode(sig.multiField()
-                ? ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
-                : ListSelectionModel.SINGLE_SELECTION);
-        for (DomainField df : domain.fields(type)) {
-            if (sig.fieldNeed().accepts(df)) {
-                fieldListModel.addElement(df);
-            }
-        }
+        slotHint.setText(sig.multiField()
+                ? "check the projected fields  ·"
+                : "check a " + sig.fieldNeed() + " field  ·");
     }
 
+    /** Rebuild the shared field panel for the selected member type. */
+    private void rebuildFieldEditor() {
+        String type = (String) memberTypeCombo.getSelectedItem();
+        if (type == null) {
+            return;
+        }
+        Quizable sample = sampleOf(type);
+        fieldsHolder.removeAll();
+        if (sample != null) {
+            // allFields=false so nothing is pre-checked — the user checks the
+            // field(s) to use as the operation's argument(s).
+            quiz.ui.viewconfig.QuizablePanelConfig cfg =
+                    quiz.ui.viewconfig.QuizablePanelConfig.of(sampleClass(sample));
+            cfg.setAllFields(false);
+            fieldEditor = new quiz.ui.viewconfig.QuizablePanelConfigEditor(cfg, sample);
+            fieldsHolder.add(fieldEditor, BorderLayout.CENTER);
+        } else {
+            fieldEditor = null;
+            fieldsHolder.add(new JLabel("  (no instances of " + type + ")"), BorderLayout.NORTH);
+        }
+        fieldsHolder.revalidate();
+        fieldsHolder.repaint();
+    }
+
+    private Quizable sampleOf(String type) {
+        for (Quizable q : domain.instances()) {
+            if (q != null && type.equals(q.typeName())) {
+                return q;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<? extends Quizable> sampleClass(Quizable q) {
+        return (Class<? extends Quizable>) q.getClass();
+    }
+
+    /** A DomainField for a dotted path — shape from the domain (else scalar). */
     private DomainField field(String type, String path) {
         for (DomainField df : domain.fields(type)) {
             if (df.field().equals(path)) {
                 return df;
             }
         }
-        return null;
+        return new DomainField(type, path, false, false);
+    }
+
+    /** The field paths the user CHECKED in the shared panel. */
+    private List<DomainField> checkedFields(String type) {
+        if (fieldEditor == null) {
+            return List.of();
+        }
+        List<DomainField> out = new ArrayList<>();
+        for (String path : fieldEditor.selectedFieldPaths()) {
+            out.add(field(type, path));
+        }
+        return out;
     }
 
     private void addOperation() {
@@ -150,17 +202,18 @@ public final class TransformWorkbenchPanel extends JPanel {
             return;
         }
 
-        // PROJECT is a DOMAIN mutation: materialize a new class from the selected
+        List<DomainField> checked = checkedFields(memberType);
+
+        // PROJECT is a DOMAIN mutation: materialize a new class from the checked
         // fields and feed it back into the pool — not a step in the view pipeline.
         if (kind == OperationKind.PROJECT_TO_CLASS) {
-            List<DomainField> selected = fieldList.getSelectedValuesList();
             String newType = newClassField.getText().trim();
-            if (selected.isEmpty() || newType.isEmpty()) {
+            if (checked.isEmpty() || newType.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
-                        "Select the fields to project and enter a new class name.");
+                        "Check the fields to project and enter a new class name.");
                 return;
             }
-            DerivedClass derived = Projector.project(domain, memberType, selected, newType);
+            DerivedClass derived = Projector.project(domain, memberType, checked, newType);
             domain.add(derived);
             if (!comboHas(memberTypeCombo, newType)) {
                 memberTypeCombo.addItem(newType);
@@ -172,14 +225,19 @@ public final class TransformWorkbenchPanel extends JPanel {
             return;
         }
 
-        DomainField field = fieldList.getSelectedValue();
-        if (field == null) {
-            JOptionPane.showMessageDialog(this, "Select a field for the operation.");
+        if (checked.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Check one field for the operation.");
             return;
         }
-        Object value = OperationSignature.of(kind).needsValue()
-                ? parseValue(valueField.getText().trim())
-                : null;
+        DomainField field = checked.get(0);
+        // Validate the checked field fits the operation's slot shape.
+        OperationSignature sig = OperationSignature.of(kind);
+        if (!sig.fieldNeed().accepts(field)) {
+            JOptionPane.showMessageDialog(this, "\"" + field.field() + "\" isn't a "
+                    + sig.fieldNeed() + " field for " + kind + ".");
+            return;
+        }
+        Object value = sig.needsValue() ? parseValue(valueField.getText().trim()) : null;
         pipeline.add(new OperationSpec(kind, field, value));
         refreshPipeline();
         render();

@@ -227,6 +227,32 @@ public class QuizablePanelConfigEditor extends JPanel {
         }
     }
 
+    /**
+     * The dotted paths of the currently CHECKED fields — for reusing this panel as
+     * a field PICKER (e.g. selecting operation arguments). A checked reference not
+     * expanded yields the reference itself; an expanded nested selection yields the
+     * nested path. Works for reflection and dynamic rows alike.
+     */
+    public List<String> selectedFieldPaths() {
+        List<String> out = new ArrayList<>();
+        collectSelected("", out);
+        return out;
+    }
+
+    private void collectSelected(String prefix, List<String> out) {
+        for (Row row : rows) {
+            if (row.special || !row.use) {
+                continue;
+            }
+            String path = prefix.isEmpty() ? row.fieldName : prefix + "." + row.fieldName;
+            if (row.childEditor != null) {
+                row.childEditor.collectSelected(path, out);
+            } else {
+                out.add(path);
+            }
+        }
+    }
+
     public QuizablePanelConfig getConfig() {
         QuizablePanelConfig out = copyHeader(sourceConfig);
 
