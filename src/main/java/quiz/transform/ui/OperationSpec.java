@@ -29,6 +29,7 @@ public class OperationSpec {
             case GROUP_BY_VALUE -> "group by value  " + field.path();
             case GROUP_BY_REFERENCE -> "invert / group by  " + field.path();
             case PROJECT_TO_CLASS -> "project  " + field.path();
+            case JOIN -> "join  " + field.path();
         };
     }
 }

@@ -60,6 +60,8 @@ public final class OperationSignature {
                     List.of(new Slot("Reference field", Need.REFERENCE)), false, false);
             case PROJECT_TO_CLASS -> new OperationSignature(kind,
                     List.of(new Slot("Projected fields", Need.ANY)), false, true);
+            case JOIN -> new OperationSignature(kind,
+                    List.of(new Slot("Left key", Need.ANY)), false, false);
         };
     }
 

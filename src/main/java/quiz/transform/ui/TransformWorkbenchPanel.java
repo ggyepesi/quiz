@@ -40,6 +40,9 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     private final JTextField valueField = new JTextField(12);
     private final JTextField newClassField = new JTextField(12);
+    // JOIN: match this (left) class to a right class on a key.
+    private final JComboBox<String> rightClassCombo = new JComboBox<>();
+    private final JComboBox<String> rightKeyCombo = new JComboBox<>();
 
     private final List<OperationSpec> pipeline = new ArrayList<>();
     private final DefaultListModel<OperationSpec> pipelineModel = new DefaultListModel<>();
@@ -90,12 +93,22 @@ public final class TransformWorkbenchPanel extends JPanel {
         argBar.add(slotHint);
         argBar.add(new JLabel("Value:"));
         argBar.add(valueField);
+        argBar.add(new JLabel("Join right:"));
+        argBar.add(rightClassCombo);
+        argBar.add(new JLabel("on key:"));
+        argBar.add(rightKeyCombo);
         argBar.add(new JLabel("New class:"));
         argBar.add(newClassField);
         JButton add = new JButton("Add operation");
         add.addActionListener(e -> addOperation());
         argBar.add(add);
         fields.add(argBar, BorderLayout.SOUTH);
+
+        for (String t : domain.types()) {
+            rightClassCombo.addItem(t);
+        }
+        rightClassCombo.addActionListener(e -> reloadRightKeys());
+        reloadRightKeys();
 
         JPanel steps = new JPanel(new BorderLayout(4, 4));
         steps.setBorder(BorderFactory.createTitledBorder("Pipeline (in order → derived subdomain)"));
@@ -130,11 +143,25 @@ public final class TransformWorkbenchPanel extends JPanel {
             return;
         }
         OperationSignature sig = OperationSignature.of(kind);
+        boolean join = kind == OperationKind.JOIN;
         valueField.setEnabled(sig.needsValue());
-        newClassField.setEnabled(sig.multiField());
-        slotHint.setText(sig.multiField()
-                ? "check the projected fields  ·"
+        rightClassCombo.setEnabled(join);
+        rightKeyCombo.setEnabled(join);
+        newClassField.setEnabled(sig.multiField() || join);
+        slotHint.setText(join ? "check the LEFT key  ·"
+                : sig.multiField() ? "check the projected fields  ·"
                 : "check a " + sig.fieldNeed() + " field  ·");
+    }
+
+    private void reloadRightKeys() {
+        rightKeyCombo.removeAllItems();
+        String rt = (String) rightClassCombo.getSelectedItem();
+        if (rt == null) {
+            return;
+        }
+        for (DomainField df : domain.fields(rt)) {
+            rightKeyCombo.addItem(df.field());
+        }
     }
 
     /** Rebuild the shared field panel for the selected member type. */
@@ -227,6 +254,33 @@ public final class TransformWorkbenchPanel extends JPanel {
             return;
         }
 
+        // JOIN is a cross-class DOMAIN mutation: the LEFT key is the checked field,
+        // the RIGHT class + key come from the join controls.
+        if (kind == OperationKind.JOIN) {
+            String rightType = (String) rightClassCombo.getSelectedItem();
+            String rightKey = (String) rightKeyCombo.getSelectedItem();
+            String newType = newClassField.getText().trim();
+            if (checked.isEmpty() || rightType == null || rightKey == null || newType.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Check the LEFT key, pick the right class + key, and name the new class.");
+                return;
+            }
+            DerivedClass derived = Joiner.join(domain, newType,
+                    memberType, checked.get(0).field(), rightType, rightKey);
+            domain.add(derived);
+            if (!comboHas(memberTypeCombo, newType)) memberTypeCombo.addItem(newType);
+            if (!comboHas(rightClassCombo, newType)) rightClassCombo.addItem(newType);
+            newClassField.setText("");
+            long matched = derived.instances().stream()
+                    .filter(o -> o instanceof quiz.transform.DynamicQuizable d
+                            && d.get(rightType.toLowerCase()) != null).count();
+            JOptionPane.showMessageDialog(this, "Joined \"" + newType + "\"  ("
+                    + derived.instances().size() + " rows, " + matched + " matched) — "
+                    + "select it as Members (fields: " + memberType.toLowerCase()
+                    + ", " + rightType.toLowerCase() + ").");
+            return;
+        }
+
         if (checked.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Check one field for the operation.");
             return;
@@ -270,6 +324,7 @@ public final class TransformWorkbenchPanel extends JPanel {
                     case GROUP_BY_VALUE -> { tag = "group"; color = "#2f6fb0"; }
                     case GROUP_BY_REFERENCE -> { tag = "invert"; color = "#6a3fb0"; }
                     case PROJECT_TO_CLASS -> { tag = "project"; color = "#0a7a4a"; }
+                    case JOIN -> { tag = "join"; color = "#a03050"; }
                     default -> { tag = "op"; color = "#555555"; }
                 }
                 String field = op.field == null ? "" : op.field.field();
