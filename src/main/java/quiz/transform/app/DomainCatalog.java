@@ -28,9 +28,7 @@ public final class DomainCatalog {
             if (snap.isFile()) {
                 File model = new File(d.modelPath());
                 out.add(new DomainEntry(d.name(), "generated",
-                        () -> new SnapshotDomain(
-                                new WikidataDynamicObjectJsonStore().loadAll(snap),
-                                statementTypes(model))));
+                        () -> open(snap, model)));
             }
         }
 
@@ -42,24 +40,24 @@ public final class DomainCatalog {
         return out;
     }
 
-    /** The names of the domain's statement-reification classes (whose "source"
-     *  back-ref is structural). Empty when there is no readable model. */
-    private static java.util.Set<String> statementTypes(File model) {
-        if (model == null || !model.isFile()) {
-            return java.util.Set.of();
-        }
-        try {
-            var project = new wikidata.explore.model.GeneratedProjectModelStore()
-                    .load(model);
-            java.util.Set<String> out = new java.util.LinkedHashSet<>();
-            for (var c : project.classes()) {
-                if (c != null && c.reifiesStatements()) {
-                    out.add(c.className());
-                }
+    /**
+     * Opens a generated dataset: when the model.json is readable, compile it +
+     * the pool into a typed {@link ProductDomain} (model-authoritative schema);
+     * otherwise fall back to {@link SnapshotDomain}'s instance-derived schema
+     * (saved/derived domains have no model).
+     */
+    private static quiz.transform.ui.DomainModel open(File snap, File model)
+            throws Exception {
+        var pool = new WikidataDynamicObjectJsonStore().loadAll(snap);
+        if (model != null && model.isFile()) {
+            try {
+                var project = new wikidata.explore.model.GeneratedProjectModelStore()
+                        .load(model);
+                return wikidata.explore.transform.ProductCompiler.compile(project, pool);
+            } catch (Exception unreadable) {
+                // Fall through to the instance-derived schema.
             }
-            return out;
-        } catch (Exception unreadable) {
-            return java.util.Set.of();
         }
+        return new SnapshotDomain(pool);
     }
 }

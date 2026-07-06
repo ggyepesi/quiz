@@ -44,6 +44,16 @@ public final class WorkingDomain implements DomainModel {
         return d != null ? d.fields() : base.fields(type);
     }
 
+    @Override public java.util.Set<String> structuralFields(String type) {
+        // A derived (PROJECT/JOIN) class has no structural plumbing of its own.
+        return derived.containsKey(type) ? java.util.Set.of() : base.structuralFields(type);
+    }
+
+    @Override public quiz.ui.viewconfig.FieldTypeSource fieldTypes(String type) {
+        // Derived classes reflect their sample; base types use the compiled model.
+        return derived.containsKey(type) ? null : base.fieldTypes(type);
+    }
+
     @Override public Collection<? extends Quizable> instances() {
         List<Quizable> all = new ArrayList<>(base.instances());
         for (DerivedClass d : derived.values()) {

@@ -55,6 +55,14 @@ public class QuizableSearchPanel extends JPanel
         viewEditor.setHiddenFields(fieldNames);
     }
 
+    /** Supplies authoritative field types (labels/cardinality/structural) to all
+     *  three editors — e.g. a compiled model schema. Null reflects the sample. */
+    public void setFieldTypes(quiz.ui.viewconfig.FieldTypeSource source) {
+        searchEditor.setFieldTypes(source);
+        sortEditor.setFieldTypes(source);
+        viewEditor.setFieldTypes(source);
+    }
+
     private final JTextField searchField =
             new JTextField();
 

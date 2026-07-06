@@ -182,6 +182,9 @@ public final class TransformWorkbenchPanel extends JPanel {
             // The domain's structural fields (provenance/plumbing) aren't offered
             // as arguments — the DomainModel seam says which, this panel just obeys.
             fieldEditor.setHiddenFields(domain.structuralFields(type));
+            // Authoritative model types (labels, cardinality, nested structural
+            // hiding) when the domain is compiled; null reflects the sample.
+            fieldEditor.setFieldTypes(domain.fieldTypes(type));
             fieldsHolder.add(fieldEditor, BorderLayout.CENTER);
         } else {
             fieldEditor = null;
@@ -415,6 +418,7 @@ public final class TransformWorkbenchPanel extends JPanel {
                         quiz.ui.QuizableSearchPanel engine =
                                 new quiz.ui.QuizableSearchPanel(sampleClass(sample), sample);
                         engine.setHiddenFields(domain.structuralFields(type));
+                        engine.setFieldTypes(domain.fieldTypes(type));
                         engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
                         v.addTargetListener(engine);
                         renderHolder.add(engine, BorderLayout.NORTH);

@@ -1,0 +1,101 @@
+package quiz.transform.app;
+
+import quiz.Quizable;
+import quiz.transform.ui.DomainField;
+import quiz.transform.ui.DomainModel;
+import quiz.ui.viewconfig.FieldTypeSource;
+import wikidata.explore.extract.WikidataDynamicObject;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * A {@link DomainModel} backed by a compiled {@link ProductSchema} — the typed
+ * schema read once at transform-context entry — over the (convention-resolved)
+ * instance pool. Unlike {@link SnapshotDomain}, its field types, cardinality,
+ * reference targets and structural fields come from the model, not per-sample
+ * reflection, so nested references, list-vs-single and hidden plumbing are all
+ * authoritative. Built by {@code ProductCompiler}.
+ */
+public final class ProductDomain implements DomainModel {
+
+    // Cap nested-path expansion so a reference cycle (or just deep chains) can't
+    // blow up the field list — a path visits any given class at most once.
+    private static final int MAX_DEPTH = 4;
+
+    private final ProductSchema schema;
+    private final List<WikidataDynamicObject> pool;
+
+    public ProductDomain(ProductSchema schema, List<WikidataDynamicObject> pool) {
+        this.schema = schema;
+        this.pool = pool;
+    }
+
+    @Override public List<String> types() {
+        return schema.memberClasses();
+    }
+
+    @Override public List<DomainField> fields(String type) {
+        List<DomainField> out = new ArrayList<>();
+        // type is the OWNING top-level class for every path (nested paths still
+        // belong to the type the user selected), matching SnapshotDomain.
+        collectFields(type, type, "", new HashSet<>(), 0, out);
+        return out;
+    }
+
+    private void collectFields(String topType, String className, String prefix,
+                               Set<String> visited, int depth,
+                               List<DomainField> out) {
+        ProductClass pc = schema.get(className);
+        if (pc == null || !visited.add(className) || depth > MAX_DEPTH) {
+            return;
+        }
+        for (ProductField f : schema.fields(className)) {
+            String path = prefix.isEmpty() ? f.name() : prefix + "." + f.name();
+            out.add(new DomainField(topType, path, f.reference(), f.collection()));
+            if (f.reference() && f.nestedClassName() != null) {
+                // The referent's identity is a useful leaf path (nominee.name).
+                out.add(new DomainField(topType, path + ".name", false, false));
+                collectFields(topType, f.nestedClassName(), path,
+                        new HashSet<>(visited), depth + 1, out);
+            }
+        }
+        visited.remove(className);
+    }
+
+    @Override public Set<String> structuralFields(String type) {
+        return schema.structuralFields(type);
+    }
+
+    /** Authoritative field types for the config editor's dynamic sample of {@code
+     *  type} — labels, structural-ness and nested sources straight from the model. */
+    @Override public FieldTypeSource fieldTypes(String type) {
+        return sourceFor(type);
+    }
+
+    private FieldTypeSource sourceFor(String className) {
+        ProductClass pc = schema.get(className);
+        return name -> {
+            ProductField f = pc == null ? null : pc.field(name);
+            if (f == null) {
+                return null;   // unknown (e.g. the `name` identity row) → reflect
+            }
+            boolean recurse = f.reference() && f.nestedClassName() != null;
+            FieldTypeSource nested = recurse ? sourceFor(f.nestedClassName()) : null;
+            String nestedName = recurse ? displayName(f.nestedClassName()) : null;
+            return new FieldTypeSource.FieldTypeInfo(
+                    f.typeLabel(), f.structural(), nestedName, nested);
+        };
+    }
+
+    private String displayName(String className) {
+        ProductClass c = schema.get(className);
+        return c != null ? c.displayName() : className;
+    }
+
+    @Override public Collection<? extends Quizable> instances() { return pool; }
+    @Override public Class<? extends Quizable> universe() { return WikidataDynamicObject.class; }
+}

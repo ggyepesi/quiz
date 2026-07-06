@@ -37,6 +37,11 @@ public class QuizablePanelConfigEditor extends JPanel {
     // idea WHY a field is hidden.
     private java.util.Set<String> hiddenFields = java.util.Set.of();
 
+    // Optional authoritative field types for a DYNAMIC sample — overrides the
+    // sample-reflected type label / structural-ness / nested source. Null = reflect
+    // the sample as before. See FieldTypeSource.
+    private FieldTypeSource typeSource;
+
     public QuizablePanelConfigEditor(QuizablePanelConfig config) {
         this(config, false, false, null);
     }
@@ -63,6 +68,14 @@ public class QuizablePanelConfigEditor extends JPanel {
     /** Hides the given top-level fields from the row list (and rebuilds). */
     public void setHiddenFields(java.util.Set<String> fieldNames) {
         this.hiddenFields = fieldNames == null ? java.util.Set.of() : fieldNames;
+        buildRows();
+        tableModel.fireTableDataChanged();
+    }
+
+    /** Supplies authoritative field types for a dynamic sample (overrides sample
+     *  reflection); null restores reflection. Rebuilds. */
+    public void setFieldTypes(FieldTypeSource source) {
+        this.typeSource = source;
         buildRows();
         tableModel.fireTableDataChanged();
     }
@@ -171,7 +184,12 @@ public class QuizablePanelConfigEditor extends JPanel {
         }
         for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
             String name = e.getKey();
-            if (hiddenFields.contains(name)) {
+            FieldTypeSource.FieldTypeInfo info =
+                    typeSource == null ? null : typeSource.field(name);
+            // The model (via the type source) can mark a field structural — the
+            // reify `source` back-ref, the auto-seeded `wikidata` link — so it's
+            // hidden here just like the explicit hiddenFields set.
+            if (hiddenFields.contains(name) || (info != null && info.structural())) {
                 continue;
             }
             Object value = e.getValue();
@@ -182,7 +200,10 @@ public class QuizablePanelConfigEditor extends JPanel {
             Class<? extends Quizable> nested =
                     child != null && hasFields(child) ? asQuizableClass(child.getClass()) : null;
 
-            Row row = Row.dynamic(name, dynamicTypeLabel(value, child), nested, child);
+            String typeLabel = info != null ? info.typeLabel() : dynamicTypeLabel(value, child);
+            Row row = Row.dynamic(name, typeLabel, nested, child);
+            row.nestedTypeSource = info != null ? info.nested() : null;
+            row.nestedLabel = info != null ? info.nestedClassName() : null;
             row.use = sourceConfig.showsFieldByName(name);
             rows.add(row);
         }
@@ -468,11 +489,20 @@ public class QuizablePanelConfigEditor extends JPanel {
             // enumerate the referenced object's map-held fields.
             row.childEditor = new QuizablePanelConfigEditor(
                     childConfig, nestedDefaultNameOnly, false, row.nestedSample);
+            // Carry the authoritative types down so the nested level hides its own
+            // structural fields (e.g. a Category's `wikidata`) and labels correctly.
+            if (row.nestedTypeSource != null) {
+                row.childEditor.setFieldTypes(row.nestedTypeSource);
+            }
         }
 
+        // Prefer the model class name (e.g. "Nomination") over the raw sample Java
+        // class ("WikidataDynamicObject") for the caption.
+        String nestedName = row.nestedLabel != null && !row.nestedLabel.isBlank()
+                ? row.nestedLabel : row.nestedClass.getSimpleName();
         JDialog dialog = new JDialog(
                 SwingUtilities.getWindowAncestor(this),
-                row.fieldName + " : " + row.nestedClass.getSimpleName(),
+                row.fieldName + " : " + nestedName,
                 Dialog.ModalityType.APPLICATION_MODAL);
 
         dialog.setLayout(new BorderLayout(8, 8));
@@ -813,6 +843,8 @@ public class QuizablePanelConfigEditor extends JPanel {
 
         boolean use;
         QuizablePanelConfigEditor childEditor;
+        FieldTypeSource nestedTypeSource;   // authoritative types for the child (dynamic)
+        String nestedLabel;                 // model class name for the expand caption
 
         private Row(boolean special, boolean minorBlock, Field field, String fieldName,
                     String typeLabel, Class<? extends Quizable> nestedClass,

@@ -32,6 +32,16 @@ public interface DomainModel {
         return java.util.Set.of();
     }
 
+    /**
+     * Optional authoritative field types for a dynamic sample of {@code type} —
+     * the config editors' picker labels, cardinality and structural-hiding, from
+     * a compiled model rather than sample reflection. Null (default) reflects the
+     * sample, as before.
+     */
+    default quiz.ui.viewconfig.FieldTypeSource fieldTypes(String type) {
+        return null;
+    }
+
     /** The instances to run the view over. */
     Collection<? extends Quizable> instances();
 
