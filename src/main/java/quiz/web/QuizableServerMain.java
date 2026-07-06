@@ -3,7 +3,6 @@ package quiz.web;
 import quiz.web.sources.GeneratedSource;
 import quiz.web.sources.MythologySource;
 import quiz.web.sources.OscarSource;
-import quiz.web.sources.SportTeamSource;
 import quiz.web.sources.StateSource;
 
 /**
@@ -26,7 +25,16 @@ public class QuizableServerMain {
         System.setProperty("quizable.lazyImages", "true");
 
         QuizableStore store = new QuizableStore();
-        store.register(new SportTeamSource());
+        // Sport teams: served generically — the domain declares its facets
+        // (SportTeams.webFacets), DomainModelSource groups by them. The State and
+        // Mythology sources stay bespoke: their trees are CURATED data (continents,
+        // affiliations), not derivable from fields.
+        store.register(new quiz.web.sources.DomainModelSource(
+                "SportTeam",
+                () -> quiz.transform.ui.ReflectionDomain.of(new flag.SportTeams()),
+                flag.SportTeams.webFacets(),
+                quiz.web.sources.DomainModelSource.GroupMode.FLAT,
+                "All teams"));
         store.register(new StateSource());
         store.register(new MythologySource());
         store.register(new OscarSource());

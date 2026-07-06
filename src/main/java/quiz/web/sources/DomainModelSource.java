@@ -31,20 +31,33 @@ public final class DomainModelSource implements QuizableSource {
         DomainModel get() throws Exception;
     }
 
+    /** How the configured facets shape the tree: FLAT lays every facet out as a
+     *  parallel dimension off the root; NESTED drills down facet by facet. */
+    public enum GroupMode { FLAT, NESTED }
+
     private final String type;
     private final Loader loader;
     private final List<Facet> facets;
+    private final GroupMode mode;
+    private final String rootName;
     private DomainModel cached;
 
     public DomainModelSource(String type, Loader loader) {
-        this(type, loader, List.of());
+        this(type, loader, List.of(), GroupMode.NESTED, null);
     }
 
     /** @param facets configured grouping for {@link #rootGroup()} (empty = no groups). */
     public DomainModelSource(String type, Loader loader, List<Facet> facets) {
+        this(type, loader, facets, GroupMode.NESTED, null);
+    }
+
+    public DomainModelSource(String type, Loader loader, List<Facet> facets,
+                             GroupMode mode, String rootName) {
         this.type = type;
         this.loader = loader;
         this.facets = facets == null ? List.of() : facets;
+        this.mode = mode == null ? GroupMode.NESTED : mode;
+        this.rootName = rootName == null || rootName.isBlank() ? type : rootName;
     }
 
     @Override public String type() { return type; }
@@ -63,7 +76,9 @@ public final class DomainModelSource implements QuizableSource {
         if (facets.isEmpty()) {
             return null;
         }
-        return FacetGrouper.groupNested(type, load(), facets);
+        return mode == GroupMode.FLAT
+                ? FacetGrouper.group(rootName, load(), facets)
+                : FacetGrouper.groupNested(rootName, load(), facets);
     }
 
     private synchronized DomainModel domain() throws Exception {

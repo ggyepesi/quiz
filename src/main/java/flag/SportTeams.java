@@ -25,6 +25,19 @@ public class SportTeams implements QuizableViews {
 
     static final Set<String> canada = Set.of("Alberta", "British Columbia", "Manitoba", "Ontario", "Quebec");
 
+    /** The domain's configured grouping (League/Country/State/City/Stadium),
+     *  declared WITH the domain — served generically (DomainModelSource), no
+     *  bespoke source. Parallel dimensions, so use the FLAT group mode. */
+    public static List<quiz.facet.Facet> webFacets() {
+        return List.of(
+                quiz.facet.Facet.field("league", "League"),
+                quiz.facet.Facet.mapped("Country", "state",
+                        s -> canada.contains(s) ? "Canada" : "USA"),
+                quiz.facet.Facet.field("state", "State"),
+                quiz.facet.Facet.field("capital", "City"),
+                quiz.facet.Facet.field("stadium", "Stadium"));
+    }
+
     static final boolean downloadSvgs = false;
 
     private QuizableGroupView groupView;
