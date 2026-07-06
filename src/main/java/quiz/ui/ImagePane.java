@@ -65,6 +65,10 @@ public class ImagePane extends JPanel
     private boolean imageLoading = false;
     private boolean imageLoadFailed = false;
 
+    // Cap on the pane's preferred (layout) size — the painted image scales to
+    // fit, so a huge natural image doesn't blow up or collapse the card grid.
+    private static final int MAX_DISPLAY_SIZE = 400;
+
     private int imageWidth = 150;
     private int imageHeight = 150;
 
@@ -204,9 +208,7 @@ public class ImagePane extends JPanel
             addMouseMotionListener(this);
         }
 
-        setPreferredSize(new Dimension(
-                Math.max(150, imageWidth),
-                Math.max(150, imageHeight)));
+        applyDisplaySize();
     }
 
     public CachedImage getCachedImage() {
@@ -291,9 +293,27 @@ public class ImagePane extends JPanel
             this.imageHeight = image.getHeight(null);
         }
 
-        setPreferredSize(new Dimension(
-                Math.max(150, imageWidth),
-                Math.max(150, imageHeight)));
+        applyDisplaySize();
+    }
+
+    // The pane's layout footprint. imageWidth/imageHeight stay the NATURAL image
+    // size (the paint/crop math needs it); the preferred size is a display box —
+    // large images are capped (paintComponent scales to fit, so nothing is lost)
+    // and a real minimum is set, because without one GridBagLayout collapses the
+    // pane to nothing whenever a card is narrower than the image's natural size
+    // (the "tiny icon" cards).
+    private void applyDisplaySize() {
+        int w = Math.max(1, imageWidth);
+        int h = Math.max(1, imageHeight);
+
+        int max = Math.max(w, h);
+        if (max > MAX_DISPLAY_SIZE) {
+            w = w * MAX_DISPLAY_SIZE / max;
+            h = h * MAX_DISPLAY_SIZE / max;
+        }
+
+        setPreferredSize(new Dimension(Math.max(150, w), Math.max(150, h)));
+        setMinimumSize(new Dimension(150, 150));
     }
 
     private void loadDisplayImageAsync() {

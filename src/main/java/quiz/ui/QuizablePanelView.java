@@ -2,12 +2,10 @@ package quiz.ui;
 
 import aux.GridBagUtils;
 import quiz.Quizable;
-import quiz.QuizableAdapter;
 import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.List;
 
@@ -98,6 +96,14 @@ public class QuizablePanelView {
         cardsByName.clear();
         columns = Math.max(1, numColumns);
 
+        // Raw image entries (the enlarged-image view) are not Quizables, so they
+        // can't go through the virtualized card list — give them their own panel.
+        // Only ImagePane.showImageView uses this path, always without quizables.
+        if (quizables.isEmpty() && !rawImageEntries.isEmpty()) {
+            createRawImagePanel();
+            return;
+        }
+
         context = resolveContext();
         // Register every quizable as top-level up front, so a reference chip
         // navigates (isTopLevel is data-based, not panel-based) even to a card
@@ -123,6 +129,36 @@ public class QuizablePanelView {
         virtualList.setItems(new ArrayList<>(quizables));
     }
 
+    // The enlarged-image view: one holder per raw ImagePane, filling the frame
+    // (no virtualization — there is only ever a handful, usually one).
+    private void createRawImagePanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+
+        int row = 0;
+        for (RawImageEntry entry : rawImageEntries) {
+            JPanel holder = new JPanel(new GridBagLayout());
+            holder.add(entry.imagePane,
+                    GridBagUtils.gbc(
+                            0, 0,
+                            1.0, 1.0,
+                            GridBagConstraints.CENTER,
+                            GridBagConstraints.BOTH));
+            cards.add(holder);
+            if (entry.title != null) {
+                cardsByName.putIfAbsent(entry.title, holder);
+            }
+            panel.add(holder,
+                    GridBagUtils.gbc(
+                            0, row++,
+                            1.0, 1.0,
+                            GridBagConstraints.CENTER,
+                            GridBagConstraints.BOTH));
+        }
+
+        cardsScrollPane = new JScrollPane(panel);
+        cardsScrollPane.getVerticalScrollBar().setUnitIncrement(20);
+    }
+
     // Card factory for the virtualized list: build the card, register it, and
     // index it by name for getCardsByName.
     private javax.swing.JComponent buildVirtualCard(Quizable q) {
@@ -136,61 +172,6 @@ public class QuizablePanelView {
 
     public VirtualizedCardList getVirtualList() {
         return virtualList;
-    }
-
-    private void createCards() {
-        for (Quizable q : quizables) {
-            if (q == null) {
-                continue;
-            }
-            if (q.getName() == null || q.getName().isBlank()) {
-                System.out.println("EMPTY NAME");
-                System.out.println("  class = " + q.getClass().getName());
-                System.out.println("  object = " + q);
-                System.out.println("  id = " + System.identityHashCode(q));
-
-                for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
-                    try {
-                        f.setAccessible(true);
-                        Object v = f.get(q);
-
-                        System.out.println("    "
-                                + f.getName()
-                                + " = "
-                                + (v == null ? "null" : v.getClass().getSimpleName() + " : " + v));
-                    } catch (Exception e) {
-                        System.out.println("    " + f.getName() + " = <ERR>");
-                    }
-                }
-            }
-
-            QuizablePanel panel = buildQuizableCard(q);
-
-            cards.add(panel);
-
-            String name = q.getName();
-            if (name != null && !name.isEmpty()) {
-                cardsByName.putIfAbsent(name, panel);
-            }
-        }
-        for (RawImageEntry entry : rawImageEntries) {
-            JPanel holder = new JPanel(new GridBagLayout());
-
-            holder.add(entry.imagePane,
-                    GridBagUtils.gbc(
-                            0, 0,
-                            1.0, 1.0,
-                            GridBagConstraints.CENTER,
-                            GridBagConstraints.BOTH));
-
-            tuneCardSize(holder);
-
-            cards.add(holder);
-
-            if (entry.title != null) {
-                cardsByName.putIfAbsent(entry.title, holder);
-            }
-        }
     }
 
     private QuizablePanel buildQuizableCard(Quizable q) {
