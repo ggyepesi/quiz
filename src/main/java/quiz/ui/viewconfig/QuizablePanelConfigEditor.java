@@ -160,6 +160,15 @@ public class QuizablePanelConfigEditor extends JPanel {
 
     private void addDynamicFieldRows(Quizable dynamicSample) {
         quiz.DynamicFields dyn = (quiz.DynamicFields) dynamicSample;
+        // Identity row first: `name` isn't in the property map (it's the display
+        // name), but search/sort/view configs must be able to include/exclude it
+        // like any other field — otherwise it's invisible yet always searched.
+        if (!hiddenFields.contains("name")
+                && !dyn.dynamicFieldValues().containsKey("name")) {
+            Row nameRow = Row.dynamic("name", "String", null, null);
+            nameRow.use = sourceConfig.showsFieldByName("name");
+            rows.add(nameRow);
+        }
         for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
             String name = e.getKey();
             if (hiddenFields.contains(name)) {

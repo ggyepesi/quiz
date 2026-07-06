@@ -112,17 +112,23 @@ class QuizableFieldPathsTest {
     }
 
     @Test
-    void entityObjectAlwaysOffersNameAndQid() {
-        // A bare reference (no selected/dynamic fields) must still be configurable
-        // by its identity in search/sort/viewconfig.
-        QuizablePanelConfig config = QuizablePanelConfig.of(EntityCard.class);
-        config.setAllFields(false);
+    void allFieldsImpliesIdentityExplicitConfigDoesNot() {
+        // "All fields" implies the identity (name/qid). An EXPLICIT config means
+        // exactly what it names — forcing name in regardless made search hit on
+        // name even when the user unchecked it.
+        QuizablePanelConfig all = QuizablePanelConfig.of(EntityCard.class);
+        all.setAllFields(true);
+        Set<String> allPaths = pathStrings(QuizableFieldPaths.collect(
+                all, QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS));
+        assertTrue(allPaths.contains("name"), allPaths.toString());
+        assertTrue(allPaths.contains("qid"), allPaths.toString());
 
-        Set<String> paths = pathStrings(QuizableFieldPaths.collect(
-                config, QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS));
-
-        assertTrue(paths.contains("name"), paths.toString());
-        assertTrue(paths.contains("qid"), paths.toString());
+        QuizablePanelConfig explicit = QuizablePanelConfig.of(EntityCard.class);
+        explicit.setAllFields(false);
+        Set<String> explicitPaths = pathStrings(QuizableFieldPaths.collect(
+                explicit, QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS));
+        assertFalse(explicitPaths.contains("name"), explicitPaths.toString());
+        assertFalse(explicitPaths.contains("qid"), explicitPaths.toString());
     }
 
     @Test

@@ -186,6 +186,12 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
         this.type = type;
     }
 
+    /** True when a domain class was stamped ({@link #typeName()} would otherwise
+     *  fall back to the Java class name — an unstamped reference, not a member). */
+    public boolean hasTypeStamp() {
+        return type != null && !type.isBlank();
+    }
+
     @Override
     public String typeName() {
         return type == null || type.isBlank() ? getClass().getSimpleName() : type;

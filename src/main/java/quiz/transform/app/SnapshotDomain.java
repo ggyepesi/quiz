@@ -27,6 +27,9 @@ public final class SnapshotDomain implements DomainModel {
 
     public SnapshotDomain(List<WikidataDynamicObject> pool,
                           java.util.Set<String> statementTypes) {
+        // A bare reference (unstamped, no substance — e.g. the type values
+        // "film", "song") reads as its display-name String, not an object chip.
+        wikidata.explore.transform.BareReferenceCollapse.apply(pool);
         this.pool = pool;
         this.schema = new DomainSchema(pool);
         this.statementTypes = statementTypes == null

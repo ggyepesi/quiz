@@ -274,6 +274,14 @@ public class QuizablePanelSearchAndSort {
             return q.getName();
         }
 
+        // A dynamic (map-held) field — e.g. a snapshot WDO's `won` — has no
+        // declared Java field; the property map IS the field set.
+        if (obj instanceof quiz.DynamicFields dyn
+                && dyn.dynamicFieldValues().containsKey(part)) {
+            return extractRecursive(
+                    dyn.dynamicFieldValues().get(part), path, idx + 1);
+        }
+
         Field f =
                 getFieldCached(obj.getClass(), part);
 

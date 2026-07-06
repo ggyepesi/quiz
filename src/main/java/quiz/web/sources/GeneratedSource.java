@@ -67,6 +67,9 @@ public class GeneratedSource implements QuizableSource {
         if (members == null) {
             WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
             List<WikidataDynamicObject> all = store.loadAll(file);
+            // Bare references (unstamped, no substance — e.g. type values) read
+            // as display-name strings on the web too, matching the workbench.
+            wikidata.explore.transform.BareReferenceCollapse.apply(all);
             boolean anyTyped = all.stream().anyMatch(o -> isStamped(o.typeName()));
             if (anyTyped) {
                 List<WikidataDynamicObject> m = new ArrayList<>();

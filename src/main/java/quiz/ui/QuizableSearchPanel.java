@@ -47,6 +47,14 @@ public class QuizableSearchPanel extends JPanel
     private final QuizablePanelConfigEditor sortEditor;
     private final QuizablePanelConfigEditor viewEditor;
 
+    /** Hides the given top-level fields from all three editors (search / sort /
+     *  view config) — e.g. a domain's structural fields. Mechanical, no policy. */
+    public void setHiddenFields(java.util.Set<String> fieldNames) {
+        searchEditor.setHiddenFields(fieldNames);
+        sortEditor.setHiddenFields(fieldNames);
+        viewEditor.setHiddenFields(fieldNames);
+    }
+
     private final JTextField searchField =
             new JTextField();
 

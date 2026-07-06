@@ -414,6 +414,7 @@ public final class TransformWorkbenchPanel extends JPanel {
                     if (sample != null) {
                         quiz.ui.QuizableSearchPanel engine =
                                 new quiz.ui.QuizableSearchPanel(sampleClass(sample), sample);
+                        engine.setHiddenFields(domain.structuralFields(type));
                         engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
                         v.addTargetListener(engine);
                         renderHolder.add(engine, BorderLayout.NORTH);

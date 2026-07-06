@@ -70,7 +70,12 @@ public final class QuizableFieldPaths {
                 filter == null ? ALL_FIELDS : filter,
                 out);
 
-        ensureIdentityFields(config.getCls(), out);
+        // Identity (name/qid) is implied by "all fields" only. An EXPLICIT config
+        // means exactly what it names — forcing name in regardless made search
+        // hit on name even when the user unchecked it.
+        if (config.isAllFields()) {
+            ensureIdentityFields(config.getCls(), out);
+        }
 
         return dedupByPath(out);
     }
@@ -225,6 +230,12 @@ public final class QuizableFieldPaths {
                         out);
 
                 alreadyAdded.add(fieldName);
+            } else if (field == null) {
+                // A DYNAMIC (map-held) field: the config names it but there is no
+                // declared Java field to reflect on (e.g. a snapshot WDO's `won`).
+                // Emit the path anyway — extraction reads the property map.
+                addDynamicPath(fieldName, e.getValue(), prefix, titlePrefix, out);
+                alreadyAdded.add(fieldName);
             }
         }
 
@@ -256,6 +267,30 @@ public final class QuizableFieldPaths {
                     titlePrefix,
                     filter,
                     out);
+        }
+    }
+
+    // A config-named field with no declared Java Field (dynamic/map-held): the
+    // leaf is null, the path still resolves via the property map. A child config
+    // recurses the same way (the nested class is unknown at collect time).
+    private static void addDynamicPath(String fieldName,
+                                       QuizablePanelConfig childConfig,
+                                       List<String> prefix,
+                                       String titlePrefix,
+                                       List<FieldPath> out) {
+        List<String> path = new ArrayList<>(prefix);
+        path.add(fieldName);
+        String title = titlePrefix.isEmpty()
+                ? fieldName
+                : titlePrefix + "." + fieldName;
+
+        if (childConfig == null || childConfig.getFields().isEmpty()) {
+            out.add(new FieldPath(title, path, null));
+            return;
+        }
+        for (Map.Entry<String, QuizablePanelConfig> e
+                : childConfig.getFields().entrySet()) {
+            addDynamicPath(e.getKey(), e.getValue(), path, title, out);
         }
     }
 

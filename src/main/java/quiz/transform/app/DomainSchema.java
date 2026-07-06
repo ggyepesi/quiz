@@ -24,7 +24,11 @@ public final class DomainSchema {
 
     public DomainSchema(Collection<WikidataDynamicObject> pool) {
         for (WikidataDynamicObject o : pool) {
-            if (o == null || o.typeName() == null || o.typeName().isBlank()) {
+            // Only STAMPED objects define member classes. An unstamped object is
+            // a reference target (or stale intermediate) — without this, its
+            // typeName() falls back to "WikidataDynamicObject" and a phantom
+            // class of that name shows up in the domain.
+            if (o == null || !o.hasTypeStamp()) {
                 continue;
             }
             Set<String> fields = fieldsByType.computeIfAbsent(

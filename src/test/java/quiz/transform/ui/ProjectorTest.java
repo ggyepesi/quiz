@@ -20,7 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ProjectorTest {
 
     @Test void projectThenGroupTheDerivedClass() {
+        // Stamped: a real modeled class. (An UNSTAMPED bare reference would be
+        // collapsed to its display-name string by SnapshotDomain — by design.)
         WikidataDynamicObject cat = new WikidataDynamicObject("Q1", "Best Picture");
+        cat.type("Category");
         WikidataDynamicObject n1 = nomination("N1", cat, 2000);
         WikidataDynamicObject n2 = nomination("N2", cat, 2001);
 
