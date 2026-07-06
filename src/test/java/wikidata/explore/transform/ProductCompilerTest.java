@@ -62,7 +62,12 @@ class ProductCompilerTest {
         osc.type("OscarNominations");
 
         WikidataDynamicObject film = substantive("Q2", "Schindler's List");   // ForWork
-        WikidataDynamicObject cat = substantive("Q3", "Best Picture");        // Category
+
+        // Category is stamped in the snapshot but identity-only (its sole field is
+        // the wikidata link) — it should still be promoted to a member.
+        WikidataDynamicObject cat = new WikidataDynamicObject("Q3", "Best Picture");
+        cat.type("Category");
+        cat.put("wikidata", "http://www.wikidata.org/entity/Q3");
 
         WikidataDynamicObject nom = new WikidataDynamicObject("Q4-abc", "Nomination 1");
         nom.type("Nomination");
@@ -72,7 +77,7 @@ class ProductCompilerTest {
         nom.put("won", Boolean.TRUE);
         nom.put("wikidata", "http://www.wikidata.org/entity/Q4");
 
-        return new java.util.ArrayList<>(List.of(osc, nom));
+        return new java.util.ArrayList<>(List.of(osc, cat, nom));
     }
 
     private static DomainField field(ProductDomain d, String type, String path) {
@@ -84,10 +89,11 @@ class ProductCompilerTest {
         return null;
     }
 
-    @Test void membersAreStampedSubstantiveClassesOnly() {
+    @Test void declaredStampedClassesAreMembersIncludingIdentityOnly() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
-        assertEquals(List.of("OscarNominations", "Nomination"), d.types(),
-                "Category/Type appear only as reference targets, not members");
+        // Category IS stamped (identity-only) -> a member you can select/group by.
+        // Type is never stamped -> stays a reference-only label, not a member.
+        assertEquals(List.of("OscarNominations", "Category", "Nomination"), d.types());
     }
 
     @Test void modeledReferenceStaysAReference() {

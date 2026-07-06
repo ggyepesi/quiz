@@ -208,33 +208,29 @@ public final class ProductCompiler {
         return v;
     }
 
-    /** Member classes: those with substantive stamped instances in the pool
-     *  (as opposed to classes that appear only as reference targets), ordered as
-     *  the model declares them. */
+    /** Member classes: declared classes that actually have STAMPED instances in
+     *  the pool (a real entity you can select/browse), ordered as the model
+     *  declares them. A declared class that only ever appears as a bare label —
+     *  never stamped, e.g. the `type` values — stays a reference target, not a
+     *  member. Identity-only entities (e.g. Category, whose only field is the
+     *  wikidata link) ARE members: their QID identity is what you group by. */
     private static List<String> memberClasses(GeneratedProjectModel model,
                                               List<WikidataDynamicObject> pool) {
-        Set<String> substantive = new LinkedHashSet<>();
+        Set<String> stamped = new LinkedHashSet<>();
         for (WikidataDynamicObject o : pool) {
-            if (o != null && o.hasTypeStamp() && isSubstantive(o)) {
-                substantive.add(o.typeName());
+            if (o != null && o.hasTypeStamp()) {
+                stamped.add(o.typeName());
             }
         }
         List<String> out = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
         for (GeneratedClassModel c : model.classes()) {
             if (c != null && seen.add(c.className())
-                    && substantive.contains(c.className())) {
+                    && stamped.contains(c.className())) {
                 out.add(c.className());
             }
         }
         return out;
-    }
-
-    // Substance = a field beyond the auto-seeded `wikidata` link (a bare object is
-    // just a label, not a member class).
-    private static boolean isSubstantive(WikidataDynamicObject o) {
-        Set<String> keys = o.dynamicFieldValues().keySet();
-        return !keys.isEmpty() && !(keys.size() == 1 && keys.contains("wikidata"));
     }
 
     private static Object sampleValue(String className, String fieldName,
