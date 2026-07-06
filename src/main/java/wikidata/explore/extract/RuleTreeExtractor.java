@@ -615,6 +615,15 @@ public class RuleTreeExtractor {
         if (qid != null)
             return registry.getOrCreate(
                     qid, StringUtils.firstNonBlank(label, qid));
+        // A time literal ([+-]YYYY-MM-DDThh:mm:ssZ) becomes a typed date, at the
+        // precision the literal's conventional padding implies — not a raw string.
+        aux.FlexibleDate date = aux.FlexibleDate.fromWikidataLiteral(raw);
+        if (date == null) {
+            date = aux.FlexibleDate.fromWikidataLiteral(label);
+        }
+        if (date != null) {
+            return date;
+        }
         return StringUtils.firstNonBlank(label, raw);
     }
 

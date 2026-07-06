@@ -189,6 +189,11 @@ public class WikidataDynamicObjectJsonStore {
         if (v instanceof WikidataDynamicObject w) {
             return new Ref(keyOf(w));
         }
+        if (v instanceof aux.FlexibleDate d) {
+            // The compact form carries the precision ("1959" vs "1959-04-06"),
+            // so a marker string is enough to restore the typed date on load.
+            return new DateVal(d.format());
+        }
         if (v instanceof java.util.Collection<?> list) {
             List<Object> out = new ArrayList<>(list.size());
             for (Object e : list) out.add(encode(e));
@@ -277,10 +282,22 @@ public class WikidataDynamicObjectJsonStore {
         if (v instanceof Ref ref) {
             return byKey.get(ref.qid);
         }
+        if (v instanceof DateVal d) {
+            return aux.FlexibleDate.parse(d.date);
+        }
         if (v instanceof List<?> list) {
             List<Object> out = new ArrayList<>(list.size());
             for (Object e : list) out.add(decode(e, byKey));
             return out;
+        }
+        // Snapshots saved before typed dates hold the raw time literal as a
+        // string; upgrade it on load (the probe only matches unambiguous
+        // [+-]YYYY-MM-DDT… literals) so old domains need no regeneration.
+        if (v instanceof String s) {
+            aux.FlexibleDate date = aux.FlexibleDate.fromWikidataLiteral(s);
+            if (date != null) {
+                return date;
+            }
         }
         return v;
     }
@@ -307,6 +324,18 @@ public class WikidataDynamicObjectJsonStore {
 
         public Ref(String qid) {
             this.qid = qid;
+        }
+    }
+
+    /** A typed date value, in {@link aux.FlexibleDate}'s self-describing
+     *  string form ("1959", "1959-04-06", "500 BC"). */
+    public static class DateVal {
+        public String date;
+
+        public DateVal() {}
+
+        public DateVal(String date) {
+            this.date = date;
         }
     }
 

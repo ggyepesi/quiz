@@ -208,7 +208,9 @@ public class QualifierLoader {
                     String y = row.value(var);
                     Integer year = parseYear(y);
                     if (year != null) {
-                        stmt.put(q.fieldName(), year);
+                        // A date, not a bare number — FlexibleDate keeps that
+                        // distinction through save/sort/display.
+                        stmt.put(q.fieldName(), new aux.FlexibleDate(year));
                     }
                 }
                 case STRING -> {
