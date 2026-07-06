@@ -20,6 +20,18 @@ public interface DomainModel {
      *  each carrying its dotted path and leaf shape (reference/collection). */
     List<DomainField> fields(String type);
 
+    /**
+     * Top-level field names of {@code type} that are STRUCTURAL — plumbing or
+     * provenance the pickers should skip (they stay on the data). This is the
+     * generic seam for backing-specific exceptions: a bridge translates its
+     * domain conventions (e.g. "a statement class's auto-created reify back-ref")
+     * into plain field names here, so the workbench applies them without any
+     * knowledge of the backing.
+     */
+    default java.util.Set<String> structuralFields(String type) {
+        return java.util.Set.of();
+    }
+
     /** The instances to run the view over. */
     Collection<? extends Quizable> instances();
 

@@ -398,7 +398,12 @@ public class SingleRootClassModelPanel extends JPanel {
             Object uo = value instanceof DefaultMutableTreeNode dn
                     ? dn.getUserObject() : null;
             if (uo instanceof GeneratedClassModel cls) {
-                StringBuilder t = new StringBuilder(cls.className());
+                // The display alias when set; the real className follows in
+                // parentheses so the identity stays visible.
+                StringBuilder t = new StringBuilder(cls.displayClassName());
+                if (!cls.alias().isBlank()) {
+                    t.append(" (").append(cls.className()).append(')');
+                }
                 if (cls.hasBase()) {
                     t.append(" : ").append(cls.baseClassName());
                 }

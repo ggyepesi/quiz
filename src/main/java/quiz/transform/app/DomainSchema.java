@@ -47,7 +47,21 @@ public final class DomainSchema {
     }
 
     public List<String> types() {
-        return new ArrayList<>(fieldsByType.keySet());
+        // A type carrying no fields on ANY instance is a bare reference target
+        // (e.g. "Type" — name-only labels a real class points at). It isn't a
+        // member class of the domain: it renders as its display name where
+        // referenced, and would be an empty shell as a selectable class. The
+        // auto-seeded "wikidata" link doesn't count as substance.
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, Set<String>> e : fieldsByType.entrySet()) {
+            Set<String> fields = e.getValue();
+            boolean bare = fields.isEmpty()
+                    || (fields.size() == 1 && fields.contains("wikidata"));
+            if (!bare) {
+                out.add(e.getKey());
+            }
+        }
+        return out;
     }
 
     public List<String> fields(String type) {

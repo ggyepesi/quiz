@@ -27,6 +27,12 @@ public class GeneratedClassModel {
     private String discriminatorPid = "";   // default P31 when blank
     private String discriminatorQid = "";
 
+    // A display alias for the class: what the UI (tree, navigator, web) SHOWS
+    // instead of className. Pure presentation — className stays the identity that
+    // type stamps, transform configs and codegen match on, so aliasing never
+    // breaks references. Blank = show className.
+    private String alias = "";
+
     // STATEMENT reification: when set, instances of THIS class are the statements
     // of `instanceMapping().propertyPid()` on each member of statementSourceClass
     // (e.g. Nomination = the P1411 statements of Oscarnominations). Its fields draw
@@ -81,6 +87,14 @@ public class GeneratedClassModel {
 
     public int generationDepth() { return generationDepth; }
     public void generationDepth(int d) { this.generationDepth = Math.max(0, d); }
+
+    public String alias() { return alias == null ? "" : alias; }
+    public void alias(String v) { this.alias = v == null ? "" : v.trim(); }
+
+    /** What the UI shows for this class: the alias when set, else className. */
+    public String displayClassName() {
+        return alias().isBlank() ? className : alias();
+    }
 
     public String baseClassName() { return baseClassName; }
     public void baseClassName(String v) {

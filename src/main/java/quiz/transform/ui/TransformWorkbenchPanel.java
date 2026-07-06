@@ -179,6 +179,9 @@ public final class TransformWorkbenchPanel extends JPanel {
                     quiz.ui.viewconfig.QuizablePanelConfig.of(sampleClass(sample));
             cfg.setAllFields(false);
             fieldEditor = new quiz.ui.viewconfig.QuizablePanelConfigEditor(cfg, sample);
+            // The domain's structural fields (provenance/plumbing) aren't offered
+            // as arguments — the DomainModel seam says which, this panel just obeys.
+            fieldEditor.setHiddenFields(domain.structuralFields(type));
             fieldsHolder.add(fieldEditor, BorderLayout.CENTER);
         } else {
             fieldEditor = null;
@@ -390,7 +393,18 @@ public final class TransformWorkbenchPanel extends JPanel {
                 try {
                     QuizableGroup root = get();
                     QuizablePanelView v = new QuizablePanelView();
-                    v.addQuizable(root);
+                    // A flat result (no GROUP_BY facets) is presented the same way the
+                    // modelbuilder shows generated instances: each member is its OWN
+                    // top-level card, so an image field renders at full card size
+                    // (the 260px floor) instead of as a tiny nested chip inside a
+                    // single group card. A grouped result keeps its group structure.
+                    if (root.getChildren().isEmpty()) {
+                        for (Quizable m : root.getMembers()) {
+                            v.addQuizable(m);
+                        }
+                    } else {
+                        v.addQuizable(root);
+                    }
                     v.createCardsPanel(1);
 
                     renderHolder.removeAll();

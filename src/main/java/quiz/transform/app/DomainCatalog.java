@@ -26,9 +26,11 @@ public final class DomainCatalog {
         for (DatasetRegistry.Dataset d : DatasetRegistry.load().datasets()) {
             File snap = new File(d.snapshotPath());
             if (snap.isFile()) {
+                File model = new File(d.modelPath());
                 out.add(new DomainEntry(d.name(), "generated",
                         () -> new SnapshotDomain(
-                                new WikidataDynamicObjectJsonStore().loadAll(snap))));
+                                new WikidataDynamicObjectJsonStore().loadAll(snap),
+                                statementTypes(model))));
             }
         }
 
@@ -38,5 +40,26 @@ public final class DomainCatalog {
         }
 
         return out;
+    }
+
+    /** The names of the domain's statement-reification classes (whose "source"
+     *  back-ref is structural). Empty when there is no readable model. */
+    private static java.util.Set<String> statementTypes(File model) {
+        if (model == null || !model.isFile()) {
+            return java.util.Set.of();
+        }
+        try {
+            var project = new wikidata.explore.model.GeneratedProjectModelStore()
+                    .load(model);
+            java.util.Set<String> out = new java.util.LinkedHashSet<>();
+            for (var c : project.classes()) {
+                if (c != null && c.reifiesStatements()) {
+                    out.add(c.className());
+                }
+            }
+            return out;
+        } catch (Exception unreadable) {
+            return java.util.Set.of();
+        }
     }
 }

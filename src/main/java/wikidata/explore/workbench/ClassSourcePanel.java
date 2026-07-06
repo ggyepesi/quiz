@@ -39,6 +39,7 @@ public class ClassSourcePanel extends JPanel {
     private final JLabel titleLabel = new JLabel("Class");
 
     private final JTextField classNameField = new JTextField(18);
+    private final JTextField aliasField = new JTextField(18);
 
     // "Extends" base class: this class inherits the base's fields/membership
     // and adds its own (see GeneratedClassModel.effectiveFields). Blank = none.
@@ -177,6 +178,7 @@ public class ClassSourcePanel extends JPanel {
         titleLabel.setText("Class: " + clazz.className());
 
         classNameField.setText(clazz.className());
+        aliasField.setText(clazz.alias());
         searchTextField.setText(clazz.className());
 
         populateBaseClasses();
@@ -292,6 +294,12 @@ public class ClassSourcePanel extends JPanel {
         addWide(form, c, y++, question);
 
         addRow(form, c, y++, "Class name:", classNameField);
+
+        aliasField.setToolTipText("<html>Display alias: what the UI shows for "
+                + "this class instead of its name. Pure presentation — the class "
+                + "name stays the identity everything references, so aliasing "
+                + "never breaks the model.</html>");
+        addRow(form, c, y++, "Alias:", aliasField);
 
         baseClassBox.setToolTipText("<html>Extend another class: this class "
                 + "inherits the base's fields and membership and adds its own "
@@ -843,6 +851,7 @@ public class ClassSourcePanel extends JPanel {
         }
 
         clazz.className(classNameField.getText());
+        clazz.alias(aliasField.getText());
 
         Object base = baseClassBox.getSelectedItem();
         clazz.baseClassName(base == null || NO_BASE.equals(base) ? "" : base.toString());
@@ -1044,6 +1053,7 @@ public class ClassSourcePanel extends JPanel {
     private void clear() {
         titleLabel.setText("Class");
         classNameField.setText("");
+        aliasField.setText("");
         searchTextField.setText("");
         typeQidField.setText("");
         typeLabel.setText("(not selected)");

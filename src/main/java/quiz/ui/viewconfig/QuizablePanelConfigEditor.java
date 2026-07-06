@@ -32,6 +32,11 @@ public class QuizablePanelConfigEditor extends JPanel {
     private final JCheckBox allMinorFieldsBox = new JCheckBox("All minor fields");
     private Runnable changeListener;
 
+    // Top-level field names the caller doesn't want offered (e.g. structural /
+    // provenance plumbing a domain marks). Purely mechanical — the editor has no
+    // idea WHY a field is hidden.
+    private java.util.Set<String> hiddenFields = java.util.Set.of();
+
     public QuizablePanelConfigEditor(QuizablePanelConfig config) {
         this(config, false, false, null);
     }
@@ -53,6 +58,13 @@ public class QuizablePanelConfigEditor extends JPanel {
 
     public void setChangeListener(Runnable changeListener) {
         this.changeListener = changeListener;
+    }
+
+    /** Hides the given top-level fields from the row list (and rebuilds). */
+    public void setHiddenFields(java.util.Set<String> fieldNames) {
+        this.hiddenFields = fieldNames == null ? java.util.Set.of() : fieldNames;
+        buildRows();
+        tableModel.fireTableDataChanged();
     }
 
     private void fireConfigChanged() {
@@ -150,6 +162,9 @@ public class QuizablePanelConfigEditor extends JPanel {
         quiz.DynamicFields dyn = (quiz.DynamicFields) dynamicSample;
         for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
             String name = e.getKey();
+            if (hiddenFields.contains(name)) {
+                continue;
+            }
             Object value = e.getValue();
             Quizable child = firstQuizable(value);
             // Only offer expand (nested) when the referenced value actually has
@@ -222,6 +237,10 @@ public class QuizablePanelConfigEditor extends JPanel {
             }
 
             if (QuizableAdapter.isMinorField(field) != minor) {
+                continue;
+            }
+
+            if (hiddenFields.contains(field.getName())) {
                 continue;
             }
 

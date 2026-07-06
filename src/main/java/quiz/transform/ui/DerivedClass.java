@@ -10,4 +10,5 @@ import java.util.List;
  * Added to the {@link WorkingDomain} so its fields feed back into the pool and
  * later operations can consume it — the composable transform graph.
  */
-public record DerivedClass(String type, List<DomainField> fields, List<Quizable> instances) {}
+public record DerivedClass(String type, List<DomainField> fields,
+                           List<? extends Quizable> instances) {}

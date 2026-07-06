@@ -16,13 +16,31 @@ public final class SnapshotDomain implements DomainModel {
 
     private final List<WikidataDynamicObject> pool;
     private final DomainSchema schema;
+    // Statement-reification classes (from the domain's model): their "source"
+    // field is the auto-created reify back-reference — provenance, not an
+    // argument — so the field pickers skip it.
+    private final java.util.Set<String> statementTypes;
 
     public SnapshotDomain(List<WikidataDynamicObject> pool) {
+        this(pool, java.util.Set.of());
+    }
+
+    public SnapshotDomain(List<WikidataDynamicObject> pool,
+                          java.util.Set<String> statementTypes) {
         this.pool = pool;
         this.schema = new DomainSchema(pool);
+        this.statementTypes = statementTypes == null
+                ? java.util.Set.of() : statementTypes;
     }
 
     @Override public List<String> types() { return schema.types(); }
+
+    @Override public java.util.Set<String> structuralFields(String type) {
+        // The wikidata convention, translated to the generic seam: a statement
+        // class's "source" field is the reify back-reference (provenance).
+        return statementTypes.contains(type)
+                ? java.util.Set.of("source") : java.util.Set.of();
+    }
 
     @Override public List<DomainField> fields(String type) {
         // Enumerate from a sample instance so NESTED paths (nominee.name,
@@ -38,9 +56,16 @@ public final class SnapshotDomain implements DomainModel {
         if (sample == null) {
             return List.of();
         }
+        java.util.Set<String> structural = structuralFields(type);
         List<DomainField> out = new ArrayList<>();
         for (QuizableFieldPaths.FieldPath fp
                 : QuizableFieldPaths.collectFromSample(sample, QuizableFieldPaths.ALL_FIELDS)) {
+            String head = fp.dotted().contains(".")
+                    ? fp.dotted().substring(0, fp.dotted().indexOf('.'))
+                    : fp.dotted();
+            if (structural.contains(head)) {
+                continue;
+            }
             Object value = FieldAccess.getPath(sample, fp.dotted());
             boolean ref = value instanceof Quizable
                     || (value instanceof Collection<?> c && anyQuizable(c));
