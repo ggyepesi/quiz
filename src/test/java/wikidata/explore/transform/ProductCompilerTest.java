@@ -167,6 +167,19 @@ class ProductCompilerTest {
         assertEquals("List<Category>", nested.field("target").typeLabel());
     }
 
+    @Test void nameOnlyReferenceIsAReferenceButNotExpandable() {
+        ProductDomain d = ProductCompiler.compile(model(), pool());
+        FieldTypeSource ts = d.fieldTypes("Nomination");
+
+        // target -> Category (no fields beyond name): still a reference (identity
+        // preserved for grouping), but no nested source -> no "+fields" expansion.
+        assertTrue(field(d, "Nomination", "target").reference());
+        assertNull(ts.field("target").nested(), "name-only ref offers no expansion");
+
+        // nominee -> OscarNominations (has fields) stays expandable.
+        assertNotNull(ts.field("nominee").nested(), "a fielded ref stays expandable");
+    }
+
     @Test void booleanFieldIsAScalar() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
         DomainField won = field(d, "Nomination", "won");

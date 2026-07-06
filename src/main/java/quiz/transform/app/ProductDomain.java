@@ -83,7 +83,11 @@ public final class ProductDomain implements DomainModel {
             if (f == null) {
                 return null;   // unknown (e.g. the `name` identity row) → reflect
             }
-            boolean recurse = f.reference() && f.nestedClassName() != null;
+            // A name-only reference (target has no fields beyond its identity, e.g.
+            // Category) stays a reference — identity is preserved for grouping —
+            // but offers no expansion: null nested source means no "+fields" button.
+            boolean recurse = f.reference() && f.nestedClassName() != null
+                    && !schema.fields(f.nestedClassName()).isEmpty();
             FieldTypeSource nested = recurse ? sourceFor(f.nestedClassName()) : null;
             String nestedName = recurse ? displayName(f.nestedClassName()) : null;
             return new FieldTypeSource.FieldTypeInfo(

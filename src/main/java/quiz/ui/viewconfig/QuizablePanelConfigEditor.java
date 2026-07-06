@@ -196,9 +196,13 @@ public class QuizablePanelConfigEditor extends JPanel {
             Quizable child = firstQuizable(value);
             // Only offer expand (nested) when the referenced value actually has
             // fields — a bare reference (e.g. a WDO with no dynamic fields) would
-            // otherwise open an empty child editor.
+            // otherwise open an empty child editor. When the model (type source)
+            // is present it decides: a name-only reference gives no nested source,
+            // so it stays a reference chip with no dead-end "+fields" expansion.
+            boolean modelExpandable = info == null || info.nested() != null;
             Class<? extends Quizable> nested =
-                    child != null && hasFields(child) ? asQuizableClass(child.getClass()) : null;
+                    modelExpandable && child != null && hasFields(child)
+                            ? asQuizableClass(child.getClass()) : null;
 
             String typeLabel = info != null ? info.typeLabel() : dynamicTypeLabel(value, child);
             Row row = Row.dynamic(name, typeLabel, nested, child);
