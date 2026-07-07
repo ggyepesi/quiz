@@ -84,6 +84,13 @@ public final class ProductSchemaInspector extends JPanel {
             }
         }
 
+        // Identity first: `name` is the entity's display label (the card title, not
+        // a data field) — and for a real entity it's the LABEL of the Wikidata page
+        // its `Wikidata` field links to. Neither is in the model's declared fields.
+        boolean entity = pc != null && pc.field("Wikidata") != null;
+        rows.addRow(new Object[]{"name", "identity", "String", "title",
+                entity ? "display label (of the linked Wikidata entity)" : "display label"});
+
         Set<String> allNames = new LinkedHashSet<>(modelFields.keySet());
         allNames.addAll(productFields.keySet());
         for (String field : allNames) {

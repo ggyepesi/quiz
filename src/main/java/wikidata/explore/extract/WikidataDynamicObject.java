@@ -50,11 +50,18 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     @Link
     private String wikidataUrl;
 
+    // The dynamic data. NOTE: NOT @NotQuizableField — QuizablePanel renders this
+    // map's entries AS the object's fields (see isDynamicContainer there); hiding
+    // it would hide all the data. Its unwanted "dynamicFields" titled border is
+    // dropped in QuizablePanel instead.
     private final Map<String, Object> dynamicFields =
             new LinkedHashMap<>();
 
     // Web/runtime only (not persisted): the domain type this object is served
-    // under, since all generated objects share this one Java class.
+    // under, since all generated objects share this one Java class. @NotQuizableField
+    // so the class STAMP doesn't render as a `type` field (distinct from the P31
+    // `type` data field a domain may declare).
+    @NotQuizableField
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String type;
 
