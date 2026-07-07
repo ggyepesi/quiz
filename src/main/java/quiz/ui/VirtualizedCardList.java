@@ -26,6 +26,10 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
 
     private static final int BUFFER = 6;
     private static final int DEFAULT_ROW = 140;
+    // Below this the cards stop shrinking and the list scrolls horizontally
+    // instead — so a narrow instances pane (the split's smaller side) doesn't
+    // cram every card. At or above it, cards fill the viewport as before.
+    private static final int MIN_CONTENT_WIDTH = 380;
     private static final int MAX_ESTIMATE_SAMPLES = 10;
 
     private static final boolean DEBUG =
@@ -313,11 +317,12 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
     }
 
     private int effectiveWidth() {
-        if (viewport != null && viewport.getWidth() > 0) {
-            return viewport.getWidth();
-        }
-
-        return Math.max(1, getWidth());
+        int vw = viewport != null && viewport.getWidth() > 0
+                ? viewport.getWidth()
+                : Math.max(1, getWidth());
+        // Never lay cards out narrower than the floor — the extra width becomes
+        // horizontal scroll rather than squeezing the content.
+        return Math.max(vw, MIN_CONTENT_WIDTH);
     }
 
     private void positionCard(int index, JComponent card) {
@@ -654,12 +659,9 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
 
     @Override
     public Dimension getPreferredSize() {
-        int w =
-                viewport != null ? viewport.getWidth() : 600;
-
-        return new Dimension(
-                Math.max(1, w),
-                preferredContentHeight());
+        // effectiveWidth() applies the floor, so a viewport narrower than it
+        // yields a wider preferred size → the horizontal scrollbar appears.
+        return new Dimension(effectiveWidth(), preferredContentHeight());
     }
 
     @Override
@@ -689,7 +691,9 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
 
     @Override
     public boolean getScrollableTracksViewportWidth() {
-        return true;
+        // Fill the viewport when it's wide enough; below the floor, don't track —
+        // the list keeps its (wider) preferred width and scrolls horizontally.
+        return viewport == null || viewport.getWidth() >= MIN_CONTENT_WIDTH;
     }
 
     @Override
