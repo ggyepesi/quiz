@@ -78,6 +78,8 @@ class ProductCompilerTest {
         nom.put("wikidata", "http://www.wikidata.org/entity/Q4");
         nom.put("source", osc);   // the reify back-ref
 
+        osc.put("__Nomination", new java.util.ArrayList<>(List.of(nom)));  // reify forward list
+
         return new java.util.ArrayList<>(List.of(osc, cat, nom));
     }
 
@@ -154,12 +156,23 @@ class ProductCompilerTest {
         }
     }
 
+    @Test void reifyForwardListIsRenamedOnInstances() {
+        List<WikidataDynamicObject> pool = pool();
+        ProductCompiler.compile(model(), pool);
+        WikidataDynamicObject osc = pool.stream()
+                .filter(o -> "OscarNominations".equals(o.typeName())).findFirst().orElseThrow();
+        assertFalse(osc.dynamicFieldValues().containsKey("__Nomination"));
+        assertTrue(osc.dynamicFieldValues().containsKey("nomination"));
+    }
+
     @Test void reifyForwardListIsTypedAndHidesSourceWhenNested() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
 
-        // OscarNominations gets the forward reify list `__Nomination`, typed.
+        // OscarNominations gets the forward reify list, typed, under a clean name
+        // (the `__Nomination` plumbing key renamed to `nomination`).
         FieldTypeSource osc = d.fieldTypes("OscarNominations");
-        FieldTypeSource.FieldTypeInfo link = osc.field("__Nomination");
+        assertNull(osc.field("__Nomination"), "the `__` plumbing name is gone");
+        FieldTypeSource.FieldTypeInfo link = osc.field("nomination");
         assertNotNull(link, "reify forward list should be a modeled field");
         assertEquals("List<Nomination>", link.typeLabel());
         assertEquals("Nomination", link.nestedClassName());

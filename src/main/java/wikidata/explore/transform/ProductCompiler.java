@@ -69,6 +69,10 @@ public final class ProductCompiler {
                         .add(c);
             }
         }
+        // 4. The forward reify list is keyed `__Nomination` internally — rename it to
+        //    a clean field name (`nomination`, the codebase's class→field convention)
+        //    on the instances so no surface shows the `__` plumbing name.
+        renameReifyLists(reifyChildren, pool);
 
         List<ProductClass> classes = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
@@ -95,10 +99,11 @@ public final class ProductCompiler {
             }
             fields.add(compileField(model, c.className(), f, pool));
         }
-        // Forward reify links: `__C` holds the statement records reified out of this
-        // class — a real reference list to the (member) statement class C.
+        // Forward reify links: the statement records reified out of this class — a
+        // real reference list to the (member) statement class C, under a clean
+        // field name (the `__C` plumbing key renamed to match, see below).
         for (GeneratedClassModel rc : reifyChildren) {
-            String name = "__" + rc.className();
+            String name = reifyFieldName(rc.className());
             if (names.add(name)) {
                 fields.add(new ProductField(name, "List<" + rc.displayClassName() + ">",
                         true, true, rc.className(), false));
@@ -209,6 +214,41 @@ public final class ProductCompiler {
             if (o != null) {
                 for (String name : STRUCTURAL) {
                     o.remove(name);
+                }
+            }
+        }
+    }
+
+    /** A field name from a class name — first letter lowercased (camelCase), the
+     *  same class→field convention {@code Joiner} uses. */
+    static String reifyFieldName(String className) {
+        return className == null || className.isEmpty()
+                ? className
+                : Character.toLowerCase(className.charAt(0)) + className.substring(1);
+    }
+
+    /** Rename the reify forward-list field ({@code __Nomination}) to its clean name
+     *  ({@code nomination}) on the pool instances, so the schema key and the instance
+     *  key agree and no surface shows the {@code __} plumbing name. */
+    private static void renameReifyLists(Map<String, List<GeneratedClassModel>> reifyChildren,
+                                         List<WikidataDynamicObject> pool) {
+        Map<String, String> rename = new LinkedHashMap<>();
+        for (List<GeneratedClassModel> kids : reifyChildren.values()) {
+            for (GeneratedClassModel rc : kids) {
+                rename.put("__" + rc.className(), reifyFieldName(rc.className()));
+            }
+        }
+        if (rename.isEmpty()) {
+            return;
+        }
+        for (WikidataDynamicObject o : pool) {
+            if (o == null) {
+                continue;
+            }
+            for (Map.Entry<String, String> e : rename.entrySet()) {
+                Object v = o.dynamicFields().remove(e.getKey());
+                if (v != null && !o.dynamicFields().containsKey(e.getValue())) {
+                    o.dynamicFields().put(e.getValue(), v);
                 }
             }
         }
