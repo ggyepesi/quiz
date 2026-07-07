@@ -2,12 +2,10 @@ package quiz.transform.ui;
 
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import quiz.transform.View;
 import quiz.ui.QuizablePanelView;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -16,17 +14,17 @@ import java.util.List;
  * ({@link ReflectionDomain}). Pick a member class, then build a pipeline of
  * operations: each operation's SIGNATURE narrows the fields pane to only the fields
  * that can be its argument (per shape), and every operation compiles to a real
- * {@link View} — filters and facet groupings — whose grouped result (the derived
- * subdomain) renders live on the right via the shared card content view.
+ * {@link quiz.transform.View} — filters and facet groupings — whose grouped result
+ * (the derived subdomain) renders live on the right via the shared card content view.
  *
- * <p>This package has NO backing dependency: saving a result goes through an
- * injected {@link DomainWriter}, and parsing a filter value through a small local
- * helper — so the workbench can be factored out and reused independently.
+ * <p>This is a THIN Swing view: all logic — the {@link WorkingDomain}, the pipeline,
+ * compiling the result, saving — lives in {@link TransformController}. This class
+ * owns only the widgets, forwards user actions to the controller, and turns the
+ * controller's {@link QuizableGroup} result into cards.
  */
 public final class TransformWorkbenchPanel extends JPanel {
 
-    private final WorkingDomain domain;
-    private final DomainWriter writer;
+    private final TransformController controller;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private final JComboBox<OperationKind> operationCombo =
@@ -44,22 +42,24 @@ public final class TransformWorkbenchPanel extends JPanel {
     private final JComboBox<String> rightClassCombo = new JComboBox<>();
     private final JComboBox<String> rightKeyCombo = new JComboBox<>();
 
-    private final List<OperationSpec> pipeline = new ArrayList<>();
     private final DefaultListModel<OperationSpec> pipelineModel = new DefaultListModel<>();
     private final JList<OperationSpec> pipelineList = new JList<>(pipelineModel);
 
     private final JPanel renderHolder = new JPanel(new BorderLayout());
+
+    // Suppresses the member-combo listener during programmatic selection (seeding),
+    // so syncing the widget to the controller doesn't reset the just-seeded pipeline.
+    private boolean syncing;
 
     public TransformWorkbenchPanel(DomainModel domain) {
         this(domain, null);
     }
 
     public TransformWorkbenchPanel(DomainModel domain, DomainWriter writer) {
-        this.domain = new WorkingDomain(domain);
-        this.writer = writer;
+        this.controller = new TransformController(domain, writer);
         setLayout(new BorderLayout(8, 8));
 
-        for (String t : domain.types()) {
+        for (String t : controller.types()) {
             memberTypeCombo.addItem(t);
         }
 
@@ -68,15 +68,34 @@ public final class TransformWorkbenchPanel extends JPanel {
         add(split, BorderLayout.CENTER);
 
         memberTypeCombo.addActionListener(e -> {
-            pipeline.clear(); pipelineModel.clear();
-            rebuildFieldEditor(); updateSlotUi(); render();
+            if (syncing) {
+                return;
+            }
+            controller.selectType((String) memberTypeCombo.getSelectedItem());
+            refreshPipeline();
+            rebuildFieldEditor();
+            updateSlotUi();
+            render();
         });
         operationCombo.addActionListener(e -> updateSlotUi());
 
-        seedDefault();
+        if (controller.seedDefault()) {
+            selectMemberType(controller.selectedType());
+        } else if (memberTypeCombo.getItemCount() > 0) {
+            controller.selectType((String) memberTypeCombo.getSelectedItem());
+        }
+        refreshPipeline();
         rebuildFieldEditor();
         updateSlotUi();
         render();
+    }
+
+    /** Set the member combo without firing its listener (keeps the controller's
+     *  pipeline, which we may have just seeded). */
+    private void selectMemberType(String type) {
+        syncing = true;
+        memberTypeCombo.setSelectedItem(type);
+        syncing = false;
     }
 
     private JComponent buildLeft() {
@@ -104,7 +123,7 @@ public final class TransformWorkbenchPanel extends JPanel {
         argBar.add(add);
         fields.add(argBar, BorderLayout.SOUTH);
 
-        for (String t : domain.types()) {
+        for (String t : controller.types()) {
             rightClassCombo.addItem(t);
         }
         rightClassCombo.addActionListener(e -> reloadRightKeys());
@@ -116,7 +135,14 @@ public final class TransformWorkbenchPanel extends JPanel {
         pipelineList.setFixedCellHeight(24);
         steps.add(new JScrollPane(pipelineList), BorderLayout.CENTER);
         JPanel stepBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        stepBar.add(button("Remove", () -> { int r = pipelineList.getSelectedIndex(); if (r >= 0) { pipeline.remove(r); refreshPipeline(); render(); } }));
+        stepBar.add(button("Remove", () -> {
+            int r = pipelineList.getSelectedIndex();
+            if (r >= 0) {
+                controller.removeOperation(r);
+                refreshPipeline();
+                render();
+            }
+        }));
         stepBar.add(button("Up", () -> move(-1)));
         stepBar.add(button("Down", () -> move(1)));
         stepBar.add(button("Save as domain…", this::saveAsDomain));
@@ -159,18 +185,18 @@ public final class TransformWorkbenchPanel extends JPanel {
         if (rt == null) {
             return;
         }
-        for (DomainField df : domain.fields(rt)) {
+        for (DomainField df : controller.fields(rt)) {
             rightKeyCombo.addItem(df.field());
         }
     }
 
     /** Rebuild the shared field panel for the selected member type. */
     private void rebuildFieldEditor() {
-        String type = (String) memberTypeCombo.getSelectedItem();
+        String type = controller.selectedType();
         if (type == null) {
             return;
         }
-        Quizable sample = sampleOf(type);
+        Quizable sample = controller.sampleOf(type);
         fieldsHolder.removeAll();
         if (sample != null) {
             // allFields=false so nothing is pre-checked — the user checks the
@@ -181,10 +207,10 @@ public final class TransformWorkbenchPanel extends JPanel {
             fieldEditor = new quiz.ui.viewconfig.QuizablePanelConfigEditor(cfg, sample);
             // The domain's structural fields (provenance/plumbing) aren't offered
             // as arguments — the DomainModel seam says which, this panel just obeys.
-            fieldEditor.setHiddenFields(domain.structuralFields(type));
+            fieldEditor.setHiddenFields(controller.structuralFields(type));
             // Authoritative model types (labels, cardinality, nested structural
             // hiding) when the domain is compiled; null reflects the sample.
-            fieldEditor.setFieldTypes(domain.fieldTypes(type));
+            fieldEditor.setFieldTypes(controller.fieldTypes(type));
             fieldsHolder.add(fieldEditor, BorderLayout.CENTER);
         } else {
             fieldEditor = null;
@@ -194,128 +220,50 @@ public final class TransformWorkbenchPanel extends JPanel {
         fieldsHolder.repaint();
     }
 
-    private Quizable sampleOf(String type) {
-        for (Quizable q : domain.instances()) {
-            if (q != null && type.equals(q.typeName())) {
-                return q;
-            }
-        }
-        return null;
-    }
-
     @SuppressWarnings("unchecked")
     private static Class<? extends Quizable> sampleClass(Quizable q) {
         return (Class<? extends Quizable>) q.getClass();
     }
 
-    /** A DomainField for a dotted path — shape from the domain (else scalar). */
-    private DomainField field(String type, String path) {
-        for (DomainField df : domain.fields(type)) {
-            if (df.field().equals(path)) {
-                return df;
-            }
-        }
-        return new DomainField(type, path, false, false);
-    }
-
     /** The field paths the user CHECKED in the shared panel. */
-    private List<DomainField> checkedFields(String type) {
-        if (fieldEditor == null) {
-            return List.of();
-        }
-        List<DomainField> out = new ArrayList<>();
-        for (String path : fieldEditor.selectedFieldPaths()) {
-            out.add(field(type, path));
-        }
-        return out;
+    private List<String> checkedPaths() {
+        return fieldEditor == null ? List.of() : fieldEditor.selectedFieldPaths();
     }
 
     private void addOperation() {
         OperationKind kind = (OperationKind) operationCombo.getSelectedItem();
-        String memberType = (String) memberTypeCombo.getSelectedItem();
-        if (kind == null || memberType == null) {
+        String type = controller.selectedType();
+        List<DomainField> checked = controller.resolveFields(
+                type == null ? "" : type, checkedPaths());
+
+        TransformController.OpOutcome outcome = controller.addOperation(
+                kind, checked, valueField.getText(),
+                (String) rightClassCombo.getSelectedItem(),
+                (String) rightKeyCombo.getSelectedItem(),
+                newClassField.getText().trim());
+
+        if (!outcome.ok()) {
+            JOptionPane.showMessageDialog(this, outcome.message());
             return;
         }
 
-        List<DomainField> checked = checkedFields(memberType);
-
-        // PROJECT is a DOMAIN mutation: materialize a new class from the checked
-        // fields and feed it back into the pool — not a step in the view pipeline.
-        if (kind == OperationKind.PROJECT_TO_CLASS) {
-            String newType = newClassField.getText().trim();
-            if (checked.isEmpty() || newType.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Check the fields to project and enter a new class name.");
-                return;
-            }
-            DerivedClass derived = Projector.project(domain, memberType, checked, newType);
-            domain.add(derived);
+        // A materialized class (PROJECT / JOIN): offer it in the type pickers.
+        if (outcome.createdType() != null) {
+            String newType = outcome.createdType();
             if (!comboHas(memberTypeCombo, newType)) {
                 memberTypeCombo.addItem(newType);
             }
-            newClassField.setText("");
-            JOptionPane.showMessageDialog(this, "Created class \"" + newType + "\"  ("
-                    + derived.instances().size() + " instances, "
-                    + derived.fields().size() + " fields) — select it as Members.");
-            return;
-        }
-
-        // JOIN is a cross-class DOMAIN mutation: the LEFT key is the checked field,
-        // the RIGHT class + key come from the join controls.
-        if (kind == OperationKind.JOIN) {
-            String rightType = (String) rightClassCombo.getSelectedItem();
-            String rightKey = (String) rightKeyCombo.getSelectedItem();
-            String newType = newClassField.getText().trim();
-            if (checked.isEmpty() || rightType == null || rightKey == null || newType.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Check the LEFT key, pick the right class + key, and name the new class.");
-                return;
+            if (outcome.addToRightClass() && !comboHas(rightClassCombo, newType)) {
+                rightClassCombo.addItem(newType);
             }
-            DerivedClass derived = Joiner.join(domain, newType,
-                    memberType, checked.get(0).field(), rightType, rightKey);
-            domain.add(derived);
-            if (!comboHas(memberTypeCombo, newType)) memberTypeCombo.addItem(newType);
-            if (!comboHas(rightClassCombo, newType)) rightClassCombo.addItem(newType);
             newClassField.setText("");
-            long matched = derived.instances().stream()
-                    .filter(o -> o instanceof quiz.transform.DynamicQuizable d
-                            && d.get(rightType.toLowerCase()) != null).count();
-            JOptionPane.showMessageDialog(this, "Joined \"" + newType + "\"  ("
-                    + derived.instances().size() + " rows, " + matched + " matched) — "
-                    + "select it as Members (fields: " + memberType.toLowerCase()
-                    + ", " + rightType.toLowerCase() + ").");
+            JOptionPane.showMessageDialog(this, outcome.message());
             return;
         }
 
-        if (checked.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Check one field for the operation.");
-            return;
-        }
-        DomainField field = checked.get(0);
-        // Validate the checked field fits the operation's slot shape.
-        OperationSignature sig = OperationSignature.of(kind);
-        if (!sig.fieldNeed().accepts(field)) {
-            JOptionPane.showMessageDialog(this, "\"" + field.field() + "\" isn't a "
-                    + sig.fieldNeed() + " field for " + kind + ".");
-            return;
-        }
-        Object value = sig.needsValue() ? parseValue(valueField.getText().trim()) : null;
-        pipeline.add(new OperationSpec(kind, field, value));
+        // A plain pipeline step.
         refreshPipeline();
         render();
-    }
-
-    /** Parse a filter literal: true/false, int, double, else the trimmed string. */
-    static Object parseValue(String text) {
-        if (text == null || text.isBlank()) {
-            return null;
-        }
-        String s = text.trim();
-        if (s.equalsIgnoreCase("true")) return Boolean.TRUE;
-        if (s.equalsIgnoreCase("false")) return Boolean.FALSE;
-        try { return Integer.valueOf(s); } catch (NumberFormatException ignored) { }
-        try { return Double.valueOf(s); } catch (NumberFormatException ignored) { }
-        return s;
     }
 
     /** Organized pipeline rows: "N.  <op>  field  = value" with a coloured op tag. */
@@ -355,12 +303,8 @@ public final class TransformWorkbenchPanel extends JPanel {
     }
 
     private void move(int delta) {
-        int r = pipelineList.getSelectedIndex();
-        int n = r + delta;
-        if (r >= 0 && n >= 0 && n < pipeline.size()) {
-            OperationSpec tmp = pipeline.get(r);
-            pipeline.set(r, pipeline.get(n));
-            pipeline.set(n, tmp);
+        int n = controller.moveOperation(pipelineList.getSelectedIndex(), delta);
+        if (n >= 0) {
             refreshPipeline();
             pipelineList.setSelectedIndex(n);
             render();
@@ -369,7 +313,7 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     private void refreshPipeline() {
         pipelineModel.clear();
-        for (OperationSpec op : pipeline) {
+        for (OperationSpec op : controller.pipeline()) {
             pipelineModel.addElement(op);
         }
     }
@@ -377,10 +321,7 @@ public final class TransformWorkbenchPanel extends JPanel {
     /** Compile + group OFF the EDT (a big domain can be slow), then swap in the
      *  rendered cards on the EDT. */
     private void render() {
-        String type = (String) memberTypeCombo.getSelectedItem();
-        String name = (type == null ? "View" : type)
-                + (pipeline.isEmpty() ? "" : " · " + pipeline.size() + " op");
-        List<OperationSpec> ops = new ArrayList<>(pipeline);
+        String type = controller.selectedType();
 
         renderHolder.removeAll();
         renderHolder.add(new JLabel("  Rendering…"), BorderLayout.NORTH);
@@ -389,8 +330,7 @@ public final class TransformWorkbenchPanel extends JPanel {
 
         new SwingWorker<QuizableGroup, Void>() {
             @Override protected QuizableGroup doInBackground() {
-                View view = ViewCompiler.compile(name, type, ops, domain.universe());
-                return view.render(domain.instances());
+                return controller.compileResult();
             }
             @Override protected void done() {
                 try {
@@ -413,12 +353,12 @@ public final class TransformWorkbenchPanel extends JPanel {
                     renderHolder.removeAll();
                     // Unified instance view: the shared search + sort + view-config
                     // panel over the result (sample-driven, so it's dynamic-aware).
-                    Quizable sample = sampleOf(type);
+                    Quizable sample = controller.sampleOf(type);
                     if (sample != null) {
                         quiz.ui.QuizableSearchPanel engine =
                                 new quiz.ui.QuizableSearchPanel(sampleClass(sample), sample);
-                        engine.setHiddenFields(domain.structuralFields(type));
-                        engine.setFieldTypes(domain.fieldTypes(type));
+                        engine.setHiddenFields(controller.structuralFields(type));
+                        engine.setFieldTypes(controller.fieldTypes(type));
                         engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
                         v.addTargetListener(engine);
                         renderHolder.add(engine, BorderLayout.NORTH);
@@ -439,51 +379,27 @@ public final class TransformWorkbenchPanel extends JPanel {
      *  first-class domain — a snapshot + registry entry the web serves and the
      *  navigator lists. */
     private void saveAsDomain() {
-        String type = (String) memberTypeCombo.getSelectedItem();
+        String type = controller.selectedType();
         if (type == null) {
             return;
         }
-        if (writer == null) {
+        if (!controller.canSave()) {
             JOptionPane.showMessageDialog(this,
                     "No domain writer configured for this session.");
             return;
         }
-        String suggested = type + (pipeline.isEmpty() ? "" : " view");
+        String suggested = type + (controller.pipeline().isEmpty() ? "" : " view");
         String name = JOptionPane.showInputDialog(this,
                 "Save the current result as a domain named:", suggested);
         if (name == null || name.isBlank()) {
             return;
         }
         try {
-            View view = ViewCompiler.compile(name, type, pipeline, domain.universe());
-            List<? extends Quizable> members = view.members(domain.instances());
-            String message = writer.save(name, members);
-            JOptionPane.showMessageDialog(this, message);
+            JOptionPane.showMessageDialog(this, controller.saveAsDomain(name));
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
                     "Save failed", JOptionPane.ERROR_MESSAGE);
         }
-    }
-
-    /** A ready-to-run "Oscar winners by category by year" if the snapshot supports it. */
-    private void seedDefault() {
-        if (!domain.types().contains("Nomination")) {
-            return;
-        }
-        memberTypeCombo.setSelectedItem("Nomination");
-        DomainField won = field("Nomination", "won");
-        DomainField category = field("Nomination", "category");
-        DomainField year = field("Nomination", "year");
-        if (won != null) {
-            pipeline.add(new OperationSpec(OperationKind.FILTER, won, Boolean.TRUE));
-        }
-        if (category != null) {
-            pipeline.add(new OperationSpec(OperationKind.GROUP_BY_REFERENCE, category, null));
-        }
-        if (year != null) {
-            pipeline.add(new OperationSpec(OperationKind.GROUP_BY_VALUE, year, null));
-        }
-        refreshPipeline();
     }
 
     /** Open the workbench in a frame over any domain. */
