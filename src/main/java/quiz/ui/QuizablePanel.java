@@ -656,7 +656,10 @@ public class QuizablePanel extends JPanel {
                 copyVisited(),
                 copyAncestors(),
                 renderContext,
-                fieldName,
+                // The dynamic-field container's entries ARE the object's own fields —
+                // render them flat, WITHOUT the enclosing "dynamicFields" titled border
+                // (a blank name skips the border in basePanel).
+                isDynamicContainer ? "" : fieldName,
                 fieldPath,
                 value,
                 fieldCfg,
