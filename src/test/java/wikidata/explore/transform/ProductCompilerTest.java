@@ -76,6 +76,7 @@ class ProductCompilerTest {
         nom.put("target", new java.util.ArrayList<>(List.of(cat)));
         nom.put("won", Boolean.TRUE);
         nom.put("wikidata", "http://www.wikidata.org/entity/Q4");
+        nom.put("source", osc);   // the reify back-ref
 
         return new java.util.ArrayList<>(List.of(osc, cat, nom));
     }
@@ -184,6 +185,16 @@ class ProductCompilerTest {
 
         // nominee -> OscarNominations (has fields) stays expandable.
         assertNotNull(ts.field("nominee").nested(), "a fielded ref stays expandable");
+    }
+
+    @Test void structuralFieldsAreStrippedFromInstances() {
+        List<WikidataDynamicObject> pool = pool();
+        ProductCompiler.compile(model(), pool);
+        // Removed from the pool entirely, so no surface (card or picker) shows them.
+        for (WikidataDynamicObject o : pool) {
+            assertFalse(o.dynamicFieldValues().containsKey("wikidata"), o.getDisplayName());
+            assertFalse(o.dynamicFieldValues().containsKey("source"), o.getDisplayName());
+        }
     }
 
     @Test void booleanFieldIsAScalar() {

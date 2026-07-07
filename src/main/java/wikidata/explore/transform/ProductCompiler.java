@@ -50,6 +50,12 @@ public final class ProductCompiler {
         collapseUnmodeledReferences(model, pool);
         // 2. Bare references (no substance) collapse the same way.
         BareReferenceCollapse.apply(pool);
+        // 3. Structural fields (the auto-seeded wikidata link, the reify `source`
+        //    back-ref) are hidden on EVERY surface — pickers AND rendered cards —
+        //    by removing them outright, not just marking them. No view operation
+        //    reads them (they can't be selected), so this is the one place that
+        //    keeps the schema and the instances honest.
+        stripStructural(pool);
 
         // The reify convention (ModelStatementReifications): a class C that reifies
         // statements OF class S gets a `source` back-ref to S, and S gets a forward
@@ -189,6 +195,20 @@ public final class ProductCompiler {
             for (Map.Entry<String, Object> e : o.dynamicFields().entrySet()) {
                 if (unmodeled.contains(o.typeName() + " " + e.getKey())) {
                     e.setValue(toDisplayString(e.getValue()));
+                }
+            }
+        }
+    }
+
+    // The structural convention fields, removed from every instance so no surface
+    // renders them. Kept out of the pool entirely (not just hidden per-surface).
+    private static final Set<String> STRUCTURAL = Set.of("wikidata", "source");
+
+    private static void stripStructural(List<WikidataDynamicObject> pool) {
+        for (WikidataDynamicObject o : pool) {
+            if (o != null) {
+                for (String name : STRUCTURAL) {
+                    o.remove(name);
                 }
             }
         }
