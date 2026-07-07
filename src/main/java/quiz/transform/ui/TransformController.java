@@ -230,15 +230,9 @@ public final class TransformController {
         DomainField won = field("Nomination", "won");
         DomainField category = field("Nomination", "category");
         DomainField year = field("Nomination", "year");
-        if (won != null) {
-            pipeline.add(new OperationSpec(OperationKind.FILTER, won, Boolean.TRUE));
-        }
-        if (category != null) {
-            pipeline.add(new OperationSpec(OperationKind.GROUP_BY_REFERENCE, category, null));
-        }
-        if (year != null) {
-            pipeline.add(new OperationSpec(OperationKind.GROUP_BY_VALUE, year, null));
-        }
+        pipeline.add(new OperationSpec(OperationKind.FILTER, won, Boolean.TRUE));
+        pipeline.add(new OperationSpec(OperationKind.GROUP_BY_REFERENCE, category, null));
+        pipeline.add(new OperationSpec(OperationKind.GROUP_BY_VALUE, year, null));
         return true;
     }
 }

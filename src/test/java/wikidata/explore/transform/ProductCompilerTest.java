@@ -39,6 +39,8 @@ class ProductCompilerTest {
         ref(nom, "nominee", "OscarNominations", FieldCardinality.AUTO);
         ref(nom, "forWork", "ForWork", FieldCardinality.AUTO);      // ForWork is UNMODELED
         ref(nom, "target", "Category", FieldCardinality.COLLECTION);
+        // presenter targets a MODELED member class, but its referent won't be a member.
+        ref(nom, "presenter", "OscarNominations", FieldCardinality.AUTO);
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);
         m.addClass(nom);
 
@@ -79,6 +81,8 @@ class ProductCompilerTest {
         nom.put("nominee", osc);
         nom.put("forWork", film);
         nom.put("target", new java.util.ArrayList<>(List.of(cat)));
+        // presenter's referent is an unstamped person — NOT a member of any class.
+        nom.put("presenter", new WikidataDynamicObject("Q900", "A Presenter"));
         nom.put("won", Boolean.TRUE);
         nom.put("source", osc);   // the reify back-ref
 
@@ -164,35 +168,27 @@ class ProductCompilerTest {
         }
     }
 
-    @Test void reifyForwardListIsRenamedOnInstances() {
+    @Test void reifyForwardListIsDropped() {
         List<WikidataDynamicObject> pool = pool();
-        ProductCompiler.compile(model(), pool);
+        ProductDomain d = ProductCompiler.compile(model(), pool);
         WikidataDynamicObject osc = pool.stream()
                 .filter(o -> "OscarNominations".equals(o.typeName())).findFirst().orElseThrow();
+        // One-directional (Constellation/Star): no auto-materialized inverse — not on
+        // the instances, not in the schema.
         assertFalse(osc.dynamicFieldValues().containsKey("__Nomination"));
-        assertTrue(osc.dynamicFieldValues().containsKey("nomination"));
+        assertFalse(osc.dynamicFieldValues().containsKey("nomination"));
+        assertNull(d.fieldTypes("OscarNominations").field("nomination"));
     }
 
-    @Test void reifyForwardListIsTypedAndHidesSourceWhenNested() {
-        ProductDomain d = ProductCompiler.compile(model(), pool());
-
-        // OscarNominations gets the forward reify list, typed, under a clean name
-        // (the `__Nomination` plumbing key renamed to `nomination`).
-        FieldTypeSource osc = d.fieldTypes("OscarNominations");
-        assertNull(osc.field("__Nomination"), "the `__` plumbing name is gone");
-        FieldTypeSource.FieldTypeInfo link = osc.field("nomination");
-        assertNotNull(link, "reify forward list should be a modeled field");
-        assertEquals("List<Nomination>", link.typeLabel());
-        assertEquals("Nomination", link.nestedClassName());
-        assertFalse(link.structural());
-
-        // Nested one level down, the Nomination's `source` back-ref is still hidden
-        // (the leak that made per-component handling reappear).
-        FieldTypeSource nested = link.nested();
-        assertNotNull(nested);
-        assertTrue(nested.field("source").structural());
-        assertNull(nested.field("wikidata"), "the reify record has no wikidata link");
-        assertEquals("List<Category>", nested.field("target").typeLabel());
+    @Test void nonMemberReferenceCollapsesToString() {
+        List<WikidataDynamicObject> pool = pool();
+        ProductDomain d = ProductCompiler.compile(model(), pool);
+        // presenter targets the MODELED class OscarNominations, but its referent is an
+        // unstamped person (not a member) — so it reads as a name, never a raw WDO.
+        assertFalse(field(d, "Nomination", "presenter").reference());
+        WikidataDynamicObject nom = pool.stream()
+                .filter(o -> "Nomination".equals(o.typeName())).findFirst().orElseThrow();
+        assertEquals("A Presenter", nom.dynamicFieldValues().get("presenter"));
     }
 
     @Test void referenceToAnEntityIsExpandableViaItsLink() {

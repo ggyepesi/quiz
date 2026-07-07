@@ -48,12 +48,16 @@ public final class ProductCompiler {
         //    article) from references before collapse — an entity's P31 `type` picks
         //    up such non-domain values, and they'd otherwise become bogus strings.
         filterNoiseReferences(pool);
-        // 2. Unmodeled references (declared target class absent from the model)
-        //    become display strings — the domain doesn't model that class, so it
-        //    reads as a label, not a navigable chip.
+        // 2. References to an unmodeled class read as their display-name string.
         collapseUnmodeledReferences(model, pool);
-        // 3. Bare references (no substance) collapse the same way.
-        BareReferenceCollapse.apply(pool);
+        // 3. References whose referent isn't a modeled MEMBER also read as a string —
+        //    the ~117k unstamped referents (a nominee person, a work) aren't member
+        //    entities, so they must not leak the raw WikidataDynamicObject. A chip is
+        //    reserved for real member targets (target → Category). This subsumes the
+        //    old bare-reference collapse (a bare referent is never a member).
+        List<String> memberList = memberClasses(model, pool);
+        Set<String> members = new LinkedHashSet<>(memberList);
+        collapseNonMemberReferences(pool, members);
 
         // Real entities carry the auto-seeded wikidata link; a reified statement
         // record (a Nomination) does not — so only real-entity classes get a
@@ -64,23 +68,10 @@ public final class ProductCompiler {
         //    just under a readable name `Wikidata` instead of the seeded `wikidata`.
         stripSource(pool);
         renameWikidata(pool);
-
-        // The reify convention (ModelStatementReifications): a class C that reifies
-        // statements OF class S gets a `source` back-ref to S, and S gets a forward
-        // list field `__C`. Neither is in the declared model — derive both here so
-        // they're typed like everything else instead of leaking as raw objects.
-        Map<String, List<GeneratedClassModel>> reifyChildren = new LinkedHashMap<>();
-        for (GeneratedClassModel c : model.classes()) {
-            if (c != null && c.reifiesStatements()) {
-                reifyChildren
-                        .computeIfAbsent(c.statementSourceClass(), k -> new ArrayList<>())
-                        .add(c);
-            }
-        }
-        // 4. The forward reify list is keyed `__Nomination` internally — rename it to
-        //    a clean field name (`nomination`, the codebase's class→field convention)
-        //    on the instances so no surface shows the `__` plumbing name.
-        renameReifyLists(reifyChildren, pool);
+        // 5. Drop the reify forward list (`__Nomination`): the declared model never
+        //    had it, so the relation stays one-directional (like Constellation/Star —
+        //    navigate Nomination as its own member type, no auto-materialized inverse).
+        stripReifyLists(model, pool);
 
         List<ProductClass> classes = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
@@ -88,12 +79,10 @@ public final class ProductCompiler {
             if (c == null || !seen.add(c.className())) {
                 continue;
             }
-            classes.add(compileClass(model, c, pool,
-                    reifyChildren.getOrDefault(c.className(), List.of()),
-                    entityClasses.contains(c.className())));
+            classes.add(compileClass(model, c, pool, entityClasses.contains(c.className())));
         }
 
-        ProductSchema schema = new ProductSchema(classes, memberClasses(model, pool));
+        ProductSchema schema = new ProductSchema(classes, memberList);
         // The schema view is built lazily (only if the user opens it) and captures
         // the declared model so it can show ModelClass ↔ ProductClass side by side.
         return new ProductDomain(schema, pool,
@@ -103,7 +92,6 @@ public final class ProductCompiler {
     private static ProductClass compileClass(GeneratedProjectModel model,
                                              GeneratedClassModel c,
                                              List<WikidataDynamicObject> pool,
-                                             List<GeneratedClassModel> reifyChildren,
                                              boolean isEntity) {
         List<ProductField> fields = new ArrayList<>();
         Set<String> names = new LinkedHashSet<>();
@@ -112,16 +100,6 @@ public final class ProductCompiler {
                 continue;
             }
             fields.add(compileField(model, c.className(), f, pool));
-        }
-        // Forward reify links: the statement records reified out of this class — a
-        // real reference list to the (member) statement class C, under a clean
-        // field name (the `__C` plumbing key renamed to match, see below).
-        for (GeneratedClassModel rc : reifyChildren) {
-            String name = reifyFieldName(rc.className());
-            if (names.add(name)) {
-                fields.add(new ProductField(name, "List<" + rc.displayClassName() + ">",
-                        true, true, rc.className(), false));
-            }
         }
         // A real entity carries a Wikidata link (its identity, as a URL) — a first
         // class field, not plumbing. Statement records don't, so they get none.
@@ -301,39 +279,56 @@ public final class ProductCompiler {
         }
     }
 
-    /** A field name from a class name — first letter lowercased (camelCase), the
-     *  same class→field convention {@code Joiner} uses. */
-    static String reifyFieldName(String className) {
-        return className == null || className.isEmpty()
-                ? className
-                : Character.toLowerCase(className.charAt(0)) + className.substring(1);
-    }
-
-    /** Rename the reify forward-list field ({@code __Nomination}) to its clean name
-     *  ({@code nomination}) on the pool instances, so the schema key and the instance
-     *  key agree and no surface shows the {@code __} plumbing name. */
-    private static void renameReifyLists(Map<String, List<GeneratedClassModel>> reifyChildren,
-                                         List<WikidataDynamicObject> pool) {
-        Map<String, String> rename = new LinkedHashMap<>();
-        for (List<GeneratedClassModel> kids : reifyChildren.values()) {
-            for (GeneratedClassModel rc : kids) {
-                rename.put("__" + rc.className(), reifyFieldName(rc.className()));
+    /** Remove the reify forward-list field ({@code __Nomination}) from the source
+     *  entities — the declared model never had it; the relation stays one-directional. */
+    private static void stripReifyLists(GeneratedProjectModel model,
+                                        List<WikidataDynamicObject> pool) {
+        Set<String> keys = new LinkedHashSet<>();
+        for (GeneratedClassModel c : model.classes()) {
+            if (c != null && c.reifiesStatements()) {
+                keys.add("__" + c.className());
             }
         }
-        if (rename.isEmpty()) {
+        if (keys.isEmpty()) {
             return;
         }
+        for (WikidataDynamicObject o : pool) {
+            if (o != null) {
+                for (String k : keys) {
+                    o.remove(k);
+                }
+            }
+        }
+    }
+
+    /** Replace, in place, every reference VALUE that isn't a stamped member entity
+     *  with its display-name string — so no unmodeled referent leaks the raw
+     *  WikidataDynamicObject. Member referents (target → Category) stay chips. */
+    private static void collapseNonMemberReferences(List<WikidataDynamicObject> pool,
+                                                    Set<String> members) {
         for (WikidataDynamicObject o : pool) {
             if (o == null) {
                 continue;
             }
-            for (Map.Entry<String, String> e : rename.entrySet()) {
-                Object v = o.dynamicFields().remove(e.getKey());
-                if (v != null && !o.dynamicFields().containsKey(e.getValue())) {
-                    o.dynamicFields().put(e.getValue(), v);
-                }
+            for (String key : new ArrayList<>(o.dynamicFields().keySet())) {
+                o.dynamicFields().put(key,
+                        collapseNonMember(o.dynamicFields().get(key), members));
             }
         }
+    }
+
+    private static Object collapseNonMember(Object v, Set<String> members) {
+        if (v instanceof WikidataDynamicObject w) {
+            return w.hasTypeStamp() && members.contains(w.typeName()) ? w : w.getDisplayName();
+        }
+        if (v instanceof List<?> list) {
+            List<Object> out = new ArrayList<>(list.size());
+            for (Object i : list) {
+                out.add(collapseNonMember(i, members));
+            }
+            return out;
+        }
+        return v;
     }
 
     private static Object toDisplayString(Object v) {
