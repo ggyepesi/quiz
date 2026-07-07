@@ -3,12 +3,20 @@ package wikidata.explore.extract;
 /**
  * Metadata-only media value.
  * Does not download or decode images.
+ *
+ * <p>Implements the generic {@link quiz.ui.MediaValue} so the renderer can turn it
+ * into an image without depending on wikidata — the conversion happens at render
+ * time, so this value stays serializable in the data pool.
  */
-public class WikidataMediaValue {
+public class WikidataMediaValue implements quiz.ui.MediaValue {
 
     private String label;
     private String url;
     private boolean svg;
+
+    @Override public String mediaUrl() { return url; }
+    @Override public String mediaLabel() { return label; }
+    @Override public boolean mediaSvg() { return svg; }
 
     public WikidataMediaValue() {
         this("", "", false);

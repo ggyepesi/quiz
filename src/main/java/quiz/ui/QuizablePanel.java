@@ -582,6 +582,7 @@ public class QuizablePanel extends JPanel {
         }
 
         boolean complex = value instanceof Quizable || value instanceof ImagePane
+                || value instanceof quiz.ui.MediaValue
                 || value instanceof Collection<?> || value instanceof Map<?, ?>;
         if (!complex) {
             textRows.add(textBlockRow(key, fieldPath, value));
@@ -1019,13 +1020,13 @@ public class QuizablePanel extends JPanel {
             return false;
         }
 
-        if (value instanceof ImagePane) {
+        if (value instanceof ImagePane || value instanceof MediaValue) {
             return false;
         }
 
         if (value instanceof Map<?, ?> map) {
             for (Object v : map.values()) {
-                if (v instanceof Quizable || v instanceof ImagePane
+                if (v instanceof Quizable || v instanceof ImagePane || v instanceof MediaValue
                         || v instanceof Collection<?> || v instanceof Map<?, ?>) {
                     return false;
                 }
@@ -1035,7 +1036,7 @@ public class QuizablePanel extends JPanel {
 
         if (value instanceof Collection<?> collection) {
             for (Object item : collection) {
-                if (item instanceof Quizable || item instanceof ImagePane
+                if (item instanceof Quizable || item instanceof ImagePane || item instanceof MediaValue
                         || item instanceof Collection<?> || item instanceof Map<?, ?>) {
                     return false;
                 }

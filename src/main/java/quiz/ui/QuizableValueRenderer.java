@@ -22,6 +22,15 @@ public final class QuizableValueRenderer {
             return null;
         }
 
+        // A backing media value (e.g. a Wikidata image) becomes a real ImagePane
+        // here, at render time — so the data pool never has to carry Swing.
+        if (value instanceof MediaValue media) {
+            value = imagePaneFor(media);
+            if (value == null) {
+                return null;
+            }
+        }
+
         if (value instanceof ImagePane imagePane) {
             return imageComponent(fieldName, fieldPath, imagePane);
         }
@@ -55,6 +64,20 @@ public final class QuizableValueRenderer {
         }
 
         return leafComponent(fieldName, fieldPath, value);
+    }
+
+    /** Builds a (lazy-loading) ImagePane from a backing media value, or null if
+     *  it has no URL / can't be built. */
+    private static ImagePane imagePaneFor(MediaValue media) {
+        String url = media.mediaUrl();
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        try {
+            return new ImagePane(media.mediaLabel(), url, null, false, media.mediaSvg(), false);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static JComponent imageComponent(String fieldName, List<String> fieldPath, ImagePane imagePane) {
@@ -159,6 +182,11 @@ public final class QuizableValueRenderer {
             return null;
         }
 
+        if (item instanceof MediaValue media) {
+            ImagePane pane = imagePaneFor(media);
+            return pane == null ? null : imageComponent("", fieldPath, pane);
+        }
+
         if (item instanceof ImagePane imagePane) {
             return imageComponent("", fieldPath, imagePane);
         }
@@ -256,7 +284,7 @@ public final class QuizableValueRenderer {
                 return false;
             }
 
-            if (item instanceof ImagePane) {
+            if (item instanceof ImagePane || item instanceof MediaValue) {
                 return false;
             }
 
@@ -282,7 +310,7 @@ public final class QuizableValueRenderer {
                 return false;
             }
 
-            if (value instanceof ImagePane) {
+            if (value instanceof ImagePane || value instanceof MediaValue) {
                 return false;
             }
 
