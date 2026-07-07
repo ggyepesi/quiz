@@ -3,6 +3,7 @@ package quiz.transform.app;
 import quiz.Quizable;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
+import quiz.transform.ui.SchemaView;
 import quiz.ui.viewconfig.FieldTypeSource;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -20,7 +21,7 @@ import java.util.Set;
  * reflection, so nested references, list-vs-single and hidden plumbing are all
  * authoritative. Built by {@code ProductCompiler}.
  */
-public final class ProductDomain implements DomainModel {
+public final class ProductDomain implements DomainModel, SchemaView {
 
     // Cap nested-path expansion so a reference cycle (or just deep chains) can't
     // blow up the field list — a path visits any given class at most once.
@@ -28,10 +29,23 @@ public final class ProductDomain implements DomainModel {
 
     private final ProductSchema schema;
     private final List<WikidataDynamicObject> pool;
+    // Lazily builds the ModelClass↔ProductClass inspector; supplied by the compiler
+    // (which holds the declared model). Null = no schema view.
+    private final SchemaView schemaView;
 
     public ProductDomain(ProductSchema schema, List<WikidataDynamicObject> pool) {
+        this(schema, pool, null);
+    }
+
+    public ProductDomain(ProductSchema schema, List<WikidataDynamicObject> pool,
+                         SchemaView schemaView) {
         this.schema = schema;
         this.pool = pool;
+        this.schemaView = schemaView;
+    }
+
+    @Override public javax.swing.JComponent schemaView() {
+        return schemaView == null ? null : schemaView.schemaView();
     }
 
     @Override public List<String> types() {

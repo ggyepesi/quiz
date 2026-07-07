@@ -33,6 +33,15 @@ public final class ProductSchema {
         return memberClasses;
     }
 
+    /** Every compiled class (members AND reference-target-only classes), in order. */
+    public List<String> allClassNames() {
+        return new ArrayList<>(byName.keySet());
+    }
+
+    public boolean isMember(String className) {
+        return memberClasses.contains(className);
+    }
+
     public ProductClass get(String className) {
         return byName.get(className);
     }

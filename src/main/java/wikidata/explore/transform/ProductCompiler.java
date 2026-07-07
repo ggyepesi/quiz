@@ -44,18 +44,26 @@ public final class ProductCompiler {
 
     public static ProductDomain compile(GeneratedProjectModel model,
                                         List<WikidataDynamicObject> pool) {
-        // 1. Unmodeled references (declared target class absent from the model)
+        // 1. Drop Wikimedia-meta noise (e.g. "Wikimedia list article", a Wikinews
+        //    article) from references before collapse — an entity's P31 `type` picks
+        //    up such non-domain values, and they'd otherwise become bogus strings.
+        filterNoiseReferences(pool);
+        // 2. Unmodeled references (declared target class absent from the model)
         //    become display strings — the domain doesn't model that class, so it
         //    reads as a label, not a navigable chip.
         collapseUnmodeledReferences(model, pool);
-        // 2. Bare references (no substance) collapse the same way.
+        // 3. Bare references (no substance) collapse the same way.
         BareReferenceCollapse.apply(pool);
-        // 3. Structural fields (the auto-seeded wikidata link, the reify `source`
-        //    back-ref) are hidden on EVERY surface — pickers AND rendered cards —
-        //    by removing them outright, not just marking them. No view operation
-        //    reads them (they can't be selected), so this is the one place that
-        //    keeps the schema and the instances honest.
-        stripStructural(pool);
+
+        // Real entities carry the auto-seeded wikidata link; a reified statement
+        // record (a Nomination) does not — so only real-entity classes get a
+        // Wikidata field. (Compute before renaming the key below.)
+        Set<String> entityClasses = entityClasses(pool);
+        // 4. `source` is pure plumbing (the reify back-ref) — strip it. But the
+        //    wikidata link is USEFUL (it IS the instance's identity), so keep it,
+        //    just under a readable name `Wikidata` instead of the seeded `wikidata`.
+        stripSource(pool);
+        renameWikidata(pool);
 
         // The reify convention (ModelStatementReifications): a class C that reifies
         // statements OF class S gets a `source` back-ref to S, and S gets a forward
@@ -81,16 +89,22 @@ public final class ProductCompiler {
                 continue;
             }
             classes.add(compileClass(model, c, pool,
-                    reifyChildren.getOrDefault(c.className(), List.of())));
+                    reifyChildren.getOrDefault(c.className(), List.of()),
+                    entityClasses.contains(c.className())));
         }
 
-        return new ProductDomain(new ProductSchema(classes, memberClasses(model, pool)), pool);
+        ProductSchema schema = new ProductSchema(classes, memberClasses(model, pool));
+        // The schema view is built lazily (only if the user opens it) and captures
+        // the declared model so it can show ModelClass ↔ ProductClass side by side.
+        return new ProductDomain(schema, pool,
+                () -> new quiz.transform.app.ProductSchemaInspector(model, schema));
     }
 
     private static ProductClass compileClass(GeneratedProjectModel model,
                                              GeneratedClassModel c,
                                              List<WikidataDynamicObject> pool,
-                                             List<GeneratedClassModel> reifyChildren) {
+                                             List<GeneratedClassModel> reifyChildren,
+                                             boolean isEntity) {
         List<ProductField> fields = new ArrayList<>();
         Set<String> names = new LinkedHashSet<>();
         for (GeneratedFieldModel f : c.effectiveFields(model)) {
@@ -109,11 +123,12 @@ public final class ProductCompiler {
                         true, true, rc.className(), false));
             }
         }
-        // Structural markers: the auto-seeded wikidata link (every class) and a
-        // statement class's reify `source` back-ref — hidden, not arguments.
-        if (names.add("wikidata")) {
-            fields.add(ProductField.structural("wikidata"));
+        // A real entity carries a Wikidata link (its identity, as a URL) — a first
+        // class field, not plumbing. Statement records don't, so they get none.
+        if (isEntity && names.add("Wikidata")) {
+            fields.add(new ProductField("Wikidata", "Link", false, false, null, false));
         }
+        // The reify `source` back-ref is structural — stripped, documented here.
         if (c.reifiesStatements() && names.add("source")) {
             fields.add(ProductField.structural("source"));
         }
@@ -205,15 +220,82 @@ public final class ProductCompiler {
         }
     }
 
-    // The structural convention fields, removed from every instance so no surface
-    // renders them. Kept out of the pool entirely (not just hidden per-surface).
-    private static final Set<String> STRUCTURAL = Set.of("wikidata", "source");
-
-    private static void stripStructural(List<WikidataDynamicObject> pool) {
+    /** The reify `source` back-ref is pure plumbing — remove it from every instance
+     *  so no surface renders it (no view operation reads it either). */
+    private static void stripSource(List<WikidataDynamicObject> pool) {
         for (WikidataDynamicObject o : pool) {
             if (o != null) {
-                for (String name : STRUCTURAL) {
-                    o.remove(name);
+                o.remove("source");
+            }
+        }
+    }
+
+    /** Rename the seeded `wikidata` link to a readable `Wikidata`, in place. */
+    private static void renameWikidata(List<WikidataDynamicObject> pool) {
+        for (WikidataDynamicObject o : pool) {
+            if (o == null) {
+                continue;
+            }
+            Object v = o.dynamicFields().remove("wikidata");
+            if (v != null && !o.dynamicFields().containsKey("Wikidata")) {
+                o.dynamicFields().put("Wikidata", v);
+            }
+        }
+    }
+
+    /** Classes whose stamped instances carry the wikidata link — real entities, as
+     *  opposed to reified statement records (which have no Wikidata page). */
+    private static Set<String> entityClasses(List<WikidataDynamicObject> pool) {
+        Set<String> out = new LinkedHashSet<>();
+        for (WikidataDynamicObject o : pool) {
+            if (o != null && o.hasTypeStamp()
+                    && o.dynamicFieldValues().containsKey("wikidata")) {
+                out.add(o.typeName());
+            }
+        }
+        return out;
+    }
+
+    /** A reference is Wikimedia-meta noise (a "Wikimedia list article", a Wikinews
+     *  article, …) — not a domain value, so it's dropped from its field. */
+    private static boolean isNoiseReference(Object v) {
+        if (!(v instanceof WikidataDynamicObject w)) {
+            return false;
+        }
+        String n = w.getDisplayName();
+        if (n == null) {
+            return false;
+        }
+        String s = n.toLowerCase();
+        return s.contains("wikimedia") || s.contains("wikinews");
+    }
+
+    /** Drop Wikimedia-meta noise referents from every field, in place. */
+    private static void filterNoiseReferences(List<WikidataDynamicObject> pool) {
+        for (WikidataDynamicObject o : pool) {
+            if (o == null) {
+                continue;
+            }
+            for (Map.Entry<String, Object> e
+                    : new ArrayList<>(o.dynamicFields().entrySet())) {
+                Object v = e.getValue();
+                if (isNoiseReference(v)) {
+                    o.remove(e.getKey());
+                } else if (v instanceof List<?> list) {
+                    List<Object> kept = new ArrayList<>();
+                    for (Object i : list) {
+                        if (!isNoiseReference(i)) {
+                            kept.add(i);
+                        }
+                    }
+                    if (kept.size() != list.size()) {
+                        if (kept.isEmpty()) {
+                            o.remove(e.getKey());
+                        } else {
+                            o.dynamicFields().put(e.getKey(),
+                                    kept.size() == 1 ? kept.get(0) : kept);
+                        }
+                    }
                 }
             }
         }

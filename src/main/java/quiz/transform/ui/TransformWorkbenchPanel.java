@@ -104,6 +104,10 @@ public final class TransformWorkbenchPanel extends JPanel {
         top.add(memberTypeCombo);
         top.add(new JLabel("Operation:"));
         top.add(operationCombo);
+        // Only when the domain can show its compiled schema (ModelClass ↔ ProductClass).
+        if (controller.domain() instanceof SchemaView) {
+            top.add(button("Schema…", this::showSchema));
+        }
 
         JPanel fields = new JPanel(new BorderLayout(4, 4));
         fields.setBorder(BorderFactory.createTitledBorder("Fields — check the argument(s) for the operation"));
@@ -400,6 +404,21 @@ public final class TransformWorkbenchPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
                     "Save failed", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /** Show the compiled-schema inspector (ModelClass ↔ ProductClass) in a dialog. */
+    private void showSchema() {
+        JComponent view = controller.domain() instanceof SchemaView sv ? sv.schemaView() : null;
+        if (view == null) {
+            return;
+        }
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Schema — ModelClass ↔ ProductClass", Dialog.ModalityType.MODELESS);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(view, BorderLayout.CENTER);
+        dialog.setSize(900, 560);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     /** Open the workbench in a frame over any domain. */

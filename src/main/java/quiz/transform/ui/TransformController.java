@@ -33,6 +33,10 @@ public final class TransformController {
 
     // --- domain queries -------------------------------------------------------
 
+    /** The working domain (base + derived) — for capability checks like {@link
+     *  SchemaView}. No Swing here; the view does the instanceof + rendering. */
+    public DomainModel domain() { return domain; }
+
     public List<String> types() { return domain.types(); }
     public List<DomainField> fields(String type) { return domain.fields(type); }
     public Set<String> structuralFields(String type) { return domain.structuralFields(type); }

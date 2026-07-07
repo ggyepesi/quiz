@@ -60,22 +60,26 @@ class ProductCompilerTest {
     private static List<WikidataDynamicObject> pool() {
         WikidataDynamicObject osc = substantive("Q1", "The Nominee");
         osc.type("OscarNominations");
+        osc.put("wikidata", "http://www.wikidata.org/entity/Q1");   // a real entity
+        // P31 `type` with a real value plus Wikimedia-meta noise to be filtered.
+        osc.put("type", new java.util.ArrayList<>(List.of(
+                new WikidataDynamicObject("Q11424", "film"),
+                new WikidataDynamicObject("Q13406463", "Wikimedia list article"))));
 
         WikidataDynamicObject film = substantive("Q2", "Schindler's List");   // ForWork
 
-        // Category is stamped in the snapshot but identity-only (its sole field is
-        // the wikidata link) — it should still be promoted to a member.
+        // Category is stamped but identity-only (only the wikidata link) — still a
+        // member, and now the link makes it a fielded (expandable) reference.
         WikidataDynamicObject cat = new WikidataDynamicObject("Q3", "Best Picture");
         cat.type("Category");
         cat.put("wikidata", "http://www.wikidata.org/entity/Q3");
 
         WikidataDynamicObject nom = new WikidataDynamicObject("Q4-abc", "Nomination 1");
-        nom.type("Nomination");
+        nom.type("Nomination");         // a reified statement — no wikidata link
         nom.put("nominee", osc);
         nom.put("forWork", film);
         nom.put("target", new java.util.ArrayList<>(List.of(cat)));
         nom.put("won", Boolean.TRUE);
-        nom.put("wikidata", "http://www.wikidata.org/entity/Q4");
         nom.put("source", osc);   // the reify back-ref
 
         osc.put("__Nomination", new java.util.ArrayList<>(List.of(nom)));  // reify forward list
@@ -133,18 +137,22 @@ class ProductCompilerTest {
                 d.fieldTypes("Nomination").field("target").typeLabel());
     }
 
-    @Test void reifySourceAndWikidataAreStructural() {
+    @Test void sourceIsStructuralWikidataIsALinkOnEntities() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
-        assertEquals(java.util.Set.of("wikidata", "source"),
-                d.structuralFields("Nomination"));
 
-        FieldTypeSource ts = d.fieldTypes("Nomination");
-        assertTrue(ts.field("source").structural());
-        assertTrue(ts.field("wikidata").structural());
+        // The reify `source` back-ref is the only structural field — plumbing.
+        assertEquals(java.util.Set.of("source"), d.structuralFields("Nomination"));
+        assertTrue(d.fieldTypes("Nomination").field("source").structural());
+        assertNull(field(d, "Nomination", "source"), "not an operation argument");
 
-        // Structural fields are not offered as operation arguments.
-        assertNull(field(d, "Nomination", "source"));
-        assertNull(field(d, "Nomination", "wikidata"));
+        // wikidata is a first-class link on a real entity (not structural) — and a
+        // statement class (Nomination) has none.
+        FieldTypeSource.FieldTypeInfo link = d.fieldTypes("OscarNominations").field("Wikidata");
+        assertNotNull(link, "a real entity keeps its Wikidata link");
+        assertFalse(link.structural());
+        assertEquals("Link", link.typeLabel());
+        assertNull(d.fieldTypes("Nomination").field("Wikidata"),
+                "a reified statement has no Wikidata page");
     }
 
     @Test void qidIsNeverAField() {
@@ -183,31 +191,39 @@ class ProductCompilerTest {
         FieldTypeSource nested = link.nested();
         assertNotNull(nested);
         assertTrue(nested.field("source").structural());
-        assertTrue(nested.field("wikidata").structural());
+        assertNull(nested.field("wikidata"), "the reify record has no wikidata link");
         assertEquals("List<Category>", nested.field("target").typeLabel());
     }
 
-    @Test void nameOnlyReferenceIsAReferenceButNotExpandable() {
+    @Test void referenceToAnEntityIsExpandableViaItsLink() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
         FieldTypeSource ts = d.fieldTypes("Nomination");
 
-        // target -> Category (no fields beyond name): still a reference (identity
-        // preserved for grouping), but no nested source -> no "+fields" expansion.
+        // target -> Category: a reference, and now expandable — Category is a real
+        // entity, so it carries a Wikidata link (no longer a dead-end lone `name`).
         assertTrue(field(d, "Nomination", "target").reference());
-        assertNull(ts.field("target").nested(), "name-only ref offers no expansion");
+        assertNotNull(ts.field("target").nested());
+        assertNotNull(ts.field("target").nested().field("Wikidata"));
 
-        // nominee -> OscarNominations (has fields) stays expandable.
-        assertNotNull(ts.field("nominee").nested(), "a fielded ref stays expandable");
+        // nominee -> OscarNominations (fielded) stays expandable.
+        assertNotNull(ts.field("nominee").nested());
     }
 
-    @Test void structuralFieldsAreStrippedFromInstances() {
+    @Test void sourceStrippedWikidataRenamedNoiseFiltered() {
         List<WikidataDynamicObject> pool = pool();
         ProductCompiler.compile(model(), pool);
-        // Removed from the pool entirely, so no surface (card or picker) shows them.
+        WikidataDynamicObject osc = pool.stream()
+                .filter(o -> "OscarNominations".equals(o.typeName())).findFirst().orElseThrow();
+
+        // source stripped everywhere; the seeded `wikidata` key renamed to `Wikidata`.
         for (WikidataDynamicObject o : pool) {
-            assertFalse(o.dynamicFieldValues().containsKey("wikidata"), o.getDisplayName());
             assertFalse(o.dynamicFieldValues().containsKey("source"), o.getDisplayName());
+            assertFalse(o.dynamicFieldValues().containsKey("wikidata"), o.getDisplayName());
         }
+        assertTrue(osc.dynamicFieldValues().containsKey("Wikidata"), "entity keeps the link");
+
+        // Wikimedia-meta noise dropped from `type`; the real value survives.
+        assertEquals("film", osc.dynamicFieldValues().get("type"));
     }
 
     @Test void booleanFieldIsAScalar() {
