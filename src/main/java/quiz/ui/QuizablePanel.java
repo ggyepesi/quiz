@@ -497,6 +497,17 @@ public class QuizablePanel extends JPanel {
                 continue;
             }
 
+            // A DynamicFields object's map IS its field set — render each entry as
+            // its own field (flat), never the map as one "dynamicFields" block.
+            if (quizable instanceof quiz.DynamicFields df
+                    && value == df.dynamicFieldValues()) {
+                for (Map.Entry<String, Object> entry
+                        : df.dynamicFieldValues().entrySet()) {
+                    row = appendDynamicEntry(entry.getKey(), entry.getValue(), textRows, row);
+                }
+                continue;
+            }
+
             List<String> fieldPath = new ArrayList<>(path);
             fieldPath.add(name);
 
@@ -548,6 +559,49 @@ public class QuizablePanel extends JPanel {
             addSingle(block, row++);
         }
 
+        return row;
+    }
+
+    // Renders one entry of a DynamicFields map as a field — scalars fold into the
+    // shared text block, complex values (references, images, collections) render
+    // standalone — the same treatment declared fields get, minus reflection.
+    private int appendDynamicEntry(String key, Object value,
+                                   List<QuizableTextBlock.Row> textRows, int row) {
+        if (value == null || isEmptyCollectionOrMap(value) || "name".equals(key)) {
+            return row;
+        }
+        List<String> fieldPath = new ArrayList<>(path);
+        fieldPath.add(key);
+
+        if (value instanceof Boolean flag) {
+            if (flag) {
+                textRows.add(new QuizableTextBlock.Row(null, fieldPath, value,
+                        List.of(quiz.FieldLabels.humanize(key))));
+            }
+            return row;
+        }
+
+        boolean complex = value instanceof Quizable || value instanceof ImagePane
+                || value instanceof Collection<?> || value instanceof Map<?, ?>;
+        if (!complex) {
+            textRows.add(textBlockRow(key, fieldPath, value));
+            return row;
+        }
+
+        if (!textRows.isEmpty()) {
+            row = addTextBlock(textRows, row);
+            textRows.clear();
+        }
+        QuizablePanelConfig cfg = config.getFieldConfig(key);
+        if (cfg == null) {
+            cfg = defaultConfigForValue(value);
+        }
+        JComponent comp = QuizableValueRenderer.createFieldComponent(
+                copyVisited(), copyAncestors(), renderContext,
+                key, fieldPath, value, cfg, fill);
+        if (comp != null) {
+            addSingle(comp, row++);
+        }
         return row;
     }
 
