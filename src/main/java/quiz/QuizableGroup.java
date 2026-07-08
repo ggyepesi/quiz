@@ -25,6 +25,9 @@ public class QuizableGroup extends QuizableAdapter {
     public enum Role { UNIVERSE, FACET, BUCKET }
 
     private final String name;
+    // The facet-tree role (UNIVERSE/FACET/BUCKET) is transform structure, not data —
+    // hidden so it doesn't render as a `role: FACET` row mixed into the results.
+    @NotQuizableField
     private Role role = Role.UNIVERSE;
 
     /**
@@ -35,7 +38,8 @@ public class QuizableGroup extends QuizableAdapter {
     @NotQuizableField
     private Quizable keyRef;
 
-    @QuizableReference
+    // The tree back-ref — structure, not content (and cyclic); never a card row.
+    @NotQuizableField
     private QuizableGroup parent;
 
     @QuizableReference
