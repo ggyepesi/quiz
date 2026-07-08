@@ -222,6 +222,24 @@ class ProductCompilerTest {
         assertEquals("film", osc.dynamicFieldValues().get("type"));
     }
 
+    @Test void instanceFieldsFollowTheClassOrderRegardlessOfInsertion() {
+        WikidataDynamicObject cat = new WikidataDynamicObject("Q3", "Best Picture");
+        cat.type("Category");
+        WikidataDynamicObject nom = new WikidataDynamicObject("Q9-x", "N");
+        nom.type("Nomination");
+        // Inserted in REVERSE of the model order (nominee before won there).
+        nom.put("won", Boolean.TRUE);
+        nom.put("target", new java.util.ArrayList<>(List.of(cat)));
+        nom.put("nominee", cat);
+
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(List.of(cat, nom));
+        ProductCompiler.compile(model(), pool);
+
+        List<String> order = new java.util.ArrayList<>(nom.dynamicFieldValues().keySet());
+        assertTrue(order.indexOf("nominee") < order.indexOf("won"), order.toString());
+        assertTrue(order.indexOf("nominee") < order.indexOf("target"), order.toString());
+    }
+
     @Test void booleanFieldIsAScalar() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
         DomainField won = field(d, "Nomination", "won");

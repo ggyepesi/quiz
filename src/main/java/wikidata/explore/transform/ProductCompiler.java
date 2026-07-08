@@ -83,11 +83,43 @@ public final class ProductCompiler {
         }
 
         ProductSchema schema = new ProductSchema(classes, memberList);
+        // Give every instance of a class the SAME field order (its ProductClass
+        // order), so cards read consistently instead of each entity's raw
+        // extraction-insertion order.
+        reorderInstanceFields(pool, schema);
         // The schema view is built lazily (only if the user opens it) and captures
         // the declared model so it can show ModelClass ↔ ProductClass side by side.
         // ProductDomain is generic — the wikidata universe is supplied here.
         return new ProductDomain(schema, pool, WikidataDynamicObject.class,
                 () -> new quiz.transform.app.ProductSchemaInspector(model, schema));
+    }
+
+    /** Reorder each stamped instance's fields to its ProductClass's field order —
+     *  declared fields (model order) first, then any extras — so all instances of a
+     *  class render their fields in the same order. */
+    private static void reorderInstanceFields(List<WikidataDynamicObject> pool,
+                                              ProductSchema schema) {
+        for (WikidataDynamicObject o : pool) {
+            if (o == null || !o.hasTypeStamp()) {
+                continue;
+            }
+            ProductClass pc = schema.get(o.typeName());
+            Map<String, Object> map = o.dynamicFields();
+            if (pc == null || map.size() <= 1) {
+                continue;
+            }
+            Map<String, Object> ordered = new LinkedHashMap<>();
+            for (ProductField f : pc.fields()) {
+                if (map.containsKey(f.name())) {
+                    ordered.put(f.name(), map.get(f.name()));
+                }
+            }
+            for (Map.Entry<String, Object> e : map.entrySet()) {
+                ordered.putIfAbsent(e.getKey(), e.getValue());
+            }
+            map.clear();
+            map.putAll(ordered);
+        }
     }
 
     private static ProductClass compileClass(GeneratedProjectModel model,
