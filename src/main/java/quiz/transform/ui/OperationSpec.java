@@ -2,14 +2,18 @@ package quiz.transform.ui;
 
 /**
  * One configured operation in the transform pipeline: an {@link OperationKind}, the
- * domain field it operates on, and (for a filter) the literal value. The pipeline
- * of these compiles to a real {@link quiz.transform.View} — see {@link ViewCompiler}.
+ * domain field it operates on, and (for a filter) the literal value. A FILTER is a
+ * single predicate — the AND of its {@link #conditions} — so there is at most one
+ * FILTER in a pipeline. The pipeline compiles to a real {@link quiz.transform.View}
+ * — see {@link ViewCompiler}.
  */
 public class OperationSpec {
 
     public OperationKind kind;
-    public DomainField field;
-    public Object value;   // only for FILTER
+    public DomainField field;   // GROUP_BY/PROJECT/JOIN; a FILTER's FIRST condition field
+    public Object value;        // a FILTER's FIRST condition value (back-compat)
+    // The FILTER predicate's AND conditions (null for non-filters).
+    public java.util.List<FilterCondition> conditions;
 
     public OperationSpec() {}
 
@@ -17,18 +21,46 @@ public class OperationSpec {
         this.kind = kind;
         this.field = field;
         this.value = value;
+        if (kind == OperationKind.FILTER && field != null) {
+            this.conditions = new java.util.ArrayList<>();
+            this.conditions.add(new FilterCondition(field, value));
+        }
+    }
+
+    /** Append an AND condition to this FILTER predicate. */
+    public void addCondition(DomainField f, Object v) {
+        if (conditions == null) {
+            conditions = new java.util.ArrayList<>();
+        }
+        conditions.add(new FilterCondition(f, v));
     }
 
     @Override
     public String toString() {
-        if (kind == null || field == null) {
+        if (kind == null) {
             return "(incomplete operation)";
         }
         return switch (kind) {
-            case FILTER -> "filter  " + field.path() + " == " + value;
-            case GROUP_BY -> "group by  " + field.path();
-            case PROJECT_TO_CLASS -> "project  " + field.path();
-            case JOIN -> "join  " + field.path();
+            case FILTER -> "filter  " + filterText();
+            case GROUP_BY -> field == null ? "group by" : "group by  " + field.path();
+            case PROJECT_TO_CLASS -> field == null ? "project" : "project  " + field.path();
+            case JOIN -> field == null ? "join" : "join  " + field.path();
         };
+    }
+
+    /** The FILTER predicate as text: {@code f1 == v1 AND f2 == v2 …}. */
+    public String filterText() {
+        java.util.List<FilterCondition> cs = conditions;
+        if (cs == null || cs.isEmpty()) {
+            return field == null ? "" : field.path() + " == " + value;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (FilterCondition c : cs) {
+            if (sb.length() > 0) {
+                sb.append(" AND ");
+            }
+            sb.append(c.field() == null ? "?" : c.field().path()).append(" == ").append(c.value());
+        }
+        return sb.toString();
     }
 }

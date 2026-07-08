@@ -291,12 +291,13 @@ public final class TransformWorkbenchPanel extends JPanel {
                     case JOIN -> { tag = "join"; color = "#a03050"; }
                     default -> { tag = "op"; color = "#555555"; }
                 }
-                String field = op.field == null ? "" : op.field.field();
-                String val = op.kind == OperationKind.FILTER
-                        ? " <font color='#999999'>= " + op.value + "</font>" : "";
+                // A FILTER shows its whole AND predicate; other ops show the field.
+                String body = op.kind == OperationKind.FILTER
+                        ? op.filterText()
+                        : (op.field == null ? "" : op.field.field());
                 l.setText("<html><b>" + (index + 1) + ".</b> &nbsp;"
                         + "<font color='" + color + "'><b>" + tag + "</b></font> &nbsp;"
-                        + "<font color='#222222'>" + field + "</font>" + val + "</html>");
+                        + "<font color='#222222'>" + body + "</font></html>");
             }
             l.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
             return l;

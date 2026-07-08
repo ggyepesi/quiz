@@ -68,6 +68,24 @@ class TransformControllerTest {
         assertEquals(Boolean.TRUE, c.pipeline().get(0).value);
     }
 
+    @Test void filterIsOnePredicateWithAndConditions() {
+        TransformController c = controller();
+        c.selectType("Nomination");
+        c.addOperation(OperationKind.FILTER,
+                c.resolveFields("Nomination", List.of("won")), "true", null, null, null);
+        c.addOperation(OperationKind.FILTER,
+                c.resolveFields("Nomination", List.of("year")), "1994", null, null, null);
+
+        // One FILTER node holding two AND conditions — not two pipeline steps.
+        assertEquals(1, c.pipeline().size());
+        OperationSpec filter = c.pipeline().get(0);
+        assertEquals(OperationKind.FILTER, filter.kind);
+        assertEquals(2, filter.conditions.size());
+        assertEquals("won", filter.conditions.get(0).field().field());
+        assertEquals("year", filter.conditions.get(1).field().field());
+        assertEquals(1994, filter.conditions.get(1).value());
+    }
+
     @Test void groupByAcceptsAnyFieldNotJustReferences() {
         TransformController c = controller();
         c.selectType("Nomination");

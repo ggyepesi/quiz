@@ -172,6 +172,18 @@ public final class TransformController {
                     + sig.fieldNeed() + " field for " + kind + ".");
         }
         Object value = sig.needsValue() ? parseValue(valueText) : null;
+
+        // A FILTER is ONE predicate: add this as an AND condition to the existing
+        // filter if there is one, else start it — so filters never repeat as steps.
+        if (kind == OperationKind.FILTER) {
+            for (OperationSpec op : pipeline) {
+                if (op.kind == OperationKind.FILTER) {
+                    op.addCondition(field, value);
+                    return OpOutcome.step();
+                }
+            }
+        }
+
         pipeline.add(new OperationSpec(kind, field, value));
         return OpOutcome.step();
     }

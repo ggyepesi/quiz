@@ -30,7 +30,17 @@ public final class ViewCompiler {
                     o instanceof Quizable q && type.equals(q.typeName()));
         }
         for (OperationSpec op : ops) {
-            if (op != null && op.kind == OperationKind.FILTER && op.field != null) {
+            if (op == null || op.kind != OperationKind.FILTER) {
+                continue;
+            }
+            // A FILTER is a predicate: AND all its conditions into the plan.
+            if (op.conditions != null && !op.conditions.isEmpty()) {
+                for (FilterCondition c : op.conditions) {
+                    if (c.field() != null) {
+                        plan.whereFieldEquals(c.field().field(), c.value());
+                    }
+                }
+            } else if (op.field != null) {
                 plan.whereFieldEquals(op.field.field(), op.value);
             }
         }
