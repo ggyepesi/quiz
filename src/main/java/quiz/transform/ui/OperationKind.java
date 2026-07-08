@@ -10,15 +10,34 @@ package quiz.transform.ui;
  */
 public enum OperationKind {
 
-    FILTER("Filter — keep where field == value"),
-    GROUP_BY("Group by — bucket members by a field (a scalar keys by value, a reference by the entity)"),
-    PROJECT_TO_CLASS("Project to class — a NEW class from the selected fields (fed back into the pool)"),
-    JOIN("Join — a NEW class matching this class to another on a key (arguments from two classes)");
+    FILTER("Filter — keep where field == value", Nature.VIEW),
+    GROUP_BY("Group by — bucket members by a field (a scalar keys by value, a reference by the entity)", Nature.VIEW),
+    PROJECT_TO_CLASS("Project to class — a NEW class from the selected fields (fed back into the pool)", Nature.STRUCTURAL),
+    JOIN("Join — a NEW class matching this class to another on a key (arguments from two classes)", Nature.STRUCTURAL);
+
+    /**
+     * The primary split. A {@code STRUCTURAL} op produces a new product CLASS,
+     * mutating the domain schema (PROJECT / JOIN → a new Members entry). A
+     * {@code VIEW} op only shapes the INSTANCES of an existing class (FILTER /
+     * GROUP_BY) — it changes nothing in the schema and is a pipeline step.
+     */
+    public enum Nature { STRUCTURAL, VIEW }
 
     private final String label;
+    private final Nature nature;
 
-    OperationKind(String label) {
+    OperationKind(String label, Nature nature) {
         this.label = label;
+        this.nature = nature;
+    }
+
+    public Nature nature() {
+        return nature;
+    }
+
+    /** True for ops that add a new class to the domain (PROJECT / JOIN). */
+    public boolean producesClass() {
+        return nature == Nature.STRUCTURAL;
     }
 
     @Override
