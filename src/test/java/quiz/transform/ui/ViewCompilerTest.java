@@ -39,9 +39,9 @@ class ViewCompilerTest {
         List<OperationSpec> ops = List.of(
                 new OperationSpec(OperationKind.FILTER,
                         new DomainField("Nomination", "won", false, false), Boolean.TRUE),
-                new OperationSpec(OperationKind.GROUP_BY_REFERENCE,
+                new OperationSpec(OperationKind.GROUP_BY,
                         new DomainField("Nomination", "category", true, false), null),
-                new OperationSpec(OperationKind.GROUP_BY_VALUE,
+                new OperationSpec(OperationKind.GROUP_BY,
                         new DomainField("Nomination", "year", false, false), null));
 
         View view = ViewCompiler.compile("winners", "Nomination", ops,
@@ -79,7 +79,7 @@ class ViewCompilerTest {
         state.merge("languages", fr);
 
         View view = ViewCompiler.compile("langs", "State", List.of(
-                new OperationSpec(OperationKind.GROUP_BY_VALUE,
+                new OperationSpec(OperationKind.GROUP_BY,
                         new DomainField("State", "languages.iso", false, false), null)),
                 WikidataDynamicObject.class);
 

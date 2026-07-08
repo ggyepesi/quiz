@@ -48,7 +48,7 @@ class ProjectorTest {
 
         // A later operation groups the DERIVED class by a projected field.
         View view = ViewCompiler.compile("by cat", "Nom", List.of(
-                new OperationSpec(OperationKind.GROUP_BY_REFERENCE,
+                new OperationSpec(OperationKind.GROUP_BY,
                         new DomainField("Nom", "category", true, false), null)),
                 domain.universe());
         QuizableGroup root = view.render(domain.instances());

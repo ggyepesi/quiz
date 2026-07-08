@@ -43,8 +43,8 @@ class TransformControllerTest {
         assertEquals("Nomination", c.selectedType());
         assertEquals(
                 List.of(OperationKind.FILTER,
-                        OperationKind.GROUP_BY_REFERENCE,
-                        OperationKind.GROUP_BY_VALUE),
+                        OperationKind.GROUP_BY,
+                        OperationKind.GROUP_BY),
                 c.pipeline().stream().map(op -> op.kind).toList());
     }
 
@@ -68,28 +68,32 @@ class TransformControllerTest {
         assertEquals(Boolean.TRUE, c.pipeline().get(0).value);
     }
 
-    @Test void rejectsAFieldThatDoesNotFitTheSlotShape() {
+    @Test void groupByAcceptsAnyFieldNotJustReferences() {
         TransformController c = controller();
         c.selectType("Nomination");
-        // GROUP_BY_REFERENCE needs a REFERENCE field; `won` is scalar.
-        TransformController.OpOutcome out = c.addOperation(
-                OperationKind.GROUP_BY_REFERENCE,
-                c.resolveFields("Nomination", List.of("won")),
+        // One Group by: a scalar keys by value, a reference by the entity — so a
+        // scalar like `won` is valid (no more separate value/reference choice).
+        TransformController.OpOutcome scalar = c.addOperation(
+                OperationKind.GROUP_BY, c.resolveFields("Nomination", List.of("won")),
                 null, null, null, null);
-        assertFalse(out.ok());
-        assertTrue(out.message().contains("won"), out.message());
-        assertTrue(c.pipeline().isEmpty());
+        assertTrue(scalar.ok(), scalar.message());
+        TransformController.OpOutcome reference = c.addOperation(
+                OperationKind.GROUP_BY, c.resolveFields("Nomination", List.of("category")),
+                null, null, null, null);
+        assertTrue(reference.ok(), reference.message());
+        assertEquals(2, c.pipeline().size());
     }
 
     @Test void removeAndMoveReorderThePipeline() {
         TransformController c = controller();
-        c.seedDefault();                       // FILTER, GROUP_BY_REFERENCE, GROUP_BY_VALUE
-        c.removeOperation(0);                   // -> GROUP_BY_REFERENCE, GROUP_BY_VALUE
+        c.seedDefault();                       // FILTER won, GROUP_BY category, GROUP_BY year
+        c.removeOperation(0);                   // -> GROUP_BY category, GROUP_BY year
         assertEquals(2, c.pipeline().size());
-        assertEquals(OperationKind.GROUP_BY_REFERENCE, c.pipeline().get(0).kind);
+        // Both group steps share the kind now, so reorder is verified by FIELD.
+        assertEquals("category", c.pipeline().get(0).field.field());
 
         assertEquals(1, c.moveOperation(0, 1)); // swap the two
-        assertEquals(OperationKind.GROUP_BY_VALUE, c.pipeline().get(0).kind);
+        assertEquals("year", c.pipeline().get(0).field.field());
         assertEquals(-1, c.moveOperation(1, 1), "can't move the last one down");
     }
 }

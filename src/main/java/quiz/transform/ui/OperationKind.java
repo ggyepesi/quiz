@@ -11,8 +11,7 @@ package quiz.transform.ui;
 public enum OperationKind {
 
     FILTER("Filter — keep where field == value"),
-    GROUP_BY_VALUE("Group by value — a scalar field's value → buckets"),
-    GROUP_BY_REFERENCE("Group by reference (invert) — a member under each referenced entity"),
+    GROUP_BY("Group by — bucket members by a field (a scalar keys by value, a reference by the entity)"),
     PROJECT_TO_CLASS("Project to class — a NEW class from the selected fields (fed back into the pool)"),
     JOIN("Join — a NEW class matching this class to another on a key (arguments from two classes)");
 

@@ -186,6 +186,7 @@ public final class TransformWorkbenchPanel extends JPanel {
         newClassField.setEnabled(sig.multiField() || join);
         slotHint.setText(join ? "check the LEFT key  ·"
                 : sig.multiField() ? "check the projected fields  ·"
+                : sig.fieldNeed() == OperationSignature.Need.ANY ? "check a field  ·"
                 : "check a " + sig.fieldNeed() + " field  ·");
     }
 
@@ -285,8 +286,7 @@ public final class TransformWorkbenchPanel extends JPanel {
                 String tag; String color;
                 switch (op.kind) {
                     case FILTER -> { tag = "filter"; color = "#b26a00"; }
-                    case GROUP_BY_VALUE -> { tag = "group"; color = "#2f6fb0"; }
-                    case GROUP_BY_REFERENCE -> { tag = "invert"; color = "#6a3fb0"; }
+                    case GROUP_BY -> { tag = "group"; color = "#2f6fb0"; }
                     case PROJECT_TO_CLASS -> { tag = "project"; color = "#0a7a4a"; }
                     case JOIN -> { tag = "join"; color = "#a03050"; }
                     default -> { tag = "op"; color = "#555555"; }

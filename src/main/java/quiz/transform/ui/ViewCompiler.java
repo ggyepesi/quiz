@@ -42,8 +42,11 @@ public final class ViewCompiler {
                 continue;
             }
             switch (op.kind) {
-                case GROUP_BY_VALUE -> view.groupBy(Facet.field(op.field.field()));
-                case GROUP_BY_REFERENCE -> view.groupBy(Facet.reference(op.field.field()));
+                // One "Group by": a reference field keys by the entity (invert),
+                // a scalar by its value — chosen from the field's shape.
+                case GROUP_BY -> view.groupBy(op.field.reference()
+                        ? Facet.reference(op.field.field())
+                        : Facet.field(op.field.field()));
                 default -> { /* FILTER already applied to the plan */ }
             }
         }
