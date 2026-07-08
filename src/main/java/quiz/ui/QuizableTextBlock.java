@@ -551,6 +551,18 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
         StringBuilder current = new StringBuilder();
 
         for (String word : words) {
+            // A single word wider than the line has no space to wrap on (e.g. a
+            // long URL or id) — hard-break it at character boundaries so its end
+            // is still visible rather than clipped off the card.
+            if (fm.stringWidth(word) > maxWidth) {
+                if (!current.isEmpty()) {
+                    out.add(current.toString());
+                    current.setLength(0);
+                }
+                breakLongWord(word, fm, maxWidth, out);
+                continue;
+            }
+
             String next = current.isEmpty() ? word : current + " " + word;
 
             if (fm.stringWidth(next) <= maxWidth) {
@@ -568,6 +580,22 @@ public class QuizableTextBlock extends JComponent implements QuizableTextSelecta
 
         if (!current.isEmpty()) {
             out.add(current.toString());
+        }
+    }
+
+    private static void breakLongWord(String word, FontMetrics fm,
+                                      int maxWidth, List<String> out) {
+        StringBuilder chunk = new StringBuilder();
+        for (int i = 0; i < word.length(); i++) {
+            char c = word.charAt(i);
+            if (chunk.length() > 0 && fm.stringWidth(chunk.toString() + c) > maxWidth) {
+                out.add(chunk.toString());
+                chunk.setLength(0);
+            }
+            chunk.append(c);
+        }
+        if (chunk.length() > 0) {
+            out.add(chunk.toString());
         }
     }
 
