@@ -6,6 +6,7 @@ import quiz.ui.QuizablePanelView;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -352,35 +353,13 @@ public final class TransformWorkbenchPanel extends JPanel {
                 }
                 try {
                     QuizableGroup root = get();
-                    QuizablePanelView v = new QuizablePanelView();
-                    // A flat result (no GROUP_BY facets) is presented the same way the
-                    // modelbuilder shows generated instances: each member is its OWN
-                    // top-level card, so an image field renders at full card size
-                    // (the 260px floor) instead of as a tiny nested chip inside a
-                    // single group card. A grouped result keeps its group structure.
-                    if (root.getChildren().isEmpty()) {
-                        for (Quizable m : root.getMembers()) {
-                            v.addQuizable(m);
-                        }
-                    } else {
-                        v.addQuizable(root);
-                    }
-                    v.createCardsPanel(1);
-
                     renderHolder.removeAll();
-                    // Unified instance view: the shared search + sort + view-config
-                    // panel over the result (sample-driven, so it's dynamic-aware).
-                    Quizable sample = controller.sampleOf(type);
-                    if (sample != null) {
-                        quiz.ui.QuizableSearchPanel engine =
-                                new quiz.ui.QuizableSearchPanel(sampleClass(sample), sample);
-                        engine.setHiddenFields(controller.structuralFields(type));
-                        engine.setFieldTypes(controller.fieldTypes(type));
-                        engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
-                        v.addTargetListener(engine);
-                        renderHolder.add(engine, BorderLayout.NORTH);
-                    }
-                    renderHolder.add(v.getCardsScrollPane(), BorderLayout.CENTER);
+                    // A grouped (facet) result keeps its group structure; a flat one
+                    // shows its members as per-class instance sections, like the
+                    // modelbuilder — a section per type present in the result.
+                    renderHolder.add(root.getChildren().isEmpty()
+                            ? flatView(new ArrayList<>(root.getMembers()), type)
+                            : groupView(root, type), BorderLayout.CENTER);
                 } catch (Exception ex) {
                     renderHolder.removeAll();
                     renderHolder.add(new JLabel("  Render failed: " + ex.getMessage()),
@@ -390,6 +369,61 @@ public final class TransformWorkbenchPanel extends JPanel {
                 renderHolder.repaint();
             }
         }.execute();
+    }
+
+    /** A flat result: members grouped by type — a single searchable instance view
+     *  for one type, or a per-class {@link quiz.ui.MultiQuizableView} for several. */
+    private JComponent flatView(List<Quizable> members, String type) {
+        java.util.Map<String, List<Quizable>> byType = new java.util.LinkedHashMap<>();
+        for (Quizable m : members) {
+            if (m != null) {
+                byType.computeIfAbsent(m.typeName(), k -> new ArrayList<>()).add(m);
+            }
+        }
+
+        if (byType.size() <= 1) {
+            QuizablePanelView v = new QuizablePanelView();
+            for (Quizable m : members) {
+                v.addQuizable(m);
+            }
+            return searchableView(v, type);
+        }
+
+        quiz.ui.MultiQuizableView mv = new quiz.ui.MultiQuizableView();
+        for (java.util.Map.Entry<String, List<Quizable>> e : byType.entrySet()) {
+            String t = e.getKey();
+            List<Quizable> objs = e.getValue();
+            mv.addSection(t, sampleClass(objs.get(0)), objs,
+                    objs.get(0), controller.structuralFields(t), controller.fieldTypes(t));
+        }
+        mv.build(1);
+        return mv;
+    }
+
+    /** A grouped (facet) result: the QuizableGroup tree in one searchable view. */
+    private JComponent groupView(QuizableGroup root, String type) {
+        QuizablePanelView v = new QuizablePanelView();
+        v.addQuizable(root);
+        return searchableView(v, type);
+    }
+
+    /** Wraps a card view with the shared search + sort + view-config panel
+     *  (sample-driven, so it's dynamic-aware + model-typed). */
+    private JComponent searchableView(QuizablePanelView v, String type) {
+        v.createCardsPanel(1);
+        JPanel panel = new JPanel(new BorderLayout());
+        Quizable sample = controller.sampleOf(type);
+        if (sample != null) {
+            quiz.ui.QuizableSearchPanel engine =
+                    new quiz.ui.QuizableSearchPanel(sampleClass(sample), sample);
+            engine.setHiddenFields(controller.structuralFields(type));
+            engine.setFieldTypes(controller.fieldTypes(type));
+            engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
+            v.addTargetListener(engine);
+            panel.add(engine, BorderLayout.NORTH);
+        }
+        panel.add(v.getCardsScrollPane(), BorderLayout.CENTER);
+        return panel;
     }
 
     /** Persist the current view's members (the filtered / projected result) as a

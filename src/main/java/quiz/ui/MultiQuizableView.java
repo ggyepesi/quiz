@@ -46,13 +46,31 @@ public class MultiQuizableView extends JPanel {
             Class<? extends Quizable> type,
             List<? extends Quizable> objects) {
 
+        addSection(title, type, objects, null, null, null);
+    }
+
+    /** As {@link #addSection(String, Class, List)}, but with the per-section
+     *  dynamic config: a {@code sample} instance (so the search/sort/view editors
+     *  enumerate map-held fields), plus optional {@code hiddenFields} and
+     *  {@code fieldTypes} — so a DynamicFields section stays model-typed. */
+    public void addSection(
+            String title,
+            Class<? extends Quizable> type,
+            List<? extends Quizable> objects,
+            Quizable sample,
+            java.util.Set<String> hiddenFields,
+            quiz.ui.viewconfig.FieldTypeSource fieldTypes) {
+
         if (built) {
             throw new IllegalStateException("addSection() after build()");
         }
         sections.add(new Section(
                 title,
                 type,
-                new ArrayList<>(objects)));
+                new ArrayList<>(objects),
+                sample,
+                hiddenFields,
+                fieldTypes));
     }
 
     public void build(int columnsPerView) {
@@ -108,8 +126,15 @@ public class MultiQuizableView extends JPanel {
             // config toolbar is hidden (the shared bar owns those), but it keeps
             // its own per-field results panel + per-panel navigation, and
             // highlights this section's cards. Driven by the shared bar.
-            QuizableSearchPanel engine =
-                    new QuizableSearchPanel(s.type());
+            QuizableSearchPanel engine = s.sample() != null
+                    ? new QuizableSearchPanel(s.type(), s.sample())
+                    : new QuizableSearchPanel(s.type());
+            if (s.hiddenFields() != null) {
+                engine.setHiddenFields(s.hiddenFields());
+            }
+            if (s.fieldTypes() != null) {
+                engine.setFieldTypes(s.fieldTypes());
+            }
             engine.setTarget(view.getCardsPanel(), view.getCardsScrollPane());
             engine.setRenderContext(context);
             engine.setCoordinated(true);
@@ -159,6 +184,9 @@ public class MultiQuizableView extends JPanel {
     private record Section(
             String title,
             Class<? extends Quizable> type,
-            List<Quizable> objects) {
+            List<Quizable> objects,
+            Quizable sample,
+            java.util.Set<String> hiddenFields,
+            quiz.ui.viewconfig.FieldTypeSource fieldTypes) {
     }
 }
