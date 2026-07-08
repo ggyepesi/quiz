@@ -336,6 +336,17 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
                 rowHeight(q));
     }
 
+    // Lay a card's whole subtree out top-down at its current width, so leaf text
+    // components know the width they'll wrap at before we read preferred heights.
+    private static void layoutTree(java.awt.Container c) {
+        c.doLayout();
+        for (java.awt.Component child : c.getComponents()) {
+            if (child instanceof java.awt.Container cc) {
+                layoutTree(cc);
+            }
+        }
+    }
+
     private boolean measureCardIfChanged(
             Quizable q,
             JComponent card) {
@@ -343,6 +354,13 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
         if (q == null || card == null) {
             return false;
         }
+
+        // positionCard() sized the card to effectiveWidth(), but its children
+        // aren't laid out yet — so wrapping text would measure at its fallback
+        // width and report too short a height (then clip). Lay out the subtree at
+        // the real width first, so getPreferredSize() reflects the actual wrapping.
+        card.setSize(effectiveWidth(), card.getHeight());
+        layoutTree(card);
 
         int measured =
                 Math.max(1, card.getPreferredSize().height);
