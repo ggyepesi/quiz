@@ -5,7 +5,6 @@ import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import quiz.transform.ui.SchemaView;
 import quiz.ui.viewconfig.FieldTypeSource;
-import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,6 +19,9 @@ import java.util.Set;
  * reference targets and structural fields come from the model, not per-sample
  * reflection, so nested references, list-vs-single and hidden plumbing are all
  * authoritative. Built by {@code ProductCompiler}.
+ *
+ * <p>Generic by design: it only stores and serves the pool + universe it's handed,
+ * so it carries no wikidata dependency — the backing specifics live in the compiler.
  */
 public final class ProductDomain implements DomainModel, SchemaView {
 
@@ -28,19 +30,17 @@ public final class ProductDomain implements DomainModel, SchemaView {
     private static final int MAX_DEPTH = 4;
 
     private final ProductSchema schema;
-    private final List<WikidataDynamicObject> pool;
+    private final Collection<? extends Quizable> pool;
+    private final Class<? extends Quizable> universe;
     // Lazily builds the ModelClass↔ProductClass inspector; supplied by the compiler
     // (which holds the declared model). Null = no schema view.
     private final SchemaView schemaView;
 
-    public ProductDomain(ProductSchema schema, List<WikidataDynamicObject> pool) {
-        this(schema, pool, null);
-    }
-
-    public ProductDomain(ProductSchema schema, List<WikidataDynamicObject> pool,
-                         SchemaView schemaView) {
+    public ProductDomain(ProductSchema schema, Collection<? extends Quizable> pool,
+                         Class<? extends Quizable> universe, SchemaView schemaView) {
         this.schema = schema;
         this.pool = pool;
+        this.universe = universe;
         this.schemaView = schemaView;
     }
 
@@ -115,5 +115,5 @@ public final class ProductDomain implements DomainModel, SchemaView {
     }
 
     @Override public Collection<? extends Quizable> instances() { return pool; }
-    @Override public Class<? extends Quizable> universe() { return WikidataDynamicObject.class; }
+    @Override public Class<? extends Quizable> universe() { return universe; }
 }

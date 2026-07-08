@@ -85,7 +85,8 @@ public final class ProductCompiler {
         ProductSchema schema = new ProductSchema(classes, memberList);
         // The schema view is built lazily (only if the user opens it) and captures
         // the declared model so it can show ModelClass ↔ ProductClass side by side.
-        return new ProductDomain(schema, pool,
+        // ProductDomain is generic — the wikidata universe is supplied here.
+        return new ProductDomain(schema, pool, WikidataDynamicObject.class,
                 () -> new quiz.transform.app.ProductSchemaInspector(model, schema));
     }
 
