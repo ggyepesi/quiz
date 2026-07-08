@@ -62,6 +62,15 @@ public final class FacetGrouper {
         return root;
     }
 
+    /** Graft one nested drill-down CHAIN of facets onto an existing root (its first
+     *  facet becomes a FACET child of root, the rest drill down). Call once per
+     *  chain to lay several parallel dimensions off the same root. */
+    public static void graftNested(QuizableGroup root,
+                                   Collection<? extends Quizable> members,
+                                   List<Facet> chain) {
+        nest(root, members, chain, 0);
+    }
+
     // Partition `members` by facets[depth] under `parent`, then recurse into each
     // resulting bucket with the next facet. addMember bubbles to ancestors, so the
     // universe + every intermediate bucket still hold the full union below them.

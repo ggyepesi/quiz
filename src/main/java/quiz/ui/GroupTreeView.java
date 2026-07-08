@@ -6,17 +6,20 @@ import quiz.ui.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Renders a faceted {@link QuizableGroup} tree as a collapsible outline — by ROLE,
  * not by reflecting the group's {@code children}/{@code members} fields (which would
  * show the raw structure, and the member union bubbled onto every ancestor).
  *
- * <p>The FACET dimension nodes are pass-through (they just name the grouping), so
- * the outline is only the BUCKET levels — e.g. {@code category ▸ year ▸ members}.
- * A bucket drills into its next dimension's buckets, or, at a leaf, shows its
- * members as cards. Members render only at leaves. Content is built lazily on the
- * first expand.
+ * <p>A node's children are FACET (dimension) nodes whose children are the buckets.
+ * With a SINGLE dimension the facet layer is pass-through — the outline is just the
+ * buckets (e.g. {@code category ▸ year ▸ members}). With SEVERAL parallel dimensions
+ * (independent group-bys) each gets a small header so they stay distinct. A bucket
+ * drills into its next dimension, or — at a leaf — shows its members as cards.
+ * Members render only at leaves; content builds lazily on first expand.
  */
 public final class GroupTreeView extends JPanel {
 
@@ -35,9 +38,7 @@ public final class GroupTreeView extends JPanel {
         if (root.getChildren().isEmpty()) {
             addMembers(this, root);                // no grouping → just members
         } else {
-            for (QuizableGroup bucket : buckets(root)) {
-                add(bucketNode(bucket));
-            }
+            renderDimensions(this, root);
         }
         add(Box.createVerticalGlue());
     }
@@ -55,19 +56,35 @@ public final class GroupTreeView extends JPanel {
         }
     }
 
-    /** The BUCKETs beneath a node, skipping the FACET dimension layer: a node's
-     *  children are FACET nodes whose children are the buckets. */
-    private static java.util.List<QuizableGroup> buckets(QuizableGroup node) {
-        java.util.List<QuizableGroup> out = new java.util.ArrayList<>();
-        for (QuizableGroup facet : node.getChildren()) {
-            out.addAll(facet.getChildren());
+    /** A node's children are FACET (dimension) nodes. One dimension is pass-through
+     *  (render its buckets directly); several get a header each so they stay apart. */
+    private void renderDimensions(JComponent into, QuizableGroup node) {
+        List<QuizableGroup> facets = new ArrayList<>(node.getChildren());
+        boolean multi = facets.size() > 1;
+        for (QuizableGroup facet : facets) {
+            JComponent host = into;
+            if (multi) {
+                JLabel header = new JLabel(facet.getDisplayName());
+                header.setForeground(new Color(120, 120, 130));
+                header.setAlignmentX(LEFT_ALIGNMENT);
+                into.add(header);
+                JPanel body = new JPanel();
+                body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+                body.setOpaque(false);
+                body.setBorder(BorderFactory.createEmptyBorder(0, INDENT, 4, 0));
+                body.setAlignmentX(LEFT_ALIGNMENT);
+                into.add(body);
+                host = body;
+            }
+            for (QuizableGroup bucket : facet.getChildren()) {
+                host.add(bucketNode(bucket));
+            }
         }
-        return out;
     }
 
     private JComponent bucketNode(QuizableGroup bucket) {
         boolean leaf = bucket.getChildren().isEmpty();
-        int count = leaf ? bucket.getMembers().size() : buckets(bucket).size();
+        int count = leaf ? bucket.getMembers().size() : subBucketCount(bucket);
 
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -86,9 +103,7 @@ public final class GroupTreeView extends JPanel {
                 if (leaf) {
                     addMembers(content, bucket);
                 } else {
-                    for (QuizableGroup sub : buckets(bucket)) {
-                        content.add(bucketNode(sub));
-                    }
+                    renderDimensions(content, bucket);
                 }
                 built[0] = true;
             }
@@ -105,6 +120,14 @@ public final class GroupTreeView extends JPanel {
         node.add(header);
         node.add(content);
         return node;
+    }
+
+    private static int subBucketCount(QuizableGroup node) {
+        int n = 0;
+        for (QuizableGroup facet : node.getChildren()) {
+            n += facet.getChildren().size();
+        }
+        return n;
     }
 
     private void addMembers(JComponent into, QuizableGroup bucket) {

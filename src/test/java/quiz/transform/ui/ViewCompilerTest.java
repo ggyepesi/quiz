@@ -59,6 +59,53 @@ class ViewCompilerTest {
         assertTrue(labels.contains("2000") && labels.contains("2001"), labels.toString());
     }
 
+    @Test void independentGroupIsAParallelDimensionNotNested() {
+        WikidataDynamicObject bestPicture = new WikidataDynamicObject("Q1", "Best Picture");
+        List<WikidataDynamicObject> pool = List.of(
+                bestPicture,
+                nomination("N1", true, bestPicture, 2000),
+                nomination("N3", true, bestPicture, 2001));
+
+        OperationSpec cat = new OperationSpec(OperationKind.GROUP_BY,
+                new DomainField("Nomination", "category", true, false), null);
+        OperationSpec year = new OperationSpec(OperationKind.GROUP_BY,
+                new DomainField("Nomination", "year", false, false), null);
+        year.independent = true;   // parallel dimension off the root
+
+        QuizableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year),
+                WikidataDynamicObject.class).render(pool);
+
+        // Two FACET dimensions off the root (category | year), not one nested chain.
+        assertEquals(2, root.getChildren().size());
+        for (QuizableGroup facet : root.getChildren()) {
+            for (QuizableGroup bucket : facet.getChildren()) {
+                assertTrue(bucket.getChildren().isEmpty(), "independent bucket is a leaf");
+            }
+        }
+    }
+
+    @Test void nestedGroupDrillsIntoTheParentBucket() {
+        WikidataDynamicObject bestPicture = new WikidataDynamicObject("Q1", "Best Picture");
+        List<WikidataDynamicObject> pool = List.of(
+                bestPicture, nomination("N1", true, bestPicture, 2000));
+
+        OperationSpec cat = new OperationSpec(OperationKind.GROUP_BY,
+                new DomainField("Nomination", "category", true, false), null);
+        OperationSpec year = new OperationSpec(OperationKind.GROUP_BY,
+                new DomainField("Nomination", "year", false, false), null);
+        // year nested (default): one chain, category → year.
+
+        QuizableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year),
+                WikidataDynamicObject.class).render(pool);
+
+        assertEquals(1, root.getChildren().size(), "one nested dimension chain");
+        for (QuizableGroup facet : root.getChildren()) {          // "by category"
+            for (QuizableGroup bucket : facet.getChildren()) {     // Best Picture
+                assertFalse(bucket.getChildren().isEmpty(), "nested bucket drills further");
+            }
+        }
+    }
+
     private static void collectLabels(QuizableGroup g, java.util.Set<String> out) {
         for (QuizableGroup c : g.getChildren()) {
             out.add(c.getDisplayName());

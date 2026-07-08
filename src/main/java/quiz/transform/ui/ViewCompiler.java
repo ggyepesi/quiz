@@ -53,10 +53,11 @@ public final class ViewCompiler {
             }
             switch (op.kind) {
                 // One "Group by": a reference field keys by the entity (invert),
-                // a scalar by its value — chosen from the field's shape.
+                // a scalar by its value — chosen from the field's shape. `independent`
+                // starts a new parallel dimension; otherwise it nests (drill-down).
                 case GROUP_BY -> view.groupBy(op.field.reference()
                         ? Facet.reference(op.field.field())
-                        : Facet.field(op.field.field()));
+                        : Facet.field(op.field.field()), !op.independent);
                 default -> { /* FILTER already applied to the plan */ }
             }
         }

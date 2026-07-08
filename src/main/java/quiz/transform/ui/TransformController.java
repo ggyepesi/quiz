@@ -91,6 +91,19 @@ public final class TransformController {
         }
     }
 
+    /** Flip a GROUP_BY step between nested (drill-down) and independent (a new
+     *  parallel dimension off the root); returns true when it toggled. */
+    public boolean toggleGroupNesting(int index) {
+        if (index >= 0 && index < pipeline.size()) {
+            OperationSpec op = pipeline.get(index);
+            if (op.kind == OperationKind.GROUP_BY) {
+                op.independent = !op.independent;
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Move a step by {@code delta}; returns its new index, or -1 if not moved. */
     public int moveOperation(int index, int delta) {
         int n = index + delta;

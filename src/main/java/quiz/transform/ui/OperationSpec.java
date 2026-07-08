@@ -14,6 +14,9 @@ public class OperationSpec {
     public Object value;        // a FILTER's FIRST condition value (back-compat)
     // The FILTER predicate's AND conditions (null for non-filters).
     public java.util.List<FilterCondition> conditions;
+    // GROUP_BY only: true = a new INDEPENDENT dimension off the root; false (default)
+    // = nested drill-down within the previous group.
+    public boolean independent;
 
     public OperationSpec() {}
 
@@ -42,7 +45,8 @@ public class OperationSpec {
         }
         return switch (kind) {
             case FILTER -> "filter  " + filterText();
-            case GROUP_BY -> field == null ? "group by" : "group by  " + field.path();
+            case GROUP_BY -> (field == null ? "group by" : "group by  " + field.path())
+                    + (independent ? "  ·independent" : "");
             case PROJECT_TO_CLASS -> field == null ? "project" : "project  " + field.path();
             case JOIN -> field == null ? "join" : "join  " + field.path();
         };

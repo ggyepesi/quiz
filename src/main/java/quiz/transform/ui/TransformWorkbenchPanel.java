@@ -155,6 +155,12 @@ public final class TransformWorkbenchPanel extends JPanel {
         }));
         stepBar.add(button("Up", () -> move(-1)));
         stepBar.add(button("Down", () -> move(1)));
+        stepBar.add(button("Nest ⇄ Indep", () -> {
+            if (controller.toggleGroupNesting(pipelineList.getSelectedIndex())) {
+                refreshPipeline();
+                render();
+            }
+        }));
         stepBar.add(button("Save as domain…", this::saveAsDomain));
         steps.add(stepBar, BorderLayout.SOUTH);
 
