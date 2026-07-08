@@ -51,6 +51,11 @@ public final class TransformWorkbenchPanel extends JPanel {
     // so syncing the widget to the controller doesn't reset the just-seeded pipeline.
     private boolean syncing;
 
+    // Bumped on every render() (EDT-only). A background render swaps its cards in
+    // only if it's still the latest — so a slow earlier render can't overwrite a
+    // newer one that finished first.
+    private int renderGeneration;
+
     public TransformWorkbenchPanel(DomainModel domain) {
         this(domain, null);
     }
@@ -325,7 +330,12 @@ public final class TransformWorkbenchPanel extends JPanel {
     /** Compile + group OFF the EDT (a big domain can be slow), then swap in the
      *  rendered cards on the EDT. */
     private void render() {
-        String type = controller.selectedType();
+        // Capture the generation + inputs on the EDT so a slow render can be
+        // discarded if superseded, and the worker never reads the pipeline while
+        // it's being mutated.
+        final int generation = ++renderGeneration;
+        final String type = controller.selectedType();
+        final List<OperationSpec> ops = controller.pipeline();
 
         renderHolder.removeAll();
         renderHolder.add(new JLabel("  Rendering…"), BorderLayout.NORTH);
@@ -334,9 +344,12 @@ public final class TransformWorkbenchPanel extends JPanel {
 
         new SwingWorker<QuizableGroup, Void>() {
             @Override protected QuizableGroup doInBackground() {
-                return controller.compileResult();
+                return controller.compileResult(type, ops);
             }
             @Override protected void done() {
+                if (generation != renderGeneration) {
+                    return;   // a newer render started — don't overwrite it
+                }
                 try {
                     QuizableGroup root = get();
                     QuizablePanelView v = new QuizablePanelView();

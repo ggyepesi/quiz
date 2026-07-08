@@ -191,17 +191,19 @@ public final class TransformController {
 
     // --- rendering (compile only — the view assembles the cards) --------------
 
-    /** The view name shown for the current type + pipeline. */
-    public String viewName() {
-        return (selectedType == null ? "View" : selectedType)
-                + (pipeline.isEmpty() ? "" : " · " + pipeline.size() + " op");
+    /** The view name for a type + pipeline. */
+    public static String viewName(String type, List<OperationSpec> ops) {
+        return (type == null ? "View" : type)
+                + (ops.isEmpty() ? "" : " · " + ops.size() + " op");
     }
 
-    /** Compile the pipeline and run it over the domain, OFF the EDT — returns the
-     *  grouped result the view turns into cards. */
-    public QuizableGroup compileResult() {
+    /** Compile a type + pipeline SNAPSHOT and run it over the domain, OFF the EDT —
+     *  returns the grouped result the view turns into cards. The caller passes the
+     *  snapshot (captured on the EDT) so a background render reads immutable inputs
+     *  and its result matches the state at launch. */
+    public QuizableGroup compileResult(String type, List<OperationSpec> ops) {
         View view = ViewCompiler.compile(
-                viewName(), selectedType, new ArrayList<>(pipeline), domain.universe());
+                viewName(type, ops), type, new ArrayList<>(ops), domain.universe());
         return view.render(domain.instances());
     }
 
