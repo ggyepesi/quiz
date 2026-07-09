@@ -5,6 +5,7 @@ import quiz.QuizableGroup;
 import quiz.QuizableGroup.Role;
 import quiz.facet.Facet;
 import quiz.facet.FacetGrouper;
+import quiz.facet.FacetTree;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,14 +32,16 @@ import java.util.List;
  */
 public final class View {
 
-    // One grouping dimension: the facet, and whether it NESTS under the previous
-    // dimension (drill-down) or starts a new INDEPENDENT dimension off the root.
-    private record Dim(Facet facet, boolean nested) {}
-
     private final String name;
     private final Class<? extends Quizable> memberClass;
     private final TransformRunner runner = new TransformRunner();
-    private final List<Dim> grouping = new ArrayList<>();
+
+    // The grouping as a dimension TREE: top-level entries are dimensions off the
+    // root; a node's children are sub-dimensions within each of its buckets.
+    private final List<FacetTree> grouping = new ArrayList<>();
+    // The last node added by the linear groupBy(...) API, so a nested facet becomes
+    // its child (a drill-down chain); groupTree(...) sets the tree explicitly.
+    private FacetTree currentTip;
 
     /** @param memberClass the target class whose instances are the grouped members. */
     public View(String name, Class<? extends Quizable> memberClass) {
@@ -64,17 +67,34 @@ public final class View {
     }
 
     /** Add one grouping dimension. {@code nested} = drill into the previous
-     *  dimension; otherwise start a new INDEPENDENT dimension off the root. */
+     *  dimension (its child); otherwise start a new dimension off the root. */
     public View groupBy(Facet facet, boolean nested) {
         if (facet != null) {
-            grouping.add(new Dim(facet, nested));
+            FacetTree node = new FacetTree(facet);
+            if (nested && currentTip != null) {
+                currentTip.children().add(node);
+            } else {
+                grouping.add(node);
+            }
+            currentTip = node;
         }
         return this;
     }
 
-    /** Run the plans over {@code sources}, then group the target members. A run of
-     *  nested dimensions forms one drill-down chain; an independent one starts a
-     *  new parallel chain off the root. */
+    /** Set the grouping as an explicit dimension TREE: top-level entries are
+     *  dimensions off the root; sibling children are parallel sub-dimensions within
+     *  a bucket, and a lone child is a nested drill-down. */
+    public View groupTree(List<FacetTree> dims) {
+        if (dims != null) {
+            grouping.addAll(dims);
+            currentTip = null;
+        }
+        return this;
+    }
+
+    /** Run the plans over {@code sources}, then group the target members by the
+     *  dimension tree — sibling dimensions fan out in parallel, a child drills down
+     *  within each bucket of its parent. */
     public QuizableGroup render(Iterable<?> sources) {
         List<? extends Quizable> members = members(sources);
         String label = name + "  (" + members.size() + ")";
@@ -88,19 +108,7 @@ public final class View {
                 root.addMember(m);
             }
         }
-        List<Facet> chain = new ArrayList<>();
-        for (int i = 0; i < grouping.size(); i++) {
-            Dim d = grouping.get(i);
-            boolean startsChain = i == 0 || !d.nested();
-            if (startsChain && !chain.isEmpty()) {
-                FacetGrouper.graftNested(root, members, chain);
-                chain = new ArrayList<>();
-            }
-            chain.add(d.facet());
-        }
-        if (!chain.isEmpty()) {
-            FacetGrouper.graftNested(root, members, chain);
-        }
+        FacetGrouper.graftTree(root, members, grouping);
         return root;
     }
 

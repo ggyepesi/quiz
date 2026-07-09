@@ -71,6 +71,50 @@ public final class FacetGrouper {
         nest(root, members, chain, 0);
     }
 
+    /**
+     * Graft a TREE of facet dimensions onto an existing {@code parent}. Each
+     * top-level {@link FacetTree} becomes a FACET child of {@code parent}; a node's
+     * children are grafted <em>within each of its buckets</em> — so sibling children
+     * are parallel sub-dimensions and a lone child is a nested drill-down. This is
+     * the general form of {@link #graftNested} (a linear chain is the degenerate
+     * tree where every node has one child).
+     */
+    public static void graftTree(QuizableGroup parent,
+                                 Collection<? extends Quizable> members,
+                                 List<FacetTree> dims) {
+        if (dims == null) {
+            return;
+        }
+        for (FacetTree dim : dims) {
+            Facet facet = dim.facet();
+            QuizableGroup facetNode = parent.getOrCreateChild(facet.label()).role(Role.FACET);
+
+            Map<String, QuizableGroup> buckets = new LinkedHashMap<>();
+            Map<String, List<Quizable>> bucketMembers = new LinkedHashMap<>();
+            for (Quizable m : members) {
+                if (m == null) {
+                    continue;
+                }
+                for (FacetKey key : facet.keys().apply(m)) {
+                    if (key == null || !key.isUsable()) {
+                        continue;
+                    }
+                    QuizableGroup bucket =
+                            facetNode.getOrCreateChild(key.name()).role(Role.BUCKET);
+                    if (key.ref() != null) {
+                        bucket.keyRef(key.ref());
+                    }
+                    bucket.addMember(m);
+                    buckets.putIfAbsent(key.name(), bucket);
+                    bucketMembers.computeIfAbsent(key.name(), k -> new ArrayList<>()).add(m);
+                }
+            }
+            for (Map.Entry<String, QuizableGroup> e : buckets.entrySet()) {
+                graftTree(e.getValue(), bucketMembers.get(e.getKey()), dim.children());
+            }
+        }
+    }
+
     // Partition `members` by facets[depth] under `parent`, then recurse into each
     // resulting bucket with the next facet. addMember bubbles to ancestors, so the
     // universe + every intermediate bucket still hold the full union below them.

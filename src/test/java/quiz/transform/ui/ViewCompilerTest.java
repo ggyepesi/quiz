@@ -70,7 +70,7 @@ class ViewCompilerTest {
                 new DomainField("Nomination", "category", true, false), null);
         OperationSpec year = new OperationSpec(OperationKind.GROUP_BY,
                 new DomainField("Nomination", "year", false, false), null);
-        year.independent = true;   // parallel dimension off the root
+        year.depth = 0;   // top-level → a parallel dimension off the root
 
         QuizableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year),
                 WikidataDynamicObject.class).render(pool);
@@ -93,7 +93,7 @@ class ViewCompilerTest {
                 new DomainField("Nomination", "category", true, false), null);
         OperationSpec year = new OperationSpec(OperationKind.GROUP_BY,
                 new DomainField("Nomination", "year", false, false), null);
-        // year nested (default): one chain, category → year.
+        year.depth = 1;   // nested under category: one chain, category → year.
 
         QuizableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year),
                 WikidataDynamicObject.class).render(pool);
@@ -104,6 +104,39 @@ class ViewCompilerTest {
                 assertFalse(bucket.getChildren().isEmpty(), "nested bucket drills further");
             }
         }
+    }
+
+    @Test void siblingGroupsAreParallelSubDimensionsWithinEachBucket() {
+        // category -> [year, won]: two siblings at depth 1, so EACH category bucket
+        // fans out into BOTH a year dimension and a won dimension in parallel — the
+        // tree shape a flat nested chain (category -> year -> won) can't express.
+        WikidataDynamicObject bestPicture = new WikidataDynamicObject("Q1", "Best Picture");
+        List<WikidataDynamicObject> pool = List.of(
+                bestPicture,
+                nomination("N1", true, bestPicture, 2000),
+                nomination("N2", false, bestPicture, 2001));
+
+        OperationSpec cat = new OperationSpec(OperationKind.GROUP_BY,
+                new DomainField("Nomination", "category", true, false), null);
+        OperationSpec year = new OperationSpec(OperationKind.GROUP_BY,
+                new DomainField("Nomination", "year", false, false), null);
+        year.depth = 1;
+        OperationSpec won = new OperationSpec(OperationKind.GROUP_BY,
+                new DomainField("Nomination", "won", false, false), null);
+        won.depth = 1;   // sibling of year, NOT nested under it
+
+        QuizableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year, won),
+                WikidataDynamicObject.class).render(pool);
+
+        // root -> "by category" -> "Best Picture" -> two parallel FACET dimensions.
+        QuizableGroup byCategory = root.getChildren().iterator().next();
+        QuizableGroup bucket = byCategory.getChildren().iterator().next();   // Best Picture
+        java.util.Set<String> dims = new java.util.LinkedHashSet<>();
+        for (QuizableGroup facet : bucket.getChildren()) {
+            dims.add(facet.getDisplayName());
+        }
+        assertEquals(2, bucket.getChildren().size(),
+                "the category bucket fans out into two parallel sub-dimensions: " + dims);
     }
 
     private static void collectLabels(QuizableGroup g, java.util.Set<String> out) {

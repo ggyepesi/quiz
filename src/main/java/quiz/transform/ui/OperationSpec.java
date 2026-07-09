@@ -1,5 +1,7 @@
 package quiz.transform.ui;
 
+import quiz.transform.pipeline.ui.FilterCondition;
+
 /**
  * One configured operation in the transform pipeline: an {@link OperationKind}, the
  * domain field it operates on, and (for a filter) the literal value. A FILTER is a
@@ -14,9 +16,10 @@ public class OperationSpec {
     public Object value;        // a FILTER's FIRST condition value (back-compat)
     // The FILTER predicate's AND conditions (null for non-filters).
     public java.util.List<FilterCondition> conditions;
-    // GROUP_BY only: true = a new INDEPENDENT dimension off the root; false (default)
-    // = nested drill-down within the previous group.
-    public boolean independent;
+    // GROUP_BY only: this group's depth in the dimension tree. 0 (default) = a
+    // top-level dimension off the root; a deeper value nests the group within the
+    // bucket of the group at depth-1, so siblings at one depth are parallel.
+    public int depth;
 
     public OperationSpec() {}
 
@@ -46,7 +49,7 @@ public class OperationSpec {
         return switch (kind) {
             case FILTER -> "filter  " + filterText();
             case GROUP_BY -> (field == null ? "group by" : "group by  " + field.path())
-                    + (independent ? "  ·independent" : "");
+                    + (depth > 0 ? "  ·nested@" + depth : "");
             case PROJECT_TO_CLASS -> field == null ? "project" : "project  " + field.path();
             case JOIN -> field == null ? "join" : "join  " + field.path();
         };

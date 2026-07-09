@@ -91,19 +91,6 @@ public final class TransformController {
         }
     }
 
-    /** Flip a GROUP_BY step between nested (drill-down) and independent (a new
-     *  parallel dimension off the root); returns true when it toggled. */
-    public boolean toggleGroupNesting(int index) {
-        if (index >= 0 && index < pipeline.size()) {
-            OperationSpec op = pipeline.get(index);
-            if (op.kind == OperationKind.GROUP_BY) {
-                op.independent = !op.independent;
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** Move a step by {@code delta}; returns its new index, or -1 if not moved. */
     public int moveOperation(int index, int delta) {
         int n = index + delta;
@@ -130,6 +117,14 @@ public final class TransformController {
         static OpOutcome step() { return new OpOutcome(true, null, null, false); }
         static OpOutcome created(String type, String m, boolean right) {
             return new OpOutcome(true, m, type, right);
+        }
+    }
+
+    public void replaceViewPipeline(List<OperationSpec> ops) {
+        pipeline.clear();
+
+        if (ops != null) {
+            pipeline.addAll(ops);
         }
     }
 
@@ -259,7 +254,9 @@ public final class TransformController {
         DomainField year = field("Nomination", "year");
         pipeline.add(new OperationSpec(OperationKind.FILTER, won, Boolean.TRUE));
         pipeline.add(new OperationSpec(OperationKind.GROUP_BY, category, null));
-        pipeline.add(new OperationSpec(OperationKind.GROUP_BY, year, null));
+        OperationSpec byYear = new OperationSpec(OperationKind.GROUP_BY, year, null);
+        byYear.depth = 1;   // year drills down within each category bucket
+        pipeline.add(byYear);
         return true;
     }
 }
