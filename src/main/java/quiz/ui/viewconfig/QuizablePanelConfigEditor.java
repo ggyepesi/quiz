@@ -42,11 +42,6 @@ public class QuizablePanelConfigEditor extends JPanel {
     // the sample as before. See FieldTypeSource.
     private FieldTypeSource typeSource;
 
-    // When true this panel is a one-field PICKER: checking a field unchecks its
-    // siblings, so at most one field is selected per level. Off by default (the
-    // normal multi-field card-config use).
-    private boolean singleSelection;
-
     public QuizablePanelConfigEditor(QuizablePanelConfig config) {
         this(config, false, false, null);
     }
@@ -83,50 +78,6 @@ public class QuizablePanelConfigEditor extends JPanel {
         this.typeSource = source;
         buildRows();
         tableModel.fireTableDataChanged();
-    }
-
-    /** One-field PICKER mode: checking a field unchecks its siblings, so at most one
-     *  field is selected per level. Propagates to nested child editors. */
-    public void setSingleSelection(boolean single) {
-        this.singleSelection = single;
-        for (Row row : rows) {
-            if (row.childEditor != null) {
-                row.childEditor.setSingleSelection(single);
-            }
-        }
-    }
-
-    /** Check exactly the field at {@code dottedPath}, clearing all others — so a
-     *  caller can reflect an external selection into the picker. Best-effort for
-     *  nested paths: each segment whose child editor is already present is followed. */
-    public void selectSinglePath(String dottedPath) {
-        clearSelections();
-        if (dottedPath != null && !dottedPath.isBlank()) {
-            int dot = dottedPath.indexOf('.');
-            String head = dot < 0 ? dottedPath : dottedPath.substring(0, dot);
-            String tail = dot < 0 ? null : dottedPath.substring(dot + 1);
-            for (Row row : rows) {
-                if (!row.special && head.equals(row.fieldName)) {
-                    row.use = true;
-                    if (tail != null && row.childEditor != null) {
-                        row.childEditor.selectSinglePath(tail);
-                    }
-                    break;
-                }
-            }
-        }
-        tableModel.fireTableDataChanged();
-    }
-
-    private void clearSelections() {
-        for (Row row : rows) {
-            if (!row.special) {
-                row.use = false;
-                if (row.childEditor != null) {
-                    row.childEditor.clearSelections();
-                }
-            }
-        }
     }
 
     private void fireConfigChanged() {
@@ -341,7 +292,6 @@ public class QuizablePanelConfigEditor extends JPanel {
                 row.childEditor = new QuizablePanelConfigEditor(
                         selectedChild,
                         nestedDefaultNameOnly);
-                row.childEditor.singleSelection = singleSelection;
             }
 
             rows.add(row);
@@ -543,7 +493,6 @@ public class QuizablePanelConfigEditor extends JPanel {
             // enumerate the referenced object's map-held fields.
             row.childEditor = new QuizablePanelConfigEditor(
                     childConfig, nestedDefaultNameOnly, false, row.nestedSample);
-            row.childEditor.singleSelection = singleSelection;
             // Carry the authoritative types down so the nested level hides its own
             // structural fields (e.g. a Category's `wikidata`) and labels correctly.
             if (row.nestedTypeSource != null) {
@@ -746,17 +695,6 @@ public class QuizablePanelConfigEditor extends JPanel {
                 row.use = Boolean.TRUE.equals(value);
                 if (!row.use) {
                     row.childEditor = null;
-                } else if (singleSelection) {
-                    // One field per level: unchecking siblings makes this a picker.
-                    for (Row other : rows) {
-                        if (other != row && !other.special) {
-                            other.use = false;
-                            other.childEditor = null;
-                        }
-                    }
-                    fireTableDataChanged();
-                    fireConfigChanged();
-                    return;
                 }
 
                 fireTableRowsUpdated(rowIndex, rowIndex);

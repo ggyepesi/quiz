@@ -1,0 +1,124 @@
+package quiz.transform.pipeline.ui;
+
+import quiz.transform.ui.DomainField;
+
+import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * A single-selection field PICKER as an in-place TREE: top-level fields are nodes,
+ * and a reference field expands to its nested fields (dotted paths) right where it
+ * sits. Selecting any node — a scalar leaf or a reference itself — yields that
+ * field's {@link DomainField}. Purpose-built for pipeline config, where you choose
+ * ONE (possibly nested) field, so it's clearer than the multi-check card-config
+ * table (no "expand selects everything", no nested tables).
+ */
+public final class FieldTreePanel extends JPanel {
+
+    private final DefaultMutableTreeNode root = new DefaultMutableTreeNode("fields");
+    private final DefaultTreeModel model = new DefaultTreeModel(root);
+    private final JTree tree = new JTree(model);
+    private final Map<String, DefaultMutableTreeNode> byPath = new LinkedHashMap<>();
+    private Runnable onChange;
+
+    public FieldTreePanel() {
+        setLayout(new BorderLayout());
+        tree.setRootVisible(false);
+        tree.setShowsRootHandles(true);
+        tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+        tree.addTreeSelectionListener(e -> {
+            if (onChange != null) {
+                onChange.run();
+            }
+        });
+        add(new JScrollPane(tree), BorderLayout.CENTER);
+    }
+
+    public void setOnChange(Runnable onChange) {
+        this.onChange = onChange;
+    }
+
+    /** Rebuild the tree from {@code fields} (dotted paths), skipping any path whose
+     *  top segment is in {@code hiddenTop} (structural). Clears the selection. */
+    public void setFields(List<DomainField> fields, Set<String> hiddenTop) {
+        root.removeAllChildren();
+        byPath.clear();
+
+        // Shortest paths first so an ancestor node exists before its children.
+        List<DomainField> sorted = new ArrayList<>(fields);
+        sorted.sort(Comparator
+                .comparingInt((DomainField f) -> f.field().split("\\.").length)
+                .thenComparing(DomainField::field));
+
+        for (DomainField f : sorted) {
+            String[] seg = f.field().split("\\.");
+            if (hiddenTop != null && hiddenTop.contains(seg[0])) {
+                continue;
+            }
+            DefaultMutableTreeNode parent = root;
+            StringBuilder prefix = new StringBuilder();
+            for (int i = 0; i < seg.length; i++) {
+                if (i > 0) {
+                    prefix.append('.');
+                }
+                prefix.append(seg[i]);
+                DefaultMutableTreeNode node = byPath.get(prefix.toString());
+                if (node == null) {
+                    node = new DefaultMutableTreeNode(new FieldNode(seg[i], null));
+                    parent.add(node);
+                    byPath.put(prefix.toString(), node);
+                }
+                parent = node;
+            }
+            // Attach the exact field at its leaf path (keeps ancestor fields intact).
+            byPath.get(f.field()).setUserObject(new FieldNode(seg[seg.length - 1], f));
+        }
+
+        model.reload();
+    }
+
+    /** The selected field, or null when nothing (or a container-only node) is chosen. */
+    public DomainField selectedField() {
+        if (tree.getLastSelectedPathComponent() instanceof DefaultMutableTreeNode n
+                && n.getUserObject() instanceof FieldNode fn) {
+            return fn.field();
+        }
+        return null;
+    }
+
+    /** Select the node at {@code dottedPath} (for reflecting an external choice). */
+    public void selectPath(String dottedPath) {
+        DefaultMutableTreeNode node = dottedPath == null ? null : byPath.get(dottedPath);
+        if (node == null) {
+            tree.clearSelection();
+            return;
+        }
+        TreePath path = new TreePath(node.getPath());
+        tree.setSelectionPath(path);
+        tree.scrollPathToVisible(path);
+    }
+
+    /** A tree node: the segment label plus the field it stands for (null for a bare
+     *  container). {@code toString} adds a shape hint so references read as such. */
+    private record FieldNode(String label, DomainField field) {
+        @Override
+        public String toString() {
+            if (field == null) {
+                return label;
+            }
+            String shape = field.reference() ? (field.collection() ? "  · ref[]" : "  · ref")
+                    : field.collection() ? "  · []" : "";
+            return label + shape;
+        }
+    }
+}

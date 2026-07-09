@@ -25,8 +25,7 @@ public final class ViewStepsPanel extends JPanel {
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
 
-    private final JPanel fieldEditorHolder = new JPanel(new BorderLayout());
-    private quiz.ui.viewconfig.QuizablePanelConfigEditor fieldEditor;
+    private final FieldTreePanel fieldTree = new FieldTreePanel();
 
     private final JComboBox<FilterOperator> filterOperator =
             new JComboBox<>();
@@ -63,7 +62,7 @@ public final class ViewStepsPanel extends JPanel {
                 return;
             }
             controller.selectType((String) memberTypeCombo.getSelectedItem());
-            rebuildFieldEditor();
+            rebuildFieldTree();
             clearViewSteps();
             fireChanged();
         });
@@ -87,11 +86,11 @@ public final class ViewStepsPanel extends JPanel {
         // otherwise just select the first member type.
         if (controller.seedDefault()) {
             selectComboSilently(controller.selectedType());
-            rebuildFieldEditor();
+            rebuildFieldTree();
             syncFromPipeline();
         } else if (memberTypeCombo.getItemCount() > 0) {
             controller.selectType((String) memberTypeCombo.getSelectedItem());
-            rebuildFieldEditor();
+            rebuildFieldTree();
         }
     }
 
@@ -111,8 +110,10 @@ public final class ViewStepsPanel extends JPanel {
 
     private JComponent fieldBlock() {
         JPanel p = new JPanel(new BorderLayout(4, 4));
-        p.setBorder(BorderFactory.createTitledBorder("Fields"));
-        p.add(fieldEditorHolder, BorderLayout.CENTER);
+        p.setBorder(BorderFactory.createTitledBorder(
+                "Field — pick one (expand a reference to drill in)"));
+        fieldTree.setOnChange(this::onFieldSelectionChanged);
+        p.add(fieldTree, BorderLayout.CENTER);
         return p;
     }
 
@@ -187,55 +188,27 @@ public final class ViewStepsPanel extends JPanel {
         return p;
     }
 
-    private void rebuildFieldEditor() {
+    private void rebuildFieldTree() {
         String type = controller.selectedType();
-        fieldEditorHolder.removeAll();
-
-        Quizable sample = type == null ? null : controller.sampleOf(type);
-        if (sample == null) {
-            fieldEditor = null;
-            fieldEditorHolder.add(new JLabel("  No sample instance."), BorderLayout.NORTH);
+        if (type == null) {
+            fieldTree.setFields(List.of(), java.util.Set.of());
         } else {
-            quiz.ui.viewconfig.QuizablePanelConfig cfg =
-                    quiz.ui.viewconfig.QuizablePanelConfig.of(sampleClass(sample));
-            cfg.setAllFields(false);
-
-            fieldEditor = new quiz.ui.viewconfig.QuizablePanelConfigEditor(cfg, sample);
-            fieldEditor.setHiddenFields(controller.structuralFields(type));
-            fieldEditor.setFieldTypes(controller.fieldTypes(type));
-            // A one-field picker: check exactly one field, and re-offer only the
-            // operators that fit its shape whenever the checked field changes.
-            fieldEditor.setSingleSelection(true);
-            fieldEditor.setChangeListener(this::onFieldSelectionChanged);
-            fieldEditorHolder.add(fieldEditor, BorderLayout.CENTER);
+            fieldTree.setFields(controller.fields(type), controller.structuralFields(type));
         }
-
-        fieldEditorHolder.revalidate();
-        fieldEditorHolder.repaint();
         onFieldSelectionChanged();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Class<? extends Quizable> sampleClass(Quizable q) {
-        return (Class<? extends Quizable>) q.getClass();
     }
 
     private DomainField singleCheckedField() {
         DomainField f = currentField();
         if (f == null) {
-            JOptionPane.showMessageDialog(this, "Check one field first.");
+            JOptionPane.showMessageDialog(this, "Select a field first.");
         }
         return f;
     }
 
-    /** The one checked field, or null (no dialog) — for reacting to selection. */
+    /** The selected field, or null (no dialog) — for reacting to selection. */
     private DomainField currentField() {
-        String type = controller.selectedType();
-        if (type == null || fieldEditor == null) {
-            return null;
-        }
-        List<String> paths = fieldEditor.selectedFieldPaths();
-        return paths.isEmpty() ? null : controller.field(type, paths.get(0));
+        return fieldTree.selectedField();
     }
 
     /** Re-offer only the operators that fit the checked field's shape. */
@@ -305,12 +278,12 @@ public final class ViewStepsPanel extends JPanel {
      *  value fields, so a condition can be inspected and re-edited. */
     private void reflectSelectedFilter() {
         int i = filterList.getSelectedIndex();
-        if (i < 0 || fieldEditor == null) {
+        if (i < 0) {
             return;
         }
         FilterCondition c = filterModel.get(i);
         if (c.field() != null) {
-            fieldEditor.selectSinglePath(c.field().field());
+            fieldTree.selectPath(c.field().field());
         }
         reloadOperators(kindOf(c.field()));
         filterOperator.setSelectedItem(c.operator());
