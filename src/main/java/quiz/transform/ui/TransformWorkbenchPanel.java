@@ -158,11 +158,13 @@ public final class TransformWorkbenchPanel extends JPanel {
     }
 
     /** A grouped (facet) result: a role-aware collapsible outline of the buckets —
-     *  category ▸ year ▸ members — not the raw QuizableGroup structure. */
+     *  category ▸ year ▸ members — with a search / sort / fields bar above it (the
+     *  data-centric counterpart to the flat view's QuizableSearchPanel). */
     private JComponent groupView(QuizableGroup root, String type) {
-        JScrollPane scroll = new JScrollPane(new quiz.ui.GroupTreeView(root));
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        return scroll;
+        Quizable sample = controller.sampleOf(type);
+        Class<? extends Quizable> cls = sample != null ? sampleClass(sample) : Quizable.class;
+        return new quiz.ui.GroupTreeBrowser(root, cls, sample,
+                controller.structuralFields(type), controller.fieldTypes(type));
     }
 
     /** Wraps a card view with the shared search + sort + view-config panel
