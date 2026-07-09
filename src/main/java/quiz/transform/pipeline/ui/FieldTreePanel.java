@@ -1,6 +1,7 @@
 package quiz.transform.pipeline.ui;
 
 import quiz.transform.ui.DomainField;
+import quiz.ui.viewconfig.FieldTypeSource;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -49,8 +50,10 @@ public final class FieldTreePanel extends JPanel {
     }
 
     /** Rebuild the tree from {@code fields} (dotted paths), skipping any path whose
-     *  top segment is in {@code hiddenTop} (structural). Clears the selection. */
-    public void setFields(List<DomainField> fields, Set<String> hiddenTop) {
+     *  top segment is in {@code hiddenTop} (structural). {@code types} (nullable)
+     *  supplies the model type label shown per node. Clears the selection. */
+    public void setFields(List<DomainField> fields, Set<String> hiddenTop,
+                          FieldTypeSource types) {
         root.removeAllChildren();
         byPath.clear();
 
@@ -74,17 +77,36 @@ public final class FieldTreePanel extends JPanel {
                 prefix.append(seg[i]);
                 DefaultMutableTreeNode node = byPath.get(prefix.toString());
                 if (node == null) {
-                    node = new DefaultMutableTreeNode(new FieldNode(seg[i], null));
+                    node = new DefaultMutableTreeNode(new FieldNode(seg[i], null, null));
                     parent.add(node);
                     byPath.put(prefix.toString(), node);
                 }
                 parent = node;
             }
             // Attach the exact field at its leaf path (keeps ancestor fields intact).
-            byPath.get(f.field()).setUserObject(new FieldNode(seg[seg.length - 1], f));
+            byPath.get(f.field()).setUserObject(
+                    new FieldNode(seg[seg.length - 1], f, typeLabel(types, seg)));
         }
 
         model.reload();
+    }
+
+    /** Walk the nested type sources down {@code seg} to the field's type label, or
+     *  null when no type info is available (non-compiled domains). */
+    private static String typeLabel(FieldTypeSource types, String[] seg) {
+        FieldTypeSource level = types;
+        FieldTypeSource.FieldTypeInfo info = null;
+        for (String s : seg) {
+            if (level == null) {
+                return null;
+            }
+            info = level.field(s);
+            if (info == null) {
+                return null;
+            }
+            level = info.nested();
+        }
+        return info == null ? null : info.typeLabel();
     }
 
     /** The selected field, or null when nothing (or a container-only node) is chosen. */
@@ -108,13 +130,17 @@ public final class FieldTreePanel extends JPanel {
         tree.scrollPathToVisible(path);
     }
 
-    /** A tree node: the segment label plus the field it stands for (null for a bare
-     *  container). {@code toString} adds a shape hint so references read as such. */
-    private record FieldNode(String label, DomainField field) {
+    /** A tree node: the segment label, the field it stands for (null for a bare
+     *  container), and the model type label. {@code toString} shows the type when
+     *  known, else a shape hint so references still read as such. */
+    private record FieldNode(String label, DomainField field, String typeLabel) {
         @Override
         public String toString() {
             if (field == null) {
                 return label;
+            }
+            if (typeLabel != null && !typeLabel.isBlank()) {
+                return label + "  :  " + typeLabel;
             }
             String shape = field.reference() ? (field.collection() ? "  · ref[]" : "  · ref")
                     : field.collection() ? "  · []" : "";

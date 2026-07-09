@@ -191,9 +191,10 @@ public final class ViewStepsPanel extends JPanel {
     private void rebuildFieldTree() {
         String type = controller.selectedType();
         if (type == null) {
-            fieldTree.setFields(List.of(), java.util.Set.of());
+            fieldTree.setFields(List.of(), java.util.Set.of(), null);
         } else {
-            fieldTree.setFields(controller.fields(type), controller.structuralFields(type));
+            fieldTree.setFields(controller.fields(type),
+                    controller.structuralFields(type), controller.fieldTypes(type));
         }
         onFieldSelectionChanged();
     }
