@@ -79,9 +79,8 @@ public final class ViewStepsPanel extends JPanel {
 
         add(split, BorderLayout.CENTER);
 
-        reloadOperators();
+        reloadOperators(FieldKind.UNKNOWN);
         filterOperator.addActionListener(e -> updateFilterValueEnablement());
-        updateFilterValueEnablement();
 
         // Seed a ready-to-run default (e.g. Oscar winners by category by year) and
         // mirror it into the controls, so the left panel matches the first render;
@@ -149,6 +148,15 @@ public final class ViewStepsPanel extends JPanel {
         });
         row.add(remove);
 
+        // One condition selected at a time; selecting it mirrors its field / operator
+        // / values back into the controls so it can be inspected and re-added.
+        filterList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        filterList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                reflectSelectedFilter();
+            }
+        });
+
         p.add(row, BorderLayout.NORTH);
         p.add(new JScrollPane(filterList), BorderLayout.CENTER);
         return p;
@@ -195,11 +203,16 @@ public final class ViewStepsPanel extends JPanel {
             fieldEditor = new quiz.ui.viewconfig.QuizablePanelConfigEditor(cfg, sample);
             fieldEditor.setHiddenFields(controller.structuralFields(type));
             fieldEditor.setFieldTypes(controller.fieldTypes(type));
+            // A one-field picker: check exactly one field, and re-offer only the
+            // operators that fit its shape whenever the checked field changes.
+            fieldEditor.setSingleSelection(true);
+            fieldEditor.setChangeListener(this::onFieldSelectionChanged);
             fieldEditorHolder.add(fieldEditor, BorderLayout.CENTER);
         }
 
         fieldEditorHolder.revalidate();
         fieldEditorHolder.repaint();
+        onFieldSelectionChanged();
     }
 
     @SuppressWarnings("unchecked")
@@ -207,39 +220,103 @@ public final class ViewStepsPanel extends JPanel {
         return (Class<? extends Quizable>) q.getClass();
     }
 
-    private List<DomainField> checkedFields() {
+    private DomainField singleCheckedField() {
+        DomainField f = currentField();
+        if (f == null) {
+            JOptionPane.showMessageDialog(this, "Check one field first.");
+        }
+        return f;
+    }
+
+    /** The one checked field, or null (no dialog) — for reacting to selection. */
+    private DomainField currentField() {
         String type = controller.selectedType();
         if (type == null || fieldEditor == null) {
-            return List.of();
-        }
-        return controller.resolveFields(type, fieldEditor.selectedFieldPaths());
-    }
-
-    private DomainField singleCheckedField() {
-        List<DomainField> checked = checkedFields();
-        if (checked.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Check one field first.");
             return null;
         }
-        return checked.get(0);
+        List<String> paths = fieldEditor.selectedFieldPaths();
+        return paths.isEmpty() ? null : controller.field(type, paths.get(0));
     }
 
-    private void reloadOperators() {
-        filterOperator.removeAllItems();
-        for (FilterOperator op : FilterOperator.values()) {
-            filterOperator.addItem(op);
+    /** Re-offer only the operators that fit the checked field's shape. */
+    private void onFieldSelectionChanged() {
+        reloadOperators(kindOf(currentField()));
+    }
+
+    /** The value shape of a field — DomainField flags first, then the sample value. */
+    private FieldKind kindOf(DomainField f) {
+        if (f == null) {
+            return FieldKind.UNKNOWN;
         }
+        if (f.collection()) {
+            return FieldKind.COLLECTION;
+        }
+        if (f.reference()) {
+            return FieldKind.REFERENCE;
+        }
+        String type = controller.selectedType();
+        Quizable sample = type == null ? null : controller.sampleOf(type);
+        Object v = sample == null ? null
+                : quiz.transform.FieldAccess.getPath(sample, f.field());
+        if (v instanceof Boolean) {
+            return FieldKind.BOOLEAN;
+        }
+        if (v instanceof Number || isDate(v)) {
+            return FieldKind.ORDERED;
+        }
+        return FieldKind.TEXT;
     }
 
-    /** Enable only the value field(s) the selected operator uses: none for the
-     *  unary predicates (is true / is empty …), both for BETWEEN, else the first. */
+    private static boolean isDate(Object v) {
+        return v instanceof java.util.Date
+                || v instanceof java.time.temporal.Temporal
+                || (v != null && v.getClass().getSimpleName().toLowerCase().contains("date"));
+    }
+
+    /** Repopulate the operator combo with only the operators applicable to {@code
+     *  kind}, keeping the current selection if it still fits. */
+    private void reloadOperators(FieldKind kind) {
+        FilterOperator previous = (FilterOperator) filterOperator.getSelectedItem();
+        filterOperator.removeAllItems();
+        FilterOperator keep = null;
+        for (FilterOperator op : FilterOperator.values()) {
+            if (op.appliesTo(kind)) {
+                filterOperator.addItem(op);
+                if (op == previous) {
+                    keep = op;
+                }
+            }
+        }
+        if (keep != null) {
+            filterOperator.setSelectedItem(keep);
+        }
+        updateFilterValueEnablement();
+    }
+
+    /** Enable only the value field(s) the selected operator uses: none for a unary
+     *  predicate (is true / is empty …), both for BETWEEN, else just the first. */
     private void updateFilterValueEnablement() {
         FilterOperator op = (FilterOperator) filterOperator.getSelectedItem();
-        boolean unary = op == FilterOperator.IS_TRUE || op == FilterOperator.IS_FALSE
-                || op == FilterOperator.IS_EMPTY || op == FilterOperator.IS_NOT_EMPTY;
-        boolean between = op == FilterOperator.BETWEEN;
-        filterValue.setEnabled(!unary);
-        filterValue2.setEnabled(between);
+        filterValue.setEnabled(op != null && !op.isUnary());
+        filterValue2.setEnabled(op != null && op.isBinary());
+    }
+
+    /** Mirror the selected filter condition back into the field check, operator, and
+     *  value fields, so a condition can be inspected and re-edited. */
+    private void reflectSelectedFilter() {
+        int i = filterList.getSelectedIndex();
+        if (i < 0 || fieldEditor == null) {
+            return;
+        }
+        FilterCondition c = filterModel.get(i);
+        if (c.field() != null) {
+            fieldEditor.selectSinglePath(c.field().field());
+        }
+        reloadOperators(kindOf(c.field()));
+        filterOperator.setSelectedItem(c.operator());
+        filterValue.setText(c.value() == null ? "" : String.valueOf(c.value()));
+        filterValue2.setText(c.value2() == null ? "" : String.valueOf(c.value2()));
+        updateFilterValueEnablement();
     }
 
     private void addFilter() {
