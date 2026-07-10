@@ -18,7 +18,7 @@ import java.util.function.Function;
  * is first expanded.
  */
 public final class GroupTreeVirtualView extends JPanel
-        implements VirtualizedQuizableContainer {
+        implements ConfigurableVirtualizedQuizableContainer {
 
     private static final int INDENT = 14;
     private static final int DEFAULT_LEAF_HEIGHT = 420;
@@ -129,6 +129,7 @@ public final class GroupTreeVirtualView extends JPanel
         }
     }
 
+    @Override
     public void setCardConfig(QuizablePanelConfig config) {
         this.cardConfig = config;
 
@@ -206,13 +207,15 @@ public final class GroupTreeVirtualView extends JPanel
             Branch parent,
             QuizableGroup bucket) {
 
-        int count = bucket.getMembers().size();
+        int members = identityDistinct(bucket.getMembers()).size();
+        int children = childNodeCount(bucket);
 
-        Branch branch = new Branch(
-                parent,
-                bucket.getDisplayName() + " (" + count + ")",
-                false
-        );
+        String label = bucket.getDisplayName()
+                + (children > 0
+                        ? "  (" + children + " groups · " + members + " members)"
+                        : "  (" + members + " members)");
+
+        Branch branch = new Branch(parent, label, false);
 
         into.add(branch);
 
@@ -263,6 +266,13 @@ public final class GroupTreeVirtualView extends JPanel
         }
 
         into.add(leaf);
+
+        /*
+         * The branch itself is already being expanded and lazily built.
+         * Build the VirtualizedCardList now; the individual QuizablePanels
+         * remain virtualized and are still created only for visible rows.
+         */
+        leaf.ensureBuilt();
     }
 
     private QuizablePanel createCard(Quizable q) {
@@ -351,6 +361,9 @@ public final class GroupTreeVirtualView extends JPanel
                 if (builder != null) {
                     builder.run();
                 }
+
+                content.revalidate();
+                content.doLayout();
             }
 
             this.expanded = expanded;
@@ -406,18 +419,30 @@ public final class GroupTreeVirtualView extends JPanel
             );
 
             scroll = new JScrollPane();
-            scroll.setPreferredSize(new Dimension(
-                    500,
-                    Math.min(
-                            DEFAULT_LEAF_HEIGHT,
-                            Math.max(180, sourceItems.size() * 140)
-                            )
+
+            int preferredHeight = Math.clamp(sourceItems.size() * 140L, 180,
+                                             DEFAULT_LEAF_HEIGHT);
+
+            Dimension size = new Dimension(500, preferredHeight);
+
+            scroll.setPreferredSize(size);
+            scroll.setMinimumSize(new Dimension(200, 120));
+            scroll.setMaximumSize(new Dimension(
+                    Integer.MAX_VALUE,
+                    DEFAULT_LEAF_HEIGHT
             ));
 
             list.install(scroll);
             list.setItems(orderedItems());
 
             add(scroll, BorderLayout.CENTER);
+
+            setPreferredSize(size);
+            setMinimumSize(new Dimension(200, 120));
+            setMaximumSize(new Dimension(
+                    Integer.MAX_VALUE,
+                    DEFAULT_LEAF_HEIGHT
+            ));
 
             revalidate();
             repaint();
@@ -460,6 +485,20 @@ public final class GroupTreeVirtualView extends JPanel
 
             return out;
         }
+    }
+
+    /** Number of non-empty sub-buckets under {@code bucket} (across its facet
+     *  dimensions) — the child group nodes it renders; 0 for a leaf. */
+    private static int childNodeCount(QuizableGroup bucket) {
+        int n = 0;
+        for (QuizableGroup facet : bucket.getChildren()) {
+            for (QuizableGroup sub : facet.getChildren()) {
+                if (sub != null && !sub.getMembers().isEmpty()) {
+                    n++;
+                }
+            }
+        }
+        return n;
     }
 
     private static void collectUniqueMembers(
