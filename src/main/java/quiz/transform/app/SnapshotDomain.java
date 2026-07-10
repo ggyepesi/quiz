@@ -5,6 +5,7 @@ import quiz.QuizableFieldPaths;
 import quiz.transform.FieldAccess;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
+import quiz.transform.ui.FieldKind;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
@@ -73,7 +74,9 @@ public final class SnapshotDomain implements DomainModel {
             boolean ref = value instanceof Quizable
                     || (value instanceof Collection<?> c && anyQuizable(c));
             boolean col = value instanceof Collection<?>;
-            out.add(new DomainField(type, fp, ref, col));
+            FieldKind kind = col ? FieldKind.COLLECTION
+                    : ref ? FieldKind.REFERENCE : FieldKind.ofValue(value);
+            out.add(new DomainField(type, fp, ref, col, kind));
         }
         return out;
     }

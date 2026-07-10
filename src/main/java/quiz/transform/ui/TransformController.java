@@ -6,7 +6,9 @@ import quiz.transform.View;
 import quiz.ui.viewconfig.FieldTypeSource;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -25,6 +27,11 @@ public final class TransformController {
     private final DomainWriter writer;
     private final List<OperationSpec> pipeline = new ArrayList<>();
     private String selectedType;
+
+    // Per member type, a lazily-built map from field path -> a representative
+    // non-null value — so field-shape inference is ONE pass over the instances per
+    // type (built on first use), not a fresh scan on every field selection.
+    private final Map<String, Map<String, Object>> fieldValueCache = new HashMap<>();
 
     public TransformController(DomainModel base, DomainWriter writer) {
         this.domain = new WorkingDomain(base);
@@ -49,6 +56,51 @@ public final class TransformController {
             }
         }
         return null;
+    }
+
+    /** A representative non-null value of {@code path} for {@code type} — used to
+     *  infer a field's shape when the first instance's value happens to be null (a
+     *  common case, e.g. Star.apparentMagnitude). Reads the per-type value map,
+     *  built once (see {@link #fieldValues}). */
+    public Object sampleFieldValue(String type, String path) {
+        if (type == null || path == null) {
+            return null;
+        }
+        return fieldValues(type).get(path);
+    }
+
+    /** The per-type {@code path -> representative non-null value} map, built in ONE
+     *  pass over the instances (stopping once every field is resolved) and cached. */
+    private Map<String, Object> fieldValues(String type) {
+        return fieldValueCache.computeIfAbsent(type, t -> {
+            List<String> paths = new ArrayList<>();
+            for (DomainField f : domain.fields(t)) {
+                paths.add(f.field());
+            }
+            Map<String, Object> values = new HashMap<>();
+            int scanned = 0;
+            for (Quizable q : domain.instances()) {
+                if (q == null || !t.equals(q.typeName())) {
+                    continue;
+                }
+                boolean complete = true;
+                for (String p : paths) {
+                    if (values.containsKey(p)) {
+                        continue;
+                    }
+                    Object v = quiz.transform.FieldAccess.getPath(q, p);
+                    if (v != null) {
+                        values.put(p, v);
+                    } else {
+                        complete = false;
+                    }
+                }
+                if (complete || ++scanned >= 5000) {
+                    break;
+                }
+            }
+            return values;
+        });
     }
 
     /** A DomainField for a dotted path — shape from the domain (else scalar). */

@@ -1,7 +1,9 @@
 package quiz.transform.pipeline.ui;
 
+import aux.GridBagUtils;
 import quiz.Quizable;
 import quiz.transform.ui.DomainField;
+import quiz.transform.ui.FieldKind;
 import quiz.transform.ui.OperationKind;
 import quiz.transform.ui.OperationSpec;
 import quiz.transform.ui.TransformController;
@@ -46,6 +48,14 @@ public final class ViewStepsPanel extends JPanel {
     // Suppresses the member-combo listener while we set it programmatically (seeding),
     // so mirroring the widget to the controller doesn't wipe the just-seeded steps.
     private boolean syncing;
+
+    // A programmatic field-tree selection is in progress (reflecting a selected group),
+    // so onFieldSelectionChanged won't treat it as a fresh user pick.
+    private boolean reflecting;
+    // True when the field shown was mirrored from a selected GROUP node (for reference,
+    // via reflectSelectedGroup) rather than picked to add — so Add group ignores it,
+    // preventing a group from being nested under itself.
+    private boolean fieldReflected;
 
     public ViewStepsPanel(TransformController controller, Listener listener) {
         this.controller = controller;
@@ -118,10 +128,13 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     private JComponent stepsBlock() {
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Filter", filterPanel());
-        tabs.addTab("Groups", groupPanel());
-        return tabs;
+        JPanel p = new JPanel(new GridBagLayout());
+        Insets insets = new Insets(2, 2, 2, 2);
+        p.add(filterPanel(), GridBagUtils.gbc(0, 0, 1.0, 0.45,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH, insets));
+        p.add(groupPanel(), GridBagUtils.gbc(0, 1, 1.0, 0.55,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH, insets));
+        return p;
     }
 
     private JComponent filterPanel() {
@@ -183,9 +196,28 @@ public final class ViewStepsPanel extends JPanel {
         row.add(addIndependent);
         row.add(remove);
 
+        groupTree.addTreeSelectionListener(e -> reflectSelectedGroup());
+
         p.add(row, BorderLayout.NORTH);
         p.add(new JScrollPane(groupTree), BorderLayout.CENTER);
         return p;
+    }
+
+    private void reflectSelectedGroup() {
+        DefaultMutableTreeNode node = selectedGroupNode();
+
+        if (node == null || node == groupRoot) {
+            return;
+        }
+
+        Object uo = node.getUserObject();
+
+        if (uo instanceof GroupNode g && g.field() != null) {
+            reflecting = true;
+            fieldTree.selectPath(g.field().field());
+            reflecting = false;
+            fieldReflected = true;   // shown for reference, not a field picked to add
+        }
     }
 
     private void rebuildFieldTree() {
@@ -194,9 +226,30 @@ public final class ViewStepsPanel extends JPanel {
             fieldTree.setFields(List.of(), java.util.Set.of(), null);
         } else {
             fieldTree.setFields(controller.fields(type),
-                    controller.structuralFields(type), controller.fieldTypes(type));
+                    controller.structuralFields(type), fieldTypesWithSampleFallback(type));
         }
         onFieldSelectionChanged();
+    }
+
+    /** The model's field types, but falling back to the SAMPLE value's type for a
+     *  top-level field the model doesn't describe (e.g. the identity {@code name},
+     *  which the Sort/Fields editors label "String" — keep the tree consistent). */
+    private quiz.ui.viewconfig.FieldTypeSource fieldTypesWithSampleFallback(String type) {
+        quiz.ui.viewconfig.FieldTypeSource base = controller.fieldTypes(type);
+        Quizable sample = controller.sampleOf(type);
+        if (sample == null) {
+            return base;
+        }
+        return name -> {
+            quiz.ui.viewconfig.FieldTypeSource.FieldTypeInfo info =
+                    base == null ? null : base.field(name);
+            if (info != null) {
+                return info;
+            }
+            Object v = quiz.transform.FieldAccess.getPath(sample, name);
+            return v == null ? null : new quiz.ui.viewconfig.FieldTypeSource.FieldTypeInfo(
+                    v.getClass().getSimpleName(), false, null, null);
+        };
     }
 
     private DomainField singleCheckedField() {
@@ -212,12 +265,18 @@ public final class ViewStepsPanel extends JPanel {
         return fieldTree.selectedField();
     }
 
-    /** Re-offer only the operators that fit the checked field's shape. */
+    /** Re-offer only the operators that fit the checked field's shape. A genuine
+     *  user pick (not a group reflection) clears the reflected mark. */
     private void onFieldSelectionChanged() {
+        if (!reflecting) {
+            fieldReflected = false;
+        }
         reloadOperators(kindOf(currentField()));
     }
 
-    /** The value shape of a field — DomainField flags first, then the sample value. */
+    /** The value shape of a field: the domain-populated {@link DomainField#kind()}
+     *  if known, else inferred from a representative value (cached by the controller
+     *  — the first instance's value may be null while the field is numeric). */
     private FieldKind kindOf(DomainField f) {
         if (f == null) {
             return FieldKind.UNKNOWN;
@@ -228,23 +287,11 @@ public final class ViewStepsPanel extends JPanel {
         if (f.reference()) {
             return FieldKind.REFERENCE;
         }
-        String type = controller.selectedType();
-        Quizable sample = type == null ? null : controller.sampleOf(type);
-        Object v = sample == null ? null
-                : quiz.transform.FieldAccess.getPath(sample, f.field());
-        if (v instanceof Boolean) {
-            return FieldKind.BOOLEAN;
+        if (f.kind() != null && f.kind() != FieldKind.UNKNOWN) {
+            return f.kind();
         }
-        if (v instanceof Number || isDate(v)) {
-            return FieldKind.ORDERED;
-        }
-        return FieldKind.TEXT;
-    }
-
-    private static boolean isDate(Object v) {
-        return v instanceof java.util.Date
-                || v instanceof java.time.temporal.Temporal
-                || (v != null && v.getClass().getSimpleName().toLowerCase().contains("date"));
+        return FieldKind.ofValue(
+                controller.sampleFieldValue(controller.selectedType(), f.field()));
     }
 
     /** Repopulate the operator combo with only the operators applicable to {@code
@@ -313,6 +360,13 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     private void addGroup(boolean independent) {
+        // The selected group reflects its own field into the tree for reference;
+        // require a fresh pick so a group isn't nested under itself.
+        if (fieldReflected) {
+            JOptionPane.showMessageDialog(this,
+                    "Pick the field to group by — the selected group's field is shown for reference.");
+            return;
+        }
         DomainField f = singleCheckedField();
         if (f == null) {
             return;
@@ -374,25 +428,8 @@ public final class ViewStepsPanel extends JPanel {
 
         // Pre-order walk of the group tree: each node emits a GROUP_BY tagged with
         // its depth (root's children = 0), which ViewCompiler rebuilds into a tree.
-        appendGroupOperations(groupRoot, 0, out);
+        GroupPipelineCodec.appendOperations(groupRoot, out);
         return out;
-    }
-
-    private void appendGroupOperations(DefaultMutableTreeNode node, int depth,
-                                       List<OperationSpec> out) {
-        for (int i = 0; i < node.getChildCount(); i++) {
-            DefaultMutableTreeNode child =
-                    (DefaultMutableTreeNode) node.getChildAt(i);
-
-            if (child.getUserObject() instanceof GroupNode g && g.field() != null) {
-                OperationSpec op = new OperationSpec(
-                        OperationKind.GROUP_BY, g.field(), null);
-                op.depth = depth;
-                out.add(op);
-            }
-
-            appendGroupOperations(child, depth + 1, out);
-        }
     }
 
     /** Mirror the controller's pipeline (e.g. a seeded default) back into the filter
@@ -400,31 +437,25 @@ public final class ViewStepsPanel extends JPanel {
      *  of {@link #toOperations}: depth-tagged GROUP_BY steps rebuild the tree. */
     private void syncFromPipeline() {
         filterModel.clear();
-        groupRoot.removeAllChildren();
 
-        List<DefaultMutableTreeNode> path = new ArrayList<>();   // path.get(d) = open node at depth d
         for (OperationSpec op : controller.pipeline()) {
             if (op == null) {
                 continue;
             }
+
             if (op.kind == OperationKind.FILTER && op.conditions != null) {
                 for (FilterCondition c : op.conditions) {
                     filterModel.addElement(c);
                 }
-            } else if (op.kind == OperationKind.GROUP_BY && op.field != null) {
-                DefaultMutableTreeNode node =
-                        new DefaultMutableTreeNode(new GroupNode(op.field));
-                int depth = Math.max(0, Math.min(op.depth, path.size()));
-                DefaultMutableTreeNode parent = depth == 0 ? groupRoot : path.get(depth - 1);
-                parent.add(node);
-                while (path.size() > depth) {
-                    path.remove(path.size() - 1);
-                }
-                path.add(node);
             }
         }
 
-        groupTreeModel.reload();
+        GroupPipelineCodec.rebuildTree(
+                groupRoot,
+                groupTreeModel,
+                controller.pipeline()
+                                      );
+
         expandAllGroups();
         fireChanged();
     }

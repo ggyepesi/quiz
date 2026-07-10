@@ -110,7 +110,10 @@ public final class ReflectionDomain implements DomainModel {
             Field leaf = fp.leafField();
             boolean ref = leaf != null && isReferenceField(leaf);
             boolean col = leaf != null && isCollectionField(leaf);
-            fields.add(new DomainField(type, fp, ref, col));
+            FieldKind kind = col ? FieldKind.COLLECTION
+                    : ref ? FieldKind.REFERENCE
+                    : leaf != null ? FieldKind.ofClass(leaf.getType()) : FieldKind.UNKNOWN;
+            fields.add(new DomainField(type, fp, ref, col, kind));
         }
         fieldsByType.put(type, fields);
     }

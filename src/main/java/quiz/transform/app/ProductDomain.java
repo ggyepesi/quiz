@@ -3,6 +3,7 @@ package quiz.transform.app;
 import quiz.Quizable;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
+import quiz.transform.ui.FieldKind;
 import quiz.transform.ui.SchemaView;
 import quiz.ui.viewconfig.FieldTypeSource;
 
@@ -69,10 +70,13 @@ public final class ProductDomain implements DomainModel, SchemaView {
         }
         for (ProductField f : schema.fields(className)) {
             String path = prefix.isEmpty() ? f.name() : prefix + "." + f.name();
-            out.add(new DomainField(topType, path, f.reference(), f.collection()));
+            FieldKind kind = f.collection() ? FieldKind.COLLECTION
+                    : f.reference() ? FieldKind.REFERENCE
+                    : FieldKind.ofTypeLabel(f.typeLabel());
+            out.add(new DomainField(topType, path, f.reference(), f.collection(), kind));
             if (f.reference() && f.nestedClassName() != null) {
                 // The referent's identity is a useful leaf path (nominee.name).
-                out.add(new DomainField(topType, path + ".name", false, false));
+                out.add(new DomainField(topType, path + ".name", false, false, FieldKind.TEXT));
                 collectFields(topType, f.nestedClassName(), path,
                         new HashSet<>(visited), depth + 1, out);
             }

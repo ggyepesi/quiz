@@ -7,8 +7,11 @@ import quiz.ui.viewconfig.QuizablePanelConfig;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -105,11 +108,13 @@ public final class GroupTreeView extends JPanel {
     private void renderDimensions(JComponent into, QuizableGroup node) {
         List<QuizableGroup> facets = new ArrayList<>(node.getChildren());
         boolean multi = facets.size() > 1;
+        Set<Quizable> bucketed = Collections.newSetFromMap(new IdentityHashMap<>());
         for (QuizableGroup facet : facets) {
             List<QuizableGroup> buckets = new ArrayList<>();
             for (QuizableGroup bucket : facet.getChildren()) {
                 if (hasMatch(bucket)) {
                     buckets.add(bucket);
+                    bucketed.addAll(matchingMembers(bucket));
                 }
             }
             if (buckets.isEmpty()) {
@@ -133,11 +138,20 @@ public final class GroupTreeView extends JPanel {
                 host.add(bucketNode(bucket));
             }
         }
+        // Orphans: members of this node that fall into NO sub-bucket (e.g. no value
+        // for the drill-down dimension) — render them directly so no member is lost.
+        for (Quizable m : matchingMembers(node)) {
+            if (!bucketed.contains(m)) {
+                addMemberCard(into, m);
+            }
+        }
     }
 
     private JComponent bucketNode(QuizableGroup bucket) {
         boolean leaf = bucket.getChildren().isEmpty();
-        int count = leaf ? matchingMembers(bucket).size() : matchingSubBuckets(bucket);
+        // Count by MEMBERS (subtree union), not sub-buckets: a bucket whose members
+        // lack the next dimension's value has 0 sub-buckets but is NOT empty.
+        int count = matchingMembers(bucket).size();
 
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -175,18 +189,6 @@ public final class GroupTreeView extends JPanel {
         return node;
     }
 
-    private int matchingSubBuckets(QuizableGroup node) {
-        int n = 0;
-        for (QuizableGroup facet : node.getChildren()) {
-            for (QuizableGroup bucket : facet.getChildren()) {
-                if (hasMatch(bucket)) {
-                    n++;
-                }
-            }
-        }
-        return n;
-    }
-
     /** The bucket's members (subtree union) passing the active filter, ordered. */
     private List<Quizable> matchingMembers(QuizableGroup bucket) {
         List<Quizable> out = new ArrayList<>();
@@ -212,12 +214,16 @@ public final class GroupTreeView extends JPanel {
 
     private void addMembers(JComponent into, QuizableGroup bucket) {
         for (Quizable m : matchingMembers(bucket)) {
-            QuizablePanelConfig cfg = cardConfig != null
-                    ? cardConfig : QuizablePanelConfig.all(m.getClass());
-            QuizablePanel card = new QuizablePanel(m, cfg, context, false);
-            card.setAlignmentX(LEFT_ALIGNMENT);
-            into.add(card);
+            addMemberCard(into, m);
         }
+    }
+
+    private void addMemberCard(JComponent into, Quizable m) {
+        QuizablePanelConfig cfg = cardConfig != null
+                ? cardConfig : QuizablePanelConfig.all(m.getClass());
+        QuizablePanel card = new QuizablePanel(m, cfg, context, false);
+        card.setAlignmentX(LEFT_ALIGNMENT);
+        into.add(card);
     }
 
     private static void style(JButton b) {
