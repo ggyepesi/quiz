@@ -1,5 +1,7 @@
 package quiz.transform;
 
+import quiz.fields.FieldAccess;
+
 import java.util.Collection;
 
 public class InvertCollectionTransform<S, T, R> implements ObjectTransform<S, T> {

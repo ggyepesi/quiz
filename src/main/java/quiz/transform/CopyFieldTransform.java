@@ -1,5 +1,7 @@
 package quiz.transform;
 
+import quiz.fields.FieldAccess;
+
 public class CopyFieldTransform<S, T> implements ObjectTransform<S, T> {
 
     private final String sourcePath;

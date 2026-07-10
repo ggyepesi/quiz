@@ -1,5 +1,7 @@
 package quiz.transform;
 
+import quiz.fields.FieldAccess;
+
 public class InvertReferenceTransform<S, T, R> implements ObjectTransform<S, T> {
 
     private final String sourceReferencePath;

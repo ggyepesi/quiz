@@ -1,4 +1,4 @@
-package quiz.transform;
+package quiz.fields;
 
 import quiz.DynamicFields;
 import quiz.QuizableAdapter;

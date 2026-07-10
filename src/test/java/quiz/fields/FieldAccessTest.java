@@ -1,6 +1,7 @@
-package quiz.transform;
+package quiz.fields;
 
 import org.junit.jupiter.api.Test;
+import quiz.transform.DynamicQuizable;
 
 import java.util.List;
 

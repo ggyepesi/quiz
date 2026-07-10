@@ -1,5 +1,7 @@
 package quiz.transform;
 
+import quiz.fields.FieldAccess;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;

@@ -2,7 +2,7 @@ package quiz.transform.app;
 
 import quiz.Quizable;
 import quiz.QuizableFieldPaths;
-import quiz.transform.FieldAccess;
+import quiz.fields.FieldAccess;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import quiz.fields.FieldKind;
