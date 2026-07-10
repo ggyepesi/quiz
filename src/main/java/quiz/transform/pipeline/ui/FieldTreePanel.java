@@ -1,7 +1,7 @@
 package quiz.transform.pipeline.ui;
 
 import quiz.transform.ui.DomainField;
-import quiz.transform.ui.FieldKind;
+import quiz.fields.FieldKind;
 import quiz.ui.viewconfig.FieldTypeSource;
 
 import javax.swing.*;

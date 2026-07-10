@@ -5,7 +5,7 @@ import quiz.QuizableFieldPaths;
 import quiz.transform.FieldAccess;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
-import quiz.transform.ui.FieldKind;
+import quiz.fields.FieldKind;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;

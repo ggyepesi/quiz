@@ -1,6 +1,5 @@
 package quiz.fields;
 
-import quiz.transform.ui.FieldKind;
 
 /**
  * One field of a domain object — its name, value shape and display type — regardless

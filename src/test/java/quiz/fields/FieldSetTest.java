@@ -5,7 +5,6 @@ import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.transform.app.ProductClass;
 import quiz.transform.app.ProductField;
-import quiz.transform.ui.FieldKind;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;

@@ -2,7 +2,6 @@ package quiz.fields;
 
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.transform.ui.FieldKind;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

@@ -17,10 +17,6 @@ import java.util.Set;
  */
 public final class GroupTreeBrowser extends JPanel {
 
-    private final GroupTreeVirtualView groupedView;
-    private final QuizableSearchPanel searchPanel;
-    private final JScrollPane outerScroll;
-
     public GroupTreeBrowser(
             QuizableGroup root,
             Class<? extends Quizable> memberClass,
@@ -33,15 +29,15 @@ public final class GroupTreeBrowser extends JPanel {
         QuizablePanelConfig initialConfig =
                 QuizablePanelConfig.all(memberClass);
 
-        groupedView = new GroupTreeVirtualView(
+        GroupTreeVirtualView groupedView = new GroupTreeVirtualView(
                 root,
                 initialConfig
         );
 
-        outerScroll = new JScrollPane(groupedView);
+        JScrollPane outerScroll = new JScrollPane(groupedView);
         outerScroll.getVerticalScrollBar().setUnitIncrement(16);
 
-        searchPanel = new QuizableSearchPanel(
+        QuizableSearchPanel searchPanel = new QuizableSearchPanel(
                 memberClass,
                 sample
         );

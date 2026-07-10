@@ -3,7 +3,7 @@ package quiz.transform.pipeline.ui;
 import aux.GridBagUtils;
 import quiz.Quizable;
 import quiz.transform.ui.DomainField;
-import quiz.transform.ui.FieldKind;
+import quiz.fields.FieldKind;
 import quiz.transform.ui.OperationKind;
 import quiz.transform.ui.OperationSpec;
 import quiz.transform.ui.TransformController;

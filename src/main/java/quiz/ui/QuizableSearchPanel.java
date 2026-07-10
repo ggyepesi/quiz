@@ -94,7 +94,7 @@ public class QuizableSearchPanel extends JPanel
     private final javax.swing.Timer debounceTimer;
 
     private JComponent targetPanel;
-    private VirtualizedCardList virtualList;   // non-null when the target is virtualized
+    private VirtualizedQuizableContainer virtualList;   // non-null when the target is data-backed/virtualized
     private JScrollPane targetScrollPane;
     private JDialog searchDialog;
     private JDialog sortDialog;
@@ -153,7 +153,9 @@ public class QuizableSearchPanel extends JPanel
             boolean applyViewConfig) {
 
         this.targetPanel = targetPanel;
-        this.virtualList = targetPanel instanceof VirtualizedCardList vcl ? vcl : null;
+        this.virtualList = targetPanel instanceof VirtualizedQuizableContainer container
+                ? container
+                : null;
         this.targetScrollPane = targetScrollPane;
 
         cachedColumnCount = detectColumnCount();
@@ -601,9 +603,14 @@ public class QuizableSearchPanel extends JPanel
     }
 
     private void rebuildSearchIndex() {
-        searchAndSort.rebuildSearchIndex(
-                targetPanel,
-                getSearchConfig());
+        // A virtual/data-backed target is searched directly from its complete
+        // Quizable item list. Only ordinary component-backed targets need the
+        // rendered-component index.
+        if (virtualList == null) {
+            searchAndSort.rebuildSearchIndex(
+                    targetPanel,
+                    getSearchConfig());
+        }
     }
 
     private void searchSync(String query) {
@@ -851,7 +858,6 @@ public class QuizableSearchPanel extends JPanel
 
             if (pathObj instanceof List<?> rowPath
                     && samePath(rowPath, selectedPath)
-                    && val != null
                     && matchesWithTokens(val, queryTokens)) {
 
                 replaceAncestorWithDescendantIfNeeded(jc, hits);
@@ -930,6 +936,21 @@ public class QuizableSearchPanel extends JPanel
 
         QuizablePanelConfig cfg =
                 viewEditor.getConfig();
+
+        // A grouped/virtual target owns its card factory and can discard/rebuild
+        // materialized cards lazily. Do not replace its structural child panels.
+        if (virtualList != null) {
+            if (virtualList instanceof ConfigurableVirtualizedQuizableContainer configurable) {
+                configurable.setCardConfig(cfg);
+            }
+
+            rebuildSearchIndex();
+
+            if (searchAfter) {
+                maybeRefreshSearch();
+            }
+            return;
+        }
 
         List<QuizablePanel> panels =
                 new ArrayList<>();
@@ -1063,8 +1084,8 @@ public class QuizableSearchPanel extends JPanel
 
         String s =
                 normalize(value instanceof Quizable q
-                        ? q.getName()
-                        : value.toString());
+                                  ? q.getName()
+                                  : value.toString());
 
         for (String tok : tokens) {
             if (!s.contains(tok)) {
@@ -1602,9 +1623,23 @@ public class QuizableSearchPanel extends JPanel
                         queryTokens,
                         getSearchConfig());
 
+        Map<String, QuizableFieldPaths.FieldPath> pathByTitle =
+                new LinkedHashMap<>();
+
+        for (QuizableFieldPaths.FieldPath fp
+                : QuizableFieldPaths.collect(
+                getSearchConfig(),
+                QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS)) {
+            pathByTitle.put(fp.title(), fp);
+        }
+
         Map<String, HitGroupQ> groups = new LinkedHashMap<>();
+
         for (Map.Entry<String, List<Quizable>> e : matchesByField.entrySet()) {
-            HitGroupQ g = new HitGroupQ(e.getKey());
+            HitGroupQ g = new HitGroupQ(
+                    e.getKey(),
+                    pathByTitle.get(e.getKey()),
+                    queryTokens);
             g.hits.addAll(e.getValue());
             groups.put(e.getKey(), g);
         }
@@ -1669,22 +1704,52 @@ public class QuizableSearchPanel extends JPanel
         navigateToCurrentVirtual(g);
     }
 
-    /** Builds the current hit's card on demand, scrolls to it, and highlights it —
-     *  exactly one hit highlighted at a time (the previous one is restored first). */
+    /**
+     * Reveals the current data hit through the target container. For a grouped
+     * target this expands the matching group path and lazily materializes the
+     * leaf card. The ordinary QuizablePanel expansion/highlight machinery is
+     * then reused unchanged.
+     */
     private void navigateToCurrentVirtual(HitGroupQ g) {
         clearHighlights();
 
         Quizable q = g.hits.get(g.index);
-        // Pin the hit exactly at the viewport top (real-height layout from it),
-        // instead of the estimate-based scrollRectToVisible that could drift.
         JComponent card = virtualList.navigateToTop(q);
+
         if (card == null) {
             return;
         }
 
         if (card instanceof QuizablePanel qp) {
+            if (g.fieldPath != null
+                    && qp.expandCollectionsOnPath(g.fieldPath.path())) {
+                qp.refresh();
+            }
+
             highlightCard(qp);
+
+            if (fieldHighlightBox.isSelected() && g.fieldPath != null) {
+                List<JComponent> fieldHits =
+                        collectMatchingFieldRows(
+                                qp,
+                                g.fieldPath.path(),
+                                g.queryTokens);
+
+                if (fieldHits.isEmpty()) {
+                    addHiddenHitBadge(qp, g.title);
+                } else {
+                    for (JComponent hit : fieldHits) {
+                        highlightField(hit);
+                    }
+
+                    highlightTextRecursively(
+                            qp,
+                            g.fieldPath.path(),
+                            g.queryTokens);
+                }
+            }
         }
+
         markCurrentHitVirtual(card);
 
         targetPanel.revalidate();
@@ -1703,11 +1768,18 @@ public class QuizableSearchPanel extends JPanel
     private static class HitGroupQ {
         final String title;
         final List<Quizable> hits = new ArrayList<>();
+        final QuizableFieldPaths.FieldPath fieldPath;
+        final List<String> queryTokens;
         int index = 0;
         JLabel label;
 
-        HitGroupQ(String title) {
+        HitGroupQ(
+                String title,
+                QuizableFieldPaths.FieldPath fieldPath,
+                List<String> queryTokens) {
             this.title = title;
+            this.fieldPath = fieldPath;
+            this.queryTokens = List.copyOf(queryTokens);
         }
 
         void updateLabel() {

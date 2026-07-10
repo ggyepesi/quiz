@@ -1,15 +1,15 @@
 package quiz.transform.pipeline.ui;
 
-import quiz.transform.ui.FieldKind;
+import quiz.fields.FieldKind;
 
 import java.util.EnumSet;
 import java.util.Set;
 
-import static quiz.transform.ui.FieldKind.BOOLEAN;
-import static quiz.transform.ui.FieldKind.COLLECTION;
-import static quiz.transform.ui.FieldKind.ORDERED;
-import static quiz.transform.ui.FieldKind.REFERENCE;
-import static quiz.transform.ui.FieldKind.TEXT;
+import static quiz.fields.FieldKind.BOOLEAN;
+import static quiz.fields.FieldKind.COLLECTION;
+import static quiz.fields.FieldKind.ORDERED;
+import static quiz.fields.FieldKind.REFERENCE;
+import static quiz.fields.FieldKind.TEXT;
 
 public enum FilterOperator {
     EQUALS("equals", BOOLEAN, ORDERED, TEXT, REFERENCE),

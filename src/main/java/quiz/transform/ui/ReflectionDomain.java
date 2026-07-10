@@ -3,6 +3,7 @@ package quiz.transform.ui;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.QuizableFieldPaths;
+import quiz.fields.FieldKind;
 import quiz.ui.QuizableViews;
 import quiz.ui.viewconfig.QuizablePanelConfig;
 

@@ -2,7 +2,7 @@ package quiz.transform.app;
 
 import quiz.fields.FieldRef;
 import quiz.fields.FieldSchema;
-import quiz.transform.ui.FieldKind;
+import quiz.fields.FieldKind;
 
 import java.util.ArrayList;
 import java.util.List;

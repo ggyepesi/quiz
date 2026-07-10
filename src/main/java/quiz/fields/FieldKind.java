@@ -1,4 +1,4 @@
-package quiz.transform.ui;
+package quiz.fields;
 
 import quiz.Quizable;
 

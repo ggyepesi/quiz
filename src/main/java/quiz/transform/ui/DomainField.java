@@ -1,6 +1,7 @@
 package quiz.transform.ui;
 
 import quiz.QuizableFieldPaths.FieldPath;
+import quiz.fields.FieldKind;
 
 /**
  * One field of a domain class — the domain-wide pool an operation picks its

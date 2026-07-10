@@ -1,6 +1,7 @@
-package quiz.transform.ui;
+package quiz.fields;
 
 import org.junit.jupiter.api.Test;
+import quiz.transform.ui.DomainField;
 
 import java.util.List;
 

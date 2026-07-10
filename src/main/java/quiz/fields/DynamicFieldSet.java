@@ -2,7 +2,6 @@ package quiz.fields;
 
 import quiz.DynamicFields;
 import quiz.Quizable;
-import quiz.transform.ui.FieldKind;
 
 import java.util.ArrayList;
 import java.util.Collection;

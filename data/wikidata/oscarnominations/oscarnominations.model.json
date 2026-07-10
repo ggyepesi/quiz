@@ -7,6 +7,7 @@
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
+    "alias" : "",
     "statementSourceClass" : "",
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -143,6 +144,7 @@
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
+    "alias" : "",
     "statementSourceClass" : "",
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -277,6 +279,7 @@
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
+    "alias" : "",
     "statementSourceClass" : "",
     "generationDepth" : 2,
     "instanceMapping" : {
@@ -321,6 +324,7 @@
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "alias" : "",
     "statementSourceClass" : "",
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -357,6 +361,7 @@
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
+    "alias" : "",
     "statementSourceClass" : "OscarNominations",
     "generationDepth" : 1,
     "instanceMapping" : {
