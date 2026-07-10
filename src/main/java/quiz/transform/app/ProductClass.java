@@ -1,5 +1,10 @@
 package quiz.transform.app;
 
+import quiz.fields.FieldRef;
+import quiz.fields.FieldSchema;
+import quiz.transform.ui.FieldKind;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -21,5 +26,23 @@ public record ProductClass(String className,
             }
         }
         return null;
+    }
+
+    /** This class as a {@link FieldSchema} — the authoritative type source for a
+     *  dynamic ({@code DynamicFieldSet}) instance of it. Structural markers are
+     *  omitted (they're plumbing the pickers skip). */
+    public FieldSchema asFieldSchema() {
+        List<FieldRef> refs = new ArrayList<>();
+        for (ProductField f : fields) {
+            if (f.structural()) {
+                continue;
+            }
+            FieldKind kind = f.collection() ? FieldKind.COLLECTION
+                    : f.reference() ? FieldKind.REFERENCE
+                    : FieldKind.ofTypeLabel(f.typeLabel());
+            refs.add(FieldRef.of(f.name(), kind, f.typeLabel(),
+                    f.reference(), f.collection(), false));
+        }
+        return () -> refs;
     }
 }

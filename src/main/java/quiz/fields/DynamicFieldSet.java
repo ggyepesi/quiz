@@ -11,17 +11,23 @@ import java.util.Map;
 
 /**
  * A {@link FieldSet} over a {@link DynamicFields} object's property map (the "new"
- * representation — e.g. {@code WikidataDynamicObject}). Types are inferred from the
- * VALUES here; a schema-backed type source ({@code ProductSchema}/{@code
- * FieldTypeSource}) can override this so a field is typed even when its value is
- * null — that wiring is the substance of #87, kept out of this seam for now.
+ * representation — e.g. {@code WikidataDynamicObject}). With a {@link FieldSchema}
+ * the fields are typed authoritatively (cardinality and type survive null / single
+ * values); without one, types are inferred from the present VALUES (a single-value
+ * collection then reads as a scalar). See #87.
  */
 public final class DynamicFieldSet implements FieldSet {
 
     private final DynamicFields object;
+    private final FieldSchema schema;   // nullable — authoritative types when present
 
     public DynamicFieldSet(DynamicFields object) {
+        this(object, null);
+    }
+
+    public DynamicFieldSet(DynamicFields object, FieldSchema schema) {
         this.object = object;
+        this.schema = schema;
     }
 
     @Override
@@ -31,6 +37,10 @@ public final class DynamicFieldSet implements FieldSet {
 
     @Override
     public List<FieldRef> fields() {
+        if (schema != null) {
+            // Authoritative + complete: typed even for a null/absent or single value.
+            return schema.fields();
+        }
         List<FieldRef> out = new ArrayList<>();
         for (Map.Entry<String, Object> e : object.dynamicFieldValues().entrySet()) {
             out.add(fieldRef(e.getKey(), e.getValue()));

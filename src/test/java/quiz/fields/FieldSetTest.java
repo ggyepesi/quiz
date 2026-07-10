@@ -3,6 +3,8 @@ package quiz.fields;
 import org.junit.jupiter.api.Test;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
+import quiz.transform.app.ProductClass;
+import quiz.transform.app.ProductField;
 import quiz.transform.ui.FieldKind;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -13,6 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -81,6 +84,43 @@ class FieldSetTest {
         assertEquals(FieldKind.REFERENCE, f.get("director").kind());
         assertTrue(f.get("cast").collection(), "cast is multi-valued");
         assertEquals(FieldKind.COLLECTION, f.get("cast").kind());
+    }
+
+    @Test void aSchemaResolvesDynamicCardinalityAndNullTypes() {
+        WikidataDynamicObject wdo = new WikidataDynamicObject("Q1", "Casino");
+        wdo.put("cast", new WikidataDynamicObject("Q3", "De Niro"));  // ONE value — ambiguous alone
+
+        // The schema declares cast as a collection and year as ordered (year is not
+        // even present on this instance) — the substance of #87's dynamic type source.
+        FieldSchema schema = () -> List.of(
+                FieldRef.of("cast", FieldKind.COLLECTION, "List<Person>", true, true, false),
+                FieldRef.of("year", FieldKind.ORDERED, "Integer", false, false, false));
+
+        Map<String, FieldRef> f = byName(FieldSet.of(wdo, schema));
+
+        assertEquals(2, f.size(), "enumeration comes from the schema");
+        assertTrue(f.get("cast").collection(), "schema says collection despite the single value");
+        assertEquals(FieldKind.ORDERED, f.get("year").kind(), "typed even though absent from the map");
+        // Values still read from the object: cast present, year absent (null).
+        FieldSet set = FieldSet.of(wdo, schema);
+        assertInstanceOf(WikidataDynamicObject.class, set.read("cast"));
+        assertNull(set.read("year"));
+    }
+
+    @Test void productClassSuppliesTheSchema() {
+        ProductClass pc = new ProductClass("Nomination", "Nomination", List.of(
+                new ProductField("year", "Integer", false, false, null, false),
+                new ProductField("category", "List<Category>", true, true, "Category", false),
+                ProductField.structural("source")));
+
+        WikidataDynamicObject wdo = new WikidataDynamicObject("Q1", "N");
+        Map<String, FieldRef> f = byName(FieldSet.of(wdo, pc.asFieldSchema()));
+
+        assertEquals(2, f.size(), "structural markers are omitted");
+        assertEquals(FieldKind.ORDERED, f.get("year").kind());
+        assertTrue(f.get("category").collection());
+        assertTrue(f.get("category").reference());
+        assertEquals(FieldKind.COLLECTION, f.get("category").kind()); // collection wins over reference
     }
 
     @Test void bothReadValuesTheSameWay() {

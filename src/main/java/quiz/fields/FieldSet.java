@@ -27,8 +27,14 @@ public interface FieldSet {
     /** A backing-appropriate FieldSet: the dynamic property map when present, else
      *  declared-field reflection. */
     static FieldSet of(Quizable object) {
+        return of(object, null);
+    }
+
+    /** As {@link #of(Quizable)}, but a dynamic object is typed by {@code schema} when
+     *  given (a reflected object is self-describing, so the schema is ignored). */
+    static FieldSet of(Quizable object, FieldSchema schema) {
         return object instanceof DynamicFields dynamic
-                ? new DynamicFieldSet(dynamic)
+                ? new DynamicFieldSet(dynamic, schema)
                 : new ReflectionFieldSet(object);
     }
 }
