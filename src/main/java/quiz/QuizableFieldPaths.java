@@ -1,5 +1,7 @@
 package quiz;
 
+import quiz.fields.FieldRef;
+import quiz.fields.FieldSet;
 import quiz.ui.ImagePane;
 import quiz.ui.viewconfig.QuizablePanelConfig;
 
@@ -130,26 +132,20 @@ public final class QuizableFieldPaths {
             return;
         }
         try {
-            if (obj instanceof DynamicFields dyn) {
-                for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
-                    addSampleField(e.getKey(), e.getValue(), null,
-                            prefix, titlePrefix, filter, branch, out);
+            // ONE field model over both representations — declared Java fields OR the
+            // dynamic property map (quiz.fields.FieldSet), no instanceof branch. A
+            // reflected field still resolves its java.lang.reflect.Field, to honour
+            // the field filter / provenance skip and carry annotations (@Numeric)
+            // downstream; a map-held (dynamic) field has none, so getField is null.
+            FieldSet set = FieldSet.of(obj);
+            for (FieldRef ref : set.fields()) {
+                Field leaf = QuizableAdapter.getField(obj.getClass(), ref.name());
+                if (leaf != null
+                        && (!filter.accept(leaf) || QuizableAdapter.isProvenanceField(leaf))) {
+                    continue;
                 }
-            } else {
-                for (Field field : QuizableAdapter.getAllFields(obj.getClass())) {
-                    if (!filter.accept(field) || QuizableAdapter.isProvenanceField(field)) {
-                        continue;
-                    }
-                    Object v;
-                    try {
-                        field.setAccessible(true);
-                        v = field.get(obj);
-                    } catch (Exception ex) {
-                        v = null;
-                    }
-                    addSampleField(field.getName(), v, field,
-                            prefix, titlePrefix, filter, branch, out);
-                }
+                addSampleField(ref.name(), set.read(ref.name()), leaf,
+                        prefix, titlePrefix, filter, branch, out);
             }
         } finally {
             branch.remove(obj);
