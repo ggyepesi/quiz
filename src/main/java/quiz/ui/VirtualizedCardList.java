@@ -19,68 +19,151 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
-public final class VirtualizedCardList extends JComponent implements Scrollable {
+/**
+ * A vertically virtualized list of Quizable cards.
+ *
+ * <p>The list owns:
+ * <ul>
+ *   <li>the ordered Quizable items,</li>
+ *   <li>the currently materialized card components,</li>
+ *   <li>measured and estimated card heights,</li>
+ *   <li>viewport navigation and lazy card creation.</li>
+ * </ul>
+ *
+ * <p>The list does not know how a card is configured or rendered. Card creation
+ * is delegated to {@code cardFactory}. This allows callers such as grouped views
+ * to supply their own QuizablePanelConfig and QuizableRenderContext.
+ */
+public final class VirtualizedCardList
+        extends JComponent
+        implements Scrollable, VirtualizedQuizableContainer {
 
     private static final int BUFFER = 6;
     private static final int DEFAULT_ROW = 140;
-    // Below this the cards stop shrinking and the list scrolls horizontally
-    // instead — so a narrow instances pane (the split's smaller side) doesn't
-    // cram every card. At or above it, cards fill the viewport as before.
+
+    /**
+     * Below this width, cards stop shrinking and horizontal scrolling is used
+     * instead.
+     */
     private static final int MIN_CONTENT_WIDTH = 380;
+
     private static final int MAX_ESTIMATE_SAMPLES = 10;
 
     private static final boolean DEBUG =
             Boolean.getBoolean("quiz.nav.debug");
 
-    private final Function<Quizable, JComponent> cardFactory;
+    /**
+     * Mutable so the owner can apply a new view configuration by replacing the
+     * factory. Existing built cards are then discarded and rebuilt lazily.
+     */
+    private Function<Quizable, JComponent> cardFactory;
 
     private List<Quizable> items = new ArrayList<>();
 
     private final Map<Quizable, JComponent> built =
             new IdentityHashMap<>();
 
-    // Exact current height for a specific object.
+    /**
+     * Exact currently measured height per object.
+     */
     private final Map<Quizable, Integer> heights =
             new IdentityHashMap<>();
 
     private final Map<Quizable, Integer> indexByItem =
             new IdentityHashMap<>();
 
-    // Stable class-level fallback for never-built cards.
+    /**
+     * Class-level height estimates for cards that have not yet been built.
+     */
     private final Map<Class<?>, HeightEstimate> estimatesByClass =
             new HashMap<>();
 
+    /**
+     * {@code tops[i]} is the vertical position of item {@code i}.
+     * {@code tops[items.size()]} is the bottom of the final item.
+     */
     private int[] tops = {0};
 
     private JViewport viewport;
     private boolean updating;
     private int navGeneration;
 
-    public VirtualizedCardList(Function<Quizable, JComponent> cardFactory) {
-        this.cardFactory = cardFactory;
+    public VirtualizedCardList(
+            Function<Quizable, JComponent> cardFactory) {
+
+        this.cardFactory = Objects.requireNonNull(
+                cardFactory,
+                "cardFactory"
+                                                 );
+
         setLayout(null);
     }
 
+    /**
+     * Replaces the card builder while preserving the item list.
+     *
+     * <p>All currently materialized cards and height measurements are discarded.
+     * Cards are recreated lazily when they next enter the visible range.
+     */
+    public void setCardFactory(
+            Function<Quizable, JComponent> cardFactory) {
+
+        this.cardFactory = Objects.requireNonNull(
+                cardFactory,
+                "cardFactory"
+                                                 );
+
+        discardBuiltCards();
+    }
+
+    private void discardBuiltCards() {
+        removeAll();
+        built.clear();
+
+        /*
+         * A changed view configuration can change wrapping, nested fields and
+         * image sizes, so previous measurements are no longer reliable.
+         */
+        heights.clear();
+        estimatesByClass.clear();
+
+        rebuildTops();
+
+        revalidate();
+        repaint();
+        updateVisible();
+    }
+
     public void install(JScrollPane scroll) {
+        Objects.requireNonNull(scroll, "scroll");
+
         scroll.setViewportView(this);
         viewport = scroll.getViewport();
+
         viewport.addChangeListener(e -> updateVisible());
 
         scroll.getVerticalScrollBar().setUnitIncrement(20);
         scroll.getVerticalScrollBar().setBlockIncrement(200);
     }
 
+    @Override
     public void setItems(List<Quizable> newItems) {
-        items = new ArrayList<>(newItems == null ? List.of() : newItems);
+        items = new ArrayList<>(
+                newItems == null ? List.of() : newItems
+        );
+
         reindex();
 
         removeAll();
         built.clear();
 
-        heights.keySet().removeIf(q -> !indexByItem.containsKey(q));
+        heights.keySet().removeIf(
+                q -> !indexByItem.containsKey(q)
+                                 );
 
         rebuildTops();
 
@@ -110,33 +193,39 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
         }
     }
 
+    @Override
     public List<Quizable> items() {
         return Collections.unmodifiableList(items);
     }
 
+    @Override
     public Quizable topVisibleItem() {
         if (viewport == null || items.isEmpty()) {
             return null;
         }
 
-        int idx =
-                indexAt(viewport.getViewPosition().y);
+        int idx = indexAt(viewport.getViewPosition().y);
 
-        return items.get(Math.max(0, Math.min(items.size() - 1, idx)));
+        return items.get(
+                Math.max(0, Math.min(items.size() - 1, idx))
+                        );
     }
 
     public JComponent builtCard(Quizable q) {
         return built.get(q);
     }
 
+    /**
+     * Builds and positions a card without scrolling to it.
+     */
     public JComponent buildIfNeeded(Quizable q) {
         int i = indexOf(q);
+
         if (i < 0) {
             return null;
         }
 
-        JComponent card =
-                built.get(q);
+        JComponent card = built.get(q);
 
         if (card == null) {
             card = buildCard(q);
@@ -153,8 +242,12 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
         return card;
     }
 
+    /**
+     * Builds the card and scrolls enough to make it visible.
+     */
     public JComponent ensureVisible(Quizable q) {
         int i = indexOf(q);
+
         if (i < 0) {
             return null;
         }
@@ -165,13 +258,18 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
                 0,
                 tops[i],
                 1,
-                rowHeight(q)));
+                rowHeight(q)
+        ));
 
         updateVisible();
 
         return built.get(q);
     }
 
+    /**
+     * Builds the card and attempts to pin its top to the viewport top.
+     */
+    @Override
     public JComponent navigateToTop(Quizable q) {
         int i = indexOf(q);
 
@@ -188,10 +286,16 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
                     i,
                     tops[i],
                     totalHeight(),
-                    viewport.getExtentSize().height);
+                    viewport.getExtentSize().height
+                             );
         }
 
         buildIfNeeded(q);
+
+        /*
+         * Measurement can shift all later card tops, so pin twice before the
+         * deferred final drift correction.
+         */
         rebuildTops();
         scrollIndexToTop(i);
         updateVisible();
@@ -200,10 +304,10 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
         scrollIndexToTop(i);
         updateVisible();
 
-        int gen = navGeneration;
+        int generation = navGeneration;
 
         SwingUtilities.invokeLater(() -> {
-            if (gen == navGeneration) {
+            if (generation == navGeneration) {
                 repinIfDrifted(q, i);
             }
         });
@@ -217,24 +321,25 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
                     viewport.getViewPosition().y,
                     card != null ? card.getY() : -1,
                     card != null ? card.getHeight() : -1,
-                    tops[i]);
+                    tops[i]
+                             );
         }
 
         return built.get(q);
     }
 
-    private void repinIfDrifted(Quizable q, int expectedIndex) {
+    private void repinIfDrifted(
+            Quizable q,
+            int expectedIndex) {
+
         if (viewport == null || indexOf(q) != expectedIndex) {
             return;
         }
 
         rebuildTops();
 
-        int wantY =
-                clampTop(expectedIndex);
-
-        int haveY =
-                viewport.getViewPosition().y;
+        int wantY = clampTop(expectedIndex);
+        int haveY = viewport.getViewPosition().y;
 
         if (Math.abs(haveY - wantY) > 1) {
             scrollIndexToTop(expectedIndex);
@@ -245,39 +350,57 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
     private void scrollIndexToTop(int i) {
         setSize(
                 Math.max(getWidth(), effectiveWidth()),
-                preferredContentHeight());
+                preferredContentHeight()
+               );
 
         viewport.setViewPosition(
-                new Point(0, clampTop(i)));
+                new Point(0, clampTop(i))
+                                );
     }
 
     private int clampTop(int i) {
-        return Math.max(0, Math.min(tops[i], maxScrollY()));
+        return Math.max(
+                0,
+                Math.min(tops[i], maxScrollY())
+                       );
     }
 
-    // The furthest you can scroll. Two needs, whichever is larger:
-    //  - pin ANY card's top to the viewport top (navigation) -> the last card's
-    //    top, tops[size-1];
-    //  - reach the BOTTOM of a last card taller than the viewport (reading) ->
-    //    content height minus one viewport.
-    // Using only the last card's top left a tall last card's bottom unreachable.
+    /**
+     * Furthest valid vertical scroll position.
+     *
+     * <p>It must support both:
+     * <ul>
+     *   <li>pinning the last card's top to the viewport top, and</li>
+     *   <li>reaching the bottom of a final card taller than the viewport.</li>
+     * </ul>
+     */
     private int maxScrollY() {
         if (items.isEmpty()) {
             return 0;
         }
-        int extent = viewport != null ? viewport.getExtentSize().height : 0;
+
+        int extent = viewport != null
+                ? viewport.getExtentSize().height
+                : 0;
+
         int lastTop = tops[items.size() - 1];
-        return Math.max(lastTop, Math.max(0, contentHeight() - extent));
+
+        return Math.max(
+                lastTop,
+                Math.max(0, contentHeight() - extent)
+                       );
     }
 
-    // Total laid-out height: the sentinel tops[size] is the bottom of the last card.
     private int contentHeight() {
-        return items.isEmpty() ? 0 : tops[items.size()];
+        return items.isEmpty()
+                ? 0
+                : tops[items.size()];
     }
 
     private int preferredContentHeight() {
-        int extent =
-                viewport != null ? viewport.getExtentSize().height : 0;
+        int extent = viewport != null
+                ? viewport.getExtentSize().height
+                : 0;
 
         return maxScrollY() + extent;
     }
@@ -288,7 +411,9 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
     }
 
     int totalHeight() {
-        return tops.length == 0 ? 0 : tops[tops.length - 1];
+        return tops.length == 0
+                ? 0
+                : tops[tops.length - 1];
     }
 
     private int indexOf(Quizable q) {
@@ -297,8 +422,7 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
     }
 
     private int rowHeight(Quizable q) {
-        Integer exact =
-                heights.get(q);
+        Integer exact = heights.get(q);
 
         if (exact != null) {
             return exact;
@@ -317,32 +441,41 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
     }
 
     private int effectiveWidth() {
-        int vw = viewport != null && viewport.getWidth() > 0
-                ? viewport.getWidth()
-                : Math.max(1, getWidth());
-        // Never lay cards out narrower than the floor — the extra width becomes
-        // horizontal scroll rather than squeezing the content.
-        return Math.max(vw, MIN_CONTENT_WIDTH);
+        int viewportWidth =
+                viewport != null && viewport.getWidth() > 0
+                        ? viewport.getWidth()
+                        : Math.max(1, getWidth());
+
+        return Math.max(
+                viewportWidth,
+                MIN_CONTENT_WIDTH
+                       );
     }
 
-    private void positionCard(int index, JComponent card) {
-        Quizable q =
-                items.get(index);
+    private void positionCard(
+            int index,
+            JComponent card) {
+
+        Quizable q = items.get(index);
 
         card.setBounds(
                 0,
                 tops[index],
                 effectiveWidth(),
-                rowHeight(q));
+                rowHeight(q)
+                      );
     }
 
-    // Lay a card's whole subtree out top-down at its current width, so leaf text
-    // components know the width they'll wrap at before we read preferred heights.
-    private static void layoutTree(java.awt.Container c) {
-        c.doLayout();
-        for (java.awt.Component child : c.getComponents()) {
-            if (child instanceof java.awt.Container cc) {
-                layoutTree(cc);
+    /**
+     * Lays out the whole card subtree at its current width before measuring its
+     * preferred height. This is needed for wrapped text.
+     */
+    private static void layoutTree(java.awt.Container container) {
+        container.doLayout();
+
+        for (java.awt.Component child : container.getComponents()) {
+            if (child instanceof java.awt.Container childContainer) {
+                layoutTree(childContainer);
             }
         }
     }
@@ -355,27 +488,25 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
             return false;
         }
 
-        // positionCard() sized the card to effectiveWidth(), but its children
-        // aren't laid out yet — so wrapping text would measure at its fallback
-        // width and report too short a height (then clip). Lay out the subtree at
-        // the real width first, so getPreferredSize() reflects the actual wrapping.
-        card.setSize(effectiveWidth(), card.getHeight());
+        card.setSize(
+                effectiveWidth(),
+                card.getHeight()
+                    );
+
         layoutTree(card);
 
-        int measured =
-                Math.max(1, card.getPreferredSize().height);
+        int measured = Math.max(
+                1,
+                card.getPreferredSize().height
+                               );
 
-        Integer known =
-                heights.get(q);
+        Integer known = heights.get(q);
 
         if (known != null && known == measured) {
             return false;
         }
 
         heights.put(q, measured);
-
-        // Exact object height always changes.
-        // Class estimate only learns conservatively from normal-looking cards.
         updateClassEstimate(q, measured, known);
 
         return true;
@@ -393,16 +524,12 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
         HeightEstimate estimate =
                 estimatesByClass.computeIfAbsent(
                         q.getClass(),
-                        k -> new HeightEstimate());
+                        ignored -> new HeightEstimate()
+                                                );
 
         /*
-         * Learn only when:
-         *  - this object was not measured before, or
-         *  - its new measurement is not a large expansion outlier.
-         *
-         * A collapsed long-text object may still be taller than average;
-         * that is okay as its exact object height is stored. But it should
-         * not dominate the class estimate.
+         * Once a card has already been measured, a dramatic growth is probably
+         * caused by expansion and should not distort the class fallback.
          */
         if (previousExactHeight != null) {
             int oldEstimate = estimate.value();
@@ -416,11 +543,9 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
     }
 
     private void rebuildTops() {
-        tops =
-                new int[items.size() + 1];
+        tops = new int[items.size() + 1];
 
-        int y =
-                0;
+        int y = 0;
 
         for (int i = 0; i < items.size(); i++) {
             tops[i] = y;
@@ -435,21 +560,20 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
             return 0;
         }
 
-        int lo = 0;
-        int hi = items.size() - 1;
+        int low = 0;
+        int high = items.size() - 1;
 
-        while (lo < hi) {
-            int mid =
-                    (lo + hi + 1) >>> 1;
+        while (low < high) {
+            int middle = (low + high + 1) >>> 1;
 
-            if (tops[mid] <= y) {
-                lo = mid;
+            if (tops[middle] <= y) {
+                low = middle;
             } else {
-                hi = mid - 1;
+                high = middle - 1;
             }
         }
 
-        return lo;
+        return low;
     }
 
     private void updateVisible() {
@@ -457,50 +581,49 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
             return;
         }
 
-        updating =
-                true;
+        updating = true;
 
         try {
-            for (int pass = 0; pass < 8 && updateVisibleOnce(); pass++) {
-                // settle
+            for (int pass = 0;
+                 pass < 8 && updateVisibleOnce();
+                 pass++) {
+                // Allow height/layout changes to settle.
             }
         } finally {
-            updating =
-                    false;
+            updating = false;
         }
 
         repaint();
     }
 
+    /**
+     * Performs one visible-range/materialization/layout pass.
+     *
+     * @return true when another pass may be required
+     */
     private boolean updateVisibleOnce() {
-        Rectangle view =
-                viewport.getViewRect();
+        Rectangle view = viewport.getViewRect();
 
-        int first =
-                Math.max(0, indexAt(view.y) - BUFFER);
+        int first = Math.max(
+                0,
+                indexAt(view.y) - BUFFER
+                            );
 
-        int last =
-                Math.min(
-                        items.size() - 1,
-                        indexAt(view.y + view.height) + BUFFER);
+        int last = Math.min(
+                items.size() - 1,
+                indexAt(view.y + view.height) + BUFFER
+                           );
 
-        int anchorIdx =
-                indexAt(view.y);
-
-        int withinAnchor =
-                view.y - tops[anchorIdx];
+        int anchorIndex = indexAt(view.y);
+        int withinAnchor = view.y - tops[anchorIndex];
 
         syncBuiltRange(first, last);
 
-        boolean heightsChanged =
-                false;
+        boolean heightsChanged = false;
 
         for (int i = first; i <= last; i++) {
-            Quizable q =
-                    items.get(i);
-
-            JComponent card =
-                    built.get(q);
+            Quizable q = items.get(i);
+            JComponent card = built.get(q);
 
             if (card == null) {
                 card = buildCard(q);
@@ -528,26 +651,32 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
             revalidate();
         }
 
-        int newY =
-                Math.max(0, tops[anchorIdx] + withinAnchor);
+        int newY = Math.max(
+                0,
+                tops[anchorIndex] + withinAnchor
+                           );
 
-        newY =
-                Math.min(newY, maxScrollY());
+        newY = Math.min(newY, maxScrollY());
 
-        boolean moved =
-                newY != view.y;
+        boolean moved = newY != view.y;
 
         if (moved) {
             viewport.setViewPosition(
-                    new Point(view.x, newY));
+                    new Point(view.x, newY)
+                                    );
         }
 
         return heightsChanged || moved;
     }
 
     private JComponent buildCard(Quizable q) {
-        JComponent card =
-                cardFactory.apply(q);
+        JComponent card = cardFactory.apply(q);
+
+        if (card == null) {
+            throw new IllegalStateException(
+                    "Card factory returned null for " + q
+            );
+        }
 
         built.put(q, card);
         add(card);
@@ -555,9 +684,17 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
         return card;
     }
 
-    private void syncBuiltRange(int first, int last) {
+    /**
+     * Keeps only cards in or near the visible range.
+     */
+    private void syncBuiltRange(
+            int first,
+            int last) {
+
         Set<Quizable> keep =
-                Collections.newSetFromMap(new IdentityHashMap<>());
+                Collections.newSetFromMap(
+                        new IdentityHashMap<>()
+                                         );
 
         for (int i = Math.max(0, first);
              i <= last && i < items.size();
@@ -566,36 +703,38 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
             keep.add(items.get(i));
         }
 
-        for (Iterator<Map.Entry<Quizable, JComponent>> it =
+        for (Iterator<Map.Entry<Quizable, JComponent>> iterator =
              built.entrySet().iterator();
-             it.hasNext(); ) {
+             iterator.hasNext(); ) {
 
-            Map.Entry<Quizable, JComponent> e =
-                    it.next();
+            Map.Entry<Quizable, JComponent> entry =
+                    iterator.next();
 
-            if (!keep.contains(e.getKey())) {
-                remove(e.getValue());
-                it.remove();
+            if (!keep.contains(entry.getKey())) {
+                remove(entry.getValue());
+                iterator.remove();
             }
         }
     }
 
     public String diagnostics() {
-        StringBuilder sb =
-                new StringBuilder();
+        StringBuilder sb = new StringBuilder();
 
-        int total =
-                totalHeight();
+        int total = totalHeight();
 
-        int viewY =
-                viewport != null ? viewport.getViewPosition().y : 0;
+        int viewY = viewport != null
+                ? viewport.getViewPosition().y
+                : 0;
 
-        int extent =
-                viewport != null ? viewport.getExtentSize().height : 0;
+        int extent = viewport != null
+                ? viewport.getExtentSize().height
+                : 0;
 
         sb.append(String.format(
-                "VirtualizedCardList: items=%d built=%d measured=%d classEstimates=%d%n"
-                        + "  viewY=%d (%.1f%%) extent=%d total=%d maxScrollY=%d%n",
+                "VirtualizedCardList: items=%d built=%d measured=%d "
+                        + "classEstimates=%d%n"
+                        + "  viewY=%d (%.1f%%) extent=%d total=%d "
+                        + "maxScrollY=%d%n",
                 items.size(),
                 built.size(),
                 heights.size(),
@@ -604,68 +743,73 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
                 total > 0 ? 100.0 * viewY / total : 0,
                 extent,
                 total,
-                maxScrollY()));
+                maxScrollY()
+                               ));
 
         List<Map.Entry<Quizable, JComponent>> byScreenY =
                 new ArrayList<>(built.entrySet());
 
         byScreenY.sort(
-                Comparator.comparingInt(a -> a.getValue().getY()));
+                Comparator.comparingInt(
+                        entry -> entry.getValue().getY()
+                                       )
+                      );
 
-        int prevIdx =
-                Integer.MIN_VALUE;
+        int previousIndex = Integer.MIN_VALUE;
 
-        for (Map.Entry<Quizable, JComponent> e : byScreenY) {
-            Quizable q =
-                    e.getKey();
+        for (Map.Entry<Quizable, JComponent> entry : byScreenY) {
+            Quizable q = entry.getKey();
+            JComponent card = entry.getValue();
 
-            JComponent c =
-                    e.getValue();
-
-            int idx =
-                    indexOf(q);
-
+            int index = indexOf(q);
             int trackedTop =
-                    idx >= 0 ? tops[idx] : -1;
+                    index >= 0 ? tops[index] : -1;
 
-            String flags =
-                    "";
+            String flags = "";
 
-            if (c.getY() != trackedTop) {
+            if (card.getY() != trackedTop) {
                 flags += " OFFSET_MISMATCH(screenY!=tracked)";
             }
 
-            if (idx <= prevIdx) {
+            if (index <= previousIndex) {
                 flags += " ORDER_BREAK(screen order != list order)";
             }
 
-            prevIdx =
-                    idx;
+            previousIndex = index;
 
             sb.append(String.format(
-                    "  screenY=%d h=%d | listIdx=%d trackedTop=%d | exact=%s | %s%s%n",
-                    c.getY(),
-                    c.getHeight(),
-                    idx,
+                    "  screenY=%d h=%d | listIdx=%d trackedTop=%d "
+                            + "| exact=%s | %s%s%n",
+                    card.getY(),
+                    card.getHeight(),
+                    index,
                     trackedTop,
                     heights.containsKey(q),
                     q.getDisplayName(),
-                    flags));
+                    flags
+                                   ));
         }
 
         sb.append("Class estimates:\n");
 
-        for (Map.Entry<Class<?>, HeightEstimate> e : estimatesByClass.entrySet()) {
+        for (Map.Entry<Class<?>, HeightEstimate> entry
+                : estimatesByClass.entrySet()) {
+
             sb.append(String.format(
                     "  %s -> %d (%d samples)%n",
-                    e.getKey().getSimpleName(),
-                    e.getValue().value(),
-                    e.getValue().sampleCount()));
+                    entry.getKey().getSimpleName(),
+                    entry.getValue().value(),
+                    entry.getValue().sampleCount()
+                                   ));
         }
 
         return sb.toString();
     }
 
+    /**
+     * Discards and rematerializes the current virtual layout while preserving
+     * the current items and card factory.
+     */
     public void rebuild() {
         setItems(new ArrayList<>(items));
     }
@@ -677,9 +821,10 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
 
     @Override
     public Dimension getPreferredSize() {
-        // effectiveWidth() applies the floor, so a viewport narrower than it
-        // yields a wider preferred size → the horizontal scrollbar appears.
-        return new Dimension(effectiveWidth(), preferredContentHeight());
+        return new Dimension(
+                effectiveWidth(),
+                preferredContentHeight()
+        );
     }
 
     @Override
@@ -689,29 +834,28 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
 
     @Override
     public int getScrollableUnitIncrement(
-            Rectangle r,
-            int orient,
-            int dir) {
+            Rectangle visibleRect,
+            int orientation,
+            int direction) {
 
         return 20;
     }
 
     @Override
     public int getScrollableBlockIncrement(
-            Rectangle r,
-            int orient,
-            int dir) {
+            Rectangle visibleRect,
+            int orientation,
+            int direction) {
 
-        return orient == SwingConstants.VERTICAL
-                ? r.height - 20
-                : r.width - 20;
+        return orientation == SwingConstants.VERTICAL
+                ? Math.max(20, visibleRect.height - 20)
+                : Math.max(20, visibleRect.width - 20);
     }
 
     @Override
     public boolean getScrollableTracksViewportWidth() {
-        // Fill the viewport when it's wide enough; below the floor, don't track —
-        // the list keeps its (wider) preferred width and scrolls horizontally.
-        return viewport == null || viewport.getWidth() >= MIN_CONTENT_WIDTH;
+        return viewport == null
+                || viewport.getWidth() >= MIN_CONTENT_WIDTH;
     }
 
     @Override
@@ -719,34 +863,34 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
         return false;
     }
 
-    // Package-private for a direct unit test.
+    /**
+     * Conservative median-based class height estimate.
+     */
     static final class HeightEstimate {
+
         private final List<Integer> samples =
                 new ArrayList<>();
 
-        // Cached median of samples, recomputed only on change, so value() (called
-        // for every unbuilt card in rebuildTops) is O(1) instead of sort-per-call.
         private int cached = DEFAULT_ROW;
 
-        void addSample(int h) {
-            if (h <= 0) {
+        void addSample(int height) {
+            if (height <= 0) {
                 return;
             }
 
             if (samples.size() < MAX_ESTIMATE_SAMPLES) {
-                samples.add(h);
+                samples.add(height);
                 recompute();
                 return;
             }
 
             /*
-             * Only refine with near-normal values. Expanded cards and
-             * unusually long text objects keep their exact object height,
-             * but should not move the class estimate.
+             * Expanded/outlier cards keep their exact height, but do not move the
+             * class fallback substantially.
              */
-            if (h <= cached * 2) {
+            if (height <= cached * 2) {
                 samples.removeFirst();
-                samples.add(h);
+                samples.add(height);
                 recompute();
             }
         }
@@ -765,12 +909,12 @@ public final class VirtualizedCardList extends JComponent implements Scrollable 
                 return;
             }
 
-            List<Integer> copy =
+            List<Integer> sorted =
                     new ArrayList<>(samples);
 
-            Collections.sort(copy);
+            Collections.sort(sorted);
 
-            cached = copy.get(copy.size() / 2);
+            cached = sorted.get(sorted.size() / 2);
         }
     }
 }
