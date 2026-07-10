@@ -23,6 +23,15 @@ class FilterOperatorTest {
         assertFalse(FilterOperator.CONTAINS.appliesTo(FieldKind.BOOLEAN));
     }
 
+    @Test void sizeOperatorsFitCollectionsOnly() {
+        assertTrue(FilterOperator.SIZE_GREATER_THAN.appliesTo(FieldKind.COLLECTION));
+        assertTrue(FilterOperator.SIZE_EQUALS.appliesTo(FieldKind.COLLECTION));
+        assertFalse(FilterOperator.SIZE_GREATER_THAN.appliesTo(FieldKind.TEXT));
+        assertFalse(FilterOperator.SIZE_LESS_THAN.appliesTo(FieldKind.ORDERED));
+        assertFalse(FilterOperator.SIZE_EQUALS.isUnary());
+        assertFalse(FilterOperator.SIZE_EQUALS.isBinary());
+    }
+
     @Test void booleanOperatorsFitBooleanOnly() {
         assertTrue(FilterOperator.IS_TRUE.appliesTo(FieldKind.BOOLEAN));
         assertFalse(FilterOperator.IS_TRUE.appliesTo(FieldKind.TEXT));

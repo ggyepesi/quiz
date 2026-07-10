@@ -1,6 +1,7 @@
 package quiz.transform.pipeline.ui;
 
 import quiz.transform.ui.DomainField;
+import quiz.transform.ui.FieldKind;
 import quiz.ui.viewconfig.FieldTypeSource;
 
 import javax.swing.*;
@@ -131,8 +132,10 @@ public final class FieldTreePanel extends JPanel {
     }
 
     /** A tree node: the segment label, the field it stands for (null for a bare
-     *  container), and the model type label. {@code toString} shows the type when
-     *  known, else a shape hint so references still read as such. */
+     *  container), and the model type label. {@code toString} shows the model type
+     *  when known, else the field's kind (so a field the model doesn't describe —
+     *  e.g. the identity {@code name} — still reads {@code : String}), else a shape
+     *  hint for references/collections. */
     private record FieldNode(String label, DomainField field, String typeLabel) {
         @Override
         public String toString() {
@@ -142,9 +145,27 @@ public final class FieldTreePanel extends JPanel {
             if (typeLabel != null && !typeLabel.isBlank()) {
                 return label + "  :  " + typeLabel;
             }
+            String kind = kindLabel(field.kind());
+            if (kind != null) {
+                return label + "  :  " + kind;
+            }
             String shape = field.reference() ? (field.collection() ? "  · ref[]" : "  · ref")
                     : field.collection() ? "  · []" : "";
             return label + shape;
         }
+    }
+
+    /** A coarse display label for a value kind, when no specific model type is known;
+     *  null for reference/collection/unknown (shown as a shape hint instead). */
+    private static String kindLabel(FieldKind kind) {
+        if (kind == null) {
+            return null;
+        }
+        return switch (kind) {
+            case BOOLEAN -> "Boolean";
+            case ORDERED -> "Number";
+            case TEXT -> "String";
+            default -> null;
+        };
     }
 }

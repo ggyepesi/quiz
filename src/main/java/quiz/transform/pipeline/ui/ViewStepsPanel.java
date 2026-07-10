@@ -49,14 +49,6 @@ public final class ViewStepsPanel extends JPanel {
     // so mirroring the widget to the controller doesn't wipe the just-seeded steps.
     private boolean syncing;
 
-    // A programmatic field-tree selection is in progress (reflecting a selected group),
-    // so onFieldSelectionChanged won't treat it as a fresh user pick.
-    private boolean reflecting;
-    // True when the field shown was mirrored from a selected GROUP node (for reference,
-    // via reflectSelectedGroup) rather than picked to add — so Add group ignores it,
-    // preventing a group from being nested under itself.
-    private boolean fieldReflected;
-
     public ViewStepsPanel(TransformController controller, Listener listener) {
         this.controller = controller;
         this.listener = listener;
@@ -213,10 +205,7 @@ public final class ViewStepsPanel extends JPanel {
         Object uo = node.getUserObject();
 
         if (uo instanceof GroupNode g && g.field() != null) {
-            reflecting = true;
             fieldTree.selectPath(g.field().field());
-            reflecting = false;
-            fieldReflected = true;   // shown for reference, not a field picked to add
         }
     }
 
@@ -226,30 +215,9 @@ public final class ViewStepsPanel extends JPanel {
             fieldTree.setFields(List.of(), java.util.Set.of(), null);
         } else {
             fieldTree.setFields(controller.fields(type),
-                    controller.structuralFields(type), fieldTypesWithSampleFallback(type));
+                    controller.structuralFields(type), controller.fieldTypes(type));
         }
         onFieldSelectionChanged();
-    }
-
-    /** The model's field types, but falling back to the SAMPLE value's type for a
-     *  top-level field the model doesn't describe (e.g. the identity {@code name},
-     *  which the Sort/Fields editors label "String" — keep the tree consistent). */
-    private quiz.ui.viewconfig.FieldTypeSource fieldTypesWithSampleFallback(String type) {
-        quiz.ui.viewconfig.FieldTypeSource base = controller.fieldTypes(type);
-        Quizable sample = controller.sampleOf(type);
-        if (sample == null) {
-            return base;
-        }
-        return name -> {
-            quiz.ui.viewconfig.FieldTypeSource.FieldTypeInfo info =
-                    base == null ? null : base.field(name);
-            if (info != null) {
-                return info;
-            }
-            Object v = quiz.transform.FieldAccess.getPath(sample, name);
-            return v == null ? null : new quiz.ui.viewconfig.FieldTypeSource.FieldTypeInfo(
-                    v.getClass().getSimpleName(), false, null, null);
-        };
     }
 
     private DomainField singleCheckedField() {
@@ -265,12 +233,8 @@ public final class ViewStepsPanel extends JPanel {
         return fieldTree.selectedField();
     }
 
-    /** Re-offer only the operators that fit the checked field's shape. A genuine
-     *  user pick (not a group reflection) clears the reflected mark. */
+    /** Re-offer only the operators that fit the checked field's shape. */
     private void onFieldSelectionChanged() {
-        if (!reflecting) {
-            fieldReflected = false;
-        }
         reloadOperators(kindOf(currentField()));
     }
 
@@ -360,13 +324,6 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     private void addGroup(boolean independent) {
-        // The selected group reflects its own field into the tree for reference;
-        // require a fresh pick so a group isn't nested under itself.
-        if (fieldReflected) {
-            JOptionPane.showMessageDialog(this,
-                    "Pick the field to group by — the selected group's field is shown for reference.");
-            return;
-        }
         DomainField f = singleCheckedField();
         if (f == null) {
             return;
