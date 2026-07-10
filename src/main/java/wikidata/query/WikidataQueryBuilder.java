@@ -573,9 +573,7 @@ public class WikidataQueryBuilder {
         q.append(" WHERE {\n");
         q.append(where);
         if (!labelVars.isEmpty()) {
-            q.append("  SERVICE wikibase:label {\n");
-            q.append("    bd:serviceParam wikibase:language \"en\" .\n");
-            q.append("  }\n");
+            q.append(LabelService.service());
         }
         q.append("}\n");
         if (!groupBy.isEmpty()) {

@@ -322,9 +322,10 @@ public class QualifierLoader {
                 }
             }
         }
-        // SERVICE labels ?valueLabel and any qualifier-entity ?xLabel in one go.
-        sb.append("  SERVICE wikibase:label { ")
-          .append("bd:serviceParam wikibase:language \"en\". }\n");
+        // SERVICE labels ?valueLabel and any qualifier-entity ?xLabel in one go,
+        // with the shared en,mul fallback (nominee/forWork with only a non-en label
+        // would otherwise render as a bare QID).
+        sb.append(wikidata.query.LabelService.service("en"));
         sb.append("}\n");
         return sb.toString();
     }

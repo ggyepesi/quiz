@@ -318,15 +318,8 @@ public final class RuleNodeQueryBuilder {
     // forces the label into the projection (with the service's QID fallback for
     // unlabelled entities, so it never drops rows).
     private static String labelService(String lang) {
-        // Fall back to "mul" (Wikidata's "default for all languages" label) when
-        // the requested language is missing. Many entities — e.g. star Q14044,
-        // whose only Latin-script name "Albaldah" lives in mul, not en — have no
-        // en label at all and would otherwise render as a bare QID.
-        String fallback = lang.contains(",") ? lang : lang + ",mul";
-        return "  SERVICE wikibase:label {\n"
-                + "    bd:serviceParam wikibase:language \"" + fallback + "\".\n"
-                + "    ?value rdfs:label ?valueLabel.\n"
-                + "  }\n";
+        // The en,mul fallback lives in one place now — wikidata.query.LabelService.
+        return wikidata.query.LabelService.service(lang, "value", "valueLabel");
     }
 
     /**

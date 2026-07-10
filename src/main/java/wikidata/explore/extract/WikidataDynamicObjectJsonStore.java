@@ -85,7 +85,12 @@ public class WikidataDynamicObjectJsonStore {
         snapshot.version = FORMAT_VERSION;
         for (WikidataDynamicObject o : objects) {
             String k = keyOf(o);
-            if (k != null) snapshot.roots.add(k);
+            // Roots are MEMBERS — entities stamped with a modeled class. An unstamped
+            // pool entity is a reference target only (e.g. an INLINE `type`/P31 field's
+            // class values like "film"/"human", pulled into the shared registry): it
+            // stays in `entities` via the collect() reachability above, but must NOT
+            // become a top-level member/root.
+            if (k != null && o.hasTypeStamp()) snapshot.roots.add(k);
         }
         for (List<WikidataDynamicObject> instances : byQid.values()) {
             snapshot.entities.add(toEntity(instances));
