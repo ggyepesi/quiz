@@ -2,10 +2,8 @@ package quiz.transform.app;
 
 import quiz.DynamicFields;
 import quiz.Quizable;
-import quiz.QuizableAdapter;
 import wikidata.explore.extract.WikidataDynamicObject;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.IdentityHashMap;
@@ -55,24 +53,12 @@ public final class QuizableToWdo {
             WikidataDynamicObject o = new WikidataDynamicObject(id, q.getDisplayName());
             o.type(q.typeName());
             seen.put(q, o);
-            if (q instanceof DynamicFields dyn) {
-                for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
-                    Object cv = convert(e.getValue(), seen);
-                    if (cv != null) {
-                        o.put(e.getKey(), cv);
-                    }
-                }
-            } else {
-                for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
-                    try {
-                        f.setAccessible(true);
-                        Object cv = convert(f.get(q), seen);
-                        if (cv != null) {
-                            o.put(f.getName(), cv);
-                        }
-                    } catch (Exception ignored) {
-                        // skip unreadable fields
-                    }
+            // Copy every field, whichever representation — no instanceof branch.
+            quiz.fields.FieldSet set = quiz.fields.FieldSet.of(q);
+            for (quiz.fields.FieldRef ref : set.fields()) {
+                Object cv = convert(set.read(ref.name()), seen);
+                if (cv != null) {
+                    o.put(ref.name(), cv);
                 }
             }
             return o;
