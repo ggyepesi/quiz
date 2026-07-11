@@ -340,9 +340,13 @@ public class QuizablePanel extends JPanel {
         this.visited.add(quizable);
         this.ancestors.add(quizable);
 
-        addTitleHeaderIfNeeded();
-        buildFields();
-        ensureTitleHasRoom();
+        if (rootRender && this.renderContext.collapsibleCards()) {
+            buildCollapsibleRoot();
+        } else {
+            addTitleHeaderIfNeeded();
+            buildFields();
+            ensureTitleHasRoom();
+        }
         this.ancestors.remove(quizable);
     }
 
@@ -379,9 +383,13 @@ public class QuizablePanel extends JPanel {
         visited.add(quizable);
         ancestors.add(quizable);
 
-        addTitleHeaderIfNeeded();
-        buildFields();
-        ensureTitleHasRoom();
+        if (renderContext.collapsibleCards()) {
+            buildCollapsibleRoot();
+        } else {
+            addTitleHeaderIfNeeded();
+            buildFields();
+            ensureTitleHasRoom();
+        }
 
         ancestors.remove(quizable);
 
@@ -408,6 +416,78 @@ public class QuizablePanel extends JPanel {
                         new Insets(2, 2, 4, 2)));
 
         firstFieldRow = 1;
+    }
+
+    // A birdseye root card: a name header with an expand/collapse triangle,
+    // collapsed by default. Expanding shows the full fields below. The triangle
+    // flips the per-card state in the render context, then asks the view to
+    // rebuild THIS card fresh (factory-driven), so its new size is re-measured
+    // rather than grown in place. Selection (name click) coexists with the toggle.
+    private void buildCollapsibleRoot() {
+        boolean expanded = renderContext.isCardExpanded(quizable, false);
+
+        add(collapsibleRootHeader(expanded),
+                GridBagUtils.gbc(
+                        0, 0,
+                        1.0, 0.0,
+                        GridBagConstraints.NORTHWEST,
+                        GridBagConstraints.HORIZONTAL,
+                        new Insets(2, 2, expanded ? 4 : 2, 2)));
+        renderedConfiguredContent = true;
+
+        if (expanded) {
+            firstFieldRow = 1;
+            buildFields();
+        }
+    }
+
+    private JComponent collapsibleRootHeader(boolean expanded) {
+        String title = safeName(quizable);
+        if (title.isEmpty()) {
+            title = String.valueOf(quizable);
+        }
+
+        JLabel toggle = new JLabel(expanded ? "▼ " : "▶ ");
+        toggle.setForeground(new Color(0, 80, 180));
+        toggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        toggle.setToolTipText(expanded ? "Collapse" : "Expand");
+        toggle.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                e.consume();
+                renderContext.toggleCardExpanded(quizable, false);
+                renderContext.notifyCardToggled(quizable);
+            }
+        });
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD));
+        titleLabel.setForeground(new Color(0, 80, 180));
+        titleLabel.putClientProperty(QuizableSearchPanel.FIELD_NAME_PROPERTY, "name");
+        titleLabel.putClientProperty(QuizableSearchPanel.FIELD_VALUE_PROPERTY, title);
+        titleLabel.putClientProperty(QuizableSearchPanel.FIELD_PATH_PROPERTY, List.of("name"));
+
+        if (renderContext.selectionEnabled()) {
+            titleLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            titleLabel.setToolTipText("Click to select");
+            titleLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mousePressed(java.awt.event.MouseEvent e) {
+                    if (e.getClickCount() == 1) {
+                        renderContext.select(quizable);
+                    }
+                }
+            });
+        } else if (config.isAddListener()) {
+            addOpenListener(titleLabel, quizable);
+        }
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+        header.add(toggle, BorderLayout.WEST);
+        header.add(titleLabel, BorderLayout.CENTER);
+        return header;
     }
 
     private JComponent createTitleHeader(Quizable q) {

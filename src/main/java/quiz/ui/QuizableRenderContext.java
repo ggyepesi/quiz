@@ -280,6 +280,54 @@ public class QuizableRenderContext {
         timer.start();
     }
 
+    // -------- Collapsible root cards (birdseye browse) --------
+    // When on, each root card renders collapsed (name + a toggle triangle) and
+    // expands on demand — a birdseye list you drill into at will. The per-card
+    // open state is keyed by identity so it survives virtualized rebuilds. A
+    // toggle flips the state and asks the view (via a handler) to rebuild that
+    // one card FRESH at its new size — never grown in place.
+    private boolean collapsibleCards = false;
+    private final Map<Object, Boolean> cardExpanded = new IdentityHashMap<>();
+    private final java.util.List<java.util.function.Consumer<Quizable>> cardToggleHandlers =
+            new java.util.ArrayList<>();
+
+    public boolean collapsibleCards() {
+        return collapsibleCards;
+    }
+
+    public void setCollapsibleCards(boolean collapsibleCards) {
+        this.collapsibleCards = collapsibleCards;
+    }
+
+    public boolean isCardExpanded(Object key, boolean defaultExpanded) {
+        if (key == null) {
+            return defaultExpanded;
+        }
+        Boolean v = cardExpanded.get(key);
+        return v == null ? defaultExpanded : v;
+    }
+
+    public void toggleCardExpanded(Object key, boolean defaultExpanded) {
+        if (key != null) {
+            cardExpanded.put(key, !isCardExpanded(key, defaultExpanded));
+        }
+    }
+
+    /** Registers a handler (the view) that rebuilds a single card after its
+     *  collapse/expand state changed. Additive so a shared context can drive
+     *  several virtualized sections; each rebuilds only the card it owns. */
+    public void addCardToggleHandler(java.util.function.Consumer<Quizable> handler) {
+        if (handler != null) {
+            cardToggleHandlers.add(handler);
+        }
+    }
+
+    public void notifyCardToggled(Quizable q) {
+        for (java.util.function.Consumer<Quizable> handler : cardToggleHandlers) {
+            handler.accept(q);
+        }
+    }
+
     // -------- Single card selection --------
     // One selected object across all cards of this view. Like the search
     // highlight, it's data-based (a rebuilt card re-reads isSelected), so it

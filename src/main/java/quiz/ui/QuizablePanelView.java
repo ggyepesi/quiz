@@ -127,6 +127,18 @@ public class QuizablePanelView {
         // a card in ANY section resolves (not just the last section to register).
         context.addTopLevelResolver(o ->
                 o instanceof Quizable q ? virtualList.buildIfNeeded(q) : null);
+        // Collapsible cards toggle by rebuilding the one card fresh (factory-driven),
+        // so it re-measures at its new size instead of growing in place.
+        context.addCardToggleHandler(virtualList::invalidateCard);
+        // Navigating to a card (e.g. a search hit) reveals it: a collapsed target
+        // expands so a hit on a hidden field becomes visible. State lives in the
+        // context, so it stays expanded on scroll-away-and-back.
+        virtualList.setNavigateRevealHandler(q -> {
+            if (context.collapsibleCards() && !context.isCardExpanded(q, false)) {
+                context.toggleCardExpanded(q, false);
+                virtualList.invalidateCard(q);
+            }
+        });
 
         cardsScrollPane = new JScrollPane();
         cardsScrollPane.setDoubleBuffered(true);

@@ -67,6 +67,11 @@ public final class VirtualizedCardList
     // search highlight, which is lost when a card is virtualized out and rebuilt.
     private java.util.function.Consumer<JComponent> onCardBuilt;
 
+    // Invoked at the start of navigateToTop, so the owner can reveal the target
+    // (e.g. expand a collapsed card whose search-hit field is hidden) before it
+    // is built and scrolled into view.
+    private java.util.function.Consumer<Quizable> onNavigateReveal;
+
     private List<Quizable> items = new ArrayList<>();
 
     private final Map<Quizable, JComponent> built =
@@ -280,6 +285,15 @@ public final class VirtualizedCardList
 
         if (i < 0 || viewport == null) {
             return null;
+        }
+
+        // Let the owner REVEAL the target before it's built + scrolled to — e.g.
+        // expand a collapsed card so a search hit on a hidden field becomes
+        // visible. Mirrors VirtualizedGroupTreeView, which expands collapsed
+        // ancestors in its own navigateToTop. The handler may rebuild this card
+        // (changing its height), which the rebuildTops/scroll below then honours.
+        if (onNavigateReveal != null) {
+            onNavigateReveal.accept(q);
         }
 
         navGeneration++;
@@ -698,6 +712,13 @@ public final class VirtualizedCardList
         this.onCardBuilt = onCardBuilt;
     }
 
+    /** Registers a handler invoked at the start of {@link #navigateToTop} so the
+     *  owner can reveal the target (e.g. expand a collapsed card) before it's
+     *  built and scrolled into view. */
+    public void setNavigateRevealHandler(java.util.function.Consumer<Quizable> handler) {
+        this.onNavigateReveal = handler;
+    }
+
     /**
      * Keeps only cards in or near the visible range.
      */
@@ -826,6 +847,28 @@ public final class VirtualizedCardList
      */
     public void rebuild() {
         setItems(new ArrayList<>(items));
+    }
+
+    /**
+     * Discards a single card (and its stale height) so it is rebuilt fresh by
+     * the factory at its next visible pass — used when a card's own rendering
+     * changed (e.g. collapse/expand), so the new size is re-measured rather than
+     * grown in place. No-op if the card isn't built. Call on the EDT.
+     */
+    public void invalidateCard(Quizable q) {
+        if (q == null) {
+            return;
+        }
+        JComponent card = built.remove(q);
+        if (card != null) {
+            remove(card);
+        }
+        heights.remove(q);
+
+        rebuildTops();
+        revalidate();
+        repaint();
+        updateVisible();
     }
 
     @Override

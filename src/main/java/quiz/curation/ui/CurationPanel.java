@@ -176,6 +176,7 @@ public final class CurationPanel extends JPanel {
         // selects it (green ring), and Set fills the selected instance. The
         // context must be set before the cards are built so they pick it up.
         QuizableRenderContext ctx = new QuizableRenderContext();
+        ctx.setCollapsibleCards(true);   // birdseye: cards start collapsed, drill in at will
         ctx.setSelectionEnabled(true);
         ctx.addSelectionListener(o -> onSelected(o instanceof Quizable q ? q : null));
         v.setRenderContext(ctx);
