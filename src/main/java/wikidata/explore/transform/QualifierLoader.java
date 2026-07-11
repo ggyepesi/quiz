@@ -171,7 +171,7 @@ public class QualifierLoader {
                 entity.merge(cfg.statementField(), stmt);
                 created.add(stmt);
             }
-            applyQualifiers(stmt, row, cfg);
+            applyQualifiers(stmt, row, cfg, byQid);
         }
         if (log != null) {
             log.subquery("Qualifier load " + batchLabel + " (" + cfg.propertyPid()
@@ -181,7 +181,8 @@ public class QualifierLoader {
     }
 
     private static void applyQualifiers(
-            WikidataDynamicObject stmt, WikidataBinding row, QualifierLoadConfig cfg) {
+            WikidataDynamicObject stmt, WikidataBinding row, QualifierLoadConfig cfg,
+            Map<String, WikidataDynamicObject> byQid) {
         if (cfg.qualifiers() == null) {
             return;
         }
@@ -194,6 +195,16 @@ public class QualifierLoader {
                 case ENTITY -> {
                     WikidataDynamicObject e = row.entity(var);
                     if (e != null) {
+                        // Unify with the pool by qid: if this entity was ALSO
+                        // generated (as a class, carrying its own fields — e.g. an
+                        // Edition with its date), reference that instance instead of
+                        // a fresh bare copy, so the reified record's qualifier is the
+                        // field-bearing one. One instance per qid (mapper identity).
+                        WikidataDynamicObject pooled =
+                                e.qid() == null ? null : byQid.get(e.qid());
+                        if (pooled != null) {
+                            e = pooled;
+                        }
                         // A multi qualifier (e.g. P2453 co-nominees) repeats across
                         // rows — merge into a list so a shared award keeps every
                         // nominee; a single one just overwrites.

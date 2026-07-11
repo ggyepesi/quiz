@@ -8,7 +8,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class ModelProjectsTest {
+class ProjectConstructTest {
 
     private static WikidataDynamicObject typed(String qid, String name, String type) {
         WikidataDynamicObject o = new WikidataDynamicObject(qid, name);

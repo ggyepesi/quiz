@@ -153,14 +153,11 @@ public final class RuleTreeCompiler {
         FieldProductionKind kind = resolvedProductionKind(field);
         FieldSourceMapping m = field.mapping();
 
-        // INVERT, COMPANION_MATCH and PROJECT fields are DERIVED post-extraction
-        // (ModelInverts, CompanionMatcher, ModelProjects) — not fetched — so they
-        // don't belong in the query plan. (COMPANION_MATCH's propertyPid is the
-        // companion property, and PROJECT's value lives on a referenced entity,
-        // not a value to load here.)
+        // INVERT and COMPANION_MATCH fields are DERIVED post-extraction (ModelInverts,
+        // CompanionMatcher) — not fetched — so they don't belong in the query plan.
+        // (COMPANION_MATCH's propertyPid is the companion property, not a value to load.)
         if (kind == FieldProductionKind.INVERT
-                || kind == FieldProductionKind.COMPANION_MATCH
-                || kind == FieldProductionKind.PROJECT) {
+                || kind == FieldProductionKind.COMPANION_MATCH) {
             return;
         }
 
