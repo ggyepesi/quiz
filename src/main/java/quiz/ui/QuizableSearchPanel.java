@@ -636,6 +636,10 @@ public class QuizableSearchPanel extends JPanel
 
         clearHighlights();
         clearResults();
+        // New query: drop the previous hit set. searchSyncVirtual repopulates it
+        // for a non-empty query; an empty query leaves it cleared so stale hits
+        // don't re-highlight on scroll.
+        virtualHits.clear();
 
         if (text.isEmpty()) {
             return;
@@ -923,7 +927,7 @@ public class QuizableSearchPanel extends JPanel
             addHitGroupRow(g);
 
             if (first == null) {
-                first = g.hits.get(0);
+                first = g.hits.getFirst();
                 g.index = 0;
                 g.updateLabel();
             }
@@ -1397,7 +1401,10 @@ public class QuizableSearchPanel extends JPanel
     private void clearHighlights() {
         currentHit =
                 null;
-        virtualHits.clear();
+        // NOTE: virtualHits is NOT cleared here — clearHighlights fires on every
+        // navigate-between-hits, but the hit set belongs to the whole QUERY, so a
+        // card rebuilt on scroll-back can be re-highlighted. It's reset per query
+        // in searchSync (and repopulated by searchSyncVirtual).
 
         if (rememberedSearchComponents.isEmpty()
                 && previousMatchedCards.isEmpty()) {
