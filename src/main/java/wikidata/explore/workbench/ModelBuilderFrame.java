@@ -86,6 +86,14 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton showInstancesButton =
             new JButton("Show instances");
 
+    private final JButton showStatementsButton =
+            new JButton("Statements…");
+
+    // Example-first statement view (#91): sample the selected class + show its
+    // instances' statements-with-qualifiers, in its own window.
+    private JFrame statementsWindow;
+    private StatementSummaryPanel statementsPanel;
+
     private final JButton showGeneratedSourceButton =
             new JButton("Show generated source");
 
@@ -238,6 +246,10 @@ public class ModelBuilderFrame extends JFrame {
 
         JPanel runRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow2.add(showInstancesButton);
+        showStatementsButton.setToolTipText("Sample the selected class and show its "
+                + "instances' statements — property → values with qualifiers nested, "
+                + "plus coverage badges (example-first field discovery, #91).");
+        runRow2.add(showStatementsButton);
         runRow2.add(showQueryLogsButton);
 
         JPanel runSection = new JPanel(new GridLayout(0, 1, 0, 0));
@@ -306,6 +318,43 @@ public class ModelBuilderFrame extends JFrame {
 
     // Lazily-created window hosting the discovery tools moved out of the main
     // frame, so the main window stays focused on domain + configuration.
+    // Sample the selected class, then open the statement view on those instances.
+    private void showStatementsWindow(wikidata.explore.query.swing.SwingQueryRunner queryRunner) {
+        wikidata.explore.rule.RuleNode node = sourceWorkbench.temporaryRuleNodeForSelected();
+        if (node == null) {
+            logWindow.info("Statements: select a class first.\n");
+            return;
+        }
+        queryRunner.runQuiet(
+                new wikidata.explore.query.logical.SampleClassQuery(node, 5),
+                result -> {
+                    java.util.List<String> qids = new java.util.ArrayList<>();
+                    for (java.util.List<Object> row : result.rows()) {
+                        if (!row.isEmpty() && row.get(0) != null
+                                && row.get(0).toString().matches("Q\\d+")) {
+                            qids.add(row.get(0).toString());
+                        }
+                    }
+                    SwingUtilities.invokeLater(() -> openStatementsWindow(qids));
+                },
+                ex -> logWindow.info("Statements sample failed: " + ex.getMessage() + "\n"));
+    }
+
+    private void openStatementsWindow(java.util.List<String> qids) {
+        if (statementsWindow == null) {
+            statementsPanel = new StatementSummaryPanel(client);
+            statementsWindow = new JFrame("Statements — example-first (#91)");
+            statementsWindow.add(statementsPanel);
+            statementsWindow.setSize(780, 720);
+            statementsWindow.setLocationRelativeTo(this);
+        }
+        statementsWindow.setVisible(true);
+        statementsWindow.toFront();
+        if (!qids.isEmpty()) {
+            statementsPanel.showFor(qids);
+        }
+    }
+
     private void showExplorerWindow() {
         if (explorerWindow == null) {
             explorerWindow = new JFrame("Explorer tools");
@@ -511,6 +560,7 @@ public class ModelBuilderFrame extends JFrame {
                 this::reportGenerationError);
 
         showInstancesButton.addActionListener(e -> showInstancesWindow());
+        showStatementsButton.addActionListener(e -> showStatementsWindow(queryRunner));
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());
         showGraphButton.addActionListener(e -> showGraphWindow());
