@@ -10,26 +10,29 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
- * Example-first statement view (GitHub #91, slice 3): enter or push in a few
- * sample QIDs and see the MERGED coverage — property → qualifiers, each badged
- * with how many samples/statements carry it — as <b>clickable rows</b>. A `+`
- * on a property configures a field for it; a `+` on a qualifier configures a
- * qualifier field (e.g. edition ← P805). The click sets the PID + name and opens
- * the field editor pre-filled, so "selecting a statement is almost enough."
- *
- * <p>Standalone-usable ({@link #main}) and integration-ready ({@link #showFor}
- * + the two configure callbacks the modelbuilder wires to its Add-Field path).
- * The coverage badge is a directional hint over a few samples, not the aggregate
- * verdict — the panel says so.
+ * Example-first statement view (GitHub #91): enter or push in a few sample QIDs
+ * and see, in two tabs:
+ * <ul>
+ *   <li><b>Configure</b> — the MERGED coverage (property → qualifiers, badged
+ *       with how many samples/statements carry each) as <b>clickable rows</b>;
+ *       a {@code +} configures a field / qualifier field via the modelbuilder's
+ *       Add-Field path.</li>
+ *   <li><b>Values</b> — each sample entity's statements with the actual value
+ *       <em>labels</em>, so you can see what the values are (pick an object
+ *       class, sanity-check).</li>
+ * </ul>
+ * The loaded QIDs render as clickable chips that open the wiki page. Coverage
+ * over a few samples is a directional hint, not the aggregate verdict.
  */
 public final class StatementSummaryPanel extends JPanel {
 
     private final WikidataSparqlClient client;
-    private final JTextField qidsField = new JTextField(26);
+    private final JTextField qidsField = new JTextField(24);
     private final JLabel status = new JLabel(" ");
+    private final JPanel chipsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
     private final JPanel rowsHost = new JPanel();
+    private final JTextArea valuesArea = new JTextArea();
 
-    // (pid, humanLabel) — a statement property, or a statement qualifier.
     private BiConsumer<String, String> onConfigureField = (pid, label) -> { };
     private BiConsumer<String, String> onConfigureQualifier = (pid, label) -> { };
 
@@ -37,19 +40,31 @@ public final class StatementSummaryPanel extends JPanel {
         this.client = client;
         setLayout(new BorderLayout(6, 6));
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        top.add(new JLabel("Sample QIDs:"));
-        top.add(qidsField);
+        JPanel input = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        input.add(new JLabel("Sample QIDs:"));
+        input.add(qidsField);
         JButton load = new JButton("Load");
         load.addActionListener(e -> load(parseQids(qidsField.getText())));
-        top.add(load);
-        top.add(status);
-        add(top, BorderLayout.NORTH);
+        input.add(load);
+        input.add(status);
+
+        JPanel north = new JPanel(new BorderLayout());
+        north.add(input, BorderLayout.NORTH);
+        north.add(chipsRow, BorderLayout.CENTER);
+        add(north, BorderLayout.NORTH);
 
         rowsHost.setLayout(new BoxLayout(rowsHost, BoxLayout.Y_AXIS));
-        JScrollPane scroll = new JScrollPane(rowsHost);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        add(scroll, BorderLayout.CENTER);
+        JScrollPane configScroll = new JScrollPane(rowsHost);
+        configScroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        valuesArea.setEditable(false);
+        valuesArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        JScrollPane valuesScroll = new JScrollPane(valuesArea);
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Configure", configScroll);
+        tabs.addTab("Values", valuesScroll);
+        add(tabs, BorderLayout.CENTER);
 
         JLabel note = new JLabel("  Click + to configure a field / qualifier field. "
                 + "Coverage over a few samples is a hint — a large-N probe is the authority.");
@@ -57,12 +72,10 @@ public final class StatementSummaryPanel extends JPanel {
         add(note, BorderLayout.SOUTH);
     }
 
-    /** Wire a statement-property click to the modelbuilder's Add-Field path. */
     public void onConfigureField(BiConsumer<String, String> handler) {
         this.onConfigureField = handler == null ? (a, b) -> { } : handler;
     }
 
-    /** Wire a qualifier click to the modelbuilder's Add-qualifier-Field path. */
     public void onConfigureQualifier(BiConsumer<String, String> handler) {
         this.onConfigureQualifier = handler == null ? (a, b) -> { } : handler;
     }
@@ -82,9 +95,10 @@ public final class StatementSummaryPanel extends JPanel {
         rowsHost.removeAll();
         rowsHost.revalidate();
         rowsHost.repaint();
+        valuesArea.setText("");
 
-        new SwingWorker<MergedStatementSummary, Void>() {
-            @Override protected MergedStatementSummary doInBackground() {
+        new SwingWorker<List<EntityStatementSummary>, Void>() {
+            @Override protected List<EntityStatementSummary> doInBackground() {
                 List<EntityStatementSummary> summaries = new ArrayList<>();
                 for (String qid : qids) {
                     try {
@@ -93,17 +107,32 @@ public final class StatementSummaryPanel extends JPanel {
                         // skip a failed sample
                     }
                 }
-                return MergedStatementSummary.of(summaries);
+                return summaries;
             }
             @Override protected void done() {
                 try {
-                    buildRows(get());
-                    status.setText("  " + qids.size() + " sample(s)");
+                    List<EntityStatementSummary> summaries = get();
+                    buildChips(summaries);
+                    buildRows(MergedStatementSummary.of(summaries));
+                    buildValues(summaries);
+                    status.setText("  " + summaries.size() + " sample(s)");
                 } catch (Exception ex) {
                     status.setText("  failed: " + ex.getMessage());
                 }
             }
         }.execute();
+    }
+
+    private void buildChips(List<EntityStatementSummary> summaries) {
+        chipsRow.removeAll();
+        if (!summaries.isEmpty()) {
+            chipsRow.add(new JLabel("samples:"));
+        }
+        for (EntityStatementSummary s : summaries) {
+            chipsRow.add(qidLink(s.qid()));
+        }
+        chipsRow.revalidate();
+        chipsRow.repaint();
     }
 
     private void buildRows(MergedStatementSummary merged) {
@@ -117,6 +146,15 @@ public final class StatementSummaryPanel extends JPanel {
         rowsHost.add(Box.createVerticalGlue());
         rowsHost.revalidate();
         rowsHost.repaint();
+    }
+
+    private void buildValues(List<EntityStatementSummary> summaries) {
+        StringBuilder sb = new StringBuilder();
+        for (EntityStatementSummary s : summaries) {
+            sb.append(s.concise()).append('\n');
+        }
+        valuesArea.setText(sb.toString());
+        valuesArea.setCaretPosition(0);
     }
 
     private JComponent propertyRow(MergedStatementSummary.PropertyCoverage p, int samples) {
@@ -157,6 +195,27 @@ public final class StatementSummaryPanel extends JPanel {
         return b;
     }
 
+    /** A clickable QID that opens its wiki page. */
+    private static JLabel qidLink(String qid) {
+        JLabel link = new JLabel("<html><a href=''>" + qid + "</a></html>");
+        link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        link.setToolTipText("Open " + qid + " on wikidata.org");
+        link.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                openInBrowser("https://www.wikidata.org/wiki/" + qid);
+            }
+        });
+        return link;
+    }
+
+    private static void openInBrowser(String url) {
+        try {
+            Desktop.getDesktop().browse(java.net.URI.create(url));
+        } catch (Exception ignored) {
+            // no browser available — best effort
+        }
+    }
+
     private static List<String> parseQids(String text) {
         List<String> out = new ArrayList<>();
         if (text != null) {
@@ -182,7 +241,7 @@ public final class StatementSummaryPanel extends JPanel {
             JFrame frame = new JFrame("Statement summary (example-first) — #91");
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             frame.add(panel);
-            frame.setSize(780, 720);
+            frame.setSize(820, 720);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
             panel.showFor(Arrays.asList(args.length > 0 ? args : new String[]{"Q103474"}));
