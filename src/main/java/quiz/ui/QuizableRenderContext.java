@@ -280,6 +280,60 @@ public class QuizableRenderContext {
         timer.start();
     }
 
+    // -------- Single card selection --------
+    // One selected object across all cards of this view. Like the search
+    // highlight, it's data-based (a rebuilt card re-reads isSelected), so it
+    // survives virtualization. Listeners let an app (e.g. curation) act on the
+    // selected object.
+    private boolean selectionEnabled = false;
+    private Object selected;
+    private final java.util.List<java.util.function.Consumer<Object>> selectionListeners =
+            new java.util.ArrayList<>();
+
+    public boolean selectionEnabled() {
+        return selectionEnabled;
+    }
+
+    public void setSelectionEnabled(boolean selectionEnabled) {
+        this.selectionEnabled = selectionEnabled;
+    }
+
+    public boolean isSelected(Object object) {
+        return object != null && object == selected;
+    }
+
+    public Object selected() {
+        return selected;
+    }
+
+    public void addSelectionListener(java.util.function.Consumer<Object> listener) {
+        if (listener != null) {
+            selectionListeners.add(listener);
+        }
+    }
+
+    /** Selects {@code object}, repainting the previously- and newly-selected
+     *  cards (if built) and notifying listeners. */
+    public void select(Object object) {
+        if (object == selected) {
+            return;
+        }
+        Object previous = selected;
+        selected = object;
+        repaintCard(previous);
+        repaintCard(object);
+        for (java.util.function.Consumer<Object> listener : selectionListeners) {
+            listener.accept(object);
+        }
+    }
+
+    private void repaintCard(Object object) {
+        JComponent c = topLevelComponents.get(object);
+        if (c != null && c.getParent() != null) {
+            c.repaint();
+        }
+    }
+
     public void putClassConfig(Class<?> cls, QuizablePanelConfig config) {
         if (cls != null && config != null) {
             classConfigs.put(cls, config.copy());

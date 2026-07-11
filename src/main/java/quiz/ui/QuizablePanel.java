@@ -119,13 +119,30 @@ public class QuizablePanel extends JPanel {
         repaint();
     }
 
+    private static final Color SELECTION_TINT = new Color(30, 110, 210, 28);
+    private static final Color SELECTION_BORDER = new Color(30, 110, 210);
+
     @Override
     protected void paintComponent(Graphics g) {
+        boolean selected = renderContext != null && renderContext.isSelected(quizable);
         if (highlightColor != null) {
             g.setColor(highlightColor);
             g.fillRect(0, 0, getWidth(), getHeight());
+        } else if (selected) {
+            g.setColor(SELECTION_TINT);
+            g.fillRect(0, 0, getWidth(), getHeight());
         }
         super.paintComponent(g);
+        // A repaint-only selection ring drawn just inside the card border, so
+        // toggling selection never changes the card's measured size (which would
+        // force the virtualized list to re-measure every card).
+        if (selected) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setColor(SELECTION_BORDER);
+            g2.setStroke(new BasicStroke(2f));
+            g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 8, 8);
+            g2.dispose();
+        }
     }
 
     private final Set<Object> visited;
@@ -416,6 +433,22 @@ public class QuizablePanel extends JPanel {
         titleLabel.putClientProperty(QuizableSearchPanel.FIELD_NAME_PROPERTY, "name");
         titleLabel.putClientProperty(QuizableSearchPanel.FIELD_VALUE_PROPERTY, title);
         titleLabel.putClientProperty(QuizableSearchPanel.FIELD_PATH_PROPERTY, List.of("name"));
+
+        // A view can enable single-selection (e.g. curation, to pick the instance
+        // to fill): a single click on the card's name selects it — the render
+        // context tracks the one selected object, repaints the affected cards, and
+        // notifies listeners. Double-click still opens the detail view below.
+        if (renderContext != null && renderContext.selectionEnabled()) {
+            titleLabel.setToolTipText("Click to select — double-click to open");
+            titleLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mousePressed(java.awt.event.MouseEvent e) {
+                    if (e.getClickCount() == 1) {
+                        renderContext.select(quizable);
+                    }
+                }
+            });
+        }
 
         if (config.isAddListener()) {
             if (focusTopLevel) {

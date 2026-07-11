@@ -9,6 +9,7 @@ import quiz.transform.pipeline.ui.FilterPredicates;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import quiz.ui.QuizablePanelView;
+import quiz.ui.QuizableRenderContext;
 import quiz.ui.QuizableSearchPanel;
 
 import javax.swing.*;
@@ -31,10 +32,14 @@ public final class CurationPanel extends JPanel {
 
     private final JComboBox<String> typeCombo = new JComboBox<>();
     private final JComboBox<FieldItem> fieldCombo = new JComboBox<>();
-    private final JComboBox<InstanceItem> targetCombo = new JComboBox<>();
     private final JTextField valueField = new JTextField(12);
     private final JLabel status = new JLabel(" ");
+    private final JLabel selectedLabel = new JLabel("no instance selected");
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
+
+    // The instance to fill — chosen by clicking its card in the view above
+    // (search / sort help find it), not from a combo.
+    private Quizable selected;
 
     public CurationPanel(DomainModel domain, ManualCuration curation, Runnable onCurated) {
         this.domain = domain;
@@ -70,14 +75,26 @@ public final class CurationPanel extends JPanel {
 
     private JComponent bottom() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        p.add(new JLabel("Set for:"));
-        p.add(targetCombo);
-        p.add(new JLabel("value:"));
+        p.add(new JLabel("Selected:"));
+        selectedLabel.setForeground(Color.GRAY);
+        p.add(selectedLabel);
+        p.add(new JLabel("   value:"));
         p.add(valueField);
         JButton set = new JButton("Set");
         set.addActionListener(e -> setValue());
         p.add(set);
         return p;
+    }
+
+    private void onSelected(Quizable q) {
+        selected = q;
+        if (q == null) {
+            selectedLabel.setText("no instance selected");
+            selectedLabel.setForeground(Color.GRAY);
+        } else {
+            selectedLabel.setText(q.getDisplayName());
+            selectedLabel.setForeground(new Color(0, 110, 40));
+        }
     }
 
     private void onTypeChanged() {
@@ -115,10 +132,7 @@ public final class CurationPanel extends JPanel {
         status.setText("   " + missing.size() + " missing"
                 + (fi == null ? "" : " " + fi.field.field()));
 
-        targetCombo.removeAllItems();
-        for (Quizable q : missing) {
-            targetCombo.addItem(new InstanceItem(q));
-        }
+        onSelected(null);   // the list changed — drop any prior selection
 
         instancesHolder.removeAll();
         instancesHolder.add(instancesView(missing, type), BorderLayout.CENTER);
@@ -127,9 +141,12 @@ public final class CurationPanel extends JPanel {
     }
 
     private void setValue() {
-        InstanceItem target = (InstanceItem) targetCombo.getSelectedItem();
         FieldItem fi = (FieldItem) fieldCombo.getSelectedItem();
-        if (target == null || fi == null) {
+        if (fi == null) {
+            return;
+        }
+        if (selected == null) {
+            status.setText("   Select an instance (click its card) first");
             return;
         }
         String value = valueField.getText().trim();
@@ -138,7 +155,7 @@ public final class CurationPanel extends JPanel {
         }
 
         // Store the plain value; Corrections coerces it to the field's type on apply.
-        curation.put(target.q.getIdentifier(), fi.field.field(), value);
+        curation.put(selected.getIdentifier(), fi.field.field(), value);
         try {
             curation.save();
         } catch (Exception ex) {
@@ -154,6 +171,15 @@ public final class CurationPanel extends JPanel {
 
     private JComponent instancesView(List<Quizable> missing, String type) {
         QuizablePanelView v = new QuizablePanelView();
+
+        // Enable click-to-select on the cards: clicking an instance's name
+        // selects it (green ring), and Set fills the selected instance. The
+        // context must be set before the cards are built so they pick it up.
+        QuizableRenderContext ctx = new QuizableRenderContext();
+        ctx.setSelectionEnabled(true);
+        ctx.addSelectionListener(o -> onSelected(o instanceof Quizable q ? q : null));
+        v.setRenderContext(ctx);
+
         for (Quizable m : missing) {
             v.addQuizable(m);
         }
@@ -179,11 +205,5 @@ public final class CurationPanel extends JPanel {
 
     private record FieldItem(DomainField field) {
         @Override public String toString() { return field.field(); }
-    }
-
-    private record InstanceItem(Quizable q) {
-        @Override public String toString() {
-            return q.getDisplayName() + "   (" + q.getIdentifier() + ")";
-        }
     }
 }
