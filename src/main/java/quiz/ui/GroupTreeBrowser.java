@@ -12,8 +12,10 @@ import java.util.Set;
 /**
  * Unified grouped browser:
  *
- * - GroupTreeVirtualView owns group expansion and virtual leaf cards.
- * - QuizableSearchPanel owns search/sort/view configuration/highlighting.
+ * - VirtualizedGroupTreeView flattens the whole hierarchy (group headers + member
+ *   cards) into ONE virtualized outline — expand/collapse and member field-chips
+ *   behave like the flat card list, with a single scroll.
+ * - QuizableSearchPanel owns search / sort / view configuration / highlighting.
  */
 public final class GroupTreeBrowser extends JPanel {
 
@@ -29,13 +31,9 @@ public final class GroupTreeBrowser extends JPanel {
         QuizablePanelConfig initialConfig =
                 QuizablePanelConfig.all(memberClass);
 
-        GroupTreeVirtualView groupedView = new GroupTreeVirtualView(
-                root,
-                initialConfig
-        );
-
-        JScrollPane outerScroll = new JScrollPane(groupedView);
-        outerScroll.getVerticalScrollBar().setUnitIncrement(16);
+        VirtualizedGroupTreeView groupedView =
+                new VirtualizedGroupTreeView(root, initialConfig);
+        groupedView.scrollPane().getVerticalScrollBar().setUnitIncrement(16);
 
         QuizableSearchPanel searchPanel = new QuizableSearchPanel(
                 memberClass,
@@ -47,12 +45,10 @@ public final class GroupTreeBrowser extends JPanel {
                                    );
         searchPanel.setFieldTypes(fieldTypes);
 
-        searchPanel.setTarget(
-                groupedView,
-                outerScroll
-                             );
+        // The view owns its own (single) scroll pane — no outer wrapper.
+        searchPanel.setTarget(groupedView, groupedView.scrollPane());
 
         add(searchPanel, BorderLayout.NORTH);
-        add(outerScroll, BorderLayout.CENTER);
+        add(groupedView, BorderLayout.CENTER);
     }
 }
