@@ -51,8 +51,16 @@ public final class DomainCatalog {
         var pool = new WikidataDynamicObjectJsonStore().loadAll(snap);
         // Overlay curated / auto-fixed values onto the freshly loaded base data,
         // before compiling — so the sidecar survives regeneration. See quiz.curation.
-        quiz.curation.Corrections.apply(pool,
-                List.of(quiz.curation.ManualCuration.forSnapshot(snap)));
+        var curation = quiz.curation.ManualCuration.forSnapshot(snap);
+        quiz.curation.Corrections.apply(pool, List.of(curation));
+
+        quiz.transform.ui.DomainModel base = compile(model, pool);
+        // Carry the curation store so the workbench can offer a "Curate…" action.
+        return new CuratableDomain(base, curation);
+    }
+
+    private static quiz.transform.ui.DomainModel compile(
+            File model, java.util.List<wikidata.explore.extract.WikidataDynamicObject> pool) {
         if (model != null && model.isFile()) {
             try {
                 var project = new wikidata.explore.model.GeneratedProjectModelStore()

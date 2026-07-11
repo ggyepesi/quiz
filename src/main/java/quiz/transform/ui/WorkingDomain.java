@@ -14,7 +14,7 @@ import java.util.Map;
  * operation can consume a class produced by an earlier PROJECT — the composable
  * transform graph. Derived instances are added to {@link #instances()} for the view.
  */
-public final class WorkingDomain implements DomainModel, SchemaView {
+public final class WorkingDomain implements DomainModel, SchemaView, quiz.curation.Curatable {
 
     private final DomainModel base;
     private final Map<String, DerivedClass> derived = new LinkedHashMap<>();
@@ -25,6 +25,10 @@ public final class WorkingDomain implements DomainModel, SchemaView {
 
     @Override public javax.swing.JComponent schemaView() {
         return base instanceof SchemaView sv ? sv.schemaView() : null;
+    }
+
+    @Override public quiz.curation.ManualCuration curation() {
+        return base instanceof quiz.curation.Curatable c ? c.curation() : null;
     }
 
     public void add(DerivedClass d) {

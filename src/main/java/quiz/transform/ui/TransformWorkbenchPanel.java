@@ -64,6 +64,9 @@ public final class TransformWorkbenchPanel extends JPanel {
         if (controller.canSave()) {
             top.add(button("Save as domain…", this::saveAsDomain));
         }
+        if (controller.domain() instanceof quiz.curation.Curatable c && c.curation() != null) {
+            top.add(button("Curate…", () -> openCuration(c.curation())));
+        }
         if (top.getComponentCount() > 0) {
             left.add(top, BorderLayout.NORTH);
         }
@@ -78,6 +81,18 @@ public final class TransformWorkbenchPanel extends JPanel {
         JButton b = new JButton(text);
         b.addActionListener(e -> action.run());
         return b;
+    }
+
+    /** Open the manual-curation panel over this domain; re-render on any change. */
+    private void openCuration(quiz.curation.ManualCuration curation) {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Curate — fill missing field values", Dialog.ModalityType.MODELESS);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(new quiz.curation.ui.CurationPanel(controller.domain(), curation, this::render),
+                BorderLayout.CENTER);
+        dialog.setSize(1000, 720);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     @SuppressWarnings("unchecked")
