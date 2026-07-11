@@ -313,6 +313,16 @@ public class QuizableRenderContext {
         }
     }
 
+    /** Cards default to collapsed (birdseye), so these one-arg forms are the
+     *  common case. */
+    public boolean isCardExpanded(Object key) {
+        return isCardExpanded(key, false);
+    }
+
+    public void toggleCardExpanded(Object key) {
+        toggleCardExpanded(key, false);
+    }
+
     /** Registers a handler (the view) that rebuilds a single card after its
      *  collapse/expand state changed. Additive so a shared context can drive
      *  several virtualized sections; each rebuilds only the card it owns. */

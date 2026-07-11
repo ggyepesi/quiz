@@ -9,15 +9,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 import java.util.*;
-import java.util.function.Function;
 
-/**
- * A single virtualized outline for an entire QuizableGroup hierarchy.
- *
- * Visible group headers and member cards are flattened into one row list and
- * rendered by one VirtualizedCardList. Expanding/collapsing a group changes only
- * the flattened row list; member QuizablePanels remain lazily materialized.
- */
 public final class VirtualizedGroupTreeView extends JPanel
         implements ConfigurableVirtualizedQuizableContainer {
 
@@ -26,25 +18,15 @@ public final class VirtualizedGroupTreeView extends JPanel
     private final QuizableGroup root;
     private final VirtualizedCardList rows;
     private final JScrollPane rowsScroll;
+    private final QuizableRenderContext renderContext = new QuizableRenderContext();
 
-    private final QuizableRenderContext renderContext =
-            new QuizableRenderContext();
-
-    /**
-     * Expansion is structural, so identity is appropriate.
-     */
     private final Set<QuizableGroup> expandedGroups =
             Collections.newSetFromMap(new IdentityHashMap<>());
-
-    /**
-     * Search operates on real members, not outline-row wrappers.
-     */
     private final List<Quizable> members = new ArrayList<>();
 
-    /**
-     * One real member can occur in several buckets. Keep all corresponding rows.
-     */
     private final Map<Quizable, List<MemberRow>> rowsByMember =
+            new IdentityHashMap<>();
+    private final Map<QuizableGroup, GroupRow> rowByGroup =
             new IdentityHashMap<>();
 
     private final List<Quizable> visibleRows = new ArrayList<>();
@@ -52,6 +34,7 @@ public final class VirtualizedGroupTreeView extends JPanel
     private QuizablePanelConfig cardConfig;
     private Comparator<Quizable> memberComparator;
     private Quizable lastNavigated;
+    private QuizablePanelTargetListener targetListener;
 
     public VirtualizedGroupTreeView(
             QuizableGroup root,
@@ -63,122 +46,43 @@ public final class VirtualizedGroupTreeView extends JPanel
         setLayout(new BorderLayout());
 
         collectUniqueMembers(root, members);
-
         for (Quizable member : members) {
             renderContext.addTopLevel(member);
         }
 
+        renderContext.setCollapsibleCards(true);
+
         rows = new VirtualizedCardList(this::createRowComponent);
+
+        renderContext.addCardToggleHandler(this::invalidateMemberOccurrences);
+
+        rows.setNavigateRevealHandler(rowObject -> {
+            if (rowObject instanceof MemberRow row) {
+                revealMemberCard(row.member);
+            }
+        });
+
+        rows.setOnCardBuilt(component -> {
+            QuizablePanel panel = findQuizablePanel(component);
+            if (panel != null && targetListener != null) {
+                targetListener.quizablePanelMaterialized(panel);
+            }
+        });
+
         rowsScroll = new JScrollPane();
         rows.install(rowsScroll);
-
         add(rowsScroll, BorderLayout.CENTER);
 
-        /*
-         * The root itself is conceptual; show its children initially.
-         */
         expandedGroups.add(root);
-
         rebuildVisibleRows();
     }
 
-    /**
-     * Use this when GroupTreeBrowser already owns the outer scrolling.
-     */
-    public VirtualizedGroupTreeView(
-            QuizableGroup root,
-            QuizablePanelConfig cardConfig,
-            boolean exposeInnerScroll) {
-
-        this(root, cardConfig);
-
-        if (!exposeInnerScroll) {
-            remove(rowsScroll);
-            add(rows, BorderLayout.CENTER);
-        }
+    public void setTargetListener(QuizablePanelTargetListener listener) {
+        this.targetListener = listener;
     }
 
-    @Override
-    public List<Quizable> items() {
-        return Collections.unmodifiableList(members);
-    }
-
-    @Override
-    public Quizable topVisibleItem() {
-        Quizable row = rows.topVisibleItem();
-
-        if (row instanceof MemberRow memberRow) {
-            return memberRow.member;
-        }
-
-        return lastNavigated;
-    }
-
-    @Override
-    public JComponent navigateToTop(Quizable member) {
-        if (member == null) {
-            return null;
-        }
-
-        List<MemberRow> locations = rowsByMember.get(member);
-
-        /*
-         * The member may currently be hidden below collapsed ancestors.
-         */
-        if (locations == null || locations.isEmpty()) {
-            expandPathTo(member);
-            rebuildVisibleRows();
-            locations = rowsByMember.get(member);
-        }
-
-        if (locations == null || locations.isEmpty()) {
-            return null;
-        }
-
-        MemberRow row = locations.getFirst();
-        JComponent component = rows.navigateToTop(row);
-
-        lastNavigated = member;
-
-        /*
-         * QuizableSearchPanel expects the actual QuizablePanel so it can expand
-         * nested fields and apply exact highlighting.
-         */
-        return findQuizablePanel(component);
-    }
-
-    /**
-     * Applies a global member order while retaining the group hierarchy.
-     */
-    @Override
-    public void setItems(List<Quizable> orderedMembers) {
-        Map<Quizable, Integer> rank = new IdentityHashMap<>();
-
-        if (orderedMembers != null) {
-            for (int i = 0; i < orderedMembers.size(); i++) {
-                rank.put(orderedMembers.get(i), i);
-            }
-
-            members.clear();
-            members.addAll(orderedMembers);
-        }
-
-        memberComparator = Comparator.comparingInt(
-                q -> rank.getOrDefault(q, Integer.MAX_VALUE)
-                                                  );
-
-        rebuildVisibleRows();
-    }
-
-    @Override
-    public void setCardConfig(QuizablePanelConfig config) {
-        cardConfig = config == null ? null : config.copy();
-
-        /*
-         * The factory is unchanged conceptually, but replacing it discards built
-         * rows and stale height measurements. Rows rebuild lazily.
-         */
-        rows.setCardFactory(this::createRowComponent);
+    public QuizableRenderContext renderContext() {
+        return renderContext;
     }
 
     public JScrollPane scrollPane() {
@@ -189,29 +93,121 @@ public final class VirtualizedGroupTreeView extends JPanel
         return rows;
     }
 
+    @Override
+    public List<Quizable> items() {
+        return Collections.unmodifiableList(members);
+    }
+
+    @Override
+    public Quizable topVisibleItem() {
+        Quizable topRow = rows.topVisibleItem();
+
+        if (topRow instanceof MemberRow memberRow) {
+            return memberRow.member;
+        }
+
+        if (topRow != null) {
+            int index = identityIndexOf(visibleRows, topRow);
+            for (int i = Math.max(0, index + 1); i < visibleRows.size(); i++) {
+                if (visibleRows.get(i) instanceof MemberRow memberRow) {
+                    return memberRow.member;
+                }
+            }
+        }
+
+        return lastNavigated != null
+                ? lastNavigated
+                : members.isEmpty() ? null : members.getFirst();
+    }
+
+    @Override
+    public JComponent navigateToTop(Quizable member) {
+        if (member == null) {
+            return null;
+        }
+
+        List<MemberRow> occurrences = rowsByMember.get(member);
+
+        if (occurrences == null || occurrences.isEmpty()) {
+            expandPathTo(member);
+            rebuildVisibleRows();
+            occurrences = rowsByMember.get(member);
+        }
+
+        if (occurrences == null || occurrences.isEmpty()) {
+            return null;
+        }
+
+        MemberRow row = occurrences.getFirst();
+        JComponent wrapper = rows.navigateToTop(row);
+        lastNavigated = member;
+
+        return findQuizablePanel(wrapper);
+    }
+
+    @Override
+    public void setItems(List<Quizable> orderedMembers) {
+        Map<Quizable, Integer> rank = new IdentityHashMap<>();
+
+        if (orderedMembers != null) {
+            for (int i = 0; i < orderedMembers.size(); i++) {
+                rank.put(orderedMembers.get(i), i);
+            }
+            members.clear();
+            members.addAll(orderedMembers);
+        }
+
+        memberComparator = Comparator.comparingInt(
+                member -> rank.getOrDefault(member, Integer.MAX_VALUE));
+
+        rebuildVisibleRows();
+    }
+
+    @Override
+    public void setCardConfig(QuizablePanelConfig config) {
+        cardConfig = config == null ? null : config.copy();
+        rows.setCardFactory(this::createRowComponent);
+    }
+
+    private void invalidateMemberOccurrences(Quizable member) {
+        List<MemberRow> occurrences = rowsByMember.get(member);
+        if (occurrences == null) {
+            return;
+        }
+        for (MemberRow row : new ArrayList<>(occurrences)) {
+            rows.invalidateCard(row);
+        }
+    }
+
+    private void revealMemberCard(Quizable member) {
+        if (member == null || renderContext.isCardExpanded(member)) {
+            return;
+        }
+
+        renderContext.toggleCardExpanded(member);
+        renderContext.notifyCardToggled(member);
+    }
+
     private void rebuildVisibleRows() {
         visibleRows.clear();
         rowsByMember.clear();
+        rowByGroup.clear();
 
         appendGroupContents(root, 0);
-
         rows.setItems(new ArrayList<>(visibleRows));
     }
 
-    /**
-     * Appends the currently visible outline below a group.
-     */
     private void appendGroupContents(QuizableGroup group, int depth) {
         for (QuizableGroup child : new ArrayList<>(group.getChildren())) {
-            // Skip an empty node — e.g. a `year` dimension whose only members have
-            // no year value produces a bucket-less, member-less facet.
             if (child == null || child.getMembers().isEmpty()) {
                 continue;
             }
 
             GroupRow groupRow =
                     new GroupRow(child, depth, expandedGroups.contains(child));
+
             visibleRows.add(groupRow);
+            rowByGroup.put(child, groupRow);
 
             if (!groupRow.expanded) {
                 continue;
@@ -221,15 +217,9 @@ public final class VirtualizedGroupTreeView extends JPanel
                 appendGroupContents(child, depth + 1);
             }
 
-            // Members of this bucket not represented by a deeper child bucket (at a
-            // leaf that's every member; higher up it's the ones lacking the next
-            // grouping value).
             addMemberRows(directMembersOf(child), depth + 1);
         }
 
-        // The root's own direct members: the fully-flat case (no groups at all) AND
-        // root-level orphans — members with no value for any top dimension, so in
-        // NO bucket. Rendered here so they're never dropped.
         if (group == root) {
             addMemberRows(directMembersOf(root), depth);
         }
@@ -253,14 +243,10 @@ public final class VirtualizedGroupTreeView extends JPanel
         }
 
         return Comparator.comparing(
-                q -> Objects.toString(q.getDisplayName(), ""),
-                String.CASE_INSENSITIVE_ORDER
-                                   );
+                member -> Objects.toString(member.getDisplayName(), ""),
+                String.CASE_INSENSITIVE_ORDER);
     }
 
-    /**
-     * Members belonging to this bucket but not to any visible child bucket.
-     */
     private List<Quizable> directMembersOf(QuizableGroup group) {
         if (group.getChildren().isEmpty()) {
             return identityDistinct(group.getMembers());
@@ -288,47 +274,33 @@ public final class VirtualizedGroupTreeView extends JPanel
         if (rowObject instanceof GroupRow groupRow) {
             return createGroupHeader(groupRow);
         }
-
         if (rowObject instanceof MemberRow memberRow) {
             return createMemberCard(memberRow);
         }
-
-        throw new IllegalArgumentException(
-                "Unknown outline row: " + rowObject
-        );
+        throw new IllegalArgumentException("Unknown outline row: " + rowObject);
     }
 
     private JComponent createGroupHeader(GroupRow row) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(
-                3,
-                row.depth * INDENT,
-                3,
-                4
-                                                       ));
+                3, row.depth * INDENT, 3, 4));
 
         JButton button = new JButton(
-                (row.expanded ? "▾ " : "▸ ")
-                        + groupLabel(row.group)
-        );
+                (row.expanded ? "▾ " : "▸ ") + groupLabel(row.group));
 
         button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setBorderPainted(false);
         button.setContentAreaFilled(false);
         button.setFocusPainted(false);
-
-        button.addActionListener(e -> toggle(row.group));
+        button.addActionListener(e -> toggleGroup(row.group));
 
         panel.add(button, BorderLayout.CENTER);
         return panel;
     }
 
     private String groupLabel(QuizableGroup group) {
-        int memberCount =
-                identityDistinct(group.getMembers()).size();
-
-        int childCount =
-                nonEmptyChildCount(group);
+        int memberCount = identityDistinct(group.getMembers()).size();
+        int childCount = nonEmptyChildCount(group);
 
         if (childCount > 0) {
             return group.getDisplayName()
@@ -344,11 +316,7 @@ public final class VirtualizedGroupTreeView extends JPanel
         JPanel indented = new JPanel(new BorderLayout());
         indented.setOpaque(false);
         indented.setBorder(BorderFactory.createEmptyBorder(
-                2,
-                row.depth * INDENT,
-                2,
-                4
-                                                          ));
+                2, row.depth * INDENT, 2, 4));
 
         QuizablePanelConfig config = configFor(row.member);
 
@@ -356,23 +324,20 @@ public final class VirtualizedGroupTreeView extends JPanel
                 row.member,
                 config,
                 renderContext,
-                false
-        );
+                false);
 
         renderContext.registerTopLevel(row.member, card);
-
         indented.add(card, BorderLayout.CENTER);
 
-        /*
-         * QuizableSearchPanel needs the real card. It finds it recursively through
-         * findQuizablePanel(...) after navigateToTop(...).
-         */
         return indented;
     }
 
     private QuizablePanelConfig configFor(Quizable member) {
         if (cardConfig == null) {
-            return QuizablePanelConfig.all(member.getClass());
+            @SuppressWarnings("unchecked")
+            Class<? extends Quizable> cls =
+                    (Class<? extends Quizable>) member.getClass();
+            return QuizablePanelConfig.all(cls);
         }
 
         QuizablePanelConfig copy = cardConfig.copy();
@@ -381,28 +346,27 @@ public final class VirtualizedGroupTreeView extends JPanel
             @SuppressWarnings("unchecked")
             Class<? extends Quizable> cls =
                     (Class<? extends Quizable>) member.getClass();
-
             copy.setCls(cls);
         }
 
         return copy;
     }
 
-    private void toggle(QuizableGroup group) {
+    private void toggleGroup(QuizableGroup group) {
         if (!expandedGroups.remove(group)) {
             expandedGroups.add(group);
         }
 
         rebuildVisibleRows();
+
+        GroupRow replacement = rowByGroup.get(group);
+        if (replacement != null) {
+            rows.ensureVisible(replacement);
+        }
     }
 
-    /**
-     * Expands the first group path containing the requested member.
-     */
     private void expandPathTo(Quizable member) {
-        List<QuizableGroup> path =
-                findContainingPath(root, member);
-
+        List<QuizableGroup> path = findContainingPath(root, member);
         if (path == null) {
             return;
         }
@@ -420,9 +384,7 @@ public final class VirtualizedGroupTreeView extends JPanel
                 continue;
             }
 
-            List<QuizableGroup> deeper =
-                    findContainingPath(child, target);
-
+            List<QuizableGroup> deeper = findContainingPath(child, target);
             List<QuizableGroup> result = new ArrayList<>();
             result.add(child);
 
@@ -445,9 +407,7 @@ public final class VirtualizedGroupTreeView extends JPanel
 
         if (root instanceof Container container) {
             for (Component child : container.getComponents()) {
-                QuizablePanel found =
-                        findQuizablePanel(child);
-
+                QuizablePanel found = findQuizablePanel(child);
                 if (found != null) {
                     return found;
                 }
@@ -457,9 +417,7 @@ public final class VirtualizedGroupTreeView extends JPanel
         return null;
     }
 
-    private static int nonEmptyChildCount(
-            QuizableGroup group) {
-
+    private static int nonEmptyChildCount(QuizableGroup group) {
         int count = 0;
 
         for (QuizableGroup child : group.getChildren()) {
@@ -496,9 +454,7 @@ public final class VirtualizedGroupTreeView extends JPanel
             Collection<? extends Quizable> input) {
 
         Set<Quizable> seen =
-                Collections.newSetFromMap(
-                        new IdentityHashMap<>());
-
+                Collections.newSetFromMap(new IdentityHashMap<>());
         List<Quizable> result = new ArrayList<>();
 
         if (input != null) {
@@ -525,13 +481,20 @@ public final class VirtualizedGroupTreeView extends JPanel
         return false;
     }
 
-    /**
-     * Internal rows are Quizable only so the existing VirtualizedCardList can
-     * virtualize them without becoming generic yet.
-     */
-    private sealed interface OutlineRow
-            permits GroupRow, MemberRow {
+    private static int identityIndexOf(
+            List<? extends Quizable> values,
+            Quizable candidate) {
+
+        for (int i = 0; i < values.size(); i++) {
+            if (values.get(i) == candidate) {
+                return i;
+            }
+        }
+
+        return -1;
     }
+
+    private sealed interface OutlineRow permits GroupRow, MemberRow {}
 
     private static final class GroupRow
             extends QuizableAdapter
@@ -541,7 +504,10 @@ public final class VirtualizedGroupTreeView extends JPanel
         private final int depth;
         private final boolean expanded;
 
-        private GroupRow(QuizableGroup group, int depth, boolean expanded) {
+        private GroupRow(
+                QuizableGroup group,
+                int depth,
+                boolean expanded) {
             this.group = group;
             this.depth = depth;
             this.expanded = expanded;
@@ -549,7 +515,10 @@ public final class VirtualizedGroupTreeView extends JPanel
 
         @Override
         public String getIdentifier() {
-            return "group:" + System.identityHashCode(group) + ":" + depth;
+            return "group:"
+                    + System.identityHashCode(group)
+                    + ":"
+                    + depth;
         }
 
         @Override
@@ -572,7 +541,8 @@ public final class VirtualizedGroupTreeView extends JPanel
 
         @Override
         public String getIdentifier() {
-            return "member:" + System.identityHashCode(this);
+            return "member-row:"
+                    + System.identityHashCode(this);
         }
 
         @Override

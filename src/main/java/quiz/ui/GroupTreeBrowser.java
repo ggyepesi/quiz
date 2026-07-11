@@ -28,24 +28,24 @@ public final class GroupTreeBrowser extends JPanel {
 
         setLayout(new BorderLayout(6, 6));
 
-        QuizablePanelConfig initialConfig =
-                QuizablePanelConfig.all(memberClass);
+        VirtualizedGroupTreeView groupedView = new VirtualizedGroupTreeView(
+                root,
+                QuizablePanelConfig.all(memberClass));
 
-        VirtualizedGroupTreeView groupedView =
-                new VirtualizedGroupTreeView(root, initialConfig);
-        groupedView.scrollPane().getVerticalScrollBar().setUnitIncrement(16);
+        groupedView.scrollPane()
+                   .getVerticalScrollBar()
+                   .setUnitIncrement(16);
 
         QuizableSearchPanel searchPanel = new QuizableSearchPanel(
                 memberClass,
-                sample
-        );
+                sample);
 
         searchPanel.setHiddenFields(
-                hiddenFields == null ? Set.of() : hiddenFields
-                                   );
+                hiddenFields == null ? Set.of() : hiddenFields);
         searchPanel.setFieldTypes(fieldTypes);
 
-        // The view owns its own (single) scroll pane — no outer wrapper.
+        groupedView.setTargetListener(searchPanel);
+        searchPanel.setRenderContext(groupedView.renderContext());
         searchPanel.setTarget(groupedView, groupedView.scrollPane());
 
         add(searchPanel, BorderLayout.NORTH);
