@@ -203,7 +203,9 @@ public final class VirtualizedGroupTreeView extends JPanel
      */
     private void appendGroupContents(QuizableGroup group, int depth) {
         for (QuizableGroup child : new ArrayList<>(group.getChildren())) {
-            if (child == null) {
+            // Skip an empty node — e.g. a `year` dimension whose only members have
+            // no year value produces a bucket-less, member-less facet.
+            if (child == null || child.getMembers().isEmpty()) {
                 continue;
             }
 
