@@ -49,6 +49,10 @@ public final class DomainCatalog {
     private static quiz.transform.ui.DomainModel open(File snap, File model)
             throws Exception {
         var pool = new WikidataDynamicObjectJsonStore().loadAll(snap);
+        // Overlay curated / auto-fixed values onto the freshly loaded base data,
+        // before compiling — so the sidecar survives regeneration. See quiz.curation.
+        quiz.curation.Corrections.apply(pool,
+                List.of(quiz.curation.ManualCuration.forSnapshot(snap)));
         if (model != null && model.isFile()) {
             try {
                 var project = new wikidata.explore.model.GeneratedProjectModelStore()
