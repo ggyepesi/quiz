@@ -51,8 +51,12 @@ public final class DomainCatalog {
         var pool = new WikidataDynamicObjectJsonStore().loadAll(snap);
         // Overlay curated / auto-fixed values onto the freshly loaded base data,
         // before compiling — so the sidecar survives regeneration. See quiz.curation.
+        // Manual values override; generated fills (e.g. <name>.autofix.json from a
+        // fallback rule) only fill fields still absent.
         var curation = quiz.curation.ManualCuration.forSnapshot(snap);
-        quiz.curation.Corrections.apply(pool, List.of(curation));
+        var autofix = quiz.curation.CorrectionsSidecar.source(
+                quiz.curation.CorrectionsSidecar.beside(snap, ".autofix.json"));
+        quiz.curation.Corrections.apply(pool, List.of(curation, autofix));
 
         quiz.transform.ui.DomainModel base = compile(model, pool);
         // Carry the curation store so the workbench can offer a "Curate…" action.
