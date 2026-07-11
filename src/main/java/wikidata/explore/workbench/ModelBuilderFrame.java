@@ -343,6 +343,14 @@ public class ModelBuilderFrame extends JFrame {
     private void openStatementsWindow(java.util.List<String> qids) {
         if (statementsWindow == null) {
             statementsPanel = new StatementSummaryPanel(client);
+            // Clicking + on a statement/qualifier flows through the same Add-Field
+            // path as Discover: a property → a field, a qualifier → a qualifier
+            // field, both on the selected class, opened pre-filled in the editor.
+            statementsPanel.onConfigureField((pid, label) ->
+                    sourceWorkbench.useProperty(pid, label,
+                            wikidata.explore.model.RuleDirection.ROOT_TO_ITEM));
+            statementsPanel.onConfigureQualifier((pid, label) ->
+                    sourceWorkbench.useQualifier(pid, label));
             statementsWindow = new JFrame("Statements — example-first (#91)");
             statementsWindow.add(statementsPanel);
             statementsWindow.setSize(780, 720);

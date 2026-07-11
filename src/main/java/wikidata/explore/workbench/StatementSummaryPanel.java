@@ -7,27 +7,31 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 /**
- * Read-only example-first statement view (GitHub #91, slice 2): enter a few
- * sample QIDs (or push them in from a class), and see each entity's statements —
- * property → values with qualifiers nested — plus a MERGED coverage view with
- * badges (property on X/N entities; each qualifier on M of that property's
- * statements). The coverage number is the reliability hint that makes qualifier
- * fields (year P585, edition P805) obvious and flags the gaps.
+ * Example-first statement view (GitHub #91, slice 3): enter or push in a few
+ * sample QIDs and see the MERGED coverage — property → qualifiers, each badged
+ * with how many samples/statements carry it — as <b>clickable rows</b>. A `+`
+ * on a property configures a field for it; a `+` on a qualifier configures a
+ * qualifier field (e.g. edition ← P805). The click sets the PID + name and opens
+ * the field editor pre-filled, so "selecting a statement is almost enough."
  *
- * <p>Standalone-usable (QID input) and integration-ready ({@link #showFor}), so
- * the modelbuilder can feed it the selected class's sample instances.
- *
- * <p>Note shown in the UI: a few samples is a directional hint, not the verdict —
- * a large-N coverage probe is the authority.
+ * <p>Standalone-usable ({@link #main}) and integration-ready ({@link #showFor}
+ * + the two configure callbacks the modelbuilder wires to its Add-Field path).
+ * The coverage badge is a directional hint over a few samples, not the aggregate
+ * verdict — the panel says so.
  */
 public final class StatementSummaryPanel extends JPanel {
 
     private final WikidataSparqlClient client;
-    private final JTextField qidsField = new JTextField(28);
-    private final JTextArea output = new JTextArea();
+    private final JTextField qidsField = new JTextField(26);
     private final JLabel status = new JLabel(" ");
+    private final JPanel rowsHost = new JPanel();
+
+    // (pid, humanLabel) — a statement property, or a statement qualifier.
+    private BiConsumer<String, String> onConfigureField = (pid, label) -> { };
+    private BiConsumer<String, String> onConfigureQualifier = (pid, label) -> { };
 
     public StatementSummaryPanel(WikidataSparqlClient client) {
         this.client = client;
@@ -42,12 +46,25 @@ public final class StatementSummaryPanel extends JPanel {
         top.add(status);
         add(top, BorderLayout.NORTH);
 
-        output.setEditable(false);
-        output.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        add(new JScrollPane(output), BorderLayout.CENTER);
+        rowsHost.setLayout(new BoxLayout(rowsHost, BoxLayout.Y_AXIS));
+        JScrollPane scroll = new JScrollPane(rowsHost);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        add(scroll, BorderLayout.CENTER);
 
-        add(new JLabel("  Coverage over a few samples is a directional hint — "
-                + "a large-N probe is the authority."), BorderLayout.SOUTH);
+        JLabel note = new JLabel("  Click + to configure a field / qualifier field. "
+                + "Coverage over a few samples is a hint — a large-N probe is the authority.");
+        note.setForeground(Color.GRAY);
+        add(note, BorderLayout.SOUTH);
+    }
+
+    /** Wire a statement-property click to the modelbuilder's Add-Field path. */
+    public void onConfigureField(BiConsumer<String, String> handler) {
+        this.onConfigureField = handler == null ? (a, b) -> { } : handler;
+    }
+
+    /** Wire a qualifier click to the modelbuilder's Add-qualifier-Field path. */
+    public void onConfigureQualifier(BiConsumer<String, String> handler) {
+        this.onConfigureQualifier = handler == null ? (a, b) -> { } : handler;
     }
 
     /** Push sample QIDs in (e.g. from the selected class) and load them. */
@@ -62,32 +79,26 @@ public final class StatementSummaryPanel extends JPanel {
             return;
         }
         status.setText("  loading " + qids.size() + " …");
-        output.setText("");
-        new SwingWorker<String, Void>() {
-            @Override protected String doInBackground() {
-                StringBuilder sb = new StringBuilder();
+        rowsHost.removeAll();
+        rowsHost.revalidate();
+        rowsHost.repaint();
+
+        new SwingWorker<MergedStatementSummary, Void>() {
+            @Override protected MergedStatementSummary doInBackground() {
                 List<EntityStatementSummary> summaries = new ArrayList<>();
                 for (String qid : qids) {
-                    sb.append("================ ").append(qid).append(" ================\n");
                     try {
-                        EntityStatementSummary s = EntityStatementSummary.fetch(qid, client);
-                        summaries.add(s);
-                        sb.append(s.concise());
-                    } catch (Exception ex) {
-                        sb.append("  failed: ").append(ex.getMessage()).append('\n');
+                        summaries.add(EntityStatementSummary.fetch(qid, client));
+                    } catch (Exception ignored) {
+                        // skip a failed sample
                     }
                 }
-                if (summaries.size() > 1) {
-                    sb.append("\n================ MERGED COVERAGE ================\n");
-                    sb.append(MergedStatementSummary.of(summaries).concise());
-                }
-                return sb.toString();
+                return MergedStatementSummary.of(summaries);
             }
             @Override protected void done() {
                 try {
-                    output.setText(get());
-                    output.setCaretPosition(0);
-                    status.setText("  " + qids.size() + " loaded");
+                    buildRows(get());
+                    status.setText("  " + qids.size() + " sample(s)");
                 } catch (Exception ex) {
                     status.setText("  failed: " + ex.getMessage());
                 }
@@ -95,10 +106,61 @@ public final class StatementSummaryPanel extends JPanel {
         }.execute();
     }
 
+    private void buildRows(MergedStatementSummary merged) {
+        rowsHost.removeAll();
+        for (MergedStatementSummary.PropertyCoverage p : merged.properties()) {
+            rowsHost.add(propertyRow(p, merged.sampleCount()));
+            for (MergedStatementSummary.QualifierCoverage q : p.qualifiers()) {
+                rowsHost.add(qualifierRow(q, p.totalStatements()));
+            }
+        }
+        rowsHost.add(Box.createVerticalGlue());
+        rowsHost.revalidate();
+        rowsHost.repaint();
+    }
+
+    private JComponent propertyRow(MergedStatementSummary.PropertyCoverage p, int samples) {
+        JPanel row = leftRow(0);
+        row.add(plusButton("Configure a field for " + p.label() + " (" + p.pid() + ")",
+                () -> onConfigureField.accept(p.pid(), p.label())));
+        JLabel label = new JLabel(p.label() + "  (" + p.pid() + ")   —   "
+                + p.entitiesWith() + "/" + samples + " entities, "
+                + p.totalStatements() + " statements");
+        label.setFont(label.getFont().deriveFont(Font.BOLD));
+        row.add(label);
+        return row;
+    }
+
+    private JComponent qualifierRow(MergedStatementSummary.QualifierCoverage q, int total) {
+        JPanel row = leftRow(28);
+        row.add(plusButton("Configure a qualifier field for " + q.label() + " (" + q.pid() + ")",
+                () -> onConfigureQualifier.accept(q.pid(), q.label())));
+        int pct = total == 0 ? 0 : (100 * q.statementsWith()) / total;
+        row.add(new JLabel("↳ " + q.label() + " (" + q.pid() + "): "
+                + q.statementsWith() + "/" + total + "  (" + pct + "%)"));
+        return row;
+    }
+
+    private static JPanel leftRow(int indent) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 1));
+        row.setBorder(BorderFactory.createEmptyBorder(0, indent, 0, 0));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height + 8));
+        return row;
+    }
+
+    private static JButton plusButton(String tip, Runnable action) {
+        JButton b = new JButton("+");
+        b.setMargin(new Insets(0, 4, 0, 4));
+        b.setToolTipText(tip);
+        b.addActionListener(e -> action.run());
+        return b;
+    }
+
     private static List<String> parseQids(String text) {
         List<String> out = new ArrayList<>();
         if (text != null) {
-            for (String tok : Arrays.asList(text.trim().split("[\\s,]+"))) {
+            for (String tok : text.trim().split("[\\s,]+")) {
                 if (tok.matches("Q\\d+")) {
                     out.add(tok);
                 }
@@ -107,23 +169,23 @@ public final class StatementSummaryPanel extends JPanel {
         return out;
     }
 
-    /** Standalone launcher. */
+    /** Standalone launcher (clicks just report — no modelbuilder to wire to). */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             WikidataSparqlClient client =
                     new WikidataSparqlClient("quiz-statement-summary/1.0 (ggyepesi@gmail.com)");
             StatementSummaryPanel panel = new StatementSummaryPanel(client);
+            panel.onConfigureField((pid, label) ->
+                    panel.status.setText("  field: " + label + " (" + pid + ")"));
+            panel.onConfigureQualifier((pid, label) ->
+                    panel.status.setText("  qualifier field: " + label + " (" + pid + ")"));
             JFrame frame = new JFrame("Statement summary (example-first) — #91");
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             frame.add(panel);
-            frame.setSize(760, 720);
+            frame.setSize(780, 720);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
-            if (args.length > 0) {
-                panel.showFor(Arrays.asList(args));
-            } else {
-                panel.qidsField.setText("Q103474");
-            }
+            panel.showFor(Arrays.asList(args.length > 0 ? args : new String[]{"Q103474"}));
         });
     }
 }

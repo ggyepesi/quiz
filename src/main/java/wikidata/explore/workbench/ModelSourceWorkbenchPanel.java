@@ -290,6 +290,21 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         afterChange.accept(null);
     }
 
+    /** Add a NEW field to the selected class sourced from a statement QUALIFIER
+     *  (the qualifier analog of {@link #useProperty}) — e.g. edition ← P805 on a
+     *  statement-reification class. Sets the qualifier PID and opens the field
+     *  editor pre-filled; the user finishes type/class there. */
+    public void useQualifier(String qualifierPid, String label) {
+        GeneratedFieldModel f = createFieldForProperty(label);
+        if (f == null) {
+            return;
+        }
+        f.mapping().qualifierPid(wikidata.explore.rule.RuleNode.cleanPid(qualifierPid));
+        fieldSourcePanel.edit(f);        // reflect the qualifier PID in the editor
+        onFieldAddedFromTool.accept(f);  // surface it in the main config window
+        afterChange.accept(null);
+    }
+
     // Adds a fresh AUTO field (named after the property) to the selected
     // class, or the root class if a field (or nothing) is selected, then
     // selects it so the subsequent useProperty applies to it.
