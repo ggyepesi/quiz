@@ -22,6 +22,10 @@ public final class EntityStatementSummaryMain {
                     System.out.println("  failed: " + e.getMessage());
                 }
             }
+            if (qids.length > 1) {
+                System.out.println("================ MERGED COVERAGE ================");
+                System.out.println(MergedStatementSummary.fetch(java.util.List.of(qids), client).concise());
+            }
         }
     }
 }
