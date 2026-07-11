@@ -23,4 +23,13 @@ public interface QuizablePanelTargetListener {
      * The panel instances are the same; their content is new.
      */
     void quizablePanelsUpdated(List<QuizablePanel> updated);
+
+    /**
+     * Called when a single card is (re)materialized during virtualized scrolling —
+     * so a listener can re-apply transient decoration a freshly-built card lacks,
+     * e.g. the search highlight (otherwise lost when a card is virtualized out and
+     * rebuilt on scroll-back).
+     */
+    default void quizablePanelMaterialized(QuizablePanel card) {
+    }
 }

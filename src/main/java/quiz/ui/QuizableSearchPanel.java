@@ -95,6 +95,10 @@ public class QuizableSearchPanel extends JPanel
 
     private JComponent targetPanel;
     private VirtualizedQuizableContainer virtualList;   // non-null when the target is data-backed/virtualized
+    // Quizables matching the current query in a virtualized view, so a card rebuilt
+    // on scroll-back can be re-highlighted (see quizablePanelMaterialized).
+    private final java.util.Set<quiz.Quizable> virtualHits =
+            java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
     private JScrollPane targetScrollPane;
     private JDialog searchDialog;
     private JDialog sortDialog;
@@ -223,6 +227,15 @@ public class QuizableSearchPanel extends JPanel
         }
 
         maybeRefreshSearch();
+    }
+
+    @Override
+    public void quizablePanelMaterialized(QuizablePanel card) {
+        // A card rebuilt on scroll-back is fresh; re-apply the highlight if it's a
+        // current hit (otherwise the highlight is lost when you scroll away and back).
+        if (card != null && virtualHits.contains(card.getQuizable())) {
+            highlightCard(card);
+        }
     }
 
     private void sortTargetPanels() {
@@ -1384,6 +1397,7 @@ public class QuizableSearchPanel extends JPanel
     private void clearHighlights() {
         currentHit =
                 null;
+        virtualHits.clear();
 
         if (rememberedSearchComponents.isEmpty()
                 && previousMatchedCards.isEmpty()) {
@@ -1622,6 +1636,10 @@ public class QuizableSearchPanel extends JPanel
                         virtualList.items(),
                         queryTokens,
                         getSearchConfig());
+
+        // Remember the hits so a card rebuilt on scroll-back gets re-highlighted.
+        virtualHits.clear();
+        matchesByField.values().forEach(virtualHits::addAll);
 
         Map<String, QuizableFieldPaths.FieldPath> pathByTitle =
                 new LinkedHashMap<>();

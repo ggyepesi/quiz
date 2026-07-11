@@ -62,6 +62,11 @@ public final class VirtualizedCardList
      */
     private Function<Quizable, JComponent> cardFactory;
 
+    // Notified with each card as it's (re)materialized on scroll, so an owner can
+    // re-apply transient decoration a fresh card would otherwise lack — e.g. the
+    // search highlight, which is lost when a card is virtualized out and rebuilt.
+    private java.util.function.Consumer<JComponent> onCardBuilt;
+
     private List<Quizable> items = new ArrayList<>();
 
     private final Map<Quizable, JComponent> built =
@@ -681,7 +686,16 @@ public final class VirtualizedCardList
         built.put(q, card);
         add(card);
 
+        if (onCardBuilt != null) {
+            onCardBuilt.accept(card);
+        }
+
         return card;
+    }
+
+    /** Registers a callback invoked with each card as it's (re)materialized. */
+    public void setOnCardBuilt(java.util.function.Consumer<JComponent> onCardBuilt) {
+        this.onCardBuilt = onCardBuilt;
     }
 
     /**

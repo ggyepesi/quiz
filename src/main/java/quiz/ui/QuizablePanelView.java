@@ -114,6 +114,15 @@ public class QuizablePanelView {
         // sort and re-layout are O(visible), not O(N), so it stays fast at tens of
         // thousands of cards.
         virtualList = new VirtualizedCardList(this::buildVirtualCard);
+        // A card virtualized out and rebuilt on scroll-back is fresh — tell listeners
+        // (the search panel) so they can re-apply a lost highlight.
+        virtualList.setOnCardBuilt(card -> {
+            if (card instanceof QuizablePanel qp) {
+                for (QuizablePanelTargetListener listener : targetListeners) {
+                    listener.quizablePanelMaterialized(qp);
+                }
+            }
+        });
         // One resolver per section; the shared context tries each, so a reference to
         // a card in ANY section resolves (not just the last section to register).
         context.addTopLevelResolver(o ->
