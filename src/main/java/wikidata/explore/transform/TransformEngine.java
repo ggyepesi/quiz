@@ -6,7 +6,9 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Applies Transform constructs to a loaded snapshot pool (the
@@ -98,6 +100,53 @@ public class TransformEngine {
             for (WikidataDynamicObject target : referencedObjects(src.get(c.refField()))) {
                 target.type(c.targetType());
                 target.merge(c.backRefField(), src);
+            }
+        }
+    }
+
+    /**
+     * Projects {@code targetType.outField} from a field on the entity a reference
+     * points to: {@code out ← via.source}. Fills an absent field only (never
+     * clobbers real data), reading the referent's already-generated value — no
+     * query. Takes the first referent that has the source value.
+     */
+    public void applyProject(Collection<WikidataDynamicObject> pool,
+                             ProjectConstruct c) {
+        if (pool == null || c == null
+                || c.targetType() == null || c.viaField() == null
+                || c.sourceField() == null || c.outField() == null) {
+            return;
+        }
+
+        // The referenced instance may be a bare copy (e.g. a qualifier-loaded
+        // edition) while the fully-generated one (carrying the source field) is
+        // elsewhere in the pool under the same QID. Index by QID so the reference
+        // resolves to the canonical, field-bearing instance.
+        Map<String, WikidataDynamicObject> byQid = new HashMap<>();
+        for (WikidataDynamicObject o : pool) {
+            if (o != null && o.qid() != null && !o.qid().isBlank()) {
+                byQid.putIfAbsent(o.qid(), o);
+            }
+        }
+
+        for (WikidataDynamicObject o : pool) {
+            if (o == null || !c.targetType().equals(o.typeName())) {
+                continue;
+            }
+            if (o.get(c.outField()) != null) {
+                continue;   // already present — never overwrite
+            }
+            for (WikidataDynamicObject ref : referencedObjects(o.get(c.viaField()))) {
+                WikidataDynamicObject resolved = ref;
+                if (ref.get(c.sourceField()) == null
+                        && ref.qid() != null && byQid.containsKey(ref.qid())) {
+                    resolved = byQid.get(ref.qid());
+                }
+                Object value = resolved.get(c.sourceField());
+                if (value != null) {
+                    o.put(c.outField(), value);
+                    break;
+                }
             }
         }
     }

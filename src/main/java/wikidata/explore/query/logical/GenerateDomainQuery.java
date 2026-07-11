@@ -173,6 +173,18 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.transform.ModelInverts.apply(
                             project, shared.values(), genLog);
 
+                    // Derived (production = PROJECT) fields: copy a value from the
+                    // entity a reference points to (e.g. Nomination.year <-
+                    // edition.date) — no query. Run over the base pool AND the
+                    // reified records together, so a reified Nomination sees the
+                    // generated Edition (with its date) by QID even though they
+                    // live in different collections.
+                    List<WikidataDynamicObject> forProject =
+                            new ArrayList<>(shared.values());
+                    forProject.addAll(reified);
+                    wikidata.explore.transform.ModelProjects.apply(
+                            project, forProject, genLog);
+
                     // Canonicalize displayName from each class's CanonicalSpec, so the
                     // stored/served name is the configured one (e.g. a Nomination shows
                     // its nominee, not the reify "{forWork} — {category}" heuristic).

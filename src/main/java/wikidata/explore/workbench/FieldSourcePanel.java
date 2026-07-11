@@ -291,10 +291,15 @@ public class FieldSourcePanel extends JPanel {
             }
         }
 
-        boolean companion =
-                productionBox.getSelectedItem() == FieldProductionKind.COMPANION_MATCH;
-        subjectBox.setEnabled(companion);
-        matchValueBox.setEnabled(companion);
+        Object pk = productionBox.getSelectedItem();
+        boolean companion = pk == FieldProductionKind.COMPANION_MATCH;
+        // PROJECT reuses subject = the reference to follow (via), matchValue = the
+        // field to read off the referent (source). The source lives on the
+        // REFERENCED class, so it isn't in this class's field list — allow typing.
+        boolean project = pk == FieldProductionKind.PROJECT;
+        subjectBox.setEnabled(companion || project);
+        matchValueBox.setEnabled(companion || project);
+        matchValueBox.setEditable(project);
         matchRoleBox.setEnabled(companion);
     }
 
@@ -472,11 +477,14 @@ public class FieldSourcePanel extends JPanel {
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
         m.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
-        if (productionBox.getSelectedItem() == FieldProductionKind.COMPANION_MATCH) {
+        Object pk = productionBox.getSelectedItem();
+        if (pk == FieldProductionKind.COMPANION_MATCH || pk == FieldProductionKind.PROJECT) {
             Object s = subjectBox.getSelectedItem();
             Object v = matchValueBox.getSelectedItem();
             Object r = matchRoleBox.getSelectedItem();
             // "source" is the default subject — store blank so it stays the fallback.
+            // For PROJECT, subject = the reference (via) and matchValue = the field
+            // to read off it (source).
             String subj = s == null ? "" : s.toString();
             m.subjectField("source".equals(subj) ? "" : subj);
             m.matchValueField(v == null ? "" : v.toString());
@@ -604,6 +612,12 @@ public class FieldSourcePanel extends JPanel {
                     + "generic field-value match, no value fetched.<br><i>Example:</i> "
                     + "Nomination.won = a P166/P1346 award-received companion to the "
                     + "P1411/P2453 nomination.</html>";
+            case PROJECT -> "<html><b>From referenced field</b> — <b>derived</b>, not "
+                    + "fetched: copy a value from the entity a reference points to, "
+                    + "built in memory (no query). Set <i>Subject&nbsp;field</i> = the "
+                    + "reference to follow, <i>Match&nbsp;value&nbsp;field</i> = the "
+                    + "field to read off it.<br><i>Example:</i> Nomination.year ← "
+                    + "edition.date (via = edition, source = date).</html>";
             case AUTO -> "<html><b>Auto</b> — decide from the field's type and "
                     + "shape.<br><i>Example:</i> a number → Simple property; an "
                     + "entity list → Related entity values.</html>";
