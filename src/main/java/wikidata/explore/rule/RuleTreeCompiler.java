@@ -128,9 +128,26 @@ public final class RuleTreeCompiler {
                 !field.required());
 
         included.collection(field.collection());
-        included.direction(m.direction());
+        // A literal property (string/number/date) is ALWAYS outgoing — the value is
+        // the object of the triple (?entity wdt:P ?literal). An "incoming" literal
+        // is nonsensical and silently matches nothing (a date field left at the
+        // ITEM_TO_ROOT default returns zero rows, no warning), so force outgoing
+        // regardless of the configured direction.
+        included.direction(isLiteral(field)
+                ? RuleDirection.ROOT_TO_ITEM
+                : m.direction());
 
         return included;
+    }
+
+    /** A scalar literal field (never an entity reference), so its property is
+     *  always outgoing. */
+    private static boolean isLiteral(GeneratedFieldModel field) {
+        if (field.collection()) {
+            return false;
+        }
+        FieldType t = field.type();
+        return t == FieldType.STRING || t == FieldType.NUMBER || t == FieldType.DATE;
     }
 
     private static void compileFieldIntoNode(
