@@ -274,6 +274,10 @@ public class GenerationPipeline {
 
         wikidata.explore.transform.FieldValueRestrictions.apply(snapshot, pool);
         wikidata.explore.transform.ModelInverts.apply(snapshot, pool, null);
+        // Year projections (e.g. Nomination.year <- YEAR(edition.date)) — same
+        // transform stage as the generate path; pool already holds the reified
+        // records + their referenced (dated) entities.
+        wikidata.explore.transform.ModelYearProjections.apply(snapshot, pool, null);
         wikidata.explore.transform.Canonicalization.apply(snapshot, pool, null);
         wikidata.explore.transform.Canonicalization.apply(snapshot, reified, null);
         wikidata.explore.transform.CompanionMatch.applyWithSets(
