@@ -67,6 +67,19 @@ public record Facet(String label, Function<Quizable, List<FacetKey>> keys) {
                         .toList());
     }
 
+    /**
+     * Two-bucket facet by whether a field is PRESENT on the member — unlike the
+     * value facets, this keys the members that LACK the field (into "missing"),
+     * which the value facets drop. Surfaces an EXPECTED field's coverage gap for
+     * curation (#96) without a hand-built filter.
+     */
+    public static Facet presence(String fieldName, String label) {
+        return new Facet(label, q -> values(List.of(
+                FacetKeys.fromField(q, fieldName).stream()
+                        .anyMatch(s -> s != null && !s.isBlank())
+                        ? "present" : "missing")));
+    }
+
     private static List<FacetKey> values(List<String> names) {
         return names.stream().map(FacetKey::of).filter(FacetKey::isUsable).toList();
     }

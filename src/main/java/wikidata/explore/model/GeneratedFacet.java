@@ -13,7 +13,7 @@ package wikidata.explore.model;
  */
 public class GeneratedFacet {
 
-    public enum Bucketing { VALUE, FIRST_LETTER, RANGE }
+    public enum Bucketing { VALUE, FIRST_LETTER, RANGE, PRESENCE }
 
     private String name = "";          // display label, e.g. "by category"
     private String fieldName = "";      // the field to group by
@@ -52,6 +52,7 @@ public class GeneratedFacet {
             case VALUE -> "value";
             case FIRST_LETTER -> "first letter";
             case RANGE -> "range/" + rangeSize;
+            case PRESENCE -> "present/missing";
         };
         return (fieldName.isBlank() ? "?" : fieldName) + " · " + b;
     }

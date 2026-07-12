@@ -17,6 +17,15 @@ public class GeneratedFieldModel {
     // standard constellations from the 92 P31=Q8928 hits down to the IAU 88).
     private boolean required = false;
 
+    // Post-transform expectation for a reified/statement class's field (#96):
+    // NONE (no check) / EXPECTED (keep + report the missing) / REQUIRED (drop the
+    // missing). Distinct from `required` above, which is a SPARQL-time membership
+    // constraint. null = NONE, @JsonInclude(NON_NULL) so existing models are
+    // byte-identical until a field opts in.
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private FieldExpectation expectation = null;
+
     // Optional numeric filter on this (numeric) property — keep only entities
     // whose value satisfies the comparison, e.g. apparentMagnitude <= 3 to keep
     // bright/notable stars. Null operator = no filter.
@@ -114,6 +123,15 @@ public class GeneratedFieldModel {
 
     public void required(boolean required) { this.required = required; }
 
+    /** Post-transform expectation (never null; null storage means NONE). */
+    public FieldExpectation expectation() {
+        return expectation == null ? FieldExpectation.NONE : expectation;
+    }
+
+    public void expectation(FieldExpectation e) {
+        this.expectation = (e == null || e == FieldExpectation.NONE) ? null : e;
+    }
+
     public wikidata.explore.filter.WikidataValueFilterOperator filterOperator() {
         return filterOperator;
     }
@@ -170,6 +188,7 @@ public class GeneratedFieldModel {
         c.entityClassName = entityClassName;
         c.renderMode = renderMode;
         c.required = required;
+        c.expectation = expectation;
         c.filterOperator = filterOperator;
         c.filterValue = filterValue;
         c.edgeMembership = edgeMembership;

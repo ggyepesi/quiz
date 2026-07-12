@@ -34,6 +34,15 @@ public final class DomainFacets {
                 out.add(rf);
             }
         }
+        // Implicit present/missing facet for every EXPECTED field (#96) — so the
+        // coverage gap is visible in the view without a hand-declared facet.
+        for (GeneratedFieldModel f : clazz.fields()) {
+            if (f != null
+                    && f.expectation() == wikidata.explore.model.FieldExpectation.EXPECTED
+                    && !f.name().isBlank()) {
+                out.add(Facet.presence(f.name(), f.name() + ": present / missing"));
+            }
+        }
         return out;
     }
 
@@ -61,6 +70,7 @@ public final class DomainFacets {
                 int size = spec.rangeSize();
                 yield Facet.mapped(label, field, v -> rangeBucket(v, size));
             }
+            case PRESENCE -> Facet.presence(field, label);
         };
     }
 

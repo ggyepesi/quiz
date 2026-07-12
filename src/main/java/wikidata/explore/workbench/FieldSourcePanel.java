@@ -61,6 +61,11 @@ public class FieldSourcePanel extends JPanel {
     private final JCheckBox requiredBox =
             new JCheckBox("Required (membership filter — drops entities without it)");
 
+    // Post-transform expectation (#96) for a reified/statement class's field:
+    // NONE / EXPECTED (keep + report the missing) / REQUIRED (drop the missing).
+    private final JComboBox<wikidata.explore.model.FieldExpectation> expectationBox =
+            new JComboBox<>(wikidata.explore.model.FieldExpectation.values());
+
     // Optional numeric filter on a numeric property (e.g. apparentMagnitude
     // <= 3 to keep bright/notable stars). "—" = no filter.
     private static final String NO_OP = "—";
@@ -258,6 +263,7 @@ public class FieldSourcePanel extends JPanel {
         qualifierPidField.setText(m.qualifierPid());
         subjectDefaultBox.setSelectedItem(triLabel(m.subjectDefault()));
         inDedupKeyBox.setSelectedItem(triLabel(m.inDedupKey()));
+        expectationBox.setSelectedItem(field.expectation());
         propertyLabel.setText(m.displayProperty());
 
         limitSpinner.setValue(Math.max(1, m.limit()));
@@ -434,6 +440,15 @@ public class FieldSourcePanel extends JPanel {
         addWide(form, c, y++, sectionLabel("Refine"));
         addWide(form, c, y++, requiredBox);
 
+        expectationBox.setToolTipText("<html>Post-transform expectation (#96) for a "
+                + "reified/statement class's field. <b>NONE</b> = no check. "
+                + "<b>EXPECTED</b> = keep every record but report coverage and surface "
+                + "the ones missing this field (a present/missing facet) — use this to "
+                + "SEE the gap before deciding. <b>REQUIRED</b> = drop records missing "
+                + "the field (only once you've confirmed the missing ones are bad data; "
+                + "an absent qualifier is often a legit record).</html>");
+        addRow(form, c, y++, "Expectation:", expectationBox);
+
         JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         filterRow.add(filterOpBox);
         filterRow.add(filterValueField);
@@ -562,6 +577,8 @@ public class FieldSourcePanel extends JPanel {
                     ? FieldRenderMode.REFERENCE : FieldRenderMode.INLINE);
         }
         field.required(requiredBox.isSelected());
+        field.expectation((wikidata.explore.model.FieldExpectation)
+                expectationBox.getSelectedItem());
         field.edgeMembership(onlyRelatedOfTypeBox.isSelected()
                 ? wikidata.explore.model.EdgeMembershipMode.INHERIT
                 : wikidata.explore.model.EdgeMembershipMode.NONE);
@@ -1053,6 +1070,7 @@ public class FieldSourcePanel extends JPanel {
         propertyLabel.setText("(not selected)");
         renderModeBox.setSelectedItem(FieldRenderMode.AUTO);
         requiredBox.setSelected(false);
+        expectationBox.setSelectedItem(wikidata.explore.model.FieldExpectation.NONE);
         directionBox.setSelectedItem(RuleDirection.ITEM_TO_ROOT);
         productionBox.setSelectedItem(FieldProductionKind.AUTO);
         filterOpBox.setSelectedItem(NO_OP);

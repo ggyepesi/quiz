@@ -69,6 +69,33 @@ class DomainFacetsTest {
                 && g.bucketing() == GeneratedFacet.Bucketing.VALUE), s.toString());
     }
 
+    @Test void expectedFieldGetsAnImplicitPresentMissingFacet() {
+        GeneratedClassModel c = new GeneratedClassModel();
+        c.className("Nomination");
+        c.statementSourceClass("OscarNominations");
+        GeneratedFieldModel edition = new GeneratedFieldModel(
+                "edition", FieldType.ENTITY, FieldCardinality.SINGLE);
+        edition.expectation(wikidata.explore.model.FieldExpectation.EXPECTED);
+        c.fields().add(edition);
+
+        List<Facet> facets = DomainFacets.toFacets(c);
+        assertTrue(facets.stream().anyMatch(f -> f.label().contains("edition")
+                && f.label().contains("present")), facets.toString());
+    }
+
+    @Test void presenceFacetBucketsMissingVsPresent() {
+        Facet f = Facet.presence("edition", "edition: present / missing");
+
+        wikidata.explore.extract.WikidataDynamicObject has =
+                new wikidata.explore.extract.WikidataDynamicObject("N1", "has");
+        has.put("edition", new wikidata.explore.extract.WikidataDynamicObject("Q1", "ed"));
+        wikidata.explore.extract.WikidataDynamicObject lacks =
+                new wikidata.explore.extract.WikidataDynamicObject("N2", "lacks");
+
+        assertEquals("present", f.keys().apply(has).get(0).name());
+        assertEquals("missing", f.keys().apply(lacks).get(0).name());
+    }
+
     @Test void entityValueFacetUsesReference() {
         GeneratedClassModel c = new GeneratedClassModel();
         c.className("X");
