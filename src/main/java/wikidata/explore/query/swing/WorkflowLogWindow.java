@@ -1,6 +1,7 @@
 package wikidata.explore.query.swing;
 
 import quiz.ui.QuizablePanelView;
+import quiz.ui.QuizableRenderContext;
 import quiz.ui.QuizableSearchPanel;
 import wikidata.explore.query.core.QueryStatus;
 import wikidata.explore.query.log.LogKind;
@@ -66,6 +67,14 @@ public class WorkflowLogWindow implements LogListener {
 
         QuizablePanelView v =
                 new QuizablePanelView();
+
+        // Birdseye: each query-log entry renders collapsed (title + toggle) and
+        // expands on demand, so a long history (and long entries like the name-
+        // collision list) stays scannable. Context must be set before the cards
+        // build so they pick it up; shared, so streamed new entries collapse too.
+        QuizableRenderContext ctx = new QuizableRenderContext();
+        ctx.setCollapsibleCards(true);
+        v.setRenderContext(ctx);
 
         for (LogNode workflow : workflows) {
             v.addQuizable(workflow);
