@@ -254,10 +254,13 @@ public class GenerationPipeline {
                 snapshot, previous.dynamicObjects(), log);
         int filled = wikidata.explore.transform.ModelYearProjections.apply(
                 snapshot, previous.dynamicObjects(), log);
+        int restricted = wikidata.explore.transform.RequiredFieldRestrictions
+                .apply(snapshot, previous.dynamicObjects(), log).size();
         if (log != null) {
             log.message("Remap (display-only, no cached pool): "
                     + previous.dynamicObjects().size() + " objects re-materialized, "
-                    + filled + " projected field(s) filled.\n");
+                    + filled + " projected field(s) filled, "
+                    + restricted + " dropped (required-field).\n");
         }
 
         List<Quizable> instances =
@@ -303,11 +306,16 @@ public class GenerationPipeline {
 
         // Drop the dropped-duplicate stubs from the served pool (not just untype).
         pool.removeIf(demoted::contains);
+        // Drop reified records missing a required field (e.g. a Nomination with no
+        // ceremony edition — the ceremony-less phantom).
+        int restricted = wikidata.explore.transform.RequiredFieldRestrictions
+                .apply(snapshot, pool, log).size();
 
         if (log != null) {
             log.message("Remap (retransform): " + pool.size()
                     + " objects, " + reified.size() + " reified, "
-                    + filled + " projected field(s) filled.\n");
+                    + filled + " projected field(s) filled, "
+                    + restricted + " dropped (required-field).\n");
         }
 
         List<Quizable> instances = materialize(runtime, pool);

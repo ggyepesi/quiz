@@ -227,6 +227,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     pool.addAll(reified);
 
+                    // Drop reified records missing a required field (e.g. a Nomination
+                    // with no ceremony edition — the ceremony-less phantom). Same
+                    // restrict the Remap path runs.
+                    wikidata.explore.transform.RequiredFieldRestrictions.apply(
+                            project, pool, genLog);
+
                     // ONE shared mapper over the SERVED POOL: each QID -> one typed
                     // instance, cross-refs resolve to those same instances. Mapping
                     // the pool (rather than the extractor's roots) makes the
