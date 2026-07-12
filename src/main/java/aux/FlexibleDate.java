@@ -6,6 +6,7 @@ import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * A date of flexible precision — year, year-month, or a full date — mirroring
@@ -15,7 +16,7 @@ import java.util.Objects;
  * field. BC dates are held as a negative year (matching the sign of Wikidata's
  * time literal). Immutable, comparable chronologically.
  */
-public class FlexibleDate implements Comparable<FlexibleDate> {
+public class FlexibleDate implements Comparable<FlexibleDate>, Addressable {
 
     public enum Precision { YEAR, MONTH, DAY }
 
@@ -161,6 +162,42 @@ public class FlexibleDate implements Comparable<FlexibleDate> {
     /** 1-31, or 0 when the precision doesn't reach the day. */
     public int getDay() {
         return day;
+    }
+
+    /** The recurring calendar position (month + day, year-agnostic) — a birthday.
+     *  Null unless this date reaches DAY precision. Comparable, so it groups/sorts. */
+    public java.time.MonthDay monthDay() {
+        if (precision() != Precision.DAY) {
+            return null;
+        }
+        try {
+            return java.time.MonthDay.of(month, day);
+        } catch (RuntimeException e) {
+            return null;   // an out-of-range month/day (bad source data)
+        }
+    }
+
+    // --- Addressable: the type owns its view vocabulary, so a path resolver reads
+    //     date.year / date.monthDay generically. A view is null below its precision
+    //     (e.g. monthDay on a year-only date), so callers skip it rather than group
+    //     on a spurious 0.
+    private static final Set<String> VIEWS =
+            Set.of("year", "month", "day", "monthDay");
+
+    @Override
+    public Object view(String name) {
+        return switch (name) {
+            case "year" -> year;
+            case "month" -> precision().compareTo(Precision.MONTH) >= 0 ? month : null;
+            case "day" -> precision() == Precision.DAY ? day : null;
+            case "monthDay" -> monthDay();
+            default -> null;
+        };
+    }
+
+    @Override
+    public Set<String> viewNames() {
+        return VIEWS;
     }
 
     // Format method: "1959", "1959-04", "1959-04-06", "500 BC".

@@ -70,6 +70,13 @@ public final class FieldAccess {
     // --- field access (DynamicFields map first, then declared Java fields) ---
 
     private static Object readField(Object obj, String name) {
+        // A type that publishes its own addressable views (e.g. FlexibleDate:
+        // year/month/day/monthDay) owns that vocabulary — resolve through the type,
+        // not reflection, so precision-aware views are authoritative. Stays
+        // type-agnostic: no instanceof of any concrete value type.
+        if (obj instanceof aux.Addressable a && a.viewNames().contains(name)) {
+            return a.view(name);
+        }
         if (obj instanceof DynamicFields dyn
                 && dyn.dynamicFieldValues().containsKey(name)) {
             return dyn.dynamicFieldValues().get(name);
