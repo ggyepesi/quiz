@@ -291,10 +291,19 @@ public class FieldSourcePanel extends JPanel {
             }
         }
 
-        boolean companion =
-                productionBox.getSelectedItem() == FieldProductionKind.COMPANION_MATCH;
-        subjectBox.setEnabled(companion);
-        matchValueBox.setEnabled(companion);
+        Object pk = productionBox.getSelectedItem();
+        boolean companion = pk == FieldProductionKind.COMPANION_MATCH;
+        // A DATE field (Auto production) can overlay its value from a referenced
+        // date — year ← via.source (e.g. edition.date) — a field-level transform
+        // that composes with the field's own source. Enable via (Subject field) +
+        // source (Match value field); the source lives on the REFERENCED class, so
+        // allow typing it.
+        boolean dateProjection = field != null
+                && field.type() == FieldType.DATE
+                && pk == FieldProductionKind.AUTO;
+        subjectBox.setEnabled(companion || dateProjection);
+        matchValueBox.setEnabled(companion || dateProjection);
+        matchValueBox.setEditable(dateProjection);
         matchRoleBox.setEnabled(companion);
     }
 
@@ -472,11 +481,16 @@ public class FieldSourcePanel extends JPanel {
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
         m.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
-        if (productionBox.getSelectedItem() == FieldProductionKind.COMPANION_MATCH) {
+        Object pk = productionBox.getSelectedItem();
+        boolean dateProjection = field.type() == FieldType.DATE
+                && pk == FieldProductionKind.AUTO;
+        if (pk == FieldProductionKind.COMPANION_MATCH || dateProjection) {
             Object s = subjectBox.getSelectedItem();
             Object v = matchValueBox.getSelectedItem();
             Object r = matchRoleBox.getSelectedItem();
             // "source" is the default subject — store blank so it stays the fallback.
+            // For a DATE field, subject = the reference to follow (via) and matchValue
+            // = the date field to read off it (source).
             String subj = s == null ? "" : s.toString();
             m.subjectField("source".equals(subj) ? "" : subj);
             m.matchValueField(v == null ? "" : v.toString());

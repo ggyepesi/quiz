@@ -173,6 +173,17 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.transform.ModelInverts.apply(
                             project, shared.values(), genLog);
 
+                    // Year projections (a DATE field overlaid from a referent's date,
+                    // e.g. Nomination.year <- YEAR(edition.date)) — a field-level
+                    // transform, authoritative + year-precision. Over the base pool
+                    // AND the reified records, so a reified Nomination sees the
+                    // generated Edition (with its date) by qid.
+                    List<WikidataDynamicObject> forYear =
+                            new ArrayList<>(shared.values());
+                    forYear.addAll(reified);
+                    wikidata.explore.transform.ModelYearProjections.apply(
+                            project, forYear, genLog);
+
                     // Canonicalize displayName from each class's CanonicalSpec, so the
                     // stored/served name is the configured one (e.g. a Nomination shows
                     // its nominee, not the reify "{forWork} — {category}" heuristic).
