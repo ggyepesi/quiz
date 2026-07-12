@@ -119,6 +119,16 @@ public final class RuleNodeQueryBuilder {
             String rootQidOrVar,
             List<RuleIncludedField> inlinedFields) {
 
+        // Two or more inlined (GROUP_CONCAT) fields stacked in ONE grouped subquery
+        // cross-product each other per value (e.g. types × award targets), which is
+        // the WDQS timeout. Split into a bounded %values base + one GROUP_CONCAT
+        // subquery per field + an OPTIONAL-INCLUDE join, so N fields add
+        // sum(rows) instead of product(rows). Zero/one inlined field has no cross-
+        // product, so it keeps the single-subquery path below, byte-for-byte.
+        if (inlinedFields.size() >= 2) {
+            return splitInlinedValuesQuery(node, rootQidOrVar, inlinedFields);
+        }
+
         String pid = RuleNode.cleanPid(node.propertyPid());
         boolean isVariable = rootQidOrVar != null
                 && rootQidOrVar.startsWith("?");
@@ -298,6 +308,115 @@ public final class RuleNodeQueryBuilder {
                 : "";
         return prefix + namedSubquerySort(
                 q.build(), outerSb.toString(), "valueLabel");
+    }
+
+    /**
+     * Multi-inlined-field query, de-cartesianed: a bounded {@code %values} base
+     * (value + label + non-inlined scalars, grouped so a multi-valued scalar is
+     * SAMPLEd not cross-producted — R11) then ONE {@code GROUP_CONCAT} subquery per
+     * inlined field over that base, joined with {@code INCLUDE %values} +
+     * {@code OPTIONAL { INCLUDE %field }}. N inlined fields add sum(rows) instead of
+     * product(rows) — the fix for the type×target timeout. The non-OPTIONAL pattern
+     * inside each subquery + OPTIONAL INCLUDE outside means a value lacking a
+     * type/target keeps its row (unbound concat), and no value is dropped.
+     */
+    private static String splitInlinedValuesQuery(
+            RuleNode node, String rootQidOrVar, List<RuleIncludedField> inlinedFields) {
+
+        boolean isVariable = rootQidOrVar != null && rootQidOrVar.startsWith("?");
+        String pid = RuleNode.cleanPid(node.propertyPid());
+
+        // Same membership/filter/label emission as the single path, minus the
+        // inlined concats/patterns (each inlined field gets its own subquery).
+        java.util.Map<String, String> sharedVars = sharedFilterVars(node, inlinedFields, "");
+        List<RuleIncludedField> selectSkip = new ArrayList<>(inlinedFields);
+        List<RuleIncludedField> patternSkip = new ArrayList<>(inlinedFields);
+        for (RuleIncludedField f : node.includedFields()) {
+            if (f != null && sharedVars.containsKey(f.fieldName())) {
+                patternSkip.add(f);
+            }
+        }
+
+        WikidataQueryBuilder base = new WikidataQueryBuilder();
+        base.distinct(false);   // GROUP BY (below) is the deduplicator, not DISTINCT
+        base.select("value");
+        base.select("valueLabel");
+        appendValueFilterSelects(base, node, sharedVars.keySet());
+        appendGroupedScalarSelects(base, node, selectSkip, true);
+
+        boolean parentAnchored = !isVariable
+                && RuleNode.cleanQid(rootQidOrVar).matches("Q\\d+");
+        boolean blankMembership = !isVariable
+                && node.additionalSourceQids().isEmpty()
+                && RuleNode.cleanQid(node.sourceQid()).isBlank()
+                && !parentAnchored;
+        boolean emptyResult = blankMembership && node.includedQids().isEmpty();
+
+        if (blankMembership) {
+            if (node.includedQids().isEmpty()) {
+                base.rawWhere("# no membership and no seed QIDs — empty result\n"
+                        + "  VALUES ?value { }");
+            }
+        } else if (!isVariable && node.additionalSourceQids().isEmpty()) {
+            base.rawWhere(node.direction().triplePattern(
+                    "wd:" + RuleNode.cleanQid(rootQidOrVar), "?value", pid));
+        } else {
+            if (!isVariable) {
+                base.valuesQids("root", node.allSourceQids());
+            } else {
+                base.rawWhere("# template: ?root supplied by VALUES clause at runtime");
+            }
+            base.rawWhere(node.direction().triplePattern("?root", "?value", pid));
+        }
+        appendMembershipFilter(base, node);
+        appendSitelinkRequirement(base, node);
+        appendAllowedQids(base, node);
+        appendExcludedQids(base, node);
+        appendPredicateObjectExclusions(base, node);
+        appendValueFilterPatterns(base, node, sharedVars);
+        appendGroupedScalarPatterns(base, node, patternSkip, true);
+        if (!emptyResult) {
+            appendLabelPattern(base, node);
+        }
+        base.groupByNonAggregateSelects();
+        base.limit(node.limit());
+
+        StringBuilder sb = new StringBuilder();
+        if (isVariable) {
+            sb.append("# NOTE: query template — ?root replaced by VALUES at runtime.\n\n");
+        }
+        sb.append("SELECT *\nWITH {\n")
+                .append(base.build().indent(2))
+                .append("} AS %values\n");
+
+        List<String> subNames = new ArrayList<>();
+        for (RuleIncludedField field : inlinedFields) {
+            String subName = "%" + inlinedFieldAlias(field);   // e.g. %type_inlined
+            subNames.add(subName);
+            sb.append("WITH {\n")
+                    .append(fieldConcatSubquery(node, field).indent(2))
+                    .append("} AS ").append(subName).append("\n");
+        }
+
+        sb.append("WHERE {\n  INCLUDE %values .\n");
+        for (String subName : subNames) {
+            sb.append("  OPTIONAL { INCLUDE ").append(subName).append(" . }\n");
+        }
+        sb.append("}\nORDER BY ?valueLabel\n");
+        return sb.toString();
+    }
+
+    // One inlined field's GROUP_CONCAT over the bounded %values base. rootBound is
+    // false: ?root isn't exported by %values, so the field walks its own predicate
+    // from ?value (no reuseRoot); the INCLUDE keeps it bounded to the base values.
+    private static String fieldConcatSubquery(RuleNode node, RuleIncludedField field) {
+        WikidataQueryBuilder q = new WikidataQueryBuilder();
+        q.select("value");
+        q.groupConcat(inlinedPairVar(field), inlinedFieldAlias(field), "|");
+        q.rawWhere("INCLUDE %values .");
+        appendInlinedFieldPatterns(q, List.of(field), node, false);
+        q.groupByNonAggregateSelects();
+        return q.build();
     }
 
     // Outer wrapper that labels the limited rows via the SERVICE (no inline
