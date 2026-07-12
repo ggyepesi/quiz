@@ -105,20 +105,20 @@ public class TransformEngine {
     }
 
     /**
-     * Derives {@code targetType.yearField} as the YEAR of a date on a referenced
-     * entity: {@code year ← YEAR(via.dateField)} (e.g. a nomination's year from its
-     * ceremony edition's date). The referent's date is authoritative, so it
-     * OVERWRITES at year precision — normalizing the mixed-precision year values a
-     * qualifier source leaves (a day-precision point-in-time and a year-precision
-     * one would otherwise split into separate groups). Where the referent has no
-     * date, an existing non-year-precision year value is normalized to its year.
-     * No query — the referent is already in the pool.
+     * Projects {@code targetType.outField} from a typed PATH on the entity a
+     * reference points to: {@code out ← via.<sourcePath>}. The path can address a
+     * type's views (e.g. {@code date.year}, {@code date.monthDay} via
+     * {@link aux.Addressable}) — so extraction is the path, not a convention baked
+     * into a construct. The referent's value is authoritative (it OVERWRITES) and
+     * is coerced to the target field's runtime type (an int year → a FlexibleDate).
+     * No query — the referent is already in the pool, resolved by qid to the
+     * field-bearing instance.
      */
-    public void applyYearFromDate(Collection<WikidataDynamicObject> pool,
-                                  String targetType, String viaField,
-                                  String dateField, String yearField) {
+    public void applyProjection(Collection<WikidataDynamicObject> pool,
+                                String targetType, String viaField,
+                                String sourcePath, String outField) {
         if (pool == null || targetType == null || viaField == null
-                || dateField == null || yearField == null) {
+                || sourcePath == null || sourcePath.isBlank() || outField == null) {
             return;
         }
         Map<String, WikidataDynamicObject> byQid = new HashMap<>();
@@ -127,80 +127,45 @@ public class TransformEngine {
                 byQid.putIfAbsent(o.qid(), o);
             }
         }
+        Object sample = sampleValue(pool, targetType, outField);
         for (WikidataDynamicObject o : pool) {
             if (o == null || !targetType.equals(o.typeName())) {
                 continue;
             }
-            aux.FlexibleDate date = referencedDate(o.get(viaField), dateField, byQid);
-            if (date != null) {
-                o.put(yearField, new aux.FlexibleDate(date.getYear()));
-            } else if (o.get(yearField) instanceof aux.FlexibleDate cur
-                    && cur.precision() != aux.FlexibleDate.Precision.YEAR) {
-                o.put(yearField, new aux.FlexibleDate(cur.getYear()));
+            WikidataDynamicObject referent = referent(o.get(viaField), byQid);
+            if (referent == null) {
+                continue;
+            }
+            Object value = quiz.fields.FieldAccess.getPath(referent, sourcePath);
+            if (value != null) {
+                o.put(outField, quiz.curation.Corrections.coerce(value, sample));
             }
         }
     }
 
-    private aux.FlexibleDate referencedDate(Object viaValue, String dateField,
-                                            Map<String, WikidataDynamicObject> byQid) {
+    // The entity a reference field points to, resolved by qid to the canonical
+    // (field-bearing) instance in the pool — a qualifier-loaded reference may be a
+    // bare copy while the generated one carries the fields.
+    private WikidataDynamicObject referent(Object viaValue,
+                                           Map<String, WikidataDynamicObject> byQid) {
         for (WikidataDynamicObject ref : referencedObjects(viaValue)) {
-            WikidataDynamicObject resolved = ref;
-            if (ref.get(dateField) == null
-                    && ref.qid() != null && byQid.containsKey(ref.qid())) {
-                resolved = byQid.get(ref.qid());
-            }
-            if (resolved.get(dateField) instanceof aux.FlexibleDate fd) {
-                return fd;
-            }
+            return ref.qid() != null && byQid.containsKey(ref.qid())
+                    ? byQid.get(ref.qid())
+                    : ref;
         }
         return null;
     }
 
-    /**
-     * Projects {@code targetType.outField} from a field on the entity a reference
-     * points to: {@code out ← via.source}. Fills an absent field only (never
-     * clobbers real data), reading the referent's already-generated value — no
-     * query. Takes the first referent that has the source value.
-     */
-    public void applyProject(Collection<WikidataDynamicObject> pool,
-                             ProjectConstruct c) {
-        if (pool == null || c == null
-                || c.targetType() == null || c.viaField() == null
-                || c.sourceField() == null || c.outField() == null) {
-            return;
-        }
-
-        // The referenced instance may be a bare copy (e.g. a qualifier-loaded
-        // edition) while the fully-generated one (carrying the source field) is
-        // elsewhere in the pool under the same QID. Index by QID so the reference
-        // resolves to the canonical, field-bearing instance.
-        Map<String, WikidataDynamicObject> byQid = new HashMap<>();
+    // A representative existing value of the target field, so a projected value can
+    // be coerced to the field's runtime type (e.g. an int year → FlexibleDate).
+    private static Object sampleValue(Collection<WikidataDynamicObject> pool,
+                                      String targetType, String outField) {
         for (WikidataDynamicObject o : pool) {
-            if (o != null && o.qid() != null && !o.qid().isBlank()) {
-                byQid.putIfAbsent(o.qid(), o);
+            if (o != null && targetType.equals(o.typeName()) && o.get(outField) != null) {
+                return o.get(outField);
             }
         }
-
-        for (WikidataDynamicObject o : pool) {
-            if (o == null || !c.targetType().equals(o.typeName())) {
-                continue;
-            }
-            if (o.get(c.outField()) != null) {
-                continue;   // already present — never overwrite
-            }
-            for (WikidataDynamicObject ref : referencedObjects(o.get(c.viaField()))) {
-                WikidataDynamicObject resolved = ref;
-                if (ref.get(c.sourceField()) == null
-                        && ref.qid() != null && byQid.containsKey(ref.qid())) {
-                    resolved = byQid.get(ref.qid());
-                }
-                Object value = resolved.get(c.sourceField());
-                if (value != null) {
-                    o.put(c.outField(), value);
-                    break;
-                }
-            }
-        }
+        return null;
     }
 
     /**

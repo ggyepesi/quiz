@@ -304,6 +304,11 @@ public class FieldSourcePanel extends JPanel {
         subjectBox.setEnabled(companion || dateProjection);
         matchValueBox.setEnabled(companion || dateProjection);
         matchValueBox.setEditable(dateProjection);
+        matchValueBox.setToolTipText(dateProjection
+                ? "The PATH to project off the reference — e.g. date.year (year), "
+                        + "date.monthDay (birthday), or date (the whole date). "
+                        + "Extraction is the path, not a convention."
+                : null);
         matchRoleBox.setEnabled(companion);
     }
 

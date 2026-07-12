@@ -15,7 +15,9 @@ import java.util.List;
 
 /**
  * Derives {@code year ← YEAR(via.source)} projections from the model and applies
- * them via {@link TransformEngine#applyYearFromDate}. A field-level TRANSFORM,
+ * them via {@link TransformEngine#applyProjection} (source is a typed PATH, e.g.
+ * {@code date.year}, so extraction is the path, not a convention). A field-level
+ * TRANSFORM,
  * configured on the model but NOT a production kind: a DATE field keeps its own
  * primary source (e.g. year from the P585 qualifier), and this overlays the
  * authoritative referent date on top — so it composes rather than replaces.
@@ -41,7 +43,7 @@ public final class ModelYearProjections {
         }
         TransformEngine engine = new TransformEngine();
         for (YearProjection p : projections) {
-            engine.applyYearFromDate(pool, p.className(), p.via(), p.source(), p.field());
+            engine.applyProjection(pool, p.className(), p.via(), p.source(), p.field());
             if (log != null) {
                 log.message("Year " + p.className() + "." + p.field()
                         + " <- YEAR(" + p.via() + "." + p.source() + ")\n");
