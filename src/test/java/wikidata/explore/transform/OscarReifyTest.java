@@ -18,6 +18,31 @@ class OscarReifyTest {
         return o;
     }
 
+    @Test void describeSurfacesSubjectDefaultFieldsAndDedupKey() {
+        // The recipe the reify runs, rendered for the log + Statement-class panel:
+        // it must make the subject-default fields (the self-reference trap) and the
+        // dedup key visible.
+        QualifierLoadConfig load = new QualifierLoadConfig(
+                "OscarNominations", "P1411", "__Nomination", "Nomination",
+                "category", "", List.of(
+                        new QualifierLoadConfig.Qualifier(
+                                "P805", "edition", QualifierLoadConfig.Kind.ENTITY),
+                        new QualifierLoadConfig.Qualifier(
+                                "P585", "year", QualifierLoadConfig.Kind.YEAR)));
+        ReifyConstruct reify = new ReifyConstruct(
+                "OscarNominations", "__Nomination", "Nomination", "source", "value", true,
+                List.of(new ReifyConstruct.Role("edition", "edition", true),
+                        new ReifyConstruct.Role("nominee", "nominee", true)),
+                List.of("category", "edition", "nominee"));
+        String desc = ModelStatementReifications.describe(
+                new ModelStatementReifications.Reification(load, reify));
+
+        assertTrue(desc.contains("subject-default fields: edition, nominee"), desc);
+        assertTrue(desc.contains("dedup key: category + edition + nominee"), desc);
+        assertTrue(desc.contains("edition←P805"), desc);
+        assertTrue(desc.contains("year←P585(date)"), desc);
+    }
+
     @Test void filmAndPersonSidesCollapseToOneNomination() {
         // The same nomination, denormalized onto both endpoints.
         WikidataDynamicObject film = obj("Q214013", "21 Grams", "Oscarnominations");

@@ -1,11 +1,13 @@
 package wikidata.explore.workbench;
 
-import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldSourceMapping;
-import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.rule.RuleNode;
+import wikidata.explore.transform.ModelStatementReifications;
+import wikidata.explore.transform.ModelStatementReifications.Reification;
+import wikidata.explore.transform.QualifierLoadConfig;
+import wikidata.explore.transform.ReifyConstruct;
 
 import javax.swing.*;
 import java.awt.*;
@@ -26,6 +28,7 @@ import java.util.function.Supplier;
 public class StatementSourcePanel extends JPanel {
 
     private GeneratedClassModel clazz;
+    private GeneratedProjectModel projectModel;
     private Consumer<Void> afterChange = v -> {};
     private Supplier<List<String>> sourceClassCandidates = List::of;
 
@@ -50,6 +53,12 @@ public class StatementSourcePanel extends JPanel {
 
     public void sourceClassCandidates(Supplier<List<String>> candidates) {
         this.sourceClassCandidates = candidates == null ? List::of : candidates;
+    }
+
+    /** The project, so the read-out can call the real {@link
+     *  ModelStatementReifications#deriveOne} (needs to resolve the source class). */
+    public void setProjectModel(GeneratedProjectModel projectModel) {
+        this.projectModel = projectModel;
     }
 
     public void edit(GeneratedClassModel clazz) {
@@ -94,51 +103,56 @@ public class StatementSourcePanel extends JPanel {
         afterChange.accept(null);
     }
 
-    // The identity / roles / dedup key the reify will derive — read-only, so the
-    // whole statement definition reads in one place. Mirrors
-    // ModelStatementReifications.derive at a glance.
+    // The identity / subject-default fields / dedup key — rendered from the REAL
+    // ModelStatementReifications.deriveOne (the same recipe the reify runs), so the
+    // read-out can't drift from behaviour. Surfaces the subject-default fields (the
+    // ones that silently become the source entity when their qualifier is absent —
+    // the trap behind self-referential atoms like the Whale phantom).
     private void refreshDerived() {
         if (clazz == null) {
             return;
         }
-        String statementProp = RuleNode.cleanPid(statementPropField.getText());
+        Reification r = projectModel == null
+                ? null : ModelStatementReifications.deriveOne(clazz, projectModel);
+        if (r == null) {
+            identityValue.setText("statement id  (Q…-<guid>)");
+            rolesValue.setText("—");
+            dedupValue.setText("—");
+            qualifiersArea.setText("  (not a reifying class yet — set \"Reify from\" + a "
+                    + "statement property, and add fields with a \"Qualifier of\" PID)");
+            return;
+        }
+
+        ReifyConstruct reify = r.reify();
+        QualifierLoadConfig load = r.load();
+
+        List<String> subjectDefault = new ArrayList<>();
+        for (ReifyConstruct.Role role : reify.roles()) {
+            if (role.fallbackToSource()) {
+                subjectDefault.add(role.field());
+            }
+        }
+        identityValue.setText("statement id  (Q…-<guid>)   ·   value = " + load.valueField()
+                + (reify.canonicalizesByList()
+                        ? "   ·   nominee-list = " + reify.primaryListField() : ""));
+        rolesValue.setText(subjectDefault.isEmpty() ? "—" : String.join(", ", subjectDefault));
+        dedupValue.setText(reify.dedupBy().isEmpty()
+                ? "—" : String.join(" + ", reify.dedupBy()));
+
         StringBuilder quals = new StringBuilder();
-        List<String> roles = new ArrayList<>();
-        List<String> dedup = new ArrayList<>();
-        String valueField = null;
-
-        for (GeneratedFieldModel f : clazz.fields()) {
-            if (f == null || f.isNameField() || f.mapping() == null) {
-                continue;
+        for (QualifierLoadConfig.Qualifier q : load.qualifiers()) {
+            quals.append("  ").append(q.fieldName()).append("  ←  ").append(q.pid());
+            if (q.multi()) {
+                quals.append("  (list)");
             }
-            FieldSourceMapping fm = f.mapping();
-            // Derived fields (COMPANION_MATCH / INVERT) aren't statement qualifiers.
-            boolean derived = fm.productionKind() != FieldProductionKind.AUTO;
-            String qual = RuleNode.cleanPid(fm.qualifierPid());
-            String prop = RuleNode.cleanPid(fm.propertyPid());
-
-            if (!derived && prop.equals(statementProp) && valueField == null) {
-                valueField = f.name();                 // the ps: value field
-            } else if (!derived && qual.matches("(?i)P\\d+")) {
-                quals.append("  ").append(f.name()).append("  ←  ").append(qual).append('\n');
-                if (f.type() != FieldType.DATE) {      // dates are attributes, not identity
-                    dedup.add(f.name());
-                }
-                if (f.type() == FieldType.ENTITY) {
-                    roles.add(f.name());               // subject-fallback role
-                }
+            if (q.kind() == QualifierLoadConfig.Kind.YEAR) {
+                quals.append("  (date)");
             }
+            quals.append('\n');
         }
-        if (valueField != null) {
-            dedup.add(0, valueField);
-        }
-
         qualifiersArea.setText(quals.length() == 0
                 ? "  (no qualifier fields yet — add fields with a \"Qualifier of\" PID)"
                 : quals.toString());
-        identityValue.setText("statement id  (Q…-<guid>)");
-        rolesValue.setText(roles.isEmpty() ? "—" : String.join(", ", roles));
-        dedupValue.setText(dedup.isEmpty() ? "—" : String.join(" + ", dedup));
     }
 
     private void buildUi() {
@@ -186,7 +200,13 @@ public class StatementSourcePanel extends JPanel {
         dc.fill = GridBagConstraints.HORIZONTAL;
         int dy = 0;
         row(derived, dc, dy++, "Identity:", identityValue);
-        row(derived, dc, dy++, "Roles:", rolesValue);
+        rolesValue.setToolTipText("Fields that take their qualifier value, ELSE the "
+                + "SOURCE entity when the qualifier is absent. Right for the nominee "
+                + "(the subject IS the nominee), but a reference like edition/forWork "
+                + "collapsing to the source produces a self-referential atom.");
+        row(derived, dc, dy++, "Subject-default:", rolesValue);
+        dedupValue.setToolTipText("The identity key: two statements collapse to one "
+                + "when these fields match. A bad subject-default silently poisons it.");
         row(derived, dc, dy++, "Dedup key:", dedupValue);
         qualifiersArea.setEditable(false);
         qualifiersArea.setBorder(BorderFactory.createTitledBorder("Qualifier fields"));

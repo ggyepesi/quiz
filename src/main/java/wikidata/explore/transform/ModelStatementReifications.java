@@ -35,16 +35,34 @@ public final class ModelStatementReifications {
             return out;
         }
         for (GeneratedClassModel n : project.classes()) {
-            if (n == null || !n.reifiesStatements()) {
-                continue;
+            Reification r = deriveOne(n, project);
+            if (r != null) {
+                out.add(r);
             }
+        }
+        return out;
+    }
+
+    /**
+     * Derives the single {@link Reification} for one statement class (or {@code
+     * null} if {@code n} isn't a reifying class / its source or property is
+     * unresolved). Split out of {@link #derive} so the workbench can show the
+     * authoritative recipe for the class being edited — the SAME code that runs,
+     * not a parallel reimplementation that can drift.
+     */
+    public static Reification deriveOne(GeneratedClassModel n,
+                                        GeneratedProjectModel project) {
+        if (n == null || project == null || !n.reifiesStatements()) {
+            return null;
+        }
+        {
             // Resolve to the actual class name (case-insensitively), so the
             // qualifier-load's entityType matches the pool's stamped typeName even
             // if the "Reifies statements of" label differs in case.
             GeneratedClassModel src = project.findClass(n.statementSourceClass());
             String stmtProp = clean(n.instanceMapping().propertyPid());
             if (src == null || !stmtProp.matches("P\\d+")) {
-                continue;
+                return null;
             }
             String sourceClass = src.className();
 
@@ -134,9 +152,55 @@ public final class ModelStatementReifications {
             ReifyConstruct reify = new ReifyConstruct(
                     sourceClass, "__" + n.className(), n.className(),
                     "source", "value", true, roles, dedup, primaryListField);
-            out.add(new Reification(load, reify));
+            return new Reification(load, reify);
         }
-        return out;
+    }
+
+    /**
+     * A human-readable, multi-line recipe for one reification — the SAME structure
+     * the reify runs. Surfaced in the run log and the Statement-class panel so the
+     * (otherwise hidden) inference is visible: which fields default to the SUBJECT
+     * when their qualifier is absent (the trap behind self-referential atoms), and
+     * which fields form the dedup key.
+     */
+    public static String describe(Reification r) {
+        if (r == null) {
+            return "(not a reifying class)";
+        }
+        QualifierLoadConfig load = r.load();
+        ReifyConstruct reify = r.reify();
+
+        List<String> subjectDefault = new ArrayList<>();
+        for (ReifyConstruct.Role role : reify.roles()) {
+            if (role.fallbackToSource()) {
+                subjectDefault.add(role.field());
+            }
+        }
+        StringBuilder quals = new StringBuilder();
+        for (QualifierLoadConfig.Qualifier q : load.qualifiers()) {
+            if (quals.length() > 0) {
+                quals.append(", ");
+            }
+            quals.append(q.fieldName()).append("←").append(q.pid());
+            if (q.multi()) {
+                quals.append("(list)");
+            }
+            if (q.kind() == QualifierLoadConfig.Kind.YEAR) {
+                quals.append("(date)");
+            }
+        }
+
+        return "Reify " + load.propertyPid() + " of " + load.entityType()
+                + " → " + reify.targetType()
+                + "\n  value: " + load.valueField()
+                + "\n  canonical nominee-list: "
+                + (reify.canonicalizesByList() ? reify.primaryListField() : "—")
+                + "\n  subject-default fields: "
+                + (subjectDefault.isEmpty() ? "—" : String.join(", ", subjectDefault))
+                + "   (each = its qualifier value, ELSE the source entity when absent)"
+                + "\n  dedup key: "
+                + (reify.dedupBy().isEmpty() ? "—" : String.join(" + ", reify.dedupBy()))
+                + "\n  qualifiers: " + (quals.length() == 0 ? "—" : quals);
     }
 
     /**
@@ -200,8 +264,7 @@ public final class ModelStatementReifications {
             List<WikidataDynamicObject> records = engine.applyReify(pool, r.reify());
             created.addAll(records);
             if (log != null) {
-                log.message("Reify " + r.load().propertyPid() + " statements -> "
-                        + r.reify().targetType() + ": " + records.size() + " records\n");
+                log.message(describe(r) + "\n  → " + records.size() + " records\n");
             }
         }
         if (demotedOut != null) {

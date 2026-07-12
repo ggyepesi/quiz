@@ -83,6 +83,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                 projectModel.classes().stream()
                         .map(GeneratedClassModel::className)
                         .toList());
+        statementSourcePanel.setProjectModel(projectModel);
         buildUi();
     }
 
