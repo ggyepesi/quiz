@@ -35,6 +35,24 @@ public class FieldSourceMapping {
     private String matchValueField = "";
     private String matchRoleField = "";
 
+    // Reify decomposition (statement classes): explicit overrides for the two
+    // concerns the "single-ENTITY qualifier" inference used to bundle together.
+    // null = the inferred default (keeps legacy models unchanged); TRUE/FALSE
+    // overrides it — the derived recipe becomes authoritative + editable (#92).
+    //   subjectDefault: when this qualifier is ABSENT on a statement, fill the field
+    //     with the statement's SUBJECT (the reify source). Right for the nominee
+    //     (the subject IS the nominee) and a dedup-bridge like forWork; WRONG for a
+    //     plain third-party reference like edition — an absent ceremony must stay
+    //     empty, not collapse to the film (the Whale phantom, #95).
+    //   inDedupKey: whether this field is part of the reified record's identity key.
+    // Field-scoped NON_NULL so the common "inferred" case adds nothing to the model.
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Boolean subjectDefault = null;
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Boolean inDedupKey = null;
+
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
 
     private boolean requireLabel = true;
@@ -113,6 +131,12 @@ public class FieldSourceMapping {
 
     public String matchRoleField() { return matchRoleField; }
     public void matchRoleField(String v) { matchRoleField = v == null ? "" : v.trim(); }
+
+    // null = inferred default; TRUE/FALSE = explicit override. See field comment.
+    public Boolean subjectDefault() { return subjectDefault; }
+    public void subjectDefault(Boolean v) { subjectDefault = v; }
+    public Boolean inDedupKey() { return inDedupKey; }
+    public void inDedupKey(Boolean v) { inDedupKey = v; }
 
     public RuleDirection direction() { return direction; }
     public void direction(RuleDirection direction) {

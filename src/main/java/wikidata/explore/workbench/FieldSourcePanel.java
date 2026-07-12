@@ -96,6 +96,13 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<String> matchValueBox = new JComboBox<>();
     private final JComboBox<String> matchRoleBox = new JComboBox<>();
 
+    // Reify decomposition (#92): for a qualifier field of a statement class, the two
+    // concerns the "single-ENTITY qualifier" inference used to bundle. Auto = the
+    // inferred default; Yes/No = explicit override.
+    private static final String[] TRI = {"Auto", "Yes", "No"};
+    private final JComboBox<String> subjectDefaultBox = new JComboBox<>(TRI);
+    private final JComboBox<String> inDedupKeyBox = new JComboBox<>(TRI);
+
     private final JSpinner limitSpinner =
             new JSpinner(new SpinnerNumberModel(50, 1, 10000, 10));
 
@@ -249,6 +256,8 @@ public class FieldSourcePanel extends JPanel {
 
         propertyPidField.setText(m.propertyPid());
         qualifierPidField.setText(m.qualifierPid());
+        subjectDefaultBox.setSelectedItem(triLabel(m.subjectDefault()));
+        inDedupKeyBox.setSelectedItem(triLabel(m.inDedupKey()));
         propertyLabel.setText(m.displayProperty());
 
         limitSpinner.setValue(Math.max(1, m.limit()));
@@ -384,6 +393,19 @@ public class FieldSourcePanel extends JPanel {
                 + "Blank = a direct/value field.</html>");
         addRow(form, c, y++, "Qualifier of:", qualifierPidField);
 
+        subjectDefaultBox.setToolTipText("<html>Reify (#92): when this qualifier is "
+                + "<b>absent</b> on a statement, fill the field with the statement's "
+                + "<b>subject</b> (the reify source). <b>Auto</b> = inferred (Yes for a "
+                + "single-entity qualifier). Right for <b>nominee</b> (the subject IS the "
+                + "nominee) and a dedup-bridge like <b>forWork</b>; set <b>No</b> for a "
+                + "plain reference like <b>edition</b> so an absent ceremony stays empty, "
+                + "not the film.</html>");
+        addRow(form, c, y++, "Subject-default:", subjectDefaultBox);
+        inDedupKeyBox.setToolTipText("<html>Reify (#92): whether this field is part of "
+                + "the reified record's <b>identity (dedup) key</b>. <b>Auto</b> = "
+                + "inferred (Yes for every qualifier except a date).</html>");
+        addRow(form, c, y++, "In dedup key:", inDedupKeyBox);
+
         // COMPANION_MATCH rows: Property = companion property (e.g. P166 award
         // received), Qualifier of = the companion role qualifier (e.g. P1686 for
         // work); Subject/value/role pick which of this record's fields to match on.
@@ -477,6 +499,22 @@ public class FieldSourcePanel extends JPanel {
         renderModeBox.addActionListener(e -> updateRecommendation());
     }
 
+    // Tri-state (Auto / Yes / No) ↔ nullable Boolean for the reify overrides.
+    private static String triLabel(Boolean b) {
+        return b == null ? "Auto" : (b ? "Yes" : "No");
+    }
+
+    private static Boolean triValue(JComboBox<String> box) {
+        Object s = box.getSelectedItem();
+        if ("Yes".equals(s)) {
+            return Boolean.TRUE;
+        }
+        if ("No".equals(s)) {
+            return Boolean.FALSE;
+        }
+        return null;
+    }
+
     private void apply() {
         if (field == null) {
             return;
@@ -486,6 +524,8 @@ public class FieldSourcePanel extends JPanel {
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
         m.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
+        m.subjectDefault(triValue(subjectDefaultBox));
+        m.inDedupKey(triValue(inDedupKeyBox));
         Object pk = productionBox.getSelectedItem();
         boolean dateProjection = field.type() == FieldType.DATE
                 && pk == FieldProductionKind.AUTO;

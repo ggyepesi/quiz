@@ -93,11 +93,15 @@ public final class ModelStatementReifications {
                             && f.cardinality().isCollection();
                     quals.add(new QualifierLoadConfig.Qualifier(
                             clean(f.mapping().qualifierPid()), f.name(), kind, multi));
-                    // A DATE qualifier (the ceremony/event date) is an ATTRIBUTE of
-                    // the statement, not part of its identity — and it's often
-                    // missing on one denormalized copy, which would split otherwise
-                    // identical work/person copies. Keep it as a field, not a key.
-                    if (kind != QualifierLoadConfig.Kind.YEAR) {
+                    // DEDUP KEY: a DATE qualifier (the ceremony/event date) is an
+                    // ATTRIBUTE, not identity — and often missing on one denormalized
+                    // copy, which would split otherwise identical work/person copies;
+                    // so the inferred default excludes YEAR. An explicit inDedupKey
+                    // override (#92) wins over that inference.
+                    Boolean inKeyOverride = f.mapping().inDedupKey();
+                    boolean inKey = inKeyOverride != null
+                            ? inKeyOverride : kind != QualifierLoadConfig.Kind.YEAR;
+                    if (inKey) {
                         dedup.add(f.name());
                     }
                     if (kind == QualifierLoadConfig.Kind.ENTITY) {
@@ -106,11 +110,13 @@ public final class ModelStatementReifications {
                             // list) is the CANONICAL marker: the record that has it
                             // is the nomination; the loader fills it. Not a role.
                             primaryListField = f.name();
-                        } else {
-                            // A single ENTITY qualifier (e.g. forWork) is a role: its
-                            // value, or the subject when absent — so the denormalized
-                            // person-side copy resolves to the same work and is then
-                            // dropped in favour of the canonical statement.
+                        } else if (subjectDefaults(f)) {
+                            // SUBJECT-DEFAULT: value, or the subject when absent — so a
+                            // denormalized person-side copy (forWork) resolves to the
+                            // same work and dedups. Inferred true for a single ENTITY
+                            // qualifier (legacy), overridable per field (#92): turn it
+                            // OFF for a plain third-party reference like edition so an
+                            // absent P805 stays EMPTY, not the film (#95).
                             roles.add(new ReifyConstruct.Role(f.name(), f.name(), true));
                         }
                     }
@@ -271,6 +277,14 @@ public final class ModelStatementReifications {
             demotedOut.addAll(engine.demoted());
         }
         return created;
+    }
+
+    /** Whether a single-ENTITY qualifier field fills from the SUBJECT when its
+     *  qualifier is absent. Explicit per-field override (#92) wins; otherwise the
+     *  legacy default — every single ENTITY qualifier was a subject-default role. */
+    private static boolean subjectDefaults(GeneratedFieldModel f) {
+        Boolean override = f.mapping().subjectDefault();
+        return override != null ? override : true;
     }
 
     private static QualifierLoadConfig.Kind kindFor(FieldType type) {

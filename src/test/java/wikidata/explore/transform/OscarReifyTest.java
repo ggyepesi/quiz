@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -41,6 +42,35 @@ class OscarReifyTest {
         assertTrue(desc.contains("dedup key: category + edition + nominee"), desc);
         assertTrue(desc.contains("edition←P805"), desc);
         assertTrue(desc.contains("year←P585(date)"), desc);
+    }
+
+    @Test void subjectDefaultOffLeavesAnAbsentReferenceEmpty() {
+        // The #95 fix mechanism: a plain reference qualifier (edition) with
+        // subject-default OFF must NOT collapse to the subject when its qualifier is
+        // absent — an absent ceremony stays empty, not the film. (With it ON, the
+        // Whale phantom: edition = the film itself.)
+        WikidataDynamicObject film = obj("Q1", "The Whale", "Oscarnominations");
+        WikidataDynamicObject bare = obj("stmt", "Best Supporting Actress", "Statement");
+        film.put("nominations", List.of(bare));   // bare P1411 — no edition qualifier
+
+        ReifyConstruct off = new ReifyConstruct(
+                "Oscarnominations", "nominations", "Nomination", "source", "value", true,
+                List.of(new ReifyConstruct.Role("edition", "edition", false)),
+                List.of("value"));
+        new TransformEngine().applyReify(new ArrayList<>(List.of(film)), off);
+        assertNull(bare.get("edition"), "subject-default OFF: absent edition stays empty");
+        assertSame(film, bare.get("source"));
+
+        // Contrast: ON (the legacy inference) collapses it to the film — the phantom.
+        WikidataDynamicObject film2 = obj("Q1", "The Whale", "Oscarnominations");
+        WikidataDynamicObject bare2 = obj("stmt", "Best Supporting Actress", "Statement");
+        film2.put("nominations", List.of(bare2));
+        ReifyConstruct on = new ReifyConstruct(
+                "Oscarnominations", "nominations", "Nomination", "source", "value", true,
+                List.of(new ReifyConstruct.Role("edition", "edition", true)),
+                List.of("value"));
+        new TransformEngine().applyReify(new ArrayList<>(List.of(film2)), on);
+        assertSame(film2, bare2.get("edition"), "subject-default ON: absent edition = the film");
     }
 
     @Test void filmAndPersonSidesCollapseToOneNomination() {
