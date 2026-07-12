@@ -220,6 +220,8 @@ public class FieldSourceMapping {
         subjectField = other.subjectField;
         matchValueField = other.matchValueField;
         matchRoleField = other.matchRoleField;
+        subjectDefault = other.subjectDefault;
+        inDedupKey = other.inDedupKey;
         direction = other.direction;
         requireLabel = other.requireLabel;
         requireSitelink = other.requireSitelink;
