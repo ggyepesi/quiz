@@ -34,21 +34,26 @@ public final class ModelYearProjections {
 
     public record YearProjection(String className, String via, String source, String field) {}
 
-    public static void apply(GeneratedProjectModel project,
-                             Collection<WikidataDynamicObject> pool,
-                             GenerationLog log) {
+    public static int apply(GeneratedProjectModel project,
+                            Collection<WikidataDynamicObject> pool,
+                            GenerationLog log) {
         List<YearProjection> projections = derive(project);
         if (projections.isEmpty()) {
-            return;
+            return 0;
         }
         TransformEngine engine = new TransformEngine();
+        int total = 0;
         for (YearProjection p : projections) {
-            engine.applyProjection(pool, p.className(), p.via(), p.source(), p.field());
+            int changed = engine.applyProjection(
+                    pool, p.className(), p.via(), p.source(), p.field());
+            total += changed;
             if (log != null) {
-                log.message("Year " + p.className() + "." + p.field()
-                        + " <- YEAR(" + p.via() + "." + p.source() + ")\n");
+                log.message("Projected " + p.className() + "." + p.field()
+                        + " <- " + p.via() + "." + p.source()
+                        + ": " + changed + " changed\n");
             }
         }
+        return total;
     }
 
     public static List<YearProjection> derive(GeneratedProjectModel project) {

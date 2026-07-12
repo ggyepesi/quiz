@@ -228,20 +228,37 @@ public class GenerationPipeline {
     public GenerationRun remap(
             GenerationRun previous,
             GeneratedProjectModel snapshot) throws Exception {
+        return remap(previous, snapshot, null);
+    }
+
+    public GenerationRun remap(
+            GenerationRun previous,
+            GeneratedProjectModel snapshot,
+            GenerationLog log) throws Exception {
 
         RuleNode plan = plan(snapshot);
         GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
 
         GenerationRun.RemapState rs = previous.remapState();
         if (rs != null && rs.enrichedPool() != null && !rs.enrichedPool().isEmpty()) {
-            return retransform(previous, snapshot, plan, runtime, rs);
+            return retransform(previous, snapshot, plan, runtime, rs, log);
         }
 
-        // No cached transform inputs (e.g. a single-class run): display-only remap.
-        // Re-apply canonicalization so a CanonicalSpec edited since the last
-        // generation updates the pool's displayNames without a re-extract.
+        // No cached enriched pool (e.g. a snapshot loaded after an app restart, or a
+        // single-class run): the pool is already reified/inverted, so we CAN'T re-run
+        // those (they'd double-apply) — but the idempotent, overwrite-only transforms
+        // still take effect, so a projection added since this snapshot was saved
+        // (e.g. Nomination.year <- edition.date.year) fills on Remap rather than
+        // silently no-op'ing.
         wikidata.explore.transform.Canonicalization.apply(
-                snapshot, previous.dynamicObjects(), null);
+                snapshot, previous.dynamicObjects(), log);
+        int filled = wikidata.explore.transform.ModelYearProjections.apply(
+                snapshot, previous.dynamicObjects(), log);
+        if (log != null) {
+            log.message("Remap (display-only, no cached pool): "
+                    + previous.dynamicObjects().size() + " objects re-materialized, "
+                    + filled + " projected field(s) filled.\n");
+        }
 
         List<Quizable> instances =
                 materialize(runtime, previous.dynamicObjects());
@@ -261,7 +278,7 @@ public class GenerationPipeline {
     private GenerationRun retransform(
             GenerationRun previous, GeneratedProjectModel snapshot,
             RuleNode plan, GeneratedQuizableRuntime runtime,
-            GenerationRun.RemapState rs) throws Exception {
+            GenerationRun.RemapState rs, GenerationLog log) throws Exception {
 
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(rs.enrichedPool());
@@ -277,7 +294,8 @@ public class GenerationPipeline {
         // Year projections (e.g. Nomination.year <- YEAR(edition.date)) — same
         // transform stage as the generate path; pool already holds the reified
         // records + their referenced (dated) entities.
-        wikidata.explore.transform.ModelYearProjections.apply(snapshot, pool, null);
+        int filled = wikidata.explore.transform.ModelYearProjections.apply(
+                snapshot, pool, log);
         wikidata.explore.transform.Canonicalization.apply(snapshot, pool, null);
         wikidata.explore.transform.Canonicalization.apply(snapshot, reified, null);
         wikidata.explore.transform.CompanionMatch.applyWithSets(
@@ -285,6 +303,12 @@ public class GenerationPipeline {
 
         // Drop the dropped-duplicate stubs from the served pool (not just untype).
         pool.removeIf(demoted::contains);
+
+        if (log != null) {
+            log.message("Remap (retransform): " + pool.size()
+                    + " objects, " + reified.size() + " reified, "
+                    + filled + " projected field(s) filled.\n");
+        }
 
         List<Quizable> instances = materialize(runtime, pool);
 

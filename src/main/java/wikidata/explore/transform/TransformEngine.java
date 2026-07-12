@@ -112,14 +112,15 @@ public class TransformEngine {
      * into a construct. The referent's value is authoritative (it OVERWRITES) and
      * is coerced to the target field's runtime type (an int year → a FlexibleDate).
      * No query — the referent is already in the pool, resolved by qid to the
-     * field-bearing instance.
+     * field-bearing instance. Returns the number of instances whose {@code
+     * outField} value was set/changed (so callers can report the effect).
      */
-    public void applyProjection(Collection<WikidataDynamicObject> pool,
-                                String targetType, String viaField,
-                                String sourcePath, String outField) {
+    public int applyProjection(Collection<WikidataDynamicObject> pool,
+                               String targetType, String viaField,
+                               String sourcePath, String outField) {
         if (pool == null || targetType == null || viaField == null
                 || sourcePath == null || sourcePath.isBlank() || outField == null) {
-            return;
+            return 0;
         }
         Map<String, WikidataDynamicObject> byQid = new HashMap<>();
         for (WikidataDynamicObject o : pool) {
@@ -128,6 +129,7 @@ public class TransformEngine {
             }
         }
         Object sample = sampleValue(pool, targetType, outField);
+        int changed = 0;
         for (WikidataDynamicObject o : pool) {
             if (o == null || !targetType.equals(o.typeName())) {
                 continue;
@@ -138,9 +140,14 @@ public class TransformEngine {
             }
             Object value = quiz.fields.FieldAccess.getPath(referent, sourcePath);
             if (value != null) {
-                o.put(outField, quiz.curation.Corrections.coerce(value, sample));
+                Object coerced = quiz.curation.Corrections.coerce(value, sample);
+                if (!java.util.Objects.equals(coerced, o.get(outField))) {
+                    o.put(outField, coerced);
+                    changed++;
+                }
             }
         }
+        return changed;
     }
 
     // The entity a reference field points to, resolved by qid to the canonical

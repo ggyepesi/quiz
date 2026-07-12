@@ -57,7 +57,9 @@ public class RemapInstancesQuery
                                 + previousRun.dynamicObjects().size()
                                 + " downloaded objects from the previous run.");
 
-        return new GenerationPipeline().remap(previousRun, projectModel);
+        return new GenerationPipeline().remap(
+                previousRun, projectModel,
+                wikidata.explore.extract.GenerationLog.of(context::message));
     }
 
     @Override

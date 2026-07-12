@@ -39,6 +39,31 @@ class ProjectionTest {
     }
 
     @Test
+    void reportsHowManyItChangedAndIsIdempotent() {
+        WikidataDynamicObject edition = typed("Q1", "41st Academy Awards", "Edition");
+        edition.put("date", new FlexibleDate(1969, 4, 14));
+
+        WikidataDynamicObject wrong = typed("N1", "wrong year", "Nomination");
+        wrong.put("edition", edition);
+        wrong.put("year", new FlexibleDate(1968));      // disagrees -> changed
+        WikidataDynamicObject absent = typed("N2", "no year", "Nomination");
+        absent.put("edition", edition);                 // absent -> changed
+        WikidataDynamicObject already = typed("N3", "right year", "Nomination");
+        already.put("edition", edition);
+        already.put("year", new FlexibleDate(1969));     // agrees -> NOT changed
+
+        TransformEngine engine = new TransformEngine();
+        List<WikidataDynamicObject> pool = List.of(wrong, absent, already, edition);
+
+        int changed = engine.applyProjection(pool, "Nomination", "edition", "date.year", "year");
+        assertEquals(2, changed, "only the wrong + absent years change; the agreeing one doesn't");
+
+        // Re-Remap must report 0 changed, not phantom churn.
+        int again = engine.applyProjection(pool, "Nomination", "edition", "date.year", "year");
+        assertEquals(0, again, "projection is idempotent — a second pass changes nothing");
+    }
+
+    @Test
     void sameConstructCopiesTheWholeDateWithADifferentPath() {
         WikidataDynamicObject edition = typed("Q1", "41st", "Edition");
         edition.put("date", new FlexibleDate(1969, 4, 14));
