@@ -105,6 +105,58 @@ public class TransformEngine {
     }
 
     /**
+     * Derives {@code targetType.yearField} as the YEAR of a date on a referenced
+     * entity: {@code year ← YEAR(via.dateField)} (e.g. a nomination's year from its
+     * ceremony edition's date). The referent's date is authoritative, so it
+     * OVERWRITES at year precision — normalizing the mixed-precision year values a
+     * qualifier source leaves (a day-precision point-in-time and a year-precision
+     * one would otherwise split into separate groups). Where the referent has no
+     * date, an existing non-year-precision year value is normalized to its year.
+     * No query — the referent is already in the pool.
+     */
+    public void applyYearFromDate(Collection<WikidataDynamicObject> pool,
+                                  String targetType, String viaField,
+                                  String dateField, String yearField) {
+        if (pool == null || targetType == null || viaField == null
+                || dateField == null || yearField == null) {
+            return;
+        }
+        Map<String, WikidataDynamicObject> byQid = new HashMap<>();
+        for (WikidataDynamicObject o : pool) {
+            if (o != null && o.qid() != null && !o.qid().isBlank()) {
+                byQid.putIfAbsent(o.qid(), o);
+            }
+        }
+        for (WikidataDynamicObject o : pool) {
+            if (o == null || !targetType.equals(o.typeName())) {
+                continue;
+            }
+            aux.FlexibleDate date = referencedDate(o.get(viaField), dateField, byQid);
+            if (date != null) {
+                o.put(yearField, new aux.FlexibleDate(date.getYear()));
+            } else if (o.get(yearField) instanceof aux.FlexibleDate cur
+                    && cur.precision() != aux.FlexibleDate.Precision.YEAR) {
+                o.put(yearField, new aux.FlexibleDate(cur.getYear()));
+            }
+        }
+    }
+
+    private aux.FlexibleDate referencedDate(Object viaValue, String dateField,
+                                            Map<String, WikidataDynamicObject> byQid) {
+        for (WikidataDynamicObject ref : referencedObjects(viaValue)) {
+            WikidataDynamicObject resolved = ref;
+            if (ref.get(dateField) == null
+                    && ref.qid() != null && byQid.containsKey(ref.qid())) {
+                resolved = byQid.get(ref.qid());
+            }
+            if (resolved.get(dateField) instanceof aux.FlexibleDate fd) {
+                return fd;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Projects {@code targetType.outField} from a field on the entity a reference
      * points to: {@code out ← via.source}. Fills an absent field only (never
      * clobbers real data), reading the referent's already-generated value — no
