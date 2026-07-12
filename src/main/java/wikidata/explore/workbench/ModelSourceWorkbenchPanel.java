@@ -224,9 +224,12 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             } else {
                 classSourcePanel.applyEdits();
             }
-        } else if (selected instanceof GeneratedFieldModel) {
-            fieldSourcePanel.applyEdits();
         }
+        // ALWAYS flush the field editor too — its pending edits live in the Swing
+        // controls until apply(), so a user who sets a field then selects the class
+        // (e.g. to read the derived recipe) before Save would otherwise lose them.
+        // apply() no-ops when no field is loaded.
+        fieldSourcePanel.applyEdits();
     }
 
     public RuleNode temporaryRuleNodeForSelected() {

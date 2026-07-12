@@ -73,6 +73,15 @@ public class SingleRootClassModelPanel extends JPanel {
 
     public void refresh() {
         Object selected = selectedUserObject();
+        // Capture the selection by NAME, not object identity: refresh() runs right
+        // after copyContentsFrom (load/reload), which swaps in FRESH model objects.
+        // Re-selecting the old instance by identity silently fails, leaving the field
+        // editor bound to an ORPHANED old field — so edits land on the orphan while
+        // save serializes the new model, and they're lost. Re-selecting by name
+        // re-binds the editor to the live object.
+        String selClassName = selectedClassName(selected);
+        String selFieldName = selected instanceof GeneratedFieldModel f ? f.name() : null;
+
         java.util.Set<java.util.List<String>> expanded = expandedPaths();
 
         rootTreeNode = buildTree();
@@ -81,9 +90,52 @@ public class SingleRootClassModelPanel extends JPanel {
 
         restoreExpanded(expanded);
 
-        if (selected instanceof GeneratedFieldModel f) {
-            selectField(f);
-        } else if (selected instanceof GeneratedClassModel c) {
+        if (selFieldName != null) {
+            selectFieldByName(selClassName, selFieldName);
+        } else if (selClassName != null) {
+            selectClassByName(selClassName);
+        } else {
+            selectClass(projectModel.rootClass());
+        }
+    }
+
+    // The class name of the current selection: a class node directly, or the class
+    // owning a selected field (read off the tree path, since the field's owner may
+    // already have been replaced in the model by a preceding copyContentsFrom).
+    private String selectedClassName(Object selected) {
+        if (selected instanceof GeneratedClassModel c) {
+            return c.className();
+        }
+        if (selected instanceof GeneratedFieldModel) {
+            javax.swing.tree.TreePath path = tree.getSelectionPath();
+            if (path != null && path.getPathCount() >= 2) {
+                Object parent = ((DefaultMutableTreeNode)
+                        path.getPathComponent(path.getPathCount() - 2)).getUserObject();
+                if (parent instanceof GeneratedClassModel c) {
+                    return c.className();
+                }
+            }
+        }
+        return null;
+    }
+
+    private void selectFieldByName(String className, String fieldName) {
+        for (GeneratedClassModel cls : projectModel.classes()) {
+            if (className != null && !className.equals(cls.className())) {
+                continue;
+            }
+            for (GeneratedFieldModel f : cls.fields()) {
+                if (fieldName.equals(f.name())) {
+                    selectField(f);
+                    return;
+                }
+            }
+        }
+    }
+
+    private void selectClassByName(String className) {
+        GeneratedClassModel c = projectModel.findClass(className);
+        if (c != null) {
             selectClass(c);
         } else {
             selectClass(projectModel.rootClass());
