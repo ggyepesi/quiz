@@ -53,6 +53,50 @@ class OscarReifyTest {
                 "value QIDs inherited from source membership: " + r.load().valueQids());
     }
 
+    @Test void valueFilterGapFlagsAMissedMembershipTarget() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
+        src.instanceMapping().propertyPid("P1411");
+        src.instanceMapping().additionalTypeQids().add("Q102427");
+        src.instanceMapping().additionalTypeQids().add("Q103360");
+        project.addClass(src);
+
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSourceClass("OscarNominations");
+        nom.instanceMapping().propertyPid("P1411");
+        var cat = nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        cat.mapping().propertyPid("P1411");
+        cat.mapping().allowedQids().add("Q102427");   // explicit, but MISSES Q103360
+        project.addClass(nom);
+
+        ModelStatementReifications.Reification r =
+                ModelStatementReifications.deriveOne(nom, project);
+        assertEquals(List.of("Q103360"),
+                ModelStatementReifications.valueFilterGaps(r, project));
+    }
+
+    @Test void noValueFilterGapWhenTheFilterCoversMembership() {
+        // No explicit allowedQids → deriveOne inherits ALL membership targets → no gap.
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
+        src.instanceMapping().propertyPid("P1411");
+        src.instanceMapping().additionalTypeQids().add("Q102427");
+        src.instanceMapping().additionalTypeQids().add("Q103360");
+        project.addClass(src);
+
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSourceClass("OscarNominations");
+        nom.instanceMapping().propertyPid("P1411");
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P1411");
+        project.addClass(nom);
+
+        ModelStatementReifications.Reification r =
+                ModelStatementReifications.deriveOne(nom, project);
+        assertTrue(ModelStatementReifications.valueFilterGaps(r, project).isEmpty(),
+                "inherited value filter covers all membership targets");
+    }
+
     @Test void describeSurfacesSubjectDefaultFieldsAndDedupKey() {
         // The recipe the reify runs, rendered for the log + Statement-class panel:
         // it must make the subject-default fields (the self-reference trap) and the

@@ -294,12 +294,58 @@ public final class ModelStatementReifications {
             created.addAll(records);
             if (log != null) {
                 log.message(describe(r) + "\n  → " + records.size() + " records\n");
+                List<String> gaps = valueFilterGaps(r, project);
+                if (!gaps.isEmpty()) {
+                    log.message("  ⚠ consistency: the value filter misses " + gaps.size()
+                            + " of the source class's membership target(s) — "
+                            + gaps.stream().limit(6)
+                                    .collect(java.util.stream.Collectors.joining(", "))
+                            + (gaps.size() > 6 ? ", …" : "")
+                            + " — statements to those WON'T load. Add them to the value "
+                            + "field's allowed values (or align the class membership).\n");
+                }
             }
         }
         if (demotedOut != null) {
             demotedOut.addAll(engine.demoted());
         }
         return created;
+    }
+
+    /**
+     * The source class's membership targets NOT covered by a reify's value filter —
+     * a config consistency gap. When a class reifies the SAME property that defines
+     * its source class's membership, every reified statement value IS a membership
+     * target, so the value filter must cover them all; a gap means statements to the
+     * missed targets silently won't load (the Q19020-missed-Best-Picture class of
+     * bug). Empty = OK or not applicable. Only checks an explicit value QID set — a
+     * value-TYPE filter can't be verified without the network.
+     */
+    public static List<String> valueFilterGaps(
+            Reification r, GeneratedProjectModel project) {
+        List<String> missed = new ArrayList<>();
+        if (r == null || project == null) {
+            return missed;
+        }
+        QualifierLoadConfig cfg = r.load();
+        GeneratedClassModel src = project.findClass(cfg.entityType());
+        if (src == null
+                || cfg.valueQids() == null || cfg.valueQids().isEmpty()
+                || !cfg.propertyPid().equals(clean(src.instanceMapping().propertyPid()))) {
+            return missed;
+        }
+        java.util.Set<String> filter = new java.util.LinkedHashSet<>(cfg.valueQids());
+        String sq = clean(src.instanceMapping().sourceQid());
+        if (sq.matches("Q\\d+") && !filter.contains(sq)) {
+            missed.add(sq);
+        }
+        for (String q : src.instanceMapping().additionalTypeQids()) {
+            String cq = clean(q);
+            if (cq.matches("Q\\d+") && !filter.contains(cq)) {
+                missed.add(cq);
+            }
+        }
+        return missed;
     }
 
     /** Whether a single-ENTITY qualifier field fills from the SUBJECT when its
