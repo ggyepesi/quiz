@@ -147,6 +147,29 @@ public final class ModelStatementReifications {
             }
             dedup.add(0, valueField);
 
+            // If the value field has no explicit allowed QIDs, inherit the SOURCE
+            // class's membership target QIDs when its membership uses the SAME
+            // property — the reified value IS one of them (OscarNominations = P1411
+            // to the 59 categories → a Nomination's category is one of those 59).
+            // This keeps the qualifier-load value filter identical to the ROOT query
+            // instead of falling back to the value-TYPE below (sourceQid = Q19020),
+            // which MISSES categories not typed as that: Best Picture (Q102427) and
+            // Best Director (Q103360) are NOT P31=Q19020, so their statements never
+            // loaded — the 586-orphan / stuck-at-13610 bug.
+            if (valueQids.isEmpty()
+                    && stmtProp.equals(clean(src.instanceMapping().propertyPid()))) {
+                String srcSourceQid = clean(src.instanceMapping().sourceQid());
+                if (srcSourceQid.matches("Q\\d+")) {
+                    valueQids.add(srcSourceQid);
+                }
+                for (String q : src.instanceMapping().additionalTypeQids()) {
+                    String cq = clean(q);
+                    if (cq.matches("Q\\d+")) {
+                        valueQids.add(cq);
+                    }
+                }
+            }
+
             // The class's sourceQid (if any) filters the statement value by P31 —
             // e.g. Q19020 keeps only Oscar-category statements.
             String valueTypeQid = clean(n.instanceMapping().sourceQid());

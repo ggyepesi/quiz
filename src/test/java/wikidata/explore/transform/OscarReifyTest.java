@@ -2,11 +2,16 @@ package wikidata.explore.transform;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldType;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,6 +22,35 @@ class OscarReifyTest {
         WikidataDynamicObject o = new WikidataDynamicObject(qid, name);
         o.type(type);
         return o;
+    }
+
+    @Test void valueQidsInheritedFromSourceMembershipWhenTheFieldHasNone() {
+        // The value field has no allowedQids and the class carries a value-TYPE
+        // (Q19020) — but Best Picture/Director aren't P31=Q19020, so the type filter
+        // would miss them. deriveOne must inherit the SOURCE class's P1411 membership
+        // targets (the categories) as the value filter instead.
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
+        src.instanceMapping().propertyPid("P1411");
+        src.instanceMapping().additionalTypeQids().add("Q102427");   // Best Picture
+        src.instanceMapping().additionalTypeQids().add("Q103360");   // Best Director
+        project.addClass(src);
+
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSourceClass("OscarNominations");
+        nom.instanceMapping().propertyPid("P1411");
+        nom.instanceMapping().sourceQid("Q19020");   // the wrong value-type filter
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P1411");     // value field, no allowedQids
+        project.addClass(nom);
+
+        ModelStatementReifications.Reification r =
+                ModelStatementReifications.deriveOne(nom, project);
+
+        assertNotNull(r);
+        assertTrue(r.load().hasValueQids(), "inherits an explicit value set");
+        assertTrue(r.load().valueQids().containsAll(List.of("Q102427", "Q103360")),
+                "value QIDs inherited from source membership: " + r.load().valueQids());
     }
 
     @Test void describeSurfacesSubjectDefaultFieldsAndDedupKey() {
