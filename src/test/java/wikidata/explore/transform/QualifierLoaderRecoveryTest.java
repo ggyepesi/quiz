@@ -68,4 +68,46 @@ class QualifierLoaderRecoveryTest {
         assertNotNull(e2.get("__Nomination"),
                 "Q22 recovered after being silently dropped from the combined batch");
     }
+
+    // The actual Oscars case: no valueQids, only a value TYPE → VALUE-anchored main
+    // pass (batched by category). The recovery must still run and re-query the
+    // dropped entity ENTITY-anchored.
+    private static final class FlakyValueAnchoredClient extends WikidataSparqlClient {
+        FlakyValueAnchoredClient() {
+            super("test");
+        }
+
+        @Override
+        public List<WikidataBinding> query(String sparql) {
+            List<WikidataBinding> rows = new ArrayList<>();
+            if (!sparql.contains("p:P1411")) {          // fetchValueQids: the category set
+                Map<String, String> v = new HashMap<>();
+                v.put("value", "http://www.wikidata.org/entity/Q500");
+                rows.add(new WikidataBinding(v));
+                return rows;
+            }
+            if (sparql.contains("wd:Q22")) {            // entity-anchored recovery for Q22
+                rows.add(FlakyClient.row("Q22"));
+            } else {                                    // value-anchored main pass drops Q22
+                rows.add(FlakyClient.row("Q11"));
+            }
+            return rows;
+        }
+    }
+
+    @Test void recoversInTheValueAnchoredPathToo() {
+        WikidataDynamicObject e1 = obj("Q11", "A", "OscarNominations");
+        WikidataDynamicObject e2 = obj("Q22", "B", "OscarNominations");
+
+        // valueTypeQid set, no valueQids → value-anchored (the Oscars config).
+        QualifierLoadConfig cfg = new QualifierLoadConfig(
+                "OscarNominations", "P1411", "__Nomination", "Nomination",
+                "category", "Q19020", List.of());
+
+        new QualifierLoader().enrich(List.of(e1, e2), cfg, new FlakyValueAnchoredClient(), null);
+
+        assertNotNull(e1.get("__Nomination"), "Q11 loaded in the value-anchored pass");
+        assertNotNull(e2.get("__Nomination"),
+                "Q22 recovered entity-anchored even though the main pass was value-anchored");
+    }
 }
