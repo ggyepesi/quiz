@@ -961,7 +961,13 @@ public class QuizablePanel extends JPanel {
                 continue;
             }
 
-            JComponent nested = inlineQuizable(q, fieldPath);
+            // Each element of an inline COLLECTION renders as its own collapsible
+            // chip (▶/▼), so the titled-border list (e.g. a query log's `steps`) is a
+            // scannable set of expandable items rather than one flat wall of every
+            // step's content. Expand state is keyed by the target identity, so each
+            // chip toggles independently. (A single inline Quizable — handled above —
+            // still expands in place.)
+            JComponent nested = collapsibleReference("", fieldPath, q);
 
             if (nested != null) {
                 panel.add(

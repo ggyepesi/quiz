@@ -584,6 +584,17 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
         boolean[] mark = new boolean[text.length()];
         String lower = text.toLowerCase();
 
+        // Highlight only in text that itself contains ALL the query tokens — so a
+        // token doesn't light up in an unrelated row (searching "qualifier lo" must
+        // NOT mark "qualifier" in a "qualifier value" row that lacks "lo"). This
+        // matches the token-AND search semantics, at the row level.
+        for (String token : highlightTokens) {
+            if (token != null && !token.isBlank()
+                    && !lower.contains(token.toLowerCase())) {
+                return mark;   // a required token is absent here → highlight nothing
+            }
+        }
+
         for (String token : highlightTokens) {
             if (token == null || token.isBlank()) {
                 continue;
