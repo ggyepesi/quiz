@@ -337,12 +337,6 @@ public final class RuleNodeQueryBuilder {
             }
         }
 
-        WikidataQueryBuilder base = new WikidataQueryBuilder();
-        base.distinct(false);   // GROUP BY (below) is the deduplicator, not DISTINCT
-        base.select("value");
-        appendValueFilterSelects(base, node, sharedVars.keySet());
-        appendGroupedScalarSelects(base, node, selectSkip, true);
-
         boolean parentAnchored = !isVariable
                 && RuleNode.cleanQid(rootQidOrVar).matches("Q\\d+");
         boolean blankMembership = !isVariable
@@ -350,6 +344,31 @@ public final class RuleNodeQueryBuilder {
                 && RuleNode.cleanQid(node.sourceQid()).isBlank()
                 && !parentAnchored;
         boolean emptyResult = blankMembership && node.includedQids().isEmpty();
+
+        // %categories reuse: a fixed multi-QID membership set, hoisted into a named
+        // subquery, is reused by any inlined field that walks the SAME
+        // predicate/direction — because that field's object values ARE the
+        // membership set. E.g. Oscars `target` = the categories a value was
+        // nominated for = the roots, so it joins the known ~59-QID set instead of a
+        // self-join + `?t wdt:P31 <awardType>` re-filter per target.
+        boolean multiQid = !isVariable && !blankMembership
+                && !node.additionalSourceQids().isEmpty();
+        String memberTriple = node.direction().triplePattern("?root", "?value", pid);
+        List<RuleIncludedField> reuseFields = new ArrayList<>();
+        if (multiQid) {
+            for (RuleIncludedField f : inlinedFields) {
+                if (reusesMembership(f, memberTriple)) {
+                    reuseFields.add(f);
+                }
+            }
+        }
+        boolean useCategories = !reuseFields.isEmpty();
+
+        WikidataQueryBuilder base = new WikidataQueryBuilder();
+        base.distinct(false);   // GROUP BY (below) is the deduplicator, not DISTINCT
+        base.select("value");
+        appendValueFilterSelects(base, node, sharedVars.keySet());
+        appendGroupedScalarSelects(base, node, selectSkip, true);
 
         if (blankMembership) {
             if (node.includedQids().isEmpty()) {
@@ -359,6 +378,9 @@ public final class RuleNodeQueryBuilder {
         } else if (!isVariable && node.additionalSourceQids().isEmpty()) {
             base.rawWhere(node.direction().triplePattern(
                     "wd:" + RuleNode.cleanQid(rootQidOrVar), "?value", pid));
+        } else if (useCategories) {
+            base.rawWhere("INCLUDE %categories .");
+            base.rawWhere(node.direction().triplePattern("?category", "?value", pid));
         } else {
             if (!isVariable) {
                 base.valuesQids("root", node.allSourceQids());
@@ -387,7 +409,15 @@ public final class RuleNodeQueryBuilder {
         if (isVariable) {
             sb.append("# NOTE: query template — ?root replaced by VALUES at runtime.\n\n");
         }
-        sb.append("SELECT *\nWITH {\n")
+        sb.append("SELECT *\n");
+        if (useCategories) {
+            WikidataQueryBuilder cats = new WikidataQueryBuilder();
+            cats.distinct(false);
+            cats.select("category");
+            cats.valuesQids("category", node.allSourceQids());
+            sb.append("WITH {\n").append(cats.build().indent(2)).append("} AS %categories\n");
+        }
+        sb.append("WITH {\n")
                 .append(base.build().indent(2))
                 .append("} AS %values\n");
 
@@ -396,7 +426,8 @@ public final class RuleNodeQueryBuilder {
             String subName = "%" + inlinedFieldAlias(field);   // e.g. %type_inlined
             subNames.add(subName);
             sb.append("WITH {\n")
-                    .append(fieldConcatSubquery(node, field).indent(2))
+                    .append(fieldConcatSubquery(node, field, reuseFields.contains(field))
+                            .indent(2))
                     .append("} AS ").append(subName).append("\n");
         }
 
@@ -411,17 +442,52 @@ public final class RuleNodeQueryBuilder {
         return sb.toString();
     }
 
-    // One inlined field's GROUP_CONCAT over the bounded %values base. rootBound is
-    // false: ?root isn't exported by %values, so the field walks its own predicate
-    // from ?value (no reuseRoot); the INCLUDE keeps it bounded to the base values.
-    private static String fieldConcatSubquery(RuleNode node, RuleIncludedField field) {
+    // One inlined field's GROUP_CONCAT over the bounded %values base.
+    //   reuseCategories: the field walks the same predicate/direction as membership,
+    //     so its values ARE the %categories set — reuse it (join the known set)
+    //     instead of a self-join + type re-filter per value.
+    //   else: ?root isn't exported by %values, so the field walks its own predicate
+    //     from ?value; the INCLUDE keeps it bounded to the base values.
+    private static String fieldConcatSubquery(
+            RuleNode node, RuleIncludedField field, boolean reuseCategories) {
         WikidataQueryBuilder q = new WikidataQueryBuilder();
         q.select("value");
         q.groupConcat(inlinedPairVar(field), inlinedFieldAlias(field), "|");
         q.rawWhere("INCLUDE %values .");
-        appendInlinedFieldPatterns(q, List.of(field), node, false);
+        if (reuseCategories) {
+            String pid = RuleNode.cleanPid(field.propertyPid());
+            String labelVar = inlinedLabelVar(field);
+            String pairVar = inlinedPairVar(field);
+            q.rawWhere("INCLUDE %categories .");
+            q.rawWhere(field.direction().triplePattern("?value", "?category", pid));
+            q.rawWhere("""
+                OPTIONAL {
+                  ?category rdfs:label %s .
+                  FILTER(LANG(%s) = "en")
+                }
+                BIND(CONCAT(STR(?category), "%s", COALESCE(%s, "")) AS ?%s)
+                """.formatted(labelVar, labelVar, PAIR_SEPARATOR, labelVar, pairVar));
+        } else {
+            appendInlinedFieldPatterns(q, List.of(field), node, false);
+        }
         q.groupByNonAggregateSelects();
         return q.build();
+    }
+
+    // A single-ENTITY inlined field whose predicate/direction matches the class
+    // membership: its object values ARE the membership set, so it can reuse the
+    // hoisted %categories subquery instead of self-joining the predicate + a type
+    // re-filter per value. The field's own membership (e.g. target's P31=Q19020) is
+    // SUBSUMED by %categories — the roots are exactly that type — so it's dropped.
+    // (Mirrors the reuseRoot check in appendInlinedFieldPatterns, but keyed off the
+    // named set, not a bound ?root.)
+    private static boolean reusesMembership(RuleIncludedField field, String memberTriple) {
+        if (field == null) {
+            return false;
+        }
+        String pid = RuleNode.cleanPid(field.propertyPid());
+        return memberTriple.equals(
+                field.direction().triplePattern("?value", "?root", pid));
     }
 
     // Outer wrapper that labels the limited rows via the SERVICE (no inline

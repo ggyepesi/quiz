@@ -48,6 +48,30 @@ class SplitInlinedQueryTest {
         assertFalse(q.contains("?cast_inlined) (GROUP_CONCAT"), "concats stacked in one subquery\n" + q);
     }
 
+    @Test void inlinedFieldOnTheMembershipPredicateReusesACategoriesSubquery() {
+        RuleNode node = new RuleNode("Nomination", "?value");
+        node.sourceQid("Q102427");
+        node.addAdditionalSourceQid("Q103360");         // multi-QID membership set
+        node.propertyPid("P1411");
+        node.direction(RuleDirection.ITEM_TO_ROOT);      // ?value wdt:P1411 <category>
+        node.addIncludedField(entityList("type", "P31"));           // different predicate
+        node.addIncludedField(entityList("target", "P1411"));       // SAME predicate as membership
+
+        String q = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(node);
+
+        // The membership set is hoisted and reused by base + the matching field.
+        assertTrue(q.contains("} AS %categories"), q);
+        assertTrue(q.contains("VALUES ?category"), q);
+        assertTrue(q.contains("INCLUDE %categories"), q);
+        // target (same predicate) concats the category from %categories, no self-join.
+        assertTrue(q.contains("BIND(CONCAT(STR(?category)"), q);
+        // type (different predicate) still self-traverses from ?value.
+        assertTrue(q.contains("?value wdt:P31 ?type_gc"), q);
+        // label via SERVICE, not an inline all-language FILTER in the base.
+        assertTrue(q.contains("SERVICE wikibase:label"), q);
+        assertFalse(q.contains("FILTER(LANG(?valueLabel)"), q);
+    }
+
     @Test void singleInlinedFieldKeepsTheSingleSubqueryPath() {
         RuleNode node = rootNode();
         node.addIncludedField(entityList("cast", "P161"));
