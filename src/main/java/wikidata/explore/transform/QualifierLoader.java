@@ -93,6 +93,38 @@ public class QualifierLoader {
                 loadWithSplit(client, cfg, batch, byQid, valueField, stmtType, created,
                         g, (++idx) + "/" + total, valueAnchored);
             }
+
+            // Recovery: an ENTITY-anchored pool entity is here because it has a
+            // truthy P<pid> to a configured value — so ZERO loaded statements means
+            // its batch was a transient miss (a WDQS 502/timeout that halved down to
+            // a dropped single), not a real absence. Re-query just the empty ones in
+            // small batches for a few rounds, so a flaky endpoint doesn't silently
+            // drop ~5% of the statements (the Oscars 586-lost-nominations case).
+            if (!valueAnchored) {
+                int recBatch = Math.max(1, batchSize / 5);
+                for (int round = 1; round <= 3
+                        && !Thread.currentThread().isInterrupted(); round++) {
+                    List<String> missing = new ArrayList<>();
+                    for (Map.Entry<String, WikidataDynamicObject> en : byQid.entrySet()) {
+                        if (en.getValue().get(cfg.statementField()) == null) {
+                            missing.add(en.getKey());
+                        }
+                    }
+                    if (missing.isEmpty()) {
+                        break;
+                    }
+                    g.message("Qualifier load recovery " + round + ": re-querying "
+                            + missing.size() + " entities with no statement\n");
+                    for (int from = 0; from < missing.size()
+                            && !Thread.currentThread().isInterrupted(); from += recBatch) {
+                        List<String> batch = new ArrayList<>(missing.subList(
+                                from, Math.min(from + recBatch, missing.size())));
+                        loadWithSplit(client, cfg, batch, byQid, valueField, stmtType,
+                                created, g, "recovery" + round + "/" + from, valueAnchored);
+                    }
+                }
+            }
+
             g.message("Qualifier load " + cfg.entityType() + " "
                     + cfg.propertyPid() + " -> " + created.size() + " "
                     + stmtType + " statements\n");
