@@ -1443,8 +1443,18 @@ public class QuizablePanel extends JPanel {
             return false;
         }
 
+        // Force-expand a nested Quizable rendered as a reference CHIP (e.g. a query
+        // log's `steps` item) so a match deeper inside it renders + highlights.
+        // idx>0 skips the root card itself; idx<size means the hit is INSIDE it.
+        boolean changed = false;
+        if (idx > 0 && idx < path.size() && obj instanceof Quizable q
+                && renderContext != null && !renderContext.isTopLevel(q)
+                && renderContext.setExpanded(q, true)) {
+            changed = true;
+        }
+
         if (obj instanceof Collection<?> c) {
-            boolean changed = expandIfCollapsed(obj, c.size());
+            changed |= expandIfCollapsed(obj, c.size());
             for (Object item : c) {
                 changed |= expandCollectionsAlong(item, path, idx);
             }
@@ -1452,7 +1462,7 @@ public class QuizablePanel extends JPanel {
         }
 
         if (obj instanceof Map<?, ?> m) {
-            boolean changed = expandIfCollapsed(obj, m.size());
+            changed |= expandIfCollapsed(obj, m.size());
             for (Object v : m.values()) {
                 changed |= expandCollectionsAlong(v, path, idx);
             }
@@ -1460,24 +1470,24 @@ public class QuizablePanel extends JPanel {
         }
 
         if (idx >= path.size()) {
-            return false;
+            return changed;
         }
 
         String part = path.get(idx);
         // "name" is a synthetic leaf (Quizable.getName()), not a real field.
         if ("name".equals(part)) {
-            return false;
+            return changed;
         }
 
         Field f = QuizableAdapter.getField(obj.getClass(), part);
         if (f == null) {
-            return false;
+            return changed;
         }
         try {
             f.setAccessible(true);
-            return expandCollectionsAlong(f.get(obj), path, idx + 1);
+            return changed | expandCollectionsAlong(f.get(obj), path, idx + 1);
         } catch (Exception e) {
-            return false;
+            return changed;
         }
     }
 

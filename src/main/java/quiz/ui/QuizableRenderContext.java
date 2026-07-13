@@ -134,6 +134,15 @@ public class QuizableRenderContext {
         return true;
     }
 
+    /** Forces the in-place expand state (used by search to reveal a match hidden
+     *  inside a collapsed reference chip). Returns true if it changed. */
+    public boolean setExpanded(Object target, boolean exp) {
+        if (target == null) {
+            return false;
+        }
+        return exp ? expanded.add(target) : expanded.remove(target);
+    }
+
     // When true, single-clicking a reference to an object that is top-level
     // in this context navigates (scrolls to + flashes) its existing card
     // instead of opening a new detail frame. Shared across the views that
