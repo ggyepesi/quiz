@@ -72,6 +72,36 @@ class SplitInlinedQueryTest {
         assertFalse(q.contains("FILTER(LANG(?valueLabel)"), q);
     }
 
+    @Test void plainPathServiceLabelsABoundedMultiQidMembership() {
+        // No inlined fields (plain path), bounded multi-QID membership → the value
+        // label must go via SERVICE (the inline all-language FILTER times out on
+        // ~11k P1411 nominees).
+        RuleNode node = new RuleNode("Nominee", "?value");
+        node.sourceQid("Q102427");
+        node.addAdditionalSourceQid("Q103360");
+        node.propertyPid("P1411");
+        node.direction(RuleDirection.ITEM_TO_ROOT);
+
+        String q = RuleNodeQueryBuilder.valuesQuery(node);
+
+        assertTrue(q.contains("SERVICE wikibase:label"), q);
+        assertFalse(q.contains("FILTER(LANG(?valueLabel)"), q);
+    }
+
+    @Test void plainPathKeepsInlineLabelForABroadType() {
+        // A broad single-type membership (Q523 "star", 3M) keeps the inline label —
+        // there it RESTRICTS the scan to named entities, which SERVICE can't.
+        RuleNode node = new RuleNode("Star", "?value");
+        node.sourceQid("Q523");
+        node.propertyPid("P31");
+        node.direction(RuleDirection.ITEM_TO_ROOT);
+
+        String q = RuleNodeQueryBuilder.valuesQuery(node);
+
+        assertTrue(q.contains("FILTER(LANG(?valueLabel)"), q);
+        assertFalse(q.contains("SERVICE wikibase:label"), q);
+    }
+
     @Test void singleInlinedFieldKeepsTheSingleSubqueryPath() {
         RuleNode node = rootNode();
         node.addIncludedField(entityList("cast", "P161"));

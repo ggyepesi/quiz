@@ -133,6 +133,15 @@ public final class RuleNodeQueryBuilder {
         boolean isVariable = rootQidOrVar != null
                 && rootQidOrVar.startsWith("?");
 
+        // For a BOUNDED multi-QID membership (a VALUES set — e.g. the Oscar
+        // categories, ~11k nominees), the inline all-language VALUE label
+        // (?value rdfs:label ?l . FILTER(LANG=en)) fetches every language's label
+        // and times out; the set is already small, so label it via SERVICE over the
+        // bounded rows in the outer instead. A BROAD single-type membership (e.g.
+        // Q523 "star", 3M) keeps the inline label — there it RESTRICTS the scan to
+        // named entities, which SERVICE can't. Field labels stay inline either way.
+        boolean serviceValueLabel = !isVariable && !node.additionalSourceQids().isEmpty();
+
         // Always label INLINE, never via SERVICE. Wrapping a big-class subquery
         // (e.g. Q523 "star", ~3M) in `SERVICE wikibase:label` makes Blazegraph
         // flatten it and re-scan the whole class — even with an inner LIMIT —
@@ -182,7 +191,7 @@ public final class RuleNodeQueryBuilder {
         boolean grouped = !inlinedFields.isEmpty();
 
         q.select("value");
-        if (!useService) q.select("valueLabel");
+        if (!useService && !serviceValueLabel) q.select("valueLabel");
         appendValueFilterSelects(q, node, sharedVars.keySet());
         if (grouped) {
             appendGroupedScalarSelects(q, node, selectSkip, !useService);
@@ -263,7 +272,7 @@ public final class RuleNodeQueryBuilder {
         // Skip the label pattern for the empty case — with ?value bound to the
         // empty set it would add nothing, but emitting it invites a full label
         // scan if a planner ignores the empty VALUES.
-        if (!useService && !emptyResult) appendLabelPattern(q, node);
+        if (!useService && !serviceValueLabel && !emptyResult) appendLabelPattern(q, node);
 
         if (node.hasRank()) {
             // Class-level importance ranking: keep the top `limit` by a measure.
@@ -306,8 +315,11 @@ public final class RuleNodeQueryBuilder {
         String prefix = isVariable
                 ? "# NOTE: query template — ?root replaced by VALUES at runtime.\n\n"
                 : "";
-        return prefix + namedSubquerySort(
-                q.build(), outerSb.toString(), "valueLabel");
+        // When the value label is SERVICE-labelled, bind it over the bounded outer
+        // rows (not inline in the inner scan).
+        String outer = outerSb.toString()
+                + (serviceValueLabel ? labelService(labelLanguage(node)) : "");
+        return prefix + namedSubquerySort(q.build(), outer, "valueLabel");
     }
 
     /**
