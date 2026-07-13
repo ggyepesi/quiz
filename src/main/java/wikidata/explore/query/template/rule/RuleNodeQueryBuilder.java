@@ -340,7 +340,6 @@ public final class RuleNodeQueryBuilder {
         WikidataQueryBuilder base = new WikidataQueryBuilder();
         base.distinct(false);   // GROUP BY (below) is the deduplicator, not DISTINCT
         base.select("value");
-        base.select("valueLabel");
         appendValueFilterSelects(base, node, sharedVars.keySet());
         appendGroupedScalarSelects(base, node, selectSkip, true);
 
@@ -375,9 +374,12 @@ public final class RuleNodeQueryBuilder {
         appendPredicateObjectExclusions(base, node);
         appendValueFilterPatterns(base, node, sharedVars);
         appendGroupedScalarPatterns(base, node, patternSkip, true);
-        if (!emptyResult) {
-            appendLabelPattern(base, node);
-        }
+        // NB: no inline rdfs:label here — bound ?value first (by membership), then
+        // label the bounded set via SERVICE in the outer. An inline
+        // `?value rdfs:label ?l . FILTER(LANG=en)` fetches ALL-language labels for
+        // every candidate and times out on a big relational membership (P1411
+        // nominees ~11k: >30s → partial results → too few roots); the SERVICE labels
+        // only the matched rows in the requested language (~9s, complete).
         base.groupByNonAggregateSelects();
         base.limit(node.limit());
 
@@ -402,6 +404,9 @@ public final class RuleNodeQueryBuilder {
         for (String subName : subNames) {
             sb.append("  OPTIONAL { INCLUDE ").append(subName).append(" . }\n");
         }
+        // Label the bounded ?value set here (not inline in the base) — cheap over
+        // the ≤ limit rows, and it can't force a full-class label scan.
+        sb.append(labelService(labelLanguage(node)));
         sb.append("}\nORDER BY ?valueLabel\n");
         return sb.toString();
     }
