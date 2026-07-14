@@ -116,8 +116,8 @@ class OscarReifyTest {
         String desc = ModelStatementReifications.describe(
                 new ModelStatementReifications.Reification(load, reify));
 
-        assertTrue(desc.contains("subject-default fields: edition, nominee"), desc);
-        assertTrue(desc.contains("dedup key: category + edition + nominee"), desc);
+        assertTrue(desc.contains("subject-fallback fields: edition, nominee"), desc);
+        assertTrue(desc.contains("canonical key: category + edition + nominee"), desc);
         assertTrue(desc.contains("edition←P805"), desc);
         assertTrue(desc.contains("year←P585(date)"), desc);
     }

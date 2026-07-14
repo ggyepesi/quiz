@@ -3,360 +3,579 @@ package wikidata.explore.transform;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.CanonicalSpec;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.MissingQualifierPolicy;
+import wikidata.explore.model.StatementClassSource;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Turns a STATEMENT-reification class (a class with {@code statementSourceClass}
- * set) into a qualifier-load + reify, so the reified record is configured ON THE
- * MODEL with qualifier-sourced fields — not in a Transform file. E.g. a {@code
- * Nomination} class whose {@code statementSourceClass = Oscarnominations} and
- * relation {@code P1411}, with a value field {@code category} (the {@code ps:}
- * value) and qualifier fields {@code year} (P585), {@code forWork} (P1686),
- * {@code nominee} (P2453), becomes: load the P1411 statements of each
- * Oscarnominations with those qualifiers, then promote each to a {@code
- * Nomination{category, year, forWork, nominee}}. This is the qualifier field-source
- * realized via the existing {@link QualifierLoader} + {@link TransformEngine}.
+ * Turns a STATEMENT-reification class into a qualifier-load + reify, so the
+ * reified record is configured ON THE MODEL with qualifier-sourced fields —
+ * not in a Transform file.
+ *
+ * <p>For example, a {@code Nomination} class can reify {@code P1411}
+ * statements of {@code OscarNominations}. Its value field receives the
+ * statement's {@code ps:} value and qualifier fields receive values such as
+ * year ({@code P585}), for-work ({@code P1686}) and nominee ({@code P2453}).
+ * The implementation uses the existing {@link QualifierLoader} and
+ * {@link TransformEngine}; the model is the authoritative configuration.</p>
  */
 public final class ModelStatementReifications {
 
-    private ModelStatementReifications() {}
+    private ModelStatementReifications() {
+    }
 
-    public record Reification(QualifierLoadConfig load, ReifyConstruct reify) {}
+    public record Reification(
+            QualifierLoadConfig load,
+            ReifyConstruct reify) {
+    }
 
-    public static List<Reification> derive(GeneratedProjectModel project) {
+    public static List<Reification> derive(
+            GeneratedProjectModel project) {
+
         List<Reification> out = new ArrayList<>();
         if (project == null) {
             return out;
         }
-        for (GeneratedClassModel n : project.classes()) {
-            Reification r = deriveOne(n, project);
-            if (r != null) {
-                out.add(r);
+
+        for (GeneratedClassModel statementClass : project.classes()) {
+            Reification reification =
+                    deriveOne(statementClass, project);
+            if (reification != null) {
+                out.add(reification);
             }
         }
         return out;
     }
 
     /**
-     * Derives the single {@link Reification} for one statement class (or {@code
-     * null} if {@code n} isn't a reifying class / its source or property is
-     * unresolved). Split out of {@link #derive} so the workbench can show the
-     * authoritative recipe for the class being edited — the SAME code that runs,
-     * not a parallel reimplementation that can drift.
+     * Derives the single {@link Reification} for one statement class, or
+     * {@code null} when the class is not a statement class or its source cannot
+     * be resolved.
+     *
+     * <p>This method is also used by the workbench to display the exact recipe
+     * that generation will run. Keeping display and execution on the same
+     * derivation prevents their semantics from drifting.</p>
      */
-    public static Reification deriveOne(GeneratedClassModel n,
-                                        GeneratedProjectModel project) {
-        if (n == null || project == null || !n.reifiesStatements()) {
+    public static Reification deriveOne(
+            GeneratedClassModel statementClass,
+            GeneratedProjectModel project) {
+
+        if (statementClass == null
+                || project == null
+                || !statementClass.reifiesStatements()) {
             return null;
         }
-        {
-            // Resolve to the actual class name (case-insensitively), so the
-            // qualifier-load's entityType matches the pool's stamped typeName even
-            // if the "Reifies statements of" label differs in case.
-            GeneratedClassModel src = project.findClass(n.statementSourceClass());
-            String stmtProp = clean(n.instanceMapping().propertyPid());
-            if (src == null || !stmtProp.matches("P\\d+")) {
-                return null;
-            }
-            String sourceClass = src.className();
 
-            String valueField = null;
-            String primaryListField = "";
-            List<String> valueQids = new ArrayList<>();
-            List<QualifierLoadConfig.Qualifier> quals = new ArrayList<>();
-            List<ReifyConstruct.Role> roles = new ArrayList<>();
-            List<String> dedup = new ArrayList<>();
-
-            for (GeneratedFieldModel f : n.fields()) {
-                if (f == null || f.isNameField()) {
-                    continue;
-                }
-                // Derived fields (COMPANION_MATCH flags like `won`, INVERT
-                // reverse-refs) are produced by later passes — NOT statement
-                // qualifiers. `won` carries P1686 as its companion role qualifier,
-                // which would otherwise be mis-loaded as a qualifier value AND put
-                // in the dedup key, splitting the work/person copies at reify time
-                // (won=null vs won=<work>) so they never collapse.
-                if (f.mapping().productionKind()
-                        != wikidata.explore.model.FieldProductionKind.AUTO) {
-                    continue;
-                }
-                if (f.mapping().isQualifier()) {
-                    QualifierLoadConfig.Kind kind = kindFor(f.type());
-                    boolean multi = f.cardinality() != null
-                            && f.cardinality().isCollection();
-                    quals.add(new QualifierLoadConfig.Qualifier(
-                            clean(f.mapping().qualifierPid()), f.name(), kind, multi));
-                    // DEDUP KEY: a DATE qualifier (the ceremony/event date) is an
-                    // ATTRIBUTE, not identity — and often missing on one denormalized
-                    // copy, which would split otherwise identical work/person copies;
-                    // so the inferred default excludes YEAR. An explicit inDedupKey
-                    // override (#92) wins over that inference.
-                    Boolean inKeyOverride = f.mapping().inDedupKey();
-                    boolean inKey = inKeyOverride != null
-                            ? inKeyOverride : kind != QualifierLoadConfig.Kind.YEAR;
-                    if (inKey) {
-                        dedup.add(f.name());
-                    }
-                    if (kind == QualifierLoadConfig.Kind.ENTITY) {
-                        if (multi && primaryListField.isEmpty()) {
-                            // A multi ENTITY qualifier (the shared-award nominee
-                            // list) is the CANONICAL marker: the record that has it
-                            // is the nomination; the loader fills it. Not a role.
-                            primaryListField = f.name();
-                        } else if (subjectDefaults(f)) {
-                            // SUBJECT-DEFAULT: value, or the subject when absent — so a
-                            // denormalized person-side copy (forWork) resolves to the
-                            // same work and dedups. Inferred true for a single ENTITY
-                            // qualifier (legacy), overridable per field (#92): turn it
-                            // OFF for a plain third-party reference like edition so an
-                            // absent P805 stays EMPTY, not the film (#95).
-                            roles.add(new ReifyConstruct.Role(f.name(), f.name(), true));
-                        }
-                    }
-                } else if (valueField == null
-                        && stmtProp.equals(clean(f.mapping().propertyPid()))) {
-                    valueField = f.name();      // the statement's ps: value
-                    // Its allowed QIDs (e.g. the 59 Oscar categories) pin the
-                    // statement value, so the qualifier load joins on an explicit
-                    // set — tight + deterministic — not a broad P31 type.
-                    for (String q : f.mapping().allowedQids()) {
-                        String cq = clean(q);
-                        if (cq.matches("Q\\d+")) {
-                            valueQids.add(cq);
-                        }
-                    }
-                }
-            }
-            if (valueField == null) {
-                for (GeneratedFieldModel f : n.fields()) {
-                    if (f != null && !f.isNameField() && !f.mapping().isQualifier()) {
-                        valueField = f.name();
-                        break;
-                    }
-                }
-            }
-            if (valueField == null) {
-                valueField = "value";
-            }
-            dedup.add(0, valueField);
-
-            // If the value field has no explicit allowed QIDs, inherit the SOURCE
-            // class's membership target QIDs when its membership uses the SAME
-            // property — the reified value IS one of them (OscarNominations = P1411
-            // to the 59 categories → a Nomination's category is one of those 59).
-            // This keeps the qualifier-load value filter identical to the ROOT query
-            // instead of falling back to the value-TYPE below (sourceQid = Q19020),
-            // which MISSES categories not typed as that: Best Picture (Q102427) and
-            // Best Director (Q103360) are NOT P31=Q19020, so their statements never
-            // loaded — the 586-orphan / stuck-at-13610 bug.
-            if (valueQids.isEmpty()
-                    && stmtProp.equals(clean(src.instanceMapping().propertyPid()))) {
-                String srcSourceQid = clean(src.instanceMapping().sourceQid());
-                if (srcSourceQid.matches("Q\\d+")) {
-                    valueQids.add(srcSourceQid);
-                }
-                for (String q : src.instanceMapping().additionalTypeQids()) {
-                    String cq = clean(q);
-                    if (cq.matches("Q\\d+")) {
-                        valueQids.add(cq);
-                    }
-                }
-            }
-
-            // The class's sourceQid (if any) filters the statement value by P31 —
-            // e.g. Q19020 keeps only Oscar-category statements.
-            String valueTypeQid = clean(n.instanceMapping().sourceQid());
-
-            QualifierLoadConfig load = new QualifierLoadConfig(
-                    sourceClass, stmtProp, "__" + n.className(), n.className(),
-                    valueField, valueTypeQid.matches("Q\\d+") ? valueTypeQid : "",
-                    quals, valueQids);
-            ReifyConstruct reify = new ReifyConstruct(
-                    sourceClass, "__" + n.className(), n.className(),
-                    "source", "value", true, roles, dedup, primaryListField);
-            return new Reification(load, reify);
+        StatementClassSource statementSource =
+                statementClass.statementSource();
+        if (statementSource == null) {
+            return null;
         }
+
+        // Resolve to the actual class name case-insensitively, so the
+        // qualifier-load entityType matches the type stamped on pool objects.
+        GeneratedClassModel sourceClassModel =
+                project.findClass(statementSource.sourceClassName());
+        String statementPid = clean(statementSource.propertyPid());
+
+        if (sourceClassModel == null
+                || !statementPid.matches("P\\d+")) {
+            return null;
+        }
+
+        String sourceClassName = sourceClassModel.className();
+        String valueField = findValueField(
+                statementClass, statementPid);
+
+        List<String> valueQids = valueQids(
+                statementClass,
+                sourceClassModel,
+                statementPid,
+                valueField);
+
+        List<QualifierLoadConfig.Qualifier> qualifiers =
+                new ArrayList<>();
+        String primaryListField = "";
+
+        for (GeneratedFieldModel field : statementClass.fields()) {
+            if (!isRuntimeStatementField(field)
+                    || !field.mapping().isQualifier()) {
+                continue;
+            }
+
+            QualifierLoadConfig.Kind kind = kindFor(field.type());
+            boolean multi = field.cardinality() != null
+                    && field.cardinality().isCollection();
+
+            qualifiers.add(new QualifierLoadConfig.Qualifier(
+                    clean(field.mapping().qualifierPid()),
+                    field.name(),
+                    kind,
+                    multi));
+
+            if (kind == QualifierLoadConfig.Kind.ENTITY
+                    && multi
+                    && primaryListField.isEmpty()) {
+                // A multi ENTITY qualifier (the shared-award nominee list) is
+                // the canonical marker: the record that has it is the complete
+                // statement copy. It is not itself a fallback role.
+                primaryListField = field.name();
+            }
+        }
+
+        List<ReifyConstruct.Role> roles =
+                fallbackRoles(statementClass, valueField);
+        List<String> dedup =
+                canonicalKey(statementClass, valueField);
+
+        // The class sourceQid, when present, is a P31 filter for the statement
+        // value (for example Q19020 for Academy Award categories).
+        String valueTypeQid =
+                clean(statementClass.instanceMapping().sourceQid());
+
+        QualifierLoadConfig load = new QualifierLoadConfig(
+                sourceClassName,
+                statementPid,
+                "__" + statementClass.className(),
+                statementClass.className(),
+                valueField,
+                valueTypeQid.matches("Q\\d+")
+                        ? valueTypeQid
+                        : "",
+                qualifiers,
+                valueQids);
+
+        ReifyConstruct reify = new ReifyConstruct(
+                sourceClassName,
+                "__" + statementClass.className(),
+                statementClass.className(),
+                "source",
+                "value",
+                true,
+                roles,
+                dedup,
+                primaryListField);
+
+        return new Reification(load, reify);
+    }
+
+    private static boolean isRuntimeStatementField(
+            GeneratedFieldModel field) {
+
+        return field != null
+                && !field.isNameField()
+                // Derived fields (COMPANION_MATCH flags such as `won`, and
+                // INVERT reverse references) are produced by later passes.
+                // They must not be mistaken for statement qualifiers.
+                && field.mapping().productionKind()
+                == FieldProductionKind.AUTO;
+    }
+
+    private static String findValueField(
+            GeneratedClassModel statementClass,
+            String statementPid) {
+
+        for (GeneratedFieldModel field : statementClass.fields()) {
+            if (!isRuntimeStatementField(field)
+                    || field.mapping().isQualifier()) {
+                continue;
+            }
+
+            if (statementPid.equals(
+                    clean(field.mapping().propertyPid()))) {
+                return field.name();
+            }
+        }
+
+        // Compatibility fallback for older models that did not explicitly
+        // identify the ps: field with the statement property.
+        for (GeneratedFieldModel field : statementClass.fields()) {
+            if (isRuntimeStatementField(field)
+                    && !field.mapping().isQualifier()) {
+                return field.name();
+            }
+        }
+
+        return "value";
+    }
+
+    private static List<String> valueQids(
+            GeneratedClassModel statementClass,
+            GeneratedClassModel sourceClass,
+            String statementPid,
+            String valueField) {
+
+        LinkedHashSet<String> values = new LinkedHashSet<>();
+
+        GeneratedFieldModel valueModel = statementClass.fields().stream()
+                                                       .filter(ModelStatementReifications::isRuntimeStatementField)
+                                                       .filter(field -> valueField.equals(field.name()))
+                                                       .findFirst()
+                                                       .orElse(null);
+
+        if (valueModel != null) {
+            for (String qid : valueModel.mapping().allowedQids()) {
+                String cleanQid = clean(qid);
+                if (cleanQid.matches("Q\\d+")) {
+                    values.add(cleanQid);
+                }
+            }
+        }
+
+        // If the value field has no explicit QID set, inherit the SOURCE
+        // class's membership targets when it uses the same property. The
+        // reified statement value is then necessarily one of those targets.
+        //
+        // This keeps the qualifier-load filter aligned with the root query.
+        // Falling back only to a broad P31 type can miss exceptional values,
+        // such as Oscar categories that are not typed Q19020.
+        if (values.isEmpty()
+                && statementPid.equals(
+                clean(sourceClass.instanceMapping().propertyPid()))) {
+
+            String sourceQid =
+                    clean(sourceClass.instanceMapping().sourceQid());
+            if (sourceQid.matches("Q\\d+")) {
+                values.add(sourceQid);
+            }
+
+            for (String qid
+                    : sourceClass.instanceMapping().additionalTypeQids()) {
+                String cleanQid = clean(qid);
+                if (cleanQid.matches("Q\\d+")) {
+                    values.add(cleanQid);
+                }
+            }
+        }
+
+        return new ArrayList<>(values);
     }
 
     /**
-     * A human-readable, multi-line recipe for one reification — the SAME structure
-     * the reify runs. Surfaced in the run log and the Statement-class panel so the
-     * (otherwise hidden) inference is visible: which fields default to the SUBJECT
-     * when their qualifier is absent (the trap behind self-referential atoms), and
-     * which fields form the dedup key.
+     * Compiles the explicit missing-qualifier policy into the existing generic
+     * reify-role representation.
+     *
+     * <ul>
+     *   <li>STATEMENT_SUBJECT: use the qualifier field, falling back to source.</li>
+     *   <li>STATEMENT_VALUE: copy the main ps: value when the qualifier is absent.</li>
+     *   <li>MISSING: create no fallback role.</li>
+     *   <li>null: preserve the legacy default for single ENTITY qualifiers.</li>
+     * </ul>
      */
-    public static String describe(Reification r) {
-        if (r == null) {
+    private static List<ReifyConstruct.Role> fallbackRoles(
+            GeneratedClassModel statementClass,
+            String valueField) {
+
+        List<ReifyConstruct.Role> roles = new ArrayList<>();
+
+        for (GeneratedFieldModel field : statementClass.fields()) {
+            if (!isRuntimeStatementField(field)
+                    || !field.mapping().isQualifier()
+                    || field.type() != FieldType.ENTITY
+                    || field.cardinality() != null
+                    && field.cardinality().isCollection()) {
+                continue;
+            }
+
+            MissingQualifierPolicy policy =
+                    field.mapping().missingQualifierPolicy();
+
+            if (policy == null) {
+                // Legacy behavior: every single ENTITY qualifier defaulted to
+                // the statement subject unless explicitly disabled.
+                policy = MissingQualifierPolicy.STATEMENT_SUBJECT;
+            }
+
+            switch (policy) {
+                case STATEMENT_SUBJECT ->
+                        roles.add(new ReifyConstruct.Role(
+                                field.name(),
+                                field.name(),
+                                true));
+
+                case STATEMENT_VALUE ->
+                        roles.add(new ReifyConstruct.Role(
+                                field.name(),
+                                valueField,
+                                false));
+
+                case MISSING -> {
+                    // No role: keep the qualifier absent.
+                }
+            }
+        }
+
+        return roles;
+    }
+
+    /**
+     * Runtime identity comes from the class-level CanonicalSpec.
+     *
+     * <p>Old per-field inDedupKey flags are consulted only by
+     * GeneratedClassModel.effectiveCanonical(), which converts the legacy
+     * representation into the same class-level view.</p>
+     */
+    private static List<String> canonicalKey(
+            GeneratedClassModel statementClass,
+            String valueField) {
+
+        CanonicalSpec canonical =
+                statementClass.effectiveCanonical();
+
+        LinkedHashSet<String> key = new LinkedHashSet<>();
+        if (canonical != null && canonical.keyFields() != null) {
+            for (String fieldName : canonical.keyFields()) {
+                String cleanName = clean(fieldName);
+                if (!cleanName.isBlank()
+                        && fieldExists(statementClass, cleanName)) {
+                    key.add(cleanName);
+                }
+            }
+        }
+
+        // A malformed or very old model should still produce stable records.
+        // Normally effectiveCanonical() already includes the value field.
+        if (key.isEmpty() && fieldExists(statementClass, valueField)) {
+            key.add(valueField);
+        }
+
+        return new ArrayList<>(key);
+    }
+
+    private static boolean fieldExists(
+            GeneratedClassModel statementClass,
+            String fieldName) {
+
+        return statementClass.fields().stream()
+                             .filter(java.util.Objects::nonNull)
+                             .anyMatch(field -> fieldName.equals(field.name()));
+    }
+
+    /**
+     * A human-readable, multi-line recipe for one reification — the same
+     * structure that generation executes.
+     */
+    public static String describe(Reification reification) {
+        if (reification == null) {
             return "(not a reifying class)";
         }
-        QualifierLoadConfig load = r.load();
-        ReifyConstruct reify = r.reify();
 
-        List<String> subjectDefault = new ArrayList<>();
+        QualifierLoadConfig load = reification.load();
+        ReifyConstruct reify = reification.reify();
+
+        List<String> subjectFallbacks = new ArrayList<>();
+        List<String> valueFallbacks = new ArrayList<>();
+
         for (ReifyConstruct.Role role : reify.roles()) {
             if (role.fallbackToSource()) {
-                subjectDefault.add(role.field());
-            }
-        }
-        StringBuilder quals = new StringBuilder();
-        for (QualifierLoadConfig.Qualifier q : load.qualifiers()) {
-            if (quals.length() > 0) {
-                quals.append(", ");
-            }
-            quals.append(q.fieldName()).append("←").append(q.pid());
-            if (q.multi()) {
-                quals.append("(list)");
-            }
-            if (q.kind() == QualifierLoadConfig.Kind.YEAR) {
-                quals.append("(date)");
+                subjectFallbacks.add(role.field());
+            } else if (load.valueField().equals(role.from())
+                    && !role.field().equals(role.from())) {
+                valueFallbacks.add(role.field());
             }
         }
 
-        return "Reify " + load.propertyPid() + " of " + load.entityType()
+        StringBuilder qualifierText = new StringBuilder();
+        for (QualifierLoadConfig.Qualifier qualifier
+                : load.qualifiers()) {
+            if (qualifierText.length() > 0) {
+                qualifierText.append(", ");
+            }
+            qualifierText.append(qualifier.fieldName())
+                         .append("←")
+                         .append(qualifier.pid());
+
+            if (qualifier.multi()) {
+                qualifierText.append("(list)");
+            }
+            if (qualifier.kind()
+                    == QualifierLoadConfig.Kind.YEAR) {
+                qualifierText.append("(date)");
+            }
+        }
+
+        return "Reify " + load.propertyPid()
+                + " of " + load.entityType()
                 + " → " + reify.targetType()
-                + "\n  value: " + load.valueField()
-                + "\n  canonical nominee-list: "
-                + (reify.canonicalizesByList() ? reify.primaryListField() : "—")
-                + "\n  subject-default fields: "
-                + (subjectDefault.isEmpty() ? "—" : String.join(", ", subjectDefault))
-                + "   (each = its qualifier value, ELSE the source entity when absent)"
-                + "\n  dedup key: "
-                + (reify.dedupBy().isEmpty() ? "—" : String.join(" + ", reify.dedupBy()))
-                + "\n  qualifiers: " + (quals.length() == 0 ? "—" : quals);
+                + "\n value: " + load.valueField()
+                + "\n canonical nominee-list: "
+                + (reify.canonicalizesByList()
+                ? reify.primaryListField()
+                : "—")
+                + "\n subject-fallback fields: "
+                + display(subjectFallbacks)
+                + "\n statement-value-fallback fields: "
+                + display(valueFallbacks)
+                + "\n canonical key: "
+                + display(reify.dedupBy(), " + ")
+                + "\n qualifiers: "
+                + (qualifierText.length() == 0
+                ? "—"
+                : qualifierText);
     }
 
-    /**
-     * Run the derived qualifier-loads + reifies (needs the client). {@code pool}
-     * provides the source entities (whose statements get loaded); the created
-     * records are RETURNED so the caller adds them to the canonical pool.
-     */
     public static List<WikidataDynamicObject> apply(
             GeneratedProjectModel project,
             List<WikidataDynamicObject> pool,
             WikidataSparqlClient client,
             GenerationLog log) {
+
         enrich(project, pool, client, log);
         return reify(project, pool, log);
     }
 
     /**
-     * NETWORK stage: load each reification's qualifier values onto the statement
-     * objects in {@code pool}. Split from {@link #reify} so a Remap can re-run the
-     * pure reify on a cached copy of the enriched pool without re-fetching.
+     * NETWORK stage: loads qualifier values onto statement objects in the pool.
+     * It is separate from reify so remapping can repeat the pure stage without
+     * issuing the network requests again.
      */
     public static void enrich(
             GeneratedProjectModel project,
             List<WikidataDynamicObject> pool,
             WikidataSparqlClient client,
             GenerationLog log) {
+
         if (client == null) {
             return;
         }
+
         QualifierLoader loader = new QualifierLoader();
-        for (Reification r : derive(project)) {
-            loader.enrich(pool, r.load(), client, log);
+        for (Reification reification : derive(project)) {
+            loader.enrich(
+                    pool,
+                    reification.load(),
+                    client,
+                    log);
         }
     }
 
     /**
-     * PURE stage: reify the (already enriched) statements into records. No network,
-     * so it can be re-run on a cached enriched pool.
+     * PURE stage: promotes already enriched statement objects into records.
      */
     public static List<WikidataDynamicObject> reify(
             GeneratedProjectModel project,
             List<WikidataDynamicObject> pool,
             GenerationLog log) {
+
         return reify(project, pool, log, null);
     }
 
     /**
-     * As {@link #reify(GeneratedProjectModel, List, GenerationLog)}, additionally
-     * collecting into {@code demotedOut} the duplicate records the dedup dropped
-     * (un-stamped) — so the caller can EXCLUDE them from the served pool instead of
-     * leaving them as duplicate untyped cards.
+     * As {@link #reify(GeneratedProjectModel, List, GenerationLog)}, also
+     * collects duplicate records dropped during canonicalization.
      */
     public static List<WikidataDynamicObject> reify(
             GeneratedProjectModel project,
             List<WikidataDynamicObject> pool,
             GenerationLog log,
-            java.util.Set<WikidataDynamicObject> demotedOut) {
-        List<WikidataDynamicObject> created = new ArrayList<>();
+            Set<WikidataDynamicObject> demotedOut) {
+
+        List<WikidataDynamicObject> created =
+                new ArrayList<>();
         TransformEngine engine = new TransformEngine();
-        for (Reification r : derive(project)) {
-            List<WikidataDynamicObject> records = engine.applyReify(pool, r.reify());
+
+        for (Reification reification : derive(project)) {
+            List<WikidataDynamicObject> records =
+                    engine.applyReify(
+                            pool,
+                            reification.reify());
             created.addAll(records);
+
             if (log != null) {
-                log.message(describe(r) + "\n  → " + records.size() + " records\n");
-                List<String> gaps = valueFilterGaps(r, project);
+                log.message(describe(reification)
+                                    + "\n → " + records.size()
+                                    + " records\n");
+
+                List<String> gaps =
+                        valueFilterGaps(reification, project);
                 if (!gaps.isEmpty()) {
-                    log.message("  ⚠ consistency: the value filter misses " + gaps.size()
-                            + " of the source class's membership target(s) — "
-                            + gaps.stream().limit(6)
-                                    .collect(java.util.stream.Collectors.joining(", "))
-                            + (gaps.size() > 6 ? ", …" : "")
-                            + " — statements to those WON'T load. Add them to the value "
-                            + "field's allowed values (or align the class membership).\n");
+                    log.message(
+                            " ⚠ consistency: the value filter misses "
+                                    + gaps.size()
+                                    + " of the source class's membership "
+                                    + "target(s) — "
+                                    + gaps.stream()
+                                          .limit(6)
+                                          .collect(
+                                                  java.util.stream.Collectors
+                                                          .joining(", "))
+                                    + (gaps.size() > 6 ? ", …" : "")
+                                    + " — statements to those WON'T load. "
+                                    + "Add them to the value field's allowed "
+                                    + "values (or align the class membership).\n");
                 }
             }
         }
+
         if (demotedOut != null) {
             demotedOut.addAll(engine.demoted());
         }
+
         return created;
     }
 
     /**
-     * The source class's membership targets NOT covered by a reify's value filter —
-     * a config consistency gap. When a class reifies the SAME property that defines
-     * its source class's membership, every reified statement value IS a membership
-     * target, so the value filter must cover them all; a gap means statements to the
-     * missed targets silently won't load (the Q19020-missed-Best-Picture class of
-     * bug). Empty = OK or not applicable. Only checks an explicit value QID set — a
-     * value-TYPE filter can't be verified without the network.
+     * Returns source-class membership targets that are not covered by a
+     * reification's explicit statement-value filter.
      */
     public static List<String> valueFilterGaps(
-            Reification r, GeneratedProjectModel project) {
+            Reification reification,
+            GeneratedProjectModel project) {
+
         List<String> missed = new ArrayList<>();
-        if (r == null || project == null) {
+        if (reification == null || project == null) {
             return missed;
         }
-        QualifierLoadConfig cfg = r.load();
-        GeneratedClassModel src = project.findClass(cfg.entityType());
-        if (src == null
-                || cfg.valueQids() == null || cfg.valueQids().isEmpty()
-                || !cfg.propertyPid().equals(clean(src.instanceMapping().propertyPid()))) {
+
+        QualifierLoadConfig config = reification.load();
+        GeneratedClassModel sourceClass =
+                project.findClass(config.entityType());
+
+        if (sourceClass == null
+                || config.valueQids() == null
+                || config.valueQids().isEmpty()
+                || !config.propertyPid().equals(
+                clean(sourceClass
+                              .instanceMapping()
+                              .propertyPid()))) {
             return missed;
         }
-        java.util.Set<String> filter = new java.util.LinkedHashSet<>(cfg.valueQids());
-        String sq = clean(src.instanceMapping().sourceQid());
-        if (sq.matches("Q\\d+") && !filter.contains(sq)) {
-            missed.add(sq);
+
+        Set<String> filter =
+                new LinkedHashSet<>(config.valueQids());
+
+        String sourceQid =
+                clean(sourceClass.instanceMapping().sourceQid());
+        if (sourceQid.matches("Q\\d+")
+                && !filter.contains(sourceQid)) {
+            missed.add(sourceQid);
         }
-        for (String q : src.instanceMapping().additionalTypeQids()) {
-            String cq = clean(q);
-            if (cq.matches("Q\\d+") && !filter.contains(cq)) {
-                missed.add(cq);
+
+        for (String qid
+                : sourceClass.instanceMapping().additionalTypeQids()) {
+            String cleanQid = clean(qid);
+            if (cleanQid.matches("Q\\d+")
+                    && !filter.contains(cleanQid)) {
+                missed.add(cleanQid);
             }
         }
+
         return missed;
     }
 
-    /** Whether a single-ENTITY qualifier field fills from the SUBJECT when its
-     *  qualifier is absent. Explicit per-field override (#92) wins; otherwise the
-     *  legacy default — every single ENTITY qualifier was a subject-default role. */
-    private static boolean subjectDefaults(GeneratedFieldModel f) {
-        Boolean override = f.mapping().subjectDefault();
-        return override != null ? override : true;
-    }
+    private static QualifierLoadConfig.Kind kindFor(
+            FieldType type) {
 
-    private static QualifierLoadConfig.Kind kindFor(FieldType type) {
         if (type == FieldType.ENTITY) {
             return QualifierLoadConfig.Kind.ENTITY;
         }
@@ -366,12 +585,28 @@ public final class ModelStatementReifications {
         return QualifierLoadConfig.Kind.STRING;
     }
 
-    private static String clean(String s) {
-        if (s == null) {
+    private static String display(List<String> values) {
+        return display(values, ", ");
+    }
+
+    private static String display(
+            List<String> values,
+            String separator) {
+
+        return values == null || values.isEmpty()
+                ? "—"
+                : String.join(separator, values);
+    }
+
+    private static String clean(String value) {
+        if (value == null) {
             return "";
         }
-        s = s.trim();
-        int slash = s.lastIndexOf('/');
-        return slash >= 0 ? s.substring(slash + 1) : s;
+
+        String result = value.trim();
+        int slash = result.lastIndexOf('/');
+        return slash >= 0
+                ? result.substring(slash + 1)
+                : result;
     }
 }
