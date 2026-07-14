@@ -154,13 +154,10 @@ public final class GeneratedProjectModelValidator {
             MissingQualifierPolicy policy =
                     mapping.missingQualifierPolicy();
 
-            if (policy != null
-                    && !StatementFieldSemantics
-                            .supportsMissingQualifierPolicy(clazz, field)) {
+            if (policy != null && !mapping.isQualifier()) {
                 problems.add(Problem.error(
                         path(clazz, field),
-                        "Missing-qualifier policy applies only to a scalar entity "
-                                + "qualifier."));
+                        "Missing-qualifier policy requires a qualifier PID."));
             }
 
             if (policy == MissingQualifierPolicy.STATEMENT_VALUE
@@ -249,19 +246,12 @@ public final class GeneratedProjectModelValidator {
                 GeneratedFieldModel field =
                         findField(clazz, name);
                 if (field != null
-                        && field.cardinality()
-                        == FieldCardinality.COLLECTION) {
+                        && !StatementFieldSemantics
+                        .isCanonicalKeyCandidate(field)) {
                     problems.add(Problem.error(
                             path(clazz, field),
-                            "Collection field cannot participate in a canonical key."));
-                }
-
-                if (field != null
-                        && field.mapping().productionKind()
-                        != FieldProductionKind.AUTO) {
-                    problems.add(Problem.error(
-                            path(clazz, field),
-                            "Derived/post-transform field cannot participate in a canonical key."));
+                            "Only scalar, Auto-produced fields can "
+                                    + "participate in a canonical key."));
                 }
             }
         }
@@ -288,10 +278,11 @@ public final class GeneratedProjectModelValidator {
 
         String pid = clean(propertyPid);
         for (GeneratedFieldModel field : clazz.fields()) {
-            // The statement's main value is a runtime field that reads the
-            // property directly, not one of its qualifiers.
-            if (!StatementFieldSemantics.isRuntimeStatementField(field)
-                    || field.mapping().isQualifier()) {
+            if (field == null
+                    || field.isNameField()
+                    || field.mapping().isQualifier()
+                    || field.mapping().productionKind()
+                    != FieldProductionKind.AUTO) {
                 continue;
             }
 

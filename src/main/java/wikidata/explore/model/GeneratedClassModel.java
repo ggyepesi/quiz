@@ -74,8 +74,9 @@ public class GeneratedClassModel {
     }
 
     /**
-     * True only when the new statementSource field is present, rather than a
-     * compatibility view synthesized from legacy JSON.
+     * True only when the explicit statementSource field is set, as opposed to a
+     * compatibility view synthesized from legacy JSON. The migration needs this to
+     * tell a legacy statement class from an already-migrated one.
      */
     public boolean hasExplicitStatementSource() {
         return statementSource != null;
@@ -318,7 +319,9 @@ public class GeneratedClassModel {
 
         GeneratedFieldModel primary = null;
         boolean hasExplicitDedupFlags = fields.stream()
-                                              .filter(java.util.Objects::nonNull)
+                                              .filter(
+                                                      StatementFieldSemantics
+                                                              ::isCanonicalKeyCandidate)
                                               .map(GeneratedFieldModel::mapping)
                                               .anyMatch(mapping ->
                                                                 mapping.inDedupKey() != null);

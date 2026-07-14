@@ -267,11 +267,10 @@ public final class ModelStatementReifications {
         List<ReifyConstruct.Role> roles = new ArrayList<>();
 
         for (GeneratedFieldModel field : statementClass.fields()) {
-            if (!StatementFieldSemantics.isRuntimeStatementField(field)
-                    || !field.mapping().isQualifier()
-                    || field.type() != FieldType.ENTITY
-                    || field.cardinality() != null
-                    && field.cardinality().isCollection()) {
+            if (!StatementFieldSemantics
+                    .supportsMissingQualifierPolicy(
+                            statementClass,
+                            field)) {
                 continue;
             }
 

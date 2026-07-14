@@ -104,7 +104,6 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<String> matchRoleBox = new JComboBox<>();
 
     // Reify decomposition (#92): for a qualifier field of a statement class.
-    private static final String[] TRI = {"Auto", "Yes", "No"};
     // What a statement-class ENTITY qualifier gets when the qualifier is absent
     // (MissingQualifierPolicy). "Auto" = the legacy inferred default (subject).
     private static final String POL_AUTO = "Auto (subject)";
@@ -113,7 +112,6 @@ public class FieldSourcePanel extends JPanel {
     private static final String POL_MISSING = "Leave missing";
     private final JComboBox<String> missingQualifierBox = new JComboBox<>(
             new String[]{POL_AUTO, POL_SUBJECT, POL_VALUE, POL_MISSING});
-    private final JComboBox<String> inDedupKeyBox = new JComboBox<>(TRI);
 
     private final JSpinner limitSpinner =
             new JSpinner(new SpinnerNumberModel(50, 1, 10000, 10));
@@ -148,9 +146,9 @@ public class FieldSourcePanel extends JPanel {
         });
         directionBox.setToolTipText(
                 "<html>Direction of the property — used for <b>related-object</b> "
-                + "(Entity list) fields.<br>Outgoing: this entity has the property. "
-                + "Incoming: other entities point here (e.g. stars whose "
-                + "constellation P59 = this).</html>");
+                        + "(Entity list) fields.<br>Outgoing: this entity has the property. "
+                        + "Incoming: other entities point here (e.g. stars whose "
+                        + "constellation P59 = this).</html>");
         // A floating explanation (with an example) per option: shown while you
         // hover each choice in the open dropdown, and on the combo itself for
         // the current selection.
@@ -170,32 +168,54 @@ public class FieldSourcePanel extends JPanel {
             productionBox.setToolTipText(
                     productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
             refreshCompanionRows();
+            refreshStatementFieldControls();
         });
         productionBox.setToolTipText(
                 productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
         shapeBox.setToolTipText(
                 "<html>How many values this field holds per entity:<br>"
-                + "<b>Single value</b> — at most one (e.g. area, magnitude, "
-                + "abbreviation).<br>"
-                + "<b>List</b> — possibly many (e.g. a constellation's "
-                + "sharesBorderWith / stars, a figure's children or siblings).<br>"
-                + "<b>Auto-detect</b> — decide by sampling: shows the \"Sample to "
-                + "set shape\" button, which checks real instances and picks "
-                + "List if any has more than one value, else Single.<br><br>"
-                + "If unsure, leave Auto-detect and click \"Sample to set "
-                + "shape\".</html>");
+                        + "<b>Single value</b> — at most one (e.g. area, magnitude, "
+                        + "abbreviation).<br>"
+                        + "<b>List</b> — possibly many (e.g. a constellation's "
+                        + "sharesBorderWith / stars, a figure's children or siblings).<br>"
+                        + "<b>Auto-detect</b> — decide by sampling: shows the \"Sample to "
+                        + "set shape\" button, which checks real instances and picks "
+                        + "List if any has more than one value, else Single.<br><br>"
+                        + "If unsure, leave Auto-detect and click \"Sample to set "
+                        + "shape\".</html>");
         sampleShapeButton.setToolTipText(
                 "<html>Samples real instances for this property and sets the "
-                + "shape: <b>List</b> if any instance has more than one value, "
-                + "else <b>Single</b>. (Shown when Shape = Auto-detect.)</html>");
+                        + "shape: <b>List</b> if any instance has more than one value, "
+                        + "else <b>Single</b>. (Shown when Shape = Auto-detect.)</html>");
         String filterTip =
                 "<html>Optional numeric filter on this property — keep only "
-                + "entities whose value satisfies it.<br>E.g. <b>apparentMagnitude "
-                + "&le; 3</b> keeps only bright/notable stars. \"—\" = no "
-                + "filter.</html>";
+                        + "entities whose value satisfies it.<br>E.g. <b>apparentMagnitude "
+                        + "&le; 3</b> keeps only bright/notable stars. \"—\" = no "
+                        + "filter.</html>";
         filterOpBox.setToolTipText(filterTip);
         filterValueField.setToolTipText(filterTip);
         buildUi();
+
+        qualifierPidField.getDocument().addDocumentListener(
+                new javax.swing.event.DocumentListener() {
+                    @Override
+                    public void insertUpdate(
+                            javax.swing.event.DocumentEvent event) {
+                        refreshStatementFieldControls();
+                    }
+
+                    @Override
+                    public void removeUpdate(
+                            javax.swing.event.DocumentEvent event) {
+                        refreshStatementFieldControls();
+                    }
+
+                    @Override
+                    public void changedUpdate(
+                            javax.swing.event.DocumentEvent event) {
+                        refreshStatementFieldControls();
+                    }
+                });
     }
 
     public void afterChange(Consumer<Void> afterChange) {
@@ -254,7 +274,7 @@ public class FieldSourcePanel extends JPanel {
         requiredBox.setEnabled(!field.isNameField());
         edgeMembershipBox.setSelectedItem(field.edgeMembership());
         onlyRelatedOfTypeBox.setSelected(field.edgeMembership()
-                != wikidata.explore.model.EdgeMembershipMode.NONE);
+                                                 != wikidata.explore.model.EdgeMembershipMode.NONE);
         refreshSortFieldBox(field.entityClassName());
         sortFieldBox.setSelectedItem(
                 field.hasSort() ? field.sortFieldName() : NO_SORT);
@@ -264,17 +284,13 @@ public class FieldSourcePanel extends JPanel {
         productionBox.setSelectedItem(m.productionKind());
         filterOpBox.setSelectedItem(symbolOf(field.filterOperator()));
         filterValueField.setText(field.filterValue() == null
-                ? "" : trimDouble(field.filterValue()));
+                                         ? "" : trimDouble(field.filterValue()));
 
         propertyPidField.setText(m.propertyPid());
         qualifierPidField.setText(m.qualifierPid());
-        missingQualifierBox.setSelectedItem(policyLabel(m.missingQualifierPolicy()));
-        // Only a scalar entity qualifier can carry a fallback policy; gray the box
-        // out otherwise so the editor mirrors the validator/runtime rule.
-        missingQualifierBox.setEnabled(
-                StatementFieldSemantics.supportsMissingQualifierPolicy(
-                        ownerClass(), field));
-        inDedupKeyBox.setSelectedItem(triLabel(m.inDedupKey()));
+        missingQualifierBox.setSelectedItem(
+                policyLabel(m.missingQualifierPolicy()));
+        refreshStatementFieldControls();
         expectationBox.setSelectedItem(field.expectation());
         propertyLabel.setText(m.displayProperty());
 
@@ -332,10 +348,10 @@ public class FieldSourcePanel extends JPanel {
         matchValueBox.setEnabled(companion || dateProjection);
         matchValueBox.setEditable(dateProjection);
         matchValueBox.setToolTipText(dateProjection
-                ? "The PATH to project off the reference — e.g. date.year (year), "
-                        + "date.monthDay (birthday), or date (the whole date). "
-                        + "Extraction is the path, not a convention."
-                : null);
+                                             ? "The PATH to project off the reference — e.g. date.year (year), "
+                                               + "date.monthDay (birthday), or date (the whole date). "
+                                               + "Extraction is the path, not a convention."
+                                             : null);
         matchRoleBox.setEnabled(companion);
     }
 
@@ -385,11 +401,11 @@ public class FieldSourcePanel extends JPanel {
 
         // --- What it holds ---
         typeBox.setToolTipText("What this field holds: Text / Number / Date / "
-                + "Image, or an Entity (a domain class — pick it in \"Of class\").");
+                                       + "Image, or an Entity (a domain class — pick it in \"Of class\").");
         GridBagUtils.labeledRow(form, c, y++, "Holds:", typeBox);
         objectTypeBox.setToolTipText("The domain class this field refers to "
-                + "(when Holds = Entity). The value is a reference to that class's "
-                + "instances — clicking navigates to them.");
+                                             + "(when Holds = Entity). The value is a reference to that class's "
+                                             + "instances — clicking navigates to them.");
         GridBagUtils.labeledRow(form, c, y++, "Of class:", objectTypeBox);
         GridBagUtils.labeledRow(form, c, y++, "Count:", shapeBox);
         GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
@@ -405,48 +421,53 @@ public class FieldSourcePanel extends JPanel {
         propRow.add(discoverDbpediaButton);
         GridBagUtils.labeledRow(form, c, y++, "Property:", propRow);
         qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
-                + "reification</b> class (the class \"Reifies statements of\" "
-                + "another): the <b>qualifier</b> PID this field draws from "
-                + "(e.g. P585 → year, P1686 → for work, P2453 → nominee). "
-                + "Blank = a direct/value field.</html>");
+                                                 + "reification</b> class (the class \"Reifies statements of\" "
+                                                 + "another): the <b>qualifier</b> PID this field draws from "
+                                                 + "(e.g. P585 → year, P1686 → for work, P2453 → nominee). "
+                                                 + "Blank = a direct/value field.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Qualifier of:", qualifierPidField);
 
         missingQualifierBox.setToolTipText("<html>Reify (#92): what this ENTITY "
-                + "qualifier gets when it is <b>absent</b> on a statement.<br>"
-                + "<b>Statement subject</b> — the reify source (right for <b>nominee</b>: "
-                + "the subject IS the nominee; and a dedup-bridge like <b>forWork</b>).<br>"
-                + "<b>Statement value</b> — the ps: value of the statement.<br>"
-                + "<b>Leave missing</b> — stay empty (right for a plain reference like "
-                + "<b>edition</b>: an absent ceremony must not become the film).<br>"
-                + "<b>Auto</b> — the legacy default (subject).</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Missing qualifier:", missingQualifierBox);
-        inDedupKeyBox.setToolTipText("<html>Reify (#92): whether this field is part of "
-                + "the reified record's <b>identity (dedup) key</b>. <b>Auto</b> = "
-                + "inferred (Yes for every qualifier except a date).</html>");
-        GridBagUtils.labeledRow(form, c, y++, "In dedup key:", inDedupKeyBox);
+                                                   + "qualifier gets when it is <b>absent</b> on a statement.<br>"
+                                                   + "<b>Statement subject</b> — the reify source (right for <b>nominee</b>: "
+                                                   + "the subject IS the nominee; and a dedup-bridge like <b>forWork</b>).<br>"
+                                                   + "<b>Statement value</b> — the ps: value of the statement.<br>"
+                                                   + "<b>Leave missing</b> — stay empty (right for a plain reference like "
+                                                   + "<b>edition</b>: an absent ceremony must not become the film).<br>"
+                                                   + "<b>Auto</b> — the legacy default (subject).</html>");
+        GridBagUtils.labeledRow(
+                form,
+                c,
+                y++,
+                "Missing qualifier:",
+                missingQualifierBox);
+
+        // Canonical identity is configured once, at class level, in
+        // StatementSourcePanel. Keeping a second per-field dedup control here
+        // made CanonicalSpec and the runtime key drift apart.
 
         // COMPANION_MATCH rows: Property = companion property (e.g. P166 award
         // received), Qualifier of = the companion role qualifier (e.g. P1686 for
         // work); Subject/value/role pick which of this record's fields to match on.
         subjectBox.setToolTipText("<html>Companion match: this record's field "
-                + "holding the entity that <b>carries</b> the companion statement "
-                + "(e.g. <b>nominee</b> — the Oscar win P166 is on the winner). "
-                + "<b>source</b> = the reify subject.</html>");
+                                          + "holding the entity that <b>carries</b> the companion statement "
+                                          + "(e.g. <b>nominee</b> — the Oscar win P166 is on the winner). "
+                                          + "<b>source</b> = the reify subject.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Subject field:", subjectBox);
         matchValueBox.setToolTipText("<html>Companion match: this record's field "
-                + "whose value must equal the companion statement's value "
-                + "(e.g. <b>category</b>).</html>");
+                                             + "whose value must equal the companion statement's value "
+                                             + "(e.g. <b>category</b>).</html>");
         GridBagUtils.labeledRow(form, c, y++, "Match value field:", matchValueBox);
         matchRoleBox.setToolTipText("<html>Companion match: this record's field "
-                + "matched against the companion's role qualifier — or the "
-                + "companion subject when that qualifier is absent "
-                + "(e.g. <b>source</b> vs the win's for-work/film).</html>");
+                                            + "matched against the companion's role qualifier — or the "
+                                            + "companion subject when that qualifier is absent "
+                                            + "(e.g. <b>source</b> vs the win's for-work/film).</html>");
         GridBagUtils.labeledRow(form, c, y++, "Match role field:", matchRoleBox);
 
         directionBox.setToolTipText("<html>Where the property lives:<br>"
-                + "<b>this entity</b> (outgoing, ?this P ?value)<br>"
-                + "<b>related entities</b> (incoming, ?other P ?this) — e.g. "
-                + "stars whose constellation P59 = this.</html>");
+                                            + "<b>this entity</b> (outgoing, ?this P ?value)<br>"
+                                            + "<b>related entities</b> (incoming, ?other P ?this) — e.g. "
+                                            + "stars whose constellation P59 = this.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Found on:", directionBox);
 
         // --- Refine ---
@@ -454,12 +475,12 @@ public class FieldSourcePanel extends JPanel {
         GridBagUtils.wideRow(form, y++, requiredBox);
 
         expectationBox.setToolTipText("<html>Post-transform expectation (#96) for a "
-                + "reified/statement class's field. <b>NONE</b> = no check. "
-                + "<b>EXPECTED</b> = keep every record but report coverage and surface "
-                + "the ones missing this field (a present/missing facet) — use this to "
-                + "SEE the gap before deciding. <b>REQUIRED</b> = drop records missing "
-                + "the field (only once you've confirmed the missing ones are bad data; "
-                + "an absent qualifier is often a legit record).</html>");
+                                              + "reified/statement class's field. <b>NONE</b> = no check. "
+                                              + "<b>EXPECTED</b> = keep every record but report coverage and surface "
+                                              + "the ones missing this field (a present/missing facet) — use this to "
+                                              + "SEE the gap before deciding. <b>REQUIRED</b> = drop records missing "
+                                              + "the field (only once you've confirmed the missing ones are bad data; "
+                                              + "an absent qualifier is often a legit record).</html>");
         GridBagUtils.labeledRow(form, c, y++, "Expectation:", expectationBox);
 
         JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -468,8 +489,8 @@ public class FieldSourcePanel extends JPanel {
         GridBagUtils.labeledRow(form, c, y++, "Numeric filter:", filterRow);
 
         onlyRelatedOfTypeBox.setToolTipText("<html>When this field refers to a "
-                + "class, keep only related items that ARE that class (P31), "
-                + "dropping off-type values reached by the same property.</html>");
+                                                    + "class, keep only related items that ARE that class (P31), "
+                                                    + "dropping off-type values reached by the same property.</html>");
         GridBagUtils.wideRow(form, y++, onlyRelatedOfTypeBox);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
@@ -512,6 +533,7 @@ public class FieldSourcePanel extends JPanel {
 
         typeBox.addActionListener(e -> {
             updateRecommendation();
+            refreshStatementFieldControls();
             if (typeBox.getSelectedItem() == FieldType.ENTITY
                     && selectedEntityClass().isBlank()) {
                 String propLabel = field != null && field.mapping() != null
@@ -523,24 +545,9 @@ public class FieldSourcePanel extends JPanel {
         shapeBox.addActionListener(e -> {
             updateRecommendation();
             updateSampleButtonState();
+            refreshStatementFieldControls();
         });
         renderModeBox.addActionListener(e -> updateRecommendation());
-    }
-
-    // Tri-state (Auto / Yes / No) ↔ nullable Boolean for the reify overrides.
-    private static String triLabel(Boolean b) {
-        return b == null ? "Auto" : (b ? "Yes" : "No");
-    }
-
-    private static Boolean triValue(JComboBox<String> box) {
-        Object s = box.getSelectedItem();
-        if ("Yes".equals(s)) {
-            return Boolean.TRUE;
-        }
-        if ("No".equals(s)) {
-            return Boolean.FALSE;
-        }
-        return null;
     }
 
     // MissingQualifierPolicy ↔ combo label (null = Auto = the legacy default).
@@ -579,9 +586,8 @@ public class FieldSourcePanel extends JPanel {
         FieldSourceMapping m = field.mapping();
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
-        m.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
-        m.missingQualifierPolicy(policyValue(missingQualifierBox));
-        m.inDedupKey(triValue(inDedupKeyBox));
+        m.qualifierPid(
+                RuleNode.cleanPid(qualifierPidField.getText()));
         Object pk = productionBox.getSelectedItem();
         boolean dateProjection = field.type() == FieldType.DATE
                 && pk == FieldProductionKind.AUTO;
@@ -615,30 +621,43 @@ public class FieldSourcePanel extends JPanel {
         // scalar shows inline. Per-class generation (#43) populates the refs.
         if (typeBox.getSelectedItem() != FieldType.AUTO) {
             field.renderMode(field.type() == FieldType.ENTITY
-                    ? FieldRenderMode.REFERENCE : FieldRenderMode.INLINE);
+                                     ? FieldRenderMode.REFERENCE : FieldRenderMode.INLINE);
         }
         field.required(requiredBox.isSelected());
         field.expectation((wikidata.explore.model.FieldExpectation)
-                expectationBox.getSelectedItem());
+                                  expectationBox.getSelectedItem());
         field.edgeMembership(onlyRelatedOfTypeBox.isSelected()
-                ? wikidata.explore.model.EdgeMembershipMode.INHERIT
-                : wikidata.explore.model.EdgeMembershipMode.NONE);
+                                     ? wikidata.explore.model.EdgeMembershipMode.INHERIT
+                                     : wikidata.explore.model.EdgeMembershipMode.NONE);
         applyNumericFilter(field);
 
         // The "Load as" dropdown is authoritative — the user's explicit choice
         // (e.g. "Related objects" for a large collection) wins. autoProduction only
         // seeds a sensible DEFAULT into the dropdown when a property is picked.
-        m.productionKind((FieldProductionKind) productionBox.getSelectedItem());
+        m.productionKind(
+                (FieldProductionKind) productionBox.getSelectedItem());
         propertyLabel.setText(m.displayProperty());
 
-        // A fallback policy only means something for a scalar entity qualifier; if
-        // this edit turned the field into anything else, drop it (the shared rule
-        // the validator and runtime use) and reflect that in the box.
-        if (StatementFieldSemantics.normalizeMissingQualifierPolicy(
-                ownerClass(), field)) {
-            missingQualifierBox.setSelectedItem(
-                    policyLabel(field.mapping().missingQualifierPolicy()));
+        GeneratedClassModel owner = ownerClass();
+        if (StatementFieldSemantics.supportsMissingQualifierPolicy(
+                owner,
+                field)) {
+            m.missingQualifierPolicy(
+                    policyValue(missingQualifierBox));
+        } else {
+            // A fallback policy only means something for a scalar ENTITY
+            // qualifier loaded directly from a StatementClass.
+            m.missingQualifierPolicy(null);
         }
+
+        // Keep the editor, validator and runtime on the shared semantic rule if
+        // a type/cardinality/production edit invalidated the policy.
+        StatementFieldSemantics.normalizeMissingQualifierPolicy(
+                owner,
+                field);
+        missingQualifierBox.setSelectedItem(
+                policyLabel(m.missingQualifierPolicy()));
+        refreshStatementFieldControls();
 
         titleLabel.setText("Field: " + field.name());
 
@@ -654,7 +673,7 @@ public class FieldSourcePanel extends JPanel {
     private void flashApplied(String name) {
         applyStatusLabel.setText("✓ Applied " + name);
         javax.swing.Timer timer = new javax.swing.Timer(2500,
-                e -> applyStatusLabel.setText(" "));
+                                                        e -> applyStatusLabel.setText(" "));
         timer.setRepeats(false);
         timer.start();
     }
@@ -751,8 +770,8 @@ public class FieldSourcePanel extends JPanel {
             boolean typed = field.entityClassName() != null
                     && !field.entityClassName().isBlank();
             m.productionKind(typed
-                    ? FieldProductionKind.CHILD_OBJECTS
-                    : FieldProductionKind.DELAYED_ENTITY_FIELD);
+                                     ? FieldProductionKind.CHILD_OBJECTS
+                                     : FieldProductionKind.DELAYED_ENTITY_FIELD);
         } else if (field.type() == FieldType.IMAGE) {
             m.productionKind(FieldProductionKind.INLINE_VALUE);
         } else {
@@ -863,14 +882,61 @@ public class FieldSourcePanel extends JPanel {
         return projectModel.rootClass();
     }
 
+    /**
+     * Applies the StatementClass fallback rule to the values currently shown in
+     * the editor. The model is not changed until Apply is pressed.
+     */
+    private void refreshStatementFieldControls() {
+        GeneratedClassModel owner = ownerClass();
+
+        boolean statementClass =
+                owner != null && owner.reifiesStatements();
+        boolean validQualifier =
+                RuleNode.cleanPid(
+                                qualifierPidField.getText())
+                        .matches("P\\d+");
+        boolean entity =
+                typeBox.getSelectedItem() == FieldType.ENTITY;
+        boolean scalar =
+                shapeBox.getSelectedItem()
+                        != FieldCardinality.COLLECTION;
+        boolean runtimeField =
+                productionBox.getSelectedItem()
+                        == FieldProductionKind.AUTO;
+
+        // A qualifier source is meaningful only on a StatementClass. The field
+        // remains visible so the class/field relationship is explicit.
+        qualifierPidField.setEnabled(statementClass);
+
+        boolean policyEnabled =
+                statementClass
+                        && validQualifier
+                        && entity
+                        && scalar
+                        && runtimeField;
+
+        missingQualifierBox.setEnabled(policyEnabled);
+        if (!policyEnabled) {
+            missingQualifierBox.setSelectedItem(POL_AUTO);
+        }
+
+        missingQualifierBox.setToolTipText(
+                policyEnabled
+                        ? "<html>Value used when this scalar ENTITY qualifier "
+                          + "is absent from the statement.</html>"
+                        : "<html>Available only for scalar ENTITY qualifier "
+                          + "fields of a StatementClass loaded with "
+                          + "Auto production.</html>");
+    }
+
     private DiscoverDBpediaPropertiesQuery buildDbpediaPropsQuery() {
         GeneratedClassModel owner = ownerClass();
         String typeQid = owner == null || owner.instanceMapping() == null
                 ? "" : owner.instanceMapping().sourceQid();
         if (typeQid == null || !typeQid.matches("Q\\d+")) {
             JOptionPane.showMessageDialog(this,
-                    "Set the owning class's Wikidata type first.",
-                    "No class type", JOptionPane.INFORMATION_MESSAGE);
+                                          "Set the owning class's Wikidata type first.",
+                                          "No class type", JOptionPane.INFORMATION_MESSAGE);
             return null;
         }
         return new DiscoverDBpediaPropertiesQuery(typeQid, 8);
@@ -886,8 +952,8 @@ public class FieldSourcePanel extends JPanel {
     private void showDbpediaPropsDialog(List<List<Object>> rows) {
         if (rows.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "No DBpedia infobox properties found for this class.",
-                    "Discover properties", JOptionPane.INFORMATION_MESSAGE);
+                                          "No DBpedia infobox properties found for this class.",
+                                          "Discover properties", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
@@ -916,7 +982,7 @@ public class FieldSourcePanel extends JPanel {
         JButton useButton = new JButton("Use selected property");
         useButton.setEnabled(false);
         table.getSelectionModel().addListSelectionListener(e ->
-                useButton.setEnabled(table.getSelectedRow() >= 0));
+                                                                   useButton.setEnabled(table.getSelectedRow() >= 0));
 
         JDialog dialog = new JDialog(
                 SwingUtilities.getWindowAncestor(this),
@@ -924,8 +990,8 @@ public class FieldSourcePanel extends JPanel {
                 Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setLayout(new BorderLayout(0, 6));
         dialog.add(new JLabel(
-                "  \"Have\" = how many sampled instances carry the property."),
-                BorderLayout.NORTH);
+                           "  \"Have\" = how many sampled instances carry the property."),
+                   BorderLayout.NORTH);
         dialog.add(sp, BorderLayout.CENTER);
 
         JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
@@ -969,8 +1035,8 @@ public class FieldSourcePanel extends JPanel {
         if (sourceType == FieldSourceType.DBPEDIA) {
             recommendationLabel.setText(
                     "DBpedia: 'Property' = the Wikipedia infobox property "
-                    + "(e.g. numbermainstars, brighteststarname). Joined by "
-                    + "owl:sameAs to the entity's Wikidata QID, after extraction.");
+                            + "(e.g. numbermainstars, brighteststarname). Joined by "
+                            + "owl:sameAs to the entity's Wikidata QID, after extraction.");
             return;
         }
 
@@ -1074,31 +1140,31 @@ public class FieldSourcePanel extends JPanel {
     private void refreshObjectTypeBox(String selectedClass) {
         updatingObjectTypeBox = true;
         try {
-        objectTypeBox.removeAllItems();
-        objectTypeBox.addItem(NO_TYPE);
-        if (projectModel != null) {
-            for (GeneratedClassModel cls : projectModel.classes()) {
-                objectTypeBox.addItem(cls.className());
-            }
-        }
-        objectTypeBox.addItem(NEW_CLASS_SENTINEL);
-        if (selectedClass != null && !selectedClass.isBlank()
-                && !NEW_CLASS_SENTINEL.equals(selectedClass)) {
-            // Add if not already in the list (e.g., a class not yet in registry)
-            boolean found = false;
-            for (int i = 0; i < objectTypeBox.getItemCount(); i++) {
-                if (selectedClass.equals(objectTypeBox.getItemAt(i))) {
-                    found = true;
-                    break;
+            objectTypeBox.removeAllItems();
+            objectTypeBox.addItem(NO_TYPE);
+            if (projectModel != null) {
+                for (GeneratedClassModel cls : projectModel.classes()) {
+                    objectTypeBox.addItem(cls.className());
                 }
             }
-            if (!found) {
-                objectTypeBox.insertItemAt(selectedClass, objectTypeBox.getItemCount() - 1);
+            objectTypeBox.addItem(NEW_CLASS_SENTINEL);
+            if (selectedClass != null && !selectedClass.isBlank()
+                    && !NEW_CLASS_SENTINEL.equals(selectedClass)) {
+                // Add if not already in the list (e.g., a class not yet in registry)
+                boolean found = false;
+                for (int i = 0; i < objectTypeBox.getItemCount(); i++) {
+                    if (selectedClass.equals(objectTypeBox.getItemAt(i))) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    objectTypeBox.insertItemAt(selectedClass, objectTypeBox.getItemCount() - 1);
+                }
+                objectTypeBox.setSelectedItem(selectedClass);
+            } else {
+                objectTypeBox.setSelectedItem(NO_TYPE);
             }
-            objectTypeBox.setSelectedItem(selectedClass);
-        } else {
-            objectTypeBox.setSelectedItem(NO_TYPE);
-        }
         } finally {
             updatingObjectTypeBox = false;
         }
@@ -1117,6 +1183,8 @@ public class FieldSourcePanel extends JPanel {
         fieldNameField.setText("");
         refreshObjectTypeBox("");
         propertyPidField.setText("");
+        qualifierPidField.setText("");
+        missingQualifierBox.setSelectedItem(POL_AUTO);
         propertyLabel.setText("(not selected)");
         renderModeBox.setSelectedItem(FieldRenderMode.AUTO);
         requiredBox.setSelected(false);
