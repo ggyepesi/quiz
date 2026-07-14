@@ -76,27 +76,32 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             wikidata.explore.query.log.LogStep sub =
                                     step.beginGroup(title);
                             return new Group() {
-                                private int n = 0;
+                                // Batches within a group now record concurrently
+                                // (QualifierLoader fans out), so count atomically.
+                                private final java.util.concurrent.atomic
+                                        .AtomicInteger n =
+                                        new java.util.concurrent.atomic
+                                                .AtomicInteger();
                                 @Override public void message(String t) {
                                     context.message(t);
                                 }
                                 @Override public void subquery(
                                         String ti, String r, String s) {
                                     sub.subquery(ti, r, s);
-                                    n++;
+                                    n.incrementAndGet();
                                 }
                                 @Override public void subqueryFailed(
                                         String ti, String r, String e) {
                                     sub.subqueryFailed(ti, r, e);
-                                    n++;
+                                    n.incrementAndGet();
                                 }
                                 @Override public Running subqueryStarted(
                                         String ti, String r) {
-                                    n++;
+                                    n.incrementAndGet();
                                     return running(sub, ti, r);
                                 }
                                 @Override public void close() {
-                                    sub.completeGroup(n + " request(s)");
+                                    sub.completeGroup(n.get() + " request(s)");
                                 }
                             };
                         }
