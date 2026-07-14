@@ -730,28 +730,8 @@ public final class ModelStatementReifications {
             created.addAll(records);
 
             if (log != null) {
-                log.message(describe(reification)
-                                    + "\n → " + records.size()
-                                    + " records\n");
-
-                List<String> gaps =
-                        valueFilterGaps(reification, project);
-                if (!gaps.isEmpty()) {
-                    log.message(
-                            " ⚠ consistency: the value filter misses "
-                                    + gaps.size()
-                                    + " of the source class's membership "
-                                    + "target(s) — "
-                                    + gaps.stream()
-                                          .limit(6)
-                                          .collect(
-                                                  java.util.stream.Collectors
-                                                          .joining(", "))
-                                    + (gaps.size() > 6 ? ", …" : "")
-                                    + " — statements to those WON'T load. "
-                                    + "Add them to the value field's allowed "
-                                    + "values (or align the class membership).\n");
-                }
+                logReify(log, reification, records.size(),
+                        valueFilterGaps(reification, project));
             }
         }
 
@@ -760,6 +740,33 @@ public final class ModelStatementReifications {
         }
 
         return created;
+    }
+
+    private static void logReify(
+            GenerationLog log,
+            Reification reification,
+            int recordCount,
+            List<String> gaps) {
+
+        log.message(describe(reification)
+                            + "\n → " + recordCount + " records\n");
+
+        if (!gaps.isEmpty()) {
+            log.message(
+                    " ⚠ consistency: the value filter misses "
+                            + gaps.size()
+                            + " of the source class's membership "
+                            + "target(s) — "
+                            + gaps.stream()
+                                  .limit(6)
+                                  .collect(
+                                          java.util.stream.Collectors
+                                                  .joining(", "))
+                            + (gaps.size() > 6 ? ", …" : "")
+                            + " — statements to those WON'T load. "
+                            + "Add them to the value field's allowed "
+                            + "values (or align the class membership).\n");
+        }
     }
 
     /**
@@ -804,6 +811,114 @@ public final class ModelStatementReifications {
             String cleanQid = clean(qid);
             if (cleanQid.matches("Q\\d+")
                     && !filter.contains(cleanQid)) {
+                missed.add(cleanQid);
+            }
+        }
+
+        return missed;
+    }
+
+    // ---- Compiled-model pipeline overloads (parity with the raw ones above) ----
+
+    /** Compiled-model overload: enrich then reify. */
+    public static List<WikidataDynamicObject> apply(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log) {
+
+        enrich(project, pool, client, log);
+        return reify(project, pool, log);
+    }
+
+    /** Compiled-model overload of {@link #enrich(GeneratedProjectModel, List,
+     *  WikidataSparqlClient, GenerationLog)}. */
+    public static void enrich(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log) {
+
+        if (client == null) {
+            return;
+        }
+        QualifierLoader loader = new QualifierLoader();
+        for (Reification reification : derive(project)) {
+            loader.enrich(pool, reification.load(), client, log);
+        }
+    }
+
+    /** Compiled-model overload of {@link #reify(GeneratedProjectModel, List,
+     *  GenerationLog)}. */
+    public static List<WikidataDynamicObject> reify(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log) {
+
+        return reify(project, pool, log, null);
+    }
+
+    /** Compiled-model overload collecting canonicalization-demoted duplicates. */
+    public static List<WikidataDynamicObject> reify(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log,
+            Set<WikidataDynamicObject> demotedOut) {
+
+        List<WikidataDynamicObject> created = new ArrayList<>();
+        TransformEngine engine = new TransformEngine();
+
+        for (Reification reification : derive(project)) {
+            List<WikidataDynamicObject> records =
+                    engine.applyReify(pool, reification.reify());
+            created.addAll(records);
+
+            if (log != null) {
+                logReify(log, reification, records.size(),
+                        valueFilterGaps(reification, project));
+            }
+        }
+
+        if (demotedOut != null) {
+            demotedOut.addAll(engine.demoted());
+        }
+
+        return created;
+    }
+
+    /** Compiled-model overload of {@link #valueFilterGaps(Reification,
+     *  GeneratedProjectModel)}. */
+    public static List<String> valueFilterGaps(
+            Reification reification,
+            CompiledProjectModel project) {
+
+        List<String> missed = new ArrayList<>();
+        if (reification == null || project == null) {
+            return missed;
+        }
+
+        QualifierLoadConfig config = reification.load();
+        CompiledClass sourceClass =
+                project.findClass(config.entityType()).orElse(null);
+
+        if (sourceClass == null
+                || config.valueQids() == null
+                || config.valueQids().isEmpty()
+                || !config.propertyPid().equals(
+                clean(sourceClass.sourceMapping().propertyPid()))) {
+            return missed;
+        }
+
+        Set<String> filter = new LinkedHashSet<>(config.valueQids());
+
+        String sourceQid = clean(sourceClass.sourceMapping().sourceQid());
+        if (sourceQid.matches("Q\\d+") && !filter.contains(sourceQid)) {
+            missed.add(sourceQid);
+        }
+
+        for (String qid : sourceClass.sourceMapping().additionalTypeQids()) {
+            String cleanQid = clean(qid);
+            if (cleanQid.matches("Q\\d+") && !filter.contains(cleanQid)) {
                 missed.add(cleanQid);
             }
         }

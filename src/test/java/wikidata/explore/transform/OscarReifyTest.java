@@ -441,5 +441,19 @@ class OscarReifyTest {
         assertNotNull(editable);
         assertEquals(editable, fromCompiled,
                 "compiled derivation must equal the editable-model derivation");
+
+        // The whole derive() list (what enrich/reify iterate) matches too.
+        assertEquals(
+                ModelStatementReifications.derive(project),
+                ModelStatementReifications.derive(compiled),
+                "compiled derive() list must equal the editable one");
+
+        // valueFilterGaps reads the source membership through the compiled
+        // sourceMapping — assert it agrees with the editable path (here it flags
+        // Q102427, a membership target not in the value filter).
+        assertEquals(
+                ModelStatementReifications.valueFilterGaps(editable, project),
+                ModelStatementReifications.valueFilterGaps(fromCompiled, compiled),
+                "compiled valueFilterGaps must match the editable one");
     }
 }

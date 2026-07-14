@@ -155,8 +155,14 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // BEFORE reify mutates the statements in place.
                     List<WikidataDynamicObject> reifyPool =
                             new ArrayList<>(shared.values());
+                    // Reify from the COMPILED model (statement source, fields and
+                    // canonical identity already resolved). Byte-for-byte parity
+                    // with the editable-model derivation is proven; the compile also
+                    // fails fast if the model is structurally invalid.
+                    wikidata.explore.compiled.CompiledProjectModel compiledProject =
+                            wikidata.explore.compiled.ProjectModelCompiler.compile(project);
                     wikidata.explore.transform.ModelStatementReifications.enrich(
-                            project, reifyPool, context.sparql(), genLog);
+                            compiledProject, reifyPool, context.sparql(), genLog);
                     List<WikidataDynamicObject> enrichedSnapshot =
                             wikidata.explore.transform.PoolCopy.deepCopy(shared.values());
                     java.util.Set<WikidataDynamicObject> demoted =
@@ -164,7 +170,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     new java.util.IdentityHashMap<>());
                     List<WikidataDynamicObject> reified =
                             wikidata.explore.transform.ModelStatementReifications.reify(
-                                    project, reifyPool, genLog, demoted);
+                                    compiledProject, reifyPool, genLog, demoted);
 
                     // Enforce per-field allowedQids (the query layer doesn't): e.g.
                     // the auto-injected `target` field restricted to the membership's

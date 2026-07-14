@@ -288,9 +288,12 @@ public class GenerationPipeline {
 
         java.util.Set<WikidataDynamicObject> demoted =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        // Reify from the compiled model — parity-proven with the editable one.
+        wikidata.explore.compiled.CompiledProjectModel compiledSnapshot =
+                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         List<WikidataDynamicObject> reified =
                 wikidata.explore.transform.ModelStatementReifications.reify(
-                        snapshot, pool, null, demoted);   // pool.addAll(reified) inside
+                        compiledSnapshot, pool, null, demoted);   // pool.addAll(reified) inside
 
         wikidata.explore.transform.FieldValueRestrictions.apply(snapshot, pool);
         wikidata.explore.transform.ModelInverts.apply(snapshot, pool, null);
