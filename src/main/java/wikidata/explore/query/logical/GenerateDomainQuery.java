@@ -114,11 +114,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // together in one package/loader, so typed cross-references
                     // (Character <-> Episode) resolve and map to shared typed
                     // instances rather than raw objects.
-                    GeneratedQuizableRuntime runtime = pipeline.buildRuntime(project);
-
                     // Resolve each quantity field's unit once (the truthy value
-                    // drops it), so the mapper can render "1538 K".
+                    // drops it), so the mapper can render "1538 K". Before building
+                    // the runtime, so it holds fully-resolved field models.
                     pipeline.resolveUnits(project, context.sparql(), genLog);
+
+                    GeneratedQuizableRuntime runtime = pipeline.buildRuntime(project);
 
                     RuleNode rootPlan = null;
                     int classesRun = 0;
@@ -176,7 +177,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // the auto-injected `target` field restricted to the membership's
                     // Oscar categories drops Grammy categories that share P1411.
                     wikidata.explore.transform.FieldValueRestrictions.apply(
-                            project, shared.values());
+                            compiledProject, shared.values());
 
                     // Derived (production = INVERT) fields: reverse forward
                     // references already in the pool (e.g. Category.nominees =
@@ -193,7 +194,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             new ArrayList<>(shared.values());
                     forYear.addAll(reified);
                     wikidata.explore.transform.ModelYearProjections.apply(
-                            project, forYear, genLog);
+                            compiledProject, forYear, genLog);
 
                     // Canonicalize displayName from each class's CanonicalSpec, so the
                     // stored/served name is the configured one (e.g. a Nomination shows
@@ -241,7 +242,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // Field expectations (#96): coverage report + drop REQUIRED-missing
                     // records + keep EXPECTED-missing ones. Same pass the Remap runs.
                     wikidata.explore.transform.FieldExpectations.apply(
-                            project, pool, genLog);
+                            compiledProject, pool, genLog);
 
                     // ONE shared mapper over the SERVED POOL: each QID -> one typed
                     // instance, cross-refs resolve to those same instances. Mapping

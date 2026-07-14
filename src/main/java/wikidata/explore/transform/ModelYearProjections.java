@@ -1,5 +1,8 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.compiled.CompiledClass;
+import wikidata.explore.compiled.CompiledField;
+import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldProductionKind;
@@ -37,7 +40,19 @@ public final class ModelYearProjections {
     public static int apply(GeneratedProjectModel project,
                             Collection<WikidataDynamicObject> pool,
                             GenerationLog log) {
-        List<YearProjection> projections = derive(project);
+        return apply(derive(project), pool, log);
+    }
+
+    /** Compiled-model overload — same projection application, compiled derivation. */
+    public static int apply(CompiledProjectModel project,
+                            Collection<WikidataDynamicObject> pool,
+                            GenerationLog log) {
+        return apply(derive(project), pool, log);
+    }
+
+    private static int apply(List<YearProjection> projections,
+                             Collection<WikidataDynamicObject> pool,
+                             GenerationLog log) {
         if (projections.isEmpty()) {
             return 0;
         }
@@ -72,6 +87,31 @@ public final class ModelYearProjections {
                 }
                 String via = trim(m.subjectField());
                 String source = trim(m.matchValueField());
+                if (via.isEmpty() || source.isEmpty()) {
+                    continue;
+                }
+                out.add(new YearProjection(cls.className(), via, source, f.name()));
+            }
+        }
+        return out;
+    }
+
+    /** Compiled-model overload of {@link #derive(GeneratedProjectModel)}. */
+    public static List<YearProjection> derive(CompiledProjectModel project) {
+        List<YearProjection> out = new ArrayList<>();
+        if (project == null) {
+            return out;
+        }
+        for (CompiledClass cls : project.classes()) {
+            for (CompiledField f : cls.ownFields()) {
+                if (f.type() != FieldType.DATE) {
+                    continue;
+                }
+                if (f.source().productionKind() != FieldProductionKind.AUTO) {
+                    continue;
+                }
+                String via = trim(f.source().subjectField());
+                String source = trim(f.source().matchValueField());
                 if (via.isEmpty() || source.isEmpty()) {
                     continue;
                 }

@@ -215,8 +215,12 @@ public class GenerationPipeline {
         // displayName from each class's CanonicalSpec (see Canonicalization).
         wikidata.explore.transform.Canonicalization.apply(snapshot, dynamicObjects, log);
 
-        GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
+        // Resolve units BEFORE building the runtime. The mapper reads
+        // field.unit() live at materialize, and buildRuntime happens to share the
+        // field-model references — but resolving first keeps this correct even if
+        // buildRuntime ever snapshots the model, expressing "resolve, then build".
         resolveUnits(snapshot, client, log);
+        GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
 
         List<Quizable> instances =
                 materialize(runtime, dynamicObjects);
@@ -295,13 +299,14 @@ public class GenerationPipeline {
                 wikidata.explore.transform.ModelStatementReifications.reify(
                         compiledSnapshot, pool, null, demoted);   // pool.addAll(reified) inside
 
-        wikidata.explore.transform.FieldValueRestrictions.apply(snapshot, pool);
+        // Compiled-model transforms (parity-proven); the rest still read raw.
+        wikidata.explore.transform.FieldValueRestrictions.apply(compiledSnapshot, pool);
         wikidata.explore.transform.ModelInverts.apply(snapshot, pool, null);
         // Year projections (e.g. Nomination.year <- YEAR(edition.date)) — same
         // transform stage as the generate path; pool already holds the reified
         // records + their referenced (dated) entities.
         int filled = wikidata.explore.transform.ModelYearProjections.apply(
-                snapshot, pool, log);
+                compiledSnapshot, pool, log);
         wikidata.explore.transform.Canonicalization.apply(snapshot, pool, null);
         wikidata.explore.transform.Canonicalization.apply(snapshot, reified, null);
         wikidata.explore.transform.CompanionMatch.applyWithSets(
@@ -312,7 +317,7 @@ public class GenerationPipeline {
         // Field expectations (#96): report coverage, drop REQUIRED-missing records
         // (e.g. a Nomination with no ceremony edition), keep EXPECTED-missing ones.
         int restricted = wikidata.explore.transform.FieldExpectations
-                .apply(snapshot, pool, log).dropped().size();
+                .apply(compiledSnapshot, pool, log).dropped().size();
 
         if (log != null) {
             log.message("Remap (retransform): " + pool.size()

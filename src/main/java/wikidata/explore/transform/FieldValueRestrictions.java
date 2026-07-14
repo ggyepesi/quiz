@@ -1,5 +1,8 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.compiled.CompiledClass;
+import wikidata.explore.compiled.CompiledField;
+import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -32,6 +35,28 @@ public final class FieldValueRestrictions {
         for (GeneratedClassModel clazz : project.classes()) {
             for (GeneratedFieldModel f : clazz.fields()) {
                 Set<String> allowed = clean(f.mapping().allowedQids());
+                if (allowed.isEmpty()) {
+                    continue;
+                }
+                for (WikidataDynamicObject o : pool) {
+                    if (o != null && clazz.className().equals(o.typeName())) {
+                        prune(o, f.name(), allowed);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Compiled-model overload — reuses the same {@code prune} logic, so pruning
+     *  is identical; only the model read differs. */
+    public static void apply(CompiledProjectModel project,
+                             Collection<WikidataDynamicObject> pool) {
+        if (project == null || pool == null) {
+            return;
+        }
+        for (CompiledClass clazz : project.classes()) {
+            for (CompiledField f : clazz.ownFields()) {
+                Set<String> allowed = clean(f.source().allowedQids());
                 if (allowed.isEmpty()) {
                     continue;
                 }

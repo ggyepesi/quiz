@@ -1,0 +1,149 @@
+package wikidata.explore.transform;
+
+import org.junit.jupiter.api.Test;
+import wikidata.explore.compiled.CompiledProjectModel;
+import wikidata.explore.compiled.ProjectModelCompiler;
+import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldExpectation;
+import wikidata.explore.model.FieldType;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.StatementClassSource;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/**
+ * The Phase-3 contract: the compiled-model overloads of the pool transforms
+ * behave identically to the editable-model ones on the same input.
+ */
+class CompiledTransformParityTest {
+
+    private static WikidataDynamicObject obj(String qid, String name, String type) {
+        WikidataDynamicObject o = new WikidataDynamicObject(qid, name);
+        o.type(type);
+        return o;
+    }
+
+    private static GeneratedProjectModel project(String name) {
+        GeneratedProjectModel p = new GeneratedProjectModel();
+        p.name(name);
+        p.rootClass(new GeneratedClassModel("Root"));
+        return p;
+    }
+
+    private static String describe(Object v) {
+        if (v == null) {
+            return "null";
+        }
+        if (v instanceof Collection<?> col) {
+            List<String> qids = new ArrayList<>();
+            for (Object o : col) {
+                qids.add(o instanceof WikidataDynamicObject w
+                        ? w.qid() : String.valueOf(o));
+            }
+            return qids.toString();
+        }
+        return v instanceof WikidataDynamicObject w ? w.qid() : String.valueOf(v);
+    }
+
+    @Test
+    void fieldValueRestrictionsPruneIdentically() {
+        GeneratedProjectModel project = project("fvr");
+        GeneratedClassModel item = new GeneratedClassModel("Item");
+        GeneratedFieldModel target =
+                item.addField("target", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        target.mapping().allowedQids().add("Q1");
+        target.mapping().allowedQids().add("Q2");
+        project.addClass(item);
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+
+        List<WikidataDynamicObject> poolRaw = restrictionPool();
+        FieldValueRestrictions.apply(project, poolRaw);
+        List<WikidataDynamicObject> poolCompiled = restrictionPool();
+        FieldValueRestrictions.apply(compiled, poolCompiled);
+
+        assertEquals(poolRaw.size(), poolCompiled.size());
+        for (int i = 0; i < poolRaw.size(); i++) {
+            assertEquals(describe(poolRaw.get(i).get("target")),
+                    describe(poolCompiled.get(i).get("target")),
+                    "target[" + i + "] must prune identically");
+        }
+    }
+
+    private static List<WikidataDynamicObject> restrictionPool() {
+        WikidataDynamicObject a = obj("Q100", "A", "Item");
+        a.put("target", new ArrayList<>(List.of(
+                obj("Q1", "c1", "Category"),
+                obj("Q2", "c2", "Category"),
+                obj("Q3", "grammy", "Category"))));   // Q3 not allowed → pruned
+        WikidataDynamicObject b = obj("Q101", "B", "Item");
+        b.put("target", obj("Q3", "grammy", "Category"));   // single, not allowed → removed
+        return new ArrayList<>(List.of(a, b));
+    }
+
+    @Test
+    void yearProjectionDerivationMatches() {
+        GeneratedProjectModel project = project("yp");
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        GeneratedFieldModel year =
+                nom.addField("year", FieldType.DATE, FieldCardinality.SINGLE);
+        year.mapping().subjectField("edition");
+        year.mapping().matchValueField("date.year");
+        project.addClass(nom);
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+
+        assertEquals(
+                ModelYearProjections.derive(project),
+                ModelYearProjections.derive(compiled),
+                "the projection list must be identical");
+    }
+
+    @Test
+    void fieldExpectationsCoverageAndDropsMatch() {
+        GeneratedProjectModel project = project("fe");
+        project.addClass(new GeneratedClassModel("OscarNominations"));
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        GeneratedFieldModel edition =
+                nom.addField("edition", FieldType.ENTITY, FieldCardinality.SINGLE);
+        edition.expectation(FieldExpectation.REQUIRED);
+        GeneratedFieldModel year =
+                nom.addField("year", FieldType.DATE, FieldCardinality.SINGLE);
+        year.expectation(FieldExpectation.EXPECTED);
+        project.addClass(nom);
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+
+        List<WikidataDynamicObject> poolRaw = expectationPool();
+        FieldExpectations.Result raw =
+                FieldExpectations.apply(project, poolRaw, null);
+        List<WikidataDynamicObject> poolCompiled = expectationPool();
+        FieldExpectations.Result comp =
+                FieldExpectations.apply(compiled, poolCompiled, null);
+
+        assertEquals(raw.coverage(), comp.coverage(),
+                "coverage report must match");
+        assertEquals(raw.dropped().size(), comp.dropped().size(),
+                "dropped count must match");
+        assertEquals(poolRaw.size(), poolCompiled.size(),
+                "pool size after REQUIRED drops must match");
+    }
+
+    private static List<WikidataDynamicObject> expectationPool() {
+        WikidataDynamicObject n1 = obj("Q1", "n1", "Nomination");
+        n1.put("edition", obj("E1", "ed", "Edition"));
+        n1.put("year", "1990");
+        WikidataDynamicObject n2 = obj("Q2", "n2", "Nomination");
+        // no edition (REQUIRED → dropped), no year (EXPECTED → kept)
+        return new ArrayList<>(List.of(n1, n2));
+    }
+}
