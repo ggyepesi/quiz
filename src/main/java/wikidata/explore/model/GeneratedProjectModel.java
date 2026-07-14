@@ -233,9 +233,24 @@ public class GeneratedProjectModel {
             }
         }
 
-        if (c.rootClass == null) {
-            c.rootClass = rootClass.copy();
-            c.classes.addFirst(c.rootClass);
+        if (c.rootClass == null && rootClass != null) {
+            // The source can carry its root as a distinct object from its
+            // same-named entry in `classes`: a saved model serializes the root
+            // both as `rootClass` and inside `classes`, and Jackson deserializes
+            // the two separately. Adopt the already-copied same-named class as the
+            // root rather than adding a second copy — otherwise the copy ends up
+            // with two classes sharing the root's name (a duplicate that fails
+            // validation the moment it is compiled).
+            for (GeneratedClassModel cls : c.classes) {
+                if (cls.className().equalsIgnoreCase(rootClass.className())) {
+                    c.rootClass = cls;
+                    break;
+                }
+            }
+            if (c.rootClass == null) {
+                c.rootClass = rootClass.copy();
+                c.classes.addFirst(c.rootClass);
+            }
         }
 
         return c;

@@ -1,21 +1,27 @@
 package wikidata.explore.compiled;
 
 import wikidata.explore.model.*;
-import java.util.ArrayList;
-import java.util.List;
+
+import java.util.*;
 
 /**
  * Semantic-analysis boundary between the mutable editor model and runtime.
  *
  * <p>The compiler snapshots, migrates and validates the project, then resolves
- * inheritance and class references into immutable compiled values.</p>
+ * inheritance, canonical field references, sort fields and class references
+ * into immutable compiled values.</p>
  */
 public final class ProjectModelCompiler {
-    private ProjectModelCompiler() { }
 
-    public static CompiledProjectModel compile(GeneratedProjectModel editable) {
+    private ProjectModelCompiler() {
+    }
+
+    public static CompiledProjectModel compile(
+            GeneratedProjectModel editable) {
+
         if (editable == null) {
-            throw new IllegalArgumentException("editable project must not be null");
+            throw new IllegalArgumentException(
+                    "editable project must not be null");
         }
 
         // Never normalize the object currently owned by Swing controls.
@@ -34,70 +40,302 @@ public final class ProjectModelCompiler {
         }
 
         return new CompiledProjectModel(
-                snapshot.name(), snapshot.generationDepth(),
-                snapshot.rootClass().className(), classes);
+                snapshot.name(),
+                snapshot.generationDepth(),
+                snapshot.rootClass().className(),
+                classes);
     }
 
     private static CompiledClass compileClass(
-            GeneratedProjectModel project, GeneratedClassModel clazz) {
-        GeneratedClassModel base = clazz.hasBase()
-                ? project.findClass(clazz.baseClassName()) : null;
+            GeneratedProjectModel project,
+            GeneratedClassModel clazz) {
+
+        GeneratedClassModel base =
+                clazz.hasBase()
+                        ? project.findClass(clazz.baseClassName())
+                        : null;
+
         StatementClassSource statement = clazz.statementSource();
-        GeneratedClassModel statementSource = statement == null
-                ? null : project.findClass(statement.sourceClassName());
+        GeneratedClassModel statementSource =
+                statement == null
+                        ? null
+                        : project.findClass(statement.sourceClassName());
+
+        List<CompiledField> ownFields =
+                compileFields(project, clazz.fields(), newIdentitySet());
+        List<CompiledField> effectiveFields =
+                compileFields(
+                        project,
+                        clazz.effectiveFields(project),
+                        newIdentitySet());
+
+        CompiledCanonical canonical =
+                compileCanonical(
+                        clazz.effectiveCanonical(),
+                        effectiveFields,
+                        clazz.className());
 
         return new CompiledClass(
-                clazz.className(), clazz.displayClassName(),
-                clazz.baseClassName(), base == null ? "" : base.className(),
-                clazz.hasDiscriminator() ? clazz.effectiveDiscriminatorPid() : "",
-                clazz.discriminatorQid(), clazz.generationDepth(),
-                CompiledFieldSource.from(clazz.effectiveInstanceMapping(project)),
+                clazz.className(),
+                clazz.displayClassName(),
+                clazz.baseClassName(),
+                base == null ? "" : base.className(),
+                clazz.hasDiscriminator()
+                        ? clazz.effectiveDiscriminatorPid()
+                        : "",
+                clazz.discriminatorQid(),
+                clazz.generationDepth(),
+                CompiledFieldSource.from(
+                        clazz.effectiveInstanceMapping(project)),
                 clazz.seedQids(),
-                compileFacets(clazz.facets()),
-                CompiledCanonical.from(clazz.effectiveCanonical()),
-                CompiledStatementSource.from(statement,
-                        statementSource == null ? "" : statementSource.className()),
-                compileFields(project, clazz.fields()),
-                compileFields(project, clazz.effectiveFields(project)));
+                compileFacets(
+                        clazz.facets(),
+                        effectiveFields,
+                        clazz.className()),
+                canonical,
+                CompiledStatementSource.from(
+                        statement,
+                        statementSource == null
+                                ? ""
+                                : statementSource.className()),
+                ownFields,
+                effectiveFields);
     }
 
-    private static List<CompiledFacet> compileFacets(List<GeneratedFacet> facets) {
+    private static List<CompiledFacet> compileFacets(
+            List<GeneratedFacet> facets,
+            List<CompiledField> effectiveFields,
+            String className) {
+
         List<CompiledFacet> result = new ArrayList<>();
+        Map<String, CompiledField> fields =
+                fieldIndex(effectiveFields);
+
         for (GeneratedFacet facet : facets) {
-            if (facet != null) {
-                result.add(CompiledFacet.from(facet));
+            if (facet == null) {
+                continue;
+            }
+
+            String configured = clean(facet.fieldName());
+            CompiledField resolved =
+                    fields.get(configured.toLowerCase(Locale.ROOT));
+
+            if (resolved == null) {
+                // A facet is a presentation grouping; a stale one (its field was
+                // renamed or removed) must not block generation. Drop it rather
+                // than failing the compile — the same leniency the validator gives
+                // an unmodeled reference.
+                continue;
+            }
+
+            result.add(new CompiledFacet(
+                    facet.name(),
+                    resolved.name(),
+                    facet.bucketing(),
+                    facet.rangeSize()));
+        }
+
+        return result;
+    }
+
+    private static CompiledCanonical compileCanonical(
+            CanonicalSpec source,
+            List<CompiledField> effectiveFields,
+            String className) {
+
+        CanonicalSpec canonical =
+                source == null ? new CanonicalSpec() : source;
+
+        Map<String, CompiledField> fields =
+                fieldIndex(effectiveFields);
+
+        List<String> resolvedKeys = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (String configuredKey : canonical.keyFields()) {
+            String configured = clean(configuredKey);
+            CompiledField resolved =
+                    fields.get(configured.toLowerCase(Locale.ROOT));
+
+            if (resolved == null) {
+                throw semanticError(
+                        className,
+                        "canonical key field '" + configured
+                                + "' does not exist in effective fields");
+            }
+
+            String lower =
+                    resolved.name().toLowerCase(Locale.ROOT);
+            if (seen.add(lower)) {
+                resolvedKeys.add(resolved.name());
             }
         }
-        return result;
+
+        String resolvedDisplayField = "";
+        if (canonical.displayNameMode()
+                == CanonicalSpec.DisplayNameMode.FIELD) {
+
+            String configured =
+                    clean(canonical.displayNameField());
+            CompiledField resolved =
+                    fields.get(configured.toLowerCase(Locale.ROOT));
+
+            if (resolved == null) {
+                throw semanticError(
+                        className,
+                        "display-name field '" + configured
+                                + "' does not exist in effective fields");
+            }
+
+            resolvedDisplayField = resolved.name();
+        }
+
+        return new CompiledCanonical(
+                canonical.kind(),
+                resolvedKeys,
+                canonical.displayNameMode(),
+                resolvedDisplayField,
+                canonical.displayNameTemplate(),
+                canonical.labelLanguage());
     }
 
     private static List<CompiledField> compileFields(
-            GeneratedProjectModel project, List<GeneratedFieldModel> fields) {
+            GeneratedProjectModel project,
+            List<GeneratedFieldModel> fields,
+            Set<GeneratedFieldModel> activePath) {
+
         List<CompiledField> result = new ArrayList<>();
+
         for (GeneratedFieldModel field : fields) {
-            if (field == null || field.isNameField()) continue;
-            GeneratedClassModel referenced = field.entityClassName().isBlank()
-                    ? null : project.findClass(field.entityClassName());
-            result.add(CompiledField.from(
-                    field,
-                    referenced == null ? "" : referenced.className(),
-                    compileFields(project, field.fields())));
+            if (field == null || field.isNameField()) {
+                continue;
+            }
+
+            if (!activePath.add(field)) {
+                throw semanticError(
+                        field.name(),
+                        "recursive nested-field containment detected");
+            }
+
+            try {
+                GeneratedClassModel referenced =
+                        field.entityClassName().isBlank()
+                                ? null
+                                : project.findClass(field.entityClassName());
+
+                String resolvedSort =
+                        resolveSortField(project, field, referenced);
+
+                result.add(CompiledField.from(
+                        field,
+                        referenced == null
+                                ? ""
+                                : referenced.className(),
+                        resolvedSort,
+                        compileFields(
+                                project,
+                                field.fields(),
+                                activePath)));
+            } finally {
+                activePath.remove(field);
+            }
         }
+
         return result;
+    }
+
+    /**
+     * A sort name belongs to the referenced entity class, not to the owning
+     * class. Resolve it once here and preserve the configured name separately.
+     */
+    private static String resolveSortField(
+            GeneratedProjectModel project,
+            GeneratedFieldModel field,
+            GeneratedClassModel referencedClass) {
+
+        String configured = clean(field.sortFieldName());
+
+        if (configured.isBlank()) {
+            return "";
+        }
+
+        if (referencedClass == null) {
+            throw semanticError(
+                    field.name(),
+                    "sort field '" + configured
+                            + "' requires a modeled entity class");
+        }
+
+        for (GeneratedFieldModel candidate
+                : referencedClass.effectiveFields(project)) {
+            if (candidate != null
+                    && configured.equalsIgnoreCase(
+                            candidate.name())) {
+                return candidate.name();
+            }
+        }
+
+        throw semanticError(
+                field.name(),
+                "sort field '" + configured
+                        + "' does not exist on class "
+                        + referencedClass.className());
+    }
+
+    private static Map<String, CompiledField> fieldIndex(
+            List<CompiledField> fields) {
+
+        LinkedHashMap<String, CompiledField> index =
+                new LinkedHashMap<>();
+        for (CompiledField field : fields) {
+            index.putIfAbsent(
+                    field.name().toLowerCase(Locale.ROOT),
+                    field);
+        }
+        return Collections.unmodifiableMap(index);
+    }
+
+    private static Set<GeneratedFieldModel> newIdentitySet() {
+        return Collections.newSetFromMap(
+                new IdentityHashMap<>());
+    }
+
+    private static ModelCompilationException semanticError(
+            String location,
+            String message) {
+        return new ModelCompilationException(
+                location == null || location.isBlank()
+                        ? message
+                        : location + ": " + message);
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
     }
 
     public static final class ModelCompilationException
             extends IllegalArgumentException {
-        private final GeneratedProjectModelValidator.ValidationResult validation;
+
+        private final GeneratedProjectModelValidator.ValidationResult
+                validation;
 
         public ModelCompilationException(
-                GeneratedProjectModelValidator.ValidationResult validation) {
-            super("Cannot compile invalid model:" + System.lineSeparator()
+                GeneratedProjectModelValidator.ValidationResult
+                        validation) {
+
+            super("Cannot compile invalid model:"
+                    + System.lineSeparator()
                     + validation.format());
             this.validation = validation;
         }
 
-        public GeneratedProjectModelValidator.ValidationResult validation() {
+        public ModelCompilationException(String message) {
+            super("Cannot compile model: " + message);
+            validation = null;
+        }
+
+        public GeneratedProjectModelValidator.ValidationResult
+        validation() {
             return validation;
         }
     }

@@ -2,9 +2,15 @@ package wikidata.explore.compiled;
 
 import wikidata.explore.filter.WikidataValueFilterOperator;
 import wikidata.explore.model.*;
+
 import java.util.List;
 
-/** Immutable field definition used by runtime planners. */
+/**
+ * Immutable field definition used by runtime planners.
+ *
+ * <p>Configured names are retained for diagnostics. Resolved names use the
+ * actual case-preserving declaration found by the compiler.</p>
+ */
 public record CompiledField(
         String name,
         FieldType type,
@@ -17,6 +23,7 @@ public record CompiledField(
         WikidataValueFilterOperator filterOperator,
         Double filterValue,
         EdgeMembershipMode edgeMembership,
+        String configuredSortFieldName,
         String sortFieldName,
         boolean sortDescending,
         String unit,
@@ -28,36 +35,67 @@ public record CompiledField(
         type = type == null ? FieldType.AUTO : type;
         configuredEntityClassName = clean(configuredEntityClassName);
         entityClassName = clean(entityClassName);
-        cardinality = cardinality == null ? FieldCardinality.AUTO : cardinality;
-        renderMode = renderMode == null ? FieldRenderMode.AUTO : renderMode;
-        expectation = expectation == null ? FieldExpectation.NONE : expectation;
+        cardinality = cardinality == null
+                ? FieldCardinality.AUTO
+                : cardinality;
+        renderMode = renderMode == null
+                ? FieldRenderMode.AUTO
+                : renderMode;
+        expectation = expectation == null
+                ? FieldExpectation.NONE
+                : expectation;
         edgeMembership = edgeMembership == null
-                ? EdgeMembershipMode.INHERIT : edgeMembership;
+                ? EdgeMembershipMode.INHERIT
+                : edgeMembership;
+        configuredSortFieldName = clean(configuredSortFieldName);
         sortFieldName = clean(sortFieldName);
         unit = clean(unit);
         source = source == null ? CompiledFieldSource.from(null) : source;
-        nestedFields = nestedFields == null ? List.of() : List.copyOf(nestedFields);
+        nestedFields = nestedFields == null
+                ? List.of()
+                : List.copyOf(nestedFields);
     }
 
     public boolean collection() {
         return cardinality == FieldCardinality.COLLECTION;
     }
 
+    public boolean entityReference() {
+        return type == FieldType.ENTITY;
+    }
+
     public boolean hasValueFilter() {
         return filterOperator != null && filterValue != null;
+    }
+
+    public boolean hasSort() {
+        return !sortFieldName.isBlank();
     }
 
     public static CompiledField from(
             GeneratedFieldModel field,
             String resolvedEntityClassName,
+            String resolvedSortFieldName,
             List<CompiledField> nestedFields) {
+
         return new CompiledField(
-                field.name(), field.type(), field.entityClassName(),
-                resolvedEntityClassName, field.cardinality(), field.renderMode(),
-                field.required(), field.expectation(), field.filterOperator(),
-                field.filterValue(), field.edgeMembership(), field.sortFieldName(),
-                field.sortDescending(), field.unit(),
-                CompiledFieldSource.from(field.mapping()), nestedFields);
+                field.name(),
+                field.type(),
+                field.entityClassName(),
+                resolvedEntityClassName,
+                field.cardinality(),
+                field.renderMode(),
+                field.required(),
+                field.expectation(),
+                field.filterOperator(),
+                field.filterValue(),
+                field.edgeMembership(),
+                field.sortFieldName(),
+                resolvedSortFieldName,
+                field.sortDescending(),
+                field.unit(),
+                CompiledFieldSource.from(field.mapping()),
+                nestedFields);
     }
 
     private static String clean(String value) {

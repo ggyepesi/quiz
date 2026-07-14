@@ -1,9 +1,12 @@
 package wikidata.explore.compiled;
 
 import wikidata.explore.model.*;
+
 import java.util.Set;
 
-/** Immutable runtime snapshot of FieldSourceMapping. */
+/**
+ * Immutable runtime snapshot of {@link FieldSourceMapping}.
+ */
 public record CompiledFieldSource(
         String sourceQid,
         String sourceLabel,
@@ -39,11 +42,14 @@ public record CompiledFieldSource(
         matchRoleField = clean(matchRoleField);
         direction = direction == null ? RuleDirection.ITEM_TO_ROOT : direction;
         labelLanguage = clean(labelLanguage);
-        if (labelLanguage.isBlank()) labelLanguage = "en";
+        if (labelLanguage.isBlank()) {
+            labelLanguage = "en";
+        }
         limit = Math.max(1, limit);
         rankBy = clean(rankBy);
         productionKind = productionKind == null
-                ? FieldProductionKind.AUTO : productionKind;
+                ? FieldProductionKind.AUTO
+                : productionKind;
         allowedQids = immutable(allowedQids);
         excludedQids = immutable(excludedQids);
         additionalTypeQids = immutable(additionalTypeQids);
@@ -55,16 +61,32 @@ public record CompiledFieldSource(
         return qualifierPid.matches("(?i)P\\d+");
     }
 
-    public static CompiledFieldSource from(FieldSourceMapping m) {
-        FieldSourceMapping s = m == null ? new FieldSourceMapping() : m;
+    public static CompiledFieldSource from(FieldSourceMapping mapping) {
+        FieldSourceMapping source =
+                mapping == null ? new FieldSourceMapping() : mapping;
         return new CompiledFieldSource(
-                s.sourceQid(), s.sourceLabel(), s.propertyPid(), s.propertyLabel(),
-                s.qualifierPid(), s.subjectField(), s.matchValueField(),
-                s.matchRoleField(), s.missingQualifierPolicy(), s.direction(),
-                s.requireLabel(), s.labelLanguage(), s.requireSitelink(), s.limit(),
-                s.rankBy(), s.rankDescending(), s.productionKind(), s.allowedQids(),
-                s.excludedQids(), s.additionalTypeQids(), s.excludedTypeQids(),
-                s.sourceType());
+                source.sourceQid(),
+                source.sourceLabel(),
+                source.propertyPid(),
+                source.propertyLabel(),
+                source.qualifierPid(),
+                source.subjectField(),
+                source.matchValueField(),
+                source.matchRoleField(),
+                source.missingQualifierPolicy(),
+                source.direction(),
+                source.requireLabel(),
+                source.labelLanguage(),
+                source.requireSitelink(),
+                source.limit(),
+                source.rankBy(),
+                source.rankDescending(),
+                source.productionKind(),
+                source.allowedQids(),
+                source.excludedQids(),
+                source.additionalTypeQids(),
+                source.excludedTypeQids(),
+                source.sourceType());
     }
 
     private static Set<String> immutable(Set<String> values) {
