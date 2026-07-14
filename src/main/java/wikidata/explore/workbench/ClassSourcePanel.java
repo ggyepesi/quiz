@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import aux.GridBagUtils;
+
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.model.RuleDirection;
@@ -286,26 +288,26 @@ public class ClassSourcePanel extends JPanel {
         int y = 0;
 
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
-        addWide(form, c, y++, titleLabel);
+        GridBagUtils.wideRow(form, y++, titleLabel);
 
         JLabel question =
                 new JLabel("How do we find instances of this class?");
         question.setFont(question.getFont().deriveFont(Font.ITALIC));
-        addWide(form, c, y++, question);
+        GridBagUtils.wideRow(form, y++, question);
 
-        addRow(form, c, y++, "Class name:", classNameField);
+        GridBagUtils.labeledRow(form, c, y++, "Class name:", classNameField);
 
         aliasField.setToolTipText("<html>Display alias: what the UI shows for "
                 + "this class instead of its name. Pure presentation — the class "
                 + "name stays the identity everything references, so aliasing "
                 + "never breaks the model.</html>");
-        addRow(form, c, y++, "Alias:", aliasField);
+        GridBagUtils.labeledRow(form, c, y++, "Alias:", aliasField);
 
         baseClassBox.setToolTipText("<html>Extend another class: this class "
                 + "inherits the base's fields and membership and adds its own "
                 + "(a subclass field with the same name overrides). Lets a shared "
                 + "base (e.g. Person) be reused and extended per domain.</html>");
-        addRow(form, c, y++, "Extends:", baseClassBox);
+        GridBagUtils.labeledRow(form, c, y++, "Extends:", baseClassBox);
 
         discriminatorPidField.setToolTipText("Discriminator property — defaults to "
                 + "P31 (instance of); set another relation to subclass on a "
@@ -321,7 +323,7 @@ public class ClassSourcePanel extends JPanel {
         discRow.add(new JLabel("="));
         discRow.add(discriminatorQidField);
         discRow.add(discriminatorLabel);
-        addRow(form, c, y++, "Subtype:", discRow);
+        GridBagUtils.labeledRow(form, c, y++, "Subtype:", discRow);
 
         statementSourceField.setToolTipText("<html>Make this a <b>statement "
                 + "reification</b>: instances are the statements of the "
@@ -330,12 +332,12 @@ public class ClassSourcePanel extends JPanel {
                 + "<i>Oscarnominations</i>). Fields draw from the statement value "
                 + "and its qualifiers (\"Qualifier of\" per field). Blank = normal "
                 + "class.</html>");
-        addRow(form, c, y++, "Reifies statements of:", statementSourceField);
+        GridBagUtils.labeledRow(form, c, y++, "Reifies statements of:", statementSourceField);
 
         JPanel typeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         typeRow.add(typeQidField);
         typeRow.add(typeLabel);
-        addRow(form, c, y++, typeRowLabel, typeRow);
+        GridBagUtils.labeledRow(form, c, y++, typeRowLabel, typeRow);
 
         additionalTypesField.setToolTipText("<html>Extra type QIDs (space-separated) "
                 + "for membership: an item counts if it is instance-of the type "
@@ -350,14 +352,14 @@ public class ClassSourcePanel extends JPanel {
                 + "part) → its award categories. Data-driven instead of a pasted "
                 + "QID list.</html>");
         addTypesRow.add(fromPartsButton);
-        addRow(form, c, y++, "Also include types:", addTypesRow);
+        GridBagUtils.labeledRow(form, c, y++, "Also include types:", addTypesRow);
 
         excludeTypesField.setToolTipText("<html>Type QIDs (space-separated) to "
                 + "EXCLUDE: drop any item that is instance-of (P31) one of these, "
                 + "even if it matched membership.<br>e.g. add Q11688446 (Roman "
                 + "deity) to keep a Greek-character class free of Roman ones. "
                 + "Emitted as FILTER NOT EXISTS.</html>");
-        addRow(form, c, y++, "Exclude types:", excludeTypesField);
+        GridBagUtils.labeledRow(form, c, y++, "Exclude types:", excludeTypesField);
 
         relationPidField.setToolTipText("<html>Membership relation property. "
                 + "<b>P31</b> = instance of (the type above); but any property "
@@ -371,7 +373,7 @@ public class ClassSourcePanel extends JPanel {
         findRelationButton.addActionListener(e -> pickProperty());
         relRow.add(findRelationButton);
         relRow.add(relationLabel);
-        addRow(form, c, y++, "Relation property:", relRow);
+        GridBagUtils.labeledRow(form, c, y++, "Relation property:", relRow);
         // Keep the source-QID row label + the relation label in sync with the
         // chosen relation; clear the resolved label when the PID is hand-edited.
         relationPidField.getDocument().addDocumentListener(
@@ -390,7 +392,7 @@ public class ClassSourcePanel extends JPanel {
         options.add(requireLabelBox);
         options.add(new JLabel("lang:"));
         options.add(langField);
-        addWide(form, c, y++, options);
+        GridBagUtils.wideRow(form, y++, options);
 
         notableOnlyBox.setToolTipText("<html>Require an English Wikipedia article "
                 + "(a sitelink). A selective entry that bounds a huge class "
@@ -398,7 +400,7 @@ public class ClassSourcePanel extends JPanel {
                 + "query completes and returns famous entities instead of timing "
                 + "out. Combine with a magnitude filter + sort for the brightest "
                 + "famous ones.</html>");
-        addWide(form, c, y++, notableOnlyBox);
+        GridBagUtils.wideRow(form, y++, notableOnlyBox);
 
         rankByBox.setToolTipText("<html>Keep the top <b>Limit</b> instances by "
                 + "this measure (importance):<br><b>Notability (sitelinks)</b> — "
@@ -408,7 +410,7 @@ public class ClassSourcePanel extends JPanel {
         JPanel rankRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         rankRow.add(rankByBox);
         rankRow.add(rankDescBox);
-        addRow(form, c, y++, "Rank by:", rankRow);
+        GridBagUtils.labeledRow(form, c, y++, "Rank by:", rankRow);
 
         seedQidsArea.setLineWrap(true);
         seedQidsArea.setWrapStyleWord(true);
@@ -419,7 +421,7 @@ public class ClassSourcePanel extends JPanel {
                 + "The WikiProject tab's \"Add selected\" fills this.</html>");
         JScrollPane seedScroll = new JScrollPane(seedQidsArea);
         seedScroll.setPreferredSize(new Dimension(360, 56));
-        addRow(form, c, y++, "Seed QIDs:", seedScroll);
+        GridBagUtils.labeledRow(form, c, y++, "Seed QIDs:", seedScroll);
 
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         searchRow.add(new JLabel("Search:"));
@@ -427,57 +429,57 @@ public class ClassSourcePanel extends JPanel {
         searchRow.add(new JLabel("Method:"));
         searchRow.add(searchModeBox);
         searchRow.add(searchTypeButton);
-        addWide(form, c, y++, searchRow);
+        GridBagUtils.wideRow(form, y++, searchRow);
 
         installSearchTableBehavior();
 
         JScrollPane tableScroll = new JScrollPane(searchTable);
         tableScroll.setPreferredSize(new Dimension(700, 180));
-        addWide(form, c, y++, tableScroll);
+        GridBagUtils.wideRow(form, y++, tableScroll);
 
         JPanel useRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         useSelectedButton.setEnabled(false);
         useRow.add(useSelectedButton);
-        addWide(form, c, y++, useRow);
+        GridBagUtils.wideRow(form, y++, useRow);
 
         // --- Identity & label section ---
         JLabel canonHeader = new JLabel("Identity & label");
         canonHeader.setFont(canonHeader.getFont().deriveFont(Font.BOLD, 13f));
-        addWide(form, c, y++, canonHeader);
+        GridBagUtils.wideRow(form, y++, canonHeader);
 
         canonicalKindBox.setToolTipText("<html><b>Wikidata entity</b>: identity = "
                 + "qid, display name = the Wikidata label.<br><b>Derived</b>: for "
                 + "reified/composed classes (e.g. Nomination) — identity = the key "
                 + "fields (grain), display name = a single field or a template.</html>");
-        addRow(form, c, y++, "Kind:", canonicalKindBox);
+        GridBagUtils.labeledRow(form, c, y++, "Kind:", canonicalKindBox);
 
         displayNameModeBox.setToolTipText("How to make the display name of a "
                 + "derived class: a single field's value, or a template.");
-        addRow(form, c, y++, "Display name:", displayNameModeBox);
+        GridBagUtils.labeledRow(form, c, y++, "Display name:", displayNameModeBox);
 
         displayNameFieldBox.setToolTipText("Single-valued field to show as the "
                 + "label (a reference shows its own name).");
-        addRow(form, c, y++, "  from field:", displayNameFieldBox);
+        GridBagUtils.labeledRow(form, c, y++, "  from field:", displayNameFieldBox);
 
         displayNameTemplateField.setToolTipText("e.g. {nominee} · {category} {year} "
                 + "— {field} is replaced by that field's label.");
-        addRow(form, c, y++, "  template:", displayNameTemplateField);
+        GridBagUtils.labeledRow(form, c, y++, "  template:", displayNameTemplateField);
 
         keyFieldsField.setToolTipText("Identity key fields (space-separated) — the "
                 + "grain that makes one instance unique. Prefilled from the class.");
-        addRow(form, c, y++, "Identity key fields:", keyFieldsField);
+        GridBagUtils.labeledRow(form, c, y++, "Identity key fields:", keyFieldsField);
 
         canonicalHint.setForeground(new Color(0xB00020));
-        addWide(form, c, y++, canonicalHint);
+        GridBagUtils.wideRow(form, y++, canonicalHint);
 
         canonicalKindBox.addActionListener(e -> updateCanonicalEnablement());
         displayNameModeBox.addActionListener(e -> updateCanonicalEnablement());
 
-        addWide(form, c, y++, summaryLabel);
+        GridBagUtils.wideRow(form, y++, summaryLabel);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         buttons.add(applyButton);
-        addWide(form, c, y++, buttons);
+        GridBagUtils.wideRow(form, y++, buttons);
 
         add(scroll, BorderLayout.CENTER);
 
@@ -1275,44 +1277,4 @@ public class ClassSourcePanel extends JPanel {
         @Override default void changedUpdate(javax.swing.event.DocumentEvent e) { changed(e); }
     }
 
-    private static void addRow(
-            JPanel form,
-            GridBagConstraints c,
-            int y,
-            String label,
-            JComponent comp) {
-        addRow(form, c, y, new JLabel(label), comp);
-    }
-
-    private static void addRow(
-            JPanel form,
-            GridBagConstraints c,
-            int y,
-            JLabel label,
-            JComponent comp) {
-
-        c.gridx = 0;
-        c.gridy = y;
-        c.gridwidth = 1;
-        c.weightx = 0;
-        form.add(label, c);
-
-        c.gridx = 1;
-        c.weightx = 1;
-        form.add(comp, c);
-    }
-
-    private static void addWide(
-            JPanel form,
-            GridBagConstraints c,
-            int y,
-            JComponent comp) {
-
-        c.gridx = 0;
-        c.gridy = y;
-        c.gridwidth = 2;
-        c.weightx = 1;
-        form.add(comp, c);
-        c.gridwidth = 1;
-    }
 }

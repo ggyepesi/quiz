@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import aux.GridBagUtils;
+
 import wikidata.explore.codegen.GeneratedQuizableSourceGenerator;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.WikidataProperty;
@@ -368,41 +370,41 @@ public class FieldSourcePanel extends JPanel {
         int y = 0;
 
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
-        addWide(form, c, y++, titleLabel);
+        GridBagUtils.wideRow(form, y++, titleLabel);
 
         JLabel question = new JLabel("How do we fill this field?");
         question.setFont(question.getFont().deriveFont(Font.ITALIC));
-        addWide(form, c, y++, question);
+        GridBagUtils.wideRow(form, y++, question);
 
-        addRow(form, c, y++, "Field name:", fieldNameField);
+        GridBagUtils.labeledRow(form, c, y++, "Field name:", fieldNameField);
 
         // --- What it holds ---
         typeBox.setToolTipText("What this field holds: Text / Number / Date / "
                 + "Image, or an Entity (a domain class — pick it in \"Of class\").");
-        addRow(form, c, y++, "Holds:", typeBox);
+        GridBagUtils.labeledRow(form, c, y++, "Holds:", typeBox);
         objectTypeBox.setToolTipText("The domain class this field refers to "
                 + "(when Holds = Entity). The value is a reference to that class's "
                 + "instances — clicking navigates to them.");
-        addRow(form, c, y++, "Of class:", objectTypeBox);
-        addRow(form, c, y++, "Count:", shapeBox);
-        addRow(form, c, y++, "Load as:", productionBox);
+        GridBagUtils.labeledRow(form, c, y++, "Of class:", objectTypeBox);
+        GridBagUtils.labeledRow(form, c, y++, "Count:", shapeBox);
+        GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
 
         // --- Where it comes from ---
-        addWide(form, c, y++, sectionLabel("Source"));
-        addRow(form, c, y++, "From:", sourceTypeBox);
+        GridBagUtils.wideRow(form, y++, sectionLabel("Source"));
+        GridBagUtils.labeledRow(form, c, y++, "From:", sourceTypeBox);
 
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         propRow.add(propertyPidField);
         propRow.add(propertyLabel);
         discoverDbpediaButton.setVisible(false);
         propRow.add(discoverDbpediaButton);
-        addRow(form, c, y++, "Property:", propRow);
+        GridBagUtils.labeledRow(form, c, y++, "Property:", propRow);
         qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
                 + "reification</b> class (the class \"Reifies statements of\" "
                 + "another): the <b>qualifier</b> PID this field draws from "
                 + "(e.g. P585 → year, P1686 → for work, P2453 → nominee). "
                 + "Blank = a direct/value field.</html>");
-        addRow(form, c, y++, "Qualifier of:", qualifierPidField);
+        GridBagUtils.labeledRow(form, c, y++, "Qualifier of:", qualifierPidField);
 
         missingQualifierBox.setToolTipText("<html>Reify (#92): what this ENTITY "
                 + "qualifier gets when it is <b>absent</b> on a statement.<br>"
@@ -412,11 +414,11 @@ public class FieldSourcePanel extends JPanel {
                 + "<b>Leave missing</b> — stay empty (right for a plain reference like "
                 + "<b>edition</b>: an absent ceremony must not become the film).<br>"
                 + "<b>Auto</b> — the legacy default (subject).</html>");
-        addRow(form, c, y++, "Missing qualifier:", missingQualifierBox);
+        GridBagUtils.labeledRow(form, c, y++, "Missing qualifier:", missingQualifierBox);
         inDedupKeyBox.setToolTipText("<html>Reify (#92): whether this field is part of "
                 + "the reified record's <b>identity (dedup) key</b>. <b>Auto</b> = "
                 + "inferred (Yes for every qualifier except a date).</html>");
-        addRow(form, c, y++, "In dedup key:", inDedupKeyBox);
+        GridBagUtils.labeledRow(form, c, y++, "In dedup key:", inDedupKeyBox);
 
         // COMPANION_MATCH rows: Property = companion property (e.g. P166 award
         // received), Qualifier of = the companion role qualifier (e.g. P1686 for
@@ -425,26 +427,26 @@ public class FieldSourcePanel extends JPanel {
                 + "holding the entity that <b>carries</b> the companion statement "
                 + "(e.g. <b>nominee</b> — the Oscar win P166 is on the winner). "
                 + "<b>source</b> = the reify subject.</html>");
-        addRow(form, c, y++, "Subject field:", subjectBox);
+        GridBagUtils.labeledRow(form, c, y++, "Subject field:", subjectBox);
         matchValueBox.setToolTipText("<html>Companion match: this record's field "
                 + "whose value must equal the companion statement's value "
                 + "(e.g. <b>category</b>).</html>");
-        addRow(form, c, y++, "Match value field:", matchValueBox);
+        GridBagUtils.labeledRow(form, c, y++, "Match value field:", matchValueBox);
         matchRoleBox.setToolTipText("<html>Companion match: this record's field "
                 + "matched against the companion's role qualifier — or the "
                 + "companion subject when that qualifier is absent "
                 + "(e.g. <b>source</b> vs the win's for-work/film).</html>");
-        addRow(form, c, y++, "Match role field:", matchRoleBox);
+        GridBagUtils.labeledRow(form, c, y++, "Match role field:", matchRoleBox);
 
         directionBox.setToolTipText("<html>Where the property lives:<br>"
                 + "<b>this entity</b> (outgoing, ?this P ?value)<br>"
                 + "<b>related entities</b> (incoming, ?other P ?this) — e.g. "
                 + "stars whose constellation P59 = this.</html>");
-        addRow(form, c, y++, "Found on:", directionBox);
+        GridBagUtils.labeledRow(form, c, y++, "Found on:", directionBox);
 
         // --- Refine ---
-        addWide(form, c, y++, sectionLabel("Refine"));
-        addWide(form, c, y++, requiredBox);
+        GridBagUtils.wideRow(form, y++, sectionLabel("Refine"));
+        GridBagUtils.wideRow(form, y++, requiredBox);
 
         expectationBox.setToolTipText("<html>Post-transform expectation (#96) for a "
                 + "reified/statement class's field. <b>NONE</b> = no check. "
@@ -453,17 +455,17 @@ public class FieldSourcePanel extends JPanel {
                 + "SEE the gap before deciding. <b>REQUIRED</b> = drop records missing "
                 + "the field (only once you've confirmed the missing ones are bad data; "
                 + "an absent qualifier is often a legit record).</html>");
-        addRow(form, c, y++, "Expectation:", expectationBox);
+        GridBagUtils.labeledRow(form, c, y++, "Expectation:", expectationBox);
 
         JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         filterRow.add(filterOpBox);
         filterRow.add(filterValueField);
-        addRow(form, c, y++, "Numeric filter:", filterRow);
+        GridBagUtils.labeledRow(form, c, y++, "Numeric filter:", filterRow);
 
         onlyRelatedOfTypeBox.setToolTipText("<html>When this field refers to a "
                 + "class, keep only related items that ARE that class (P31), "
                 + "dropping off-type values reached by the same property.</html>");
-        addWide(form, c, y++, onlyRelatedOfTypeBox);
+        GridBagUtils.wideRow(form, y++, onlyRelatedOfTypeBox);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         examplesButton.setToolTipText(
@@ -473,7 +475,7 @@ public class FieldSourcePanel extends JPanel {
         buttons.add(examplesButton);
         buttons.add(sampleShapeButton);
         buttons.add(applyButton);
-        addWide(form, c, y++, buttons);
+        GridBagUtils.wideRow(form, y++, buttons);
 
         examplesButton.addActionListener(e -> showExamplesDialog());
 
@@ -1158,37 +1160,5 @@ public class FieldSourcePanel extends JPanel {
         l.setForeground(new Color(0x55, 0x55, 0x55));
         l.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
         return l;
-    }
-
-    private static void addRow(
-            JPanel form,
-            GridBagConstraints c,
-            int y,
-            String label,
-            JComponent comp) {
-
-        c.gridx = 0;
-        c.gridy = y;
-        c.gridwidth = 1;
-        c.weightx = 0;
-        form.add(new JLabel(label), c);
-
-        c.gridx = 1;
-        c.weightx = 1;
-        form.add(comp, c);
-    }
-
-    private static void addWide(
-            JPanel form,
-            GridBagConstraints c,
-            int y,
-            JComponent comp) {
-
-        c.gridx = 0;
-        c.gridy = y;
-        c.gridwidth = 2;
-        c.weightx = 1;
-        form.add(comp, c);
-        c.gridwidth = 1;
     }
 }

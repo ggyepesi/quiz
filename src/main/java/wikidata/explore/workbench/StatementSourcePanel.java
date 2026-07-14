@@ -1,8 +1,14 @@
 package wikidata.explore.workbench;
 
+import aux.GridBagUtils;
+import wikidata.explore.model.CanonicalSpec;
+import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.transform.ModelStatementReifications;
 import wikidata.explore.transform.ModelStatementReifications.Reification;
@@ -12,78 +18,114 @@ import wikidata.explore.transform.ReifyConstruct;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * Configures a STATEMENT class (statement-id identity): its instances are the
- * statements of a property on each member of a SOURCE class — e.g. Nomination =
- * the P1411 statements of OscarNominations. Distinct from {@link ClassSourcePanel}
- * (which configures qid-identity SOURCE classes), so the two identity models are
- * explicit. The qualifier→field mapping stays in {@link FieldSourcePanel}; this
- * panel owns the statement-level definition and shows the derived identity / roles
- * / dedup key, plus the (planned) person/work subclassing slot.
+ * Configures a STATEMENT class (derived/natural-key identity): its instances are
+ * the statements of a property on each member of a SOURCE class — e.g.
+ * Nomination = the P1411 statements of OscarNominations.
+ *
+ * <p>This is intentionally separate from {@link ClassSourcePanel}, which
+ * configures qid-identity source classes. Qualifier-to-field mappings remain in
+ * {@link FieldSourcePanel}; this panel owns the statement source and the
+ * class-level canonical identity.</p>
  */
 public class StatementSourcePanel extends JPanel {
 
     private GeneratedClassModel clazz;
     private GeneratedProjectModel projectModel;
-    private Consumer<Void> afterChange = v -> {};
+
+    private Consumer<Void> afterChange = ignored -> {};
     private Supplier<List<String>> sourceClassCandidates = List::of;
 
     private final JLabel titleLabel = new JLabel("Statement class");
     private final JTextField classNameField = new JTextField(18);
     private final JComboBox<String> reifyFromBox = new JComboBox<>();
-    private final JTextField statementPropField = new JTextField("P1411", 6);
+    private final JTextField statementPropField =
+            new JTextField("P1411", 6);
     private final JTextField valueTypeField = new JTextField(10);
 
+    private final JPanel keyFieldsPanel =
+            new JPanel(new GridBagLayout());
+    private final Map<String, JCheckBox> keyFieldBoxes =
+            new LinkedHashMap<>();
+
+    private final JComboBox<String> displayNameFieldBox =
+            new JComboBox<>();
+
     private final JLabel identityValue = new JLabel(" ");
-    private final JLabel rolesValue = new JLabel(" ");
+    private final JLabel subjectFallbackValue = new JLabel(" ");
+    private final JLabel statementValueFallbackValue =
+            new JLabel(" ");
     private final JLabel dedupValue = new JLabel(" ");
-    private final JTextArea qualifiersArea = new JTextArea(4, 28);
+
+    private final JTextArea qualifiersArea =
+            new JTextArea(5, 30);
 
     public StatementSourcePanel() {
         buildUi();
     }
 
     public void afterChange(Consumer<Void> afterChange) {
-        this.afterChange = afterChange == null ? v -> {} : afterChange;
+        this.afterChange =
+                afterChange == null ? ignored -> {} : afterChange;
     }
 
-    public void sourceClassCandidates(Supplier<List<String>> candidates) {
-        this.sourceClassCandidates = candidates == null ? List::of : candidates;
+    public void sourceClassCandidates(
+            Supplier<List<String>> candidates) {
+
+        sourceClassCandidates =
+                candidates == null ? List::of : candidates;
     }
 
-    /** The project, so the read-out can call the real {@link
-     *  ModelStatementReifications#deriveOne} (needs to resolve the source class). */
-    public void setProjectModel(GeneratedProjectModel projectModel) {
+    /**
+     * The project is needed both to resolve source-class names and to derive the
+     * exact runtime reification recipe shown in the read-only section.
+     */
+    public void setProjectModel(
+            GeneratedProjectModel projectModel) {
+
         this.projectModel = projectModel;
     }
 
     public void edit(GeneratedClassModel clazz) {
         this.clazz = clazz;
+
         if (clazz == null) {
-            titleLabel.setText("Statement class");
-            classNameField.setText("");
-            qualifiersArea.setText("");
+            clear();
             return;
         }
-        titleLabel.setText("Statement class: " + clazz.className());
+
+        titleLabel.setText(
+                "Statement class: " + clazz.className());
         classNameField.setText(clazz.className());
 
-        reifyFromBox.removeAllItems();
-        for (String name : sourceClassCandidates.get()) {
-            if (name != null && !name.isBlank() && !name.equals(clazz.className())) {
-                reifyFromBox.addItem(name);
-            }
-        }
-        reifyFromBox.setSelectedItem(clazz.statementSourceClass());
+        refreshSourceClassChoices();
 
-        FieldSourceMapping m = clazz.instanceMapping();
-        statementPropField.setText(m.propertyPid().isBlank() ? "P1411" : m.propertyPid());
-        valueTypeField.setText(m.sourceQid());
+        StatementClassSource source =
+                clazz.statementSource();
 
+        reifyFromBox.setSelectedItem(
+                source == null
+                        ? ""
+                        : source.sourceClassName());
+
+        statementPropField.setText(
+                source == null
+                        || source.propertyPid().isBlank()
+                        ? "P1411"
+                        : source.propertyPid());
+
+        // The value-type filter remains part of the statement class's
+        // extraction mapping: it constrains the ps: value by P31.
+        valueTypeField.setText(
+                clazz.instanceMapping().sourceQid());
+
+        rebuildCanonicalControls();
         refreshDerived();
     }
 
@@ -91,189 +133,493 @@ public class StatementSourcePanel extends JPanel {
         if (clazz == null) {
             return;
         }
+
         clazz.className(classNameField.getText().trim());
-        Object src = reifyFromBox.getSelectedItem();
-        clazz.statementSourceClass(src == null ? "" : src.toString().trim());
 
-        FieldSourceMapping m = clazz.instanceMapping();
-        m.propertyPid(RuleNode.cleanPid(statementPropField.getText()));
-        m.sourceQid(RuleNode.cleanQid(valueTypeField.getText()));
+        String sourceClass =
+                selectedText(reifyFromBox);
+        String statementPid =
+                RuleNode.cleanPid(
+                        statementPropField.getText());
 
+        clazz.statementSource(
+                sourceClass.isBlank()
+                        ? null
+                        : new StatementClassSource(
+                        sourceClass,
+                        statementPid));
+
+        clazz.instanceMapping().sourceQid(
+                RuleNode.cleanQid(
+                        valueTypeField.getText()));
+
+        applyCanonicalControls();
         refreshDerived();
         afterChange.accept(null);
     }
 
-    // The identity / subject-default fields / dedup key — rendered from the REAL
-    // ModelStatementReifications.deriveOne (the same recipe the reify runs), so the
-    // read-out can't drift from behaviour. Surfaces the subject-default fields (the
-    // ones that silently become the source entity when their qualifier is absent —
-    // the trap behind self-referential atoms like the Whale phantom).
+    private void refreshSourceClassChoices() {
+        String selected =
+                selectedText(reifyFromBox);
+
+        reifyFromBox.removeAllItems();
+        reifyFromBox.addItem("");
+
+        for (String name : sourceClassCandidates.get()) {
+            if (name == null
+                    || name.isBlank()
+                    || clazz != null
+                    && name.equals(clazz.className())) {
+                continue;
+            }
+
+            reifyFromBox.addItem(name);
+        }
+
+        if (!selected.isBlank()) {
+            reifyFromBox.setSelectedItem(selected);
+        }
+    }
+
+    /**
+     * Builds the class-level grain editor. Only fields that can exist when the
+     * statement record is first constructed are candidates: scalar, non-name,
+     * AUTO-production fields. COMPANION_MATCH fields such as Oscar
+     * {@code won} are post-transform facts and must never enter identity.
+     */
+    private void rebuildCanonicalControls() {
+        keyFieldsPanel.removeAll();
+        keyFieldBoxes.clear();
+
+        displayNameFieldBox.removeAllItems();
+        displayNameFieldBox.addItem("");
+
+        if (clazz == null) {
+            keyFieldsPanel.revalidate();
+            keyFieldsPanel.repaint();
+            return;
+        }
+
+        CanonicalSpec canonical =
+                clazz.effectiveCanonical();
+
+        int row = 0;
+        for (GeneratedFieldModel field : clazz.fields()) {
+            if (!isCanonicalCandidate(field)) {
+                continue;
+            }
+
+            JCheckBox box =
+                    new JCheckBox(field.name());
+            box.setSelected(
+                    canonical.keyFields()
+                             .contains(field.name()));
+
+            GridBagConstraints c =
+                    new GridBagConstraints();
+            c.gridx = 0;
+            c.gridy = row++;
+            c.weightx = 1.0;
+            c.anchor = GridBagConstraints.WEST;
+            c.fill = GridBagConstraints.HORIZONTAL;
+            c.insets = new Insets(1, 2, 1, 2);
+
+            keyFieldsPanel.add(box, c);
+            keyFieldBoxes.put(field.name(), box);
+            displayNameFieldBox.addItem(field.name());
+        }
+
+        if (canonical.displayNameMode()
+                == CanonicalSpec.DisplayNameMode.FIELD) {
+            displayNameFieldBox.setSelectedItem(
+                    canonical.displayNameField());
+        }
+
+        if (row == 0) {
+            GridBagConstraints c =
+                    new GridBagConstraints();
+            c.gridx = 0;
+            c.gridy = 0;
+            c.weightx = 1.0;
+            c.anchor = GridBagConstraints.WEST;
+            c.fill = GridBagConstraints.HORIZONTAL;
+
+            keyFieldsPanel.add(
+                    new JLabel(
+                            "No scalar statement fields are available yet."),
+                    c);
+        }
+
+        keyFieldsPanel.revalidate();
+        keyFieldsPanel.repaint();
+    }
+
+    private void applyCanonicalControls() {
+        CanonicalSpec canonical =
+                clazz.hasCanonical()
+                        ? clazz.canonical()
+                        : clazz.effectiveCanonical().copy();
+
+        canonical.kind(CanonicalSpec.Kind.DERIVED);
+        canonical.keyFields().clear();
+
+        for (Map.Entry<String, JCheckBox> entry
+                : keyFieldBoxes.entrySet()) {
+            if (entry.getValue().isSelected()) {
+                canonical.keyFields().add(entry.getKey());
+            }
+        }
+
+        String displayField =
+                selectedText(displayNameFieldBox);
+
+        if (displayField.isBlank()) {
+            canonical.displayNameMode(
+                    CanonicalSpec.DisplayNameMode.LABEL);
+            canonical.displayNameField("");
+        } else {
+            canonical.displayNameMode(
+                    CanonicalSpec.DisplayNameMode.FIELD);
+            canonical.displayNameField(displayField);
+        }
+
+        clazz.canonical(canonical);
+    }
+
+    private static boolean isCanonicalCandidate(
+            GeneratedFieldModel field) {
+
+        return field != null
+                && !field.isNameField()
+                && field.cardinality()
+                != FieldCardinality.COLLECTION
+                && field.mapping().productionKind()
+                == FieldProductionKind.AUTO;
+    }
+
+    /**
+     * Renders the actual runtime recipe, not a second approximation of it.
+     * This keeps the editor's explanation aligned with generation.
+     */
     private void refreshDerived() {
         if (clazz == null) {
             return;
         }
-        Reification r = projectModel == null
-                ? null : ModelStatementReifications.deriveOne(clazz, projectModel);
-        if (r == null) {
-            identityValue.setText("statement id  (Q…-<guid>)");
-            rolesValue.setText("—");
+
+        Reification reification =
+                projectModel == null
+                        ? null
+                        : ModelStatementReifications
+                          .deriveOne(
+                                  clazz,
+                                  projectModel);
+
+        if (reification == null) {
+            identityValue.setText(
+                    "derived natural key");
+            subjectFallbackValue.setText("—");
+            statementValueFallbackValue.setText("—");
             dedupValue.setText("—");
-            qualifiersArea.setText("  (not a reifying class yet — set \"Reify from\" + a "
-                    + "statement property, and add fields with a \"Qualifier of\" PID)");
+            qualifiersArea.setText(
+                    " (not a reifying class yet — set "
+                            + "\"Reify from\" and a statement property, "
+                            + "then add qualifier fields)");
             return;
         }
 
-        ReifyConstruct reify = r.reify();
-        QualifierLoadConfig load = r.load();
+        ReifyConstruct reify =
+                reification.reify();
+        QualifierLoadConfig load =
+                reification.load();
 
-        List<String> subjectDefault = new ArrayList<>();
-        for (ReifyConstruct.Role role : reify.roles()) {
+        List<String> subjectFallbacks =
+                new ArrayList<>();
+        List<String> valueFallbacks =
+                new ArrayList<>();
+
+        for (ReifyConstruct.Role role
+                : reify.roles()) {
             if (role.fallbackToSource()) {
-                subjectDefault.add(role.field());
+                subjectFallbacks.add(
+                        role.field());
+            } else if (load.valueField()
+                           .equals(role.from())
+                    && !role.field()
+                            .equals(role.from())) {
+                valueFallbacks.add(
+                        role.field());
             }
         }
-        identityValue.setText("statement id  (Q…-<guid>)   ·   value = " + load.valueField()
-                + (reify.canonicalizesByList()
-                        ? "   ·   nominee-list = " + reify.primaryListField() : ""));
-        rolesValue.setText(subjectDefault.isEmpty() ? "—" : String.join(", ", subjectDefault));
-        dedupValue.setText(reify.dedupBy().isEmpty()
-                ? "—" : String.join(" + ", reify.dedupBy()));
 
-        StringBuilder quals = new StringBuilder();
-        for (QualifierLoadConfig.Qualifier q : load.qualifiers()) {
-            quals.append("  ").append(q.fieldName()).append("  ←  ").append(q.pid());
-            if (q.multi()) {
-                quals.append("  (list)");
+        identityValue.setText(
+                "derived natural key"
+                        + " · statement value = "
+                        + load.valueField()
+                        + (reify.canonicalizesByList()
+                        ? " · canonical list = "
+                          + reify.primaryListField()
+                        : ""));
+
+        subjectFallbackValue.setText(
+                display(subjectFallbacks));
+
+        statementValueFallbackValue.setText(
+                display(valueFallbacks));
+
+        dedupValue.setText(
+                reify.dedupBy().isEmpty()
+                        ? "—"
+                        : String.join(
+                        " + ",
+                        reify.dedupBy()));
+
+        StringBuilder qualifiers =
+                new StringBuilder();
+
+        for (QualifierLoadConfig.Qualifier qualifier
+                : load.qualifiers()) {
+            qualifiers.append(" ")
+                      .append(
+                              qualifier.fieldName())
+                      .append(" ← ")
+                      .append(qualifier.pid());
+
+            if (qualifier.multi()) {
+                qualifiers.append(" (list)");
             }
-            if (q.kind() == QualifierLoadConfig.Kind.YEAR) {
-                quals.append("  (date)");
+            if (qualifier.kind()
+                    == QualifierLoadConfig.Kind.YEAR) {
+                qualifiers.append(" (date)");
             }
-            quals.append('\n');
+
+            qualifiers.append('\n');
         }
-        qualifiersArea.setText(quals.length() == 0
-                ? "  (no qualifier fields yet — add fields with a \"Qualifier of\" PID)"
-                : quals.toString());
+
+        qualifiersArea.setText(
+                qualifiers.length() == 0
+                        ? " (no qualifier fields yet)"
+                        : qualifiers.toString());
+    }
+
+    private void rederiveIdentity() {
+        if (clazz == null) {
+            return;
+        }
+
+        // Clearing the explicit spec asks GeneratedClassModel to infer the grain
+        // from the current source fields. The checkboxes then make the inferred
+        // result visible and editable before it is saved again.
+        clazz.canonical(null);
+        rebuildCanonicalControls();
+        refreshDerived();
+        afterChange.accept(null);
+    }
+
+    private void clear() {
+        titleLabel.setText("Statement class");
+        classNameField.setText("");
+        reifyFromBox.removeAllItems();
+        statementPropField.setText("P1411");
+        valueTypeField.setText("");
+        keyFieldsPanel.removeAll();
+        keyFieldBoxes.clear();
+        displayNameFieldBox.removeAllItems();
+        identityValue.setText(" ");
+        subjectFallbackValue.setText(" ");
+        statementValueFallbackValue.setText(" ");
+        dedupValue.setText(" ");
+        qualifiersArea.setText("");
     }
 
     private void buildUi() {
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        GridBagConstraints c = new GridBagConstraints();
+        JPanel form =
+                new JPanel(new GridBagLayout());
+        form.setBorder(
+                BorderFactory.createEmptyBorder(
+                        6,
+                        6,
+                        6,
+                        6));
+
+        GridBagConstraints c =
+                new GridBagConstraints();
         c.insets = new Insets(4, 4, 4, 4);
         c.anchor = GridBagConstraints.WEST;
         c.fill = GridBagConstraints.HORIZONTAL;
-        int y = 0;
 
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
-        wide(form, c, y++, titleLabel);
+        int row = 0;
 
-        JLabel q = new JLabel("Instances are the statements of a property on each "
-                + "member of a source class.");
-        q.setFont(q.getFont().deriveFont(Font.ITALIC));
-        wide(form, c, y++, q);
+        titleLabel.setFont(
+                titleLabel.getFont()
+                          .deriveFont(
+                                  Font.BOLD,
+                                  16f));
+        GridBagUtils.wideRow(form, row++, titleLabel);
 
-        row(form, c, y++, "Class name:", classNameField);
+        JLabel explanation =
+                new JLabel(
+                        "Instances are statements of a property "
+                                + "on members of a source class.");
+        explanation.setFont(
+                explanation.getFont()
+                           .deriveFont(Font.ITALIC));
+        GridBagUtils.wideRow(form, row++, explanation);
 
-        reifyFromBox.setToolTipText("The SOURCE class whose statements are reified "
-                + "into this class (e.g. OscarNominations).");
-        row(form, c, y++, "Reify from:", reifyFromBox);
+        GridBagUtils.labeledRow(form, c, row++,
+            "Class name:",
+            classNameField);
 
-        statementPropField.setToolTipText("The statement property whose statements "
-                + "become instances (e.g. P1411 nominated for).");
-        row(form, c, y++, "Statement property:", statementPropField);
+        reifyFromBox.setToolTipText(
+                "The source class whose statements become "
+                        + "instances of this class.");
+        GridBagUtils.labeledRow(form, c, row++,
+            "Reify from:",
+            reifyFromBox);
 
-        valueTypeField.setToolTipText("Optional P31 filter on the statement VALUE — "
-                + "keep only statements whose value is instance-of this (e.g. Q19020 "
-                + "Academy Awards, to drop Grammy categories sharing P1411).");
-        row(form, c, y++, "Value type filter:", valueTypeField);
+        statementPropField.setToolTipText(
+                "The property whose statements are promoted "
+                        + "to records, e.g. P1411.");
+        GridBagUtils.labeledRow(form, c, row++,
+            "Statement property:",
+            statementPropField);
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        JButton refresh = new JButton("Refresh");
-        refresh.addActionListener(e -> refreshDerived());
+        valueTypeField.setToolTipText(
+                "Optional P31 filter on the statement value.");
+        GridBagUtils.labeledRow(form, c, row++,
+            "Value type filter:",
+            valueTypeField);
+
+        JPanel canonical =
+                new JPanel(new GridBagLayout());
+        canonical.setBorder(
+                BorderFactory.createTitledBorder(
+                        "Canonical identity"));
+
+        GridBagConstraints cc =
+                new GridBagConstraints();
+        cc.insets = new Insets(3, 4, 3, 4);
+        cc.anchor = GridBagConstraints.NORTHWEST;
+        cc.fill = GridBagConstraints.HORIZONTAL;
+
+        GridBagUtils.labeledRow(canonical, cc, 0,
+            "Key fields:",
+            keyFieldsPanel);
+
+        displayNameFieldBox.setToolTipText(
+                "Single field used as the record's display name.");
+        GridBagUtils.labeledRow(canonical, cc, 1,
+            "Display-name field:",
+            displayNameFieldBox);
+
+        JButton rederive =
+                new JButton("Re-derive identity");
+        rederive.setToolTipText(
+                "Infer the key again from the current scalar "
+                        + "AUTO-produced statement fields.");
+        rederive.addActionListener(
+                event -> rederiveIdentity());
+
+        GridBagUtils.wideRow(canonical, 2, rederive);
+        GridBagUtils.wideRow(form, row++, canonical);
+
+        JPanel buttons =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.LEFT,
+                                6,
+                                0));
+
+        JButton refresh =
+                new JButton("Refresh derived view");
+        refresh.addActionListener(
+                event -> {
+                    applyEdits();
+                    refreshDerived();
+                });
+
         buttons.add(refresh);
+        GridBagUtils.wideRow(form, row++, buttons);
 
-        // The identity/dedup key now flows through the class CanonicalSpec. A spec
-        // saved from an earlier field set can go stale; re-derive clears it so the
-        // key is inferred fresh from the CURRENT fields. (Explicit, so it never
-        // silently changes an accepted dedup — you choose when to refresh it.)
-        JButton rederive = new JButton("Re-derive identity");
-        rederive.setToolTipText("Recompute the dedup/identity key from the current "
-                + "fields (clears a saved CanonicalSpec that may be stale).");
-        rederive.addActionListener(e -> {
-            if (clazz != null) {
-                clazz.canonical(null);
-                refreshDerived();
-                afterChange.accept(null);
-            }
-        });
-        buttons.add(rederive);
-        wide(form, c, y++, buttons);
+        JPanel derived =
+                new JPanel(new GridBagLayout());
+        derived.setBorder(
+                BorderFactory.createTitledBorder(
+                        "Derived runtime recipe"));
 
-        // Derived (read-only) — the reify definition at a glance.
-        JPanel derived = new JPanel(new GridBagLayout());
-        derived.setBorder(BorderFactory.createTitledBorder("Derived (read-only)"));
-        GridBagConstraints dc = new GridBagConstraints();
+        GridBagConstraints dc =
+                new GridBagConstraints();
         dc.insets = new Insets(3, 4, 3, 4);
         dc.anchor = GridBagConstraints.WEST;
         dc.fill = GridBagConstraints.HORIZONTAL;
-        int dy = 0;
-        row(derived, dc, dy++, "Identity:", identityValue);
-        rolesValue.setToolTipText("Fields that take their qualifier value, ELSE the "
-                + "SOURCE entity when the qualifier is absent. Right for the nominee "
-                + "(the subject IS the nominee), but a reference like edition/forWork "
-                + "collapsing to the source produces a self-referential atom.");
-        row(derived, dc, dy++, "Subject-default:", rolesValue);
-        dedupValue.setToolTipText("The identity key: two statements collapse to one "
-                + "when these fields match. A bad subject-default silently poisons it.");
-        row(derived, dc, dy++, "Dedup key:", dedupValue);
+
+        int derivedRow = 0;
+
+        GridBagUtils.labeledRow(derived, dc, derivedRow++,
+            "Identity:",
+            identityValue);
+
+        subjectFallbackValue.setToolTipText(
+                "Qualifier fields that use the statement "
+                        + "subject when absent.");
+        GridBagUtils.labeledRow(derived, dc, derivedRow++,
+            "Subject fallback:",
+            subjectFallbackValue);
+
+        statementValueFallbackValue.setToolTipText(
+                "Qualifier fields that use the statement's "
+                        + "main ps: value when absent.");
+        GridBagUtils.labeledRow(derived, dc, derivedRow++,
+            "Value fallback:",
+            statementValueFallbackValue);
+
+        GridBagUtils.labeledRow(derived, dc, derivedRow++,
+            "Canonical key:",
+            dedupValue);
+
         qualifiersArea.setEditable(false);
-        qualifiersArea.setBorder(BorderFactory.createTitledBorder("Qualifier fields"));
-        derived.add(qualifiersArea, gbc(0, dy, 2));
-        wide(form, c, y++, derived);
+        qualifiersArea.setBorder(
+                BorderFactory.createTitledBorder(
+                        "Qualifier fields"));
 
-        // Subclassing slot (planned): person vs work by a role field's type.
-        JPanel sub = new JPanel(new BorderLayout());
-        sub.setBorder(BorderFactory.createTitledBorder("Subclasses (planned)"));
-        JLabel subNote = new JLabel("<html>Split by a role field's type — e.g. "
-                + "<b>nominee.P31 = human</b> → PersonNomination vs WorkNomination. "
-                + "Uses the class's baseClassName + discriminator; UI coming.</html>");
-        sub.add(subNote, BorderLayout.CENTER);
-        wide(form, c, y++, sub);
+        GridBagUtils.wideRow(derived, derivedRow++,
+             qualifiersArea);
+        GridBagUtils.wideRow(form, row++, derived);
 
-        // Push content up.
-        GridBagConstraints filler = new GridBagConstraints();
-        filler.gridx = 0; filler.gridy = y; filler.weighty = 1.0;
-        filler.fill = GridBagConstraints.BOTH; filler.gridwidth = 2;
+        GridBagConstraints filler =
+                new GridBagConstraints();
+        filler.gridx = 0;
+        filler.gridy = row;
+        filler.weighty = 1.0;
+        filler.fill = GridBagConstraints.BOTH;
+        filler.gridwidth = 2;
         form.add(new JLabel(), filler);
 
         setLayout(new BorderLayout());
-        JScrollPane scroll = new JScrollPane(form);
+
+        JScrollPane scroll =
+                new JScrollPane(form);
         scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.getVerticalScrollBar()
+              .setUnitIncrement(16);
+
         add(scroll, BorderLayout.CENTER);
     }
 
-    private static void row(JPanel form, GridBagConstraints c, int y,
-                            String label, JComponent field) {
-        GridBagConstraints lc = (GridBagConstraints) c.clone();
-        lc.gridx = 0; lc.gridy = y; lc.weightx = 0;
-        form.add(new JLabel(label), lc);
-        GridBagConstraints fc = (GridBagConstraints) c.clone();
-        fc.gridx = 1; fc.gridy = y; fc.weightx = 1.0;
-        form.add(field, fc);
+    private static String display(
+            List<String> values) {
+
+        return values == null || values.isEmpty()
+                ? "—"
+                : String.join(", ", values);
     }
 
-    private static void wide(JPanel form, GridBagConstraints c, int y, JComponent comp) {
-        form.add(comp, gbc(0, y, 2));
-    }
+    private static String selectedText(
+            JComboBox<String> box) {
 
-    private static GridBagConstraints gbc(int x, int y, int w) {
-        GridBagConstraints g = new GridBagConstraints();
-        g.gridx = x; g.gridy = y; g.gridwidth = w;
-        g.insets = new Insets(4, 4, 4, 4);
-        g.anchor = GridBagConstraints.WEST;
-        g.fill = GridBagConstraints.HORIZONTAL;
-        g.weightx = 1.0;
-        return g;
+        Object selected =
+                box.getSelectedItem();
+        return selected == null
+                ? ""
+                : selected.toString().trim();
     }
 }
