@@ -26,6 +26,25 @@ class GeneratedProjectModelValidatorTest {
     }
 
     @Test
+    void aBaseClassCycleIsAnError() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("cycle");
+        GeneratedClassModel alpha = new GeneratedClassModel("Alpha");
+        alpha.baseClassName("Beta");
+        GeneratedClassModel beta = new GeneratedClassModel("Beta");
+        beta.baseClassName("Alpha");
+        project.addClass(alpha);
+        project.addClass(beta);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream()
+                        .anyMatch(p -> p.message().contains("Base class cycle")),
+                "the inheritance cycle is reported once: " + result.format());
+    }
+
+    @Test
     void unmodeledEntityRefIsAWarningNotABlockingError() {
         GeneratedProjectModel project = oscarLikeProject();
         // forWork -> ForWork, which is deliberately unmodeled (renders as a string).

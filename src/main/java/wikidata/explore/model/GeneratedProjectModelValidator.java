@@ -39,6 +39,7 @@ public final class GeneratedProjectModelValidator {
             }
 
             validateClassReferences(project, clazz, problems);
+            validateBaseCycle(project, clazz, problems);
             validateCanonical(clazz, problems);
 
             if (clazz.reifiesStatements()) {
@@ -104,6 +105,53 @@ public final class GeneratedProjectModelValidator {
                                 + field.entityClassName()
                                 + "' is not modeled; the field renders as a string."));
             }
+        }
+    }
+
+    /**
+     * Flags an inheritance cycle (A extends B extends A). Without this the
+     * flattening in {@code effectiveFields} silently stops at the visited-set
+     * guard, so the compiled class would quietly lose the looped fields. Reported
+     * once per cycle, attributed to its alphabetically-first member.
+     */
+    private static void validateBaseCycle(
+            GeneratedProjectModel project,
+            GeneratedClassModel clazz,
+            List<Problem> problems) {
+
+        if (!clazz.hasBase()) {
+            return;
+        }
+
+        List<String> path = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        GeneratedClassModel current = clazz;
+
+        while (current != null && current.hasBase()) {
+            String key = clean(current.className()).toLowerCase();
+            if (!seen.add(key)) {
+                int start = 0;
+                for (int i = 0; i < path.size(); i++) {
+                    if (clean(path.get(i)).toLowerCase().equals(key)) {
+                        start = i;
+                        break;
+                    }
+                }
+                List<String> cycle = path.subList(start, path.size());
+                String owner = cycle.stream()
+                        .min(java.util.Comparator.comparing(String::toLowerCase))
+                        .orElse(clazz.className());
+                if (clean(clazz.className()).equalsIgnoreCase(owner)) {
+                    List<String> shown = new ArrayList<>(cycle);
+                    shown.add(cycle.get(0));
+                    problems.add(Problem.error(
+                            clazz.className(),
+                            "Base class cycle: " + String.join(" -> ", shown)));
+                }
+                return;
+            }
+            path.add(current.className());
+            current = project.findClass(current.baseClassName());
         }
     }
 
