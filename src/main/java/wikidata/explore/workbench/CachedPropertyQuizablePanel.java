@@ -1,5 +1,6 @@
 package wikidata.explore.workbench;
 
+import aux.GridBagUtils;
 import quiz.Quizable;
 import quiz.ui.viewconfig.QuizablePanelConfig;
 import quiz.ui.QuizablePanel;
@@ -133,23 +134,10 @@ public class CachedPropertyQuizablePanel extends JPanel {
                 }
             });
 
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.gridx   = 0;
-            gbc.gridy   = row++;
-            gbc.weightx = 1.0;
-            gbc.fill    = GridBagConstraints.HORIZONTAL;
-            gbc.anchor  = GridBagConstraints.NORTHWEST;
-            gbc.insets  = new Insets(3, 3, 3, 3);
-            cardsPanel.add(panel, gbc);
+            GridBagUtils.stackedCard(cardsPanel, row++, panel);
         }
 
-        GridBagConstraints glue = new GridBagConstraints();
-        glue.gridx   = 0;
-        glue.gridy   = row;
-        glue.weightx = 1.0;
-        glue.weighty = 1.0;
-        glue.fill    = GridBagConstraints.BOTH;
-        cardsPanel.add(Box.createGlue(), glue);
+        GridBagUtils.verticalGlue(cardsPanel, row);
 
         cardsPanel.revalidate();
         cardsPanel.repaint();

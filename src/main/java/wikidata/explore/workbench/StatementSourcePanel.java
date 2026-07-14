@@ -441,12 +441,6 @@ public class StatementSourcePanel extends JPanel {
                         6,
                         6));
 
-        GridBagConstraints c =
-                new GridBagConstraints();
-        c.insets = new Insets(4, 4, 4, 4);
-        c.anchor = GridBagConstraints.WEST;
-        c.fill = GridBagConstraints.HORIZONTAL;
-
         int row = 0;
 
         titleLabel.setFont(
@@ -465,27 +459,27 @@ public class StatementSourcePanel extends JPanel {
                            .deriveFont(Font.ITALIC));
         GridBagUtils.wideRow(form, row++, explanation);
 
-        GridBagUtils.labeledRow(form, c, row++,
+        GridBagUtils.labeledRow(form, row++,
             "Class name:",
             classNameField);
 
         reifyFromBox.setToolTipText(
                 "The source class whose statements become "
                         + "instances of this class.");
-        GridBagUtils.labeledRow(form, c, row++,
+        GridBagUtils.labeledRow(form, row++,
             "Reify from:",
             reifyFromBox);
 
         statementPropField.setToolTipText(
                 "The property whose statements are promoted "
                         + "to records, e.g. P1411.");
-        GridBagUtils.labeledRow(form, c, row++,
+        GridBagUtils.labeledRow(form, row++,
             "Statement property:",
             statementPropField);
 
         valueTypeField.setToolTipText(
                 "Optional P31 filter on the statement value.");
-        GridBagUtils.labeledRow(form, c, row++,
+        GridBagUtils.labeledRow(form, row++,
             "Value type filter:",
             valueTypeField);
 

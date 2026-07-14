@@ -1,5 +1,6 @@
 package aux;
 
+import javax.swing.Box;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -11,6 +12,9 @@ public final class GridBagUtils {
 
     /** The default padding for a form row's cells. */
     private static final Insets ROW_INSETS = new Insets(4, 4, 4, 4);
+
+    /** Padding around a card in a vertical card stack. */
+    private static final Insets CARD_INSETS = new Insets(3, 3, 3, 3);
 
     /**
      * Constraints for a full-width cell spanning {@code gridwidth} columns, with
@@ -27,6 +31,33 @@ public final class GridBagUtils {
                 GridBagConstraints.WEST,
                 GridBagConstraints.HORIZONTAL,
                 ROW_INSETS);
+    }
+
+    /** A two-cell form row with the standard padding (insets 4, WEST, HORIZONTAL)
+     *  — the common case that needs no custom template. */
+    public static void labeledRow(
+            JPanel form,
+            int gridy,
+            String label,
+            JComponent field) {
+        labeledRow(form, defaultRowTemplate(), gridy, new JLabel(label), field);
+    }
+
+    /** {@link #labeledRow(JPanel, int, String, JComponent)} with a pre-built label. */
+    public static void labeledRow(
+            JPanel form,
+            int gridy,
+            JLabel label,
+            JComponent field) {
+        labeledRow(form, defaultRowTemplate(), gridy, label, field);
+    }
+
+    private static GridBagConstraints defaultRowTemplate() {
+        GridBagConstraints template = new GridBagConstraints();
+        template.insets = ROW_INSETS;
+        template.anchor = GridBagConstraints.WEST;
+        template.fill = GridBagConstraints.HORIZONTAL;
+        return template;
     }
 
     /**
@@ -72,6 +103,37 @@ public final class GridBagUtils {
      *  and horizontal stretch (see {@link #gbc(int, int, int)}). */
     public static void wideRow(JPanel form, int gridy, JComponent component) {
         form.add(component, gbc(0, gridy, 2));
+    }
+
+    /**
+     * Adds a full-width card to a single-column vertical stack: left-aligned at the
+     * top of its cell, stretched horizontally, with the standard card padding. Pair
+     * with a trailing {@link #verticalGlue} so the cards pack to the top.
+     */
+    public static void stackedCard(JPanel column, int gridy, JComponent card) {
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0;
+        c.gridy = gridy;
+        c.weightx = 1.0;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.NORTHWEST;
+        c.insets = CARD_INSETS;
+        column.add(card, c);
+    }
+
+    /**
+     * Adds a trailing glue cell that absorbs the leftover vertical space, pushing
+     * the preceding rows to the top of {@code column}. The last thing added to a
+     * stacked layout.
+     */
+    public static void verticalGlue(JPanel column, int gridy) {
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0;
+        c.gridy = gridy;
+        c.weightx = 1.0;
+        c.weighty = 1.0;
+        c.fill = GridBagConstraints.BOTH;
+        column.add(Box.createGlue(), c);
     }
 
     public static GridBagConstraints gbc(
