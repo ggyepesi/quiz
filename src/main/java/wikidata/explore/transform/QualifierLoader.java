@@ -158,11 +158,9 @@ public class QualifierLoader {
                         new ArrayList<>(batch.subList(mid, batch.size())),
                         byQid, valueField, stmtType, created, log, batchLabel + "b",
                         valueAnchored);
-            } else if (log != null) {
-                log.subqueryFailed("Qualifier load " + batchLabel + " ("
-                        + cfg.propertyPid() + ", " + batch.get(0) + ")",
-                        buildQuery(cfg, batch, valueAnchored), e.getMessage());
             }
+            // A size-1 failure is already recorded as failed() by attachBatch —
+            // which owns the started→done/failed lifecycle of every attempt.
         }
     }
 
@@ -173,41 +171,59 @@ public class QualifierLoader {
             GenerationLog log, String batchLabel, boolean valueAnchored)
             throws Exception {
         String query = buildQuery(cfg, batch, valueAnchored);
-        int before = created.size();
-        // One statement (?st) can span several result rows — a shared award lists
-        // each co-nominee on its own row. Key the statement object by its GUID so
-        // those rows fold into ONE object (with the repeated qualifier collected as
-        // a list), instead of a separate object per row.
-        Map<String, WikidataDynamicObject> stmtByGuid = new LinkedHashMap<>();
-        for (WikidataBinding row : client.query(query)) {
-            WikidataDynamicObject entity = byQid.get(row.qid("e"));
-            if (entity == null) {
-                continue;
-            }
-            WikidataDynamicObject value = row.entity("value");
-            if (value == null) {
-                continue;
-            }
-            String stmtId = row.qid("st");
-            String qid = stmtId != null && !stmtId.isBlank()
-                    ? stmtId
-                    : entity.qid() + "__" + value.qid();
 
-            WikidataDynamicObject stmt = stmtByGuid.get(qid);
-            if (stmt == null) {
-                stmt = new WikidataDynamicObject(qid, value.getDisplayName());
-                stmt.type(stmtType);
-                stmt.put(valueField, value);
-                stmtByGuid.put(qid, stmt);
-                entity.merge(cfg.statementField(), stmt);
-                created.add(stmt);
+        // Record the entry NOW, before the request is issued, so the log keeps
+        // requests in creation order (not completion order) and shows each one
+        // running — then update it on finish. Matters once batches are loaded
+        // concurrently: interleaved started→done nodes exercise the log UI.
+        String title = "Qualifier load " + batchLabel + " (" + cfg.propertyPid()
+                + ", " + batch.size()
+                + (valueAnchored ? " values)" : " entities)");
+        GenerationLog.Running running =
+                log == null ? null : log.subqueryStarted(title, query);
+
+        int before = created.size();
+        try {
+            // One statement (?st) can span several result rows — a shared award
+            // lists each co-nominee on its own row. Key the statement object by its
+            // GUID so those rows fold into ONE object (with the repeated qualifier
+            // collected as a list), instead of a separate object per row.
+            Map<String, WikidataDynamicObject> stmtByGuid = new LinkedHashMap<>();
+            for (WikidataBinding row : client.query(query)) {
+                WikidataDynamicObject entity = byQid.get(row.qid("e"));
+                if (entity == null) {
+                    continue;
+                }
+                WikidataDynamicObject value = row.entity("value");
+                if (value == null) {
+                    continue;
+                }
+                String stmtId = row.qid("st");
+                String qid = stmtId != null && !stmtId.isBlank()
+                        ? stmtId
+                        : entity.qid() + "__" + value.qid();
+
+                WikidataDynamicObject stmt = stmtByGuid.get(qid);
+                if (stmt == null) {
+                    stmt = new WikidataDynamicObject(qid, value.getDisplayName());
+                    stmt.type(stmtType);
+                    stmt.put(valueField, value);
+                    stmtByGuid.put(qid, stmt);
+                    entity.merge(cfg.statementField(), stmt);
+                    created.add(stmt);
+                }
+                applyQualifiers(stmt, row, cfg, byQid);
             }
-            applyQualifiers(stmt, row, cfg, byQid);
-        }
-        if (log != null) {
-            log.subquery("Qualifier load " + batchLabel + " (" + cfg.propertyPid()
-                    + ", " + batch.size() + " entities)", query,
-                    (created.size() - before) + " statements");
+            if (running != null) {
+                running.done((created.size() - before) + " statements");
+            }
+        } catch (Exception e) {
+            // Resolve the started node so it never dangles as "running", then
+            // rethrow so loadWithSplit can halve-and-retry.
+            if (running != null) {
+                running.failed(e.getMessage());
+            }
+            throw e;
         }
     }
 
