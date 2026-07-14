@@ -94,11 +94,15 @@ public final class GeneratedProjectModelValidator {
             if (field.type() == FieldType.ENTITY
                     && !clean(field.entityClassName()).isBlank()
                     && project.findClass(field.entityClassName()) == null) {
-                problems.add(Problem.error(
+                // An unmodeled ref target is a valid state, not an error: the field
+                // renders as a display-name string (no class promotion, no QID chip)
+                // — e.g. Nomination.forWork -> ForWork, which has no class. Warn so a
+                // genuine typo is still visible, but don't block the save.
+                problems.add(Problem.warning(
                         path(clazz, field),
                         "Referenced entity class '"
                                 + field.entityClassName()
-                                + "' does not exist."));
+                                + "' is not modeled; the field renders as a string."));
             }
         }
     }
@@ -308,10 +312,13 @@ public final class GeneratedProjectModelValidator {
 
         String reference = clean(referencedName);
 
-        // "source" is the synthetic subject of a reified statement, not a
-        // configured model field.
+        // "source" is the synthetic subject of a reified statement; a dotted path
+        // (e.g. date.year) is a typed projection resolved against another class at
+        // compile time, not a flat field of THIS class. Neither is a local field
+        // name to check here — path validity is settled downstream, not structurally.
         if (reference.isBlank()
-                || "source".equals(reference)) {
+                || "source".equals(reference)
+                || reference.contains(".")) {
             return;
         }
 
