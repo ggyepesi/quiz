@@ -1,11 +1,16 @@
 package wikidata.explore.transform;
 
 import org.junit.jupiter.api.Test;
+import wikidata.explore.compiled.CompiledProjectModel;
+import wikidata.explore.compiled.ProjectModelCompiler;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.StatementClassSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -395,5 +400,46 @@ class OscarReifyTest {
 
         assertEquals(1, created.size());
         assertSame(person, created.get(0).get("nominees"), "subject is the nominee");
+    }
+
+    @Test void compiledDerivationMatchesTheEditableModel() {
+        // The Phase-1 contract: deriving from the compiled model must produce a
+        // byte-for-byte identical Reification to deriving from the editable model.
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("OscarNominations"));
+        GeneratedClassModel src = project.rootClass();
+        src.instanceMapping().propertyPid("P1411");
+        src.instanceMapping().additionalTypeQids().add("Q102427");   // Best Picture
+
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        nom.instanceMapping().sourceQid("Q19020");
+        GeneratedFieldModel category =
+                nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().propertyPid("P1411");                     // the ps: value field
+        // Multiple allowed values in a defined order — valueQids becomes a VALUES
+        // clause, so order must survive compilation (guards the Set.copyOf regress).
+        category.mapping().allowedQids().add("Q30");
+        category.mapping().allowedQids().add("Q20");
+        category.mapping().allowedQids().add("Q10");
+        nom.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().qualifierPid("P1686");                    // scalar entity qualifier
+        nom.addField("nominees", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().qualifierPid("P2453");                    // the nominee list
+        nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
+        project.addClass(nom);
+
+        ModelStatementReifications.Reification editable =
+                ModelStatementReifications.deriveOne(nom, project);
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+        ModelStatementReifications.Reification fromCompiled =
+                ModelStatementReifications.deriveOne(
+                        compiled.findClass("Nomination").orElseThrow(), compiled);
+
+        assertNotNull(editable);
+        assertEquals(editable, fromCompiled,
+                "compiled derivation must equal the editable-model derivation");
     }
 }

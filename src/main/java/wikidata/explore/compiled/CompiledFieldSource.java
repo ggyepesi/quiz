@@ -2,6 +2,8 @@ package wikidata.explore.compiled;
 
 import wikidata.explore.model.*;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -90,7 +92,12 @@ public record CompiledFieldSource(
     }
 
     private static Set<String> immutable(Set<String> values) {
-        return values == null ? Set.of() : Set.copyOf(values);
+        // Preserve insertion order (the editable model uses LinkedHashSet): the QID
+        // sets become VALUES clauses, so their order must stay stable for
+        // deterministic queries and for parity with the editable-model derivation.
+        return values == null
+                ? Set.of()
+                : Collections.unmodifiableSet(new LinkedHashSet<>(values));
     }
 
     private static String clean(String value) {

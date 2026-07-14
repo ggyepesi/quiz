@@ -1,9 +1,14 @@
 package wikidata.explore.transform;
 
 import wikidata.WikidataSparqlClient;
+import wikidata.explore.compiled.CompiledClass;
+import wikidata.explore.compiled.CompiledField;
+import wikidata.explore.compiled.CompiledProjectModel;
+import wikidata.explore.compiled.CompiledStatementSource;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.CanonicalSpec;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -167,6 +172,252 @@ public final class ModelStatementReifications {
                 primaryListField);
 
         return new Reification(load, reify);
+    }
+
+    /** Compiled-model overload of {@link #derive(GeneratedProjectModel)}. */
+    public static List<Reification> derive(CompiledProjectModel project) {
+        List<Reification> out = new ArrayList<>();
+        if (project == null) {
+            return out;
+        }
+        for (CompiledClass statementClass : project.classes()) {
+            Reification reification = deriveOne(statementClass, project);
+            if (reification != null) {
+                out.add(reification);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Compiled-model overload — the same derivation reading a {@link CompiledClass}
+     * whose inheritance, references, statement source and canonical identity are
+     * already resolved (so no findClass / effective* / synthesized-view calls).
+     * Kept parity-identical to the editable-model overload above; OscarReifyTest
+     * asserts the two produce equal Reifications.
+     */
+    public static Reification deriveOne(
+            CompiledClass statementClass,
+            CompiledProjectModel project) {
+
+        if (statementClass == null
+                || project == null
+                || !statementClass.statementClass()) {
+            return null;
+        }
+
+        CompiledStatementSource statementSource =
+                statementClass.statementSource();
+        String sourceClassName = statementSource.sourceClassName();
+        String statementPid = clean(statementSource.propertyPid());
+
+        CompiledClass sourceClassModel =
+                project.findClass(sourceClassName).orElse(null);
+        if (sourceClassModel == null
+                || !statementPid.matches("P\\d+")) {
+            return null;
+        }
+
+        String valueField = findValueField(statementClass, statementPid);
+        List<String> valueQids = valueQids(
+                statementClass, sourceClassModel, statementPid, valueField);
+
+        List<QualifierLoadConfig.Qualifier> qualifiers = new ArrayList<>();
+        String primaryListField = "";
+
+        for (CompiledField field : statementClass.ownFields()) {
+            if (!runtimeStatementField(field)
+                    || !field.source().qualifier()) {
+                continue;
+            }
+
+            QualifierLoadConfig.Kind kind = kindFor(field.type());
+            boolean multi = field.collection();
+
+            qualifiers.add(new QualifierLoadConfig.Qualifier(
+                    clean(field.source().qualifierPid()),
+                    field.name(),
+                    kind,
+                    multi));
+
+            if (kind == QualifierLoadConfig.Kind.ENTITY
+                    && multi
+                    && primaryListField.isEmpty()) {
+                primaryListField = field.name();
+            }
+        }
+
+        List<ReifyConstruct.Role> roles =
+                fallbackRoles(statementClass, valueField);
+        List<String> dedup =
+                canonicalKey(statementClass, valueField);
+
+        String valueTypeQid =
+                clean(statementClass.sourceMapping().sourceQid());
+
+        QualifierLoadConfig load = new QualifierLoadConfig(
+                sourceClassName,
+                statementPid,
+                "__" + statementClass.className(),
+                statementClass.className(),
+                valueField,
+                valueTypeQid.matches("Q\\d+") ? valueTypeQid : "",
+                qualifiers,
+                valueQids);
+
+        ReifyConstruct reify = new ReifyConstruct(
+                sourceClassName,
+                "__" + statementClass.className(),
+                statementClass.className(),
+                "source",
+                "value",
+                true,
+                roles,
+                dedup,
+                primaryListField);
+
+        return new Reification(load, reify);
+    }
+
+    private static String findValueField(
+            CompiledClass statementClass,
+            String statementPid) {
+
+        for (CompiledField field : statementClass.ownFields()) {
+            if (!runtimeStatementField(field)
+                    || field.source().qualifier()) {
+                continue;
+            }
+            if (statementPid.equals(clean(field.source().propertyPid()))) {
+                return field.name();
+            }
+        }
+
+        for (CompiledField field : statementClass.ownFields()) {
+            if (runtimeStatementField(field)
+                    && !field.source().qualifier()) {
+                return field.name();
+            }
+        }
+
+        return "value";
+    }
+
+    private static List<String> valueQids(
+            CompiledClass statementClass,
+            CompiledClass sourceClass,
+            String statementPid,
+            String valueField) {
+
+        LinkedHashSet<String> values = new LinkedHashSet<>();
+
+        CompiledField valueModel = null;
+        for (CompiledField field : statementClass.ownFields()) {
+            if (runtimeStatementField(field)
+                    && valueField.equals(field.name())) {
+                valueModel = field;
+                break;
+            }
+        }
+
+        if (valueModel != null) {
+            for (String qid : valueModel.source().allowedQids()) {
+                String cleanQid = clean(qid);
+                if (cleanQid.matches("Q\\d+")) {
+                    values.add(cleanQid);
+                }
+            }
+        }
+
+        if (values.isEmpty()
+                && statementPid.equals(
+                clean(sourceClass.sourceMapping().propertyPid()))) {
+
+            String sourceQid =
+                    clean(sourceClass.sourceMapping().sourceQid());
+            if (sourceQid.matches("Q\\d+")) {
+                values.add(sourceQid);
+            }
+
+            for (String qid
+                    : sourceClass.sourceMapping().additionalTypeQids()) {
+                String cleanQid = clean(qid);
+                if (cleanQid.matches("Q\\d+")) {
+                    values.add(cleanQid);
+                }
+            }
+        }
+
+        return new ArrayList<>(values);
+    }
+
+    private static List<ReifyConstruct.Role> fallbackRoles(
+            CompiledClass statementClass,
+            String valueField) {
+
+        List<ReifyConstruct.Role> roles = new ArrayList<>();
+
+        for (CompiledField field : statementClass.ownFields()) {
+            if (!supportsMissingQualifierPolicy(statementClass, field)) {
+                continue;
+            }
+
+            MissingQualifierPolicy policy =
+                    field.source().missingQualifierPolicy();
+            if (policy == null) {
+                policy = MissingQualifierPolicy.STATEMENT_SUBJECT;
+            }
+
+            switch (policy) {
+                case STATEMENT_SUBJECT ->
+                        roles.add(new ReifyConstruct.Role(
+                                field.name(), field.name(), true));
+                case STATEMENT_VALUE ->
+                        roles.add(new ReifyConstruct.Role(
+                                field.name(), valueField, false));
+                case MISSING -> {
+                }
+            }
+        }
+
+        return roles;
+    }
+
+    private static List<String> canonicalKey(
+            CompiledClass statementClass,
+            String valueField) {
+
+        LinkedHashSet<String> key = new LinkedHashSet<>();
+        for (String fieldName : statementClass.canonical().keyFields()) {
+            String cleanName = clean(fieldName);
+            if (!cleanName.isBlank()
+                    && statementClass.field(cleanName).isPresent()) {
+                key.add(cleanName);
+            }
+        }
+
+        if (key.isEmpty()
+                && statementClass.field(valueField).isPresent()) {
+            key.add(valueField);
+        }
+
+        return new ArrayList<>(key);
+    }
+
+    /** Compiled fields are never name fields (the compiler drops those), so a
+     *  runtime statement field is simply an AUTO-produced one. */
+    private static boolean runtimeStatementField(CompiledField field) {
+        return field != null
+                && field.source().productionKind() == FieldProductionKind.AUTO;
+    }
+
+    private static boolean supportsMissingQualifierPolicy(
+            CompiledClass owner, CompiledField field) {
+        return owner.statementClass()
+                && runtimeStatementField(field)
+                && field.source().qualifier()
+                && field.type() == FieldType.ENTITY
+                && !field.collection();
     }
 
     private static String findValueField(
