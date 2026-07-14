@@ -73,6 +73,14 @@ public class GeneratedClassModel {
                         : className.trim();
     }
 
+    /**
+     * True only when the new statementSource field is present, rather than a
+     * compatibility view synthesized from legacy JSON.
+     */
+    public boolean hasExplicitStatementSource() {
+        return statementSource != null;
+    }
+
     public int generationDepth() {
         return generationDepth;
     }

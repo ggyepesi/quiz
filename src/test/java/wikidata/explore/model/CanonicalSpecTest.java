@@ -130,8 +130,17 @@ class CanonicalSpecTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("roundtrip");
 
+        // The model must be structurally valid for the store to persist it: the
+        // reified source class exists, the statement property is a real PID, and
+        // the canonical key/displayName fields are declared on the class.
+        GeneratedClassModel source = new GeneratedClassModel("OscarNominations");
+        project.addClass(source);
+
         GeneratedClassModel c = new GeneratedClassModel("Nomination");
         c.statementSourceClass("OscarNominations");
+        c.instanceMapping().propertyPid("P1411");
+        c.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
+        c.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         c.canonical(new CanonicalSpec()
                 .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)

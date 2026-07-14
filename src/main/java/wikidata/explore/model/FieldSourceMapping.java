@@ -196,6 +196,13 @@ public class FieldSourceMapping {
                 : direction;
     }
 
+    /**
+     * True when an old model supplied the legacy subjectDefault JSON field.
+     */
+    public boolean hasLegacySubjectDefault() {
+        return subjectDefault != null;
+    }
+
     public boolean requireLabel() {
         return requireLabel;
     }
