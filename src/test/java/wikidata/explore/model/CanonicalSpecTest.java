@@ -50,6 +50,45 @@ class CanonicalSpecTest {
     }
 
     @Test
+    void inferredKeyExcludesDerivedFields() {
+        // Derived fields (COMPANION_MATCH like `won`, INVERT) are produced AFTER
+        // reify — they must not enter the identity key, or e.g. won=null vs won=<x>
+        // would split the two denormalized copies of one statement.
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSourceClass("OscarNominations");
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
+
+        CanonicalSpec spec = nom.effectiveCanonical();
+        assertTrue(spec.keyFields().contains("category"));
+        assertFalse(spec.keyFields().contains("won"),
+                "a COMPANION_MATCH (derived) field must not be in the identity key");
+    }
+
+    @Test
+    void reDeriveClearsAStaleSavedSpec() {
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSourceClass("OscarNominations");
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nom.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
+
+        // A stale saved spec from an earlier field set.
+        CanonicalSpec stale = new CanonicalSpec().kind(CanonicalSpec.Kind.DERIVED);
+        stale.keyFields().add("removedField");
+        nom.canonical(stale);
+        assertTrue(nom.effectiveCanonical().keyFields().contains("removedField"),
+                "a saved spec is used as-is");
+
+        // "Re-derive identity" = clear the saved spec → inferred fresh from fields.
+        nom.canonical(null);
+        CanonicalSpec fresh = nom.effectiveCanonical();
+        assertFalse(fresh.keyFields().contains("removedField"));
+        assertTrue(fresh.keyFields().contains("category"));
+        assertTrue(fresh.keyFields().contains("nominee"));
+    }
+
+    @Test
     void explicitSpecOverridesInference() {
         GeneratedClassModel c = new GeneratedClassModel("Nomination");
         c.statementSourceClass("OscarNominations");

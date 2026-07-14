@@ -101,11 +101,16 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<String> matchValueBox = new JComboBox<>();
     private final JComboBox<String> matchRoleBox = new JComboBox<>();
 
-    // Reify decomposition (#92): for a qualifier field of a statement class, the two
-    // concerns the "single-ENTITY qualifier" inference used to bundle. Auto = the
-    // inferred default; Yes/No = explicit override.
+    // Reify decomposition (#92): for a qualifier field of a statement class.
     private static final String[] TRI = {"Auto", "Yes", "No"};
-    private final JComboBox<String> subjectDefaultBox = new JComboBox<>(TRI);
+    // What a statement-class ENTITY qualifier gets when the qualifier is absent
+    // (MissingQualifierPolicy). "Auto" = the legacy inferred default (subject).
+    private static final String POL_AUTO = "Auto (subject)";
+    private static final String POL_SUBJECT = "Statement subject";
+    private static final String POL_VALUE = "Statement value";
+    private static final String POL_MISSING = "Leave missing";
+    private final JComboBox<String> missingQualifierBox = new JComboBox<>(
+            new String[]{POL_AUTO, POL_SUBJECT, POL_VALUE, POL_MISSING});
     private final JComboBox<String> inDedupKeyBox = new JComboBox<>(TRI);
 
     private final JSpinner limitSpinner =
@@ -261,7 +266,7 @@ public class FieldSourcePanel extends JPanel {
 
         propertyPidField.setText(m.propertyPid());
         qualifierPidField.setText(m.qualifierPid());
-        subjectDefaultBox.setSelectedItem(triLabel(m.subjectDefault()));
+        missingQualifierBox.setSelectedItem(policyLabel(m.missingQualifierPolicy()));
         inDedupKeyBox.setSelectedItem(triLabel(m.inDedupKey()));
         expectationBox.setSelectedItem(field.expectation());
         propertyLabel.setText(m.displayProperty());
@@ -399,14 +404,15 @@ public class FieldSourcePanel extends JPanel {
                 + "Blank = a direct/value field.</html>");
         addRow(form, c, y++, "Qualifier of:", qualifierPidField);
 
-        subjectDefaultBox.setToolTipText("<html>Reify (#92): when this qualifier is "
-                + "<b>absent</b> on a statement, fill the field with the statement's "
-                + "<b>subject</b> (the reify source). <b>Auto</b> = inferred (Yes for a "
-                + "single-entity qualifier). Right for <b>nominee</b> (the subject IS the "
-                + "nominee) and a dedup-bridge like <b>forWork</b>; set <b>No</b> for a "
-                + "plain reference like <b>edition</b> so an absent ceremony stays empty, "
-                + "not the film.</html>");
-        addRow(form, c, y++, "Subject-default:", subjectDefaultBox);
+        missingQualifierBox.setToolTipText("<html>Reify (#92): what this ENTITY "
+                + "qualifier gets when it is <b>absent</b> on a statement.<br>"
+                + "<b>Statement subject</b> — the reify source (right for <b>nominee</b>: "
+                + "the subject IS the nominee; and a dedup-bridge like <b>forWork</b>).<br>"
+                + "<b>Statement value</b> — the ps: value of the statement.<br>"
+                + "<b>Leave missing</b> — stay empty (right for a plain reference like "
+                + "<b>edition</b>: an absent ceremony must not become the film).<br>"
+                + "<b>Auto</b> — the legacy default (subject).</html>");
+        addRow(form, c, y++, "Missing qualifier:", missingQualifierBox);
         inDedupKeyBox.setToolTipText("<html>Reify (#92): whether this field is part of "
                 + "the reified record's <b>identity (dedup) key</b>. <b>Auto</b> = "
                 + "inferred (Yes for every qualifier except a date).</html>");
@@ -530,6 +536,34 @@ public class FieldSourcePanel extends JPanel {
         return null;
     }
 
+    // MissingQualifierPolicy ↔ combo label (null = Auto = the legacy default).
+    private static String policyLabel(
+            wikidata.explore.model.MissingQualifierPolicy p) {
+        if (p == null) {
+            return POL_AUTO;
+        }
+        return switch (p) {
+            case STATEMENT_SUBJECT -> POL_SUBJECT;
+            case STATEMENT_VALUE -> POL_VALUE;
+            case MISSING -> POL_MISSING;
+        };
+    }
+
+    private static wikidata.explore.model.MissingQualifierPolicy policyValue(
+            JComboBox<String> box) {
+        Object s = box.getSelectedItem();
+        if (POL_SUBJECT.equals(s)) {
+            return wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT;
+        }
+        if (POL_VALUE.equals(s)) {
+            return wikidata.explore.model.MissingQualifierPolicy.STATEMENT_VALUE;
+        }
+        if (POL_MISSING.equals(s)) {
+            return wikidata.explore.model.MissingQualifierPolicy.MISSING;
+        }
+        return null;   // Auto
+    }
+
     private void apply() {
         if (field == null) {
             return;
@@ -539,7 +573,7 @@ public class FieldSourcePanel extends JPanel {
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
         m.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
-        m.subjectDefault(triValue(subjectDefaultBox));
+        m.missingQualifierPolicy(policyValue(missingQualifierBox));
         m.inDedupKey(triValue(inDedupKeyBox));
         Object pk = productionBox.getSelectedItem();
         boolean dateProjection = field.type() == FieldType.DATE

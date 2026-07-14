@@ -187,9 +187,27 @@ public class StatementSourcePanel extends JPanel {
                 + "Academy Awards, to drop Grammy categories sharing P1411).");
         row(form, c, y++, "Value type filter:", valueTypeField);
 
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(e -> refreshDerived());
-        wide(form, c, y++, refresh);
+        buttons.add(refresh);
+
+        // The identity/dedup key now flows through the class CanonicalSpec. A spec
+        // saved from an earlier field set can go stale; re-derive clears it so the
+        // key is inferred fresh from the CURRENT fields. (Explicit, so it never
+        // silently changes an accepted dedup — you choose when to refresh it.)
+        JButton rederive = new JButton("Re-derive identity");
+        rederive.setToolTipText("Recompute the dedup/identity key from the current "
+                + "fields (clears a saved CanonicalSpec that may be stale).");
+        rederive.addActionListener(e -> {
+            if (clazz != null) {
+                clazz.canonical(null);
+                refreshDerived();
+                afterChange.accept(null);
+            }
+        });
+        buttons.add(rederive);
+        wide(form, c, y++, buttons);
 
         // Derived (read-only) — the reify definition at a glance.
         JPanel derived = new JPanel(new GridBagLayout());
