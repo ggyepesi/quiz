@@ -92,16 +92,8 @@ public class UrlOpener {
             long defaultMillis)
             throws Exception {
 
-        long millis = defaultMillis;
-
-        String retry = connection.getHeaderField("Retry-After");
-
-        if (retry != null) {
-            try {
-                millis = (Long.parseLong(retry) + 1) * 1000L;
-            } catch (Exception ignored) {
-            }
-        }
+        long millis = RetryAfter.millis(
+                connection.getHeaderField("Retry-After"), defaultMillis);
 
         System.out.println(
                 "HTTP 429. Sleeping "

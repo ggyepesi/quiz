@@ -1,5 +1,6 @@
 package wikidata;
 
+import aux.RetryAfter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,6 +26,17 @@ public class WikidataSparqlClient implements AutoCloseable {
     private final ObjectMapper mapper = new ObjectMapper();
     private final String userAgent;
     private final ExecutorService executor;
+
+    // Caps in-flight requests regardless of how many threads call query() — so
+    // fanning qualifier-load batches out concurrently can't outrun WDQS. A permit
+    // is taken before each send and released when it completes.
+    private final Semaphore rateLimiter;
+
+    // Optional courtesy spacing between request STARTS (0 = off). Complements the
+    // permit gate: the semaphore bounds concurrency, this bounds burst rate.
+    private volatile long minRequestSpacingMillis = 0;
+    private final Object spacingLock = new Object();
+    private long lastRequestStart = 0;
 
     private Consumer<String> log = s -> {};
     private final AtomicLong querySeq = new AtomicLong();
@@ -55,6 +67,9 @@ public class WikidataSparqlClient implements AutoCloseable {
         this.executor =
                 Executors.newFixedThreadPool(Math.max(1, maxParallelRequests));
 
+        this.rateLimiter =
+                new Semaphore(Math.max(1, maxParallelRequests), true);
+
         this.http =
                 HttpClient.newBuilder()
                           .executor(executor)
@@ -68,6 +83,11 @@ public class WikidataSparqlClient implements AutoCloseable {
 
     public void debugJson(boolean debugJson) {
         this.debugJson = debugJson;
+    }
+
+    /** Minimum spacing between request STARTS (courtesy throttle); 0 disables it. */
+    public void minRequestSpacingMillis(long millis) {
+        this.minRequestSpacingMillis = Math.max(0, millis);
     }
 
     public int runningQueryCount() {
@@ -119,11 +139,7 @@ public class WikidataSparqlClient implements AutoCloseable {
                 return CompletableFuture.completedFuture(result);
             }
 
-            // A request that ran into the server timeout will time out
-            // again — retry only transient failures.
-            if (isCancellation(error)
-                    || isTimeout(error)
-                    || attemptsLeft <= 1) {
+            if (!shouldRetry(error, attemptsLeft)) {
                 CompletableFuture<List<WikidataBinding>> failed =
                         new CompletableFuture<>();
                 failed.completeExceptionally(error);
@@ -131,7 +147,8 @@ public class WikidataSparqlClient implements AutoCloseable {
             }
 
             try {
-                Thread.sleep(1000L * (4 - attemptsLeft));
+                // Honor a 429's Retry-After; otherwise linear backoff.
+                Thread.sleep(backoffMillis(error, attemptsLeft));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -147,6 +164,17 @@ public class WikidataSparqlClient implements AutoCloseable {
         log.accept("\n[SPARQL " + id + "] START\n"
                            + sparql
                            + "\n");
+
+        try {
+            acquirePermit();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            CompletableFuture<List<WikidataBinding>> failed =
+                    new CompletableFuture<>();
+            failed.completeExceptionally(
+                    new CancellationException("Interrupted before SPARQL send."));
+            return failed;
+        }
 
         String encoded =
                 URLEncoder.encode(sparql, StandardCharsets.UTF_8);
@@ -170,11 +198,14 @@ public class WikidataSparqlClient implements AutoCloseable {
                 http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
                     .thenApply(res -> {
                         if (res.statusCode() != 200) {
-                            throw new RuntimeException(
-                                    "SPARQL HTTP "
-                                            + res.statusCode()
-                                            + "\n"
-                                            + res.body());
+                            throw new SparqlHttpException(
+                                    res.statusCode(),
+                                    RetryAfter.millis(
+                                            res.headers()
+                                               .firstValue("Retry-After")
+                                               .orElse(null),
+                                            -1),
+                                    res.body());
                         }
 
                         return parseJson(res.body());
@@ -183,6 +214,7 @@ public class WikidataSparqlClient implements AutoCloseable {
         runningQueries.add(future);
 
         future.whenComplete((r, e) -> {
+            rateLimiter.release();
             long ms = (System.nanoTime() - started) / 1_000_000;
 
             if (e == null) {
@@ -223,6 +255,90 @@ public class WikidataSparqlClient implements AutoCloseable {
             t = t.getCause();
         }
         return false;
+    }
+
+    private void acquirePermit() throws InterruptedException {
+        rateLimiter.acquire();
+
+        long spacing = minRequestSpacingMillis;
+        if (spacing > 0) {
+            synchronized (spacingLock) {
+                long wait = spacing
+                        - (System.currentTimeMillis() - lastRequestStart);
+                if (wait > 0) {
+                    Thread.sleep(wait);
+                }
+                lastRequestStart = System.currentTimeMillis();
+            }
+        }
+    }
+
+    /**
+     * Retry transient failures only: a server timeout would just time out again,
+     * a cancellation is intentional, and an HTTP status the server won't recover
+     * from (a 4xx other than 429) is a client error not worth repeating. A 429 or
+     * 5xx, or a bare network error, is retried until attempts run out.
+     */
+    static boolean shouldRetry(Throwable error, int attemptsLeft) {
+        if (attemptsLeft <= 1
+                || isCancellation(error)
+                || isTimeout(error)) {
+            return false;
+        }
+        SparqlHttpException http = httpError(error);
+        return http == null || isRetryableStatus(http.statusCode());
+    }
+
+    /** The wait before the next attempt: a 429's Retry-After if given, else a
+     *  linear 1s/2s/3s… backoff by attempt number. */
+    static long backoffMillis(Throwable error, int attemptsLeft) {
+        SparqlHttpException http = httpError(error);
+        if (http != null && http.retryAfterMillis() > 0) {
+            return http.retryAfterMillis();
+        }
+        return 1000L * (4 - attemptsLeft);
+    }
+
+    static boolean isRetryableStatus(int status) {
+        return status == 429
+                || status == 500
+                || status == 502
+                || status == 503
+                || status == 504;
+    }
+
+    private static SparqlHttpException httpError(Throwable t) {
+        while (t != null) {
+            if (t instanceof SparqlHttpException http) {
+                return http;
+            }
+            t = t.getCause();
+        }
+        return null;
+    }
+
+    /** Carries the HTTP status and any Retry-After so the retry loop can decide
+     *  whether — and how long — to wait, instead of parsing an error string. */
+    public static final class SparqlHttpException extends RuntimeException {
+        private final int statusCode;
+        private final long retryAfterMillis;
+
+        public SparqlHttpException(
+                int statusCode, long retryAfterMillis, String body) {
+            super("SPARQL HTTP " + statusCode
+                    + (body == null || body.isBlank() ? "" : "\n" + body));
+            this.statusCode = statusCode;
+            this.retryAfterMillis = retryAfterMillis;
+        }
+
+        public int statusCode() {
+            return statusCode;
+        }
+
+        /** Millis the server asked us to wait, or a negative value if it didn't. */
+        public long retryAfterMillis() {
+            return retryAfterMillis;
+        }
     }
 
     private List<WikidataBinding> parseJson(String json) {
