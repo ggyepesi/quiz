@@ -11,6 +11,10 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Non-lossy LOAD enrichment: for each entity in the pool of a configured type,
@@ -35,6 +39,12 @@ public class QualifierLoader {
     /** Value-anchored batch: each value (a category) has many statements, so keep
      *  fewer per query; loadWithSplit halves any that still overruns. */
     private static final int VALUE_BATCH = 8;
+
+    /** Batches fetch concurrently on this many loader threads. Only the network
+     *  round-trips overlap — statements are applied to the pool under one lock, so
+     *  the actual in-flight request count is still bounded by the SPARQL client's
+     *  own permit gate, not by this number. */
+    private static final int LOADER_THREADS = 6;
 
     public List<WikidataDynamicObject> enrich(
             Collection<WikidataDynamicObject> pool,
@@ -75,24 +85,30 @@ public class QualifierLoader {
                 : new ArrayList<>(byQid.keySet());
         int batchSize = valueAnchored ? VALUE_BATCH : BATCH;
         int total = (anchors.size() + batchSize - 1) / batchSize;
-        int idx = 0;
+
+        // The pool is mutated (byQid entities, created) only while holding this;
+        // network fetches happen outside it, so batches overlap on the wire but
+        // apply one at a time — the guard that makes value-anchored (shared-entity)
+        // loads safe to parallelize.
+        Object applyLock = new Object();
+
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         // One collapsible group over all the statement+qualifier batches.
         try (GenerationLog.Group g = sink.group("Qualifier load " + cfg.entityType()
                 + " " + cfg.propertyPid() + " (" + anchors.size() + " "
                 + (valueAnchored ? "values" : "entities") + ")")) {
+            int idx = 0;
+            List<Runnable> tasks = new ArrayList<>();
             for (int from = 0; from < anchors.size(); from += batchSize) {
-                if (Thread.currentThread().isInterrupted()) {
-                    g.message("Qualifier load cancelled.\n");
-                    break;
-                }
                 List<String> batch = new ArrayList<>(
                         anchors.subList(from, Math.min(from + batchSize, anchors.size())));
+                String label = (++idx) + "/" + total;
                 // A heavy statement+qualifier query can overrun WDQS (HTTP 502 /
                 // timeout); halve-and-retry so one fat batch doesn't sink the rest.
-                loadWithSplit(client, cfg, batch, byQid, valueField, stmtType, created,
-                        g, (++idx) + "/" + total, valueAnchored);
+                tasks.add(() -> loadWithSplit(client, cfg, batch, byQid, valueField,
+                        stmtType, created, g, label, valueAnchored, applyLock));
             }
+            runInParallel(tasks, g);
 
             // Recovery: a pool entity is here because it has a truthy P<pid> to a
             // configured value — so ZERO loaded statements means its batch was a
@@ -115,13 +131,15 @@ public class QualifierLoader {
                 }
                 g.message("Qualifier load recovery " + round + ": re-querying "
                         + missing.size() + " entities with no statement\n");
-                for (int from = 0; from < missing.size()
-                        && !Thread.currentThread().isInterrupted(); from += recBatch) {
+                List<Runnable> recovery = new ArrayList<>();
+                for (int from = 0; from < missing.size(); from += recBatch) {
                     List<String> batch = new ArrayList<>(missing.subList(
                             from, Math.min(from + recBatch, missing.size())));
-                    loadWithSplit(client, cfg, batch, byQid, valueField, stmtType,
-                            created, g, "recovery" + round + "/" + from, false);
+                    String label = "recovery" + round + "/" + from;
+                    recovery.add(() -> loadWithSplit(client, cfg, batch, byQid,
+                            valueField, stmtType, created, g, label, false, applyLock));
                 }
+                runInParallel(recovery, g);
             }
 
             g.message("Qualifier load " + cfg.entityType() + " "
@@ -131,17 +149,55 @@ public class QualifierLoader {
         return created;
     }
 
+    /** Runs each batch's fetch on a small pool so the network round-trips overlap;
+     *  the actual in-flight request count is bounded by the SPARQL client. Awaits
+     *  all of them, and on interruption cancels the rest so a cancelled generation
+     *  stops promptly. loadWithSplit swallows its own per-batch errors. */
+    private void runInParallel(List<Runnable> tasks, GenerationLog log) {
+        if (tasks == null || tasks.isEmpty()) {
+            return;
+        }
+        if (tasks.size() == 1) {
+            tasks.get(0).run();
+            return;
+        }
+
+        ExecutorService pool = Executors.newFixedThreadPool(
+                Math.min(LOADER_THREADS, tasks.size()));
+        try {
+            List<Future<?>> futures = new ArrayList<>();
+            for (Runnable task : tasks) {
+                futures.add(pool.submit(task));
+            }
+            for (Future<?> future : futures) {
+                try {
+                    future.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    if (log != null) {
+                        log.message("Qualifier load cancelled.\n");
+                    }
+                    break;
+                } catch (ExecutionException e) {
+                    // loadWithSplit records its own failures; a leak here is a bug.
+                }
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
     private void loadWithSplit(
             WikidataSparqlClient client, QualifierLoadConfig cfg, List<String> batch,
             Map<String, WikidataDynamicObject> byQid, String valueField,
             String stmtType, List<WikidataDynamicObject> created, GenerationLog log,
-            String batchLabel, boolean valueAnchored) {
+            String batchLabel, boolean valueAnchored, Object applyLock) {
         if (batch.isEmpty() || Thread.currentThread().isInterrupted()) {
             return;
         }
         try {
             attachBatch(client, cfg, batch, byQid, valueField, stmtType, created,
-                    log, batchLabel, valueAnchored);
+                    log, batchLabel, valueAnchored, applyLock);
         } catch (Exception e) {
             if (e instanceof InterruptedException
                     || Thread.currentThread().isInterrupted()) {
@@ -153,11 +209,11 @@ public class QualifierLoader {
                 loadWithSplit(client, cfg,
                         new ArrayList<>(batch.subList(0, mid)),
                         byQid, valueField, stmtType, created, log, batchLabel + "a",
-                        valueAnchored);
+                        valueAnchored, applyLock);
                 loadWithSplit(client, cfg,
                         new ArrayList<>(batch.subList(mid, batch.size())),
                         byQid, valueField, stmtType, created, log, batchLabel + "b",
-                        valueAnchored);
+                        valueAnchored, applyLock);
             }
             // A size-1 failure is already recorded as failed() by attachBatch —
             // which owns the started→done/failed lifecycle of every attempt.
@@ -168,7 +224,8 @@ public class QualifierLoader {
             WikidataSparqlClient client, QualifierLoadConfig cfg, List<String> batch,
             Map<String, WikidataDynamicObject> byQid, String valueField,
             String stmtType, List<WikidataDynamicObject> created,
-            GenerationLog log, String batchLabel, boolean valueAnchored)
+            GenerationLog log, String batchLabel, boolean valueAnchored,
+            Object applyLock)
             throws Exception {
         String query = buildQuery(cfg, batch, valueAnchored);
 
@@ -182,40 +239,50 @@ public class QualifierLoader {
         GenerationLog.Running running =
                 log == null ? null : log.subqueryStarted(title, query);
 
-        int before = created.size();
         try {
-            // One statement (?st) can span several result rows — a shared award
-            // lists each co-nominee on its own row. Key the statement object by its
-            // GUID so those rows fold into ONE object (with the repeated qualifier
-            // collected as a list), instead of a separate object per row.
-            Map<String, WikidataDynamicObject> stmtByGuid = new LinkedHashMap<>();
-            for (WikidataBinding row : client.query(query)) {
-                WikidataDynamicObject entity = byQid.get(row.qid("e"));
-                if (entity == null) {
-                    continue;
-                }
-                WikidataDynamicObject value = row.entity("value");
-                if (value == null) {
-                    continue;
-                }
-                String stmtId = row.qid("st");
-                String qid = stmtId != null && !stmtId.isBlank()
-                        ? stmtId
-                        : entity.qid() + "__" + value.qid();
+            // Fetch off the lock so batches overlap on the wire...
+            List<WikidataBinding> rows = client.query(query);
 
-                WikidataDynamicObject stmt = stmtByGuid.get(qid);
-                if (stmt == null) {
-                    stmt = new WikidataDynamicObject(qid, value.getDisplayName());
-                    stmt.type(stmtType);
-                    stmt.put(valueField, value);
-                    stmtByGuid.put(qid, stmt);
-                    entity.merge(cfg.statementField(), stmt);
-                    created.add(stmt);
+            // ...but apply to the shared pool under it, so two batches touching the
+            // same nominee (value-anchored, one entity across several categories)
+            // can't race on its statement list or on `created`.
+            int added;
+            synchronized (applyLock) {
+                int before = created.size();
+                // One statement (?st) can span several result rows — a shared award
+                // lists each co-nominee on its own row. Key the statement object by
+                // its GUID so those rows fold into ONE object (with the repeated
+                // qualifier collected as a list), not a separate object per row.
+                Map<String, WikidataDynamicObject> stmtByGuid = new LinkedHashMap<>();
+                for (WikidataBinding row : rows) {
+                    WikidataDynamicObject entity = byQid.get(row.qid("e"));
+                    if (entity == null) {
+                        continue;
+                    }
+                    WikidataDynamicObject value = row.entity("value");
+                    if (value == null) {
+                        continue;
+                    }
+                    String stmtId = row.qid("st");
+                    String qid = stmtId != null && !stmtId.isBlank()
+                            ? stmtId
+                            : entity.qid() + "__" + value.qid();
+
+                    WikidataDynamicObject stmt = stmtByGuid.get(qid);
+                    if (stmt == null) {
+                        stmt = new WikidataDynamicObject(qid, value.getDisplayName());
+                        stmt.type(stmtType);
+                        stmt.put(valueField, value);
+                        stmtByGuid.put(qid, stmt);
+                        entity.merge(cfg.statementField(), stmt);
+                        created.add(stmt);
+                    }
+                    applyQualifiers(stmt, row, cfg, byQid);
                 }
-                applyQualifiers(stmt, row, cfg, byQid);
+                added = created.size() - before;
             }
             if (running != null) {
-                running.done((created.size() - before) + " statements");
+                running.done(added + " statements");
             }
         } catch (Exception e) {
             // Resolve the started node so it never dangles as "running", then

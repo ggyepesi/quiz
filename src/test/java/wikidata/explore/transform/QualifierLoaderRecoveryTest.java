@@ -6,10 +6,12 @@ import wikidata.WikidataSparqlClient;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class QualifierLoaderRecoveryTest {
@@ -93,6 +95,69 @@ class QualifierLoaderRecoveryTest {
             }
             return rows;
         }
+    }
+
+    // Many categories → many value-anchored batches that run concurrently, all
+    // attaching statements to the SAME nominee (one entity nominated in every
+    // category). Without the serial-apply lock, concurrent merges onto that one
+    // entity's statement list would lose or corrupt statements; with it, every
+    // batch's statement lands exactly once.
+    private static final class ManyCategoryClient extends WikidataSparqlClient {
+        private final List<String> categories;
+
+        ManyCategoryClient(List<String> categories) {
+            super("test");
+            this.categories = categories;
+        }
+
+        @Override
+        public List<WikidataBinding> query(String sparql) {
+            List<WikidataBinding> rows = new ArrayList<>();
+            if (!sparql.contains("p:P1411")) {          // fetchValueQids: the category set
+                for (String cat : categories) {
+                    Map<String, String> v = new HashMap<>();
+                    v.put("value", "http://www.wikidata.org/entity/" + cat);
+                    rows.add(new WikidataBinding(v));
+                }
+                return rows;
+            }
+            // Value-anchored main pass: the one nominee (Q7) has a statement in every
+            // category pinned in this batch — a distinct statement GUID per category.
+            for (String cat : categories) {
+                if (sparql.contains("wd:" + cat)) {
+                    Map<String, String> v = new HashMap<>();
+                    v.put("e", "http://www.wikidata.org/entity/Q7");
+                    v.put("st", "GUID-" + cat);
+                    v.put("value", "http://www.wikidata.org/entity/" + cat);
+                    v.put("valueLabel", cat);
+                    rows.add(new WikidataBinding(v));
+                }
+            }
+            return rows;
+        }
+    }
+
+    @Test void concurrentValueBatchesAttachEveryStatementToTheSharedEntity() {
+        WikidataDynamicObject nominee = obj("Q7", "Prolific Nominee", "OscarNominations");
+
+        List<String> categories = new ArrayList<>();
+        for (int i = 0; i < 64; i++) {          // 64 / VALUE_BATCH(8) = 8 concurrent batches
+            categories.add("Q" + (3000 + i));
+        }
+
+        QualifierLoadConfig cfg = new QualifierLoadConfig(
+                "OscarNominations", "P1411", "__Nomination", "Nomination",
+                "category", "Q19020", List.of());
+
+        List<WikidataDynamicObject> created = new QualifierLoader()
+                .enrich(List.of(nominee), cfg, new ManyCategoryClient(categories), null);
+
+        assertEquals(64, created.size(),
+                "every category's statement is created once — none lost to a race");
+        Object statements = nominee.get("__Nomination");
+        assertNotNull(statements, "the shared nominee carries its statements");
+        assertEquals(64, ((Collection<?>) statements).size(),
+                "all 64 statements attached to the one entity, no lost updates");
     }
 
     @Test void recoversInTheValueAnchoredPathToo() {
