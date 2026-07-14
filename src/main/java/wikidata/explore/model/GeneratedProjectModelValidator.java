@@ -154,10 +154,13 @@ public final class GeneratedProjectModelValidator {
             MissingQualifierPolicy policy =
                     mapping.missingQualifierPolicy();
 
-            if (policy != null && !mapping.isQualifier()) {
+            if (policy != null
+                    && !StatementFieldSemantics
+                            .supportsMissingQualifierPolicy(clazz, field)) {
                 problems.add(Problem.error(
                         path(clazz, field),
-                        "Missing-qualifier policy requires a qualifier PID."));
+                        "Missing-qualifier policy applies only to a scalar entity "
+                                + "qualifier."));
             }
 
             if (policy == MissingQualifierPolicy.STATEMENT_VALUE
@@ -285,11 +288,10 @@ public final class GeneratedProjectModelValidator {
 
         String pid = clean(propertyPid);
         for (GeneratedFieldModel field : clazz.fields()) {
-            if (field == null
-                    || field.isNameField()
-                    || field.mapping().isQualifier()
-                    || field.mapping().productionKind()
-                    != FieldProductionKind.AUTO) {
+            // The statement's main value is a runtime field that reads the
+            // property directly, not one of its qualifiers.
+            if (!StatementFieldSemantics.isRuntimeStatementField(field)
+                    || field.mapping().isQualifier()) {
                 continue;
             }
 

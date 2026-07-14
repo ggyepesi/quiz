@@ -324,16 +324,11 @@ public class GeneratedClassModel {
                                                                 mapping.inDedupKey() != null);
 
         for (GeneratedFieldModel field : fields) {
-            if (field == null
-                    || field.isNameField()
-                    || field.cardinality()
-                    == FieldCardinality.COLLECTION
-                    // Derived fields (COMPANION_MATCH flags like `won`, INVERT
-                    // reverse refs) are produced AFTER reify — they must not enter
-                    // the identity key, or e.g. won=null vs won=<x> would split the
-                    // work/person copies of one statement so they never collapse.
-                    || field.mapping().productionKind()
-                    != FieldProductionKind.AUTO) {
+            // Scalar, non-name, AUTO-produced fields only. Derived fields
+            // (COMPANION_MATCH flags like `won`, INVERT reverse refs) are produced
+            // AFTER reify — they must not enter the identity key, or e.g. won=null
+            // vs won=<x> would split the two denormalized copies of one statement.
+            if (!StatementFieldSemantics.isCanonicalKeyCandidate(field)) {
                 continue;
             }
 

@@ -60,6 +60,39 @@ class GeneratedProjectModelValidatorTest {
     }
 
     @Test
+    void aMissingQualifierPolicyOnADateQualifierIsRejected() {
+        // The shared StatementFieldSemantics rule: a fallback policy is meaningful
+        // only for a scalar entity qualifier. A date qualifier carrying one is now
+        // a structural error, not something the runtime silently ignores.
+        GeneratedProjectModel project = oscarLikeProject();
+        GeneratedFieldModel year = project.findClass("Nomination")
+                .addField("year", FieldType.DATE, FieldCardinality.SINGLE);
+        year.mapping().qualifierPid("P585");
+        year.mapping().missingQualifierPolicy(
+                MissingQualifierPolicy.STATEMENT_SUBJECT);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid(),
+                "a policy on a date qualifier is not a valid configuration");
+    }
+
+    @Test
+    void aMissingQualifierPolicyOnAScalarEntityQualifierIsAccepted() {
+        GeneratedProjectModel project = oscarLikeProject();
+        GeneratedFieldModel edition = project.findClass("Nomination")
+                .addField("edition2", FieldType.ENTITY, FieldCardinality.SINGLE);
+        edition.mapping().qualifierPid("P805");
+        edition.mapping().missingQualifierPolicy(
+                MissingQualifierPolicy.STATEMENT_SUBJECT);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(),
+                "a scalar entity qualifier may carry a policy: " + result.format());
+    }
+
+    @Test
     void aFlatUnknownMatchValueFieldStillErrors() {
         GeneratedProjectModel project = oscarLikeProject();
         // Only dotted paths are exempt — a plain misspelled field is still an error.

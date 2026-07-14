@@ -269,6 +269,11 @@ public class FieldSourcePanel extends JPanel {
         propertyPidField.setText(m.propertyPid());
         qualifierPidField.setText(m.qualifierPid());
         missingQualifierBox.setSelectedItem(policyLabel(m.missingQualifierPolicy()));
+        // Only a scalar entity qualifier can carry a fallback policy; gray the box
+        // out otherwise so the editor mirrors the validator/runtime rule.
+        missingQualifierBox.setEnabled(
+                StatementFieldSemantics.supportsMissingQualifierPolicy(
+                        ownerClass(), field));
         inDedupKeyBox.setSelectedItem(triLabel(m.inDedupKey()));
         expectationBox.setSelectedItem(field.expectation());
         propertyLabel.setText(m.displayProperty());
@@ -625,6 +630,15 @@ public class FieldSourcePanel extends JPanel {
         // seeds a sensible DEFAULT into the dropdown when a property is picked.
         m.productionKind((FieldProductionKind) productionBox.getSelectedItem());
         propertyLabel.setText(m.displayProperty());
+
+        // A fallback policy only means something for a scalar entity qualifier; if
+        // this edit turned the field into anything else, drop it (the shared rule
+        // the validator and runtime use) and reflect that in the box.
+        if (StatementFieldSemantics.normalizeMissingQualifierPolicy(
+                ownerClass(), field)) {
+            missingQualifierBox.setSelectedItem(
+                    policyLabel(field.mapping().missingQualifierPolicy()));
+        }
 
         titleLabel.setText("Field: " + field.name());
 

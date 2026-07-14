@@ -2,13 +2,12 @@ package wikidata.explore.workbench;
 
 import aux.GridBagUtils;
 import wikidata.explore.model.CanonicalSpec;
-import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.StatementFieldSemantics;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.transform.ModelStatementReifications;
 import wikidata.explore.transform.ModelStatementReifications.Reification;
@@ -205,7 +204,7 @@ public class StatementSourcePanel extends JPanel {
 
         int row = 0;
         for (GeneratedFieldModel field : clazz.fields()) {
-            if (!isCanonicalCandidate(field)) {
+            if (!StatementFieldSemantics.isCanonicalKeyCandidate(field)) {
                 continue;
             }
 
@@ -284,17 +283,6 @@ public class StatementSourcePanel extends JPanel {
         }
 
         clazz.canonical(canonical);
-    }
-
-    private static boolean isCanonicalCandidate(
-            GeneratedFieldModel field) {
-
-        return field != null
-                && !field.isNameField()
-                && field.cardinality()
-                != FieldCardinality.COLLECTION
-                && field.mapping().productionKind()
-                == FieldProductionKind.AUTO;
     }
 
     /**

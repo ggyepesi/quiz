@@ -4,13 +4,13 @@ import wikidata.WikidataSparqlClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.CanonicalSpec;
-import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MissingQualifierPolicy;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.StatementFieldSemantics;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -108,7 +108,7 @@ public final class ModelStatementReifications {
         String primaryListField = "";
 
         for (GeneratedFieldModel field : statementClass.fields()) {
-            if (!isRuntimeStatementField(field)
+            if (!StatementFieldSemantics.isRuntimeStatementField(field)
                     || !field.mapping().isQualifier()) {
                 continue;
             }
@@ -169,24 +169,12 @@ public final class ModelStatementReifications {
         return new Reification(load, reify);
     }
 
-    private static boolean isRuntimeStatementField(
-            GeneratedFieldModel field) {
-
-        return field != null
-                && !field.isNameField()
-                // Derived fields (COMPANION_MATCH flags such as `won`, and
-                // INVERT reverse references) are produced by later passes.
-                // They must not be mistaken for statement qualifiers.
-                && field.mapping().productionKind()
-                == FieldProductionKind.AUTO;
-    }
-
     private static String findValueField(
             GeneratedClassModel statementClass,
             String statementPid) {
 
         for (GeneratedFieldModel field : statementClass.fields()) {
-            if (!isRuntimeStatementField(field)
+            if (!StatementFieldSemantics.isRuntimeStatementField(field)
                     || field.mapping().isQualifier()) {
                 continue;
             }
@@ -200,7 +188,7 @@ public final class ModelStatementReifications {
         // Compatibility fallback for older models that did not explicitly
         // identify the ps: field with the statement property.
         for (GeneratedFieldModel field : statementClass.fields()) {
-            if (isRuntimeStatementField(field)
+            if (StatementFieldSemantics.isRuntimeStatementField(field)
                     && !field.mapping().isQualifier()) {
                 return field.name();
             }
@@ -218,7 +206,7 @@ public final class ModelStatementReifications {
         LinkedHashSet<String> values = new LinkedHashSet<>();
 
         GeneratedFieldModel valueModel = statementClass.fields().stream()
-                                                       .filter(ModelStatementReifications::isRuntimeStatementField)
+                                                       .filter(StatementFieldSemantics::isRuntimeStatementField)
                                                        .filter(field -> valueField.equals(field.name()))
                                                        .findFirst()
                                                        .orElse(null);
@@ -279,7 +267,7 @@ public final class ModelStatementReifications {
         List<ReifyConstruct.Role> roles = new ArrayList<>();
 
         for (GeneratedFieldModel field : statementClass.fields()) {
-            if (!isRuntimeStatementField(field)
+            if (!StatementFieldSemantics.isRuntimeStatementField(field)
                     || !field.mapping().isQualifier()
                     || field.type() != FieldType.ENTITY
                     || field.cardinality() != null
