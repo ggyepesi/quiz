@@ -12,6 +12,7 @@ import wikidata.explore.filter.WikidataValueFilter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -161,34 +162,71 @@ public class RuleTreeExtractor {
             // Splitting them makes the served roots deterministic: membership no
             // longer rides on the heavy query, which soft-times-out on WDQS and
             // returns a different partial row set each run (the 11076-vs-11142 drift).
-            List<WikidataDynamicObject> members =
-                    runBackbone(rootNode, progress);
+            // Slice 1 — a large fixed multi-QID membership captures its "target"
+            // field (= the membership roots) FROM the backbone join itself: the
+            // batched membership query exposes the root, and the collected (member,
+            // root) edges materialize the field. The heavy field-optimized
+            // enrichment's target GROUP_CONCAT + label re-join over ~11k members
+            // soft-times-out, so the captured field is then removed from it.
+            boolean largeMembership =
+                    rootNode.additionalSourceQids().size() > membershipTargetBatchSize;
+            List<RuleIncludedField> membershipTargets = largeMembership
+                    ? RuleNodeQueryBuilder.membershipTargetFields(rootNode)
+                    : List.of();
 
-            String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(rootNode);
-            String title = "Root enrichment (+" + inlinedFields.size()
-                    + " inlined field" + (inlinedFields.size() == 1 ? "" : "s") + ")";
-            List<WikidataDynamicObject> enriched;
-            try {
-                enriched = runRootQuery(title, sparql, progress,
-                        () -> runFieldOptimizedQuery(rootNode, inlinedFields, sparql));
-            } catch (Exception e) {
-                // Best-effort: the backbone already holds the COMPLETE, type-stamped
-                // member set, so a failed enrichment must NOT fail the run — that is
-                // the "a partial enrichment never drops a member" guarantee the union
-                // below relies on. The heavy inline-GROUP_CONCAT query soft-times-out
-                // on WDQS (60s → HTTP 200 with a truncated body → JSON parse error),
-                // which used to abort the whole generation. Now the members survive;
-                // the inlined fields are just unfilled this pass.
-                if (e instanceof InterruptedException
-                        || Thread.currentThread().isInterrupted()) {
-                    throw e;   // a cancel is not a soft failure
+            MembershipBackbone backbone =
+                    runBackbone(rootNode, membershipTargets, progress);
+            List<WikidataDynamicObject> members = backbone.members();
+            if (!membershipTargets.isEmpty()) {
+                materializeMembershipTargets(
+                        members, membershipTargets, backbone.edges());
+            }
+
+            // The enrichment runs over the node MINUS the captured target field(s):
+            // a copy that keeps every membership semantic + the remaining fields.
+            RuleNode enrichNode = rootNode;
+            List<RuleIncludedField> enrichFields = inlinedFields;
+            if (!membershipTargets.isEmpty()) {
+                enrichNode = rootNode.sampleCopy(rootNode.limit());
+                for (RuleIncludedField f : rootNode.includedFields()) {
+                    if (!membershipTargets.contains(f)) enrichNode.addIncludedField(f);
                 }
-                progress.message("WARNING: root enrichment failed ("
-                        + e.getMessage() + ") — members are COMPLETE from the "
-                        + "backbone, but the " + inlinedFields.size()
-                        + " inlined field(s) are unfilled this run. Re-run to fill "
-                        + "them (the enrichment query is over the WDQS timeout).\n");
+                enrichFields = RuleNodeQueryBuilder.simpleInlinedFields(enrichNode);
+            }
+
+            List<WikidataDynamicObject> enriched;
+            if (enrichFields.isEmpty()) {
+                // Every inlined field was a membership target (captured above), so the
+                // heavy enrichment would add nothing — skip it entirely.
                 enriched = new ArrayList<>();
+            } else {
+                final RuleNode qNode = enrichNode;
+                final List<RuleIncludedField> qFields = enrichFields;
+                String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(qNode);
+                String title = "Root enrichment (+" + qFields.size()
+                        + " inlined field" + (qFields.size() == 1 ? "" : "s") + ")";
+                try {
+                    enriched = runRootQuery(title, sparql, progress,
+                            () -> runFieldOptimizedQuery(qNode, qFields, sparql));
+                } catch (Exception e) {
+                    // Best-effort: the backbone already holds the COMPLETE, type-stamped
+                    // member set, so a failed enrichment must NOT fail the run — that is
+                    // the "a partial enrichment never drops a member" guarantee the union
+                    // below relies on. The heavy inline-GROUP_CONCAT query soft-times-out
+                    // on WDQS (60s → HTTP 200 with a truncated body → JSON parse error),
+                    // which used to abort the whole generation. Now the members survive;
+                    // the inlined fields are just unfilled this pass.
+                    if (e instanceof InterruptedException
+                            || Thread.currentThread().isInterrupted()) {
+                        throw e;   // a cancel is not a soft failure
+                    }
+                    progress.message("WARNING: root enrichment failed ("
+                            + e.getMessage() + ") — members are COMPLETE from the "
+                            + "backbone, but the " + qFields.size()
+                            + " inlined field(s) are unfilled this run. Re-run to fill "
+                            + "them (the enrichment query is over the WDQS timeout).\n");
+                    enriched = new ArrayList<>();
+                }
             }
 
             // Union by qid (both share registry instances): a member either query
@@ -227,7 +265,34 @@ public class RuleTreeExtractor {
                 RuleNodeQueryBuilder.simpleInlinedFields(rootNode);
         List<RuleEdge> complex = complexEdges(rootNode);
 
-        if (!inlinedFields.isEmpty()) {
+        // Mirror load(): a large fixed multi-QID membership captures its target
+        // field from the membership backbone and drops it from the enrichment.
+        boolean largeMembership =
+                rootNode.additionalSourceQids().size() > membershipTargetBatchSize;
+        List<RuleIncludedField> membershipTargets = largeMembership
+                ? RuleNodeQueryBuilder.membershipTargetFields(rootNode)
+                : List.of();
+
+        if (!membershipTargets.isEmpty()) {
+            queries.add("# Membership backbone (batched by "
+                    + membershipTargetBatchSize + " roots) capturing target field(s) "
+                    + membershipTargets.stream().map(RuleIncludedField::fieldName)
+                    .reduce((a, b) -> a + ", " + b).orElse("") + ":\n"
+                    + RuleNodeQueryBuilder.membershipBackboneQuery(rootNode));
+
+            RuleNode enrichNode = rootNode.sampleCopy(rootNode.limit());
+            for (RuleIncludedField fld : rootNode.includedFields()) {
+                if (!membershipTargets.contains(fld)) enrichNode.addIncludedField(fld);
+            }
+            List<RuleIncludedField> enrichFields =
+                    RuleNodeQueryBuilder.simpleInlinedFields(enrichNode);
+            if (!enrichFields.isEmpty()) {
+                queries.add("# Root enrichment over the remaining inlined field(s): "
+                        + enrichFields.stream().map(RuleIncludedField::fieldName)
+                        .reduce((a, b) -> a + ", " + b).orElse("") + "\n"
+                        + RuleNodeQueryBuilder.fieldOptimizedValuesQuery(enrichNode));
+            }
+        } else if (!inlinedFields.isEmpty()) {
             queries.add("# Root + inlined entity-list fields: "
                     + inlinedFields.stream().map(RuleIncludedField::fieldName)
                     .reduce((a, b) -> a + ", " + b).orElse("")
@@ -278,50 +343,154 @@ public class RuleTreeExtractor {
     // subquery with its row count, or a subqueryFailed carrying the SPARQL so a
     // timeout is debuggable from the UI (it used to log only on success, so a
     // timed-out root query left no query text in the log at all).
-    /** Membership targets per backbone query. A big relational membership (e.g.
-     *  P1411 → 58 Oscar categories) finds too many members to label in one query
-     *  and soft-times-out on WDQS; splitting the targets keeps each query small. */
-    private static final int BACKBONE_TARGET_BATCH = 10;
+    // Batch sizes for the specialized extraction slices (see
+    // docs/extraction-batched-membership.md). Configurable; defaults chosen to keep
+    // each query well under the WDQS soft timeout.
+    //   membershipTargetBatchSize — membership roots per backbone query. A big
+    //     relational membership (e.g. P1411 → 58 Oscar categories) finds too many
+    //     members to label in one query and soft-times-out; splitting the roots
+    //     keeps each query small.
+    //   memberFieldBatchSize — members per slice-2 direct-field row query.
+    //   labelBatchSize — QIDs per slice-3 label-resolution batch.
+    private int membershipTargetBatchSize = 10;
+    private int memberFieldBatchSize = 250;
+    private int labelBatchSize = 500;
+
+    public RuleTreeExtractor membershipTargetBatchSize(int n) {
+        if (n > 0) this.membershipTargetBatchSize = n;
+        return this;
+    }
+
+    public RuleTreeExtractor memberFieldBatchSize(int n) {
+        if (n > 0) this.memberFieldBatchSize = n;
+        return this;
+    }
+
+    public RuleTreeExtractor labelBatchSize(int n) {
+        if (n > 0) this.labelBatchSize = n;
+        return this;
+    }
+
+    /**
+     * The result of the membership backbone (design steps 1-3): the COMPLETE member
+     * registry and, when a {@linkplain RuleNodeQueryBuilder#membershipTargetFields
+     * target} field was captured, the membership-edge map (member qid →
+     * insertion-ordered set of target qids). The edge map is empty when nothing was
+     * captured.
+     */
+    private record MembershipBackbone(
+            List<WikidataDynamicObject> members,
+            Map<String, LinkedHashSet<String>> edges) {}
 
     /**
      * Phase-1 membership. For a large multi-target relational membership, split the
-     * targets into batches and union the members by qid — each query stays well
-     * under the WDQS timeout, and the union can't drop a member. A small membership
-     * runs as a single query, unchanged.
+     * roots into batches and union the members by qid — each query stays well under
+     * the WDQS timeout, and the union can't drop a member. When {@code targetFields}
+     * is non-empty the batched query ALSO exposes the membership root (one query, no
+     * second request), and every (member, root) edge is collected into the edge map
+     * for the caller to materialize the target field from. A small membership runs
+     * as a single query, unchanged (and never captures — it stays on the byte-
+     * identical path).
      */
-    private List<WikidataDynamicObject> runBackbone(
-            RuleNode rootNode, GenerationLog progress) throws Exception {
+    private MembershipBackbone runBackbone(
+            RuleNode rootNode,
+            List<RuleIncludedField> targetFields,
+            GenerationLog progress) throws Exception {
 
         List<String> targets = new ArrayList<>(rootNode.additionalSourceQids());
-        if (targets.size() <= BACKBONE_TARGET_BATCH) {
+        if (targets.size() <= membershipTargetBatchSize) {
             RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
             String sparql = RuleNodeQueryBuilder.valuesQuery(backbone);
-            return runRootQuery("Root membership (backbone)", sparql, progress,
+            List<WikidataDynamicObject> members = runRootQuery(
+                    "Root membership (backbone)", sparql, progress,
                     () -> runValueQuery(backbone, sparql));
+            return new MembershipBackbone(members, new LinkedHashMap<>());
         }
 
+        boolean capture = !targetFields.isEmpty();
         LinkedHashMap<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
-        int total = (targets.size() + BACKBONE_TARGET_BATCH - 1)
-                / BACKBONE_TARGET_BATCH;
+        Map<String, LinkedHashSet<String>> edges = new LinkedHashMap<>();
+        int total = (targets.size() + membershipTargetBatchSize - 1)
+                / membershipTargetBatchSize;
         int n = 0;
-        for (int from = 0; from < targets.size(); from += BACKBONE_TARGET_BATCH) {
+        for (int from = 0; from < targets.size(); from += membershipTargetBatchSize) {
             if (Thread.currentThread().isInterrupted()) {
                 break;
             }
             List<String> batch = new ArrayList<>(targets.subList(
-                    from, Math.min(from + BACKBONE_TARGET_BATCH, targets.size())));
+                    from, Math.min(from + membershipTargetBatchSize, targets.size())));
             RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
             backbone.additionalSourceQids().clear();
             batch.forEach(backbone::addAdditionalSourceQid);
-            String sparql = RuleNodeQueryBuilder.valuesQuery(backbone);
+            String sparql = capture
+                    ? RuleNodeQueryBuilder.membershipBackboneQuery(backbone)
+                    : RuleNodeQueryBuilder.valuesQuery(backbone);
             List<WikidataDynamicObject> part = runRootQuery(
                     "Root membership (backbone " + (++n) + "/" + total + ")",
-                    sparql, progress, () -> runValueQuery(backbone, sparql));
+                    sparql, progress,
+                    () -> runMembershipBatch(backbone, sparql, capture, edges));
             for (WikidataDynamicObject o : part) {
                 byQid.putIfAbsent(o.qid(), o);
             }
         }
-        return new ArrayList<>(byQid.values());
+        return new MembershipBackbone(new ArrayList<>(byQid.values()), edges);
+    }
+
+    /**
+     * Parses one membership backbone batch: each {@code ?value} becomes a registry
+     * member (design step 3), and — when capturing — each {@code (?value, ?root)}
+     * row adds an edge to {@code edges} (member qid → insertion-ordered set of
+     * target qids). Returns this batch's members so the log shows a row count.
+     */
+    private List<WikidataDynamicObject> runMembershipBatch(
+            RuleNode node, String sparql, boolean capture,
+            Map<String, LinkedHashSet<String>> edges) throws Exception {
+
+        Map<String, WikidataDynamicObject> rowsByQid = new LinkedHashMap<>();
+        for (WikidataBinding b : client.query(sparql)) {
+            String qid = b.qid("value");
+            String label = b.label("value");
+            if (qid == null || !qid.matches("Q\\d+")) continue;
+
+            WikidataDynamicObject obj = rowsByQid.computeIfAbsent(
+                    qid, k -> registry.getOrCreate(qid, label));
+            obj.type(node.name());
+            addValueFilterFields(obj, node, b);
+
+            if (capture) {
+                String targetQid = b.qid("root");
+                if (targetQid != null && targetQid.matches("Q\\d+")) {
+                    edges.computeIfAbsent(qid, k -> new LinkedHashSet<>())
+                            .add(targetQid);
+                }
+            }
+        }
+        return new ArrayList<>(rowsByQid.values());
+    }
+
+    /**
+     * Design step 4 — materialize the membership-target field(s) directly from the
+     * edge map: each target qid resolves to its canonical registry object and is
+     * merged onto the member (merge dedups + preserves the insertion order the
+     * LinkedHashSet already fixed). Labels are placeholders (the qid) until the
+     * shared label pass (slice 3) resolves them.
+     */
+    // Package-visible for RuleTreeExtractorMembershipTargetTest.
+    void materializeMembershipTargets(
+            List<WikidataDynamicObject> members,
+            List<RuleIncludedField> targetFields,
+            Map<String, LinkedHashSet<String>> edges) {
+
+        for (WikidataDynamicObject member : members) {
+            LinkedHashSet<String> targetQids = edges.get(member.qid());
+            if (targetQids == null || targetQids.isEmpty()) continue;
+            for (String targetQid : targetQids) {
+                WikidataDynamicObject ref = registry.getOrCreate(targetQid, targetQid);
+                for (RuleIncludedField tf : targetFields) {
+                    member.merge(tf.fieldName(), ref);
+                }
+            }
+        }
     }
 
     private List<WikidataDynamicObject> runRootQuery(

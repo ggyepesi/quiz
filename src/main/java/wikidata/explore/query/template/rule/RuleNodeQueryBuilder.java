@@ -22,7 +22,19 @@ public final class RuleNodeQueryBuilder {
     private RuleNodeQueryBuilder() {}
 
     public static String valuesQuery(RuleNode node) {
-        return valuesQueryForNode(node, node.sourceQid(), List.of());
+        return valuesQueryForNode(node, node.sourceQid(), List.of(), false);
+    }
+
+    /**
+     * The membership backbone that ALSO exposes the membership root, so a
+     * {@linkplain #membershipTargetFields target} field is captured from the same
+     * join (one query per batch, not a second request): the multi-QID branch already
+     * binds {@code ?value <pid> ?root}, so it adds {@code ?root} to the SELECT and
+     * the outer {@code SELECT *} carries it out. The SERVICE label still labels only
+     * {@code ?value}; {@code ?root} rides as a bare QID (labels resolved separately).
+     */
+    public static String membershipBackboneQuery(RuleNode node) {
+        return valuesQueryForNode(node, node.sourceQid(), List.of(), true);
     }
 
     /**
@@ -73,7 +85,7 @@ public final class RuleNodeQueryBuilder {
 
     public static String valuesQueryForSpecificParent(
             RuleNode node, String parentQid) {
-        return valuesQueryForNode(node, parentQid, List.of());
+        return valuesQueryForNode(node, parentQid, List.of(), false);
     }
 
     public static String fieldOptimizedValuesQuery(RuleNode node) {
@@ -83,7 +95,7 @@ public final class RuleNodeQueryBuilder {
             return valuesQuery(node);
         }
 
-        return valuesQueryForNode(node, node.sourceQid(), inlined);
+        return valuesQueryForNode(node, node.sourceQid(), inlined, false);
     }
 
     public static List<RuleIncludedField> simpleInlinedFields(RuleNode node) {
@@ -114,10 +126,63 @@ public final class RuleNodeQueryBuilder {
         return field.fieldName().replaceAll("[^A-Za-z0-9_]", "_") + "_inlined";
     }
 
+    /**
+     * The included fields whose value set IS the membership relation's object set —
+     * so they can be read straight off the backbone membership join (the backbone
+     * already binds {@code ?value <pid> ?root}, so it selects {@code ?root} too; see
+     * {@link #membershipBackboneQuery}) instead of the heavy field-optimized
+     * enrichment. E.g. Oscars {@code target} = the categories a value was nominated
+     * for = the {@code additionalSourceQids} roots. Membership EQUIVALENCE is proven
+     * per field, not merely a matching PID — see {@link #membershipEquivalent}.
+     * Empty unless the node has a fixed multi-QID membership.
+     */
+    public static List<RuleIncludedField> membershipTargetFields(RuleNode node) {
+        List<RuleIncludedField> out = new ArrayList<>();
+        if (node == null || node.additionalSourceQids().isEmpty()) return out;
+        for (RuleIncludedField f : node.includedFields()) {
+            if (membershipEquivalent(node, f)) out.add(f);
+        }
+        return out;
+    }
+
+    /**
+     * True when {@code field}'s value set is, provably, the membership relation's
+     * object set — the precondition for reading it off the backbone rather than
+     * re-fetching it. Semantic equivalence, not just a matching predicate:
+     * <ol>
+     *   <li>an entity reference and a collection — it denotes the same many-valued
+     *       relation the membership walks;</li>
+     *   <li>the same normalized predicate;</li>
+     *   <li>the same normalized direction — compared as the EMITTED triple so the
+     *       nominal ROOT_TO_ITEM/ITEM_TO_ROOT swap is handled (target is
+     *       ROOT_TO_ITEM while the node is ITEM_TO_ROOT, yet both walk
+     *       {@code ?value <pid> ?root});</li>
+     *   <li>no extra type constraint the membership did not itself apply — the
+     *       membership is a FIXED explicit root set ({@code additionalSourceQids}),
+     *       and capture binds the target to exactly those roots, so any redundant
+     *       P31 type filter on the field (e.g. target's P31=award-category) is
+     *       SUBSUMED: capture can never produce a value outside the modeled root set,
+     *       only correctly omit an unmodeled one.</li>
+     * </ol>
+     * A field carries no independent value filter, allowed/excluded-QID filter, or
+     * source backend, and the node-level ones apply to {@code ?value} in the same
+     * backbone join the capture rides — so those criteria hold here by construction.
+     */
+    private static boolean membershipEquivalent(RuleNode node, RuleIncludedField field) {
+        if (field == null) return false;
+        if (!field.isEntityField() || !field.collection()) return false;   // (1)
+        String pid = RuleNode.cleanPid(node.propertyPid());
+        if (!RuleNode.cleanPid(field.propertyPid()).equals(pid)) return false;   // (2)
+        String memberTriple = node.direction().triplePattern("?root", "?value", pid);
+        return memberTriple.equals(                                              // (3)
+                field.direction().triplePattern("?value", "?root", pid));
+    }
+
     private static String valuesQueryForNode(
             RuleNode node,
             String rootQidOrVar,
-            List<RuleIncludedField> inlinedFields) {
+            List<RuleIncludedField> inlinedFields,
+            boolean selectMembershipRoot) {
 
         // Two or more inlined (GROUP_CONCAT) fields stacked in ONE grouped subquery
         // cross-product each other per value (e.g. types × award targets), which is
@@ -247,6 +312,11 @@ public final class RuleNodeQueryBuilder {
             if (!isVariable) {
                 // Multi-QID membership: instance-of ANY of the listed types.
                 q.valuesQids("root", node.allSourceQids());
+                // Capture the membership root as the target field's value — it's
+                // already bound here, so exposing it costs nothing (the outer
+                // SELECT * carries it out; grouped=false on the backbone, so no
+                // GROUP BY interaction).
+                if (selectMembershipRoot) q.select("root");
             } else {
                 q.rawWhere("# template: ?root supplied by VALUES clause at runtime");
             }
