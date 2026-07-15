@@ -2,6 +2,7 @@ package wikidata.explore.extract;
 
 import wikidata.explore.query.template.rule.RuleIncludedFieldSparql;
 import wikidata.api.WikidataApiClient;
+import wikidata.explore.model.RuleDirection;
 import wikidata.explore.query.template.rule.RuleNodeQueryBuilder;
 import wikidata.explore.rule.RuleIncludedField;
 import wikidata.explore.rule.RuleEdge;
@@ -201,15 +202,27 @@ public class RuleTreeExtractor {
             }
 
             // Slice 2 (step 5) — the remaining inlined entity-list fields (those not
-            // captured as targets) are fetched per MEMBER-batch, not inline-
-            // GROUP_CONCAT'd over the whole class.
+            // captured as targets). An OUTGOING field (the member's own claim, e.g.
+            // type = P31) is read from the reliable wbgetentities claims API — P31
+            // via the SPARQL query engine full-scans and times out. An INCOMING field
+            // (something points TO the member) has no claim on the member, so it stays
+            // on the member-batched SPARQL path.
             List<RuleIncludedField> directEntityFields = new ArrayList<>();
             if (largeMembership) {
                 for (RuleIncludedField f : inlinedFields) {
                     if (!membershipTargets.contains(f)) directEntityFields.add(f);
                 }
-                if (!directEntityFields.isEmpty()) {
-                    captureMemberFields(members, directEntityFields, progress);
+                List<RuleIncludedField> outgoing = new ArrayList<>();
+                List<RuleIncludedField> incoming = new ArrayList<>();
+                for (RuleIncludedField f : directEntityFields) {
+                    if (f.direction() == RuleDirection.ROOT_TO_ITEM) outgoing.add(f);
+                    else incoming.add(f);
+                }
+                if (!outgoing.isEmpty()) {
+                    captureOutgoingFieldsViaApi(members, outgoing, progress);
+                }
+                if (!incoming.isEmpty()) {
+                    captureMemberFields(members, incoming, progress);
                 }
             }
 
@@ -336,18 +349,26 @@ public class RuleTreeExtractor {
                         + RuleNodeQueryBuilder.valuesQuery(rootNode));
             }
 
-            // Slice 2 — each remaining inlined entity-list field, per member-batch.
-            List<RuleIncludedField> directEntityFields = new ArrayList<>();
+            // Slice 2 — each remaining inlined entity-list field. OUTGOING fields go
+            // via wbgetentities (claims); INCOMING fields via a member-batched query.
             for (RuleIncludedField f : inlinedFields) {
-                if (!membershipTargets.contains(f)) directEntityFields.add(f);
+                if (membershipTargets.contains(f)) continue;
+                if (f.direction() == RuleDirection.ROOT_TO_ITEM) {
+                    queries.add("# Field \"" + f.fieldName() + "\" via wbgetentities "
+                            + "claims (props=labels|claims, ids batched by 50): each "
+                            + "member's " + RuleNode.cleanPid(f.propertyPid())
+                            + " values — not SPARQL (P31 full-scans + times out).");
+                } else {
+                    queries.add("# Member field \"" + f.fieldName() + "\" (batched by "
+                            + memberFieldBatchSize + " members):\n"
+                            + RuleNodeQueryBuilder
+                                    .memberFieldBatchQuery(f, List.of("Q_MEMBER_BATCH"))
+                                    .replace("wd:Q_MEMBER_BATCH", "<member batch>"));
+                }
             }
-            for (RuleIncludedField f : directEntityFields) {
-                queries.add("# Member field \"" + f.fieldName() + "\" (batched by "
-                        + memberFieldBatchSize + " members):\n"
-                        + RuleNodeQueryBuilder
-                                .memberFieldBatchQuery(f, List.of("Q_MEMBER_BATCH"))
-                                .replace("wd:Q_MEMBER_BATCH", "<member batch>"));
-            }
+
+            queries.add("# Labels for QID-only refs via wbgetentities "
+                    + "(props=labels, ids batched by 50).");
 
             if (!inlinedFields.isEmpty()) {
                 queries.add("# (fieldOptimizedValuesQuery skipped — every inlined "
@@ -624,6 +645,76 @@ public class RuleTreeExtractor {
             touched.put(valueQid, member);
         }
         return new ArrayList<>(touched.values());
+    }
+
+    /**
+     * Slice 2b — fetch OUTGOING direct entity field(s) (the member's own claims, e.g.
+     * type = P31) from the reliable wbgetentities API instead of the SPARQL query
+     * engine (P31 full-scans and times out there). One batched claims pass over the
+     * members; best-effort — a failure warns and leaves those fields unfilled
+     * (members stay COMPLETE from the backbone). Also fills any blank member label
+     * the API returns.
+     */
+    private void captureOutgoingFieldsViaApi(
+            List<WikidataDynamicObject> members,
+            List<RuleIncludedField> outgoingFields,
+            GenerationLog progress) {
+
+        List<String> memberQids = members.stream()
+                .map(WikidataDynamicObject::qid)
+                .filter(q -> q != null && q.matches("Q\\d+"))
+                .toList();
+        if (memberQids.isEmpty()) return;
+
+        List<String> pids = outgoingFields.stream()
+                .map(f -> RuleNode.cleanPid(f.propertyPid()))
+                .filter(p -> p.matches("P\\d+"))
+                .toList();
+
+        String names = outgoingFields.stream().map(RuleIncludedField::fieldName)
+                .reduce((a, b) -> a + ", " + b).orElse("");
+        try {
+            Map<String, WikidataApiClient.ApiEntity> details =
+                    api().getEntities(memberQids, pids);
+            int filled = applyEntityClaims(members, outgoingFields, details);
+            progress.message("Fetched field(s) [" + names + "] for " + filled + "/"
+                    + memberQids.size() + " members via wbgetentities.\n");
+        } catch (Exception e) {
+            if (Thread.currentThread().isInterrupted()) return;
+            progress.message("WARNING: wbgetentities fetch of field(s) [" + names
+                    + "] failed (" + e.getMessage() + ") — members are COMPLETE; "
+                    + "those fields are unfilled this run.\n");
+        }
+    }
+
+    /**
+     * Merges each member's outgoing-field claim values (canonical registry refs,
+     * QID-named until {@link #resolveLabels}) and fills a blank member label from the
+     * API. Returns how many members got at least one value. Package-visible for
+     * RuleTreeExtractorLabelTest.
+     */
+    int applyEntityClaims(
+            List<WikidataDynamicObject> members,
+            List<RuleIncludedField> outgoingFields,
+            Map<String, WikidataApiClient.ApiEntity> details) {
+
+        int filled = 0;
+        for (WikidataDynamicObject member : members) {
+            WikidataApiClient.ApiEntity e = details.get(member.qid());
+            if (e == null) continue;
+            if (isPlaceholderLabel(member) && !e.label().isBlank()) {
+                member.name(e.label());
+            }
+            boolean any = false;
+            for (RuleIncludedField f : outgoingFields) {
+                for (String vq : e.claim(RuleNode.cleanPid(f.propertyPid()))) {
+                    member.merge(f.fieldName(), registry.getOrCreate(vq, vq));
+                    any = true;
+                }
+            }
+            if (any) filled++;
+        }
+        return filled;
     }
 
     /**

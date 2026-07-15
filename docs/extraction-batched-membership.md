@@ -112,12 +112,16 @@ No `GROUP_CONCAT` over 11k; each batch is bounded.
   batched 50 — the reliable action API, no WDQS scan), and sets the names via
   `applyLabels`. A failure warns and leaves the qids. No-op when nothing is
   unlabeled. (`RuleTreeExtractorLabelTest`.)
-- **Type via `wbgetentities` claims (next, 2b)** — reroute the outgoing direct entity
-  field(s) (P31/`type`) off the flaky per-member SPARQL onto the same
-  `getEntities(members, [P31])` pass (claims → type), retiring slice-2 SPARQL for
-  outgoing fields. That is the speed win (parallel action API vs ~112 serial SPARQL).
-- Still to do: parallelize the `wbgetentities` passes (`labelBatchSize`), and
-  consider dropping the backbone `SERVICE` label once members are named here.
+- **Type via `wbgetentities` claims (DONE, 2b)** — `captureOutgoingFieldsViaApi`
+  reroutes the OUTGOING direct entity field(s) (P31/`type` — the member's own claim)
+  onto `getEntities(members, [P31])` (claims → type, `applyEntityClaims`), so the
+  flaky ~112-serial-SPARQL P31 path (single batches hit 50–122s and timed out) is
+  gone. An INCOMING direct field (something points TO the member — none today) has no
+  claim on the member and stays on the member-batched SPARQL path
+  (`captureMemberFields`). Best-effort: a failed pass warns, members stay complete.
+- Still to do: **parallelize** the `wbgetentities` passes (currently sequential,
+  ~224 claims calls) — the remaining speed lever; and consider dropping the backbone
+  `SERVICE` label once members are named here.
 
 ## Safety
 
