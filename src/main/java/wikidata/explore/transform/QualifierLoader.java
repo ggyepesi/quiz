@@ -416,18 +416,20 @@ public class QualifierLoader {
         }
         sb.append(" WHERE {\n");
         sb.append("  ").append(SparqlValues.clause(anchorVar, qids)).append("\n");
-        // Explicit allowed values (the categories) pin ?value directly — a tight
-        // two-sided join with the entity batch, and no need for a P31 type filter.
-        if (cfg.hasValueQids()) {
-            sb.append("  ").append(SparqlValues.clause("value", cfg.valueQids()))
-              .append("\n");
-        }
         sb.append("  ?e p:").append(pid).append(" ?st .\n");
         sb.append("  ?st ps:").append(pid).append(" ?value .\n");
-        // Anchored on the entity with only a P31 type (no explicit categories):
-        // filter the value by type. Value-anchored or explicit-category joins
-        // already pin ?value, so no type filter is needed.
-        if (!valueAnchored && cfg.hasValueType() && !cfg.hasValueQids()) {
+        // Pin the value to the allowed categories AFTER it is bound from the
+        // entity's statement, as a FILTER — not a second VALUES driver. A
+        // `VALUES ?value` here lets Blazegraph start from the categories and walk
+        // every nominee of every Oscar category (tens of thousands) before joining
+        // down to the 50-entity batch — the ~2-minute (timeout → split) loads. A
+        // FILTER can't drive the join, so the selective entity batch does.
+        if (cfg.hasValueQids()) {
+            sb.append("  ").append(filterInQids("value", cfg.valueQids()))
+              .append("\n");
+        } else if (!valueAnchored && cfg.hasValueType()) {
+            // Entity-anchored with only a broad P31 type (no explicit categories):
+            // filter the value by type. Value-anchored already pins ?value.
             sb.append("  ?value wdt:P31 wd:").append(cfg.valueTypeQid()).append(" .\n");
         }
         if (cfg.qualifiers() != null) {
@@ -453,5 +455,18 @@ public class QualifierLoader {
         sb.append(wikidata.query.LabelService.service("en"));
         sb.append("}\n");
         return sb.toString();
+    }
+
+    /** {@code FILTER(?var IN (wd:Q…, wd:Q…))} — a post-bind value constraint that
+     *  can't drive the join (so the entity batch stays the driver). */
+    private static String filterInQids(String var, List<String> qids) {
+        StringBuilder in = new StringBuilder();
+        for (String q : qids) {
+            if (in.length() > 0) {
+                in.append(", ");
+            }
+            in.append("wd:").append(q);
+        }
+        return "FILTER(?" + var + " IN (" + in + "))";
     }
 }
