@@ -673,6 +673,9 @@ public class RuleTreeExtractor {
 
         String names = outgoingFields.stream().map(RuleIncludedField::fieldName)
                 .reduce((a, b) -> a + ", " + b).orElse("");
+        int batches = (memberQids.size() + 49) / 50;
+        progress.message("Fetching field(s) [" + names + "] for " + memberQids.size()
+                + " members via wbgetentities (" + batches + " batches, parallel)…\n");
         try {
             Map<String, WikidataApiClient.ApiEntity> details =
                     api().getEntities(memberQids, pids);
@@ -737,6 +740,8 @@ public class RuleTreeExtractor {
                 .map(WikidataDynamicObject::qid)
                 .filter(q -> q != null && q.matches("Q\\d+"))
                 .toList();
+        progress.message("Resolving " + qids.size() + " entity label(s) via "
+                + "wbgetentities (" + ((qids.size() + 49) / 50) + " batches, parallel)…\n");
         try {
             Map<String, WikidataApiClient.ApiEntity> details =
                     api().getEntities(qids, List.of());   // labels only
