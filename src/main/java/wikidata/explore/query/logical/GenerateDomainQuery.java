@@ -201,9 +201,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // its nominee, not the reify "{forWork} — {category}" heuristic).
                     // Applied to the raw pool the snapshot is built from.
                     wikidata.explore.transform.Canonicalization.apply(
-                            project, shared.values(), genLog);
+                            compiledProject, shared.values(), genLog);
                     wikidata.explore.transform.Canonicalization.apply(
-                            project, reified, genLog);
+                            compiledProject, reified, genLog);
 
                     // Companion-match (production = COMPANION_MATCH) boolean fields
                     // (e.g. Nomination.won). Load the sets (network), then match

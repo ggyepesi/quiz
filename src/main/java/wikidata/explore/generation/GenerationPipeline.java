@@ -307,8 +307,8 @@ public class GenerationPipeline {
         // records + their referenced (dated) entities.
         int filled = wikidata.explore.transform.ModelYearProjections.apply(
                 compiledSnapshot, pool, log);
-        wikidata.explore.transform.Canonicalization.apply(snapshot, pool, null);
-        wikidata.explore.transform.Canonicalization.apply(snapshot, reified, null);
+        wikidata.explore.transform.Canonicalization.apply(compiledSnapshot, pool, null);
+        wikidata.explore.transform.Canonicalization.apply(compiledSnapshot, reified, null);
         wikidata.explore.transform.CompanionMatch.applyWithSets(
                 snapshot, reified, rs.companionSets(), null);
 

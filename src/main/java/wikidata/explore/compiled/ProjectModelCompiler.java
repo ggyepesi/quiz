@@ -72,6 +72,7 @@ public final class ProjectModelCompiler {
         CompiledCanonical canonical =
                 compileCanonical(
                         clazz.effectiveCanonical(),
+                        clazz.hasCanonical(),
                         effectiveFields,
                         clazz.className());
 
@@ -140,6 +141,7 @@ public final class ProjectModelCompiler {
 
     private static CompiledCanonical compileCanonical(
             CanonicalSpec source,
+            boolean explicit,
             List<CompiledField> effectiveFields,
             String className) {
 
@@ -196,7 +198,8 @@ public final class ProjectModelCompiler {
                 canonical.displayNameMode(),
                 resolvedDisplayField,
                 canonical.displayNameTemplate(),
-                canonical.labelLanguage());
+                canonical.labelLanguage(),
+                explicit);
     }
 
     private static List<CompiledField> compileFields(

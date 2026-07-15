@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.compiled.ProjectModelCompiler;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldExpectation;
 import wikidata.explore.model.FieldType;
@@ -145,5 +146,43 @@ class CompiledTransformParityTest {
         WikidataDynamicObject n2 = obj("Q2", "n2", "Nomination");
         // no edition (REQUIRED → dropped), no year (EXPECTED → kept)
         return new ArrayList<>(List.of(n1, n2));
+    }
+
+    @Test
+    void canonicalizationRenamesIdentically() {
+        GeneratedProjectModel project = project("canon");
+        project.addClass(new GeneratedClassModel("OscarNominations"));
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        nom.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
+        CanonicalSpec spec = new CanonicalSpec()
+                .kind(CanonicalSpec.Kind.DERIVED)
+                .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
+                .displayNameField("nominee");
+        spec.keyFields().add("nominee");
+        nom.canonical(spec);   // EXPLICIT spec
+        project.addClass(nom);
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+
+        List<WikidataDynamicObject> poolRaw = canonPool();
+        Canonicalization.apply(project, poolRaw, null);
+        List<WikidataDynamicObject> poolCompiled = canonPool();
+        Canonicalization.apply(compiled, poolCompiled, null);
+
+        assertEquals(poolRaw.size(), poolCompiled.size());
+        for (int i = 0; i < poolRaw.size(); i++) {
+            assertEquals(poolRaw.get(i).getDisplayName(),
+                    poolCompiled.get(i).getDisplayName(),
+                    "displayName[" + i + "] must be canonicalized identically");
+        }
+        assertEquals("Valerie Curtin", poolRaw.get(0).getDisplayName(),
+                "the explicit FIELD spec actually renamed to the nominee");
+    }
+
+    private static List<WikidataDynamicObject> canonPool() {
+        WikidataDynamicObject n = obj("Q1", "initial", "Nomination");
+        n.put("nominee", obj("Q9", "Valerie Curtin", "Person"));
+        return new ArrayList<>(List.of(n));
     }
 }

@@ -16,7 +16,8 @@ public record CompiledCanonical(
         CanonicalSpec.DisplayNameMode displayNameMode,
         String displayNameField,
         String displayNameTemplate,
-        String labelLanguage) {
+        String labelLanguage,
+        boolean explicit) {
 
     public CompiledCanonical {
         kind = kind == null ? CanonicalSpec.Kind.WIKIDATA_ENTITY : kind;
@@ -40,6 +41,19 @@ public record CompiledCanonical(
         return kind == CanonicalSpec.Kind.DERIVED;
     }
 
+    /** Rebuilds an editable {@link CanonicalSpec} (for reuse with
+     *  {@code Canonicalizer}, which is spec-typed). */
+    public CanonicalSpec toSpec() {
+        CanonicalSpec spec = new CanonicalSpec()
+                .kind(kind)
+                .displayNameMode(displayNameMode)
+                .displayNameField(displayNameField)
+                .displayNameTemplate(displayNameTemplate)
+                .labelLanguage(labelLanguage);
+        spec.keyFields().addAll(keyFields);
+        return spec;
+    }
+
     public static CompiledCanonical from(CanonicalSpec spec) {
         CanonicalSpec source = spec == null ? new CanonicalSpec() : spec;
         return new CompiledCanonical(
@@ -48,7 +62,8 @@ public record CompiledCanonical(
                 source.displayNameMode(),
                 source.displayNameField(),
                 source.displayNameTemplate(),
-                source.labelLanguage());
+                source.labelLanguage(),
+                false);
     }
 
     private static String clean(String value) {
