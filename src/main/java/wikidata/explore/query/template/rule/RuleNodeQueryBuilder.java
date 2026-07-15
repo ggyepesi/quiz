@@ -319,7 +319,14 @@ public final class RuleNodeQueryBuilder {
         // rows (not inline in the inner scan).
         String outer = outerSb.toString()
                 + (serviceValueLabel ? labelService(labelLanguage(node)) : "");
-        return prefix + namedSubquerySort(q.build(), outer, "valueLabel");
+        // Don't ORDER BY a SERVICE-resolved label: sorting forces WDQS to resolve
+        // ALL of the (~11k for P1411 nominees) labels and materialise before
+        // emitting a row, tipping the query over the timeout. The LIMIT already ran
+        // inside %limited and the pool is QID-keyed, so leave the SERVICE-labelled
+        // rows unordered (streaming). An inline-labelled value stays ordered — that
+        // path is the small membership where the sort is cheap.
+        String orderVar = serviceValueLabel ? "" : "valueLabel";
+        return prefix + namedSubquerySort(q.build(), outer, orderVar);
     }
 
     /**
@@ -563,6 +570,11 @@ public final class RuleNodeQueryBuilder {
             String orderVar) {
 
         String outer = outerPatterns == null ? "" : outerPatterns;
+        // Blank orderVar → no ORDER BY: the LIMIT already ran inside %limited, so
+        // ordering is cosmetic for a QID-keyed pool; skipping it lets a
+        // SERVICE-labelled result stream instead of resolve-all-then-sort.
+        String orderBy = orderVar == null || orderVar.isBlank()
+                ? "" : "ORDER BY ?" + orderVar + "\n";
         return "SELECT *\n"
                 + "WITH {\n"
                 + innerQuery.indent(2)
@@ -570,7 +582,7 @@ public final class RuleNodeQueryBuilder {
                 + "WHERE {\n  INCLUDE %limited .\n"
                 + outer
                 + "}\n"
-                + "ORDER BY ?" + orderVar + "\n";
+                + orderBy;
     }
 
     /** Preview of the runtime batched child query (the one actually executed),
