@@ -391,7 +391,7 @@ public class RuleTreeExtractor {
     //   memberFieldBatchSize — members per slice-2 direct-field row query.
     //   labelBatchSize — QIDs per slice-3 label-resolution batch.
     private int membershipTargetBatchSize = 10;
-    private int memberFieldBatchSize = 250;
+    private int memberFieldBatchSize = 100;
     private int labelBatchSize = 500;
 
     public RuleTreeExtractor membershipTargetBatchSize(int n) {

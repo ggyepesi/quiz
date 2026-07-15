@@ -47,7 +47,7 @@ For a large relational membership:
 4. Materialize any field **semantically equivalent to the membership target**
    directly from that edge map (canonical registry refs, deduped, in order).
 5. Compile every **remaining** multivalued direct entity field into its own
-   member-batched row query (`memberFieldBatchSize`, default 250).
+   member-batched row query (`memberFieldBatchSize`, default 100).
 6. Resolve all distinct qids through one shared best-effort **label cache**,
    preferably `wbgetentities` (`labelBatchSize`, default 500) — relationships come
    from SPARQL, entity labels from `wbgetentities`.
@@ -89,7 +89,7 @@ For each still-inlined entity-list field, member-batched
 (`RuleNodeQueryBuilder.memberFieldBatchQuery` + `RuleTreeExtractor.captureMemberFields`):
 
 - `SELECT DISTINCT ?value ?fieldValue WHERE { VALUES ?value { <member batch of
-  memberFieldBatchSize=250> } ?value wdt:P31 ?fieldValue }` — `DISTINCT` is fine when
+  memberFieldBatchSize=100> } ?value wdt:P31 ?fieldValue }` — `DISTINCT` is fine when
   cheap; `merge` onto the canonical registry member is the final duplicate guard
   (dedup + insertion order). The field's own direction places `?value` on the correct
   end, and a field type constraint (`membershipQid`) is emitted so values match the
