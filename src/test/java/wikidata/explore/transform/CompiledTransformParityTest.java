@@ -7,6 +7,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldExpectation;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -184,5 +185,33 @@ class CompiledTransformParityTest {
         WikidataDynamicObject n = obj("Q1", "initial", "Nomination");
         n.put("nominee", obj("Q9", "Valerie Curtin", "Person"));
         return new ArrayList<>(List.of(n));
+    }
+
+    @Test
+    void modelInvertDerivationMatches() {
+        GeneratedProjectModel project = project("inv");
+        GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
+        GeneratedFieldModel cats = src.addField(
+                "categories", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        cats.entityClassName("Category");
+        cats.mapping().propertyPid("P1411");
+        project.addClass(src);
+
+        GeneratedClassModel cat = new GeneratedClassModel("Category");
+        GeneratedFieldModel noms = cat.addField(
+                "nominees", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        noms.entityClassName("OscarNominations");
+        noms.mapping().productionKind(FieldProductionKind.INVERT);   // the reverse ref
+        noms.mapping().propertyPid("P1411");
+        project.addClass(cat);
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+
+        assertEquals(
+                ModelInverts.derive(project),
+                ModelInverts.derive(compiled),
+                "the invert construct list must be identical");
+        assertEquals(1, ModelInverts.derive(compiled).size(),
+                "it actually found the Category.nominees <- OscarNominations.categories invert");
     }
 }

@@ -183,7 +183,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // references already in the pool (e.g. Category.nominees =
                     // reverse of Oscarnominations.categories) — no query, no depth.
                     wikidata.explore.transform.ModelInverts.apply(
-                            project, shared.values(), genLog);
+                            compiledProject, shared.values(), genLog);
 
                     // Year projections (a DATE field overlaid from a referent's date,
                     // e.g. Nomination.year <- YEAR(edition.date)) — a field-level

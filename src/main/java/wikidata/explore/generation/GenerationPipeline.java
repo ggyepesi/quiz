@@ -301,7 +301,7 @@ public class GenerationPipeline {
 
         // Compiled-model transforms (parity-proven); the rest still read raw.
         wikidata.explore.transform.FieldValueRestrictions.apply(compiledSnapshot, pool);
-        wikidata.explore.transform.ModelInverts.apply(snapshot, pool, null);
+        wikidata.explore.transform.ModelInverts.apply(compiledSnapshot, pool, null);
         // Year projections (e.g. Nomination.year <- YEAR(edition.date)) — same
         // transform stage as the generate path; pool already holds the reified
         // records + their referenced (dated) entities.

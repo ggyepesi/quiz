@@ -1,5 +1,8 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.compiled.CompiledClass;
+import wikidata.explore.compiled.CompiledField;
+import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldProductionKind;
@@ -29,7 +32,19 @@ public final class ModelInverts {
     public static void apply(GeneratedProjectModel project,
                              Collection<WikidataDynamicObject> pool,
                              GenerationLog log) {
-        List<InvertConstruct> inverts = derive(project);
+        apply(derive(project), pool, log);
+    }
+
+    /** Compiled-model overload — same invert application, compiled derivation. */
+    public static void apply(CompiledProjectModel project,
+                             Collection<WikidataDynamicObject> pool,
+                             GenerationLog log) {
+        apply(derive(project), pool, log);
+    }
+
+    private static void apply(List<InvertConstruct> inverts,
+                              Collection<WikidataDynamicObject> pool,
+                              GenerationLog log) {
         if (inverts.isEmpty()) {
             return;
         }
@@ -74,6 +89,56 @@ public final class ModelInverts {
             }
         }
         return out;
+    }
+
+    /** Compiled-model overload of {@link #derive(GeneratedProjectModel)}. The
+     *  compiled entityClassName is already resolved to the actual class name, so
+     *  the source lookup and forward-field match are on resolved names. */
+    public static List<InvertConstruct> derive(CompiledProjectModel project) {
+        List<InvertConstruct> out = new ArrayList<>();
+        if (project == null) {
+            return out;
+        }
+        for (CompiledClass target : project.classes()) {
+            for (CompiledField back : target.ownFields()) {
+                if (back.source().productionKind() != FieldProductionKind.INVERT) {
+                    continue;
+                }
+                String sourceType = back.entityClassName();   // resolved class S
+                if (sourceType.isBlank()) {
+                    continue;
+                }
+                CompiledClass src = project.findClass(sourceType).orElse(null);
+                if (src == null) {
+                    continue;
+                }
+                String refField = forwardField(src, target.className(),
+                        clean(back.source().propertyPid()));
+                if (refField == null) {
+                    continue;
+                }
+                out.add(new InvertConstruct(
+                        src.className(), refField, target.className(), back.name()));
+            }
+        }
+        return out;
+    }
+
+    private static String forwardField(CompiledClass src,
+                                       String targetClass, String pid) {
+        String byProperty = null;
+        String byClassOnly = null;
+        for (CompiledField f : src.ownFields()) {
+            if (!targetClass.equals(f.entityClassName())) {
+                continue;
+            }
+            if (!pid.isBlank() && pid.equals(clean(f.source().propertyPid()))) {
+                byProperty = f.name();
+            } else if (byClassOnly == null) {
+                byClassOnly = f.name();
+            }
+        }
+        return byProperty != null ? byProperty : byClassOnly;
     }
 
     /** The forward field on {@code src} that references {@code targetClass} via the
