@@ -60,6 +60,7 @@ public final class CompanionLoader {
         try (GenerationLog.Group g = sink.group("Companion load "
                 + companionProperty + "/" + roleQualifier
                 + " (" + values.size() + " values)")) {
+            int total = (values.size() + BATCH - 1) / BATCH;
             int n = 0;
             for (int from = 0; from < values.size(); from += BATCH) {
                 if (Thread.currentThread().isInterrupted()) {
@@ -69,7 +70,7 @@ public final class CompanionLoader {
                 List<String> batch = new ArrayList<>(values.subList(
                         from, Math.min(from + BATCH, values.size())));
                 loadWithSplit(batch, companionProperty, roleQualifier,
-                        client, g, out, String.valueOf(++n));
+                        client, g, out, (++n) + "/" + total);
             }
             g.message("Companion load " + companionProperty + "/" + roleQualifier
                     + " -> " + out.size() + " (subject,value,role) tuples\n");
