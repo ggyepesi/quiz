@@ -318,6 +318,99 @@ public class WikidataApiClient {
     }
 
     // ------------------------------------------------------------------
+    // wbgetentities by QID — labels (+ selected claim PIDs as entity-QID lists)
+    // ------------------------------------------------------------------
+
+    /**
+     * One entity as returned by {@link #getEntities}: its English label (blank if
+     * absent) and, for each requested claim PID, the list of entity-QID values (in
+     * document order, deprecated-rank statements skipped).
+     */
+    public record ApiEntity(
+            String qid,
+            String label,
+            Map<String, List<String>> claimEntityQids) {
+
+        /** The entity-QID values for a claim PID (empty if absent). */
+        public List<String> claim(String pid) {
+            return claimEntityQids.getOrDefault(pid, List.of());
+        }
+    }
+
+    /**
+     * Resolves entities by QID through the {@code wbgetentities} action API, in
+     * batches of 50 (the API limit). Always returns English labels; when
+     * {@code claimPids} is non-empty, {@code props=claims} is requested and each
+     * listed PID's entity-QID values are extracted. This is the reliable,
+     * non-SPARQL path for labels + outgoing entity claims (no query-engine timeout,
+     * no full-index scan) — see docs/extraction-batched-membership.md, slice 3.
+     */
+    public Map<String, ApiEntity> getEntities(
+            List<String> qids, List<String> claimPids) throws Exception {
+
+        Map<String, ApiEntity> out = new LinkedHashMap<>();
+        if (qids == null) return out;
+        List<String> pids = claimPids == null ? List.of() : claimPids;
+        List<String> clean = qids.stream()
+                .filter(q -> q != null && q.matches("Q\\d+"))
+                .distinct()
+                .toList();
+
+        for (int i = 0; i < clean.size(); i += 50) {
+            List<String> batch = clean.subList(i, Math.min(i + 50, clean.size()));
+            parseEntities(getEntitiesBatch(batch, !pids.isEmpty()), pids, out);
+        }
+        return out;
+    }
+
+    private JsonNode getEntitiesBatch(
+            List<String> qids, boolean withClaims) throws Exception {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("action",    "wbgetentities");
+        params.put("ids",       String.join("%7C", qids));
+        params.put("props",     withClaims ? "labels%7Cclaims" : "labels");
+        params.put("languages", "en");
+        params.put("format",    "json");
+        return get(WIKIDATA_API, params);
+    }
+
+    // Visible for WbGetEntitiesParseTest.
+    static void parseEntities(
+            JsonNode root, List<String> claimPids, Map<String, ApiEntity> out) {
+        root.path("entities").fields().forEachRemaining(entry -> {
+            JsonNode entity = entry.getValue();
+            if (entity.has("missing")) return;
+            String qid = entity.path("id").asText("");
+            if (!qid.matches("Q\\d+")) return;
+
+            String label = entity.path("labels").path("en").path("value").asText("");
+
+            Map<String, List<String>> claims = new LinkedHashMap<>();
+            for (String pid : claimPids) {
+                List<String> vals = entityQids(entity.path("claims").path(pid));
+                if (!vals.isEmpty()) claims.put(pid, vals);
+            }
+            out.put(qid, new ApiEntity(qid, label, claims));
+        });
+    }
+
+    /** Every entity-QID value in a claims array, in order, skipping deprecated. */
+    private static List<String> entityQids(JsonNode claimsArray) {
+        if (!claimsArray.isArray()) return List.of();
+        List<String> out = new ArrayList<>();
+        for (JsonNode claim : claimsArray) {
+            if ("deprecated".equals(claim.path("rank").asText())) continue;
+            JsonNode val = claim.path("mainsnak").path("datavalue").path("value");
+            String id = val.path("id").asText("");
+            if (id.isBlank() && val.has("numeric-id")) {
+                id = "Q" + val.path("numeric-id").asText();
+            }
+            if (id.matches("Q\\d+")) out.add(id);
+        }
+        return out;
+    }
+
+    // ------------------------------------------------------------------
     // Result record
     // ------------------------------------------------------------------
 
