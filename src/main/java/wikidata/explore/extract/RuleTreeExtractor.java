@@ -674,13 +674,12 @@ public class RuleTreeExtractor {
         String names = outgoingFields.stream().map(RuleIncludedField::fieldName)
                 .reduce((a, b) -> a + ", " + b).orElse("");
         int batches = (memberQids.size() + 49) / 50;
-        progress.message("Fetching field(s) [" + names + "] for " + memberQids.size()
-                + " members via wbgetentities (" + batches + " batches, parallel)…\n");
-        try {
+        try (GenerationLog.Group g = progress.group("wbgetentities [" + names + "] — "
+                + memberQids.size() + " members, " + batches + " batches")) {
             Map<String, WikidataApiClient.ApiEntity> details =
-                    api().getEntities(memberQids, pids);
+                    api().getEntities(memberQids, pids, g::subquery);
             int filled = applyEntityClaims(members, outgoingFields, details);
-            progress.message("Fetched field(s) [" + names + "] for " + filled + "/"
+            g.message("Fetched field(s) [" + names + "] for " + filled + "/"
                     + memberQids.size() + " members via wbgetentities.\n");
         } catch (Exception e) {
             if (Thread.currentThread().isInterrupted()) return;
@@ -740,13 +739,12 @@ public class RuleTreeExtractor {
                 .map(WikidataDynamicObject::qid)
                 .filter(q -> q != null && q.matches("Q\\d+"))
                 .toList();
-        progress.message("Resolving " + qids.size() + " entity label(s) via "
-                + "wbgetentities (" + ((qids.size() + 49) / 50) + " batches, parallel)…\n");
-        try {
+        try (GenerationLog.Group g = progress.group("wbgetentities labels — "
+                + qids.size() + " refs, " + ((qids.size() + 49) / 50) + " batches")) {
             Map<String, WikidataApiClient.ApiEntity> details =
-                    api().getEntities(qids, List.of());   // labels only
+                    api().getEntities(qids, List.of(), g::subquery);   // labels only
             int filled = applyLabels(placeholders, details);
-            progress.message("Resolved " + filled + "/" + placeholders.size()
+            g.message("Resolved " + filled + "/" + placeholders.size()
                     + " entity label(s) via wbgetentities.\n");
         } catch (Exception e) {
             if (Thread.currentThread().isInterrupted()) return;

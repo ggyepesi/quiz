@@ -350,12 +350,28 @@ public class WikidataApiClient {
      * non-SPARQL path for labels + outgoing entity claims (no query-engine timeout,
      * no full-index scan) — see docs/extraction-batched-membership.md, slice 3.
      */
+    /** Per-batch log hook so a caller (e.g. the generation query log) can show each
+     *  wbgetentities request as a structured entry. All three args are the request
+     *  title, the request URL, and a completion summary ("N entities (ms)"/"FAILED…").
+     *  Invoked from the fan-out threads — the sink must tolerate concurrency. */
+    @FunctionalInterface
+    public interface BatchLog {
+        void logged(String title, String request, String summary);
+    }
+
     public Map<String, ApiEntity> getEntities(
             List<String> qids, List<String> claimPids) throws Exception {
+        return getEntities(qids, claimPids, null);
+    }
+
+    public Map<String, ApiEntity> getEntities(
+            List<String> qids, List<String> claimPids, BatchLog batchLog)
+            throws Exception {
 
         Map<String, ApiEntity> out = new ConcurrentHashMap<>();
         if (qids == null) return out;
         List<String> pids = claimPids == null ? List.of() : claimPids;
+        boolean withClaims = !pids.isEmpty();
         List<String> clean = qids.stream()
                 .filter(q -> q != null && q.matches("Q\\d+"))
                 .distinct()
@@ -366,6 +382,9 @@ public class WikidataApiClient {
         for (int i = 0; i < clean.size(); i += 50) {
             batches.add(clean.subList(i, Math.min(i + 50, clean.size())));
         }
+        int total = batches.size();
+        java.util.concurrent.atomic.AtomicInteger done =
+                new java.util.concurrent.atomic.AtomicInteger();
 
         // The action API tolerates modest concurrency far better than WDQS did, so
         // fan the 50-QID batches out over a small pool. Per-batch best-effort with a
@@ -377,8 +396,25 @@ public class WikidataApiClient {
             List<Future<?>> futures = new ArrayList<>();
             for (List<String> batch : batches) {
                 futures.add(pool.submit(() -> {
-                    parseEntities(getEntitiesBatchWithRetry(batch, !pids.isEmpty()),
-                            pids, out);
+                    String url = entitiesUrl(batch, withClaims);
+                    long t0 = System.nanoTime();
+                    try {
+                        JsonNode root = getEntitiesBatchWithRetry(batch, withClaims);
+                        int before = out.size();
+                        parseEntities(root, pids, out);
+                        if (batchLog != null) {
+                            batchLog.logged("wbgetentities " + done.incrementAndGet()
+                                    + "/" + total, url, (out.size() - before)
+                                    + " entities (" + ms(t0) + " ms)");
+                        }
+                    } catch (Exception e) {
+                        if (batchLog != null) {
+                            batchLog.logged("wbgetentities " + done.incrementAndGet()
+                                    + "/" + total, url, "FAILED: " + e.getMessage()
+                                    + " (" + ms(t0) + " ms)");
+                        }
+                        throw e;
+                    }
                     return null;
                 }));
             }
@@ -398,6 +434,17 @@ public class WikidataApiClient {
             pool.shutdown();
         }
         return out;
+    }
+
+    private static long ms(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
+    }
+
+    // The request as issued, with readable (decoded) pipes — for the query log.
+    private static String entitiesUrl(List<String> qids, boolean withClaims) {
+        return WIKIDATA_API + "?action=wbgetentities&ids=" + String.join("|", qids)
+                + "&props=" + (withClaims ? "labels|claims" : "labels")
+                + "&languages=en&format=json";
     }
 
     private static final int GET_ENTITIES_CONCURRENCY = 6;
