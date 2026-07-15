@@ -130,5 +130,14 @@ class MembershipTargetCaptureTest {
                 "backbone SELECTs the root:\n" + backbone);
         assertFalse(plain.contains("?value ?root"),
                 "plain values query does not SELECT the root:\n" + plain);
+
+        // Flat + VALUES-first + label-free: the optimizer hint precedes the VALUES,
+        // and there is no SERVICE label (the old soft-timeout under load).
+        int hintAt = backbone.indexOf("hint:Query hint:optimizer");
+        int valuesAt = backbone.indexOf("VALUES ?root");
+        assertTrue(hintAt >= 0 && hintAt < valuesAt,
+                "optimizer hint precedes VALUES:\n" + backbone);
+        assertFalse(backbone.contains("SERVICE"),
+                "backbone fetches QIDs only, no SERVICE label:\n" + backbone);
     }
 }

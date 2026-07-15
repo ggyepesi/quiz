@@ -22,7 +22,7 @@ public final class RuleNodeQueryBuilder {
     private RuleNodeQueryBuilder() {}
 
     public static String valuesQuery(RuleNode node) {
-        return valuesQueryForNode(node, node.sourceQid(), List.of(), false);
+        return valuesQueryForNode(node, node.sourceQid(), List.of(), false, false);
     }
 
     /**
@@ -30,11 +30,54 @@ public final class RuleNodeQueryBuilder {
      * {@linkplain #membershipTargetFields target} field is captured from the same
      * join (one query per batch, not a second request): the multi-QID branch already
      * binds {@code ?value <pid> ?root}, so it adds {@code ?root} to the SELECT and
-     * the outer {@code SELECT *} carries it out. The SERVICE label still labels only
-     * {@code ?value}; {@code ?root} rides as a bare QID (labels resolved separately).
+     * the outer {@code SELECT *} carries it out. NO label — the SERVICE label over
+     * the thousands of members in a root batch is the borderline cost that soft-times-
+     * out under WDQS load, so the backbone fetches QIDs only and the members (and
+     * roots) are named later via the reliable wbgetentities pass.
      */
     public static String membershipBackboneQuery(RuleNode node) {
-        return valuesQueryForNode(node, node.sourceQid(), List.of(), true);
+        return flatBackboneQuery(node, true);
+    }
+
+    /**
+     * A label-free membership backbone WITHOUT root capture — for a large membership
+     * that has no {@linkplain #membershipTargetFields target} field. Same reason as
+     * {@link #membershipBackboneQuery}: QIDs only, labels via wbgetentities.
+     */
+    public static String membershipBackboneQueryNoLabel(RuleNode node) {
+        return flatBackboneQuery(node, false);
+    }
+
+    /**
+     * The flat membership backbone: {@code SELECT ?value [?root]} with a VALUES-first
+     * join order and no label / no wrapper. The {@code hint:Query hint:optimizer
+     * "None"} is essential — the membership predicate (e.g. P1411 "nominated for") is
+     * generic across all of Wikidata, so without it Blazegraph scans the predicate
+     * before applying the root VALUES and soft-times-out; the hint binds the batch of
+     * roots FIRST, then looks up the predicate per root (measured: lightning fast).
+     * QIDs only — no SERVICE label over the thousands of members in a batch (the old
+     * timeout) — the members and roots are named later via wbgetentities. Membership
+     * filters (type, sitelink, allow/exclude, value filters) are preserved.
+     */
+    private static String flatBackboneQuery(RuleNode node, boolean captureRoot) {
+        String pid = RuleNode.cleanPid(node.propertyPid());
+        WikidataQueryBuilder q = new WikidataQueryBuilder();
+        q.distinct(true);
+        q.select("value");
+        if (captureRoot) q.select("root");
+        java.util.Map<String, String> sharedVars = sharedFilterVars(node, List.of(), "");
+        appendValueFilterSelects(q, node, sharedVars.keySet());
+        q.rawWhere("hint:Query hint:optimizer \"None\" .");
+        q.valuesQids("root", node.allSourceQids());
+        q.rawWhere(node.direction().triplePattern("?root", "?value", pid));
+        appendMembershipFilter(q, node);
+        appendSitelinkRequirement(q, node);
+        appendAllowedQids(q, node);
+        appendExcludedQids(q, node);
+        appendPredicateObjectExclusions(q, node);
+        appendValueFilterPatterns(q, node, sharedVars);
+        q.limit(node.limit());
+        return q.build();
     }
 
     /**
@@ -85,7 +128,7 @@ public final class RuleNodeQueryBuilder {
 
     public static String valuesQueryForSpecificParent(
             RuleNode node, String parentQid) {
-        return valuesQueryForNode(node, parentQid, List.of(), false);
+        return valuesQueryForNode(node, parentQid, List.of(), false, false);
     }
 
     public static String fieldOptimizedValuesQuery(RuleNode node) {
@@ -95,7 +138,7 @@ public final class RuleNodeQueryBuilder {
             return valuesQuery(node);
         }
 
-        return valuesQueryForNode(node, node.sourceQid(), inlined, false);
+        return valuesQueryForNode(node, node.sourceQid(), inlined, false, false);
     }
 
     public static List<RuleIncludedField> simpleInlinedFields(RuleNode node) {
@@ -219,7 +262,8 @@ public final class RuleNodeQueryBuilder {
             RuleNode node,
             String rootQidOrVar,
             List<RuleIncludedField> inlinedFields,
-            boolean selectMembershipRoot) {
+            boolean selectMembershipRoot,
+            boolean skipValueLabel) {
 
         // Two or more inlined (GROUP_CONCAT) fields stacked in ONE grouped subquery
         // cross-product each other per value (e.g. types × award targets), which is
@@ -293,7 +337,7 @@ public final class RuleNodeQueryBuilder {
         boolean grouped = !inlinedFields.isEmpty();
 
         q.select("value");
-        if (!useService && !serviceValueLabel) q.select("valueLabel");
+        if (!useService && !serviceValueLabel && !skipValueLabel) q.select("valueLabel");
         appendValueFilterSelects(q, node, sharedVars.keySet());
         if (grouped) {
             appendGroupedScalarSelects(q, node, selectSkip, !useService);
@@ -379,7 +423,8 @@ public final class RuleNodeQueryBuilder {
         // Skip the label pattern for the empty case — with ?value bound to the
         // empty set it would add nothing, but emitting it invites a full label
         // scan if a planner ignores the empty VALUES.
-        if (!useService && !serviceValueLabel && !emptyResult) appendLabelPattern(q, node);
+        if (!useService && !serviceValueLabel && !emptyResult && !skipValueLabel)
+            appendLabelPattern(q, node);
 
         if (node.hasRank()) {
             // Class-level importance ranking: keep the top `limit` by a measure.
@@ -425,7 +470,8 @@ public final class RuleNodeQueryBuilder {
         // When the value label is SERVICE-labelled, bind it over the bounded outer
         // rows (not inline in the inner scan).
         String outer = outerSb.toString()
-                + (serviceValueLabel ? labelService(labelLanguage(node)) : "");
+                + (serviceValueLabel && !skipValueLabel
+                        ? labelService(labelLanguage(node)) : "");
         // Don't ORDER BY a SERVICE-resolved label: sorting forces WDQS to resolve
         // ALL of the (~11k for P1411 nominees) labels and materialise before
         // emitting a row, tipping the query over the timeout. The LIMIT already ran

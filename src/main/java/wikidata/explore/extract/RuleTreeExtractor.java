@@ -506,7 +506,7 @@ public class RuleTreeExtractor {
             batch.forEach(backbone::addAdditionalSourceQid);
             String sparql = capture
                     ? RuleNodeQueryBuilder.membershipBackboneQuery(backbone)
-                    : RuleNodeQueryBuilder.valuesQuery(backbone);
+                    : RuleNodeQueryBuilder.membershipBackboneQueryNoLabel(backbone);
             List<WikidataDynamicObject> part = runRootQuery(
                     "Root membership (backbone " + (++n) + "/" + total + ")",
                     sparql, progress,
