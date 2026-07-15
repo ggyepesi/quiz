@@ -400,11 +400,10 @@ public class WikidataApiClient {
                     long t0 = System.nanoTime();
                     try {
                         JsonNode root = getEntitiesBatchWithRetry(batch, withClaims);
-                        int before = out.size();
-                        parseEntities(root, pids, out);
+                        int n = parseEntities(root, pids, out);
                         if (batchLog != null) {
                             batchLog.logged("wbgetentities " + done.incrementAndGet()
-                                    + "/" + total, url, (out.size() - before)
+                                    + "/" + total, url, n + "/" + batch.size()
                                     + " entities (" + ms(t0) + " ms)");
                         }
                     } catch (Exception e) {
@@ -444,7 +443,7 @@ public class WikidataApiClient {
     private static String entitiesUrl(List<String> qids, boolean withClaims) {
         return WIKIDATA_API + "?action=wbgetentities&ids=" + String.join("|", qids)
                 + "&props=" + (withClaims ? "labels|claims" : "labels")
-                + "&languages=en&format=json";
+                + "&languages=en|mul&format=json";
     }
 
     private static final int GET_ENTITIES_CONCURRENCY = 6;
@@ -475,14 +474,20 @@ public class WikidataApiClient {
         params.put("action",    "wbgetentities");
         params.put("ids",       String.join("%7C", qids));
         params.put("props",     withClaims ? "labels%7Cclaims" : "labels");
-        params.put("languages", "en");
+        // en + mul (the language-agnostic label) so an item without an English label
+        // still resolves to a name instead of staying a QID — matches the SPARQL
+        // SERVICE "en,mul".
+        params.put("languages", "en%7Cmul");
         params.put("format",    "json");
         return get(WIKIDATA_API, params);
     }
 
-    // Visible for WbGetEntitiesParseTest.
-    static void parseEntities(
+    // Visible for WbGetEntitiesParseTest. Returns the number of entities parsed from
+    // THIS response (accurate under concurrency — the shared map's size can't be used
+    // as a per-batch count when batches run in parallel).
+    static int parseEntities(
             JsonNode root, List<String> claimPids, Map<String, ApiEntity> out) {
+        int[] parsed = {0};
         root.path("entities").fields().forEachRemaining(entry -> {
             JsonNode entity = entry.getValue();
             if (entity.has("missing")) return;
@@ -490,6 +495,9 @@ public class WikidataApiClient {
             if (!qid.matches("Q\\d+")) return;
 
             String label = entity.path("labels").path("en").path("value").asText("");
+            if (label.isBlank()) {
+                label = entity.path("labels").path("mul").path("value").asText("");
+            }
 
             Map<String, List<String>> claims = new LinkedHashMap<>();
             for (String pid : claimPids) {
@@ -497,7 +505,9 @@ public class WikidataApiClient {
                 if (!vals.isEmpty()) claims.put(pid, vals);
             }
             out.put(qid, new ApiEntity(qid, label, claims));
+            parsed[0]++;
         });
+        return parsed[0];
     }
 
     /** Every entity-QID value in a claims array, in order, skipping deprecated. */
