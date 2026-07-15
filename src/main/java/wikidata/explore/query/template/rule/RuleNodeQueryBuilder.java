@@ -450,7 +450,13 @@ public final class RuleNodeQueryBuilder {
         // Label the bounded ?value set here (not inline in the base) — cheap over
         // the ≤ limit rows, and it can't force a full-class label scan.
         sb.append(labelService(labelLanguage(node)));
-        sb.append("}\nORDER BY ?valueLabel\n");
+        // No outer ORDER BY: the LIMIT already lives inside %values, so ordering
+        // here is purely cosmetic — but ORDER BY ?valueLabel forces WDQS to resolve
+        // ALL of the (≤ limit, ~11k for P1411 nominees) SERVICE labels and globally
+        // sort before emitting a row, which tips the query over the timeout. The
+        // pool is keyed by QID and the app sorts/canonicalizes later, so stream it
+        // unordered instead.
+        sb.append("}\n");
         return sb.toString();
     }
 
