@@ -371,12 +371,49 @@ public class WikidataApiClient {
         Map<String, ApiEntity> out = new ConcurrentHashMap<>();
         if (qids == null) return out;
         List<String> pids = claimPids == null ? List.of() : claimPids;
-        boolean withClaims = !pids.isEmpty();
+        runBatched(qids, !pids.isEmpty(), batchLog,
+                root -> parseEntities(root, pids, out));
+        return out;
+    }
+
+    /**
+     * Per entity QID, its statements for {@code statementPid} — each carrying the
+     * mainsnak value and the requested {@code qualifierPids}' raw values. This is the
+     * reliable, non-SPARQL source for reification: the same statement+qualifier data
+     * a {@code ?e p:Pxxx ?st . ?st ps:Pxxx ?value . OPTIONAL {?st pq:Pyyy ?q}} query
+     * returns, read straight off the wbgetentities claims (which carry qualifiers).
+     * QIDs only — the value/qualifier entity labels are resolved separately.
+     */
+    public Map<String, List<ApiStatement>> getStatements(
+            List<String> entityQids, String statementPid,
+            List<String> qualifierPids, BatchLog batchLog) throws Exception {
+
+        Map<String, List<ApiStatement>> out = new ConcurrentHashMap<>();
+        if (entityQids == null || statementPid == null || statementPid.isBlank()) {
+            return out;
+        }
+        List<String> quals = qualifierPids == null ? List.of() : qualifierPids;
+        runBatched(entityQids, true, batchLog,
+                root -> parseStatements(root, statementPid, quals, out));
+        return out;
+    }
+
+    /**
+     * Fans the 50-QID batches out over a small pool (the action API tolerates modest
+     * concurrency far better than WDQS did) and lets {@code handle} parse each
+     * response into a thread-safe accumulator, returning that batch's parsed count
+     * for the log. Per-batch best-effort with a short retry: a transient failure
+     * drops only that batch, never the whole pass.
+     */
+    private void runBatched(
+            List<String> qids, boolean withClaims, BatchLog batchLog,
+            java.util.function.ToIntFunction<JsonNode> handle) throws Exception {
+
         List<String> clean = qids.stream()
                 .filter(q -> q != null && q.matches("Q\\d+"))
                 .distinct()
                 .toList();
-        if (clean.isEmpty()) return out;
+        if (clean.isEmpty()) return;
 
         List<List<String>> batches = new ArrayList<>();
         for (int i = 0; i < clean.size(); i += 50) {
@@ -386,10 +423,6 @@ public class WikidataApiClient {
         java.util.concurrent.atomic.AtomicInteger done =
                 new java.util.concurrent.atomic.AtomicInteger();
 
-        // The action API tolerates modest concurrency far better than WDQS did, so
-        // fan the 50-QID batches out over a small pool. Per-batch best-effort with a
-        // short retry: a transient failure drops only that batch (its members keep
-        // their qid label / unfilled field), never the whole pass.
         ExecutorService pool = Executors.newFixedThreadPool(
                 Math.min(GET_ENTITIES_CONCURRENCY, batches.size()));
         try {
@@ -400,7 +433,7 @@ public class WikidataApiClient {
                     long t0 = System.nanoTime();
                     try {
                         JsonNode root = getEntitiesBatchWithRetry(batch, withClaims);
-                        int n = parseEntities(root, pids, out);
+                        int n = handle.applyAsInt(root);
                         if (batchLog != null) {
                             batchLog.logged("wbgetentities " + done.incrementAndGet()
                                     + "/" + total, url, n + "/" + batch.size()
@@ -423,7 +456,7 @@ public class WikidataApiClient {
                 } catch (InterruptedException e) {
                     pool.shutdownNow();
                     Thread.currentThread().interrupt();
-                    return out;
+                    return;
                 } catch (ExecutionException e) {
                     log.accept("[API] wbgetentities batch failed: "
                             + e.getCause().getMessage() + "\n");
@@ -432,7 +465,6 @@ public class WikidataApiClient {
         } finally {
             pool.shutdown();
         }
-        return out;
     }
 
     private static long ms(long startNanos) {
@@ -524,6 +556,90 @@ public class WikidataApiClient {
             if (id.matches("Q\\d+")) out.add(id);
         }
         return out;
+    }
+
+    /**
+     * One statement of a claim: the mainsnak value (entity QID or literal) and, per
+     * requested qualifier PID, the qualifier snaks' raw values. {@code id} is the
+     * statement GUID (its reified identity).
+     */
+    public record ApiStatement(
+            String id,
+            String value,
+            Map<String, List<String>> qualifiers) {
+
+        /** The raw values of a qualifier PID (empty if absent). */
+        public List<String> qualifier(String pid) {
+            return qualifiers.getOrDefault(pid, List.of());
+        }
+    }
+
+    // Visible for WbGetEntitiesParseTest. Returns the number of entities that had at
+    // least one non-deprecated statement for statementPid.
+    static int parseStatements(
+            JsonNode root, String statementPid, List<String> qualifierPids,
+            Map<String, List<ApiStatement>> out) {
+        int[] n = {0};
+        root.path("entities").fields().forEachRemaining(entry -> {
+            JsonNode entity = entry.getValue();
+            if (entity.has("missing")) return;
+            String qid = entity.path("id").asText("");
+            if (!qid.matches("Q\\d+")) return;
+
+            JsonNode claims = entity.path("claims").path(statementPid);
+            if (!claims.isArray() || claims.isEmpty()) return;
+
+            List<ApiStatement> stmts = new ArrayList<>();
+            for (JsonNode claim : claims) {
+                if ("deprecated".equals(claim.path("rank").asText())) continue;
+                String value = snakValue(claim.path("mainsnak").path("datavalue"));
+                if (value == null) continue;
+
+                Map<String, List<String>> quals = new LinkedHashMap<>();
+                for (String pq : qualifierPids) {
+                    JsonNode snaks = claim.path("qualifiers").path(pq);
+                    if (!snaks.isArray()) continue;
+                    List<String> vals = new ArrayList<>();
+                    for (JsonNode snak : snaks) {
+                        String v = snakValue(snak.path("datavalue"));
+                        if (v != null) vals.add(v);
+                    }
+                    if (!vals.isEmpty()) quals.put(pq, vals);
+                }
+                stmts.add(new ApiStatement(
+                        claim.path("id").asText(""), value, quals));
+            }
+            if (!stmts.isEmpty()) {
+                out.put(qid, stmts);
+                n[0]++;
+            }
+        });
+        return n[0];
+    }
+
+    /** A snak's raw value by datatype: entity → {@code Qxxx}, time → the ISO time
+     *  string, monolingualtext → text, quantity → the (unsigned) amount, string →
+     *  the string. Null when the snak has no value (novalue/somevalue). */
+    private static String snakValue(JsonNode datavalue) {
+        if (datavalue.isMissingNode()) return null;
+        JsonNode val = datavalue.path("value");
+        return switch (datavalue.path("type").asText()) {
+            case "wikibase-entityid" -> {
+                String id = val.path("id").asText("");
+                if (id.isBlank() && val.has("numeric-id")) {
+                    id = "Q" + val.path("numeric-id").asText();
+                }
+                yield id.isBlank() ? null : id;
+            }
+            case "time"            -> val.path("time").asText(null);
+            case "monolingualtext" -> val.path("text").asText(null);
+            case "quantity" -> {
+                String a = val.path("amount").asText("");
+                yield a.isBlank() ? null : (a.startsWith("+") ? a.substring(1) : a);
+            }
+            case "string"          -> val.asText(null);
+            default -> val.isTextual() ? val.asText() : null;
+        };
     }
 
     // ------------------------------------------------------------------
