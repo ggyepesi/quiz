@@ -119,9 +119,11 @@ No `GROUP_CONCAT` over 11k; each batch is bounded.
   gone. An INCOMING direct field (something points TO the member — none today) has no
   claim on the member and stays on the member-batched SPARQL path
   (`captureMemberFields`). Best-effort: a failed pass warns, members stay complete.
-- Still to do: **parallelize** the `wbgetentities` passes (currently sequential,
-  ~224 claims calls) — the remaining speed lever; and consider dropping the backbone
-  `SERVICE` label once members are named here.
+- **Parallelized (DONE)** — `getEntities` fans its 50-QID batches over a small pool
+  (6), per-batch best-effort with a short retry: a transient failure drops only that
+  batch, never the whole pass. The ~224 claims calls now overlap instead of summing.
+- Still to do (optional): consider dropping the backbone `SERVICE` label once members
+  are named here.
 
 ## Safety
 

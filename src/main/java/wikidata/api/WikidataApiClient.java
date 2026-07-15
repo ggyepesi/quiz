@@ -10,6 +10,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 /**
@@ -348,19 +353,73 @@ public class WikidataApiClient {
     public Map<String, ApiEntity> getEntities(
             List<String> qids, List<String> claimPids) throws Exception {
 
-        Map<String, ApiEntity> out = new LinkedHashMap<>();
+        Map<String, ApiEntity> out = new ConcurrentHashMap<>();
         if (qids == null) return out;
         List<String> pids = claimPids == null ? List.of() : claimPids;
         List<String> clean = qids.stream()
                 .filter(q -> q != null && q.matches("Q\\d+"))
                 .distinct()
                 .toList();
+        if (clean.isEmpty()) return out;
 
+        List<List<String>> batches = new ArrayList<>();
         for (int i = 0; i < clean.size(); i += 50) {
-            List<String> batch = clean.subList(i, Math.min(i + 50, clean.size()));
-            parseEntities(getEntitiesBatch(batch, !pids.isEmpty()), pids, out);
+            batches.add(clean.subList(i, Math.min(i + 50, clean.size())));
+        }
+
+        // The action API tolerates modest concurrency far better than WDQS did, so
+        // fan the 50-QID batches out over a small pool. Per-batch best-effort with a
+        // short retry: a transient failure drops only that batch (its members keep
+        // their qid label / unfilled field), never the whole pass.
+        ExecutorService pool = Executors.newFixedThreadPool(
+                Math.min(GET_ENTITIES_CONCURRENCY, batches.size()));
+        try {
+            List<Future<?>> futures = new ArrayList<>();
+            for (List<String> batch : batches) {
+                futures.add(pool.submit(() -> {
+                    parseEntities(getEntitiesBatchWithRetry(batch, !pids.isEmpty()),
+                            pids, out);
+                    return null;
+                }));
+            }
+            for (Future<?> f : futures) {
+                try {
+                    f.get();
+                } catch (InterruptedException e) {
+                    pool.shutdownNow();
+                    Thread.currentThread().interrupt();
+                    return out;
+                } catch (ExecutionException e) {
+                    log.accept("[API] wbgetentities batch failed: "
+                            + e.getCause().getMessage() + "\n");
+                }
+            }
+        } finally {
+            pool.shutdown();
         }
         return out;
+    }
+
+    private static final int GET_ENTITIES_CONCURRENCY = 6;
+
+    private JsonNode getEntitiesBatchWithRetry(
+            List<String> qids, boolean withClaims) throws Exception {
+        Exception last = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                return getEntitiesBatch(qids, withClaims);
+            } catch (Exception e) {
+                last = e;
+                if (Thread.currentThread().isInterrupted()) throw e;
+                try {
+                    Thread.sleep(500L * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw ie;
+                }
+            }
+        }
+        throw last;
     }
 
     private JsonNode getEntitiesBatch(
