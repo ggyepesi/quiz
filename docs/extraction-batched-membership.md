@@ -105,11 +105,19 @@ No `GROUP_CONCAT` over 11k; each batch is bounded.
 
 ### Slice 3 — labels resolved separately, via `wbgetentities`
 
-Membership + field queries fetch **qids only**. Collect all distinct qids
-(members + targets + slice-2 field values) → resolve through one shared best-effort
-label cache in batches of `labelBatchSize`, preferably the `wbgetentities` action
-API (cheaper + not a WDQS scan). Removes the inline `rdfs:label` scan and the
-11k-wide `SERVICE` label from the critical path.
+- **Labels (DONE)** — the QID-only captures (slice-1 targets, slice-2 fields) create
+  entity refs named by their qid. `RuleTreeExtractor.resolveLabels` collects every
+  registry object still carrying a placeholder name (blank or == qid), resolves them
+  in one best-effort `WikidataApiClient.getEntities(qids, [])` pass (labels only,
+  batched 50 — the reliable action API, no WDQS scan), and sets the names via
+  `applyLabels`. A failure warns and leaves the qids. No-op when nothing is
+  unlabeled. (`RuleTreeExtractorLabelTest`.)
+- **Type via `wbgetentities` claims (next, 2b)** — reroute the outgoing direct entity
+  field(s) (P31/`type`) off the flaky per-member SPARQL onto the same
+  `getEntities(members, [P31])` pass (claims → type), retiring slice-2 SPARQL for
+  outgoing fields. That is the speed win (parallel action API vs ~112 serial SPARQL).
+- Still to do: parallelize the `wbgetentities` passes (`labelBatchSize`), and
+  consider dropping the backbone `SERVICE` label once members are named here.
 
 ## Safety
 

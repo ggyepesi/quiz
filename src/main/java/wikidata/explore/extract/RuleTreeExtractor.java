@@ -1,6 +1,7 @@
 package wikidata.explore.extract;
 
 import wikidata.explore.query.template.rule.RuleIncludedFieldSparql;
+import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.template.rule.RuleNodeQueryBuilder;
 import wikidata.explore.rule.RuleIncludedField;
 import wikidata.explore.rule.RuleEdge;
@@ -46,6 +47,23 @@ public class RuleTreeExtractor {
 
     private final WikidataSparqlClient client;
     private GenerationLog log = GenerationLog.NOOP;
+
+    // The action-API client for wbgetentities (labels + outgoing entity claims) —
+    // the reliable, non-SPARQL path. Lazily created with the project user agent;
+    // override via api(...) to share one / inject logging.
+    private WikidataApiClient api;
+
+    public RuleTreeExtractor api(WikidataApiClient api) {
+        this.api = api;
+        return this;
+    }
+
+    private WikidataApiClient api() {
+        if (api == null) {
+            api = new WikidataApiClient("QuizProject/1.0 (ggyepesi@gmail.com)");
+        }
+        return api;
+    }
 
     // Per-parent child queries that fail (timeout / error) are caught so one
     // parent doesn't abort the run — but they're COUNTED so a partial extraction
@@ -280,6 +298,11 @@ public class RuleTreeExtractor {
                     + "\" extraction — the result is PARTIAL for those parents "
                     + "(not silently complete). Re-run if completeness matters.\n");
         }
+
+        // Slice 3 — name the QID-only entity refs the captures produced (targets,
+        // direct fields) via one shared wbgetentities label pass. No-op if nothing
+        // is unlabeled.
+        resolveLabels(progress);
 
         return roots;
     }
@@ -601,6 +624,68 @@ public class RuleTreeExtractor {
             touched.put(valueQid, member);
         }
         return new ArrayList<>(touched.values());
+    }
+
+    /**
+     * Slice 3 — resolve labels for every registry object still carrying a placeholder
+     * name (the qid), i.e. the entity refs that the QID-only captures (slice-1
+     * targets, slice-2 direct fields) created without a label. One shared
+     * best-effort wbgetentities pass (labels only) over the distinct placeholder
+     * qids; a failure warns and leaves the placeholders (names stay the qid).
+     * No-op when nothing is unlabeled (e.g. a small membership whose SERVICE labels
+     * already named everything).
+     */
+    private void resolveLabels(GenerationLog progress) {
+        List<WikidataDynamicObject> placeholders = new ArrayList<>();
+        for (WikidataDynamicObject o : registry.values()) {
+            if (isPlaceholderLabel(o)) placeholders.add(o);
+        }
+        if (placeholders.isEmpty()) return;
+
+        List<String> qids = placeholders.stream()
+                .map(WikidataDynamicObject::qid)
+                .filter(q -> q != null && q.matches("Q\\d+"))
+                .toList();
+        try {
+            Map<String, WikidataApiClient.ApiEntity> details =
+                    api().getEntities(qids, List.of());   // labels only
+            int filled = applyLabels(placeholders, details);
+            progress.message("Resolved " + filled + "/" + placeholders.size()
+                    + " entity label(s) via wbgetentities.\n");
+        } catch (Exception e) {
+            if (Thread.currentThread().isInterrupted()) return;
+            progress.message("WARNING: label resolution via wbgetentities failed ("
+                    + e.getMessage() + ") — " + placeholders.size()
+                    + " entity ref(s) keep their QID as the name this run.\n");
+        }
+    }
+
+    /**
+     * Sets each placeholder object's name from the resolved label. Returns how many
+     * were filled. Package-visible for RuleTreeExtractorLabelTest.
+     */
+    int applyLabels(
+            List<WikidataDynamicObject> objects,
+            Map<String, WikidataApiClient.ApiEntity> details) {
+        int filled = 0;
+        for (WikidataDynamicObject o : objects) {
+            if (!isPlaceholderLabel(o)) continue;
+            WikidataApiClient.ApiEntity e = details.get(o.qid());
+            if (e != null && !e.label().isBlank()) {
+                o.name(e.label());
+                filled++;
+            }
+        }
+        return filled;
+    }
+
+    /** A ref whose name was never resolved — blank or still equal to its qid. */
+    private static boolean isPlaceholderLabel(WikidataDynamicObject o) {
+        if (o == null) return false;
+        String qid = o.qid();
+        if (qid == null || !qid.matches("Q\\d+")) return false;
+        String name = o.getDisplayName();
+        return name == null || name.isBlank() || name.equals(qid);
     }
 
     private List<WikidataDynamicObject> runRootQuery(
