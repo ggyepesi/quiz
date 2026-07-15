@@ -52,13 +52,13 @@ For a large relational membership:
    preferably `wbgetentities` (`labelBatchSize`, default 500) — relationships come
    from SPARQL, entity labels from `wbgetentities`.
 7. Do **not** issue `fieldOptimizedValuesQuery` when every requested field has been
-   assigned to a specialized slice.
+   assigned to a specialized stage.
 
-Steps 1–4 + 7 = slice 1; step 5 = slice 2; step 6 = slice 3. All gated behind the
+Steps 1–4 + 7 = stage 1; step 5 = stage 2; step 6 = stage 3. All gated behind the
 existing "large membership" trigger; small classes keep the single-query path,
 byte-identical.
 
-### Slice 1 — membership captures `target` (DONE)
+### Stage 1 — membership captures `target` (DONE)
 
 - **Detection** (`RuleNodeQueryBuilder.membershipTargetFields` /
   `membershipEquivalent`): a field is a target only when it is provably the
@@ -73,9 +73,12 @@ byte-identical.
   `?value` in the same join the capture rides) and a field carries none, so those
   criteria hold by construction. **Semantics: bounded to the modeled roots** (a
   deliberate change from the old unbounded-`P31=Q19020` enrichment).
-- **Capture** (`membershipBackboneQuery`): the multi-QID membership branch adds
-  `?root` to the SELECT; the outer `SELECT *` carries it out; the SERVICE label
-  still labels only `?value`, so `?root` rides as a bare qid (labels → slice 3).
+- **Capture** (`membershipBackboneQuery` → `flatBackboneQuery`): a FLAT, hint-first,
+  label-free query — `SELECT DISTINCT ?value ?root WHERE { hint:Query hint:optimizer
+  "None" . VALUES ?root {batch} ?value wdt:P1411 ?root . <filters> } LIMIT`. The hint
+  binds the roots FIRST (P1411 is generic across Wikidata; without it Blazegraph scans
+  the predicate and soft-times-out). No SERVICE label — QIDs only, members named in
+  stage 3 — which is what removed the last inline label from the critical path.
 - **Assemble + materialize** (`RuleTreeExtractor.runBackbone` →
   `MembershipBackbone{members, edges}` → `materializeMembershipTargets`): each
   `(member, root)` row adds an edge; each edge resolves to a canonical registry ref
@@ -83,7 +86,7 @@ byte-identical.
 - **Drop `target` from the enrichment** — a `sampleCopy` of the node minus the
   captured field(s); if nothing remains inlined, the enrichment is skipped (step 7).
 
-### Slice 2 — remaining inlined entity fields (`type` = P31) via batched value-queries (DONE)
+### Stage 2 — remaining inlined entity fields (`type` = P31) via batched value-queries (DONE)
 
 For each still-inlined entity-list field, member-batched
 (`RuleNodeQueryBuilder.memberFieldBatchQuery` + `RuleTreeExtractor.captureMemberFields`):
@@ -95,17 +98,17 @@ For each still-inlined entity-list field, member-batched
   end, and a field type constraint (`membershipQid`) is emitted so values match the
   old enrichment.
 - Best-effort per batch (a failed batch is warned + skipped; members stay complete).
-- **Step 7**: once every inlined entity-list field is target-captured (slice 1) or
-  member-batched (slice 2), the leftover enrichment node has no inlined field and
+- **Step 7**: once every inlined entity-list field is target-captured (stage 1) or
+  member-batched (stage 2), the leftover enrichment node has no inlined field and
   `fieldOptimizedValuesQuery` is **not issued at all**. (A large membership with
   leftover *scalar* fields has no member-batched path yet — warned, not silently
   dropped; no model class hits this today.)
 
 No `GROUP_CONCAT` over 11k; each batch is bounded.
 
-### Slice 3 — labels resolved separately, via `wbgetentities`
+### Stage 3 — labels resolved separately, via `wbgetentities`
 
-- **Labels (DONE)** — the QID-only captures (slice-1 targets, slice-2 fields) create
+- **Labels (DONE)** — the QID-only captures (stage-1 targets, stage-2 fields) create
   entity refs named by their qid. `RuleTreeExtractor.resolveLabels` collects every
   registry object still carrying a placeholder name (blank or == qid), resolves them
   in one best-effort `WikidataApiClient.getEntities(qids, [])` pass (labels only,
@@ -121,14 +124,20 @@ No `GROUP_CONCAT` over 11k; each batch is bounded.
   (`captureMemberFields`). Best-effort: a failed pass warns, members stay complete.
 - **Parallelized (DONE)** — `getEntities` fans its 50-QID batches over a small pool
   (6), per-batch best-effort with a short retry: a transient failure drops only that
-  batch, never the whole pass. The ~224 claims calls now overlap instead of summing.
-- Still to do (optional): consider dropping the backbone `SERVICE` label once members
-  are named here.
+  batch, never the whole pass. `languages=en|mul` + mul fallback so an item without an
+  English label still resolves.
+
+## Validated
+
+Full regen: **11,181 members / 15,481 Nominations in ~121 s** (was ~1390 s / ~23 min),
+`target` + `type` filled with names. The backbone is flat/hint-first/label-free; the
+member `type` claims + all labels come from `wbgetentities`. Runtime is now dominated
+by the separate qualifier-load / reification phase, not extraction.
 
 ## Safety
 
 Extraction is count- and content-critical and can't be validated against WDQS
-offline, so per slice:
+offline, so per stage:
 
 - **Unit-test the generated SPARQL** (byte-level, like `RuleTreeCompilerParityTest`)
   and the assembly (`MembershipTargetCaptureTest`,
