@@ -161,11 +161,8 @@ public class RuleTreeExtractor {
             // Splitting them makes the served roots deterministic: membership no
             // longer rides on the heavy query, which soft-times-out on WDQS and
             // returns a different partial row set each run (the 11076-vs-11142 drift).
-            RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
-            String backboneSparql = RuleNodeQueryBuilder.valuesQuery(backbone);
-            List<WikidataDynamicObject> members = runRootQuery(
-                    "Root membership (backbone)", backboneSparql, progress,
-                    () -> runValueQuery(backbone, backboneSparql));
+            List<WikidataDynamicObject> members =
+                    runBackbone(rootNode, progress);
 
             String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(rootNode);
             String title = "Root enrichment (+" + inlinedFields.size()
@@ -281,6 +278,52 @@ public class RuleTreeExtractor {
     // subquery with its row count, or a subqueryFailed carrying the SPARQL so a
     // timeout is debuggable from the UI (it used to log only on success, so a
     // timed-out root query left no query text in the log at all).
+    /** Membership targets per backbone query. A big relational membership (e.g.
+     *  P1411 → 58 Oscar categories) finds too many members to label in one query
+     *  and soft-times-out on WDQS; splitting the targets keeps each query small. */
+    private static final int BACKBONE_TARGET_BATCH = 10;
+
+    /**
+     * Phase-1 membership. For a large multi-target relational membership, split the
+     * targets into batches and union the members by qid — each query stays well
+     * under the WDQS timeout, and the union can't drop a member. A small membership
+     * runs as a single query, unchanged.
+     */
+    private List<WikidataDynamicObject> runBackbone(
+            RuleNode rootNode, GenerationLog progress) throws Exception {
+
+        List<String> targets = new ArrayList<>(rootNode.additionalSourceQids());
+        if (targets.size() <= BACKBONE_TARGET_BATCH) {
+            RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
+            String sparql = RuleNodeQueryBuilder.valuesQuery(backbone);
+            return runRootQuery("Root membership (backbone)", sparql, progress,
+                    () -> runValueQuery(backbone, sparql));
+        }
+
+        LinkedHashMap<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
+        int total = (targets.size() + BACKBONE_TARGET_BATCH - 1)
+                / BACKBONE_TARGET_BATCH;
+        int n = 0;
+        for (int from = 0; from < targets.size(); from += BACKBONE_TARGET_BATCH) {
+            if (Thread.currentThread().isInterrupted()) {
+                break;
+            }
+            List<String> batch = new ArrayList<>(targets.subList(
+                    from, Math.min(from + BACKBONE_TARGET_BATCH, targets.size())));
+            RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
+            backbone.additionalSourceQids().clear();
+            batch.forEach(backbone::addAdditionalSourceQid);
+            String sparql = RuleNodeQueryBuilder.valuesQuery(backbone);
+            List<WikidataDynamicObject> part = runRootQuery(
+                    "Root membership (backbone " + (++n) + "/" + total + ")",
+                    sparql, progress, () -> runValueQuery(backbone, sparql));
+            for (WikidataDynamicObject o : part) {
+                byQid.putIfAbsent(o.qid(), o);
+            }
+        }
+        return new ArrayList<>(byQid.values());
+    }
+
     private List<WikidataDynamicObject> runRootQuery(
             String title, String sparql, GenerationLog progress, RootQuery body)
             throws Exception {
