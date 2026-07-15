@@ -97,6 +97,11 @@ class MembershipTargetCaptureTest {
         assertTrue(q.contains("SELECT DISTINCT ?value ?fieldValue"), q);
         assertTrue(q.contains("VALUES ?value { wd:Q11 wd:Q22 }"), q);
         assertTrue(q.contains("?value wdt:P31 ?fieldValue"), q);
+        // The optimizer hint must precede the VALUES so the join binds it first —
+        // otherwise a hyper-common predicate (P31) full-scans and times out.
+        assertTrue(q.indexOf("hint:Query hint:optimizer") >= 0
+                && q.indexOf("hint:Query hint:optimizer") < q.indexOf("VALUES ?value"),
+                "optimizer hint precedes VALUES:\n" + q);
         assertFalse(q.contains("GROUP_CONCAT"), "no group-concat in the slice-2 query");
     }
 

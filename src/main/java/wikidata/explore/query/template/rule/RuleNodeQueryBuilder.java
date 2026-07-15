@@ -196,6 +196,12 @@ public final class RuleNodeQueryBuilder {
         }
         StringBuilder sb = new StringBuilder();
         sb.append("SELECT DISTINCT ?value ?fieldValue WHERE {\n");
+        // Force the written join order: bind ?value from VALUES FIRST, then look up
+        // the predicate per bound value. Without it Blazegraph may scan the whole
+        // predicate index before the VALUES filter — catastrophic for a hyper-common
+        // predicate like P31 (~100M instance-of triples), which full-scans and times
+        // out even for a 250-QID batch (R-rule; same hint as stratifiedSampleQuery).
+        sb.append("  hint:Query hint:optimizer \"None\" .\n");
         sb.append("  VALUES ?value { ").append(vals.toString().trim()).append(" }\n");
         sb.append("  ").append(field.direction()
                 .triplePattern("?value", "?fieldValue", pid)).append("\n");
