@@ -170,8 +170,29 @@ public class RuleTreeExtractor {
             String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(rootNode);
             String title = "Root enrichment (+" + inlinedFields.size()
                     + " inlined field" + (inlinedFields.size() == 1 ? "" : "s") + ")";
-            List<WikidataDynamicObject> enriched = runRootQuery(title, sparql, progress,
-                    () -> runFieldOptimizedQuery(rootNode, inlinedFields, sparql));
+            List<WikidataDynamicObject> enriched;
+            try {
+                enriched = runRootQuery(title, sparql, progress,
+                        () -> runFieldOptimizedQuery(rootNode, inlinedFields, sparql));
+            } catch (Exception e) {
+                // Best-effort: the backbone already holds the COMPLETE, type-stamped
+                // member set, so a failed enrichment must NOT fail the run — that is
+                // the "a partial enrichment never drops a member" guarantee the union
+                // below relies on. The heavy inline-GROUP_CONCAT query soft-times-out
+                // on WDQS (60s → HTTP 200 with a truncated body → JSON parse error),
+                // which used to abort the whole generation. Now the members survive;
+                // the inlined fields are just unfilled this pass.
+                if (e instanceof InterruptedException
+                        || Thread.currentThread().isInterrupted()) {
+                    throw e;   // a cancel is not a soft failure
+                }
+                progress.message("WARNING: root enrichment failed ("
+                        + e.getMessage() + ") — members are COMPLETE from the "
+                        + "backbone, but the " + inlinedFields.size()
+                        + " inlined field(s) are unfilled this run. Re-run to fill "
+                        + "them (the enrichment query is over the WDQS timeout).\n");
+                enriched = new ArrayList<>();
+            }
 
             // Union by qid (both share registry instances): a member either query
             // found is a root, so a partial enrichment never drops a member.

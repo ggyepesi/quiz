@@ -374,14 +374,31 @@ public class WikidataSparqlClient implements AutoCloseable {
 
             return out;
         } catch (Exception e) {
-            String head =
-                    json == null
-                            ? ""
-                            : json.substring(0, Math.min(500, json.length()));
+            int len = json == null ? 0 : json.length();
+            String head = json == null
+                    ? ""
+                    : json.substring(0, Math.min(400, len));
+            String tail = json == null || len <= 400
+                    ? ""
+                    : "\n  … [last 200 chars] …\n"
+                            + json.substring(Math.max(0, len - 200));
+            // A truncated "partial 200" (WDQS returns HTTP 200 with a body cut off
+            // mid-JSON under load) doesn't close its root object. Flag it so the
+            // failure reads as transient (the retry re-issues it) rather than a
+            // query bug.
+            boolean truncated = json == null
+                    || !json.stripTrailing().endsWith("}");
+            String msg = "Cannot parse SPARQL JSON (" + len + " chars"
+                    + (truncated
+                            ? "; body does not end in '}' — a TRUNCATED partial-200"
+                                    + " from WDQS, transient: retry"
+                            : "")
+                    + "). Body starts:\n" + head + tail;
 
-            throw new RuntimeException(
-                    "Cannot parse SPARQL JSON. Body starts:\n" + head,
-                    e);
+            // Mirror to the console so it's copyable even when the UI dialog isn't.
+            System.err.println("[SPARQL parse] " + msg);
+
+            throw new RuntimeException(msg, e);
         }
     }
 
