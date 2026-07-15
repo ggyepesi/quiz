@@ -1,0 +1,183 @@
+RULE TREE EXTRACTION TERMINOLOGY
+================================
+
+Purpose
+-------
+This vocabulary describes the logical extraction pipeline independently of the
+physical number of SPARQL or API requests used to execute it. Use these terms in
+source comments, logs, documentation and discussions.
+
+CORE DISTINCTION
+----------------
+
+Logical operation
+    The user- or model-level task being performed, for example:
+        "Load all Oscar nominees and their configured fields."
+
+Physical execution
+    The concrete requests used to perform the logical operation, for example:
+        58 membership-backbone queries,
+        112 member-field queries,
+        24 wbgetentities batches.
+
+A logical operation may therefore expand into many physical requests.
+
+STAGE 1 – MEMBERSHIP BACKBONE
+-----------------------------
+
+Purpose
+    Discover the complete set of root members without depending on expensive
+    enrichment fields.
+
+Membership root
+    One configured source QID that anchors a membership relation.
+    Example: one Academy Award category QID.
+
+Membership batch
+    The subset of membership roots included in one physical WDQS query.
+
+Member
+    A root entity discovered through the membership relation.
+    Example: a person or film having P1411 to an Oscar category.
+
+Membership backbone
+    The lightweight, normally label-free query path that discovers members.
+    It retains membership filters, allow/exclude rules, sitelink requirements
+    and value filters, but avoids expensive field aggregation.
+
+Membership edge
+    A captured pair:
+        member -> membership root
+    Example:
+        Michael B. Jordan -> Academy Award for Best Actor
+
+Membership target field
+    A field whose values are exactly the membership roots reached by the same
+    relation. It can be materialized directly from captured membership edges,
+    avoiding a second query over the same relation.
+
+Materialize
+    Convert extracted bindings or captured edges into object fields.
+
+STAGE 2 – MEMBER FIELD CAPTURE
+------------------------------
+
+Purpose
+    Populate fields after the complete member set is known.
+
+Member batch
+    A subset of already-discovered member QIDs used by one physical request.
+
+Member field
+    A field populated over existing members.
+
+Outgoing member field
+    A claim stored on the member itself.
+    Example: P31 type.
+    Prefer wbgetentities for large sets when WDQS would scan a very common
+    predicate.
+
+Incoming member field
+    A relation in which another entity points to the member.
+    It is not available as a claim on the member and therefore remains on a
+    member-batched SPARQL path.
+
+Field capture
+    Populate one or more fields on existing canonical registry objects.
+
+Residual enrichment
+    The remaining field-optimized query after fields handled by Stage 1 and
+    Stage 2 have been removed. If no fields remain, this query is skipped.
+
+Enrich
+    Add fields to an already-existing canonical object without changing its
+    identity or membership.
+
+STAGE 3 – LABEL RESOLUTION
+--------------------------
+
+Purpose
+    Resolve human-readable labels for QID-only registry references.
+
+Placeholder label
+    A missing name or a name still equal to the object's QID.
+
+Label batch
+    A subset of placeholder QIDs sent in one wbgetentities request.
+
+Label resolution
+    Replace placeholder labels with resolved Wikidata labels. Failure may leave
+    QID names, but must not remove objects or relationships.
+
+STAGE 4 – RECURSIVE CHILD EXTRACTION
+------------------------------------
+
+Purpose
+    Load complex child edges after root membership and root fields are stable.
+
+Parent
+    An already-materialized object whose configured child edge is being loaded.
+
+Child edge
+    A configured relation from a parent object to child objects.
+
+Per-parent child query
+    A physical query scoped to one parent, allowing a true per-parent limit.
+
+Recursive child extraction
+    Repeatedly load complex child edges down to the configured depth.
+
+OBJECT AND IDENTITY TERMS
+-------------------------
+
+Registry
+    The shared WikidataObjectRegistry used across extraction operations.
+
+Registry object
+    A WikidataDynamicObject stored in the registry.
+
+Canonical object
+    The single registry object representing one Wikidata QID. All references to
+    that QID should resolve to this same object.
+
+Canonicalization
+    Collapse multiple physical rows or extraction paths into one logical object,
+    normally keyed by QID for Wikidata entities or by configured key fields for
+    derived objects.
+
+Merge
+    Add a value to a field while preserving canonical references, deduplicating
+    collection values and retaining insertion order.
+
+COMPLETENESS TERMS
+------------------
+
+Complete membership
+    Every member found by the configured membership roots and filters has been
+    discovered, subject to the logical configured limit.
+
+Partial field capture
+    Membership is complete, but one or more enrichment or field requests failed,
+    so some fields may be missing.
+
+Partial extraction
+    A failure affected membership or recursive child loading. This must be
+    surfaced explicitly and must never be presented as silently complete.
+
+Logical limit
+    The configured maximum number of distinct logical members after all physical
+    membership batches are merged.
+
+Per-batch limit
+    A defensive ceiling applied to one physical query. It must not accidentally
+    multiply the logical limit by the number of batches.
+
+RECOMMENDED COMMENT HEADINGS
+----------------------------
+
+    // Stage 1 – Membership backbone
+    // Stage 2 – Member field capture
+    // Stage 3 – Label resolution
+    // Stage 4 – Recursive child extraction
+
+Avoid mixing the older words "phase", "slice" and "step" for these stages.
