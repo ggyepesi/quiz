@@ -1,6 +1,10 @@
 package wikidata.explore.transform;
 
 import wikidata.WikidataSparqlClient;
+import wikidata.explore.compiled.CompiledClass;
+import wikidata.explore.compiled.CompiledField;
+import wikidata.explore.compiled.CompiledFieldSource;
+import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldProductionKind;
@@ -36,11 +40,26 @@ public final class CompanionMatch {
 
     private CompanionMatch() {}
 
+    // The model-resolved config for one COMPANION_MATCH field. Both model types
+    // compile down to this, so the pool load/mark logic is model-agnostic.
+    private record CompanionField(
+            String className, String fieldName,
+            String propertyPid, String qualifierPid,
+            String subjectField, String matchValueField, String matchRoleField) {
+
+        String key() {
+            return className + "." + fieldName;
+        }
+    }
+
+    // ---------------- editable-model API ----------------
+
     public static void apply(GeneratedProjectModel project,
                              Collection<WikidataDynamicObject> pool,
                              WikidataSparqlClient client,
                              GenerationLog log) {
-        applyWithSets(project, pool, loadSets(project, pool, client, log), log);
+        List<CompanionField> fields = editableFields(project, log);
+        applyWithSets(fields, pool, loadSets(fields, pool, client, log), log);
     }
 
     /**
@@ -54,33 +73,10 @@ public final class CompanionMatch {
             WikidataSparqlClient client,
             GenerationLog log) {
 
-        Map<String, Set<List<String>>> out = new LinkedHashMap<>();
         if (project == null || pool == null || client == null) {
-            return out;
+            return new LinkedHashMap<>();
         }
-        for (GeneratedClassModel c : allClasses(project)) {
-            for (GeneratedFieldModel f : companionFields(c)) {
-                FieldSourceMapping m = f.mapping();
-                if (!validConfig(m, f.name(), log)) {
-                    continue;
-                }
-                Set<String> values = new LinkedHashSet<>();
-                for (WikidataDynamicObject o : pool) {
-                    if (o != null && c.className().equals(o.typeName())) {
-                        String v = qid(o.get(m.matchValueField()));
-                        if (!v.isEmpty()) {
-                            values.add(v);
-                        }
-                    }
-                }
-                if (values.isEmpty()) {
-                    continue;
-                }
-                out.put(key(c, f), CompanionLoader.load(
-                        values, m.propertyPid(), m.qualifierPid(), client, log));
-            }
-        }
-        return out;
+        return loadSets(editableFields(project, log), pool, client, log);
     }
 
     /** PURE: mark records using precomputed companion-sets (from {@link #loadSets}). */
@@ -91,50 +87,151 @@ public final class CompanionMatch {
         if (project == null || pool == null || sets == null) {
             return;
         }
-        for (GeneratedClassModel c : allClasses(project)) {
-            for (GeneratedFieldModel f : companionFields(c)) {
-                FieldSourceMapping m = f.mapping();
-                Set<List<String>> companions = sets.get(key(c, f));
-                if (companions == null || !validConfig(m, f.name(), null)) {
-                    continue;
-                }
-                String subjectField = m.subjectField().isBlank()
-                        ? DEFAULT_SUBJECT_FIELD : m.subjectField();
-                List<WikidataDynamicObject> records = new ArrayList<>();
-                for (WikidataDynamicObject o : pool) {
-                    if (o != null && c.className().equals(o.typeName())) {
-                        records.add(o);
+        applyWithSets(editableFields(project, null), pool, sets, log);
+    }
+
+    // ---------------- compiled-model API ----------------
+
+    public static void apply(CompiledProjectModel project,
+                             Collection<WikidataDynamicObject> pool,
+                             WikidataSparqlClient client,
+                             GenerationLog log) {
+        List<CompanionField> fields = compiledFields(project, log);
+        applyWithSets(fields, pool, loadSets(fields, pool, client, log), log);
+    }
+
+    public static Map<String, Set<List<String>>> loadSets(
+            CompiledProjectModel project,
+            Collection<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log) {
+
+        if (project == null || pool == null || client == null) {
+            return new LinkedHashMap<>();
+        }
+        return loadSets(compiledFields(project, log), pool, client, log);
+    }
+
+    public static void applyWithSets(CompiledProjectModel project,
+                                     Collection<WikidataDynamicObject> pool,
+                                     Map<String, Set<List<String>>> sets,
+                                     GenerationLog log) {
+        if (project == null || pool == null || sets == null) {
+            return;
+        }
+        applyWithSets(compiledFields(project, null), pool, sets, log);
+    }
+
+    // ---------------- shared pool logic ----------------
+
+    private static Map<String, Set<List<String>>> loadSets(
+            List<CompanionField> fields,
+            Collection<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log) {
+
+        Map<String, Set<List<String>>> out = new LinkedHashMap<>();
+        for (CompanionField cf : fields) {
+            Set<String> values = new LinkedHashSet<>();
+            for (WikidataDynamicObject o : pool) {
+                if (o != null && cf.className().equals(o.typeName())) {
+                    String v = qid(o.get(cf.matchValueField()));
+                    if (!v.isEmpty()) {
+                        values.add(v);
                     }
                 }
-                if (!records.isEmpty()) {
-                    CompanionMatcher.apply(records, companions, subjectField,
-                            m.matchValueField(), m.matchRoleField(), f.name(), log);
+            }
+            if (values.isEmpty()) {
+                continue;
+            }
+            out.put(cf.key(), CompanionLoader.load(
+                    values, cf.propertyPid(), cf.qualifierPid(), client, log));
+        }
+        return out;
+    }
+
+    private static void applyWithSets(
+            List<CompanionField> fields,
+            Collection<WikidataDynamicObject> pool,
+            Map<String, Set<List<String>>> sets,
+            GenerationLog log) {
+
+        for (CompanionField cf : fields) {
+            Set<List<String>> companions = sets.get(cf.key());
+            if (companions == null) {
+                continue;
+            }
+            String subjectField = cf.subjectField().isBlank()
+                    ? DEFAULT_SUBJECT_FIELD : cf.subjectField();
+            List<WikidataDynamicObject> records = new ArrayList<>();
+            for (WikidataDynamicObject o : pool) {
+                if (o != null && cf.className().equals(o.typeName())) {
+                    records.add(o);
                 }
+            }
+            if (!records.isEmpty()) {
+                CompanionMatcher.apply(records, companions, subjectField,
+                        cf.matchValueField(), cf.matchRoleField(), cf.fieldName(), log);
             }
         }
     }
 
-    private static List<GeneratedFieldModel> companionFields(GeneratedClassModel c) {
-        List<GeneratedFieldModel> out = new ArrayList<>();
-        for (GeneratedFieldModel f : c.fields()) {
-            if (f != null && f.mapping() != null
-                    && f.mapping().productionKind() == FieldProductionKind.COMPANION_MATCH) {
-                out.add(f);
+    // ---------------- model -> CompanionField list ----------------
+
+    private static List<CompanionField> editableFields(
+            GeneratedProjectModel project, GenerationLog log) {
+
+        List<CompanionField> out = new ArrayList<>();
+        for (GeneratedClassModel c : allClasses(project)) {
+            for (GeneratedFieldModel f : c.fields()) {
+                if (f == null || f.mapping() == null
+                        || f.mapping().productionKind()
+                        != FieldProductionKind.COMPANION_MATCH) {
+                    continue;
+                }
+                FieldSourceMapping m = f.mapping();
+                if (!validConfig(m.propertyPid(), m.qualifierPid(),
+                        m.matchValueField(), m.matchRoleField(), f.name(), log)) {
+                    continue;
+                }
+                out.add(new CompanionField(c.className(), f.name(),
+                        m.propertyPid(), m.qualifierPid(), m.subjectField(),
+                        m.matchValueField(), m.matchRoleField()));
             }
         }
         return out;
     }
 
-    private static String key(GeneratedClassModel c, GeneratedFieldModel f) {
-        return c.className() + "." + f.name();
+    private static List<CompanionField> compiledFields(
+            CompiledProjectModel project, GenerationLog log) {
+
+        List<CompanionField> out = new ArrayList<>();
+        for (CompiledClass c : project.classes()) {
+            for (CompiledField f : c.ownFields()) {
+                if (f.source().productionKind()
+                        != FieldProductionKind.COMPANION_MATCH) {
+                    continue;
+                }
+                CompiledFieldSource m = f.source();
+                if (!validConfig(m.propertyPid(), m.qualifierPid(),
+                        m.matchValueField(), m.matchRoleField(), f.name(), log)) {
+                    continue;
+                }
+                out.add(new CompanionField(c.className(), f.name(),
+                        m.propertyPid(), m.qualifierPid(), m.subjectField(),
+                        m.matchValueField(), m.matchRoleField()));
+            }
+        }
+        return out;
     }
 
-    private static boolean validConfig(FieldSourceMapping m, String outcome,
-                                       GenerationLog log) {
-        boolean ok = m.propertyPid() != null && m.propertyPid().matches("(?i)P\\d+")
-                && m.qualifierPid() != null && m.qualifierPid().matches("(?i)P\\d+")
-                && m.matchValueField() != null && !m.matchValueField().isBlank()
-                && m.matchRoleField() != null && !m.matchRoleField().isBlank();
+    private static boolean validConfig(String propertyPid, String qualifierPid,
+                                       String matchValueField, String matchRoleField,
+                                       String outcome, GenerationLog log) {
+        boolean ok = propertyPid != null && propertyPid.matches("(?i)P\\d+")
+                && qualifierPid != null && qualifierPid.matches("(?i)P\\d+")
+                && matchValueField != null && !matchValueField.isBlank()
+                && matchRoleField != null && !matchRoleField.isBlank();
         if (!ok && log != null) {
             log.message("Companion match '" + outcome
                     + "' skipped: incomplete config (need property, qualifier, "

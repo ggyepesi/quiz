@@ -17,6 +17,8 @@ import wikidata.explore.model.StatementClassSource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -213,5 +215,55 @@ class CompiledTransformParityTest {
                 "the invert construct list must be identical");
         assertEquals(1, ModelInverts.derive(compiled).size(),
                 "it actually found the Category.nominees <- OscarNominations.categories invert");
+    }
+
+    @Test
+    void companionMatchMarksIdentically() {
+        GeneratedProjectModel project = project("comp");
+        project.addClass(new GeneratedClassModel("OscarNominations"));
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        nom.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nom.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE);
+        GeneratedFieldModel won =
+                nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);
+        won.mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
+        won.mapping().propertyPid("P166");
+        won.mapping().qualifierPid("P1686");
+        won.mapping().subjectField("nominee");
+        won.mapping().matchValueField("category");
+        won.mapping().matchRoleField("forWork");
+        project.addClass(nom);
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+
+        // Companion set keyed "Nomination.won" → one winning (nominee, category, forWork).
+        Map<String, Set<List<String>>> sets = Map.of(
+                "Nomination.won", Set.of(List.of("Q1", "Q100", "Q200")));
+
+        List<WikidataDynamicObject> poolRaw = companionPool();
+        CompanionMatch.applyWithSets(project, poolRaw, sets, null);
+        List<WikidataDynamicObject> poolCompiled = companionPool();
+        CompanionMatch.applyWithSets(compiled, poolCompiled, sets, null);
+
+        for (int i = 0; i < poolRaw.size(); i++) {
+            assertEquals(poolRaw.get(i).get("won"), poolCompiled.get(i).get("won"),
+                    "won[" + i + "] must be marked identically");
+        }
+        assertEquals(Boolean.TRUE, poolRaw.get(0).get("won"), "the winner is marked");
+        assertEquals(Boolean.FALSE, poolRaw.get(1).get("won"), "the non-winner is not");
+    }
+
+    private static List<WikidataDynamicObject> companionPool() {
+        WikidataDynamicObject winner = obj("N1", "winner", "Nomination");
+        winner.put("nominee", obj("Q1", "nom", "Person"));
+        winner.put("category", obj("Q100", "cat", "Category"));
+        winner.put("forWork", obj("Q200", "work", "Work"));
+        WikidataDynamicObject loser = obj("N2", "loser", "Nomination");
+        loser.put("nominee", obj("Q9", "nom2", "Person"));   // not in the companion set
+        loser.put("category", obj("Q100", "cat", "Category"));
+        loser.put("forWork", obj("Q200", "work", "Work"));
+        return new ArrayList<>(List.of(winner, loser));
     }
 }

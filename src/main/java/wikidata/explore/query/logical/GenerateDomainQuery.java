@@ -211,9 +211,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     java.util.Map<String, java.util.Set<java.util.List<String>>>
                             companionSets =
                             wikidata.explore.transform.CompanionMatch.loadSets(
-                                    project, reified, context.sparql(), genLog);
+                                    compiledProject, reified, context.sparql(), genLog);
                     wikidata.explore.transform.CompanionMatch.applyWithSets(
-                            project, reified, companionSets, genLog);
+                            compiledProject, reified, companionSets, genLog);
 
                     // Prune dead-stub ghosts (a QID whose page is gone: no label,
                     // no fields) after all fields are populated but before mapping —

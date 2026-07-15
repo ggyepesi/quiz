@@ -310,7 +310,7 @@ public class GenerationPipeline {
         wikidata.explore.transform.Canonicalization.apply(compiledSnapshot, pool, null);
         wikidata.explore.transform.Canonicalization.apply(compiledSnapshot, reified, null);
         wikidata.explore.transform.CompanionMatch.applyWithSets(
-                snapshot, reified, rs.companionSets(), null);
+                compiledSnapshot, reified, rs.companionSets(), null);
 
         // Drop the dropped-duplicate stubs from the served pool (not just untype).
         pool.removeIf(demoted::contains);
