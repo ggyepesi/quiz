@@ -88,6 +88,28 @@ class MembershipTargetCaptureTest {
     }
 
     @Test
+    void memberFieldQueryIsMemberBatchedDistinctAndHonoursDirection() {
+        // type: P31 / ROOT_TO_ITEM, no type constraint → ?value wdt:P31 ?fieldValue.
+        RuleIncludedField type = field("type", "P31", RuleDirection.ROOT_TO_ITEM, null);
+        String q = RuleNodeQueryBuilder.memberFieldBatchQuery(
+                type, List.of("Q11", "Q22"));
+
+        assertTrue(q.contains("SELECT DISTINCT ?value ?fieldValue"), q);
+        assertTrue(q.contains("VALUES ?value { wd:Q11 wd:Q22 }"), q);
+        assertTrue(q.contains("?value wdt:P31 ?fieldValue"), q);
+        assertFalse(q.contains("GROUP_CONCAT"), "no group-concat in the slice-2 query");
+    }
+
+    @Test
+    void memberFieldQueryEmitsTheFieldTypeConstraintWhenPresent() {
+        RuleIncludedField constrained =
+                field("cast", "P161", RuleDirection.ROOT_TO_ITEM, "Q5");   // humans only
+        String q = RuleNodeQueryBuilder.memberFieldBatchQuery(constrained, List.of("Q11"));
+        assertTrue(q.contains("?value wdt:P161 ?fieldValue"), q);
+        assertTrue(q.contains("?fieldValue wdt:P31 wd:Q5"), q);
+    }
+
+    @Test
     void backboneQueryCapturesTheRootAndTheValuesQueryDoesNot() {
         RuleNode node = oscarNode();
         String backbone = RuleNodeQueryBuilder.membershipBackboneQuery(node);

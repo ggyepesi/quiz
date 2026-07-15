@@ -182,23 +182,49 @@ public class RuleTreeExtractor {
                         members, membershipTargets, backbone.edges());
             }
 
-            // The enrichment runs over the node MINUS the captured target field(s):
-            // a copy that keeps every membership semantic + the remaining fields.
+            // Slice 2 (step 5) — the remaining inlined entity-list fields (those not
+            // captured as targets) are fetched per MEMBER-batch, not inline-
+            // GROUP_CONCAT'd over the whole class.
+            List<RuleIncludedField> directEntityFields = new ArrayList<>();
+            if (largeMembership) {
+                for (RuleIncludedField f : inlinedFields) {
+                    if (!membershipTargets.contains(f)) directEntityFields.add(f);
+                }
+                if (!directEntityFields.isEmpty()) {
+                    captureMemberFields(members, directEntityFields, progress);
+                }
+            }
+
+            // The enrichment runs over fields NOT handled by a specialized slice: a
+            // copy of the node minus the target + member-batched fields. On a large
+            // membership every inlined entity-list field is now specialized, so if no
+            // inlined field remains the heavy query is not issued at all (step 7).
+            List<RuleIncludedField> specialized = new ArrayList<>(membershipTargets);
+            specialized.addAll(directEntityFields);
             RuleNode enrichNode = rootNode;
             List<RuleIncludedField> enrichFields = inlinedFields;
-            if (!membershipTargets.isEmpty()) {
+            if (!specialized.isEmpty()) {
                 enrichNode = rootNode.sampleCopy(rootNode.limit());
                 for (RuleIncludedField f : rootNode.includedFields()) {
-                    if (!membershipTargets.contains(f)) enrichNode.addIncludedField(f);
+                    if (!specialized.contains(f)) enrichNode.addIncludedField(f);
                 }
                 enrichFields = RuleNodeQueryBuilder.simpleInlinedFields(enrichNode);
             }
 
             List<WikidataDynamicObject> enriched;
             if (enrichFields.isEmpty()) {
-                // Every inlined field was a membership target (captured above), so the
-                // heavy enrichment would add nothing — skip it entirely.
+                // Step 7: every requested inlined field was assigned to a slice, so
+                // the heavy fieldOptimizedValuesQuery is skipped entirely.
                 enriched = new ArrayList<>();
+                // A large membership with leftover NON-inlined (scalar) fields would
+                // need the heavy valuesQuery (the original timeout); those have no
+                // member-batched path yet. No model class hits this today.
+                if (largeMembership && enrichNode != rootNode
+                        && !enrichNode.includedFields().isEmpty()) {
+                    progress.message("WARNING: " + enrichNode.includedFields().size()
+                            + " non-entity field(s) on a large membership have no "
+                            + "member-batched path yet and were left unfilled.\n");
+                }
             } else {
                 final RuleNode qNode = enrichNode;
                 final List<RuleIncludedField> qFields = enrichFields;
@@ -273,24 +299,36 @@ public class RuleTreeExtractor {
                 ? RuleNodeQueryBuilder.membershipTargetFields(rootNode)
                 : List.of();
 
-        if (!membershipTargets.isEmpty()) {
-            queries.add("# Membership backbone (batched by "
-                    + membershipTargetBatchSize + " roots) capturing target field(s) "
-                    + membershipTargets.stream().map(RuleIncludedField::fieldName)
-                    .reduce((a, b) -> a + ", " + b).orElse("") + ":\n"
-                    + RuleNodeQueryBuilder.membershipBackboneQuery(rootNode));
-
-            RuleNode enrichNode = rootNode.sampleCopy(rootNode.limit());
-            for (RuleIncludedField fld : rootNode.includedFields()) {
-                if (!membershipTargets.contains(fld)) enrichNode.addIncludedField(fld);
+        if (largeMembership) {
+            // Slice 1 — membership backbone (captures target field(s) when present).
+            if (!membershipTargets.isEmpty()) {
+                queries.add("# Membership backbone (batched by "
+                        + membershipTargetBatchSize + " roots) capturing target field(s) "
+                        + membershipTargets.stream().map(RuleIncludedField::fieldName)
+                        .reduce((a, b) -> a + ", " + b).orElse("") + ":\n"
+                        + RuleNodeQueryBuilder.membershipBackboneQuery(rootNode));
+            } else {
+                queries.add("# Membership backbone (batched by "
+                        + membershipTargetBatchSize + " roots):\n"
+                        + RuleNodeQueryBuilder.valuesQuery(rootNode));
             }
-            List<RuleIncludedField> enrichFields =
-                    RuleNodeQueryBuilder.simpleInlinedFields(enrichNode);
-            if (!enrichFields.isEmpty()) {
-                queries.add("# Root enrichment over the remaining inlined field(s): "
-                        + enrichFields.stream().map(RuleIncludedField::fieldName)
-                        .reduce((a, b) -> a + ", " + b).orElse("") + "\n"
-                        + RuleNodeQueryBuilder.fieldOptimizedValuesQuery(enrichNode));
+
+            // Slice 2 — each remaining inlined entity-list field, per member-batch.
+            List<RuleIncludedField> directEntityFields = new ArrayList<>();
+            for (RuleIncludedField f : inlinedFields) {
+                if (!membershipTargets.contains(f)) directEntityFields.add(f);
+            }
+            for (RuleIncludedField f : directEntityFields) {
+                queries.add("# Member field \"" + f.fieldName() + "\" (batched by "
+                        + memberFieldBatchSize + " members):\n"
+                        + RuleNodeQueryBuilder
+                                .memberFieldBatchQuery(f, List.of("Q_MEMBER_BATCH"))
+                                .replace("wd:Q_MEMBER_BATCH", "<member batch>"));
+            }
+
+            if (!inlinedFields.isEmpty()) {
+                queries.add("# (fieldOptimizedValuesQuery skipped — every inlined "
+                        + "entity-list field is slice-covered above.)");
             }
         } else if (!inlinedFields.isEmpty()) {
             queries.add("# Root + inlined entity-list fields: "
@@ -491,6 +529,78 @@ public class RuleTreeExtractor {
                 }
             }
         }
+    }
+
+    /**
+     * Slice 2 (design step 5) — fetch each remaining multivalued direct entity field
+     * with its own MEMBER-batched row query instead of an inline GROUP_CONCAT over
+     * the whole class. Best-effort per batch: a failed batch is warned and skipped —
+     * the members are already COMPLETE from the backbone, so a partial field capture
+     * must never fail the run (it only leaves that field thinner).
+     */
+    private void captureMemberFields(
+            List<WikidataDynamicObject> members,
+            List<RuleIncludedField> fields,
+            GenerationLog progress) throws Exception {
+
+        List<String> memberQids = members.stream()
+                .map(WikidataDynamicObject::qid)
+                .filter(q -> q != null && q.matches("Q\\d+"))
+                .toList();
+        if (memberQids.isEmpty()) return;
+        int total = (memberQids.size() + memberFieldBatchSize - 1) / memberFieldBatchSize;
+
+        for (RuleIncludedField field : fields) {
+            int n = 0;
+            for (int from = 0; from < memberQids.size(); from += memberFieldBatchSize) {
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException();
+                }
+                List<String> batch = memberQids.subList(
+                        from, Math.min(from + memberFieldBatchSize, memberQids.size()));
+                String sparql =
+                        RuleNodeQueryBuilder.memberFieldBatchQuery(field, batch);
+                final int bn = ++n;
+                try {
+                    runRootQuery(
+                            "Member field \"" + field.fieldName()
+                                    + "\" (" + bn + "/" + total + ")",
+                            sparql, progress,
+                            () -> applyMemberField(field, sparql));
+                } catch (InterruptedException e) {
+                    throw e;
+                } catch (Exception e) {
+                    progress.message("WARNING: member field \"" + field.fieldName()
+                            + "\" batch " + bn + "/" + total + " failed ("
+                            + e.getMessage() + ") — members are COMPLETE; that "
+                            + "batch's values are unfilled this run.\n");
+                }
+            }
+        }
+    }
+
+    /**
+     * Runs one member-field batch and merges each {@code (?value, ?fieldValue)} onto
+     * the existing backbone member (registry-shared, canonical). merge is the final
+     * duplicate guard (dedup + insertion order). Returns the members it touched so
+     * the log shows a row count.
+     */
+    private List<WikidataDynamicObject> applyMemberField(
+            RuleIncludedField field, String sparql) throws Exception {
+
+        Map<String, WikidataDynamicObject> touched = new LinkedHashMap<>();
+        for (WikidataBinding b : client.query(sparql)) {
+            String valueQid = b.qid("value");
+            String fieldValueQid = b.qid("fieldValue");
+            if (valueQid == null || !valueQid.matches("Q\\d+")) continue;
+            if (fieldValueQid == null || !fieldValueQid.matches("Q\\d+")) continue;
+            WikidataDynamicObject member = registry.get(valueQid);
+            if (member == null) continue;   // not a backbone member
+            member.merge(field.fieldName(),
+                    registry.getOrCreate(fieldValueQid, fieldValueQid));
+            touched.put(valueQid, member);
+        }
+        return new ArrayList<>(touched.values());
     }
 
     private List<WikidataDynamicObject> runRootQuery(

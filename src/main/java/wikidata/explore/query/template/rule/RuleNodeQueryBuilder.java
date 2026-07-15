@@ -178,6 +178,37 @@ public final class RuleNodeQueryBuilder {
                 field.direction().triplePattern("?value", "?root", pid));
     }
 
+    /**
+     * Slice-2 direct field query: one multivalued entity field over a batch of
+     * MEMBERS, {@code SELECT DISTINCT ?value ?fieldValue}. DISTINCT is cheap here
+     * (a bounded VALUES set, one predicate) and the caller keeps a LinkedHashSet as
+     * the final duplicate guard. No {@code GROUP_CONCAT}, no label. A field type
+     * constraint (its {@code membershipQid}) is emitted so the values match the
+     * enrichment's semantics; the field's own direction places {@code ?value} on the
+     * correct end.
+     */
+    public static String memberFieldBatchQuery(
+            RuleIncludedField field, List<String> memberQids) {
+        String pid = RuleNode.cleanPid(field.propertyPid());
+        StringBuilder vals = new StringBuilder();
+        for (String q : memberQids) {
+            vals.append("wd:").append(RuleNode.cleanQid(q)).append(' ');
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("SELECT DISTINCT ?value ?fieldValue WHERE {\n");
+        sb.append("  VALUES ?value { ").append(vals.toString().trim()).append(" }\n");
+        sb.append("  ").append(field.direction()
+                .triplePattern("?value", "?fieldValue", pid)).append("\n");
+        if (field.hasMembership()) {
+            sb.append("  ?fieldValue wdt:")
+                    .append(RuleNode.cleanPid(field.membershipPid()))
+                    .append(" wd:").append(RuleNode.cleanQid(field.membershipQid()))
+                    .append(" .\n");
+        }
+        sb.append("}\n");
+        return sb.toString();
+    }
+
     private static String valuesQueryForNode(
             RuleNode node,
             String rootQidOrVar,

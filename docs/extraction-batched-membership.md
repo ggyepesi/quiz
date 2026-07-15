@@ -83,13 +83,23 @@ byte-identical.
 - **Drop `target` from the enrichment** — a `sampleCopy` of the node minus the
   captured field(s); if nothing remains inlined, the enrichment is skipped (step 7).
 
-### Slice 2 — remaining inlined entity fields (`type` = P31) via batched value-queries
+### Slice 2 — remaining inlined entity fields (`type` = P31) via batched value-queries (DONE)
 
-For each still-inlined entity-list field, member-batched:
+For each still-inlined entity-list field, member-batched
+(`RuleNodeQueryBuilder.memberFieldBatchQuery` + `RuleTreeExtractor.captureMemberFields`):
 
 - `SELECT DISTINCT ?value ?fieldValue WHERE { VALUES ?value { <member batch of
-  memberFieldBatchSize> } ?value wdt:P31 ?fieldValue }` — `DISTINCT` is fine when
-  cheap, with a `LinkedHashSet` as the final duplicate guard.
+  memberFieldBatchSize=250> } ?value wdt:P31 ?fieldValue }` — `DISTINCT` is fine when
+  cheap; `merge` onto the canonical registry member is the final duplicate guard
+  (dedup + insertion order). The field's own direction places `?value` on the correct
+  end, and a field type constraint (`membershipQid`) is emitted so values match the
+  old enrichment.
+- Best-effort per batch (a failed batch is warned + skipped; members stay complete).
+- **Step 7**: once every inlined entity-list field is target-captured (slice 1) or
+  member-batched (slice 2), the leftover enrichment node has no inlined field and
+  `fieldOptimizedValuesQuery` is **not issued at all**. (A large membership with
+  leftover *scalar* fields has no member-batched path yet — warned, not silently
+  dropped; no model class hits this today.)
 
 No `GROUP_CONCAT` over 11k; each batch is bounded.
 
