@@ -282,11 +282,22 @@ public class WikidataSparqlClient implements AutoCloseable {
     static boolean shouldRetry(Throwable error, int attemptsLeft) {
         if (attemptsLeft <= 1
                 || isCancellation(error)
-                || isTimeout(error)) {
+                || isTimeout(error)
+                || isTruncated(error)) {   // soft-timeout: same query overruns again
             return false;
         }
         SparqlHttpException http = httpError(error);
         return http == null || isRetryableStatus(http.statusCode());
+    }
+
+    private static boolean isTruncated(Throwable t) {
+        while (t != null) {
+            if (t instanceof TruncatedResponseException) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     /** The wait before the next attempt: a 429's Retry-After if given, else a
@@ -398,7 +409,21 @@ public class WikidataSparqlClient implements AutoCloseable {
             // Mirror to the console so it's copyable even when the UI dialog isn't.
             System.err.println("[SPARQL parse] " + msg);
 
-            throw new RuntimeException(msg, e);
+            // A truncated partial-200 means the query overran WDQS's timeout;
+            // re-issuing the same too-slow query just times out again, so mark it
+            // non-retryable and let the caller fall back immediately.
+            throw truncated
+                    ? new TruncatedResponseException(msg, e)
+                    : new RuntimeException(msg, e);
+        }
+    }
+
+    /** A partial/truncated 200 response body (WDQS soft-timeout). Not retryable —
+     *  the same query would overrun again. */
+    public static final class TruncatedResponseException
+            extends RuntimeException {
+        public TruncatedResponseException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 

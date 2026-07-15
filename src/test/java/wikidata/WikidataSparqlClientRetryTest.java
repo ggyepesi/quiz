@@ -54,6 +54,16 @@ class WikidataSparqlClientRetryTest {
     }
 
     @Test
+    void aTruncatedPartial200IsNotRetried() {
+        // A soft-timeout (truncated body) would just overrun again on retry.
+        assertFalse(WikidataSparqlClient.shouldRetry(
+                new WikidataSparqlClient.TruncatedResponseException("truncated", null), 3));
+        assertFalse(WikidataSparqlClient.shouldRetry(
+                new CompletionException(
+                        new WikidataSparqlClient.TruncatedResponseException("t", null)), 3));
+    }
+
+    @Test
     void theFailureIsFoundThroughACompletionExceptionWrapper() {
         // The async pipeline wraps thrown errors in a CompletionException.
         Throwable wrapped =
