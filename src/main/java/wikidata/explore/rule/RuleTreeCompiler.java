@@ -1,5 +1,9 @@
 package wikidata.explore.rule;
 
+import wikidata.explore.compiled.CompiledClass;
+import wikidata.explore.compiled.CompiledField;
+import wikidata.explore.compiled.CompiledFieldSource;
+import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.*;
 
@@ -317,6 +321,230 @@ public final class RuleTreeCompiler {
             return FieldProductionKind.DELAYED_ENTITY_FIELD;
         }
 
+        return FieldProductionKind.INLINE_VALUE;
+    }
+
+    // ---------------- compiled-model overloads ----------------
+    // A structural duplicate of the editable-model compile above, reading the
+    // resolved CompiledClass/CompiledField. It uses the CONFIGURED entity-class
+    // name (not the resolved one) so the RuleNode class names — and therefore the
+    // generated SPARQL — are byte-identical to the editable-model path. The
+    // RuleTreeCompilerParityTest asserts exactly that on the live model.
+
+    public static RuleNode compileProject(CompiledProjectModel project) {
+        return compileClass(project.rootClass(), project, new HashSet<>());
+    }
+
+    private static RuleNode compileClass(
+            CompiledClass clazz,
+            CompiledProjectModel project,
+            Set<String> visited) {
+
+        CompiledFieldSource m = clazz.sourceMapping();
+
+        RuleNode node = new RuleNode(clazz.className(), decap(clazz.className()));
+
+        node.sourceQid(m.sourceQid());
+        node.sourceLabel(m.sourceLabel());
+        for (String extra : m.additionalTypeQids()) {
+            node.addAdditionalSourceQid(extra);
+        }
+        for (String exq : m.excludedTypeQids()) {
+            String qid = RuleNode.cleanQid(exq);
+            if (qid.matches("Q\\d+")) {
+                node.excludedPredicateObjects().add(
+                        new RuleNode.PredicateObjectExclusion("P31", qid));
+            }
+        }
+        node.propertyPid(m.propertyPid().isBlank() ? "P31" : m.propertyPid());
+        node.propertyLabel(m.propertyLabel().isBlank()
+                ? "instance of"
+                : m.propertyLabel());
+        node.direction(RuleDirection.ITEM_TO_ROOT);
+        node.limit(m.limit());
+        node.requireSitelink(m.requireSitelink());
+        node.labelConfig(new RuleLabelConfig(m.requireLabel(), m.labelLanguage()));
+
+        if (clazz.hasDiscriminator()) {
+            node.membershipPid(clazz.discriminatorPid());   // already effective
+            node.membershipQid(RuleNode.cleanQid(clazz.discriminatorQid()));
+        }
+
+        for (String qid : clazz.seedQids()) {
+            node.addIncludedQid(qid);
+        }
+
+        node.rankDescending(m.rankDescending());
+        String rankBy = m.rankBy();
+        if (FieldSourceMapping.RANK_BY_SITELINKS.equals(rankBy)) {
+            node.rankBySitelinks(true);
+        } else if (rankBy != null && !rankBy.isBlank()) {
+            for (CompiledField rf : clazz.effectiveFields()) {
+                if (rf != null && rankBy.equals(rf.name())
+                        && !rf.source().propertyPid().isBlank()) {
+                    node.rankPropertyPid(rf.source().propertyPid());
+                    break;
+                }
+            }
+        }
+
+        visited.add(clazz.className());
+
+        // Compiled effectiveFields already exclude name fields.
+        for (CompiledField f : clazz.effectiveFields()) {
+            compileFieldIntoNode(node, f, project, visited);
+        }
+
+        return node;
+    }
+
+    private static RuleIncludedField compileField(CompiledField field) {
+        if (field == null || field.source().propertyPid().isBlank()) {
+            return null;
+        }
+        CompiledFieldSource m = field.source();
+
+        RuleIncludedField included = new RuleIncludedField(
+                field.name(),
+                m.propertyPid(),
+                m.propertyLabel(),
+                fieldKindFor(field),
+                !field.required());
+
+        included.collection(field.collection());
+        included.direction(isLiteral(field)
+                ? RuleDirection.ROOT_TO_ITEM
+                : m.direction());
+
+        return included;
+    }
+
+    private static boolean isLiteral(CompiledField field) {
+        if (field.collection()) {
+            return false;
+        }
+        FieldType t = field.type();
+        return t == FieldType.STRING || t == FieldType.NUMBER || t == FieldType.DATE;
+    }
+
+    private static void compileFieldIntoNode(
+            RuleNode parent,
+            CompiledField field,
+            CompiledProjectModel project,
+            Set<String> visited) {
+
+        if (field == null || field.source().propertyPid().isBlank()) {
+            return;
+        }
+        if (field.source().sourceType() == FieldSourceType.DBPEDIA) {
+            return;
+        }
+
+        FieldProductionKind kind = resolvedProductionKind(field);
+        CompiledFieldSource m = field.source();
+
+        if (kind == FieldProductionKind.INVERT
+                || kind == FieldProductionKind.COMPANION_MATCH) {
+            return;
+        }
+
+        if (field.hasValueFilter()) {
+            parent.valueFilters().add(new wikidata.explore.filter.WikidataValueFilter(
+                    field.name(),
+                    m.propertyPid(),
+                    m.propertyLabel(),
+                    field.filterOperator(),
+                    field.filterValue(),
+                    true));
+        }
+
+        if (kind == FieldProductionKind.CHILD_OBJECTS) {
+            RuleNode child = new RuleNode(
+                    field.configuredEntityClassName().isBlank()
+                            ? cap(field.name())
+                            : field.configuredEntityClassName(),
+                    decap(field.name()));
+
+            child.propertyPid(m.propertyPid());
+            child.propertyLabel(m.propertyLabel());
+            child.direction(m.direction());
+            child.limit(m.limit());
+            child.labelConfig(parent.labelConfig());
+            child.sortFieldName(field.sortFieldName());
+            child.sortDescending(field.sortDescending());
+
+            CompiledClass childClass = project == null
+                    ? null
+                    : project.findClass(field.configuredEntityClassName()).orElse(null);
+            if (childClass != null && !visited.contains(childClass.className())) {
+                CompiledFieldSource cm = childClass.sourceMapping();
+                if (field.edgeMembership() == EdgeMembershipMode.INHERIT
+                        && !cm.sourceQid().isBlank()) {
+                    child.membershipPid(cm.propertyPid().isBlank()
+                            ? "P31" : cm.propertyPid());
+                    child.membershipQid(cm.sourceQid());
+                }
+                child.requireSitelink(cm.requireSitelink());
+
+                visited.add(childClass.className());
+                for (CompiledField cf : childClass.effectiveFields()) {
+                    compileFieldIntoNode(child, cf, project, visited);
+                }
+            }
+
+            parent.edges().add(new RuleEdge(
+                    field.name(),
+                    child,
+                    field.collection()));
+            return;
+        }
+
+        RuleIncludedField included = compileField(field);
+
+        if (included != null) {
+            if (!field.configuredEntityClassName().isBlank()
+                    && field.edgeMembership() == EdgeMembershipMode.INHERIT
+                    && project != null) {
+                CompiledClass refClass = project.findClass(
+                        field.configuredEntityClassName()).orElse(null);
+                if (refClass != null) {
+                    CompiledFieldSource cm = refClass.sourceMapping();
+                    if (!cm.sourceQid().isBlank()) {
+                        included.membershipPid(cm.propertyPid().isBlank()
+                                ? "P31" : cm.propertyPid());
+                        included.membershipQid(cm.sourceQid());
+                    }
+                }
+            }
+            parent.includedFields().add(included);
+        }
+    }
+
+    private static RuleIncludedField.FieldKind fieldKindFor(CompiledField field) {
+        if (field.type() == FieldType.IMAGE) {
+            return RuleIncludedField.FieldKind.MEDIA;
+        }
+        if (field.type() == FieldType.ENTITY || field.collection()) {
+            return RuleIncludedField.FieldKind.ENTITY;
+        }
+        return RuleIncludedField.FieldKind.AUTO;
+    }
+
+    private static FieldProductionKind resolvedProductionKind(CompiledField field) {
+        CompiledFieldSource m = field.source();
+
+        if (m.productionKind() != FieldProductionKind.AUTO) {
+            return m.productionKind();
+        }
+        if (!field.nestedFields().isEmpty()) {
+            return FieldProductionKind.CHILD_OBJECTS;
+        }
+        if (field.collection()) {
+            return FieldProductionKind.DELAYED_ENTITY_FIELD;
+        }
+        if (field.type() == FieldType.ENTITY) {
+            return FieldProductionKind.DELAYED_ENTITY_FIELD;
+        }
         return FieldProductionKind.INLINE_VALUE;
     }
 

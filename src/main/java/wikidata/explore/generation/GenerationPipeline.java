@@ -38,7 +38,12 @@ import java.util.function.Consumer;
 public class GenerationPipeline {
 
     public RuleNode plan(GeneratedProjectModel snapshot) {
-        return RuleTreeCompiler.compileProject(snapshot);
+        // Compile first: the rule tree (and thus the extraction SPARQL) is built
+        // from the resolved compiled model — byte-identical to the editable path
+        // (RuleTreeCompilerParityTest), and the compile also fails fast on an
+        // invalid model before any query is issued.
+        return RuleTreeCompiler.compileProject(
+                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot));
     }
 
     public List<WikidataDynamicObject> extract(
