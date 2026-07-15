@@ -264,6 +264,16 @@ public final class VirtualizedCardList
 
         buildIfNeeded(q);
 
+        // Force the enclosing scroll pane to lay out NOW so this view is already
+        // resized to its new (taller) preferred height. Without it, scrolling toward
+        // a just-expanded LAST card stops at the stale content bottom and the
+        // expanded body stays clipped until an unrelated relayout (e.g. a new entry).
+        JScrollPane sp = (JScrollPane)
+                SwingUtilities.getAncestorOfClass(JScrollPane.class, this);
+        if (sp != null) {
+            sp.validate();
+        }
+
         scrollRectToVisible(new Rectangle(
                 0,
                 tops[i],

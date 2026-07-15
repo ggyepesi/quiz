@@ -129,7 +129,17 @@ public class QuizablePanelView {
                 o instanceof Quizable q ? virtualList.buildIfNeeded(q) : null);
         // Collapsible cards toggle by rebuilding the one card fresh (factory-driven),
         // so it re-measures at its new size instead of growing in place.
-        context.addCardToggleHandler(virtualList::invalidateCard);
+        context.addCardToggleHandler(q -> {
+            virtualList.invalidateCard(q);
+            // On EXPAND, scroll the now-taller card fully into view. Deferred past the
+            // invalidate's relayout so the content height (and the viewport's view
+            // size) has grown first — otherwise the LAST card's expanded body extends
+            // past the old bottom and the scroll can't reach it until something else
+            // relayouts (e.g. a new entry). Collapse needs no reveal.
+            if (context.collapsibleCards() && context.isCardExpanded(q, false)) {
+                SwingUtilities.invokeLater(() -> virtualList.ensureVisible(q));
+            }
+        });
         // Navigating to a card (e.g. a search hit) reveals it: a collapsed target
         // expands so a hit on a hidden field becomes visible. State lives in the
         // context, so it stays expanded on scroll-away-and-back.
