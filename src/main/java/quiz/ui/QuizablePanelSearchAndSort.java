@@ -107,15 +107,25 @@ public class QuizablePanelSearchAndSort {
 
         Map<String, List<quiz.Quizable>> out = new LinkedHashMap<>();
 
-        if (quizables == null || searchConfig == null
+        if (quizables == null || quizables.isEmpty() || searchConfig == null
                 || queryTokens == null || queryTokens.isEmpty()) {
             return out;
         }
 
-        List<QuizableFieldPaths.FieldPath> paths =
-                QuizableFieldPaths.collect(
-                        searchConfig,
-                        QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS);
+        // Enumerate fields through the ONE unified bridge (FieldSet, via
+        // collectFromSample) — it reads declared Java fields AND a WDO's map-held
+        // fields with no instanceof branch, so a reference like forWork/category is
+        // searchable regardless of representation. Filter to the search config's
+        // selection (by the path's top-level field), so "search these fields" applies.
+        List<QuizableFieldPaths.FieldPath> paths = new ArrayList<>();
+        for (QuizableFieldPaths.FieldPath fp
+                : QuizableFieldPaths.collectFromSample(
+                        quizables.get(0), QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS)) {
+            String top = fp.path().isEmpty() ? "" : fp.path().get(0);
+            if (searchConfig.showsFieldByName(top)) {
+                paths.add(fp);
+            }
+        }
 
         for (QuizableFieldPaths.FieldPath fp : paths) {
             List<quiz.Quizable> hits = null;
