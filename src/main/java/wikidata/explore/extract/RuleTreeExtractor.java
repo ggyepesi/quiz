@@ -569,24 +569,25 @@ public class RuleTreeExtractor {
             edges.keySet().retainAll(byQid.keySet());
         }
 
-        // Per-root member counts as ONE copy-pasteable block: the member count each
-        // membership root contributed, sorted by root QID so two runs' blocks diff
-        // cleanly (e.g. to see which category an 11181-vs-11176 shift came from).
-        // Only when the root was captured (edges present).
+        // Per-root member counts as a distinct, copy-pasteable log entry: the member
+        // count each membership root contributed, sorted by root QID so two runs'
+        // blocks diff cleanly (e.g. which category an 11181-vs-11176 shift came from).
+        // A structured subquery (not a message) so it's its own card with the total
+        // as the summary and the full per-root list in the request. Only when the
+        // root was captured (edges present).
         if (capture && !edges.isEmpty()) {
             java.util.TreeMap<String, Integer> membersPerRoot = new java.util.TreeMap<>();
             for (LinkedHashSet<String> roots : edges.values()) {
                 for (String r : roots) membersPerRoot.merge(r, 1, Integer::sum);
             }
-            StringBuilder sb = new StringBuilder();
-            sb.append(rootNode.name()).append(" membership: ").append(byQid.size())
-                    .append(" members across ").append(membersPerRoot.size())
-                    .append(" roots (root\tmembers)\n");
+            StringBuilder sb = new StringBuilder("root\tmembers\n");
             for (Map.Entry<String, Integer> e : membersPerRoot.entrySet()) {
-                sb.append("  ").append(e.getKey()).append('\t')
-                        .append(e.getValue()).append('\n');
+                sb.append(e.getKey()).append('\t').append(e.getValue()).append('\n');
             }
-            progress.message(sb.toString());
+            progress.subquery(
+                    rootNode.name() + " membership — per-root member counts",
+                    sb.toString(),
+                    byQid.size() + " members across " + membersPerRoot.size() + " roots");
         }
 
         return new MembershipBackbone(new ArrayList<>(byQid.values()), edges);
