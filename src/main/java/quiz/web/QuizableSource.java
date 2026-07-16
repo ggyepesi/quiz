@@ -1,7 +1,7 @@
 package quiz.web;
 
 import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.QuizableGroup;
 
 import java.util.Collection;
 

@@ -1,6 +1,7 @@
 package quiz;
 
 import aux.GridBagUtils;
+import objectview.QuizableGroup;
 import objectview.QuizablePanel;
 import objectview.viewconfig.QuizablePanelConfig;
 

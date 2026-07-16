@@ -2,7 +2,7 @@ package quiz.web.sources;
 
 import mythology.MythologyEntities;
 import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.QuizableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 import quiz.web.QuizableSource;

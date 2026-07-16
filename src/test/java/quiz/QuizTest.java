@@ -1,5 +1,6 @@
 package quiz;
 
+import objectview.QuizableGroup;
 import org.junit.jupiter.api.Test;
 import objectview.viewconfig.QuizablePanelConfig;
 

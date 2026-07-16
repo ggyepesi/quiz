@@ -1,7 +1,6 @@
 package objectview;
 
 import quiz.Quizable;
-import quiz.QuizableGroup;
 import objectview.viewconfig.FieldTypeSource;
 import objectview.viewconfig.QuizablePanelConfig;
 

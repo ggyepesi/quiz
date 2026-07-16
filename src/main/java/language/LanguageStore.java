@@ -1,6 +1,6 @@
 package language;
 
-import quiz.QuizableGroup;
+import objectview.QuizableGroup;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

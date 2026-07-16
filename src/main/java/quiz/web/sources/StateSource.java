@@ -2,7 +2,7 @@ package quiz.web.sources;
 
 import flag.States;
 import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.QuizableGroup;
 import objectview.facet.FacetGrouper;
 import quiz.web.QuizableSource;
 

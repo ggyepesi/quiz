@@ -11,6 +11,7 @@ import mythology.Creature;
 import mythology.MythologyEntities;
 import nobel.NobelPrize;
 import nobel.NobelPrizes;
+import objectview.QuizableGroup;
 import oscar.OscarNomination;
 import oscar.OscarNominations;
 import presidents.President;

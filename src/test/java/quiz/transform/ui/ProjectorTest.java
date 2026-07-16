@@ -2,7 +2,7 @@ package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
 import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.QuizableGroup;
 import quiz.transform.DynamicQuizable;
 import quiz.transform.View;
 import quiz.transform.app.SnapshotDomain;

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import objectview.QuizableGroup;
 import quiz.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
@@ -349,7 +350,7 @@ public class QuizableHttpServer {
     private void handleGroups(HttpExchange ex) throws IOException {
         String type = queryParam(ex, "type");
         try {
-            quiz.QuizableGroup root = store.rootGroup(type);
+            QuizableGroup root = store.rootGroup(type);
             writeJson(ex, 200, root == null ? null : GroupNode.of(root));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));

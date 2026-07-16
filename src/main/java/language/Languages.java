@@ -1,7 +1,7 @@
 package language;
 
 import aux.Constants;
-import quiz.QuizableGroup;
+import objectview.QuizableGroup;
 
 import objectview.QuizableGroupView;
 import objectview.QuizableViews;

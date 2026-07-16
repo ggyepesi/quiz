@@ -1,7 +1,9 @@
-package quiz;
+package objectview;
 
 import objectview.annotations.NotQuizableField;
 import objectview.annotations.QuizableReference;
+import quiz.Quizable;
+import quiz.QuizableAdapter;
 
 import java.util.Collection;
 import java.util.Collections;
