@@ -423,7 +423,13 @@ public class ModelBuilderFrame extends JFrame {
         // Per-class counts, biggest first — the total alone was misleading (it
         // reads as if every instance is the root class, when it's the whole pool
         // across classes, e.g. films + nominations + categories).
-        java.util.Map<String, Integer> byType = new java.util.LinkedHashMap<>();
+        // Count DISTINCT entities per class, by QID — the served/saved artifact is
+        // keyed by QID (one instance per QID), so counting raw pool objects
+        // over-reports: a QID that is both a class root and a bare reference child, or
+        // a blank-QID ref, is one saved entity but several pool objects. Skipping
+        // non-QID objects + deduping by QID makes this preview match the reload.
+        java.util.Map<String, java.util.Set<String>> qidsByType =
+                new java.util.LinkedHashMap<>();
         if (lastRun.dynamicObjects() != null) {
             for (WikidataDynamicObject o : lastRun.dynamicObjects()) {
                 if (o == null || o.typeName() == null || o.typeName().isBlank()
@@ -432,18 +438,24 @@ public class ModelBuilderFrame extends JFrame {
                         || "WikidataDynamicObject".equals(o.typeName())) {
                     continue;
                 }
-                byType.merge(o.typeName(), 1, Integer::sum);
+                String qid = o.qid();
+                if (qid == null || !qid.matches("Q\\d+")) {
+                    continue;   // not a saved entity — don't inflate the count
+                }
+                qidsByType.computeIfAbsent(
+                        o.typeName(), k -> new java.util.HashSet<>()).add(qid);
             }
         }
-        if (byType.isEmpty()) {
+        if (qidsByType.isEmpty()) {
             return "Generated instances  (" + lastRun.size() + ")";
         }
-        String breakdown = byType.entrySet().stream()
-                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
-                .map(e -> e.getKey() + " " + e.getValue())
+        int total = qidsByType.values().stream().mapToInt(java.util.Set::size).sum();
+        String breakdown = qidsByType.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+                .map(e -> e.getKey() + " " + e.getValue().size())
                 .collect(java.util.stream.Collectors.joining(", "));
         return "Generated instances — " + breakdown
-                + "  (" + lastRun.size() + " total)";
+                + "  (" + total + " distinct)";
     }
 
     private void wireActions() {
