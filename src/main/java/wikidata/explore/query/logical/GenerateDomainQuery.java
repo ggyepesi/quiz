@@ -253,8 +253,35 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     List<Quizable> allInstances =
                             pipeline.materialize(runtime, pool);
 
-                    step.summary(pool.size() + " objects across "
-                            + classesRun + " class(es)");
+                    // Parent summary = a copy-pasteable per-class breakdown of the
+                    // SERVED pool, counted by DISTINCT qid (what the save keeps), so
+                    // two runs diff cleanly and the number matches the reload.
+                    java.util.Map<String, java.util.Set<String>> servedByType =
+                            new java.util.LinkedHashMap<>();
+                    for (WikidataDynamicObject o : pool) {
+                        if (o == null || o.typeName() == null || o.typeName().isBlank()
+                                || "WikidataDynamicObject".equals(o.typeName())) {
+                            continue;
+                        }
+                        String qid = o.qid();
+                        if (qid == null || !qid.matches("Q\\d+")) {
+                            continue;
+                        }
+                        servedByType.computeIfAbsent(
+                                o.typeName(), k -> new java.util.HashSet<>()).add(qid);
+                    }
+                    int servedTotal = servedByType.values().stream()
+                            .mapToInt(java.util.Set::size).sum();
+                    StringBuilder summary = new StringBuilder();
+                    servedByType.entrySet().stream()
+                            .sorted((a, b) -> Integer.compare(
+                                    b.getValue().size(), a.getValue().size()))
+                            .forEach(e -> summary.append(e.getKey()).append('\t')
+                                    .append(e.getValue().size()).append('\n'));
+                    summary.append("TOTAL\t").append(servedTotal)
+                            .append(" distinct across ").append(classesRun)
+                            .append(" class(es)");
+                    step.summary(summary.toString());
                     return new GenerationRun(
                             project, 0, rootPlan, pool, runtime, allInstances,
                             new GenerationRun.RemapState(enrichedSnapshot, companionSets));
