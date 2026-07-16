@@ -218,7 +218,13 @@ public final class ModelStatementReifications {
             return null;
         }
 
-        String valueField = findValueField(statementClass, statementPid);
+        // The value role is resolved ONCE at compile (CompiledStatementSource) from
+        // the explicit statement-value role; the reify reads it here. Fall back to the
+        // local resolver only if a compiled model predates the field.
+        String valueField = statementSource.valueField();
+        if (valueField.isBlank()) {
+            valueField = findValueField(statementClass, statementPid);
+        }
         List<String> valueQids = valueQids(
                 statementClass, sourceClassModel, statementPid, valueField);
 

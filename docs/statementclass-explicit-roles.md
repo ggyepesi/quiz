@@ -50,11 +50,20 @@ silent wrong guess.
   (P1411 == statement PID) resolves identically. Add tests: value resolved by
   PID-match; ambiguous/missing surfaced rather than guessed.
 
-## Then (step a)
+## Step a — resolve the value role at compile (DONE)
 
-Route `StatementClass → QualifierLoadConfig` through `CompiledStatementSource` so the
-value role (now explicit) + qualifiers + dedup are resolved once, validated, from the
-compiled model — the reification analog of the extraction compile.
+`CompiledStatementSource` now carries a `valueField`, resolved ONCE by
+`ProjectModelCompiler` via `StatementFieldSemantics.statementValueFieldName(clazz)`.
+The compiled reify path reads `statementSource.valueField()` instead of re-deriving
+it (`findValueField` kept only as a fallback for a compiled model that predates the
+field). So the value role has a single source of truth threaded through the compile —
+the reification analog of the extraction compile. (`ProjectModelCompilerTest.`
+`compiledStatementSourceCarriesTheResolvedValueField`.)
+
+Later (not yet): carry the resolved qualifiers + dedup + valueQids + fallback roles on
+the compiled source too, so the *whole* `QualifierLoadConfig` is compile-derived, not
+just the value field. They're already read from the compiled fields at reify time, so
+this is a consolidation, not a correctness fix.
 
 ## Out of scope
 

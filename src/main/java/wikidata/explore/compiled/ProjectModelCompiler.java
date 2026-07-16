@@ -98,7 +98,8 @@ public final class ProjectModelCompiler {
                         statement,
                         statementSource == null
                                 ? ""
-                                : statementSource.className()),
+                                : statementSource.className(),
+                        StatementFieldSemantics.statementValueFieldName(clazz)),
                 ownFields,
                 effectiveFields);
     }

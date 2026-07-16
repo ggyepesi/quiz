@@ -100,6 +100,25 @@ class ProjectModelCompilerTest {
     }
 
     @Test
+    void compiledStatementSourceCarriesTheResolvedValueField() {
+        GeneratedProjectModel p = project("valuefield");
+        p.addClass(new GeneratedClassModel("OscarNominations"));
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P1411");        // value field on the statement PID
+        nom.addField("year", FieldType.DATE, FieldCardinality.SINGLE)
+                .mapping().qualifierPid("P585");        // qualifier, not the value
+        p.addClass(nom);
+
+        CompiledClass cn = ProjectModelCompiler.compile(p)
+                .findClass("Nomination").orElseThrow();
+
+        assertEquals("category", cn.statementSource().valueField(),
+                "the value role is resolved once at compile, not at reify");
+    }
+
+    @Test
     void aStaleFacetFieldIsDroppedNotFatal() {
         GeneratedProjectModel p = project("stalefacet");
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
