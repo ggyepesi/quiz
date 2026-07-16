@@ -160,12 +160,13 @@ public class GeneratedSource implements QuizableSource {
         int seen = 0;
 
         for (Quizable q : all) {
-            if (!(q instanceof DynamicFields dyn)) {
-                continue;
-            }
-            for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
-                String name = e.getKey();
-                Object v = e.getValue();
+            // Enumerate fields through the ONE FieldSet bridge (#87) — the object's
+            // fields regardless of backing, no `instanceof DynamicFields` fork. (This
+            // source serves dynamic snapshots, so in practice these are map fields.)
+            quiz.fields.FieldSet fs = quiz.fields.FieldSet.of(q);
+            for (quiz.fields.FieldRef fr : fs.fields()) {
+                String name = fr.name();
+                Object v = fs.read(name);
                 isRef.merge(name, hasReference(v), Boolean::logicalOr);
                 isBool.merge(name, v instanceof Boolean, Boolean::logicalAnd);
                 distinct.computeIfAbsent(name, k -> new HashSet<>()).addAll(scalarKeys(v));
