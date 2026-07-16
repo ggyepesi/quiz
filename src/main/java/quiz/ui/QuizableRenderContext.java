@@ -49,11 +49,13 @@ public class QuizableRenderContext {
     private final Map<Class<?>, QuizablePanelConfig> classConfigs =
             new HashMap<>();
 
-    // Quizable references the user has opened in place (expanded inline
-    // instead of shown as a collapsed chip). Keyed by identity so the same
-    // target stays in sync wherever it appears in the card.
-    private final Set<Object> expanded =
-            Collections.newSetFromMap(new IdentityHashMap<>());
+    // Quizable references the user has opened/closed in place, keyed by identity so
+    // the same target stays in sync wherever it appears in the card. Tri-state
+    // (mirrors collectionExpanded): absent = use the caller's default, else the
+    // explicit user choice — so a reference can render expanded-by-default (e.g. a
+    // dynamic field that used to render always-inline) yet still be collapsible.
+    private final Map<Object, Boolean> referenceExpanded =
+            new IdentityHashMap<>();
 
     // Back-stack of viewport positions: each focusTopLevel() jump records where
     // the view was before scrolling, so the user can return (see back()).
@@ -87,7 +89,18 @@ public class QuizableRenderContext {
     }
 
     public boolean isExpanded(Object target) {
-        return target != null && expanded.contains(target);
+        return isExpanded(target, false);
+    }
+
+    /** Expand state layered over a caller-supplied default (absent entry = use the
+     *  default), so a reference can be expanded-by-default yet still be collapsible —
+     *  the reference counterpart of {@link #isCollectionExpanded}. */
+    public boolean isExpanded(Object target, boolean defaultExpanded) {
+        if (target == null) {
+            return false;
+        }
+        Boolean v = referenceExpanded.get(target);
+        return v == null ? defaultExpanded : v;
     }
 
     // Collection/map collapse state, keyed by the collection's identity. Unlike
@@ -122,25 +135,27 @@ public class QuizableRenderContext {
         }
     }
 
-    /** Flips the in-place expand state; returns the new state. */
+    /** Flips the in-place expand state relative to a default-collapsed reference;
+     *  returns the new state. (A default-expanded reference flips via {@link
+     *  #setExpanded} from the row's known state, so it needs no default here.) */
     public boolean toggleExpanded(Object target) {
         if (target == null) {
             return false;
         }
-        if (expanded.remove(target)) {
-            return false;
-        }
-        expanded.add(target);
-        return true;
+        boolean next = !isExpanded(target, false);
+        referenceExpanded.put(target, next);
+        return next;
     }
 
-    /** Forces the in-place expand state (used by search to reveal a match hidden
-     *  inside a collapsed reference chip). Returns true if it changed. */
+    /** Forces the in-place expand state — used by a chip's toggle (flipping from its
+     *  own effective state) and by search to reveal a match hidden inside a collapsed
+     *  reference. Returns true if it changed. */
     public boolean setExpanded(Object target, boolean exp) {
         if (target == null) {
             return false;
         }
-        return exp ? expanded.add(target) : expanded.remove(target);
+        Boolean prev = referenceExpanded.put(target, exp);
+        return prev == null || prev != exp;
     }
 
     // When true, single-clicking a reference to an object that is top-level

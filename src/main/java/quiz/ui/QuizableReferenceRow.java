@@ -144,7 +144,10 @@ public class QuizableReferenceRow extends QuizableTextRow {
         if (renderContext == null || target == null) {
             return;
         }
-        renderContext.toggleExpanded(target);
+        // Flip from this chip's own effective state, so a reference that renders
+        // expanded-by-default (its map entry may be absent) still collapses on the
+        // first click rather than needing two.
+        renderContext.setExpanded(target, !expanded);
         refreshRootCard();
     }
 

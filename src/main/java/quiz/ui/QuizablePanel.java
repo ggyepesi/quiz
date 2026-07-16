@@ -694,7 +694,24 @@ public class QuizablePanel extends JPanel {
             return row;
         }
 
-        boolean complex = value instanceof Quizable || value instanceof ImagePane
+        // A single reference renders through the SAME collapsible chip a declared
+        // reference gets — but seeded expanded, so it looks like today's always-inline
+        // dynamic field while becoming a collapsible, toggleable chip (#87). A
+        // collection of references keeps the collection renderer (whose items are
+        // already collapsible chips).
+        if (value instanceof Quizable q) {
+            if (!textRows.isEmpty()) {
+                row = addTextBlock(textRows, row);
+                textRows.clear();
+            }
+            JComponent comp = collapsibleReference(key, fieldPath, q, true);
+            if (comp != null) {
+                addSingle(comp, row++);
+            }
+            return row;
+        }
+
+        boolean complex = value instanceof ImagePane
                 || value instanceof quiz.ui.MediaValue
                 || value instanceof Collection<?> || value instanceof Map<?, ?>;
         if (!complex) {
@@ -1033,6 +1050,18 @@ public class QuizablePanel extends JPanel {
             String fieldName,
             List<String> fieldPath,
             Quizable target) {
+        return collapsibleReference(fieldName, fieldPath, target, false);
+    }
+
+    // As above, but {@code defaultExpanded} seeds the initial state when the user
+    // hasn't toggled this reference yet — true for a reference that used to render
+    // always-inline (a dynamic map field), so it looks the same but is now a
+    // collapsible chip rather than a fixed inline panel.
+    private JComponent collapsibleReference(
+            String fieldName,
+            List<String> fieldPath,
+            Quizable target,
+            boolean defaultExpanded) {
 
         // A reference to something that is itself a top-level card in this view
         // is a navigation link (jump to that card) rather than an expand-in-place
@@ -1049,7 +1078,8 @@ public class QuizablePanel extends JPanel {
                     true);
         }
 
-        boolean exp = renderContext != null && renderContext.isExpanded(target);
+        boolean exp = renderContext != null
+                && renderContext.isExpanded(target, defaultExpanded);
 
         QuizableReferenceRow chip =
                 new QuizableReferenceRow(
