@@ -1,27 +1,26 @@
 package quiz;
 
+import objectview.field.FieldSet;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
-public interface Quizable {
-    /** Stable unique key used for map keys, cartesian product keys, and identity checks. */
-    String getIdentifier();
+/**
+ * A quiz domain object. It adapts to the {@link objectview.Viewable} SPI — the sole
+ * input of the objectview widgets — by bridging its {@code getX} accessors to the
+ * neutral view names; the objectview library never sees {@code Quizable} itself.
+ */
+public interface Quizable extends objectview.Viewable {
+    // getIdentifier() / getDisplayName() / getName() / typeName() are inherited from
+    // objectview.Viewable (same names), so every Quizable is a Viewable with no call
+    // churn. Quizable only adds the field bridge + its data-model operations.
 
-    /** Human-readable label shown in UI, titles, and logging. */
-    String getDisplayName();
+    /** The field bridge over this object (declared reflection or a dynamic map). */
+    @Override default FieldSet fields() { return FieldSet.of(this); }
 
-    /** Backward-compatible bridge — delegates to getDisplayName(). */
-    default String getName() { return getDisplayName(); }
-
-    /**
-     * The dataset/type name used to address this object in the web API
-     * ({@code /api/quizable/{type}/{id}}) and to key it in the store. Defaults
-     * to the class's simple name (so hand-written model classes are addressed
-     * by their class), but generated/dynamic objects — all of one Java class —
-     * override it with their domain name (e.g. "Constellation").
-     */
-    default String typeName() { return getClass().getSimpleName(); }
+    // typeName() is inherited from Viewable (dynamic objects override it with their
+    // domain name; it addresses the object in the web API /api/quizable/{type}/{id}).
 
     public boolean hasField(String fieldName);
     public boolean hasAnyField();
