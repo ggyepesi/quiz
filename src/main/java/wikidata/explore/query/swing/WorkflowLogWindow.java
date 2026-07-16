@@ -7,6 +7,7 @@ import wikidata.explore.query.core.QueryStatus;
 import wikidata.explore.query.log.LogKind;
 import wikidata.explore.query.log.LogListener;
 import wikidata.explore.query.log.LogNode;
+import wikidata.explore.query.log.LogText;
 import wikidata.explore.query.log.WorkflowRecorder;
 
 import javax.swing.*;
@@ -96,7 +97,16 @@ public class WorkflowLogWindow implements LogListener {
 
         f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         f.setLayout(new BorderLayout(6, 6));
-        f.add(search, BorderLayout.NORTH);
+
+        // Save the whole log, fully expanded, to a text file — for diffing two runs
+        // offline regardless of what's collapsed in the UI.
+        JButton saveButton = new JButton("Save log…");
+        saveButton.setToolTipText("Save the entire log (fully expanded) to a text file");
+        saveButton.addActionListener(e -> saveLog(f));
+        JPanel north = new JPanel(new BorderLayout(6, 6));
+        north.add(search, BorderLayout.CENTER);
+        north.add(saveButton, BorderLayout.EAST);
+        f.add(north, BorderLayout.NORTH);
         f.add(v.getCardsScrollPane(), BorderLayout.CENTER);
         f.setSize(1000, 700);
         f.setLocationRelativeTo(owner);
@@ -113,6 +123,27 @@ public class WorkflowLogWindow implements LogListener {
         });
 
         f.setVisible(true);
+    }
+
+    private void saveLog(Component parent) {
+        if (workflows.isEmpty()) {
+            JOptionPane.showMessageDialog(parent, "The log is empty — nothing to save.");
+            return;
+        }
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save query log");
+        chooser.setSelectedFile(new java.io.File("query-log.txt"));
+        if (chooser.showSaveDialog(parent) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        java.io.File file = chooser.getSelectedFile();
+        try {
+            java.nio.file.Files.writeString(file.toPath(), LogText.toText(workflows));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(parent,
+                    "Could not save the log: " + ex.getMessage(),
+                    "Save failed", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public void info(String text) {
