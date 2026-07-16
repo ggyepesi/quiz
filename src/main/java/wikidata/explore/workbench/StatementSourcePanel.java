@@ -339,14 +339,25 @@ public class StatementSourcePanel extends JPanel {
             }
         }
 
+        // The value role is explicit: the non-qualifier field on the statement PID.
+        // When none is mapped, deriveOne falls back to the string "value" (a field
+        // that doesn't exist) — flag that here rather than showing "value" as if a
+        // field were configured (mirrors the validator warning).
+        String explicitValue =
+                StatementFieldSemantics.statementValueFieldName(clazz);
+        String valuePart = explicitValue.isEmpty()
+                ? " · ⚠ no value field — map a non-qualifier field to "
+                        + load.propertyPid()
+                : " · statement value = " + explicitValue;
         identityValue.setText(
-                "derived natural key"
-                        + " · statement value = "
-                        + load.valueField()
+                "derived natural key" + valuePart
                         + (reify.canonicalizesByList()
                         ? " · canonical list = "
                           + reify.primaryListField()
                         : ""));
+        identityValue.setForeground(explicitValue.isEmpty()
+                ? new java.awt.Color(0xB0, 0x00, 0x20)
+                : javax.swing.UIManager.getColor("Label.foreground"));
 
         subjectFallbackValue.setText(
                 display(subjectFallbacks));
