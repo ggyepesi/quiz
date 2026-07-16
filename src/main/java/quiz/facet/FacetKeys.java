@@ -1,6 +1,5 @@
 package quiz.facet;
 
-import quiz.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 
@@ -52,8 +51,11 @@ final class FacetKeys {
     }
 
     private static Object readField(Object obj, String name) {
-        if (obj instanceof DynamicFields dyn && dyn.dynamicFieldValues().containsKey(name)) {
-            return dyn.dynamicFieldValues().get(name);
+        // A Quizable reads through the ONE FieldSet bridge (#87) — a dynamic property
+        // map or declared Java fields, no `instanceof DynamicFields` fork. Facet paths
+        // are real field names, so a plain read (null when absent) is all we need.
+        if (obj instanceof Quizable q) {
+            return quiz.fields.FieldSet.of(q).read(name);
         }
         Field f = QuizableAdapter.getField(obj.getClass(), name);
         if (f == null) {

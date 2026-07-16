@@ -284,12 +284,16 @@ public class QuizablePanelSearchAndSort {
             return q.getName();
         }
 
-        // A dynamic (map-held) field — e.g. a snapshot WDO's `won` — has no
-        // declared Java field; the property map IS the field set.
-        if (obj instanceof quiz.DynamicFields dyn
-                && dyn.dynamicFieldValues().containsKey(part)) {
-            return extractRecursive(
-                    dyn.dynamicFieldValues().get(part), path, idx + 1);
+        // Read one level through the ONE FieldSet bridge (#87): a WDO's map-held field
+        // (e.g. `won`) or a declared Java field, behind one interface, no `instanceof
+        // DynamicFields` fork. has() (vs a present-null value) mirrors the old
+        // containsKey guard so an absent field still returns null.
+        if (obj instanceof Quizable q) {
+            quiz.fields.FieldSet fs = quiz.fields.FieldSet.of(q);
+            if (fs.has(part)) {
+                return extractRecursive(fs.read(part), path, idx + 1);
+            }
+            return null;
         }
 
         Field f =
@@ -299,10 +303,7 @@ public class QuizablePanelSearchAndSort {
             return null;
         }
 
-        Object next =
-                f.get(obj);
-
-        return extractRecursive(next, path, idx + 1);
+        return extractRecursive(f.get(obj), path, idx + 1);
     }
 
     private Field getFieldCached(

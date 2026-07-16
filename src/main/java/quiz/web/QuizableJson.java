@@ -309,20 +309,9 @@ public final class QuizableJson {
     }
 
     private static Object rawFieldValue(Quizable owner, String name) {
-        if (owner instanceof DynamicFields dyn
-                && dyn.dynamicFieldValues().containsKey(name)) {
-            return dyn.dynamicFieldValues().get(name);
-        }
-        Field f = QuizableAdapter.getField(owner.getClass(), name);
-        if (f == null) {
-            return null;
-        }
-        try {
-            f.setAccessible(true);
-            return f.get(owner);
-        } catch (Exception e) {
-            return null;
-        }
+        // The ONE FieldSet bridge (#87): a dynamic property map or declared Java
+        // fields behind one interface — no `instanceof DynamicFields` fork.
+        return quiz.fields.FieldSet.of(owner).read(name);
     }
 
     /** Render-model for a single named field of {@code owner}, or null. */
@@ -378,24 +367,10 @@ public final class QuizableJson {
             return dn == null || dn.isBlank() ? null : dn;
         }
 
-        if (owner instanceof DynamicFields dyn && dyn.dynamicFieldValues().containsKey(fieldName)) {
-            String s = asString(dyn.dynamicFieldValues().get(fieldName));
-            return s == null || s.isBlank() ? null : s;
-        }
-
-        Field f = QuizableAdapter.getField(owner.getClass(), fieldName);
-        if (f == null) {
-            return null;
-        }
-
-        try {
-            f.setAccessible(true);
-            Object v = f.get(owner);
-            String s = asString(v);
-            return s == null || s.isBlank() ? null : s;
-        } catch (Exception e) {
-            return null;
-        }
+        // Both backings resolve the same way — read through the ONE FieldSet bridge
+        // (#87), then stringify. No `instanceof DynamicFields` fork.
+        String s = asString(quiz.fields.FieldSet.of(owner).read(fieldName));
+        return s == null || s.isBlank() ? null : s;
     }
 
     private static String asString(Object v) {

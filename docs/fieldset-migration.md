@@ -53,6 +53,8 @@ enumeration. Behavior-preserving: same fields, same values, same paths.
 2. **Read** — `FieldAccess.readField`/`writeField` → `FieldSet.of(obj).read(name)` /
    a `write(name,value)` added to the interface. This is the highest-leverage: render,
    search value-extraction, facet, and JSON all bottom out in field reads.
+   *(DONE — 91b45b9. `FieldSet` gained `has(name)` to keep the layered map→reflection→identity
+   fallback exact; `FieldAccess` has no `instanceof DynamicFields` left.)*
 3. **Render / serialize / facet / web** — replace each `instanceof DynamicFields` with
    `FieldSet.of(obj)` / `FieldAccess`.
 4. **Config editor** — its dynamic-vs-reflection row builders collapse into one
