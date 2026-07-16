@@ -55,7 +55,7 @@ final class FacetKeys {
         // map or declared Java fields, no `instanceof DynamicFields` fork. Facet paths
         // are real field names, so a plain read (null when absent) is all we need.
         if (obj instanceof Quizable q) {
-            return quiz.fields.FieldSet.of(q).read(name);
+            return objectview.field.FieldSet.of(q).read(name);
         }
         Field f = QuizableAdapter.getField(obj.getClass(), name);
         if (f == null) {

@@ -1,6 +1,6 @@
 package quiz.transform;
 
-import quiz.fields.FieldAccess;
+import objectview.field.FieldAccess;
 
 public class CopyFieldTransform<S, T> implements ObjectTransform<S, T> {
 

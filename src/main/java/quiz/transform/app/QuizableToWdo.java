@@ -54,8 +54,8 @@ public final class QuizableToWdo {
             o.type(q.typeName());
             seen.put(q, o);
             // Copy every field, whichever representation — no instanceof branch.
-            quiz.fields.FieldSet set = quiz.fields.FieldSet.of(q);
-            for (quiz.fields.FieldRef ref : set.fields()) {
+            objectview.field.FieldSet set = objectview.field.FieldSet.of(q);
+            for (objectview.field.FieldRef ref : set.fields()) {
                 Object cv = convert(set.read(ref.name()), seen);
                 if (cv != null) {
                     o.put(ref.name(), cv);

@@ -1,8 +1,8 @@
 package quiz.transform.app;
 
-import quiz.fields.FieldRef;
-import quiz.fields.FieldSchema;
-import quiz.fields.FieldKind;
+import objectview.field.FieldRef;
+import objectview.field.FieldSchema;
+import objectview.field.FieldKind;
 
 import java.util.ArrayList;
 import java.util.List;

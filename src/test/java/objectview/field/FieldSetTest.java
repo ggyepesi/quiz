@@ -1,4 +1,4 @@
-package quiz.fields;
+package objectview.field;
 
 import org.junit.jupiter.api.Test;
 import quiz.Quizable;

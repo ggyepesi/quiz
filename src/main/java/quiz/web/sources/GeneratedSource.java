@@ -163,8 +163,8 @@ public class GeneratedSource implements QuizableSource {
             // Enumerate fields through the ONE FieldSet bridge (#87) — the object's
             // fields regardless of backing, no `instanceof DynamicFields` fork. (This
             // source serves dynamic snapshots, so in practice these are map fields.)
-            quiz.fields.FieldSet fs = quiz.fields.FieldSet.of(q);
-            for (quiz.fields.FieldRef fr : fs.fields()) {
+            objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
+            for (objectview.field.FieldRef fr : fs.fields()) {
                 String name = fr.name();
                 Object v = fs.read(name);
                 isRef.merge(name, hasReference(v), Boolean::logicalOr);

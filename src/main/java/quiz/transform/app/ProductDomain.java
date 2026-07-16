@@ -3,7 +3,7 @@ package quiz.transform.app;
 import quiz.Quizable;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
-import quiz.fields.FieldKind;
+import objectview.field.FieldKind;
 import quiz.transform.ui.SchemaView;
 import quiz.ui.viewconfig.FieldTypeSource;
 

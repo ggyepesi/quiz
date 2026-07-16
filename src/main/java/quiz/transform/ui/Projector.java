@@ -2,7 +2,7 @@ package quiz.transform.ui;
 
 import quiz.Quizable;
 import quiz.transform.DynamicQuizable;
-import quiz.fields.FieldAccess;
+import objectview.field.FieldAccess;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

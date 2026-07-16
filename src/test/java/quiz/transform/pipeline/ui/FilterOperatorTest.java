@@ -1,7 +1,7 @@
 package quiz.transform.pipeline.ui;
 
 import org.junit.jupiter.api.Test;
-import quiz.fields.FieldKind;
+import objectview.field.FieldKind;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;

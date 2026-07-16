@@ -1,7 +1,8 @@
-package quiz.fields;
+package objectview.field;
 
 import quiz.Quizable;
 import quiz.QuizableAdapter;
+import quiz.annotations.Link;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -70,8 +71,15 @@ public final class ReflectionFieldSet implements FieldSet {
             FieldKind kind = collection ? FieldKind.COLLECTION
                     : reference ? FieldKind.REFERENCE
                     : FieldKind.ofClass(type);
+            // Annotation-derived render hints — the metadata a dynamic field can't carry.
+            boolean link = QuizableAdapter.isLinkField(f);
+            Link linkAnn = link ? f.getAnnotation(Link.class) : null;
             out.add(FieldRef.of(f.getName(), kind, type.getSimpleName(),
-                    reference, collection, QuizableAdapter.isMinorField(f)));
+                    reference, collection, QuizableAdapter.isMinorField(f),
+                    QuizableAdapter.isQuizableInline(f),
+                    link, linkAnn == null ? "" : linkAnn.text(),
+                    QuizableAdapter.isProvenanceField(f),
+                    QuizableAdapter.isQuizableReference(f)));
         }
         return out;
     }

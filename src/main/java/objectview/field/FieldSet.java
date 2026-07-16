@@ -1,4 +1,4 @@
-package quiz.fields;
+package objectview.field;
 
 import quiz.DynamicFields;
 import quiz.Quizable;
@@ -20,6 +20,17 @@ public interface FieldSet {
 
     /** The object's fields, in a stable order. */
     List<FieldRef> fields();
+
+    /** The {@link FieldRef} named {@code name} (with its render hints), or null if this
+     *  object has no such field — the single-field counterpart of {@link #fields()}. */
+    default FieldRef field(String name) {
+        for (FieldRef fr : fields()) {
+            if (fr.name().equals(name)) {
+                return fr;
+            }
+        }
+        return null;
+    }
 
     /** This instance's value for {@code name} (null if absent). */
     Object read(String name);

@@ -3,7 +3,7 @@ package quiz.transform.ui;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.QuizableFieldPaths;
-import quiz.fields.FieldKind;
+import objectview.field.FieldKind;
 import quiz.ui.QuizableViews;
 import quiz.ui.viewconfig.QuizablePanelConfig;
 
@@ -61,8 +61,8 @@ public final class ReflectionDomain implements DomainModel {
      *  fields, with no `instanceof DynamicFields` fork. */
     private static List<Quizable> referencedQuizables(Quizable q) {
         List<Quizable> out = new ArrayList<>();
-        quiz.fields.FieldSet fs = quiz.fields.FieldSet.of(q);
-        for (quiz.fields.FieldRef fr : fs.fields()) {
+        objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
+        for (objectview.field.FieldRef fr : fs.fields()) {
             addQuizables(fs.read(fr.name()), out);
         }
         return out;

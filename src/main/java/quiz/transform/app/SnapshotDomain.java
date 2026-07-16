@@ -2,10 +2,10 @@ package quiz.transform.app;
 
 import quiz.Quizable;
 import quiz.QuizableFieldPaths;
-import quiz.fields.FieldAccess;
+import objectview.field.FieldAccess;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
-import quiz.fields.FieldKind;
+import objectview.field.FieldKind;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;

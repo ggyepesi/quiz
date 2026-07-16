@@ -4,7 +4,7 @@ import java.util.Set;
 
 /**
  * A value type that publishes named, addressable <em>views</em> of itself — so a
- * path resolver (e.g. {@code quiz.fields.FieldAccess}) can read {@code date.year}
+ * path resolver (e.g. {@code objectview.field.FieldAccess}) can read {@code date.year}
  * or {@code birthDate.monthDay} generically, without knowing the concrete type.
  *
  * <p>The type OWNS its view vocabulary; the resolver stays type-agnostic (no

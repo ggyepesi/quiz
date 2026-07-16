@@ -1,6 +1,6 @@
 package quiz.transform.pipeline.ui;
 
-import quiz.fields.FieldAccess;
+import objectview.field.FieldAccess;
 
 import java.util.Collection;
 import java.util.Objects;

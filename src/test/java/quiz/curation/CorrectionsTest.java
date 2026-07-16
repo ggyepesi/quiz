@@ -2,7 +2,7 @@ package quiz.curation;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.fields.FieldAccess;
+import objectview.field.FieldAccess;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.io.File;

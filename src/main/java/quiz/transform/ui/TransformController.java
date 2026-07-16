@@ -88,7 +88,7 @@ public final class TransformController {
                     if (values.containsKey(p)) {
                         continue;
                     }
-                    Object v = quiz.fields.FieldAccess.getPath(q, p);
+                    Object v = objectview.field.FieldAccess.getPath(q, p);
                     if (v != null) {
                         values.put(p, v);
                     } else {

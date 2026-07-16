@@ -3,7 +3,7 @@ package quiz.transform.ui;
 import org.junit.jupiter.api.Test;
 import quiz.Quizable;
 import quiz.transform.DynamicQuizable;
-import quiz.fields.FieldAccess;
+import objectview.field.FieldAccess;
 
 import java.util.Collection;
 import java.util.List;

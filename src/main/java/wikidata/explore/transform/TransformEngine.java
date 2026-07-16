@@ -138,7 +138,7 @@ public class TransformEngine {
             if (referent == null) {
                 continue;
             }
-            Object value = quiz.fields.FieldAccess.getPath(referent, sourcePath);
+            Object value = objectview.field.FieldAccess.getPath(referent, sourcePath);
             if (value != null) {
                 Object coerced = quiz.curation.Corrections.coerce(value, sample);
                 if (!java.util.Objects.equals(coerced, o.get(outField))) {

@@ -310,7 +310,7 @@ public class QuizablePanelSearchAndSort {
         // DynamicFields` fork. has() (vs a present-null value) mirrors the old
         // containsKey guard so an absent field still returns null.
         if (obj instanceof Quizable q) {
-            quiz.fields.FieldSet fs = quiz.fields.FieldSet.of(q);
+            objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
             if (fs.has(part)) {
                 return extractRecursive(fs.read(part), path, idx + 1);
             }

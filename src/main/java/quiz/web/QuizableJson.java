@@ -2,11 +2,9 @@ package quiz.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import quiz.DynamicFields;
 import quiz.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.annotations.Link;
 import quiz.ui.viewconfig.QuizablePanelConfigJsonIO;
 import quiz.ui.viewconfig.QuizablePanelConfigJsonIO.JsonConfig;
 
@@ -311,7 +309,7 @@ public final class QuizableJson {
     private static Object rawFieldValue(Quizable owner, String name) {
         // The ONE FieldSet bridge (#87): a dynamic property map or declared Java
         // fields behind one interface — no `instanceof DynamicFields` fork.
-        return quiz.fields.FieldSet.of(owner).read(name);
+        return objectview.field.FieldSet.of(owner).read(name);
     }
 
     /** Render-model for a single named field of {@code owner}, or null. */
@@ -323,36 +321,18 @@ public final class QuizableJson {
             return dn == null || dn.isBlank() ? null : QuizableView.Field.text("name", dn);
         }
 
-        if (owner instanceof DynamicFields dyn && dyn.dynamicFieldValues().containsKey(fieldName)) {
-            Object v = dyn.dynamicFieldValues().get(fieldName);
-            return QuizableAdapter.isValidQuizValue(v)
-                    ? dynamicField(owner.typeName(), owner.getIdentifier(),
-                            fieldName, v, Collections.newSetFromMap(new IdentityHashMap<>()))
-                    : null;
-        }
-
-        Field f = QuizableAdapter.getField(owner.getClass(), fieldName);
-        if (f == null) {
+        // One field through the ONE FieldSet bridge (#87) + the shared builder — no
+        // `instanceof DynamicFields` fork, no separate dynamic/declared builders.
+        objectview.field.FieldSet fs = objectview.field.FieldSet.of(owner);
+        objectview.field.FieldRef fr = fs.field(fieldName);
+        if (fr == null) {
             return null;
         }
-
-        Object value;
-        try {
-            f.setAccessible(true);
-            value = f.get(owner);
-        } catch (Exception e) {
-            return null;
-        }
-
+        Object value = fs.read(fieldName);
         if (!QuizableAdapter.isValidQuizValue(value)) {
             return null;
         }
-
-        return field(
-                owner.typeName(),
-                owner.getIdentifier(),
-                f,
-                value,
+        return buildField(owner.typeName(), owner.getIdentifier(), fr, value,
                 Collections.newSetFromMap(new IdentityHashMap<>()));
     }
 
@@ -369,7 +349,7 @@ public final class QuizableJson {
 
         // Both backings resolve the same way — read through the ONE FieldSet bridge
         // (#87), then stringify. No `instanceof DynamicFields` fork.
-        String s = asString(quiz.fields.FieldSet.of(owner).read(fieldName));
+        String s = asString(objectview.field.FieldSet.of(owner).read(fieldName));
         return s == null || s.isBlank() ? null : s;
     }
 
@@ -411,32 +391,24 @@ public final class QuizableJson {
         }
 
         try {
-            // Generated/dynamic objects keep their data in a property map, not
-            // declared fields — render those entries as first-class fields.
-            if (q instanceof DynamicFields dyn) {
-                return new QuizableView(id, name, type,
-                        applyViewConfig(type, dynamicFields(type, id, dyn, visited)));
-            }
-
+            // Enumerate the object's fields through the ONE FieldSet bridge (#87) —
+            // declared Java fields OR a dynamic property map, behind one interface —
+            // and render each through one builder. No `instanceof DynamicFields` fork.
             List<QuizableView.Field> fields = new ArrayList<>();
-
-            for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
-                if ("name".equals(f.getName())) {
+            objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
+            for (objectview.field.FieldRef fr : fs.fields()) {
+                String fn = fr.name();
+                // "name" is the display name (rendered from the header, not as a field);
+                // "__"-prefixed keys are internal plumbing (e.g. the reify's
+                // "__Nomination" statement-list scratch field), never user-facing.
+                if ("name".equals(fn) || (fn != null && fn.startsWith("__"))) {
                     continue;
                 }
-
-                Object value;
-                try {
-                    value = f.get(q);
-                } catch (Exception e) {
-                    continue;
-                }
-
+                Object value = fs.read(fn);
                 if (!QuizableAdapter.isValidQuizValue(value)) {
                     continue;
                 }
-
-                QuizableView.Field field = field(type, id, f, value, visited);
+                QuizableView.Field field = buildField(type, id, fr, value, visited);
                 if (field != null) {
                     fields.add(field);
                 }
@@ -498,37 +470,36 @@ public final class QuizableJson {
         return out;
     }
 
-    private static List<QuizableView.Field> dynamicFields(
-            String type, String id, DynamicFields dyn, Set<Object> visited) {
+    // The ONE field builder (#87). A declared field's annotation-derived render hints
+    // (carried on the FieldRef) take precedence; then the value's SHAPE decides, and
+    // shape is backing-agnostic — so a dynamic (map-held) field, which carries no
+    // hints, is rendered purely by shape (media/http image, external link, reference,
+    // collection, boolean, text). One path serves both representations.
+    private static QuizableView.Field buildField(
+            String ownerType, String ownerId, objectview.field.FieldRef fr, Object value,
+            Set<Object> visited) {
 
-        List<QuizableView.Field> fields = new ArrayList<>();
-        for (Map.Entry<String, Object> e : dyn.dynamicFieldValues().entrySet()) {
-            // "__"-prefixed keys are internal plumbing (e.g. the reify's
-            // "__Nomination" statement-list scratch field), never user-facing data.
-            if (e.getKey() != null && e.getKey().startsWith("__")) {
-                continue;
-            }
-            Object value = e.getValue();
-            if (!QuizableAdapter.isValidQuizValue(value)) {
-                continue;
-            }
-            QuizableView.Field field = dynamicField(type, id, e.getKey(), value, visited);
-            if (field != null) {
-                fields.add(field);
-            }
+        String name = fr.name();
+
+        // -- declared-field render hints --
+        // Server-rendered image bytes (a declared ImageRef); a dynamic value is never
+        // an ImageRef, so this is skipped for map fields.
+        if (value instanceof ImageRef) {
+            String url = "/api/image/"
+                    + enc(ownerType) + "/" + enc(ownerId) + "/" + enc(name);
+            return QuizableView.Field.image(name, url);
         }
-        return fields;
-    }
+        if (fr.link() && value instanceof String s && !s.isBlank()) {
+            return linkField(name, s, fr.linkText());
+        }
+        if (fr.inline()) {
+            List<QuizableView> nodes = inlineNodes(value, visited);
+            return nodes.isEmpty() ? null : QuizableView.Field.inline(name, nodes);
+        }
 
-    // Field from a raw (name, value) pair -- dynamic entries carry no @Link /
-    // @QuizableInline annotations. An http(s) value under an image-ish key is
-    // an external image (e.g. a Commons sky chart) the client loads directly.
-    private static QuizableView.Field dynamicField(
-            String ownerType, String ownerId, String name, Object value, Set<Object> visited) {
-
-        // A media value (e.g. a Commons sky chart, P18) carries its own URL;
-        // render it as an image rather than letting it fall through to text
-        // (which printed the bare filename like "CamelopardalisCC.jpg").
+        // -- value shape (backing-agnostic) --
+        // A media value (e.g. a Commons sky chart, P18) carries its own URL; render it
+        // as an image rather than letting it fall through to text (a bare filename).
         if (value instanceof wikidata.explore.extract.WikidataMediaValue media
                 && media.hasUrl()) {
             return QuizableView.Field.image(name, httpsUrl(media.url()));
@@ -611,46 +582,6 @@ public final class QuizableJson {
     // page itself is served over https.
     private static String httpsUrl(String s) {
         return s != null && s.startsWith("http://") ? "https://" + s.substring(7) : s;
-    }
-
-    private static QuizableView.Field field(
-            String ownerType, String ownerId, Field f, Object value, Set<Object> visited) {
-
-        String name = f.getName();
-
-        if (value instanceof ImageRef) {
-            String url = "/api/image/"
-                    + enc(ownerType) + "/" + enc(ownerId) + "/" + enc(name);
-            return QuizableView.Field.image(name, url);
-        }
-
-        if (QuizableAdapter.isLinkField(f) && value instanceof String s && !s.isBlank()) {
-            Link link = f.getAnnotation(Link.class);
-            return linkField(name, s, link == null ? "" : link.text());
-        }
-
-        if (QuizableAdapter.isQuizableInline(f)) {
-            List<QuizableView> nodes = inlineNodes(value, visited);
-            return nodes.isEmpty() ? null : QuizableView.Field.inline(name, nodes);
-        }
-
-        if (value instanceof Quizable q) {
-            return QuizableView.Field.ref(name, ref(q));
-        }
-
-        if (value instanceof Collection<?> c) {
-            return collectionField(ownerType, ownerId, name, c);
-        }
-
-        if (value instanceof Map<?, ?> m) {
-            return collectionField(ownerType, ownerId, name, m.values());
-        }
-
-        if (value instanceof Boolean flag) {
-            return booleanField(name, flag);
-        }
-
-        return QuizableView.Field.text(name, String.valueOf(value));
     }
 
     private static QuizableView.Field collectionField(

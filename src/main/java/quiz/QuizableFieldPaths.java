@@ -1,7 +1,7 @@
 package quiz;
 
-import quiz.fields.FieldRef;
-import quiz.fields.FieldSet;
+import objectview.field.FieldRef;
+import objectview.field.FieldSet;
 import quiz.ui.ImagePane;
 import quiz.ui.viewconfig.QuizablePanelConfig;
 
@@ -133,7 +133,7 @@ public final class QuizableFieldPaths {
         }
         try {
             // ONE field model over both representations — declared Java fields OR the
-            // dynamic property map (quiz.fields.FieldSet), no instanceof branch. A
+            // dynamic property map (objectview.field.FieldSet), no instanceof branch. A
             // reflected field still resolves its java.lang.reflect.Field, to honour
             // the field filter / provenance skip and carry annotations (@Numeric)
             // downstream; a map-held (dynamic) field has none, so getField is null.
