@@ -191,6 +191,22 @@ public final class GeneratedProjectModelValidator {
                     "A statement class cannot reify its own statements."));
         }
 
+        // The value role is explicit: a non-qualifier runtime field must map to the
+        // statement property. Its absence means the reified records get an empty
+        // value (the old code guessed a field instead) — surface it as a warning so
+        // the misconfiguration is visible without blocking save/compile.
+        boolean hasNonQualifierRuntimeField = clazz.fields().stream()
+                .anyMatch(f -> StatementFieldSemantics.isRuntimeStatementField(f)
+                        && !f.mapping().isQualifier());
+        if (hasNonQualifierRuntimeField
+                && StatementFieldSemantics.statementValueFieldName(clazz).isEmpty()) {
+            problems.add(Problem.warning(
+                    clazz.className(),
+                    "No value field: a non-qualifier field should map to the statement "
+                            + "property " + clean(source.propertyPid())
+                            + ", else reified records have an empty value."));
+        }
+
         Set<String> fieldNames = fieldNames(clazz);
 
         for (GeneratedFieldModel field : clazz.fields()) {
@@ -323,24 +339,9 @@ public final class GeneratedProjectModelValidator {
     private static boolean hasStatementValueField(
             GeneratedClassModel clazz,
             String propertyPid) {
-
-        String pid = clean(propertyPid);
-        for (GeneratedFieldModel field : clazz.fields()) {
-            if (field == null
-                    || field.isNameField()
-                    || field.mapping().isQualifier()
-                    || field.mapping().productionKind()
-                    != FieldProductionKind.AUTO) {
-                continue;
-            }
-
-            if (pid.equals(
-                    clean(field.mapping().propertyPid()))) {
-                return true;
-            }
-        }
-
-        return false;
+        // Centralized: the value role is the non-qualifier runtime field on the
+        // statement PID (propertyPid is what the predicate derives from the class).
+        return !StatementFieldSemantics.statementValueFieldName(clazz).isEmpty();
     }
 
     private static void validateFieldReference(

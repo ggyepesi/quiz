@@ -283,19 +283,15 @@ public final class ModelStatementReifications {
             CompiledClass statementClass,
             String statementPid) {
 
+        // The value role is explicit: the non-qualifier field on the statement PID.
+        // No first-field guess (mirrors StatementFieldSemantics.statementValueFieldName
+        // on the editable model) — a missing value field is a validation error.
         for (CompiledField field : statementClass.ownFields()) {
             if (!runtimeStatementField(field)
                     || field.source().qualifier()) {
                 continue;
             }
             if (statementPid.equals(clean(field.source().propertyPid()))) {
-                return field.name();
-            }
-        }
-
-        for (CompiledField field : statementClass.ownFields()) {
-            if (runtimeStatementField(field)
-                    && !field.source().qualifier()) {
                 return field.name();
             }
         }
@@ -424,28 +420,12 @@ public final class ModelStatementReifications {
             GeneratedClassModel statementClass,
             String statementPid) {
 
-        for (GeneratedFieldModel field : statementClass.fields()) {
-            if (!StatementFieldSemantics.isRuntimeStatementField(field)
-                    || field.mapping().isQualifier()) {
-                continue;
-            }
-
-            if (statementPid.equals(
-                    clean(field.mapping().propertyPid()))) {
-                return field.name();
-            }
-        }
-
-        // Compatibility fallback for older models that did not explicitly
-        // identify the ps: field with the statement property.
-        for (GeneratedFieldModel field : statementClass.fields()) {
-            if (StatementFieldSemantics.isRuntimeStatementField(field)
-                    && !field.mapping().isQualifier()) {
-                return field.name();
-            }
-        }
-
-        return "value";
+        // The value role is explicit: the non-qualifier field on the statement PID
+        // (statementPid is what the predicate derives from the class). No first-field
+        // guess — a missing value field is a validation error, not a wrong reify.
+        String name =
+                StatementFieldSemantics.statementValueFieldName(statementClass);
+        return name.isEmpty() ? "value" : name;
     }
 
     private static List<String> valueQids(

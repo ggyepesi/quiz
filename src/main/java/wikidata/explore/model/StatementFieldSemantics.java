@@ -39,6 +39,50 @@ public final class StatementFieldSemantics {
     }
 
     /**
+     * The name of the field that plays the VALUE role — the reified statement's main
+     * value ({@code ps:<pid>}). It is the runtime, non-qualifier field whose property
+     * is the class's statement-source PID (the explicit link the modeller sets).
+     * Returns {@code ""} when no such field exists — deliberately WITHOUT the old
+     * "first non-qualifier field" guess, so a missing value field is a validation
+     * error rather than a silently wrong reification. Orthogonal to
+     * {@link #isQualifierField}: the value field is never a qualifier.
+     */
+    public static String statementValueFieldName(GeneratedClassModel owner) {
+        if (owner == null || !owner.reifiesStatements()) {
+            return "";
+        }
+        StatementClassSource source = owner.statementSource();
+        if (source == null) {
+            return "";
+        }
+        String statementPid = trim(source.propertyPid());
+        if (statementPid.isEmpty()) {
+            return "";
+        }
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (!isRuntimeStatementField(field) || field.mapping().isQualifier()) {
+                continue;
+            }
+            if (statementPid.equals(trim(field.mapping().propertyPid()))) {
+                return field.name();
+            }
+        }
+        return "";
+    }
+
+    /** True when {@code field} plays the value role — see
+     *  {@link #statementValueFieldName}. */
+    public static boolean isStatementValueField(
+            GeneratedClassModel owner, GeneratedFieldModel field) {
+        return field != null && field.name() != null
+                && field.name().equals(statementValueFieldName(owner));
+    }
+
+    private static String trim(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    /**
      * Missing-qualifier fallback currently has meaningful runtime semantics for
      * scalar entity qualifiers. Collection qualifiers already represent zero or
      * more values, while scalar/date/text fallbacks would require conversion
