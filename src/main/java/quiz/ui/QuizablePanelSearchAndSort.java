@@ -117,14 +117,35 @@ public class QuizablePanelSearchAndSort {
         // fields with no instanceof branch, so a reference like forWork/category is
         // searchable regardless of representation. Filter to the search config's
         // selection (by the path's top-level field), so "search these fields" applies.
-        List<QuizableFieldPaths.FieldPath> paths = new ArrayList<>();
+        List<QuizableFieldPaths.FieldPath> candidates = new ArrayList<>();
         for (QuizableFieldPaths.FieldPath fp
                 : QuizableFieldPaths.collectFromSample(
                         quizables.get(0), QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS)) {
             String top = fp.path().isEmpty() ? "" : fp.path().get(0);
             if (searchConfig.showsFieldByName(top)) {
-                paths.add(fp);
+                candidates.add(fp);
             }
+        }
+
+        // A reference field is enumerated as BOTH the bare path (e.g. `hemisphere`,
+        // which flattens to the referent's display name when searched) and an explicit
+        // `hemisphere.name`. For SEARCH they match identical text, so keeping both
+        // double-reports one hit under two titles. Drop the redundant `.name` child
+        // when its bare reference path is also searched (the split still serves
+        // invert / projection config, which is why it isn't removed at the source).
+        Set<List<String>> present = new HashSet<>();
+        for (QuizableFieldPaths.FieldPath fp : candidates) {
+            present.add(fp.path());
+        }
+        List<QuizableFieldPaths.FieldPath> paths = new ArrayList<>();
+        for (QuizableFieldPaths.FieldPath fp : candidates) {
+            List<String> p = fp.path();
+            if (p.size() >= 2
+                    && "name".equals(p.get(p.size() - 1))
+                    && present.contains(p.subList(0, p.size() - 1))) {
+                continue;
+            }
+            paths.add(fp);
         }
 
         for (QuizableFieldPaths.FieldPath fp : paths) {
