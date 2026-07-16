@@ -100,7 +100,11 @@ public class QuizableRenderContext {
             return false;
         }
         Boolean v = referenceExpanded.get(target);
-        return v == null ? defaultExpanded : v;
+        if (v != null) {
+            return v;
+        }
+        Boolean bulk = bulkState(true);   // references follow the bulk only when recursive
+        return bulk != null ? bulk : defaultExpanded;
     }
 
     // Collection/map collapse state, keyed by the collection's identity. Unlike
@@ -115,7 +119,11 @@ public class QuizableRenderContext {
             return defaultExpanded;
         }
         Boolean v = collectionExpanded.get(key);
-        return v == null ? defaultExpanded : v;
+        if (v != null) {
+            return v;
+        }
+        Boolean bulk = bulkState(true);   // collections follow the bulk only when recursive
+        return bulk != null ? bulk : defaultExpanded;
     }
 
     /** Flips a collection's expand state (seeding from {@code defaultExpanded}
@@ -328,7 +336,11 @@ public class QuizableRenderContext {
             return defaultExpanded;
         }
         Boolean v = cardExpanded.get(key);
-        return v == null ? defaultExpanded : v;
+        if (v != null) {
+            return v;
+        }
+        Boolean bulk = bulkState(false);   // cards are the "this level" scope
+        return bulk != null ? bulk : defaultExpanded;
     }
 
     public void toggleCardExpanded(Object key, boolean defaultExpanded) {
@@ -360,6 +372,34 @@ public class QuizableRenderContext {
         for (java.util.function.Consumer<Quizable> handler : cardToggleHandlers) {
             handler.accept(q);
         }
+    }
+
+    // -------- Bulk (panel-level) expand / collapse --------
+    // A panel's "expand all / collapse all" sets a bulk mode that seeds the default
+    // for every card (THIS level) and, when recursive, every reference/collection too
+    // (ALL levels). Setting it clears the per-item overrides so the bulk applies
+    // uniformly; an individual toggle afterwards writes an explicit state that still
+    // wins over the bulk (and a card scrolled in later follows the bulk).
+    public enum BulkExpand { NONE, EXPAND, COLLAPSE }
+
+    private BulkExpand bulkExpand = BulkExpand.NONE;
+    private boolean bulkRecursive = false;
+
+    public void setBulkExpand(BulkExpand mode, boolean recursive) {
+        this.bulkExpand = mode == null ? BulkExpand.NONE : mode;
+        this.bulkRecursive = recursive;
+        cardExpanded.clear();
+        referenceExpanded.clear();
+        collectionExpanded.clear();
+    }
+
+    // The bulk-implied state for a given scope, or null when the bulk doesn't apply
+    // (mode NONE, or a recursive-only scope while the bulk is this-level only).
+    private Boolean bulkState(boolean recursiveScope) {
+        if (bulkExpand == BulkExpand.NONE || (recursiveScope && !bulkRecursive)) {
+            return null;
+        }
+        return bulkExpand == BulkExpand.EXPAND;
     }
 
     // -------- Single card selection --------
