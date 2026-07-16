@@ -15,12 +15,15 @@ Logical operation
         "Load all Oscar nominees and their configured fields."
 
 Physical execution
-    The concrete requests used to perform the logical operation, for example:
-        58 membership-backbone queries,
-        112 member-field queries,
-        24 wbgetentities batches.
+    The concrete requests used to perform the logical operation, for example
+    (the current Oscars pipeline):
+        6 membership-backbone queries (58 roots batched by 10),
+        ~224 wbgetentities claim batches (member type + statement qualifiers),
+        a few wbgetentities label batches.
 
-A logical operation may therefore expand into many physical requests.
+A logical operation may therefore expand into many physical requests, and the
+same logical operation can be executed by different physical means (a member's
+outgoing fields by SPARQL row queries or by wbgetentities claims).
 
 STAGE 1 – MEMBERSHIP BACKBONE
 -----------------------------
@@ -92,6 +95,8 @@ Residual enrichment
 Enrich
     Add fields to an already-existing canonical object without changing its
     identity or membership.
+    (Not to be confused with the transform-layer QualifierLoader.enrich, which
+    REIFIES statements into new objects — see the reification note below.)
 
 STAGE 3 – LABEL RESOLUTION
 --------------------------
@@ -171,6 +176,15 @@ Logical limit
 Per-batch limit
     A defensive ceiling applied to one physical query. It must not accidentally
     multiply the logical limit by the number of batches.
+
+REIFICATION (TRANSFORM-SIDE, RELATED)
+-------------------------------------
+This vocabulary is scoped to EXTRACTION. Reification is a separate transform run
+after extraction that turns a member's statements into new objects (e.g. each
+P1411 nomination statement -> a Nomination, carrying its value + qualifiers). It
+now shares extraction's physical mechanism: statements + qualifiers are read from
+wbgetentities claims (getStatements), not SPARQL. See
+docs/extraction-batched-membership.md, "Reification".
 
 RECOMMENDED COMMENT HEADINGS
 ----------------------------

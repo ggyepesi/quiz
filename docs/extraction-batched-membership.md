@@ -54,9 +54,9 @@ For a large relational membership:
 7. Do **not** issue `fieldOptimizedValuesQuery` when every requested field has been
    assigned to a specialized stage.
 
-Steps 1–4 + 7 = stage 1; step 5 = stage 2; step 6 = stage 3. All gated behind the
-existing "large membership" trigger; small classes keep the single-query path,
-byte-identical.
+Operations 1–4 + 7 = Stage 1; operation 5 = Stage 2; operation 6 = Stage 3. All gated
+behind the existing "large membership" trigger; small classes keep the single-query
+path, byte-identical.
 
 ### Stage 1 — membership captures `target` (DONE)
 
@@ -84,55 +84,60 @@ byte-identical.
   `(member, root)` row adds an edge; each edge resolves to a canonical registry ref
   merged onto the member (dedup + insertion order).
 - **Drop `target` from the enrichment** — a `sampleCopy` of the node minus the
-  captured field(s); if nothing remains inlined, the enrichment is skipped (step 7).
+  captured field(s); if nothing remains inlined, the enrichment is skipped (operation 7).
 
-### Stage 2 — remaining inlined entity fields (`type` = P31) via batched value-queries (DONE)
+### Stage 2 — member field capture (DONE)
 
-For each still-inlined entity-list field, member-batched
-(`RuleNodeQueryBuilder.memberFieldBatchQuery` + `RuleTreeExtractor.captureMemberFields`):
+Populate the remaining inlined entity-list fields over the now-complete member set,
+split by direction:
 
-- `SELECT DISTINCT ?value ?fieldValue WHERE { VALUES ?value { <member batch of
-  memberFieldBatchSize=100> } ?value wdt:P31 ?fieldValue }` — `DISTINCT` is fine when
-  cheap; `merge` onto the canonical registry member is the final duplicate guard
-  (dedup + insertion order). The field's own direction places `?value` on the correct
-  end, and a field type constraint (`membershipQid`) is emitted so values match the
-  old enrichment.
-- Best-effort per batch (a failed batch is warned + skipped; members stay complete).
-- **Step 7**: once every inlined entity-list field is target-captured (stage 1) or
-  member-batched (stage 2), the leftover enrichment node has no inlined field and
-  `fieldOptimizedValuesQuery` is **not issued at all**. (A large membership with
+- **Outgoing** (the member's own claim, e.g. `type` = P31) → `wbgetentities` claims
+  (`captureOutgoingFieldsViaApi` → `getEntities(members, [P31])` → `applyEntityClaims`).
+  P31 via the SPARQL engine full-scans a hyper-common predicate and soft-times-out
+  (the flaky ~112-serial-query path that hit 50–122 s per batch); the action API
+  doesn't, and it returns the member's own label in the same response.
+- **Incoming** (something points TO the member — none in the models today) has no
+  claim on the member, so it stays on a member-batched SPARQL row query
+  (`memberFieldBatchQuery` / `captureMemberFields`): `SELECT DISTINCT ?value
+  ?fieldValue` over `VALUES ?value {batch of memberFieldBatchSize=100}` with a
+  `hint:optimizer "None"` so the batch drives the join. Best-effort per batch; `merge`
+  onto the canonical member is the final dedup guard.
+- **Residual enrichment skipped** — once every inlined entity-list field is
+  target-captured (Stage 1) or member-captured here, the leftover node has no inlined
+  field and `fieldOptimizedValuesQuery` is not issued at all. (A large membership with
   leftover *scalar* fields has no member-batched path yet — warned, not silently
   dropped; no model class hits this today.)
 
-No `GROUP_CONCAT` over 11k; each batch is bounded.
+### Stage 3 — label resolution, via `wbgetentities` (DONE)
 
-### Stage 3 — labels resolved separately, via `wbgetentities`
+The QID-only captures (Stage 1 targets, Stage 2 values) create entity refs named by
+their qid. `resolveLabels` collects every registry object still carrying a placeholder
+name (blank or == qid) and resolves it in one best-effort `getEntities(qids, [])` pass
+(labels only, `languages=en|mul` + mul fallback). A failure warns and leaves the qids;
+no-op when nothing is unlabeled. (`RuleTreeExtractorLabelTest`.)
 
-- **Labels (DONE)** — the QID-only captures (stage-1 targets, stage-2 fields) create
-  entity refs named by their qid. `RuleTreeExtractor.resolveLabels` collects every
-  registry object still carrying a placeholder name (blank or == qid), resolves them
-  in one best-effort `WikidataApiClient.getEntities(qids, [])` pass (labels only,
-  batched 50 — the reliable action API, no WDQS scan), and sets the names via
-  `applyLabels`. A failure warns and leaves the qids. No-op when nothing is
-  unlabeled. (`RuleTreeExtractorLabelTest`.)
-- **Type via `wbgetentities` claims (DONE, 2b)** — `captureOutgoingFieldsViaApi`
-  reroutes the OUTGOING direct entity field(s) (P31/`type` — the member's own claim)
-  onto `getEntities(members, [P31])` (claims → type, `applyEntityClaims`), so the
-  flaky ~112-serial-SPARQL P31 path (single batches hit 50–122s and timed out) is
-  gone. An INCOMING direct field (something points TO the member — none today) has no
-  claim on the member and stays on the member-batched SPARQL path
-  (`captureMemberFields`). Best-effort: a failed pass warns, members stay complete.
-- **Parallelized (DONE)** — `getEntities` fans its 50-QID batches over a small pool
-  (6), per-batch best-effort with a short retry: a transient failure drops only that
-  batch, never the whole pass. `languages=en|mul` + mul fallback so an item without an
-  English label still resolves.
+`getEntities`/`getStatements` fan their 50-QID batches over a pool of 6, per-batch
+best-effort with a short retry — a transient failure drops only that batch.
+
+### Reification — unified onto `wbgetentities` (DONE)
+
+The qualifier load (a *transform*, run after extraction) reifies each nominee's P1411
+statements + qualifiers into Nominations. A `wbgetentities` claim already carries its
+qualifiers, so `QualifierLoader` now reads them via `getStatements(nominees, P1411,
+qualifierPids)` instead of a per-batch statement+qualifier SPARQL query — retiring the
+halve-retry, 3 recovery rounds, value-anchored fallback and serial-apply lock that
+papered over WDQS flakiness. One mechanism for extraction and reification.
+(`QualifierLoaderReifyTest`.)
 
 ## Validated
 
-Full regen: **11,181 members / 15,481 Nominations in ~121 s** (was ~1390 s / ~23 min),
-`target` + `type` filled with names. The backbone is flat/hint-first/label-free; the
-member `type` claims + all labels come from `wbgetentities`. Runtime is now dominated
-by the separate qualifier-load / reification phase, not extraction.
+- **Extraction**: 11,181 members, `target` + `type` filled with names, in ~121 s
+  (was ~1390 s / ~23 min).
+- **Reification**: ~15,48x Nominations, years correct; whole generation ~159 s.
+
+The backbone is flat/hint-first/label-free; member `type` claims, statement qualifiers
+and all labels come from `wbgetentities`. (The member count drifts ±a few run-to-run —
+the known non-deterministic P1411 membership, not this work.)
 
 ## Safety
 
@@ -147,4 +152,5 @@ offline, so per stage:
 ## Out of scope
 
 - Small (non-large) memberships — unchanged, single query.
-- The qualifier-load / reification — separate, already batched.
+- Deterministic membership order — the ±few-member P1411 run-to-run drift is a
+  separate thread (an `ORDER BY` / two-sided-VALUES determinism pass).
