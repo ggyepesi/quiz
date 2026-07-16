@@ -56,22 +56,14 @@ public final class ReflectionDomain implements DomainModel {
         }
     }
 
-    /** Quizables reachable through {@code q}'s fields — declared (reflection) and,
-     *  for a dynamic object, its property map. */
+    /** Quizables reachable through {@code q}'s fields, read through the ONE FieldSet
+     *  bridge (#87) — a dynamic object's property map or a typed object's declared
+     *  fields, with no `instanceof DynamicFields` fork. */
     private static List<Quizable> referencedQuizables(Quizable q) {
         List<Quizable> out = new ArrayList<>();
-        if (q instanceof quiz.DynamicFields dyn) {
-            for (Object v : dyn.dynamicFieldValues().values()) {
-                addQuizables(v, out);
-            }
-        }
-        for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
-            try {
-                f.setAccessible(true);
-                addQuizables(f.get(q), out);
-            } catch (Exception ignored) {
-                // skip unreadable
-            }
+        quiz.fields.FieldSet fs = quiz.fields.FieldSet.of(q);
+        for (quiz.fields.FieldRef fr : fs.fields()) {
+            addQuizables(fs.read(fr.name()), out);
         }
         return out;
     }
