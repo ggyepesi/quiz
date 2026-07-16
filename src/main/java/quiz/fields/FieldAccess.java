@@ -67,7 +67,7 @@ public final class FieldAccess {
         }
     }
 
-    // --- field access (DynamicFields map first, then declared Java fields) ---
+    // --- field access, through the ONE FieldSet bridge (dynamic map or declared) ---
 
     private static Object readField(Object obj, String name) {
         // A type that publishes its own addressable views (e.g. FlexibleDate:
@@ -77,10 +77,30 @@ public final class FieldAccess {
         if (obj instanceof aux.Addressable a && a.viewNames().contains(name)) {
             return a.view(name);
         }
-        if (obj instanceof DynamicFields dyn
-                && dyn.dynamicFieldValues().containsKey(name)) {
-            return dyn.dynamicFieldValues().get(name);
+        // A Quizable reads through the ONE FieldSet bridge — a dynamic property map OR
+        // declared Java fields behind one interface, no `instanceof DynamicFields`
+        // fork (#87). has() distinguishes a present-but-null field (return its value)
+        // from an absent one (fall through to identity), preserving the layered
+        // map -> reflection -> identity fallback exactly.
+        if (obj instanceof quiz.Quizable q) {
+            FieldSet fs = FieldSet.of(q);
+            if (fs.has(name)) {
+                return fs.read(name);
+            }
+            // Identity / display come from the Quizable contract, not a raw field: for a
+            // dynamic object `name`/`qid` aren't in the property map (they're identity,
+            // @NotQuizableField), so getDisplayName()/getIdentifier() are the right source.
+            if ("name".equals(name)) {
+                return q.getDisplayName();
+            }
+            if ("qid".equals(name) || "id".equals(name) || "identifier".equals(name)) {
+                return q.getIdentifier();
+            }
+            return null;
         }
+        // A non-Quizable nested value (a heterogeneous map value, a JDK type, …):
+        // reflect. Reading is tolerant — return null rather than crash a caller
+        // enumerating/inspecting arbitrary domains.
         Field f = QuizableAdapter.getField(obj.getClass(), name);
         if (f != null) {
             try {
@@ -90,26 +110,18 @@ public final class FieldAccess {
                 throw new RuntimeException("Cannot read " + name + " from " + obj, e);
             }
         }
-        // Identity / display come from the Quizable contract, not a raw field: for a
-        // dynamic object `name`/`qid` aren't in the property map (they're identity,
-        // @NotQuizableField), so getDisplayName()/getIdentifier() are the right source.
-        if (obj instanceof quiz.Quizable q) {
-            if ("name".equals(name)) {
-                return q.getDisplayName();
-            }
-            if ("qid".equals(name) || "id".equals(name) || "identifier".equals(name)) {
-                return q.getIdentifier();
-            }
-        }
-        // The field isn't present (a dynamic object without it, a heterogeneous
-        // nested value, a JDK type, …). Reading is tolerant — return null rather
-        // than crash the caller enumerating/inspecting arbitrary domains.
         return null;
     }
 
     private static void writeField(Object obj, String name, Object value) {
-        // A declared Java field wins if present; otherwise a dynamic object stores
-        // it in its property map (so projected view fields need no compiled class).
+        // A Quizable writes through the ONE FieldSet bridge — a dynamic object stores a
+        // projected view field in its property map (no compiled class needed), a typed
+        // Quizable sets its declared field — with no `instanceof DynamicFields` fork (#87).
+        if (obj instanceof quiz.Quizable q) {
+            FieldSet.of(q).write(name, value);
+            return;
+        }
+        // A non-Quizable nested owner (a plain POJO with a declared field): reflect.
         Field f = QuizableAdapter.getField(obj.getClass(), name);
         if (f != null) {
             try {
@@ -119,10 +131,6 @@ public final class FieldAccess {
             } catch (Exception e) {
                 throw new RuntimeException("Cannot set " + name + " on " + obj, e);
             }
-        }
-        if (obj instanceof DynamicFields dyn) {
-            dyn.dynamicFieldValues().put(name, value);
-            return;
         }
         throw new IllegalArgumentException(
                 "No field " + obj.getClass().getName() + "." + name);

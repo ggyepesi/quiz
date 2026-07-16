@@ -35,6 +35,16 @@ public final class DynamicFieldSet implements FieldSet {
     }
 
     @Override
+    public boolean has(String name) {
+        return object.dynamicFieldValues().containsKey(name);
+    }
+
+    @Override
+    public void write(String name, Object value) {
+        object.dynamicFieldValues().put(name, value);
+    }
+
+    @Override
     public List<FieldRef> fields() {
         if (schema != null) {
             // Authoritative + complete: typed even for a null/absent or single value.

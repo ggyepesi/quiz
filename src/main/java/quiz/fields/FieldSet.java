@@ -24,6 +24,15 @@ public interface FieldSet {
     /** This instance's value for {@code name} (null if absent). */
     Object read(String name);
 
+    /** Whether {@code name} is a field of this backing at all — distinguishes a
+     *  present-but-null field from an absent one (which {@link #read} cannot), so a
+     *  caller can fall through to identity/other sources only when truly absent. */
+    boolean has(String name);
+
+    /** Store {@code value} for {@code name} in this backing (a dynamic map entry or a
+     *  declared Java field). Throws when the backing has no such settable field. */
+    void write(String name, Object value);
+
     /** A backing-appropriate FieldSet: the dynamic property map when present, else
      *  declared-field reflection. */
     static FieldSet of(Quizable object) {

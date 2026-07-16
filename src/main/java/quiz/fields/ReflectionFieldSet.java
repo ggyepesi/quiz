@@ -36,6 +36,26 @@ public final class ReflectionFieldSet implements FieldSet {
     }
 
     @Override
+    public boolean has(String name) {
+        return QuizableAdapter.getField(object.getClass(), name) != null;
+    }
+
+    @Override
+    public void write(String name, Object value) {
+        Field f = QuizableAdapter.getField(object.getClass(), name);
+        if (f == null) {
+            throw new IllegalArgumentException(
+                    "No field " + object.getClass().getName() + "." + name);
+        }
+        try {
+            f.setAccessible(true);
+            f.set(object, value);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Cannot set " + name + " on " + object, e);
+        }
+    }
+
+    @Override
     public List<FieldRef> fields() {
         List<FieldRef> out = new ArrayList<>();
         for (Field f : QuizableAdapter.getAllFields(object.getClass())) {
