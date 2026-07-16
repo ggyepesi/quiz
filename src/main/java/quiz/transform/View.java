@@ -3,9 +3,9 @@ package quiz.transform;
 import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.QuizableGroup.Role;
-import quiz.facet.Facet;
-import quiz.facet.FacetGrouper;
-import quiz.facet.FacetTree;
+import objectview.facet.Facet;
+import objectview.facet.FacetGrouper;
+import objectview.facet.FacetTree;
 
 import java.util.ArrayList;
 import java.util.List;

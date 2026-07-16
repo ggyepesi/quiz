@@ -6,7 +6,7 @@ import quiz.curation.ManualCuration;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import quiz.transform.ui.SchemaView;
-import quiz.ui.viewconfig.FieldTypeSource;
+import objectview.viewconfig.FieldTypeSource;
 
 import javax.swing.JComponent;
 import java.util.Collection;

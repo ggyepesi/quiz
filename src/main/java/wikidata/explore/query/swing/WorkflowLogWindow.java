@@ -1,8 +1,8 @@
 package wikidata.explore.query.swing;
 
-import quiz.ui.QuizablePanelView;
-import quiz.ui.QuizableRenderContext;
-import quiz.ui.QuizableSearchPanel;
+import objectview.QuizablePanelView;
+import objectview.QuizableRenderContext;
+import objectview.QuizableSearchPanel;
 import wikidata.explore.query.core.QueryStatus;
 import wikidata.explore.query.log.LogKind;
 import wikidata.explore.query.log.LogListener;

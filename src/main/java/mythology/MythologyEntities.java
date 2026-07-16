@@ -5,10 +5,9 @@ import java.util.*;
 
 import aux.Constants;
 import quiz.QuizableGroup;
-import quiz.ui.ImagePane;
 import quiz.Quizable;
-import quiz.ui.QuizableGroupView;
-import quiz.ui.QuizableViews;
+import objectview.QuizableGroupView;
+import objectview.QuizableViews;
 
 import static aux.Constants.mythologyDir;
 

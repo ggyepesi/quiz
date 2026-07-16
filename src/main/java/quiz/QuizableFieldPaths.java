@@ -2,8 +2,8 @@ package quiz;
 
 import objectview.field.FieldRef;
 import objectview.field.FieldSet;
-import quiz.ui.ImagePane;
-import quiz.ui.viewconfig.QuizablePanelConfig;
+import objectview.ImagePane;
+import objectview.viewconfig.QuizablePanelConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;

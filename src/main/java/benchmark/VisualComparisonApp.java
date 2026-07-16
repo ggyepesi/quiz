@@ -1,9 +1,9 @@
 package benchmark;
 
 import oscar.OscarNomination;
-import quiz.ui.viewconfig.QuizablePanelConfig;
-import quiz.ui.viewconfig.QuizablePanelConfigAdapter;
-import quiz.ui.QuizablePanel;
+import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.QuizablePanelConfigAdapter;
+import objectview.QuizablePanel;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.*;

@@ -1,8 +1,9 @@
 package quiz;
 
+import objectview.annotations.NotQuizableField;
 import org.junit.jupiter.api.Test;
-import quiz.ui.ImagePane;
-import quiz.ui.viewconfig.QuizablePanelConfig;
+import objectview.ImagePane;
+import objectview.viewconfig.QuizablePanelConfig;
 
 import java.util.List;
 import java.util.Set;
@@ -104,8 +105,10 @@ class QuizableFieldPathsTest {
     // bare reference has no other fields.
     @SuppressWarnings("unused")
     private static class EntityCard extends QuizableAdapter {
-        @quiz.annotations.NotQuizableField private String qid;
-        @quiz.annotations.NotQuizableField private String name;
+        @NotQuizableField
+        private String qid;
+        @NotQuizableField
+        private String name;
 
         @Override public String getIdentifier() { return qid; }
         @Override public String getDisplayName() { return name; }

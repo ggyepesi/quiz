@@ -4,8 +4,8 @@ import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.QuizableFieldPaths;
 import objectview.field.FieldKind;
-import quiz.ui.QuizableViews;
-import quiz.ui.viewconfig.QuizablePanelConfig;
+import objectview.QuizableViews;
+import objectview.viewconfig.QuizablePanelConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;

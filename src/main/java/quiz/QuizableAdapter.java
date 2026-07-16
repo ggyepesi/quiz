@@ -1,11 +1,12 @@
 package quiz;
 
-import quiz.annotations.Link;
-import quiz.annotations.MinorField;
-import quiz.annotations.NotQuizableField;
-import quiz.annotations.QuizableInline;
-import quiz.annotations.QuizableReference;
-import quiz.ui.viewconfig.QuizablePanelConfig;
+import objectview.annotations.Provenance;
+import objectview.annotations.Link;
+import objectview.annotations.MinorField;
+import objectview.annotations.NotQuizableField;
+import objectview.annotations.QuizableInline;
+import objectview.annotations.QuizableReference;
+import objectview.viewconfig.QuizablePanelConfig;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ public abstract class QuizableAdapter implements Quizable {
 
     public static boolean isProvenanceField(Field field) {
         return field != null
-                && field.isAnnotationPresent(quiz.annotations.Provenance.class);
+                && field.isAnnotationPresent(Provenance.class);
     }
 
     public static boolean isNotQuizableField(Field field) {

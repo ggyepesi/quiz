@@ -1,5 +1,7 @@
 package quiz.facet;
 
+import objectview.facet.Facet;
+import objectview.facet.FacetGrouper;
 import org.junit.jupiter.api.Test;
 import quiz.QuizableGroup;
 import wikidata.explore.extract.WikidataDynamicObject;

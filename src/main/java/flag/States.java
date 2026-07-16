@@ -16,9 +16,9 @@ import quiz.GroupReader;
 import quiz.QuizableGroup;
 import quiz.Quizable;
 
-import quiz.ui.ImagePane;
-import quiz.ui.QuizableGroupView;
-import quiz.ui.QuizableViews;
+import objectview.ImagePane;
+import objectview.QuizableGroupView;
+import objectview.QuizableViews;
 
 import java.util.TreeMap;
 

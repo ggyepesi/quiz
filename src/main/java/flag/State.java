@@ -9,9 +9,8 @@ import java.util.TreeSet;
 
 import language.Language;
 import quiz.QuizableGroup;
-import quiz.QuizableGroup;
-import quiz.annotations.QuizableReference;
-import quiz.ui.ImagePane;
+import objectview.annotations.QuizableReference;
+import objectview.ImagePane;
 import quiz.QuizableAdapter;
 
 public class State extends QuizableAdapter {

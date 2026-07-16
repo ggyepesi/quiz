@@ -1,10 +1,11 @@
 package quiz.ui;
 
+import objectview.QuizablePanelSearchAndSort;
 import org.junit.jupiter.api.Test;
 import quiz.Quizable;
 import quiz.QuizableFieldPaths;
 import quiz.transform.DynamicQuizable;
-import quiz.ui.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.QuizablePanelConfig;
 
 import java.util.List;
 import java.util.Map;

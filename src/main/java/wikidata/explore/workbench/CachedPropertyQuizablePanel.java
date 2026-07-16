@@ -2,10 +2,10 @@ package wikidata.explore.workbench;
 
 import aux.GridBagUtils;
 import quiz.Quizable;
-import quiz.ui.viewconfig.QuizablePanelConfig;
-import quiz.ui.QuizablePanel;
-import quiz.ui.QuizableRenderContext;
-import quiz.ui.QuizableSearchPanel;
+import objectview.viewconfig.QuizablePanelConfig;
+import objectview.QuizablePanel;
+import objectview.QuizableRenderContext;
+import objectview.QuizableSearchPanel;
 import wikidata.explore.WikidataProperty;
 import wikidata.explore.WikidataPropertyStore;
 

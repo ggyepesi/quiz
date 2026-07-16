@@ -2,8 +2,8 @@ package wikidata.explore.extract;
 
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import quiz.ui.QuizableGroupView;
-import quiz.ui.QuizableViews;
+import objectview.QuizableGroupView;
+import objectview.QuizableViews;
 
 import java.io.File;
 import java.util.LinkedHashMap;

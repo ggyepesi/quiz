@@ -1,7 +1,7 @@
 package language;
 
 import quiz.QuizableAdapter;
-import quiz.annotations.QuizableReference;
+import objectview.annotations.QuizableReference;
 
 import java.util.ArrayList;
 import java.util.List;

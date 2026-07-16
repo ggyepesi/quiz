@@ -1,9 +1,12 @@
 package quiz.transform.ui;
 
+import objectview.GroupTreeBrowser;
+import objectview.MultiQuizableView;
+import objectview.QuizableSearchPanel;
 import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
-import quiz.ui.QuizablePanelView;
+import objectview.QuizablePanelView;
 
 import javax.swing.*;
 import java.awt.*;
@@ -144,7 +147,7 @@ public final class TransformWorkbenchPanel extends JPanel {
     }
 
     /** A flat result: members grouped by type — a single searchable instance view
-     *  for one type, or a per-class {@link quiz.ui.MultiQuizableView} for several. */
+     *  for one type, or a per-class {@link MultiQuizableView} for several. */
     private JComponent flatView(List<Quizable> members, String type) {
         java.util.Map<String, List<Quizable>> byType = new java.util.LinkedHashMap<>();
         for (Quizable m : members) {
@@ -161,7 +164,7 @@ public final class TransformWorkbenchPanel extends JPanel {
             return searchableView(v, type);
         }
 
-        quiz.ui.MultiQuizableView mv = new quiz.ui.MultiQuizableView();
+        MultiQuizableView mv = new MultiQuizableView();
         for (java.util.Map.Entry<String, List<Quizable>> e : byType.entrySet()) {
             String t = e.getKey();
             List<Quizable> objs = e.getValue();
@@ -178,8 +181,8 @@ public final class TransformWorkbenchPanel extends JPanel {
     private JComponent groupView(QuizableGroup root, String type) {
         Quizable sample = controller.sampleOf(type);
         Class<? extends Quizable> cls = sample != null ? sampleClass(sample) : Quizable.class;
-        return new quiz.ui.GroupTreeBrowser(root, cls, sample,
-                controller.structuralFields(type), controller.fieldTypes(type));
+        return new GroupTreeBrowser(root, cls, sample,
+                                    controller.structuralFields(type), controller.fieldTypes(type));
     }
 
     /** Wraps a card view with the shared search + sort + view-config panel
@@ -189,8 +192,8 @@ public final class TransformWorkbenchPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout());
         Quizable sample = controller.sampleOf(type);
         if (sample != null) {
-            quiz.ui.QuizableSearchPanel engine =
-                    new quiz.ui.QuizableSearchPanel(sampleClass(sample), sample);
+            QuizableSearchPanel engine =
+                    new QuizableSearchPanel(sampleClass(sample), sample);
             engine.setHiddenFields(controller.structuralFields(type));
             engine.setFieldTypes(controller.fieldTypes(type));
             engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());

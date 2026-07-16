@@ -1,7 +1,7 @@
 package demo;
 
 import quiz.QuizableAdapter;
-import quiz.ui.MultiQuizableView;
+import objectview.MultiQuizableView;
 
 import javax.swing.*;
 import java.awt.*;

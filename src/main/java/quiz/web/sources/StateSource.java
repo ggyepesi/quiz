@@ -3,7 +3,7 @@ package quiz.web.sources;
 import flag.States;
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import quiz.facet.FacetGrouper;
+import objectview.facet.FacetGrouper;
 import quiz.web.QuizableSource;
 
 import java.util.Collection;

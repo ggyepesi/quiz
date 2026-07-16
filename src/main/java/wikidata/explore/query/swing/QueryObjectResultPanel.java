@@ -1,11 +1,12 @@
 package wikidata.explore.query.swing;
 
+import objectview.QuizableRenderContext;
 import quiz.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.ui.MultiQuizableView;
-import quiz.ui.QuizablePanelView;
-import quiz.ui.QuizableSearchPanel;
+import objectview.MultiQuizableView;
+import objectview.QuizablePanelView;
+import objectview.QuizableSearchPanel;
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -39,14 +40,14 @@ public class QueryObjectResultPanel
     private final JPanel holder =
             new JPanel(new BorderLayout());
 
-    private quiz.ui.QuizableRenderContext activeContext;
+    private QuizableRenderContext activeContext;
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
         add(holder, BorderLayout.CENTER);
     }
 
-    public quiz.ui.QuizableRenderContext activeRenderContext() {
+    public QuizableRenderContext activeRenderContext() {
         return activeContext;
     }
 

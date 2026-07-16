@@ -3,7 +3,7 @@ package wikidata.explore.transform;
 import org.junit.jupiter.api.Test;
 import quiz.transform.app.ProductDomain;
 import quiz.transform.ui.DomainField;
-import quiz.ui.viewconfig.FieldTypeSource;
+import objectview.viewconfig.FieldTypeSource;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;

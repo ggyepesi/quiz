@@ -1,7 +1,5 @@
 package presidents;
 
-import java.awt.Dimension;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -19,11 +17,11 @@ import org.jsoup.select.Elements;
 import aux.CachedImage;
 import aux.FlexibleDate;
 import quiz.QuizableGroup;
-import quiz.ui.QuizableGroupView;
-import quiz.ui.ImagePane;
+import objectview.QuizableGroupView;
+import objectview.ImagePane;
 import quiz.Quizable;
 
-import quiz.ui.QuizableViews;
+import objectview.QuizableViews;
 
 public class USPresidents implements QuizableViews {
     private static final String url = Constants.wiki  + "List_of_presidents_of_the_United_States";

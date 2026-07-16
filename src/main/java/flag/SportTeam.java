@@ -1,6 +1,6 @@
 package flag;
 
-import quiz.ui.ImagePane;
+import objectview.ImagePane;
 import quiz.QuizableAdapter;
 
 // seemingly unused fields are used via reflection

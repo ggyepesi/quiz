@@ -1,6 +1,6 @@
 package quiz;
 
-import quiz.ui.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;

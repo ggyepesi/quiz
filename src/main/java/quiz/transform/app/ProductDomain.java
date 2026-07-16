@@ -5,7 +5,7 @@ import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import objectview.field.FieldKind;
 import quiz.transform.ui.SchemaView;
-import quiz.ui.viewconfig.FieldTypeSource;
+import objectview.viewconfig.FieldTypeSource;
 
 import java.util.ArrayList;
 import java.util.Collection;

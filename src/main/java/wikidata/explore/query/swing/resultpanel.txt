@@ -3,9 +3,9 @@ package wikidata.explore.query.swing;
 import quiz.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.ui.MultiQuizableView;
-import quiz.ui.QuizablePanelView;
-import quiz.ui.QuizableSearchPanel;
+import objectview.MultiQuizableView;
+import objectview.QuizablePanelView;
+import objectview.QuizableSearchPanel;
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -43,10 +43,10 @@ public class QueryObjectResultPanel
 
     // The render context backing the currently-shown cards, so other views
     // (e.g. the name-collision panel) can share it and navigate to a card here.
-    private quiz.ui.QuizableRenderContext activeContext;
+    private objectview.QuizableRenderContext activeContext;
 
     /** Render context of the cards currently shown, or null if none. */
-    public quiz.ui.QuizableRenderContext activeRenderContext() {
+    public objectview.QuizableRenderContext activeRenderContext() {
         return activeContext;
     }
 

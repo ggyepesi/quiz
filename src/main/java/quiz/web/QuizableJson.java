@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import quiz.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.ui.viewconfig.QuizablePanelConfigJsonIO;
-import quiz.ui.viewconfig.QuizablePanelConfigJsonIO.JsonConfig;
+import objectview.viewconfig.QuizablePanelConfigJsonIO;
+import objectview.viewconfig.QuizablePanelConfigJsonIO.JsonConfig;
 
 import java.lang.reflect.Field;
 import java.net.URLEncoder;

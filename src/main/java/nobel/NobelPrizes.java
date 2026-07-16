@@ -2,7 +2,6 @@ package nobel;
 
 import java.io.BufferedReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -16,10 +15,10 @@ import java.util.TreeSet;
 
 import aux.ResourceFinder;
 import quiz.QuizableGroup;
-import quiz.ui.QuizableGroupView;
-import quiz.ui.ImagePane;
+import objectview.QuizableGroupView;
+import objectview.ImagePane;
 import quiz.Quizable;
-import quiz.ui.QuizableViews;
+import objectview.QuizableViews;
 
 public class NobelPrizes implements QuizableViews {
     public final static Map<String, NobelPrize.Domain> domainAndYearStarts = Map.of(

@@ -1,6 +1,8 @@
 package wikidata.explore.workbench;
 
 import aux.SplitPaneUtils;
+import objectview.QuizablePanelView;
+import objectview.QuizableRenderContext;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import aux.Constants;
@@ -766,11 +768,11 @@ public class ModelBuilderFrame extends JFrame {
         if (lastCollisions.isEmpty()) {
             return;
         }
-        quiz.ui.QuizablePanelView view = new quiz.ui.QuizablePanelView();
+        QuizablePanelView view = new QuizablePanelView();
         // Share the instances panel's render context so clicking a colliding
         // entity navigates to (focuses + scrolls to) its card in the instances
         // window instead of opening a detached copy.
-        quiz.ui.QuizableRenderContext shared = instancesPanel.activeRenderContext();
+        QuizableRenderContext shared = instancesPanel.activeRenderContext();
         if (shared != null) {
             view.setRenderContext(shared);
             view.setInPlaceNavigation(true);
@@ -929,7 +931,7 @@ public class ModelBuilderFrame extends JFrame {
                         status.setText(sb.toString().trim());
                         logWindow.info("Transform: " + sb);
                         if (!out.created().isEmpty()) {
-                            quiz.ui.QuizablePanelView view = new quiz.ui.QuizablePanelView();
+                            QuizablePanelView view = new QuizablePanelView();
                             for (WikidataDynamicObject o : out.created()) {
                                 view.addQuizable(o);
                             }

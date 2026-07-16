@@ -8,9 +8,9 @@ import quiz.transform.pipeline.ui.FilterOperator;
 import quiz.transform.pipeline.ui.FilterPredicates;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
-import quiz.ui.QuizablePanelView;
-import quiz.ui.QuizableRenderContext;
-import quiz.ui.QuizableSearchPanel;
+import objectview.QuizablePanelView;
+import objectview.QuizableRenderContext;
+import objectview.QuizableSearchPanel;
 
 import javax.swing.*;
 import java.awt.*;

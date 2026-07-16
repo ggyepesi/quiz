@@ -1,7 +1,7 @@
 package wikidata.explore.view;
 
 import org.junit.jupiter.api.Test;
-import quiz.facet.Facet;
+import objectview.facet.Facet;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;

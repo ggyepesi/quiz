@@ -2,7 +2,7 @@ package quiz.transform;
 
 import quiz.DynamicFields;
 import quiz.QuizableAdapter;
-import quiz.annotations.NotQuizableField;
+import objectview.annotations.NotQuizableField;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

@@ -2,7 +2,7 @@ package wikidata.explore.workbench;
 
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.annotations.QuizableReference;
+import objectview.annotations.QuizableReference;
 
 import java.util.List;
 

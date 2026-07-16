@@ -1,9 +1,9 @@
 package wikidata.explore.query.log;
 
-import quiz.annotations.Link;
-import quiz.annotations.NotQuizableField;
+import objectview.annotations.Link;
+import objectview.annotations.NotQuizableField;
 import quiz.QuizableAdapter;
-import quiz.annotations.QuizableInline;
+import objectview.annotations.QuizableInline;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

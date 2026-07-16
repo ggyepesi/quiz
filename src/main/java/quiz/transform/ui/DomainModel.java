@@ -1,5 +1,6 @@
 package quiz.transform.ui;
 
+import objectview.viewconfig.FieldTypeSource;
 import quiz.Quizable;
 
 import java.util.Collection;
@@ -38,7 +39,7 @@ public interface DomainModel {
      * a compiled model rather than sample reflection. Null (default) reflects the
      * sample, as before.
      */
-    default quiz.ui.viewconfig.FieldTypeSource fieldTypes(String type) {
+    default FieldTypeSource fieldTypes(String type) {
         return null;
     }
 

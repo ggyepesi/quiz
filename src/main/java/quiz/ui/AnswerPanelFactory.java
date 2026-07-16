@@ -1,9 +1,10 @@
 package quiz.ui;
 
 import aux.GridBagUtils;
+import objectview.QuizablePanel;
 import quiz.Quiz;
 import quiz.Quizable;
-import quiz.ui.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;

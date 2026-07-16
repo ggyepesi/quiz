@@ -10,7 +10,7 @@ import aux.CachedImage;
 import aux.Constants;
 import aux.ResourceFinder;
 import quiz.QuizableGroup;
-import quiz.ui.ImagePane;
+import objectview.ImagePane;
 
 import java.util.TreeMap;
 

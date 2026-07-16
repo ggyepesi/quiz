@@ -1,6 +1,6 @@
 package wikidata.explore.view;
 
-import quiz.facet.Facet;
+import objectview.facet.Facet;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFacet;
@@ -13,7 +13,7 @@ import java.util.Set;
 
 /**
  * Bridges a class's declared {@link GeneratedFacet}s (domain/view layer) to the
- * runtime {@link quiz.facet.Facet}s that {@code FacetGrouper} consumes — so a
+ * runtime {@link Facet}s that {@code FacetGrouper} consumes — so a
  * domain can DECLARE its groupings instead of each dataset hand-building a facet
  * tree. Also suggests sensible default facets from a class's fields, mirroring how
  * {@code MembershipFields} suggests the intrinsic grouping FIELDS.

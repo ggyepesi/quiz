@@ -3,8 +3,8 @@ package quiz.web.sources;
 import mythology.MythologyEntities;
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import quiz.facet.Facet;
-import quiz.facet.FacetGrouper;
+import objectview.facet.Facet;
+import objectview.facet.FacetGrouper;
 import quiz.web.QuizableSource;
 
 import java.util.Collection;

@@ -2,7 +2,6 @@ package flag;
 
 import java.io.BufferedReader;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,13 +11,13 @@ import aux.Constants;
 import aux.UploadURLParser;
 import aux.UrlLineProcessor;
 import aux.UrlReader;
-import presidents.USPresidents;
+import objectview.facet.Facet;
 import quiz.QuizableGroup;
-import quiz.ui.QuizableGroupView;
-import quiz.ui.ImagePane;
+import objectview.QuizableGroupView;
+import objectview.ImagePane;
 import quiz.Quizable;
 
-import quiz.ui.QuizableViews;
+import objectview.QuizableViews;
 
 public class SportTeams implements QuizableViews {
     static final char[] ends = new char[] {'*', '†'};
@@ -28,14 +27,14 @@ public class SportTeams implements QuizableViews {
     /** The domain's configured grouping (League/Country/State/City/Stadium),
      *  declared WITH the domain — served generically (DomainModelSource), no
      *  bespoke source. Parallel dimensions, so use the FLAT group mode. */
-    public static List<quiz.facet.Facet> webFacets() {
+    public static List<Facet> webFacets() {
         return List.of(
-                quiz.facet.Facet.field("league", "League"),
-                quiz.facet.Facet.mapped("Country", "state",
+                Facet.field("league", "League"),
+                Facet.mapped("Country", "state",
                         s -> canada.contains(s) ? "Canada" : "USA"),
-                quiz.facet.Facet.field("state", "State"),
-                quiz.facet.Facet.field("capital", "City"),
-                quiz.facet.Facet.field("stadium", "Stadium"));
+                Facet.field("state", "State"),
+                Facet.field("capital", "City"),
+                Facet.field("stadium", "Stadium"));
     }
 
     static final boolean downloadSvgs = false;

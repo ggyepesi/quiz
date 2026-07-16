@@ -2,7 +2,7 @@ package objectview.field;
 
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.annotations.Link;
+import objectview.annotations.Link;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

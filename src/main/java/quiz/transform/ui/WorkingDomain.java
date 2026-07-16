@@ -1,5 +1,6 @@
 package quiz.transform.ui;
 
+import objectview.viewconfig.FieldTypeSource;
 import quiz.Quizable;
 
 import java.util.ArrayList;
@@ -57,7 +58,7 @@ public final class WorkingDomain implements DomainModel, SchemaView, quiz.curati
         return derived.containsKey(type) ? java.util.Set.of() : base.structuralFields(type);
     }
 
-    @Override public quiz.ui.viewconfig.FieldTypeSource fieldTypes(String type) {
+    @Override public FieldTypeSource fieldTypes(String type) {
         // Derived classes reflect their sample; base types use the compiled model.
         return derived.containsKey(type) ? null : base.fieldTypes(type);
     }

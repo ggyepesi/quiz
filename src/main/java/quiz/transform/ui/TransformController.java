@@ -3,7 +3,7 @@ package quiz.transform.ui;
 import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.transform.View;
-import quiz.ui.viewconfig.FieldTypeSource;
+import objectview.viewconfig.FieldTypeSource;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -1,8 +1,8 @@
 package quiz.transform.ui;
 
 import quiz.Quizable;
-import quiz.facet.Facet;
-import quiz.facet.FacetTree;
+import objectview.facet.Facet;
+import objectview.facet.FacetTree;
 import quiz.transform.ClassTransformPlan;
 import quiz.transform.View;
 import quiz.transform.pipeline.ui.FilterCondition;

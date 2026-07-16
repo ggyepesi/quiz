@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Test;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.QuizableGroup;
-import quiz.facet.Facet;
-import quiz.facet.FacetGrouper;
+import objectview.facet.Facet;
+import objectview.facet.FacetGrouper;
 
 import java.util.List;
 

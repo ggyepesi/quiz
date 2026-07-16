@@ -3,7 +3,7 @@ package wikidata.explore.codegen;
 import wikidata.explore.extract.WikidataMediaValue;
 import wikidata.explore.extract.WikidataDynamicObject;
 import quiz.Quizable;
-import quiz.ui.ImagePane;
+import objectview.ImagePane;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.Canonicalizer;
 import wikidata.explore.model.FieldCardinality;

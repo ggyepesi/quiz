@@ -2,7 +2,7 @@ package quiz.transform.pipeline.ui;
 
 import quiz.transform.ui.DomainField;
 import objectview.field.FieldKind;
-import quiz.ui.viewconfig.FieldTypeSource;
+import objectview.viewconfig.FieldTypeSource;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;

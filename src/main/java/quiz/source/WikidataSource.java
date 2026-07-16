@@ -1,7 +1,7 @@
 package quiz.source;
 
 import quiz.QuizableAdapter;
-import quiz.annotations.Link;
+import objectview.annotations.Link;
 
 /**
  * {@link Source} backed by Wikidata: a QID plus its wikidata.org URL.

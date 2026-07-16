@@ -1,9 +1,9 @@
 package wikidata.explore.extract;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import quiz.annotations.Link;
-import quiz.annotations.NotQuizableField;
-import quiz.annotations.Provenance;
+import objectview.annotations.Link;
+import objectview.annotations.NotQuizableField;
+import objectview.annotations.Provenance;
 import quiz.DynamicFields;
 import quiz.QuizableAdapter;
 import quiz.source.Source;

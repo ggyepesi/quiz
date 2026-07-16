@@ -3,13 +3,10 @@ package language;
 import aux.Constants;
 import quiz.QuizableGroup;
 
-import quiz.ui.QuizableGroupView;
-import quiz.ui.ImagePane;
-import quiz.ui.QuizableViews;
+import objectview.QuizableGroupView;
+import objectview.QuizableViews;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 

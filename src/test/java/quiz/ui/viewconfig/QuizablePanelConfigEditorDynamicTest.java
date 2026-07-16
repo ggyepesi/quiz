@@ -1,5 +1,7 @@
 package quiz.ui.viewconfig;
 
+import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.QuizablePanelConfigEditor;
 import org.junit.jupiter.api.Test;
 import quiz.transform.DynamicQuizable;
 

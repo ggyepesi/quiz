@@ -3,8 +3,8 @@ package quiz;
 import aux.GridBagUtils;
 import quiz.model.QuizMode;
 import quiz.ui.AnswerPanelFactory;
-import quiz.ui.QuizablePanel;
-import quiz.ui.viewconfig.QuizablePanelConfig;
+import objectview.QuizablePanel;
+import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;

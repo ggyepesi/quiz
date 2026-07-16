@@ -1,9 +1,11 @@
 package quiz.transform.ui;
 
+import objectview.facet.Facet;
+
 /**
  * The structural transform operations the workbench offers. Each compiles to a
  * real {@link quiz.transform.View} operation ({@link quiz.transform.ClassTransformPlan}
- * filter or a {@link quiz.facet.Facet} grouping), so the preview runs the actual
+ * filter or a {@link Facet} grouping), so the preview runs the actual
  * engine. Grouping operations produce a new grouping class (a bucket per key with
  * its members) — the subdomain the result forms. Structural-first: value filters
  * refine members; projection (choose card fields) is the next op to add.

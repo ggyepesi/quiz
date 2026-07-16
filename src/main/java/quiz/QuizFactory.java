@@ -15,10 +15,10 @@ import oscar.OscarNomination;
 import oscar.OscarNominations;
 import presidents.President;
 import presidents.USPresidents;
-import quiz.ui.QuizableGroupView;
-import quiz.ui.QuizableViews;
-import quiz.ui.viewconfig.QuizablePanelConfig;
-import quiz.ui.viewconfig.QuizablePanelConfigEditor;
+import objectview.QuizableGroupView;
+import objectview.QuizableViews;
+import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.QuizablePanelConfigEditor;
 
 import java.awt.*;
 import java.awt.event.WindowAdapter;

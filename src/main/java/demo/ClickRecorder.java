@@ -1,5 +1,7 @@
 package demo;
 
+import objectview.QuizablePanel;
+
 import javax.swing.SwingUtilities;
 import java.awt.AWTEvent;
 import java.awt.Component;
@@ -84,7 +86,7 @@ public final class ClickRecorder {
     // so the recording reads like "clicked Alpha-1" — verifiable and diffable.
     private static String describe(Component c) {
         for (Component cur = c; cur != null; cur = cur.getParent()) {
-            if (cur instanceof quiz.ui.QuizablePanel qp
+            if (cur instanceof QuizablePanel qp
                     && qp.getQuizable() != null) {
                 return qp.getQuizable().getName();
             }
