@@ -1,6 +1,6 @@
 package objectview;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import javax.swing.*;
 import java.awt.*;
@@ -18,7 +18,7 @@ import java.util.Set;
  */
 public class MultiQuizableViewDemo {
 
-    public static final class Constellation extends QuizableAdapter {
+    public static final class Constellation extends ViewableAdapter {
         public String name = "";
         public String abbreviation = "";
         public List<Constellation> neighbours = new ArrayList<>();
@@ -36,7 +36,7 @@ public class MultiQuizableViewDemo {
         @Override public String toString() { return name; }
     }
 
-    public static final class Star extends QuizableAdapter {
+    public static final class Star extends ViewableAdapter {
         public String name = "";
         public double magnitude = 0.0;
         public Constellation constellation;

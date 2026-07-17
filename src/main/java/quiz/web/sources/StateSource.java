@@ -46,6 +46,6 @@ public class StateSource implements QuizableSource {
 
     @Override
     public QuizableGroup rootGroup() throws Exception {
-        return FacetGrouper.assignRoles(states().getGroupView().getRootGroup());
+        return FacetGrouper.assignRoles((QuizableGroup) states().getGroupView().getRootGroup());
     }
 }

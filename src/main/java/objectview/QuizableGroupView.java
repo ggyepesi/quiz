@@ -1,7 +1,7 @@
 package objectview;
 
 import objectview.Viewable;
-import quiz.QuizableGroup;
+import objectview.ViewableGroup;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -11,19 +11,19 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class QuizableGroupView extends JPanel {
-    private final QuizableGroup rootGroup;
+    private final ViewableGroup<?> rootGroup;
 
     // lazy-created views
     private final Map<String, QuizablePanelView> groupViews = new TreeMap<>();
 
     // lookup by fullname
-    private final Map<String, QuizableGroup> groupsByFullName = new TreeMap<>();
+    private final Map<String, ViewableGroup<?>> groupsByFullName = new TreeMap<>();
 
     private JTree tree;
     private JScrollPane treeScrollPane;
     private JPanel mainPanel;
 
-    public QuizableGroupView(QuizableGroup rootGroup) {
+    public QuizableGroupView(ViewableGroup<?> rootGroup) {
         this.rootGroup = rootGroup;
         setLayout(new BorderLayout(4, 4));
         buildTree();
@@ -33,7 +33,7 @@ public class QuizableGroupView extends JPanel {
         return mainPanel;
     }
 
-    public QuizableGroup getRootGroup() {
+    public ViewableGroup<?> getRootGroup() {
         return rootGroup;
     }
 
@@ -87,12 +87,12 @@ public class QuizableGroupView extends JPanel {
         add(mainPanel, BorderLayout.CENTER);
     }
 
-    private DefaultMutableTreeNode buildNode(QuizableGroup group) {
+    private DefaultMutableTreeNode buildNode(ViewableGroup<?> group) {
         groupsByFullName.put(group.getFullName(), group);
 
         DefaultMutableTreeNode node = new DefaultMutableTreeNode(new GroupNode(group));
 
-        for (QuizableGroup child : group.getChildren()) {
+        for (ViewableGroup<?> child : group.getChildren()) {
             node.add(buildNode(child));
         }
 
@@ -120,7 +120,7 @@ public class QuizableGroupView extends JPanel {
     }
 
     private QuizablePanelView createViewForGroup(String fullName) {
-        QuizableGroup group = groupsByFullName.get(fullName);
+        ViewableGroup<?> group = groupsByFullName.get(fullName);
 
         if (group == null || group.getMembers().isEmpty()) {
             return null;
@@ -135,7 +135,7 @@ public class QuizableGroupView extends JPanel {
     }
 
     public JFrame createFrame() {
-        JFrame frame = new JFrame(rootGroup.getName());
+        JFrame frame = new JFrame(rootGroup.getDisplayName());
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
@@ -151,7 +151,7 @@ public class QuizableGroupView extends JPanel {
         createFrame().setVisible(true);
     }
 
-    public QuizableGroup getQuizableGroup(DefaultMutableTreeNode node) {
+    public ViewableGroup<?> getQuizableGroup(DefaultMutableTreeNode node) {
         String fullName = ((GroupNode)node.getUserObject()).getFullName();
         return groupsByFullName.get(fullName);
     }

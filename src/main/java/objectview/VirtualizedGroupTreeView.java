@@ -1,9 +1,9 @@
 package objectview;
 
 import objectview.Viewable;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import objectview.viewconfig.QuizablePanelConfig;
-import quiz.QuizableGroup;
+import objectview.ViewableGroup;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,18 +15,18 @@ public final class VirtualizedGroupTreeView extends JPanel
 
     private static final int INDENT = 18;
 
-    private final QuizableGroup root;
+    private final ViewableGroup<?> root;
     private final VirtualizedCardList rows;
     private final JScrollPane rowsScroll;
     private final QuizableRenderContext renderContext = new QuizableRenderContext();
 
-    private final Set<QuizableGroup> expandedGroups =
+    private final Set<ViewableGroup<?>> expandedGroups =
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final List<Viewable> members = new ArrayList<>();
 
     private final Map<Viewable, List<MemberRow>> rowsByMember =
             new IdentityHashMap<>();
-    private final Map<QuizableGroup, GroupRow> rowByGroup =
+    private final Map<ViewableGroup<?>, GroupRow> rowByGroup =
             new IdentityHashMap<>();
 
     private final List<Viewable> visibleRows = new ArrayList<>();
@@ -37,7 +37,7 @@ public final class VirtualizedGroupTreeView extends JPanel
     private QuizablePanelTargetListener targetListener;
 
     public VirtualizedGroupTreeView(
-            QuizableGroup root,
+            ViewableGroup<?> root,
             QuizablePanelConfig cardConfig) {
 
         this.root = Objects.requireNonNull(root, "root");
@@ -197,8 +197,8 @@ public final class VirtualizedGroupTreeView extends JPanel
         rows.setItems(new ArrayList<>(visibleRows));
     }
 
-    private void appendGroupContents(QuizableGroup group, int depth) {
-        for (QuizableGroup child : new ArrayList<>(group.getChildren())) {
+    private void appendGroupContents(ViewableGroup<?> group, int depth) {
+        for (ViewableGroup<?> child : new ArrayList<>(group.getChildren())) {
             if (child == null || child.getMembers().isEmpty()) {
                 continue;
             }
@@ -247,7 +247,7 @@ public final class VirtualizedGroupTreeView extends JPanel
                 String.CASE_INSENSITIVE_ORDER);
     }
 
-    private List<Viewable> directMembersOf(QuizableGroup group) {
+    private List<Viewable> directMembersOf(ViewableGroup<?> group) {
         if (group.getChildren().isEmpty()) {
             return identityDistinct(group.getMembers());
         }
@@ -255,7 +255,7 @@ public final class VirtualizedGroupTreeView extends JPanel
         Set<Viewable> childMembers =
                 Collections.newSetFromMap(new IdentityHashMap<>());
 
-        for (QuizableGroup child : group.getChildren()) {
+        for (ViewableGroup<?> child : group.getChildren()) {
             collectUniqueMembers(child, childMembers);
         }
 
@@ -298,7 +298,7 @@ public final class VirtualizedGroupTreeView extends JPanel
         return panel;
     }
 
-    private String groupLabel(QuizableGroup group) {
+    private String groupLabel(ViewableGroup<?> group) {
         int memberCount = identityDistinct(group.getMembers()).size();
         int childCount = nonEmptyChildCount(group);
 
@@ -352,7 +352,7 @@ public final class VirtualizedGroupTreeView extends JPanel
         return copy;
     }
 
-    private void toggleGroup(QuizableGroup group) {
+    private void toggleGroup(ViewableGroup<?> group) {
         if (!expandedGroups.remove(group)) {
             expandedGroups.add(group);
         }
@@ -366,7 +366,7 @@ public final class VirtualizedGroupTreeView extends JPanel
     }
 
     private void expandPathTo(Viewable member) {
-        List<QuizableGroup> path = findContainingPath(root, member);
+        List<ViewableGroup<?>> path = findContainingPath(root, member);
         if (path == null) {
             return;
         }
@@ -375,17 +375,17 @@ public final class VirtualizedGroupTreeView extends JPanel
         expandedGroups.addAll(path);
     }
 
-    private List<QuizableGroup> findContainingPath(
-            QuizableGroup group,
+    private List<ViewableGroup<?>> findContainingPath(
+            ViewableGroup<?> group,
             Viewable target) {
 
-        for (QuizableGroup child : group.getChildren()) {
+        for (ViewableGroup<?> child : group.getChildren()) {
             if (!containsIdentity(child.getMembers(), target)) {
                 continue;
             }
 
-            List<QuizableGroup> deeper = findContainingPath(child, target);
-            List<QuizableGroup> result = new ArrayList<>();
+            List<ViewableGroup<?>> deeper = findContainingPath(child, target);
+            List<ViewableGroup<?>> result = new ArrayList<>();
             result.add(child);
 
             if (deeper != null) {
@@ -417,10 +417,10 @@ public final class VirtualizedGroupTreeView extends JPanel
         return null;
     }
 
-    private static int nonEmptyChildCount(QuizableGroup group) {
+    private static int nonEmptyChildCount(ViewableGroup<?> group) {
         int count = 0;
 
-        for (QuizableGroup child : group.getChildren()) {
+        for (ViewableGroup<?> child : group.getChildren()) {
             if (child != null
                     && (!child.getChildren().isEmpty()
                     || !child.getMembers().isEmpty())) {
@@ -432,7 +432,7 @@ public final class VirtualizedGroupTreeView extends JPanel
     }
 
     private static void collectUniqueMembers(
-            QuizableGroup group,
+            ViewableGroup<?> group,
             Collection<Viewable> out) {
 
         if (group == null) {
@@ -445,7 +445,7 @@ public final class VirtualizedGroupTreeView extends JPanel
             }
         }
 
-        for (QuizableGroup child : group.getChildren()) {
+        for (ViewableGroup<?> child : group.getChildren()) {
             collectUniqueMembers(child, out);
         }
     }
@@ -497,15 +497,15 @@ public final class VirtualizedGroupTreeView extends JPanel
     private sealed interface OutlineRow permits GroupRow, MemberRow {}
 
     private static final class GroupRow
-            extends QuizableAdapter
+            extends ViewableAdapter
             implements OutlineRow {
 
-        private final QuizableGroup group;
+        private final ViewableGroup<?> group;
         private final int depth;
         private final boolean expanded;
 
         private GroupRow(
-                QuizableGroup group,
+                ViewableGroup<?> group,
                 int depth,
                 boolean expanded) {
             this.group = group;
@@ -528,7 +528,7 @@ public final class VirtualizedGroupTreeView extends JPanel
     }
 
     private static final class MemberRow
-            extends QuizableAdapter
+            extends ViewableAdapter
             implements OutlineRow {
 
         private final Viewable member;

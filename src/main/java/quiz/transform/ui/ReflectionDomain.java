@@ -2,7 +2,7 @@ package quiz.transform.ui;
 
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import quiz.QuizableFieldPaths;
+import objectview.field.QuizableFieldPaths;
 import objectview.field.FieldKind;
 import objectview.QuizableViews;
 import objectview.viewconfig.QuizablePanelConfig;

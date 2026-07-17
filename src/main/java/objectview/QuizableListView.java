@@ -1,8 +1,8 @@
 package objectview;
 
-import quiz.ListField;
+import objectview.annotations.ListField;
 import objectview.Viewable;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
@@ -147,7 +147,7 @@ public class QuizableListView extends JPanel {
     private List<Field> getListFields(Class<?> cls) {
         List<Field> fields = new ArrayList<>();
 
-        for (Field f : QuizableAdapter.getAllFields(cls)) {
+        for (Field f : ViewableAdapter.getAllFields(cls)) {
             if (f.isAnnotationPresent(ListField.class)) {
                 f.setAccessible(true);
                 fields.add(f);

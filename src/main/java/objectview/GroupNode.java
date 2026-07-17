@@ -1,10 +1,10 @@
 package objectview;
 
-import quiz.QuizableGroup;
+import objectview.ViewableGroup;
 
-public record GroupNode(QuizableGroup group) {
+public record GroupNode(ViewableGroup<?> group) {
     public String getName() {
-        return group.getName();
+        return group.getDisplayName();
     }
 
     public String getFullName() {
@@ -13,6 +13,6 @@ public record GroupNode(QuizableGroup group) {
 
     @Override
     public String toString() {
-        return group.getName();
+        return group.getDisplayName();
     }
 }

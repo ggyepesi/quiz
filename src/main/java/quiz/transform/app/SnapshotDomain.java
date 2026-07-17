@@ -1,7 +1,7 @@
 package quiz.transform.app;
 
 import quiz.Quizable;
-import quiz.QuizableFieldPaths;
+import objectview.field.QuizableFieldPaths;
 import objectview.field.FieldAccess;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;

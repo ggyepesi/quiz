@@ -1,4 +1,4 @@
-package quiz;
+package objectview.annotations;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

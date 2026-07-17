@@ -1,6 +1,7 @@
-package quiz;
+package objectview.field;
 
 import objectview.Viewable;
+import objectview.ViewableAdapter;
 
 import objectview.field.DynamicFields;
 import objectview.field.FieldRef;
@@ -142,9 +143,9 @@ public final class QuizableFieldPaths {
             // downstream; a map-held (dynamic) field has none, so getField is null.
             FieldSet set = FieldSet.of(obj);
             for (FieldRef ref : set.fields()) {
-                Field leaf = QuizableAdapter.getField(obj.getClass(), ref.name());
+                Field leaf = ViewableAdapter.getField(obj.getClass(), ref.name());
                 if (leaf != null
-                        && (!filter.accept(leaf) || QuizableAdapter.isProvenanceField(leaf))) {
+                        && (!filter.accept(leaf) || ViewableAdapter.isProvenanceField(leaf))) {
                     continue;
                 }
                 addSampleField(ref.name(), set.read(ref.name()), leaf,
@@ -217,7 +218,7 @@ public final class QuizableFieldPaths {
                 continue;
             }
 
-            Field field = QuizableAdapter.getField(cls, fieldName);
+            Field field = ViewableAdapter.getField(cls, fieldName);
 
             if (field != null && filter.accept(field)) {
                 collectField(
@@ -239,7 +240,7 @@ public final class QuizableFieldPaths {
         }
 
         // 2. Add implicit allFields/allMinorFields only after explicit fields.
-        for (Field field : QuizableAdapter.getAllFields(cls)) {
+        for (Field field : ViewableAdapter.getAllFields(cls)) {
             String fieldName = field.getName();
 
             if (alreadyAdded.contains(fieldName)) {
@@ -335,7 +336,7 @@ public final class QuizableFieldPaths {
     }
 
     // Finds a declared field by name up the hierarchy, INCLUDING @NotQuizableField
-    // ones (which QuizableAdapter.getField deliberately omits).
+    // ones (which ViewableAdapter.getField deliberately omits).
     private static Field rawDeclaredField(Class<?> cls, String name) {
         for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
             try {
@@ -358,7 +359,7 @@ public final class QuizableFieldPaths {
         }
         // Provenance (the Source chip) is metadata, not a searchable/sortable
         // domain field — keep it out of the field paths.
-        if (QuizableAdapter.isProvenanceField(field)) {
+        if (ViewableAdapter.isProvenanceField(field)) {
             return;
         }
 

@@ -1,4 +1,4 @@
-package quiz;
+package objectview;
 
 /**
  * A field value that can produce a renderable image. Lets headless

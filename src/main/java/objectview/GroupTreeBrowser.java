@@ -3,7 +3,7 @@ package objectview;
 import objectview.Viewable;
 import objectview.viewconfig.FieldTypeSource;
 import objectview.viewconfig.QuizablePanelConfig;
-import quiz.QuizableGroup;
+import objectview.ViewableGroup;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,7 +20,7 @@ import java.util.Set;
 public final class GroupTreeBrowser extends JPanel {
 
     public GroupTreeBrowser(
-            QuizableGroup root,
+            ViewableGroup<?> root,
             Class<? extends Viewable> memberClass,
             Viewable sample,
             Set<String> hiddenFields,

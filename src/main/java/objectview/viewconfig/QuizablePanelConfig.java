@@ -1,7 +1,7 @@
 package objectview.viewconfig;
 
 import objectview.Viewable;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -78,12 +78,12 @@ public class QuizablePanelConfig {
             return this;
         }
 
-        for (Field f : QuizableAdapter.getAllFields(cls)) {
+        for (Field f : ViewableAdapter.getAllFields(cls)) {
             if (Modifier.isStatic(f.getModifiers())) {
                 continue;
             }
 
-            if (QuizableAdapter.isMinorField(f) && !allMinorFields) {
+            if (ViewableAdapter.isMinorField(f) && !allMinorFields) {
                 continue;
             }
 
@@ -136,7 +136,7 @@ public class QuizablePanelConfig {
             return true;
         }
 
-        boolean minor = QuizableAdapter.isMinorField(field);
+        boolean minor = ViewableAdapter.isMinorField(field);
 
         return minor ? allMinorFields : allFields;
     }
@@ -271,7 +271,7 @@ public class QuizablePanelConfig {
         return visibleFieldsCache.computeIfAbsent(cls, c -> {
             List<Field> result = new ArrayList<>();
 
-            for (Field field : QuizableAdapter.getAllFields(c)) {
+            for (Field field : ViewableAdapter.getAllFields(c)) {
                 if ("name".equals(field.getName())) {
                     continue;
                 }

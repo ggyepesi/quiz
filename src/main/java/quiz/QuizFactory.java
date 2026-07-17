@@ -15,6 +15,7 @@ import oscar.OscarNomination;
 import oscar.OscarNominations;
 import presidents.President;
 import presidents.USPresidents;
+import objectview.ImageBlurrer;
 import objectview.QuizableGroupView;
 import objectview.QuizableViews;
 import objectview.viewconfig.QuizablePanelConfig;
@@ -31,6 +32,21 @@ import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 
 public class QuizFactory {
+
+    // Register the quiz answer-image blur policy with objectview (which has no quiz/OCR
+    // dependency of its own — it just calls the active blurrer).
+    static {
+        ImageBlurrer.setActive(new ImageBlurrer() {
+            @Override public boolean blurs(String type, String name) {
+                return quiz.ocr.QuizImageBlurrer.blurs(type, name);
+            }
+            @Override public java.awt.image.BufferedImage blur(
+                    String type, String name, java.awt.image.BufferedImage src) {
+                return quiz.ocr.QuizImageBlurrer.blur(type, name, src);
+            }
+        });
+    }
+
     private record QuizOption(
             String icon,
             String name,
@@ -296,7 +312,7 @@ public class QuizFactory {
                 JOptionPane.showMessageDialog(quizFrame, "Quiz type is not selected.");
                 return;
             }
-            QuizableGroup selectedGroup = node == null ? null : rootView.getQuizableGroup(node);
+            QuizableGroup selectedGroup = node == null ? null : (QuizableGroup) rootView.getQuizableGroup(node);
 
             QuizablePanelConfig queryConfig = queryEditor.getConfig().copy();
             QuizablePanelConfig answerConfig = answerEditor.getConfig().copy();

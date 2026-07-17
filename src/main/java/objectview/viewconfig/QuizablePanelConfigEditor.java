@@ -2,8 +2,8 @@ package objectview.viewconfig;
 
 import objectview.field.DynamicFields;
 import objectview.Viewable;
-import quiz.QuizableAdapter;
-import quiz.QuizableFieldPaths;
+import objectview.ViewableAdapter;
+import objectview.field.QuizableFieldPaths;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -218,7 +218,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         if (q instanceof DynamicFields d) {
             return !d.dynamicFieldValues().isEmpty();
         }
-        return !QuizableAdapter.getAllFields(q.getClass()).isEmpty();
+        return !ViewableAdapter.getAllFields(q.getClass()).isEmpty();
     }
 
     private static Viewable firstQuizable(Object v) {
@@ -256,9 +256,9 @@ public class QuizablePanelConfigEditor extends JPanel {
     }
 
     private boolean hasMinorFields(Class<? extends Viewable> cls) {
-        for (Field field : QuizableAdapter.getAllFields(cls)) {
+        for (Field field : ViewableAdapter.getAllFields(cls)) {
             if (!Modifier.isStatic(field.getModifiers())
-                    && QuizableAdapter.isMinorField(field)) {
+                    && ViewableAdapter.isMinorField(field)) {
                 return true;
             }
         }
@@ -266,12 +266,12 @@ public class QuizablePanelConfigEditor extends JPanel {
     }
 
     private void addFieldRows(Class<? extends Viewable> cls, boolean minor) {
-        for (Field field : QuizableAdapter.getConfigurableFields(cls)) {
+        for (Field field : ViewableAdapter.getConfigurableFields(cls)) {
             if (Modifier.isStatic(field.getModifiers())) {
                 continue;
             }
 
-            if (QuizableAdapter.isMinorField(field) != minor) {
+            if (ViewableAdapter.isMinorField(field) != minor) {
                 continue;
             }
 
@@ -591,8 +591,8 @@ public class QuizablePanelConfigEditor extends JPanel {
             return 0;
         }
 
-        for (Field f : QuizableAdapter.getAllFields(cls)) {
-            if (QuizableAdapter.isMinorField(f)
+        for (Field f : ViewableAdapter.getAllFields(cls)) {
+            if (ViewableAdapter.isMinorField(f)
                     && sourceConfig.getFieldConfig(f.getName()) != null) {
                 count++;
             }
@@ -602,8 +602,8 @@ public class QuizablePanelConfigEditor extends JPanel {
         if (minorBlock != null && minorBlock.childEditor != null) {
             QuizablePanelConfig cfg = minorBlock.childEditor.getConfig();
             count = 0;
-            for (Field f : QuizableAdapter.getAllFields(cls)) {
-                if (QuizableAdapter.isMinorField(f)
+            for (Field f : ViewableAdapter.getAllFields(cls)) {
+                if (ViewableAdapter.isMinorField(f)
                         && cfg.getFieldConfig(f.getName()) != null) {
                     count++;
                 }
@@ -864,7 +864,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         }
 
         boolean isMinor() {
-            return field != null && QuizableAdapter.isMinorField(field);
+            return field != null && ViewableAdapter.isMinorField(field);
         }
 
         static Row minorBlock() {

@@ -1,7 +1,9 @@
 package objectview;
 
+import objectview.ViewableAdapter;
+import objectview.field.QuizableFieldPaths;
+
 import objectview.annotations.Numeric;
-import quiz.*;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
@@ -339,7 +341,7 @@ public class QuizablePanelSearchAndSort {
 
         return map.computeIfAbsent(
                 name,
-                key -> QuizableAdapter.getField(cls, key));
+                key -> ViewableAdapter.getField(cls, key));
     }
 
     private String flattenForSearch(Object value) {

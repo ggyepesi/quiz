@@ -1,4 +1,6 @@
-package quiz;
+package objectview.field;
+import objectview.ViewableAdapter;
+import objectview.field.QuizableFieldPaths;
 
 import org.junit.jupiter.api.Test;
 import quiz.transform.DynamicQuizable;

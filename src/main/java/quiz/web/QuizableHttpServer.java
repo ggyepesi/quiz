@@ -5,7 +5,7 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import quiz.QuizableGroup;
-import quiz.ImageRef;
+import objectview.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 

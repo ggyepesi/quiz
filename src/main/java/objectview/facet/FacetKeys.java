@@ -1,7 +1,7 @@
 package objectview.facet;
 
 import objectview.Viewable;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -57,7 +57,7 @@ final class FacetKeys {
         if (obj instanceof Viewable q) {
             return objectview.field.FieldSet.of(q).read(name);
         }
-        Field f = QuizableAdapter.getField(obj.getClass(), name);
+        Field f = ViewableAdapter.getField(obj.getClass(), name);
         if (f == null) {
             return null;
         }

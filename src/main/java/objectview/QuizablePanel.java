@@ -9,7 +9,7 @@ import objectview.annotations.QuizableInline;
 import objectview.annotations.QuizableReference;
 import objectview.field.DynamicFields;
 import objectview.Viewable;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
@@ -770,8 +770,8 @@ public class QuizablePanel extends JPanel {
                 (value instanceof Collection<?> || value instanceof Map<?, ?>)
                         && !isDynamicContainer;
 
-        if (QuizableAdapter.isQuizableReference(field)
-                || QuizableAdapter.isProvenanceField(field)) {
+        if (ViewableAdapter.isQuizableReference(field)
+                || ViewableAdapter.isProvenanceField(field)) {
             if (isCollectionOrMap) {
                 // The header labels the field; build the items borderless.
                 Object v = value;
@@ -791,7 +791,7 @@ public class QuizablePanel extends JPanel {
         // @QuizableInline means "always render fully expanded inline" (e.g. a
         // query-log step tree) — never collapse it, or the nested content (the
         // SPARQL, child steps) hides behind a collapsed header.
-        if (QuizableAdapter.isQuizableInline(field)) {
+        if (ViewableAdapter.isQuizableInline(field)) {
             JComponent comp =
                     createInlineFieldComponent(fieldName, fieldPath, value);
 
@@ -802,7 +802,7 @@ public class QuizablePanel extends JPanel {
             return row;
         }
 
-        if (QuizableAdapter.isLinkField(field)
+        if (ViewableAdapter.isLinkField(field)
                 && value instanceof String url
                 && !url.isBlank()) {
 
@@ -1162,14 +1162,14 @@ public class QuizablePanel extends JPanel {
             return false;
         }
 
-        if (QuizableAdapter.isQuizableReference(field)
-                || QuizableAdapter.isProvenanceField(field)) {
+        if (ViewableAdapter.isQuizableReference(field)
+                || ViewableAdapter.isProvenanceField(field)) {
             return false;
         }
 
         // @Link string fields render as a dedicated clickable row rather
         // than folding into the (drag-to-select) text block.
-        if (QuizableAdapter.isLinkField(field)
+        if (ViewableAdapter.isLinkField(field)
                 && value instanceof String s
                 && !s.isBlank()) {
             return false;
@@ -1390,13 +1390,14 @@ public class QuizablePanel extends JPanel {
         String type = quizable.typeName();
         String name = quizable.getDisplayName();
         try {
-            if (!quiz.ocr.QuizImageBlurrer.blurs(type, name)) {
+            ImageBlurrer blurrer = ImageBlurrer.active();
+            if (!blurrer.blurs(type, name)) {
                 return original;
             }
             java.awt.image.BufferedImage src =
                     toBufferedImage(original.getCachedImage().getFullImage());
             java.awt.image.BufferedImage blurred =
-                    quiz.ocr.QuizImageBlurrer.blur(type, name, src);
+                    blurrer.blur(type, name, src);
             if (blurred == src) {
                 return original;
             }
@@ -1519,7 +1520,7 @@ public class QuizablePanel extends JPanel {
             return changed;
         }
 
-        Field f = QuizableAdapter.getField(obj.getClass(), part);
+        Field f = ViewableAdapter.getField(obj.getClass(), part);
         if (f == null) {
             return changed;
         }

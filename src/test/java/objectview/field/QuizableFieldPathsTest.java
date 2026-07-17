@@ -1,4 +1,6 @@
-package quiz;
+package objectview.field;
+import objectview.ViewableAdapter;
+import objectview.field.QuizableFieldPaths;
 
 import objectview.annotations.NotQuizableField;
 import org.junit.jupiter.api.Test;
@@ -73,7 +75,7 @@ class QuizableFieldPathsTest {
     }
 
     @SuppressWarnings("unused")
-    private static class TestCard extends QuizableAdapter {
+    private static class TestCard extends ViewableAdapter {
         private String name;
         private List<String> tags;
         private List<TestChild> children;
@@ -84,7 +86,7 @@ class QuizableFieldPathsTest {
     }
 
     @SuppressWarnings("unused")
-    private static class TestChild extends QuizableAdapter {
+    private static class TestChild extends ViewableAdapter {
         private String name;
         private String code;
 
@@ -93,7 +95,7 @@ class QuizableFieldPathsTest {
     }
 
     @SuppressWarnings("unused")
-    private static class SelfNode extends QuizableAdapter {
+    private static class SelfNode extends ViewableAdapter {
         private String name;
         private List<SelfNode> children;
 
@@ -104,7 +106,7 @@ class QuizableFieldPathsTest {
     // Mirrors WikidataDynamicObject: identity fields hidden from the card, and a
     // bare reference has no other fields.
     @SuppressWarnings("unused")
-    private static class EntityCard extends QuizableAdapter {
+    private static class EntityCard extends ViewableAdapter {
         @NotQuizableField
         private String qid;
         @NotQuizableField

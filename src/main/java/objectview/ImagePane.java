@@ -25,7 +25,7 @@ import aux.CachedImage;
 import aux.TitleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import quiz.ImageRef;
+import objectview.ImageRef;
 import objectview.Viewable;
 
 public class ImagePane extends JPanel

@@ -1,4 +1,5 @@
 package wikidata.explore.codegen;
+import objectview.field.QuizableFieldPaths;
 
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;

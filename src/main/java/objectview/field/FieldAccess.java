@@ -1,6 +1,6 @@
 package objectview.field;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -100,7 +100,7 @@ public final class FieldAccess {
         // A non-Viewable nested value (a heterogeneous map value, a JDK type, …):
         // reflect. Reading is tolerant — return null rather than crash a caller
         // enumerating/inspecting arbitrary domains.
-        Field f = QuizableAdapter.getField(obj.getClass(), name);
+        Field f = ViewableAdapter.getField(obj.getClass(), name);
         if (f != null) {
             try {
                 f.setAccessible(true);
@@ -121,7 +121,7 @@ public final class FieldAccess {
             return;
         }
         // A non-Viewable nested owner (a plain POJO with a declared field): reflect.
-        Field f = QuizableAdapter.getField(obj.getClass(), name);
+        Field f = ViewableAdapter.getField(obj.getClass(), name);
         if (f != null) {
             try {
                 f.setAccessible(true);

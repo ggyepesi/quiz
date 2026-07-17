@@ -1,4 +1,5 @@
 package quiz;
+import objectview.field.QuizableFieldPaths;
 
 import objectview.viewconfig.QuizablePanelConfig;
 

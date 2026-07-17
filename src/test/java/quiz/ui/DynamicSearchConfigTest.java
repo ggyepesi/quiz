@@ -3,7 +3,7 @@ package quiz.ui;
 import objectview.QuizablePanelSearchAndSort;
 import org.junit.jupiter.api.Test;
 import objectview.Viewable;
-import quiz.QuizableFieldPaths;
+import objectview.field.QuizableFieldPaths;
 import quiz.transform.DynamicQuizable;
 import objectview.viewconfig.QuizablePanelConfig;
 

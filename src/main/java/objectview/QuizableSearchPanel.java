@@ -1,8 +1,8 @@
 package objectview;
+import objectview.field.QuizableFieldPaths;
 
 import aux.GridBagUtils;
 import objectview.viewconfig.FieldTypeSource;
-import quiz.*;
 import objectview.viewconfig.QuizablePanelConfig;
 import objectview.viewconfig.QuizablePanelConfigEditor;
 

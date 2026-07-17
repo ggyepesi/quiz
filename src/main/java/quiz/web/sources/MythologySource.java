@@ -44,7 +44,7 @@ public class MythologySource implements QuizableSource {
 
     @Override
     public QuizableGroup rootGroup() throws Exception {
-        QuizableGroup root = entities().getGroupView().getRootGroup();
+        QuizableGroup root = (QuizableGroup) entities().getGroupView().getRootGroup();
         FacetGrouper.wrapChildrenAsFacet(root, "Affiliation");
         FacetGrouper.addFacets(root, load(),
                 List.of(Facet.reference("father", "Father"),
