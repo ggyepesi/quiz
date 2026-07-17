@@ -18,7 +18,7 @@ import java.util.function.Function;
  *
  * <p>The implementation is generic in the member type {@code T} and the concrete
  * group type {@code G}, so it never names a host-specific concrete group. A host
- * passes its own root factory, for example {@code QuizableGroup::new}, and gets
+ * passes its own root factory, for example {@code MyGroup::new}, and gets
  * that same concrete type back.
  *
  * <p>Typical shape:

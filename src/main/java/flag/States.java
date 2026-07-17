@@ -12,23 +12,23 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import aux.*;
+import objectview.DomainViews;
 import quiz.GroupReader;
 import quiz.QuizableGroup;
 import quiz.Quizable;
 
 import objectview.ImagePane;
-import objectview.ViewableGroupView;
-import objectview.ViewableViews;
+import objectview.GroupView;
 
 import java.util.TreeMap;
 
-public class States implements ViewableViews {
+public class States implements DomainViews {
     static boolean downloadSvgs = false;
 
     // state -> {(flag, seal, etc.)->image}
     private final Map<String, State> states = new TreeMap<>();
     private final QuizableGroup root = new QuizableGroup("All");
-    private ViewableGroupView groupView;
+    private GroupView groupView;
     private boolean built;
 
     // state -> {state -> {imageKey starting with "Flag of " -> fullState}}
@@ -49,12 +49,12 @@ public class States implements ViewableViews {
     }
 
     @Override
-    public Map<String, ? extends Quizable> getQuizables() {
+    public Map<String, ? extends Quizable> getViewables() {
         return states;
     }
 
     @Override
-    public ViewableGroupView getGroupView() {
+    public GroupView getGroupView() {
         return groupView;
     }
 
@@ -88,7 +88,7 @@ public class States implements ViewableViews {
         System.out.println(root.getChildren().size() + " groups, " +
                                    root.getMembers().size() + " vs. " + states.size());
         mem();
-        groupView = new ViewableGroupView(root);
+        groupView = new GroupView(root);
         built = true;
     }
 

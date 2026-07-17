@@ -7,7 +7,7 @@ import java.util.Collection;
 
 /**
  * A headless dataset: a named type plus the Quizables it loads. Deliberately
- * UI-free (unlike {@code objectview.ViewableViews}) so the web backend can serve
+ * UI-free (unlike {@code objectview.DomainViews}) so the web backend can serve
  * data without constructing Swing views.
  */
 public interface QuizableSource {

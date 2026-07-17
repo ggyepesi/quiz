@@ -1,8 +1,8 @@
 package wikidata.explore.workbench;
 
 import aux.SplitPaneUtils;
-import objectview.ViewablePanelView;
-import objectview.ViewableRenderContext;
+import objectview.CardListView;
+import objectview.RenderContext;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import aux.Constants;
@@ -768,17 +768,17 @@ public class ModelBuilderFrame extends JFrame {
         if (lastCollisions.isEmpty()) {
             return;
         }
-        ViewablePanelView view = new ViewablePanelView();
+        CardListView view = new CardListView();
         // Share the instances panel's render context so clicking a colliding
         // entity navigates to (focuses + scrolls to) its card in the instances
         // window instead of opening a detached copy.
-        ViewableRenderContext shared = instancesPanel.activeRenderContext();
+        RenderContext shared = instancesPanel.activeRenderContext();
         if (shared != null) {
             view.setRenderContext(shared);
             view.setInPlaceNavigation(true);
         }
         for (NameCollision c : lastCollisions) {
-            view.addQuizable(c);
+            view.addViewable(c);
         }
         view.show("Name collisions (" + lastCollisions.size() + ")", 1);
     }
@@ -863,7 +863,7 @@ public class ModelBuilderFrame extends JFrame {
 
     // A "Transform…" dialog: edit the domain's TransformConfig as JSON, Run it
     // against the loaded pool (invert mutates in place; reify materializes new
-    // view-class objects, shown in a ViewablePanelView), and Save it next to the
+    // view-class objects, shown in a CardListView), and Save it next to the
     // model so the next domain generation/serve picks the constructs up.
     private void showTransformDialog() {
         if (lastRun == null || lastRun.dynamicObjects() == null
@@ -931,9 +931,9 @@ public class ModelBuilderFrame extends JFrame {
                         status.setText(sb.toString().trim());
                         logWindow.info("Transform: " + sb);
                         if (!out.created().isEmpty()) {
-                            ViewablePanelView view = new ViewablePanelView();
+                            CardListView view = new CardListView();
                             for (WikidataDynamicObject o : out.created()) {
-                                view.addQuizable(o);
+                                view.addViewable(o);
                             }
                             String t = out.created().get(0).typeName();
                             view.show("Transform output — " + t

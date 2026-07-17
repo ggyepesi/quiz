@@ -1,9 +1,9 @@
 package benchmark;
 
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.Card;
+import objectview.viewconfig.ViewConfig;
 import oscar.OscarNomination;
-import objectview.viewconfig.ViewablePanelConfigAdapter;
-import objectview.ViewablePanel;
+import objectview.viewconfig.ViewConfigAdapter;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.awt.*;
@@ -33,24 +33,24 @@ public class BenchmarkRunner {
         }
 
         // Generate standard layout configurations for the legacy panel
-        ViewablePanelConfig fullConfig = ViewablePanelConfigAdapter.fromOldArgs(
+        ViewConfig fullConfig = ViewConfigAdapter.fromOldArgs(
                 dataset.get(0), true, true, true
-                                                                               );
+                                                             );
 
         System.out.println("Dataset Ready. Commencing Execution Profile Trace...");
 
 
         // =================================================================
-        // Pass 1: Your Live Runtime ViewablePanel Loop (Reflection)
+        // Pass 1: Your Live Runtime Card Loop (Reflection)
         // =================================================================
         resetHeapMemory();
         long memBeforeRuntime = getUsedMemory();
         long startTimeRuntime = System.currentTimeMillis();
 
-        List<ViewablePanel> runtimePanels = new ArrayList<>(TARGET_COUNT);
+        List<Card> runtimePanels = new ArrayList<>(TARGET_COUNT);
         for (OscarNomination nom : dataset) {
             // Continually performs reflective scanning and metadata lookups per object instance
-            runtimePanels.add(new ViewablePanel(nom, fullConfig, false));
+            runtimePanels.add(new Card(nom, fullConfig, false));
         }
 
         long endTimeRuntime = System.currentTimeMillis();
@@ -58,7 +58,7 @@ public class BenchmarkRunner {
 
         // Debug detail — printed AFTER timing so console I/O isn't counted as
         // render time (35k println calls here dwarf the actual rendering).
-        ViewablePanel sample = runtimePanels.get(0);
+        Card sample = runtimePanels.get(0);
         System.out.println(sample.getComponentCount() + " " + sample.hasRenderedConfiguredContent());
         for (Component c : sample.getComponents()) {
             System.out.println(c.getClass().getName());
@@ -66,12 +66,12 @@ public class BenchmarkRunner {
         System.out.println(fullConfig);
         System.out.println(fullConfig.visibleFieldsFor(OscarNomination.class));
 
-        ViewablePanel.RenderStats.print();
+        Card.RenderStats.print();
 
         System.out.println("\n=================================================");
-        System.out.println("        ViewablePanel RENDER PERFORMANCE TRACE    ");
+        System.out.println("        Card RENDER PERFORMANCE TRACE    ");
         System.out.println("=================================================");
-        System.out.printf("Runtime ViewablePanel Loop : %4d ms | Heap Alloc: %3d MB\n",
+        System.out.printf("Runtime Card Loop : %4d ms | Heap Alloc: %3d MB\n",
                 (endTimeRuntime - startTimeRuntime), Math.max(0, (memAfterRuntime - memBeforeRuntime) / 1024 / 1024));
         System.out.println("=================================================");
     }

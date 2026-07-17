@@ -1,6 +1,6 @@
 package quiz.transform;
 
-import objectview.annotations.NotViewableField;
+import objectview.annotations.Hidden;
 import objectview.field.DynamicFields;
 import quiz.QuizableAdapter;
 
@@ -15,9 +15,9 @@ import java.util.Map;
  */
 public class DynamicQuizable extends QuizableAdapter implements DynamicFields {
 
-    @NotViewableField
+    @Hidden
     private final String id;
-    @NotViewableField
+    @Hidden
     private final String name;
 
     private String type;

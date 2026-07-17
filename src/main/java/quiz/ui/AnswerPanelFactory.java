@@ -1,8 +1,8 @@
 package quiz.ui;
 
 import aux.GridBagUtils;
-import objectview.ViewablePanel;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.Card;
+import objectview.viewconfig.ViewConfig;
 import quiz.Quiz;
 import quiz.Quizable;
 
@@ -21,9 +21,9 @@ import java.util.function.Consumer;
  */
 public class AnswerPanelFactory {
 
-    private final ViewablePanelConfig answerConfig;
+    private final ViewConfig answerConfig;
 
-    public AnswerPanelFactory(ViewablePanelConfig answerConfig) {
+    public AnswerPanelFactory(ViewConfig answerConfig) {
         this.answerConfig = answerConfig;
     }
 
@@ -41,12 +41,12 @@ public class AnswerPanelFactory {
         int col = 0, row = 0;
 
         for (Quizable q : options) {
-            ViewablePanelConfig cfg = answerConfig == null
-                    ? new ViewablePanelConfig()
+            ViewConfig cfg = answerConfig == null
+                    ? new ViewConfig()
                     : answerConfig.copy();
             cfg.setThumb(true); // common for answer panels
 
-            ViewablePanel qp = new ViewablePanel(q, cfg, options, false);
+            Card qp = new Card(q, cfg, options, false);
             Quiz.addMouseListenerRecursively(qp, new MouseAdapter() {
                 @Override
                 public void mousePressed(MouseEvent e) {

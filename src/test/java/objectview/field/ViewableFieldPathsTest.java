@@ -1,8 +1,8 @@
 package objectview.field;
 import objectview.ViewableAdapter;
 
-import objectview.annotations.NotViewableField;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.annotations.Hidden;
+import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 import objectview.ImagePane;
 
@@ -16,9 +16,9 @@ class ViewableFieldPathsTest {
 
     @Test
     void collectionOfStringIsLeafWhenSelected() {
-        ViewablePanelConfig config = ViewablePanelConfig.of(TestCard.class);
+        ViewConfig config = ViewConfig.of(TestCard.class);
         config.setAllFields(false);
-        config.addField("tags", ViewablePanelConfig.leaf());
+        config.addField("tags", ViewConfig.leaf());
 
         List<ViewableFieldPaths.FieldPath> paths =
                 ViewableFieldPaths.collect(config, ViewableFieldPaths.NOT_IMAGE_PANE_FIELDS);
@@ -28,11 +28,11 @@ class ViewableFieldPathsTest {
 
     @Test
     void collectionOfQuizableUsesNestedSelectedFieldsOnly() {
-        ViewablePanelConfig childConfig = ViewablePanelConfig.of(TestChild.class);
+        ViewConfig childConfig = ViewConfig.of(TestChild.class);
         childConfig.setAllFields(false);
-        childConfig.addField("name", ViewablePanelConfig.leaf());
+        childConfig.addField("name", ViewConfig.leaf());
 
-        ViewablePanelConfig config = ViewablePanelConfig.of(TestCard.class);
+        ViewConfig config = ViewConfig.of(TestCard.class);
         config.setAllFields(false);
         config.addField("children", childConfig);
 
@@ -44,10 +44,10 @@ class ViewableFieldPathsTest {
 
     @Test
     void imagePaneFieldsAreExcluded() {
-        ViewablePanelConfig config = ViewablePanelConfig.of(TestCard.class);
+        ViewConfig config = ViewConfig.of(TestCard.class);
         config.setAllFields(false);
-        config.addField("name", ViewablePanelConfig.leaf());
-        config.addField("image", ViewablePanelConfig.leaf());
+        config.addField("name", ViewConfig.leaf());
+        config.addField("image", ViewConfig.leaf());
 
         List<ViewableFieldPaths.FieldPath> paths =
                 ViewableFieldPaths.collect(config, ViewableFieldPaths.NOT_IMAGE_PANE_FIELDS);
@@ -57,9 +57,9 @@ class ViewableFieldPathsTest {
 
     @Test
     void recursiveTypeDoesNotOverflowWhenOnlyNameIsSelected() {
-        ViewablePanelConfig config = ViewablePanelConfig.of(SelfNode.class);
+        ViewConfig config = ViewConfig.of(SelfNode.class);
         config.setAllFields(false);
-        config.addField("name", ViewablePanelConfig.leaf());
+        config.addField("name", ViewConfig.leaf());
 
         List<ViewableFieldPaths.FieldPath> paths =
                 ViewableFieldPaths.collect(config, ViewableFieldPaths.NOT_IMAGE_PANE_FIELDS);
@@ -106,9 +106,9 @@ class ViewableFieldPathsTest {
     // bare reference has no other fields.
     @SuppressWarnings("unused")
     private static class EntityCard extends ViewableAdapter {
-        @NotViewableField
+        @Hidden
         private String qid;
-        @NotViewableField
+        @Hidden
         private String name;
 
         @Override public String getIdentifier() { return qid; }
@@ -120,14 +120,14 @@ class ViewableFieldPathsTest {
         // "All fields" implies the identity (name/qid). An EXPLICIT config means
         // exactly what it names — forcing name in regardless made search hit on
         // name even when the user unchecked it.
-        ViewablePanelConfig all = ViewablePanelConfig.of(EntityCard.class);
+        ViewConfig all = ViewConfig.of(EntityCard.class);
         all.setAllFields(true);
         Set<String> allPaths = pathStrings(ViewableFieldPaths.collect(
                 all, ViewableFieldPaths.NOT_IMAGE_PANE_FIELDS));
         assertTrue(allPaths.contains("name"), allPaths.toString());
         assertTrue(allPaths.contains("qid"), allPaths.toString());
 
-        ViewablePanelConfig explicit = ViewablePanelConfig.of(EntityCard.class);
+        ViewConfig explicit = ViewConfig.of(EntityCard.class);
         explicit.setAllFields(false);
         Set<String> explicitPaths = pathStrings(ViewableFieldPaths.collect(
                 explicit, ViewableFieldPaths.NOT_IMAGE_PANE_FIELDS));
@@ -156,7 +156,7 @@ class ViewableFieldPathsTest {
     void collectSurfacesIdentityExactlyOnce() {
         // Identity (name + qid) must appear once each — never doubled — so a
         // duplicated field can't build an inconsistent composite sort/search key.
-        ViewablePanelConfig config = ViewablePanelConfig.of(EntityCard.class);
+        ViewConfig config = ViewConfig.of(EntityCard.class);
 
         List<ViewableFieldPaths.FieldPath> paths = ViewableFieldPaths.collect(
                 config, ViewableFieldPaths.NOT_IMAGE_PANE_FIELDS);
@@ -174,7 +174,7 @@ class ViewableFieldPathsTest {
     @Test
     void nonEntityDoesNotGetSyntheticQid() {
         // No qid field → identity-field injection is a no-op (existing behavior).
-        ViewablePanelConfig config = ViewablePanelConfig.of(TestChild.class);
+        ViewConfig config = ViewConfig.of(TestChild.class);
         config.setAllFields(false);
 
         Set<String> paths = pathStrings(ViewableFieldPaths.collect(

@@ -1,10 +1,10 @@
 package quiz;
 
 import aux.GridBagUtils;
-import objectview.ViewablePanel;
+import objectview.Card;
+import objectview.viewconfig.ViewConfig;
 import quiz.model.QuizMode;
 import quiz.ui.AnswerPanelFactory;
-import objectview.viewconfig.ViewablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,8 +22,8 @@ public class QuizListABCD extends Quiz {
 
     private JButton nextButton;
 
-    public QuizListABCD(ViewablePanelConfig queryConfig,
-                        ViewablePanelConfig answerConfig,
+    public QuizListABCD(ViewConfig queryConfig,
+                        ViewConfig answerConfig,
                         QuizAnswerType answerType,
                         QuizableGroup group,
                         Map<String, ? extends Quizable> quizables) {
@@ -89,9 +89,9 @@ public class QuizListABCD extends Quiz {
                 if (q == null) continue;
 
                 boolean exhausted = exhaustedAnswers.contains(key);
-                ViewablePanelConfig cfg = answerConfig.copy();
+                ViewConfig cfg = answerConfig.copy();
                 cfg.setThumb(true);
-                ViewablePanel qp = new ViewablePanel(q, cfg, quizables.values(), false);
+                Card qp = new Card(q, cfg, quizables.values(), false);
 
                 if (exhausted) {
                     // 3️⃣ not‑selectable (exhausted)
@@ -233,8 +233,8 @@ public class QuizListABCD extends Quiz {
         if (!(view instanceof Container container)) return;
 
         for (Component c : container.getComponents()) {
-            if (c instanceof ViewablePanel qp) {
-                boolean same = qp.getQuizable().equals(selected);
+            if (c instanceof Card qp) {
+                boolean same = qp.getViewable().equals(selected);
                 qp.setOpaque(true);
                 qp.setBackground(same ? new Color(170, 255, 170)      // green highlight
                         : new Color(250, 250, 250));    // normal background

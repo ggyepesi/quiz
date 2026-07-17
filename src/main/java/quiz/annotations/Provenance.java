@@ -12,9 +12,9 @@ import java.lang.annotation.Target;
  *
  * <p>Drives two behaviours, both annotation-based (no {@code instanceof}):
  * <ul>
- *   <li><b>Rendering</b> — {@code QuizablePanel} draws it as a collapsed
+ *   <li><b>Rendering</b> — {@code Card} draws it as a collapsed
  *       reference chip (like {@link QuizableReference}), never force-inlined; a
- *       single {@code @Provenance} replaces a separate {@code @QuizableReference}.</li>
+ *       single {@code @Provenance} replaces a separate {@code @Reference}.</li>
  *   <li><b>Entity discovery</b> — tooling that enumerates the domain's entity
  *       types (e.g. the instances panel that sections objects by
  *       {@code typeName()}) must not give it its own section, and must not

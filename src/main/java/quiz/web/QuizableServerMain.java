@@ -22,7 +22,7 @@ public class QuizableServerMain {
 
         // Don't render images during dataset load — the image endpoint
         // produces them on demand. Keeps the (image-heavy) State load fast.
-        System.setProperty("quizable.lazyImages", "true");
+        System.setProperty("objectview.lazyImages", "true");
 
         QuizableStore store = new QuizableStore();
         // Sport teams: served generically — the domain declares its facets

@@ -1,8 +1,8 @@
 package quiz;
 
 import aux.GridBagUtils;
-import objectview.ViewablePanel;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.Card;
+import objectview.viewconfig.ViewConfig;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.BFSShortestPath;
@@ -34,7 +34,7 @@ public class QuizSixDegrees extends Quiz {
 
     private int revealedEdges = 0;
 
-    public QuizSixDegrees(ViewablePanelConfig viewConfig,
+    public QuizSixDegrees(ViewConfig viewConfig,
                           QuizableGroup group,
                           Map<String, ? extends Quizable> quizables) {
         super(viewConfig, viewConfig, group, quizables);
@@ -92,13 +92,13 @@ public class QuizSixDegrees extends Quiz {
                 GridBagConstraints.HORIZONTAL,
                 new Insets(12, 12, 20, 12)));
 
-        ViewablePanel left = new ViewablePanel(
+        Card left = new Card(
                 source,
                 withRootClass(queryConfig, source),
                 quizables.values(),
                 false);
 
-        ViewablePanel right = new ViewablePanel(
+        Card right = new Card(
                 target,
                 withRootClass(queryConfig, target),
                 quizables.values(),

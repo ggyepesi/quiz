@@ -309,7 +309,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
         if (selected instanceof GeneratedFieldModel f) {
             // The `name` field is vestigial now (identity/display comes from the
-            // CanonicalSpec + the generated @NotViewableField name), so it's freely
+            // CanonicalSpec + the generated @Hidden name), so it's freely
             // removable — and won't be re-added (ensureNameField is gone).
             GeneratedClassModel owner = owningClassOf(f);
             if (owner != null) {

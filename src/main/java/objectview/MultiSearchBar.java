@@ -11,7 +11,7 @@ import java.util.function.Function;
 
 /**
  * One shared search bar over several per-class sections (a
- * {@link MultiQuizableView}). Just two things are shared: the <b>search input</b>
+ * {@link MultiView}). Just two things are shared: the <b>search input</b>
  * (type once; the query fans out to every section) and the <b>config</b>
  * (Search/Sort/View) as single dialogs with one tab per class — the classes as
  * roots, one click to that class's fields.
@@ -23,15 +23,15 @@ import java.util.function.Function;
  */
 public class MultiSearchBar extends JPanel {
 
-    private final List<ViewableSearchPanel> engines;
+    private final List<SearchPanel> engines;
     private final JTextField field = new JTextField(30);
     private final JCheckBox fieldHighlight = new JCheckBox("Highlight fields");
     private final javax.swing.Timer debounce;
 
-    public MultiSearchBar(List<ViewableSearchPanel> engines) {
+    public MultiSearchBar(List<SearchPanel> engines) {
         super(new FlowLayout(FlowLayout.LEFT, 6, 4));
         this.engines = new ArrayList<>(engines);
-        for (ViewableSearchPanel e : this.engines) {
+        for (SearchPanel e : this.engines) {
             e.setCoordinated(true);
         }
 
@@ -45,7 +45,7 @@ public class MultiSearchBar extends JPanel {
         });
 
         fieldHighlight.addActionListener(e -> {
-            for (ViewableSearchPanel eng : this.engines) {
+            for (SearchPanel eng : this.engines) {
                 eng.setFieldHighlight(fieldHighlight.isSelected());
             }
             runSearch();
@@ -55,11 +55,11 @@ public class MultiSearchBar extends JPanel {
         JButton sortCfg = new JButton("Sort Config…");
         JButton viewCfg = new JButton("View Config…");
         searchCfg.addActionListener(e -> openConfig("Search Configuration",
-                                                    ViewableSearchPanel::searchEditor, eng -> runSearch()));
+                                                    SearchPanel::searchEditor, eng -> runSearch()));
         sortCfg.addActionListener(e -> openConfig("Sort Configuration",
-                                                  ViewableSearchPanel::sortEditor, ViewableSearchPanel::applySort));
+                                                  SearchPanel::sortEditor, SearchPanel::applySort));
         viewCfg.addActionListener(e -> openConfig("View Configuration",
-                                                  ViewableSearchPanel::viewEditor, ViewableSearchPanel::applyView));
+                                                  SearchPanel::viewEditor, SearchPanel::applyView));
 
         add(field);
         add(fieldHighlight);
@@ -70,7 +70,7 @@ public class MultiSearchBar extends JPanel {
 
     private void runSearch() {
         String query = field.getText();
-        for (ViewableSearchPanel e : engines) {
+        for (SearchPanel e : engines) {
             e.runCoordinatedSearch(query);
         }
     }
@@ -78,10 +78,10 @@ public class MultiSearchBar extends JPanel {
     // Single config dialog with one tab per class (classes as roots): each tab
     // hosts that section's editor; Apply re-applies + re-runs for every section.
     private void openConfig(String title,
-                            Function<ViewableSearchPanel, JComponent> editor,
-                            Consumer<ViewableSearchPanel> onApply) {
+                            Function<SearchPanel, JComponent> editor,
+                            Consumer<SearchPanel> onApply) {
         JTabbedPane tabs = new JTabbedPane();
-        for (ViewableSearchPanel e : engines) {
+        for (SearchPanel e : engines) {
             tabs.addTab(e.sectionTypeName(), editor.apply(e));
         }
 
@@ -90,7 +90,7 @@ public class MultiSearchBar extends JPanel {
                 Dialog.ModalityType.MODELESS);
         JButton apply = new JButton("Apply");
         apply.addActionListener(a -> {
-            for (ViewableSearchPanel e : engines) {
+            for (SearchPanel e : engines) {
                 onApply.accept(e);
             }
         });

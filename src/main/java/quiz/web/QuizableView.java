@@ -6,13 +6,13 @@ import java.util.List;
 
 /**
  * Backend-agnostic, JSON-serializable render model for a {@link
- * quiz.Quizable} — the web counterpart of what {@code ViewablePanel}
+ * quiz.Quizable} — the web counterpart of what {@code Card}
  * computes for the Swing UI. The frontend draws a card straight from this.
  *
  * <p>References are <i>lazy</i>: a {@code ref}/{@code refs} field carries
  * only the target's id/name/type, and the client fetches the full view by
  * id when the user expands it (the web equivalent of chip expand/collapse).
- * {@code inline} fields ({@code @ViewableInline}) embed the full nested
+ * {@code inline} fields ({@code @Inline}) embed the full nested
  * view, since those are meant to be shown expanded.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)

@@ -39,7 +39,7 @@ public class MythologySource implements QuizableSource {
 
     @Override
     public Collection<? extends Quizable> load() throws Exception {
-        return entities().getQuizables().values();
+        return entities().getViewables().values();
     }
 
     @Override

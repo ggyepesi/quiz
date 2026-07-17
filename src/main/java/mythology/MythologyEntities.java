@@ -6,16 +6,16 @@ import java.util.*;
 import aux.Constants;
 import quiz.QuizableGroup;
 import quiz.Quizable;
-import objectview.ViewableGroupView;
-import objectview.ViewableViews;
+import objectview.GroupView;
+import objectview.DomainViews;
 
 import static aux.Constants.mythologyDir;
 
-public class MythologyEntities implements ViewableViews {
+public class MythologyEntities implements DomainViews {
     private final Mythology mythology = new Mythology();
 
     private final QuizableGroup rootGroup = new QuizableGroup("All");
-    private ViewableGroupView groupView;
+    private GroupView groupView;
 
     public static void main(String[] args) throws Exception {
         MythologyEntities reader = new MythologyEntities();
@@ -66,16 +66,16 @@ public class MythologyEntities implements ViewableViews {
             rootGroup.addMember(creat);
         }
         System.out.println("GroupView for " + rootGroup);
-        groupView = new ViewableGroupView(rootGroup);
+        groupView = new GroupView(rootGroup);
     }
 
     @Override
-    public ViewableGroupView getGroupView() {
+    public GroupView getGroupView() {
         return groupView;
     }
 
     @Override
-    public Map<String, ? extends Quizable> getQuizables() {
+    public Map<String, ? extends Quizable> getViewables() {
         return mythology.getCreatures();
     }
 }

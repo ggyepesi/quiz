@@ -7,7 +7,7 @@ import quiz.Quizable;
  * the original record.
  *
  * <p>Modelled as a {@link Quizable} so it renders like any other nested object
- * — a collapsed reference chip on the owning card (see {@code ViewablePanel}),
+ * — a collapsed reference chip on the owning card (see {@code Card}),
  * expandable to its source-specific internals. Different sources carry
  * different internals ({@link WikidataSource} holds a QID + a wiki URL; a
  * future {@code DbpediaSource} would hold a DBpedia URI, a {@code SerpApiSource}

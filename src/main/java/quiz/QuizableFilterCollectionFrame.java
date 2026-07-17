@@ -1,8 +1,8 @@
 package quiz;
 
 import aux.GridBagUtils;
-import objectview.ViewablePanel;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.Card;
+import objectview.viewconfig.ViewConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,20 +15,20 @@ public class QuizableFilterCollectionFrame extends JFrame {
     private final JPanel resultsPanel = new JPanel(new GridBagLayout());
     private final JLabel countLabel = new JLabel(" ");
     private final QuizableFilterConfigEditor filterEditor;
-    private final ViewablePanelConfig viewConfig;
+    private final ViewConfig viewConfig;
 
     public QuizableFilterCollectionFrame(Collection<? extends Quizable> quizables,
                                          Class<? extends Quizable> cls) {
         this(
                 quizables,
-                ViewablePanelConfig.allWithMinorFields(cls),
-                ViewablePanelConfig.all(cls)
+                ViewConfig.allWithMinorFields(cls),
+                ViewConfig.all(cls)
         );
     }
 
     public QuizableFilterCollectionFrame(Collection<? extends Quizable> quizables,
-                                         ViewablePanelConfig filterFieldConfig,
-                                         ViewablePanelConfig viewConfig) {
+                                         ViewConfig filterFieldConfig,
+                                         ViewConfig viewConfig) {
         super("Filter Quizables");
 
         if (quizables != null) {
@@ -36,7 +36,7 @@ public class QuizableFilterCollectionFrame extends JFrame {
         }
 
         this.viewConfig = viewConfig == null
-                ? ViewablePanelConfig.all(null)
+                ? ViewConfig.all(null)
                 : viewConfig.copy();
 
         this.filterEditor = new QuizableFilterConfigEditor(filterFieldConfig);
@@ -97,14 +97,14 @@ public class QuizableFilterCollectionFrame extends JFrame {
                 continue;
             }
 
-            ViewablePanelConfig cfg = viewConfig.copy();
+            ViewConfig cfg = viewConfig.copy();
 
             if (cfg.getCls() == null) {
                 cfg.setCls(q.getClass());
             }
 
-            ViewablePanel panel =
-                    new ViewablePanel(
+            Card panel =
+                    new Card(
                             q,
                             cfg,
                             allQuizables,

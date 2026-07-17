@@ -1,7 +1,7 @@
 package demo;
 
+import objectview.MultiView;
 import quiz.QuizableAdapter;
-import objectview.MultiQuizableView;
 
 import javax.swing.*;
 import java.awt.*;
@@ -123,7 +123,7 @@ public final class NavDebugDemo {
             betas.get(i).partner = alphas.get((i + count / 2 + 1) % count);
         }
 
-        MultiQuizableView mv = new MultiQuizableView();
+        MultiView mv = new MultiView();
         mv.addSection("Alphas", Alpha.class, alphas);
         mv.addSection("Betas", Beta.class, betas);
         mv.build(1);

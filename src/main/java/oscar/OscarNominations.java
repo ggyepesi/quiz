@@ -3,10 +3,10 @@ package oscar;
 import aux.Constants;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import objectview.DomainViews;
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import objectview.ViewableGroupView;
-import objectview.ViewableViews;
+import objectview.GroupView;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.io.File;
@@ -14,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OscarNominations implements ViewableViews {
+public class OscarNominations implements DomainViews {
     private static final String CACHE_FILE = Constants.oscarDataDirectory + "oscar-winners.json";
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -23,7 +23,7 @@ public class OscarNominations implements ViewableViews {
 
     private QuizableGroup root = new QuizableGroup("All");
 
-    private ViewableGroupView groupView;
+    private GroupView groupView;
 
     public OscarNominations() {
     }
@@ -77,7 +77,7 @@ public class OscarNominations implements ViewableViews {
             add(n);
         }
 
-        groupView = new ViewableGroupView(root);
+        groupView = new GroupView(root);
     }
 
     public void saveToFile() throws Exception {
@@ -160,7 +160,7 @@ public class OscarNominations implements ViewableViews {
             addToGroups(e.getKey(), e.getValue());
         }
 
-        groupView = new ViewableGroupView(root);
+        groupView = new GroupView(root);
     }
 
     private void add(OscarNomination n) {
@@ -213,7 +213,7 @@ public class OscarNominations implements ViewableViews {
     }
 
     @Override
-    public Map<String, ? extends Quizable> getQuizables() {
+    public Map<String, ? extends Quizable> getViewables() {
         return nominations;
     }
 
@@ -223,9 +223,9 @@ public class OscarNominations implements ViewableViews {
     }
 
     @Override
-    public ViewableGroupView getGroupView() {
+    public GroupView getGroupView() {
         if (groupView == null) {
-            groupView = new ViewableGroupView(root);
+            groupView = new GroupView(root);
         }
 
         return groupView;

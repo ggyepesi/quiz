@@ -1,8 +1,8 @@
 package language;
 
-import objectview.annotations.MinorField;
+import objectview.annotations.Minor;
 import quiz.QuizableAdapter;
-import objectview.annotations.ViewableReference;
+import objectview.annotations.Reference;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,30 +11,30 @@ public class Language extends QuizableAdapter {
     private final String name;
 
     private String nativeName;
-    @MinorField
+    @Minor
     private String writingSystem;
-    @MinorField
+    @Minor
     private String region;
     private String ethnicity;
     private String speakers;
 
-    @MinorField
+    @Minor
     private String iso6391;
-    @MinorField
+    @Minor
     private String iso6392;
-    @MinorField
+    @Minor
     private String iso6393;
-    @MinorField
+    @Minor
     private String glottolog;
-    @MinorField
+    @Minor
     private String wikipediaTitle;
-    @MinorField
+    @Minor
     private String wikipediaUrl;
 
     private final List<String> countries = new ArrayList<>();
-    @MinorField
+    @Minor
     private final List<String> scripts = new ArrayList<>();
-    @ViewableReference
+    @Reference
     private final List<LanguageFamily> leafFamilies = new ArrayList<>();
 
     public Language(String name) {

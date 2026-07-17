@@ -57,7 +57,7 @@ public class ImagePane extends JPanel
     }
 
     private String title = "";
-    private Viewable quizable;
+    private Viewable viewable;
     private CachedImage cachedImage;
 
     // The actual image painted by this ImagePane. It may be thumb/full/crop.
@@ -100,32 +100,32 @@ public class ImagePane extends JPanel
         draggingFrame.setTitle(key);
     }
 
-    public ImagePane(String title, String url, Viewable quizable, boolean addTitle) throws Exception {
-        this(title, url, quizable, addTitle, true);
+    public ImagePane(String title, String url, Viewable viewable, boolean addTitle) throws Exception {
+        this(title, url, viewable, addTitle, true);
     }
 
-    public ImagePane(String title, String url, Viewable quizable,
+    public ImagePane(String title, String url, Viewable viewable,
                      boolean addTitle, boolean isSvg) throws Exception {
-        this(title, url, quizable, addTitle, isSvg,
+        this(title, url, viewable, addTitle, isSvg,
                 ImageKind.THUMB,
                 LoadPolicy.IMMEDIATE);
     }
 
-    public ImagePane(String title, String url, Viewable quizable,
+    public ImagePane(String title, String url, Viewable viewable,
                      boolean addTitle, boolean isSvg,
                      ImageKind imageKind,
                      LoadPolicy loadPolicy) throws Exception {
         super();
-        init(title, quizable,
+        init(title, viewable,
                 createCachedImage(title, url, isSvg),
                 addTitle, true,
                 imageKind, loadPolicy);
     }
 
-    public ImagePane(String title, String url, Viewable quizable,
+    public ImagePane(String title, String url, Viewable viewable,
                      boolean addTitle, boolean isSvg,
                      boolean loadThumbnailImmediately) throws Exception {
-        this(title, url, quizable, addTitle, isSvg,
+        this(title, url, viewable, addTitle, isSvg,
                 ImageKind.THUMB,
                 loadThumbnailImmediately
                         ? LoadPolicy.IMMEDIATE
@@ -137,26 +137,26 @@ public class ImagePane extends JPanel
         return new CachedImage(title, url, isSvg);
     }
 
-    public ImagePane(String title, Viewable quizable, CachedImage cachedImage,
+    public ImagePane(String title, Viewable viewable, CachedImage cachedImage,
                      boolean addListeners, boolean addTitle) throws Exception {
         super();
-        init(title, quizable, cachedImage, addTitle, addListeners,
+        init(title, viewable, cachedImage, addTitle, addListeners,
                 ImageKind.THUMB, LoadPolicy.IMMEDIATE);
     }
 
-    public ImagePane(String title, Viewable quizable, CachedImage cachedImage,
+    public ImagePane(String title, Viewable viewable, CachedImage cachedImage,
                      boolean addListeners) throws Exception {
         super();
-        init(title, quizable, cachedImage, false, addListeners,
+        init(title, viewable, cachedImage, false, addListeners,
                 ImageKind.THUMB, LoadPolicy.IMMEDIATE);
         dragEnabled = true;
     }
 
-    public ImagePane(String title, Viewable quizable, CachedImage cachedImage,
+    public ImagePane(String title, Viewable viewable, CachedImage cachedImage,
                      boolean addListeners, boolean addTitle,
                      ImageKind imageKind, LoadPolicy loadPolicy) throws Exception {
         super();
-        init(title, quizable, cachedImage, addTitle, addListeners,
+        init(title, viewable, cachedImage, addTitle, addListeners,
                 imageKind, loadPolicy);
     }
 
@@ -166,7 +166,7 @@ public class ImagePane extends JPanel
 
     private ImagePane(ImagePane other, boolean addTitle, boolean addListeners) {
         try {
-            init(other.title, other.quizable, other.cachedImage, addTitle,
+            init(other.title, other.viewable, other.cachedImage, addTitle,
                     addListeners, other.imageKind, other.loadPolicy);
             this.dragEnabled = other.dragEnabled;
             this.selectionListener = other.selectionListener;
@@ -176,12 +176,12 @@ public class ImagePane extends JPanel
         }
     }
 
-    private void init(String title, Viewable quizable, CachedImage cachedImage,
+    private void init(String title, Viewable viewable, CachedImage cachedImage,
                       boolean addTitle, boolean addListeners,
                       ImageKind imageKind, LoadPolicy loadPolicy)
             throws Exception {
         this.title = title;
-        this.quizable = quizable;
+        this.viewable = viewable;
         this.cachedImage = cachedImage;
         this.imageKind = imageKind == null ? ImageKind.THUMB : imageKind;
         this.loadPolicy = loadPolicy == null ? LoadPolicy.IMMEDIATE : loadPolicy;
@@ -193,10 +193,10 @@ public class ImagePane extends JPanel
         this.imageLoadFailed = false;
 
         // Headless consumers (e.g. the web server) only need the image URL,
-        // not a rendered image — they set -Dquizable.lazyImages=true so
+        // not a rendered image — they set -Dobjectview.lazyImages=true so
         // construction stays cheap and the bytes are rendered on demand.
         if (this.loadPolicy == LoadPolicy.IMMEDIATE
-                && !Boolean.getBoolean("quizable.lazyImages")) {
+                && !Boolean.getBoolean("objectview.lazyImages")) {
             // A missing/unreadable image must never abort construction (and
             // thus a whole dataset load) — fall back to the failed state.
             try {
@@ -271,8 +271,8 @@ public class ImagePane extends JPanel
         this.selectionListener = selectionListener;
     }
 
-    public Viewable getQuizable() {
-        return quizable;
+    public Viewable getViewable() {
+        return viewable;
     }
 
     private Image imageForKind() throws Exception {
@@ -444,11 +444,11 @@ public class ImagePane extends JPanel
             java.awt.Toolkit.getDefaultToolkit().beep();   // nothing to enlarge
             return;
         }
-        ViewablePanelView v = new ViewablePanelView();
+        CardListView v = new CardListView();
         try {
             ImagePane pane = new ImagePane(
                     title,
-                    quizable,
+                    viewable,
                     new CachedImage(image),
                     addListeners,
                     false,
@@ -618,7 +618,7 @@ public class ImagePane extends JPanel
 
     @Override
     public String getName() {
-        return quizable == null ? title : quizable.getName();
+        return viewable == null ? title : viewable.getName();
     }
 
     @Override

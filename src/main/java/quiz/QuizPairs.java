@@ -1,9 +1,9 @@
 package quiz;
 
 import aux.GridBagUtils;
-import objectview.ViewablePanel;
+import objectview.Card;
 import quiz.ui.PairingManager;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.viewconfig.ViewConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,8 +15,8 @@ public class QuizPairs extends Quiz {
 
     private PairingManager pairingManager;
 
-    public QuizPairs(ViewablePanelConfig queryConfig,
-                     ViewablePanelConfig answerConfig,
+    public QuizPairs(ViewConfig queryConfig,
+                     ViewConfig answerConfig,
                      QuizableGroup group,
                      Map<String, ? extends Quizable> quizables) {
         super(queryConfig, answerConfig, group, quizables);
@@ -96,8 +96,8 @@ public class QuizPairs extends Quiz {
         JPanel p = new JPanel(new GridBagLayout());
         int row = 0;
         for (PairItem item : data) {
-            ViewablePanel left = new ViewablePanel(item.query, withRootClass(queryConfig, item.query), (Collection<? extends Quizable>) null, true);
-            ViewablePanel right = new ViewablePanel(item.answer, withRootClass(answerConfig, item.answer), (Collection<? extends Quizable>) null, false);
+            Card left = new Card(item.query, withRootClass(queryConfig, item.query), (Collection<? extends Quizable>) null, true);
+            Card right = new Card(item.answer, withRootClass(answerConfig, item.answer), (Collection<? extends Quizable>) null, false);
             pairingManager.registerPanel(left, true);
             pairingManager.registerPanel(right, false);
 

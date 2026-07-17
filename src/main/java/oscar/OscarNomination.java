@@ -1,17 +1,17 @@
 package oscar;
 
-import objectview.annotations.ViewableReference;
+import objectview.annotations.Reference;
 import quiz.QuizableAdapter;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 public class OscarNomination extends QuizableAdapter {
     private String name;
 
-    @ViewableReference
+    @Reference
     private WikidataDynamicObject nominee;
-    @ViewableReference
+    @Reference
     private WikidataDynamicObject award;
-    @ViewableReference
+    @Reference
     private WikidataDynamicObject work;
 
     public int ceremonyYear;

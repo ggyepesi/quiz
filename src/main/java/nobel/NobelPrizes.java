@@ -14,13 +14,13 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import aux.ResourceFinder;
-import objectview.ViewableViews;
+import objectview.DomainViews;
 import quiz.QuizableGroup;
-import objectview.ViewableGroupView;
+import objectview.GroupView;
 import objectview.ImagePane;
 import quiz.Quizable;
 
-public class NobelPrizes implements ViewableViews {
+public class NobelPrizes implements DomainViews {
     public final static Map<String, NobelPrize.Domain> domainAndYearStarts = Map.of(
             "The Nobel Prize in Physics", NobelPrize.Domain.PHYSICS,
             "The Nobel Prize in Chemistry", NobelPrize.Domain.CHEMISTRY,
@@ -31,7 +31,7 @@ public class NobelPrizes implements ViewableViews {
             "“No Nobel Prize was awarded this year.", NobelPrize.Domain.NONE);
     
     private final QuizableGroup rootGroup = new QuizableGroup("All");
-    private ViewableGroupView groupView;
+    private GroupView groupView;
     private final Map<String, NobelPrize> nobelPrizes = new TreeMap<>();
     private final Map<String, Laureate> laureatesByName = new TreeMap<>();
 
@@ -201,7 +201,7 @@ public class NobelPrizes implements ViewableViews {
     public void buildViews() throws Exception {
         String filename = Constants.nobelDirectory + "nobelprizewithmotivation.txt"; // nobeltest 
         readNobelPrices(filename);
-        groupView = new ViewableGroupView(rootGroup);
+        groupView = new GroupView(rootGroup);
     }
 
     private void store(NobelPrize prize) {
@@ -212,12 +212,12 @@ public class NobelPrizes implements ViewableViews {
     }
 
     @Override
-    public ViewableGroupView getGroupView() {
+    public GroupView getGroupView() {
         return groupView;
     }
 
     @Override
-    public Map<String, ? extends Quizable> getQuizables() {
+    public Map<String, ? extends Quizable> getViewables() {
         return nobelPrizes;
     }
 }

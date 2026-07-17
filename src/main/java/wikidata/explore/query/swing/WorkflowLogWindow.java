@@ -1,8 +1,8 @@
 package wikidata.explore.query.swing;
 
-import objectview.ViewablePanelView;
-import objectview.ViewableRenderContext;
-import objectview.ViewableSearchPanel;
+import objectview.CardListView;
+import objectview.RenderContext;
+import objectview.SearchPanel;
 import wikidata.explore.query.core.QueryStatus;
 import wikidata.explore.query.log.LogKind;
 import wikidata.explore.query.log.LogListener;
@@ -20,7 +20,7 @@ public class WorkflowLogWindow implements LogListener {
     private final List<LogNode> workflows =
             new ArrayList<>();
 
-    private ViewablePanelView view;
+    private CardListView view;
     private JFrame frame;
 
     @Override
@@ -41,7 +41,7 @@ public class WorkflowLogWindow implements LogListener {
                 boolean atBottom = bar == null
                         || bar.getValue() + bar.getVisibleAmount() >= bar.getMaximum() - 48;
 
-                view.upsertQuizable(root);
+                view.upsertViewable(root);
 
                 if (atBottom && bar != null) {
                     // After the upsert lays out, jump to the (new) bottom.
@@ -66,25 +66,25 @@ public class WorkflowLogWindow implements LogListener {
             return;
         }
 
-        ViewablePanelView v =
-                new ViewablePanelView();
+        CardListView v =
+                new CardListView();
 
         // Birdseye: each query-log entry renders collapsed (title + toggle) and
         // expands on demand, so a long history (and long entries like the name-
         // collision list) stays scannable. Context must be set before the cards
         // build so they pick it up; shared, so streamed new entries collapse too.
-        ViewableRenderContext ctx = new ViewableRenderContext();
+        RenderContext ctx = new RenderContext();
         ctx.setCollapsibleCards(true);
         v.setRenderContext(ctx);
 
         for (LogNode workflow : workflows) {
-            v.addQuizable(workflow);
+            v.addViewable(workflow);
         }
 
         v.createCardsPanel(1);
 
-        ViewableSearchPanel search =
-                new ViewableSearchPanel(LogNode.class);
+        SearchPanel search =
+                new SearchPanel(LogNode.class);
 
         search.setTarget(
                 v.getCardsPanel(),

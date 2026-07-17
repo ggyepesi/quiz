@@ -1,7 +1,7 @@
 package quiz;
 import objectview.field.ViewableFieldPaths;
 
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.viewconfig.ViewConfig;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class QuizableFilterConfigEditor extends JPanel {
-    private final ViewablePanelConfig fieldConfig;
+    private final ViewConfig fieldConfig;
     private final List<FieldOption> fieldOptions = new ArrayList<>();
     private final List<Row> rows = new ArrayList<>();
 
@@ -22,16 +22,16 @@ public class QuizableFilterConfigEditor extends JPanel {
     private final JButton addButton = new JButton("Add filter");
     private final JButton clearButton = new JButton("Clear");
 
-    public QuizableFilterConfigEditor(ViewablePanelConfig fieldConfig) {
+    public QuizableFilterConfigEditor(ViewConfig fieldConfig) {
         this(fieldConfig, null);
     }
 
     public QuizableFilterConfigEditor(
-            ViewablePanelConfig fieldConfig,
+            ViewConfig fieldConfig,
             QuizableFilterConfig existing
     ) {
         this.fieldConfig = fieldConfig == null
-                ? new ViewablePanelConfig()
+                ? new ViewConfig()
                 : fieldConfig.copy();
 
         setLayout(new BorderLayout(8, 8));

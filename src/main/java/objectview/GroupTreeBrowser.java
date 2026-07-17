@@ -1,7 +1,7 @@
 package objectview;
 
 import objectview.viewconfig.FieldTypeSource;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.viewconfig.ViewConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,7 +13,7 @@ import java.util.Set;
  * - VirtualizedGroupTreeView flattens the whole hierarchy (group headers + member
  *   cards) into ONE virtualized outline — expand/collapse and member field-chips
  *   behave like the flat card list, with a single scroll.
- * - ViewableSearchPanel owns search / sort / view configuration / highlighting.
+ * - SearchPanel owns search / sort / view configuration / highlighting.
  */
 public final class GroupTreeBrowser extends JPanel {
 
@@ -28,13 +28,13 @@ public final class GroupTreeBrowser extends JPanel {
 
         VirtualizedGroupTreeView groupedView = new VirtualizedGroupTreeView(
                 root,
-                ViewablePanelConfig.all(memberClass));
+                ViewConfig.all(memberClass));
 
         groupedView.scrollPane()
                    .getVerticalScrollBar()
                    .setUnitIncrement(16);
 
-        ViewableSearchPanel searchPanel = new ViewableSearchPanel(
+        SearchPanel searchPanel = new SearchPanel(
                 memberClass,
                 sample);
 

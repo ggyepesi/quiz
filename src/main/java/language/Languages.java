@@ -1,16 +1,16 @@
 package language;
 
 import aux.Constants;
+import objectview.DomainViews;
 import quiz.QuizableGroup;
 
-import objectview.ViewableGroupView;
-import objectview.ViewableViews;
+import objectview.GroupView;
 
 import java.io.File;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class Languages implements ViewableViews {
+public class Languages implements DomainViews {
     private static final String DEFAULT_FILE =
             Constants.dataDirectory + "language/languages.tsv";
 
@@ -18,7 +18,7 @@ public class Languages implements ViewableViews {
     private final Map<String, LanguageFamily> families = new TreeMap<>();
 
     private QuizableGroup rootGroup;
-    private ViewableGroupView groupView;
+    private GroupView groupView;
     private boolean built = false;
 
     public Languages() {
@@ -55,7 +55,7 @@ public class Languages implements ViewableViews {
                 data.getRootGroup();
 
         groupView =
-                new ViewableGroupView(
+                new GroupView(
                         rootGroup
                 );
 
@@ -63,12 +63,12 @@ public class Languages implements ViewableViews {
     }
 
     @Override
-    public Map<String, ? extends Language> getQuizables() {
+    public Map<String, ? extends Language> getViewables() {
         return languages;
     }
 
     @Override
-    public ViewableGroupView getGroupView() {
+    public GroupView getGroupView() {
         return groupView;
     }
 

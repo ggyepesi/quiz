@@ -4,7 +4,7 @@ import objectview.Viewable;
 import objectview.ViewableAdapter;
 
 import objectview.ImagePane;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.viewconfig.ViewConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -49,11 +49,11 @@ public final class ViewableFieldPaths {
     public static final FieldFilter NOT_IMAGE_PANE_FIELDS =
             field -> field != null && !ImagePane.class.isAssignableFrom(field.getType());
 
-    public static List<FieldPath> collect(ViewablePanelConfig config) {
+    public static List<FieldPath> collect(ViewConfig config) {
         return collect(config, NOT_IMAGE_PANE_FIELDS);
     }
 
-    public static List<FieldPath> collect(ViewablePanelConfig config,
+    public static List<FieldPath> collect(ViewConfig config,
                                           FieldFilter filter) {
         List<FieldPath> out = new ArrayList<>();
 
@@ -108,7 +108,7 @@ public final class ViewableFieldPaths {
 
     /**
      * Field paths enumerated from a SAMPLE INSTANCE — so a {@link DynamicFields}
-     * object (a snapshot WDO, a DynamicQuizable) whose fields live in a property map
+     * object (a map-backed Viewable) whose fields live in a property map
      * (not declared Java fields) still yields its fields, with nested paths followed
      * through reference values up to {@link #SAMPLE_MAX_DEPTH}. A reflection Viewable
      * falls back to its declared fields. Branch-cycle-safe. This makes the nested,
@@ -160,7 +160,7 @@ public final class ViewableFieldPaths {
         path.add(name);
         String title = titlePrefix.isEmpty() ? name : titlePrefix + "." + name;
 
-        Viewable child = firstQuizable(value);
+        Viewable child = firstViewable(value);
         if (child != null) {
             // A reference: offer the reference ITSELF (for invert / group-by-
             // reference), its display name, and (bounded) its nested fields.
@@ -176,7 +176,7 @@ public final class ViewableFieldPaths {
         }
     }
 
-    private static Viewable firstQuizable(Object v) {
+    private static Viewable firstViewable(Object v) {
         if (v instanceof Viewable q) {
             return q;
         }
@@ -193,7 +193,7 @@ public final class ViewableFieldPaths {
         return null;
     }
 
-    private static void collect(ViewablePanelConfig config,
+    private static void collect(ViewConfig config,
                                 Class<?> cls,
                                 List<String> prefix,
                                 String titlePrefix,
@@ -206,7 +206,7 @@ public final class ViewableFieldPaths {
         Set<String> alreadyAdded = new LinkedHashSet<>();
 
         // 1. Explicit fields first, in config/editor order.
-        for (Map.Entry<String, ViewablePanelConfig> e : config.getFields().entrySet()) {
+        for (Map.Entry<String, ViewConfig> e : config.getFields().entrySet()) {
             String fieldName = e.getKey();
 
             if ("name".equals(fieldName)) {
@@ -271,7 +271,7 @@ public final class ViewableFieldPaths {
     // leaf is null, the path still resolves via the property map. A child config
     // recurses the same way (the nested class is unknown at collect time).
     private static void addDynamicPath(String fieldName,
-                                       ViewablePanelConfig childConfig,
+                                       ViewConfig childConfig,
                                        List<String> prefix,
                                        String titlePrefix,
                                        List<FieldPath> out) {
@@ -285,7 +285,7 @@ public final class ViewableFieldPaths {
             out.add(new FieldPath(title, path, null));
             return;
         }
-        for (Map.Entry<String, ViewablePanelConfig> e
+        for (Map.Entry<String, ViewConfig> e
                 : childConfig.getFields().entrySet()) {
             addDynamicPath(e.getKey(), e.getValue(), path, title, out);
         }
@@ -304,11 +304,11 @@ public final class ViewableFieldPaths {
         out.add(new FieldPath(title, namePath, null));
     }
 
-    // Identity fields (name + qid) are @NotViewableField — hidden from the CARD
+    // Identity fields (name + qid) are @Hidden — hidden from the CARD
     // (they're the title/identity) but still meaningful to search/sort/configure
     // by. Without this a bare reference object (a WikidataDynamicObject with no
     // dynamic fields) offers nothing to configure. Scoped to entity objects (those
-    // that declare a `qid` field) so non-Wikidata Quizables are untouched.
+    // that declare a `qid` field) so non-Wikidata Viewables are untouched.
     private static void ensureIdentityFields(Class<?> cls, List<FieldPath> out) {
         Field qid = rawDeclaredField(cls, "qid");
         if (qid == null) {
@@ -332,7 +332,7 @@ public final class ViewableFieldPaths {
         return false;
     }
 
-    // Finds a declared field by name up the hierarchy, INCLUDING @NotViewableField
+    // Finds a declared field by name up the hierarchy, INCLUDING @Hidden
     // ones (which ViewableAdapter.getField deliberately omits).
     private static Field rawDeclaredField(Class<?> cls, String name) {
         for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
@@ -346,7 +346,7 @@ public final class ViewableFieldPaths {
     }
 
     private static void collectField(Field field,
-                                     ViewablePanelConfig childConfig,
+                                     ViewConfig childConfig,
                                      List<String> prefix,
                                      String titlePrefix,
                                      FieldFilter filter,
@@ -369,7 +369,7 @@ public final class ViewableFieldPaths {
                 ? fieldName
                 : titlePrefix + "." + fieldName;
 
-        Class<?> nested = nestedQuizableClass(field);
+        Class<?> nested = nestedViewableClass(field);
 
         if (nested != null) {
             if (childConfig != null
@@ -377,8 +377,8 @@ public final class ViewableFieldPaths {
                     || childConfig.isAllMinorFields()
                     || !childConfig.getFields().isEmpty())) {
 
-                ViewablePanelConfig child = childConfig.copy();
-                child.setCls(asQuizableClass(nested));
+                ViewConfig child = childConfig.copy();
+                child.setCls(asViewableClass(nested));
 
                 collect(
                         child,
@@ -404,12 +404,12 @@ public final class ViewableFieldPaths {
     }
 
     @SuppressWarnings("unchecked")
-    private static Class<? extends Viewable> asQuizableClass(Class<?> cls) {
+    private static Class<? extends Viewable> asViewableClass(Class<?> cls) {
         return (Class<? extends Viewable>) cls;
     }
 
     @SuppressWarnings("unchecked")
-    public static Class<? extends Viewable> nestedQuizableClass(Field field) {
+    public static Class<? extends Viewable> nestedViewableClass(Field field) {
         if (field == null) {
             return null;
         }

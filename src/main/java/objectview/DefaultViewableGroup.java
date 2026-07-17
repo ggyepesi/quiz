@@ -1,7 +1,7 @@
 package objectview;
 
-import objectview.annotations.NotViewableField;
-import objectview.annotations.ViewableReference;
+import objectview.annotations.Hidden;
+import objectview.annotations.Reference;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -27,20 +27,20 @@ public abstract class DefaultViewableGroup<
 
     // The facet-tree role is transform structure, not data — hidden so it doesn't
     // render as a `role: FACET` row mixed into the results.
-    @NotViewableField
+    @Hidden
     private Role role = Role.UNIVERSE;
 
-    @NotViewableField
+    @Hidden
     private Viewable keyRef;
 
     // The tree back-ref — structure, not content (and cyclic); never a card row.
-    @NotViewableField
+    @Hidden
     private G parent;
 
-    @ViewableReference
+    @Reference
     private final Map<String, G> children = new TreeMap<>();
 
-    @ViewableReference
+    @Reference
     private final Map<String, T> members = new TreeMap<>();
 
     protected DefaultViewableGroup(String name) {

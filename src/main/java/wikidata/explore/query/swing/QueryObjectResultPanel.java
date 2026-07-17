@@ -37,14 +37,14 @@ public class QueryObjectResultPanel
     private final JPanel holder =
             new JPanel(new BorderLayout());
 
-    private ViewableRenderContext activeContext;
+    private RenderContext activeContext;
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
         add(holder, BorderLayout.CENTER);
     }
 
-    public ViewableRenderContext activeRenderContext() {
+    public RenderContext activeRenderContext() {
         return activeContext;
     }
 
@@ -90,8 +90,8 @@ public class QueryObjectResultPanel
             return searchPanelView(result);
         }
 
-        MultiQuizableView multi =
-                new MultiQuizableView();
+        MultiView multi =
+                new MultiView();
 
         for (Map.Entry<String, List<Quizable>> e : byType.entrySet()) {
             List<Quizable> full = e.getValue();
@@ -188,8 +188,8 @@ public class QueryObjectResultPanel
     }
 
     private JComponent searchPanelView(ObjectQueryResult result) {
-        ViewablePanelView view =
-                new ViewablePanelView();
+        CardListView view =
+                new CardListView();
 
         List<Quizable> typed =
                 new ArrayList<>();
@@ -212,7 +212,7 @@ public class QueryObjectResultPanel
         }
 
         for (Quizable q : shown) {
-            view.addQuizable(q);
+            view.addViewable(q);
         }
 
         view.createCardsPanel(1);
@@ -223,8 +223,8 @@ public class QueryObjectResultPanel
         Quizable first =
                 shown.getFirst();
 
-        ViewableSearchPanel searchPanel =
-                new ViewableSearchPanel(first.getClass());
+        SearchPanel searchPanel =
+                new SearchPanel(first.getClass());
 
         searchPanel.setTarget(
                 view.getCardsPanel(),

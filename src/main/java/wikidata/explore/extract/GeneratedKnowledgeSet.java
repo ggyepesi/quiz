@@ -1,16 +1,16 @@
 package wikidata.explore.extract;
 
-import objectview.ViewableViews;
+import objectview.DomainViews;
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import objectview.ViewableGroupView;
+import objectview.GroupView;
 
 import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class GeneratedKnowledgeSet implements ViewableViews {
+public class GeneratedKnowledgeSet implements DomainViews {
 
     private final String name;
     private final File file;
@@ -18,7 +18,7 @@ public class GeneratedKnowledgeSet implements ViewableViews {
     private final Map<String, WikidataDynamicObject> quizables =
             new LinkedHashMap<>();
 
-    private ViewableGroupView groupView;
+    private GroupView groupView;
 
     public GeneratedKnowledgeSet(String name, File file) {
         this.name = name == null ? "Generated Wikidata Set" : name;
@@ -48,16 +48,16 @@ public class GeneratedKnowledgeSet implements ViewableViews {
         }
 
         groupView =
-                new ViewableGroupView(root);
+                new GroupView(root);
     }
 
     @Override
-    public ViewableGroupView getGroupView() {
+    public GroupView getGroupView() {
         return groupView;
     }
 
     @Override
-    public Map<String, ? extends Quizable> getQuizables() {
+    public Map<String, ? extends Quizable> getViewables() {
         return quizables;
     }
 

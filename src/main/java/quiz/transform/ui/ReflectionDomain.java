@@ -1,11 +1,11 @@
 package quiz.transform.ui;
 
-import objectview.ViewableViews;
+import objectview.DomainViews;
 import objectview.field.ViewableFieldPaths;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import objectview.field.FieldKind;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.viewconfig.ViewConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -22,7 +22,7 @@ import java.util.Set;
  * A {@link DomainModel} over hand-written {@code Quizable} domain objects (Nobel,
  * State, SportTeam, …) — the schema is derived by REFLECTION from the instance
  * classes ({@link QuizableAdapter#getAllFields}), a reference being a
- * {@code @ViewableReference} field or a {@code Quizable}-typed field/element, a
+ * {@code @Reference} field or a {@code Quizable}-typed field/element, a
  * collection being a {@code Collection}/{@code Map}. The transform engine reads
  * these declared fields directly (FieldAccess falls back to reflection), so the
  * same view pipeline runs over them.
@@ -82,13 +82,13 @@ public final class ReflectionDomain implements DomainModel {
         }
     }
 
-    /** Build a domain from a {@link ViewableViews} builder (e.g. {@code new SportTeams()}). */
-    public static ReflectionDomain of(ViewableViews views) throws Exception {
+    /** Build a domain from a {@link DomainViews} builder (e.g. {@code new SportTeams()}). */
+    public static ReflectionDomain of(DomainViews views) throws Exception {
         views.buildViews();
-        // getQuizables() is typed Viewable (objectview SPI); the elements are Quizables.
+        // getViewables() is typed Viewable (objectview SPI); the elements are Quizables.
         @SuppressWarnings("unchecked")
         Collection<? extends Quizable> roots =
-                (Collection<? extends Quizable>) (Collection<?>) views.getQuizables().values();
+                (Collection<? extends Quizable>) (Collection<?>) views.getViewables().values();
         return new ReflectionDomain(roots);
     }
 
@@ -101,8 +101,8 @@ public final class ReflectionDomain implements DomainModel {
         List<DomainField> fields = new ArrayList<>();
         // ViewableFieldPaths gives the NESTED field paths (e.g. nominee.name) the
         // config editor renders — so nested/cross-class arguments appear for free.
-        ViewablePanelConfig config =
-                ViewablePanelConfig.all((Class<? extends Quizable>) cls);
+        ViewConfig config =
+                ViewConfig.all((Class<? extends Quizable>) cls);
         for (ViewableFieldPaths.FieldPath fp : ViewableFieldPaths.collect(config)) {
             Field leaf = fp.leafField();
             boolean ref = leaf != null && isReferenceField(leaf);
@@ -116,7 +116,7 @@ public final class ReflectionDomain implements DomainModel {
     }
 
     static boolean isReferenceField(Field f) {
-        if (QuizableAdapter.isQuizableReference(f)) {
+        if (QuizableAdapter.isReference(f)) {
             return true;
         }
         if (Quizable.class.isAssignableFrom(f.getType())) {

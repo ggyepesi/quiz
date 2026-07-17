@@ -1,10 +1,8 @@
 package objectview;
 
-import objectview.ViewablePanelSearchAndSort;
 import objectview.field.ViewableFieldPaths;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
-import objectview.Viewable;
 import quiz.transform.DynamicQuizable;
 
 import java.util.List;
@@ -27,11 +25,11 @@ class DynamicSearchConfigTest {
         return q;
     }
 
-    private static ViewablePanelConfig explicit(String... fieldNames) {
-        ViewablePanelConfig cfg = ViewablePanelConfig.of(DynamicQuizable.class);
+    private static ViewConfig explicit(String... fieldNames) {
+        ViewConfig cfg = ViewConfig.of(DynamicQuizable.class);
         cfg.setAllFields(false);
         for (String f : fieldNames) {
-            cfg.addField(f, ViewablePanelConfig.leaf());
+            cfg.addField(f, ViewConfig.leaf());
         }
         return cfg;
     }
@@ -51,19 +49,19 @@ class DynamicSearchConfigTest {
                 nomination("N1", "Casablanca", true),
                 nomination("N2", "Citizen Kane", false));
 
-        ViewablePanelSearchAndSort engine = new ViewablePanelSearchAndSort();
+        SearchAndSort engine = new SearchAndSort();
 
         // won checked, name not: "casablanca" finds nothing, "true" hits won.
-        Map<String, List<Viewable>> byName = engine.searchQuizables(
+        Map<String, List<Viewable>> byName = engine.searchViewables(
                 pool, List.of("casablanca"), explicit("won"));
         assertTrue(byName.isEmpty(), byName.toString());
 
-        Map<String, List<Viewable>> byWon = engine.searchQuizables(
+        Map<String, List<Viewable>> byWon = engine.searchViewables(
                 pool, List.of("true"), explicit("won"));
         assertEquals(1, byWon.getOrDefault("won", List.of()).size(), byWon.toString());
 
         // name checked: the display name matches again.
-        Map<String, List<Viewable>> withName = engine.searchQuizables(
+        Map<String, List<Viewable>> withName = engine.searchViewables(
                 pool, List.of("casablanca"), explicit("name"));
         assertEquals(1, withName.getOrDefault("name", List.of()).size(),
                 withName.toString());
@@ -77,8 +75,8 @@ class DynamicSearchConfigTest {
 
         List<ViewableFieldPaths.FieldPath> sortPaths =
                 ViewableFieldPaths.collect(explicit("year"));
-        List<Viewable> sorted = new ViewablePanelSearchAndSort()
-                .sortQuizables(List.of(a, b), sortPaths);
+        List<Viewable> sorted = new SearchAndSort()
+                .sortViewables(List.of(a, b), sortPaths);
 
         assertEquals("B", sorted.get(0).getDisplayName());   // 1999 first
     }

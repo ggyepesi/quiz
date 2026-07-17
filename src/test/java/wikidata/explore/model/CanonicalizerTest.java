@@ -123,7 +123,7 @@ class CanonicalizerTest {
         assertEquals("qidValue", qidData.name());
 
         // After 3d there is NO model-level `name` field: identity/display name comes
-        // from CanonicalSpec + the generated @NotViewableField `name`. A data field
+        // from CanonicalSpec + the generated @Hidden `name`. A data field
         // named name/qid was renamed away, so nothing is left that isNameField.
         long identityNames = c.fields().stream()
                 .filter(GeneratedFieldModel::isNameField)

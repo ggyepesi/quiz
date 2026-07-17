@@ -8,7 +8,7 @@ package objectview.field;
  * sort / config machinery reads this instead of re-deriving field metadata two ways.
  *
  * <p>The <b>render hints</b> ({@link #inline()}, {@link #link()}, {@link #provenance()},
- * {@link #quizableReference()}) are annotation-derived and so only a <i>declared</i>
+ * {@link #annotatedReference()}) are annotation-derived and so only a <i>declared</i>
  * field can carry them — a dynamic map value has no annotations and reports them all
  * false / empty. A single render builder reads these hints first, then falls back to
  * the value's shape (which is backing-agnostic), so it needs no {@code instanceof
@@ -40,7 +40,7 @@ public interface FieldRef {
 
     // --- render hints (annotation-derived; a dynamic field reports false / "") ------
 
-    /** {@code @ViewableInline} — render the referent(s) fully expanded inline. */
+    /** {@code @Inline} — render the referent(s) fully expanded inline. */
     boolean inline();
 
     /** {@code @Link} — the (String) value is an external URL to render as a link. */
@@ -52,8 +52,8 @@ public interface FieldRef {
     /** {@code @Provenance} — a source/metadata field (chip; skipped by reference walks). */
     boolean provenance();
 
-    /** {@code @ViewableReference} — force reference-chip rendering. */
-    boolean quizableReference();
+    /** {@code @Reference} — force reference-chip rendering. */
+    boolean annotatedReference();
 
     /** A field with no render hints — used for a dynamic (map-held) field, which has
      *  no annotations, and by callers that don't distinguish them. */
@@ -67,13 +67,13 @@ public interface FieldRef {
     static FieldRef of(String name, FieldKind kind, String typeLabel,
                        boolean reference, boolean collection, boolean minor,
                        boolean inline, boolean link, String linkText,
-                       boolean provenance, boolean quizableReference) {
+                       boolean provenance, boolean annotatedReference) {
         return new Impl(name, kind, typeLabel, reference, collection, minor,
-                inline, link, linkText, provenance, quizableReference);
+                inline, link, linkText, provenance, annotatedReference);
     }
 
     record Impl(String name, FieldKind kind, String typeLabel,
                 boolean reference, boolean collection, boolean minor,
                 boolean inline, boolean link, String linkText,
-                boolean provenance, boolean quizableReference) implements FieldRef {}
+                boolean provenance, boolean annotatedReference) implements FieldRef {}
 }

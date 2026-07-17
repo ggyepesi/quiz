@@ -41,7 +41,7 @@ public class StateSource implements QuizableSource {
 
     @Override
     public Collection<? extends Quizable> load() throws Exception {
-        return states().getQuizables().values();
+        return states().getViewables().values();
     }
 
     @Override

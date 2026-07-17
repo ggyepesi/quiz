@@ -1,8 +1,8 @@
 package wikidata.explore.query.log;
 
+import objectview.annotations.Hidden;
+import objectview.annotations.Inline;
 import objectview.annotations.Link;
-import objectview.annotations.NotViewableField;
-import objectview.annotations.ViewableInline;
 import quiz.QuizableAdapter;
 
 import java.net.URLEncoder;
@@ -24,18 +24,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class LogNode extends QuizableAdapter {
 
-    @NotViewableField
+    @Hidden
     private LogKind kind;
 
     // title and queryType are carried in the display label (getDisplayName),
     // not rendered as their own rows; status likewise shows in the label.
-    @NotViewableField
+    @Hidden
     private String title;
 
-    @NotViewableField
+    @Hidden
     private String queryType;
 
-    @NotViewableField
+    @Hidden
     private LogStatus status = LogStatus.PENDING;
 
     private String description;
@@ -56,14 +56,14 @@ public class LogNode extends QuizableAdapter {
     // available programmatically but aren't shown (0 reads as nothing).
     private String time;
 
-    @NotViewableField
+    @Hidden
     private long timeMs;
 
-    @ViewableInline
+    @Inline
     private final Collection<LogNode> steps =
             new CopyOnWriteArrayList<>();
 
-    @NotViewableField
+    @Hidden
     private long startedAtMs;
 
     public LogNode() {}

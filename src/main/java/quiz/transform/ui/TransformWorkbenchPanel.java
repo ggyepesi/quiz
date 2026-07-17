@@ -144,7 +144,7 @@ public final class TransformWorkbenchPanel extends JPanel {
     }
 
     /** A flat result: members grouped by type — a single searchable instance view
-     *  for one type, or a per-class {@link MultiQuizableView} for several. */
+     *  for one type, or a per-class {@link MultiView} for several. */
     private JComponent flatView(List<Quizable> members, String type) {
         java.util.Map<String, List<Quizable>> byType = new java.util.LinkedHashMap<>();
         for (Quizable m : members) {
@@ -154,14 +154,14 @@ public final class TransformWorkbenchPanel extends JPanel {
         }
 
         if (byType.size() <= 1) {
-            ViewablePanelView v = new ViewablePanelView();
+            CardListView v = new CardListView();
             for (Quizable m : members) {
-                v.addQuizable(m);
+                v.addViewable(m);
             }
             return searchableView(v, type);
         }
 
-        MultiQuizableView mv = new MultiQuizableView();
+        MultiView mv = new MultiView();
         for (java.util.Map.Entry<String, List<Quizable>> e : byType.entrySet()) {
             String t = e.getKey();
             List<Quizable> objs = e.getValue();
@@ -174,7 +174,7 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     /** A grouped (facet) result: a role-aware collapsible outline of the buckets —
      *  category ▸ year ▸ members — with a search / sort / fields bar above it (the
-     *  data-centric counterpart to the flat view's ViewableSearchPanel). */
+     *  data-centric counterpart to the flat view's SearchPanel). */
     private JComponent groupView(QuizableGroup root, String type) {
         Quizable sample = controller.sampleOf(type);
         Class<? extends Quizable> cls = sample != null ? sampleClass(sample) : Quizable.class;
@@ -184,13 +184,13 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     /** Wraps a card view with the shared search + sort + view-config panel
      *  (sample-driven, so it's dynamic-aware + model-typed). */
-    private JComponent searchableView(ViewablePanelView v, String type) {
+    private JComponent searchableView(CardListView v, String type) {
         v.createCardsPanel(1);
         JPanel panel = new JPanel(new BorderLayout());
         Quizable sample = controller.sampleOf(type);
         if (sample != null) {
-            ViewableSearchPanel engine =
-                    new ViewableSearchPanel(sampleClass(sample), sample);
+            SearchPanel engine =
+                    new SearchPanel(sampleClass(sample), sample);
             engine.setHiddenFields(controller.structuralFields(type));
             engine.setFieldTypes(controller.fieldTypes(type));
             engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());

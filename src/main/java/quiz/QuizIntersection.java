@@ -248,10 +248,10 @@ public class QuizIntersection implements Runnable {
         ImagePane intersectionPane = null;
         try {
             name = country0;
-            imagePane0 = new ImagePane(country0, imagePane0.getQuizable(),
+            imagePane0 = new ImagePane(country0, imagePane0.getViewable(),
                                         new CachedImage(image0), true);
             name = country1;
-            imagePane1 = new ImagePane(country1, imagePane1.getQuizable(),
+            imagePane1 = new ImagePane(country1, imagePane1.getViewable(),
                                         new CachedImage(image1), true);
             name = "intersection";
             intersectionPane = new ImagePane(title, intersectionState,

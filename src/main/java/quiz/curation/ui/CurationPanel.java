@@ -1,7 +1,8 @@
 package quiz.curation.ui;
 
-import objectview.ViewablePanelView;
-import objectview.ViewableSearchPanel;
+import objectview.CardListView;
+import objectview.RenderContext;
+import objectview.SearchPanel;
 import quiz.Quizable;
 import quiz.curation.Corrections;
 import quiz.curation.ManualCuration;
@@ -10,7 +11,6 @@ import quiz.transform.pipeline.ui.FilterOperator;
 import quiz.transform.pipeline.ui.FilterPredicates;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
-import objectview.ViewableRenderContext;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * Manual curation: pick a member type + a scalar field, see the instances MISSING it
- * (reusing the {@code IS_EMPTY} filter + the shared ViewablePanel / ViewableSearchPanel
+ * (reusing the {@code IS_EMPTY} filter + the shared Card / SearchPanel
  * card view), enter a value for one, and Set. Saved values persist to the sidecar and
  * re-apply after regeneration (see {@code quiz.curation}). Values are stored plainly
  * and coerced to the field's type on apply, so e.g. a typed year fills a DATE field.
@@ -170,19 +170,19 @@ public final class CurationPanel extends JPanel {
     }
 
     private JComponent instancesView(List<Quizable> missing, String type) {
-        ViewablePanelView v = new ViewablePanelView();
+        CardListView v = new CardListView();
 
         // Enable click-to-select on the cards: clicking an instance's name
         // selects it (green ring), and Set fills the selected instance. The
         // context must be set before the cards are built so they pick it up.
-        ViewableRenderContext ctx = new ViewableRenderContext();
+        RenderContext ctx = new RenderContext();
         ctx.setCollapsibleCards(true);   // birdseye: cards start collapsed, drill in at will
         ctx.setSelectionEnabled(true);
         ctx.addSelectionListener(o -> onSelected(o instanceof Quizable q ? q : null));
         v.setRenderContext(ctx);
 
         for (Quizable m : missing) {
-            v.addQuizable(m);
+            v.addViewable(m);
         }
         v.createCardsPanel(1);
 
@@ -191,7 +191,7 @@ public final class CurationPanel extends JPanel {
         if (sample != null) {
             @SuppressWarnings("unchecked")
             Class<? extends Quizable> cls = (Class<? extends Quizable>) sample.getClass();
-            ViewableSearchPanel engine = new ViewableSearchPanel(cls, sample);
+            SearchPanel engine = new SearchPanel(cls, sample);
             engine.setHiddenFields(domain.structuralFields(type));
             engine.setFieldTypes(domain.fieldTypes(type));
             engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());

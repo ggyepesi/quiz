@@ -1,6 +1,6 @@
 package demo;
 
-import objectview.ViewablePanel;
+import objectview.Card;
 
 import javax.swing.SwingUtilities;
 import java.awt.AWTEvent;
@@ -82,13 +82,13 @@ public final class ClickRecorder {
         }
     }
 
-    // The name of the card that was clicked (the ViewablePanel the click lands in),
+    // The name of the card that was clicked (the Card the click lands in),
     // so the recording reads like "clicked Alpha-1" — verifiable and diffable.
     private static String describe(Component c) {
         for (Component cur = c; cur != null; cur = cur.getParent()) {
-            if (cur instanceof ViewablePanel qp
-                    && qp.getQuizable() != null) {
-                return qp.getQuizable().getName();
+            if (cur instanceof Card qp
+                    && qp.getViewable() != null) {
+                return qp.getViewable().getName();
             }
         }
         return c == null ? "?" : c.getClass().getSimpleName();

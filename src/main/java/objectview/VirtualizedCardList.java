@@ -3,8 +3,6 @@ package objectview;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import objectview.Viewable;
-
 import javax.swing.JComponent;
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
@@ -39,11 +37,11 @@ import java.util.function.Function;
  *
  * <p>The list does not know how a card is configured or rendered. Card creation
  * is delegated to {@code cardFactory}. This allows callers such as grouped views
- * to supply their own ViewablePanelConfig and ViewableRenderContext.
+ * to supply their own ViewConfig and RenderContext.
  */
 public final class VirtualizedCardList
         extends JComponent
-        implements Scrollable, VirtualizedQuizableContainer {
+        implements Scrollable, VirtualizedContainer {
 
     private static final Logger log = LoggerFactory.getLogger(VirtualizedCardList.class);
 

@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Host-supplied policy for blurring answer-revealing images — e.g. a quiz hides the
  * subject's name baked into a portrait. {@code objectview} calls the ACTIVE blurrer
- * when a view opts into blurring ({@code ViewablePanelConfig.isBlurImages()}); by
+ * when a view opts into blurring ({@code ViewConfig.isBlurImages()}); by
  * default nothing is blurred, so the library has no quiz/OCR dependency. A host
  * registers its implementation via {@link #setActive}.
  */

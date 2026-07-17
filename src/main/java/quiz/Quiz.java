@@ -1,10 +1,10 @@
 package quiz;
 
+import objectview.Card;
+import objectview.RenderContext;
 import objectview.Viewable;
 
-import objectview.ViewablePanel;
-import objectview.ViewableRenderContext;
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.viewconfig.ViewConfig;
 
 import java.awt.*;
 import java.awt.event.MouseListener;
@@ -17,8 +17,8 @@ import javax.swing.*;
  * Base quiz class — manages shared indexing, exhaustion counters, and UI utilities.
  */
 public abstract class Quiz extends Thread {
-    protected final ViewablePanelConfig queryConfig;
-    protected final ViewablePanelConfig answerConfig;
+    protected final ViewConfig queryConfig;
+    protected final ViewConfig answerConfig;
     protected final QuizableGroup group;
     protected final Map<String, ? extends Quizable> quizables;
 
@@ -44,12 +44,12 @@ public abstract class Quiz extends Thread {
     protected long startTimeMillis;
     protected long endTimeMillis;
 
-    public Quiz(ViewablePanelConfig queryConfig,
-                ViewablePanelConfig answerConfig,
+    public Quiz(ViewConfig queryConfig,
+                ViewConfig answerConfig,
                 QuizableGroup group,
                 Map<String, ? extends Quizable> quizables) {
-        this.queryConfig = queryConfig == null ? new ViewablePanelConfig() : queryConfig;
-        this.answerConfig = answerConfig == null ? new ViewablePanelConfig() : answerConfig;
+        this.queryConfig = queryConfig == null ? new ViewConfig() : queryConfig;
+        this.answerConfig = answerConfig == null ? new ViewConfig() : answerConfig;
 
         // Quiz images hide their answer (mask/OCR) wherever they appear — query
         // or answer. No-op unless an image has a mask or is an OCR-blur type.
@@ -156,17 +156,17 @@ public abstract class Quiz extends Thread {
     // -------------------------------------------------------------------------
     // Reflection helpers (same as your original)
     // -------------------------------------------------------------------------
-    protected static List<List<String>> getFillPaths(ViewablePanelConfig config) {
+    protected static List<List<String>> getFillPaths(ViewConfig config) {
         List<List<String>> paths = new ArrayList<>();
         collectPaths(config, new ArrayList<>(), paths);
         return paths;
     }
 
-    protected static List<List<String>> getShowPaths(ViewablePanelConfig config) {
+    protected static List<List<String>> getShowPaths(ViewConfig config) {
         return getFillPaths(config);
     }
 
-    private static void collectPaths(ViewablePanelConfig config,
+    private static void collectPaths(ViewConfig config,
                                      List<String> prefix, List<List<String>> out) {
         if (config == null) return;
         if (config.isAllFields()) {
@@ -174,10 +174,10 @@ public abstract class Quiz extends Thread {
             return;
         }
 
-        for (Map.Entry<String, ViewablePanelConfig> e : config.getFields().entrySet()) {
+        for (Map.Entry<String, ViewConfig> e : config.getFields().entrySet()) {
             List<String> path = new ArrayList<>(prefix);
             path.add(e.getKey());
-            ViewablePanelConfig child = e.getValue();
+            ViewConfig child = e.getValue();
             if (child == null || child.isAllFields() || child.getFields().isEmpty())
                 out.add(path);
             else collectPaths(child, path, out);
@@ -496,11 +496,11 @@ public abstract class Quiz extends Thread {
     /**
      * Ensures the configuration has the correct root class for the given Quizable.
      */
-    protected ViewablePanelConfig withRootClass(ViewablePanelConfig cfg, Quizable q) {
+    protected ViewConfig withRootClass(ViewConfig cfg, Quizable q) {
         if (cfg == null) {
             return (q == null)
-                    ? new ViewablePanelConfig()
-                    : ViewablePanelConfig.of(q.getClass());
+                    ? new ViewConfig()
+                    : ViewConfig.of(q.getClass());
         }
         if (q == null || cfg.getCls() != null) {
             // config already defines a root class or quizable is null
@@ -511,25 +511,25 @@ public abstract class Quiz extends Thread {
     }
 
     /**
-     * Builds a ViewablePanel for the current question (query side).
+     * Builds a Card for the current question (query side).
      * Uses the queryConfig and forces full‑size images.
      */
-    protected ViewablePanel createQueryPanel(Quizable quizable) {
-        ViewablePanelConfig cfg = withRootClass(queryConfig, quizable).copy();
+    protected Card createQueryPanel(Quizable quizable) {
+        ViewConfig cfg = withRootClass(queryConfig, quizable).copy();
         cfg = fullSizeImagesRecursively(cfg);
         cfg.setAddListener(false);
 
-        Set<Object> visited = ViewablePanel.identitySetOf();
-        Set<Object> ancestors = ViewablePanel.identitySetOf();
+        Set<Object> visited = Card.identitySetOf();
+        Set<Object> ancestors = Card.identitySetOf();
 
-        ViewableRenderContext context =
-                new ViewableRenderContext(quizables.values());
+        RenderContext context =
+                new RenderContext(quizables.values());
 
         if (quizable != null) {
             context.putClassConfig(quizable.getClass(), cfg);
         }
 
-        return new ViewablePanel(
+        return new Card(
                 visited,
                 ancestors,
                 context,
@@ -543,19 +543,19 @@ public abstract class Quiz extends Thread {
     /**
      * Creates a deep copy of the config with thumbnails disabled (full‑size images).
      */
-    protected ViewablePanelConfig fullSizeImagesRecursively(ViewablePanelConfig cfg) {
+    protected ViewConfig fullSizeImagesRecursively(ViewConfig cfg) {
         if (cfg == null) {
             return null;
         }
-        ViewablePanelConfig copy = cfg.copy();
+        ViewConfig copy = cfg.copy();
         setThumbRecursively(copy, false);
         return copy;
     }
 
-    private void setThumbRecursively(ViewablePanelConfig cfg, boolean thumb) {
+    private void setThumbRecursively(ViewConfig cfg, boolean thumb) {
         if (cfg == null) return;
         cfg.setThumb(thumb);
-        for (ViewablePanelConfig child : cfg.getFields().values()) {
+        for (ViewConfig child : cfg.getFields().values()) {
             setThumbRecursively(child, thumb);
         }
     }

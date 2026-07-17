@@ -12,16 +12,16 @@ import java.lang.annotation.Target;
  *
  * <p>Drives two behaviors, both annotation-based (no {@code instanceof}):
  * <ul>
- *   <li><b>Rendering</b> — {@code ViewablePanel} draws it as a collapsed
- *       reference chip (like {@link ViewableReference}), never force-inlined; a
- *       single {@code @Provenance} replaces a separate {@code @ViewableReference}.</li>
+ *   <li><b>Rendering</b> — {@code Card} draws it as a collapsed
+ *       reference chip (like {@link Reference}), never force-inlined; a
+ *       single {@code @Provenance} replaces a separate {@code @Reference}.</li>
  *   <li><b>Entity discovery</b> — tooling that enumerates the domain's entity
  *       types (e.g. the instances panel that sections objects by
  *       {@code typeName()}) must not give it its own section, and must not
  *       descend into it while discovering entities.</li>
  * </ul>
  *
- * <p>Field-level (like {@link ViewableReference}/{@link Link}) rather than a
+ * <p>Field-level (like {@link Reference}/{@link Link}) rather than a
  * runtime {@code instanceof}, so the owner declares the relationship and any
  * future {@code Source} implementation is covered automatically.
  */

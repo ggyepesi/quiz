@@ -16,7 +16,7 @@ import java.util.Map;
  *   original/gray = idle
  *   pink          = selected
  *   colored       = paired
- * Important: this preserves the original ViewablePanel border by wrapping it
+ * Important: this preserves the original Card border by wrapping it
  * in an overlay border instead of replacing it.
  */
 public class PairingManager {

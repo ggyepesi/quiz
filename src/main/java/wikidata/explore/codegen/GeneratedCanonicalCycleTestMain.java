@@ -3,8 +3,8 @@ package wikidata.explore.codegen;
 import wikidata.explore.extract.WikidataObjectRegistry;
 import wikidata.explore.extract.WikidataDynamicObject;
 import quiz.Quizable;
-import objectview.viewconfig.ViewablePanelConfig;
-import objectview.ViewableFrame;
+import objectview.viewconfig.ViewConfig;
+import objectview.CardFrame;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -76,11 +76,11 @@ public class GeneratedCanonicalCycleTestMain {
         System.out.println();
         System.out.println("Opening frame...");
 
-        new ViewableFrame(
+        new CardFrame(
                 "Generated canonical cycle test",
                 ga,
-                ViewablePanelConfig.allWithMinorFields(ga.getClass())
-                                   .setAddListener(true)
-                                   .setThumb(true));
+                ViewConfig.allWithMinorFields(ga.getClass())
+                          .setAddListener(true)
+                          .setThumb(true));
     }
 }

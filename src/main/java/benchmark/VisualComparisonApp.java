@@ -1,9 +1,9 @@
 package benchmark;
 
-import objectview.viewconfig.ViewablePanelConfig;
+import objectview.Card;
+import objectview.viewconfig.ViewConfig;
 import oscar.OscarNomination;
-import objectview.viewconfig.ViewablePanelConfigAdapter;
-import objectview.ViewablePanel;
+import objectview.viewconfig.ViewConfigAdapter;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.*;
@@ -34,21 +34,21 @@ public class VisualComparisonApp {
         targetRecord.setWinner(true);
 
         // 3. Generate the exact full configuration frame rules
-        ViewablePanelConfig fullConfig = ViewablePanelConfigAdapter.fromOldArgs(
+        ViewConfig fullConfig = ViewConfigAdapter.fromOldArgs(
                 targetRecord, true, true, true
-                                                                               );
+                                                             );
 
         // 4. Construct the Main Frame Wrapper
-        JFrame frame = new JFrame("ViewablePanel Visual Verification");
+        JFrame frame = new JFrame("Card Visual Verification");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
-        // The live reflection-driven ViewablePanel view (the only renderer now).
+        // The live reflection-driven Card view (the only renderer now).
         JPanel container = new JPanel(new BorderLayout());
         container.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        container.add(new JLabel("Reflection Loop (ViewablePanel)", SwingConstants.CENTER), BorderLayout.NORTH);
+        container.add(new JLabel("Reflection Loop (Card)", SwingConstants.CENTER), BorderLayout.NORTH);
 
-        ViewablePanel panel = new ViewablePanel(targetRecord, fullConfig, false);
+        Card panel = new Card(targetRecord, fullConfig, false);
         container.add(panel, BorderLayout.CENTER);
 
         // 5. Pack and display the frame window
