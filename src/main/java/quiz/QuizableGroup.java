@@ -1,6 +1,6 @@
 package quiz;
 
-import objectview.DefaultViewableGroup;
+import objectview.group.DefaultViewableGroup;
 
 import java.util.HashMap;
 import java.util.List;

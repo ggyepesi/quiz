@@ -1,8 +1,8 @@
 package wikidata.explore.workbench;
 
 import aux.SplitPaneUtils;
-import objectview.CardListView;
-import objectview.RenderContext;
+import objectview.render.CardListView;
+import objectview.render.RenderContext;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import aux.Constants;

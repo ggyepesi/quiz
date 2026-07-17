@@ -1,6 +1,6 @@
 package wikidata.explore.extract;
 
-import objectview.MediaValue;
+import objectview.media.MediaValue;
 
 /**
  * Metadata-only media value.

@@ -1,6 +1,9 @@
 package quiz.transform.ui;
 
-import objectview.*;
+import objectview.demo.GroupTreeBrowser;
+import objectview.demo.MultiView;
+import objectview.render.CardListView;
+import objectview.search.SearchPanel;
 import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.transform.pipeline.ui.ViewStepsPanel;

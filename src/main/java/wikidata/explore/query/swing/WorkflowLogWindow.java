@@ -1,8 +1,8 @@
 package wikidata.explore.query.swing;
 
-import objectview.CardListView;
-import objectview.RenderContext;
-import objectview.SearchPanel;
+import objectview.render.CardListView;
+import objectview.render.RenderContext;
+import objectview.search.SearchPanel;
 import wikidata.explore.query.core.QueryStatus;
 import wikidata.explore.query.log.LogKind;
 import wikidata.explore.query.log.LogListener;

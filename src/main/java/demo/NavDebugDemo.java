@@ -1,6 +1,6 @@
 package demo;
 
-import objectview.MultiView;
+import objectview.demo.MultiView;
 import quiz.QuizableAdapter;
 
 import javax.swing.*;

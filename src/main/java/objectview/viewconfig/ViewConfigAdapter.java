@@ -1,7 +1,7 @@
 package objectview.viewconfig;
 
 import objectview.Viewable;
-import objectview.ImagePane;
+import objectview.media.ImagePane;
 
 import java.util.Collection;
 import java.util.Map;

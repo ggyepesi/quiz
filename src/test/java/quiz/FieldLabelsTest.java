@@ -1,6 +1,6 @@
 package quiz;
 
-import objectview.FieldLabels;
+import objectview.render.FieldLabels;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

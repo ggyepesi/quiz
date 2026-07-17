@@ -26,7 +26,7 @@ import javax.swing.SwingUtilities;
 import aux.CachedImage;
 import flag.State;
 import flag.auxiliary.ImageIntersection;
-import objectview.ImagePane;
+import objectview.media.ImagePane;
 
 public class QuizIntersection implements Runnable {
     private HashMap<List<Integer>, List<ImagePane>> imagePanesBySize = new HashMap<>();

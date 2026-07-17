@@ -1,7 +1,10 @@
 package wikidata.explore.query.swing;
 
-import objectview.*;
+import objectview.demo.MultiView;
 import objectview.field.DynamicFields;
+import objectview.render.CardListView;
+import objectview.render.RenderContext;
+import objectview.search.SearchPanel;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import wikidata.explore.query.core.QueryResultSink;

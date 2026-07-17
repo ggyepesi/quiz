@@ -4,7 +4,7 @@ import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
-import objectview.ImagePane;
+import objectview.media.ImagePane;
 
 import java.util.List;
 import java.util.Set;

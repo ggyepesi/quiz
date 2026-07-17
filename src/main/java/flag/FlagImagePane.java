@@ -2,12 +2,12 @@ package flag;
 
 import aux.CachedImage;
 import quiz.Quizable;
-import objectview.ImagePane;
+import objectview.media.ImagePane;
 
 /**
  * Flag-specific ImagePane.
  *
- * Same UI behavior as objectview.ImagePane, but it creates FlagCachedImage.
+ * Same UI behavior as objectview.media.ImagePane, but it creates FlagCachedImage.
  */
 public class FlagImagePane extends ImagePane {
 

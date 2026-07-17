@@ -1,7 +1,7 @@
 package quiz;
 
-import objectview.Card;
-import objectview.RenderContext;
+import objectview.render.Card;
+import objectview.render.RenderContext;
 import objectview.Viewable;
 
 import objectview.viewconfig.ViewConfig;

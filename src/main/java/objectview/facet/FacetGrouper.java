@@ -1,8 +1,8 @@
 package objectview.facet;
 
-import objectview.MutableViewableGroup;
+import objectview.group.MutableViewableGroup;
 import objectview.Viewable;
-import objectview.ViewableGroup.Role;
+import objectview.group.ViewableGroup.Role;
 
 import java.util.ArrayList;
 import java.util.Collection;

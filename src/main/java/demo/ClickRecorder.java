@@ -1,6 +1,6 @@
 package demo;
 
-import objectview.Card;
+import objectview.render.Card;
 
 import javax.swing.SwingUtilities;
 import java.awt.AWTEvent;

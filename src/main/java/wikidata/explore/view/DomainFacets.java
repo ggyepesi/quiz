@@ -1,7 +1,7 @@
 package wikidata.explore.view;
 import quiz.Quizable;
 
-import objectview.FieldLabels;
+import objectview.render.FieldLabels;
 import objectview.facet.Facet;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;

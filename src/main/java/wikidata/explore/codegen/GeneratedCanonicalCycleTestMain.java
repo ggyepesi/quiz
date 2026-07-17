@@ -4,7 +4,7 @@ import wikidata.explore.extract.WikidataObjectRegistry;
 import wikidata.explore.extract.WikidataDynamicObject;
 import quiz.Quizable;
 import objectview.viewconfig.ViewConfig;
-import objectview.CardFrame;
+import objectview.demo.CardFrame;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;

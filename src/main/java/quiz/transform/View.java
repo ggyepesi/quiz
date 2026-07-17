@@ -2,7 +2,7 @@ package quiz.transform;
 
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import objectview.ViewableGroup.Role;
+import objectview.group.ViewableGroup.Role;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 import objectview.facet.FacetTree;

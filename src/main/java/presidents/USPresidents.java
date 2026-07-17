@@ -9,7 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import aux.Constants;
-import objectview.DomainViews;
+import objectview.viewconfig.DomainViews;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -18,8 +18,8 @@ import org.jsoup.select.Elements;
 import aux.CachedImage;
 import aux.FlexibleDate;
 import quiz.QuizableGroup;
-import objectview.GroupView;
-import objectview.ImagePane;
+import objectview.render.GroupView;
+import objectview.media.ImagePane;
 import quiz.Quizable;
 
 public class USPresidents implements DomainViews {

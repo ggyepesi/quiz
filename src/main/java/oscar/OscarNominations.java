@@ -3,10 +3,10 @@ package oscar;
 import aux.Constants;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import objectview.DomainViews;
+import objectview.viewconfig.DomainViews;
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import objectview.GroupView;
+import objectview.render.GroupView;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.io.File;

@@ -1,6 +1,6 @@
 package nobel;
 
-import objectview.ImagePane;
+import objectview.media.ImagePane;
 import quiz.QuizableAdapter;
 
 import java.util.ArrayList;

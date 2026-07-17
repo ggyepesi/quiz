@@ -6,8 +6,8 @@ import java.util.*;
 import aux.Constants;
 import quiz.QuizableGroup;
 import quiz.Quizable;
-import objectview.GroupView;
-import objectview.DomainViews;
+import objectview.render.GroupView;
+import objectview.viewconfig.DomainViews;
 
 import static aux.Constants.mythologyDir;
 

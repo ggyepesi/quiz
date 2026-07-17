@@ -12,13 +12,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import aux.*;
-import objectview.DomainViews;
+import objectview.viewconfig.DomainViews;
 import quiz.GroupReader;
 import quiz.QuizableGroup;
 import quiz.Quizable;
 
-import objectview.ImagePane;
-import objectview.GroupView;
+import objectview.media.ImagePane;
+import objectview.render.GroupView;
 
 import java.util.TreeMap;
 

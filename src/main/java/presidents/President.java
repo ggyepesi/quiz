@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import aux.FlexibleDate;
-import objectview.ImagePane;
+import objectview.media.ImagePane;
 import quiz.QuizableAdapter;
 
 // private fields are seemengly unused - they are used via reflection!

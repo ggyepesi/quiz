@@ -1,6 +1,6 @@
 package quiz.transform.ui;
 
-import objectview.DomainViews;
+import objectview.viewconfig.DomainViews;
 import objectview.field.ViewableFieldPaths;
 import quiz.Quizable;
 import quiz.QuizableAdapter;

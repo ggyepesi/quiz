@@ -165,7 +165,7 @@ public class GeneratedQuizableSourceGenerator {
 
         String base =
                 switch (effectiveType(field)) {
-                    case IMAGE -> "objectview.ImagePane";
+                    case IMAGE -> "objectview.media.ImagePane";
                     // quiz.Quantity carries the unit (e.g. "1538 K") yet sorts
                     // numerically; dimensionless numbers render as the bare value.
                     case NUMBER -> "quiz.Quantity";

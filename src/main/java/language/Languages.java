@@ -1,10 +1,10 @@
 package language;
 
 import aux.Constants;
-import objectview.DomainViews;
+import objectview.viewconfig.DomainViews;
 import quiz.QuizableGroup;
 
-import objectview.GroupView;
+import objectview.render.GroupView;
 
 import java.io.File;
 import java.util.Map;

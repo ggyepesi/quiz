@@ -1,7 +1,7 @@
 package objectview.viewconfig;
 
 import objectview.Viewable;
-import objectview.Card;
+import objectview.render.Card;
 
 import javax.swing.*;
 import java.awt.*;

@@ -1,6 +1,7 @@
 package objectview;
 
 import objectview.field.ViewableFieldPaths;
+import objectview.search.SearchAndSort;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 import quiz.transform.DynamicQuizable;

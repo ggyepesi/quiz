@@ -1,6 +1,6 @@
 package quiz.web.sources;
 
-import objectview.FieldLabels;
+import objectview.render.FieldLabels;
 import objectview.field.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableGroup;

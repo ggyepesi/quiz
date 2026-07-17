@@ -1,7 +1,7 @@
 package quiz;
 
 import aux.GridBagUtils;
-import objectview.Card;
+import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;

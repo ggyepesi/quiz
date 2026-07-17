@@ -1,9 +1,9 @@
 package wikidata.explore.workbench;
 
 import aux.GridBagUtils;
-import objectview.Card;
-import objectview.RenderContext;
-import objectview.SearchPanel;
+import objectview.render.Card;
+import objectview.render.RenderContext;
+import objectview.search.SearchPanel;
 import objectview.viewconfig.ViewConfig;
 import quiz.Quizable;
 import wikidata.explore.WikidataProperty;

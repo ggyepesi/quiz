@@ -3,7 +3,7 @@ package objectview.field;
 import objectview.Viewable;
 import objectview.ViewableAdapter;
 
-import objectview.ImagePane;
+import objectview.media.ImagePane;
 import objectview.viewconfig.ViewConfig;
 
 import java.lang.reflect.Field;

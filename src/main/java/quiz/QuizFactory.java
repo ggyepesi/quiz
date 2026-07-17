@@ -11,14 +11,14 @@ import mythology.Creature;
 import mythology.MythologyEntities;
 import nobel.NobelPrize;
 import nobel.NobelPrizes;
-import objectview.DomainViews;
+import objectview.viewconfig.DomainViews;
 import objectview.viewconfig.ViewConfig;
 import oscar.OscarNomination;
 import oscar.OscarNominations;
 import presidents.President;
 import presidents.USPresidents;
-import objectview.ImageBlurrer;
-import objectview.GroupView;
+import objectview.media.ImageBlurrer;
+import objectview.render.GroupView;
 import objectview.viewconfig.ViewConfigEditor;
 
 import java.awt.*;

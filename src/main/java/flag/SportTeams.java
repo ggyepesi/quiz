@@ -11,11 +11,11 @@ import aux.Constants;
 import aux.UploadURLParser;
 import aux.UrlLineProcessor;
 import aux.UrlReader;
-import objectview.DomainViews;
+import objectview.viewconfig.DomainViews;
 import objectview.facet.Facet;
 import quiz.QuizableGroup;
-import objectview.GroupView;
-import objectview.ImagePane;
+import objectview.render.GroupView;
+import objectview.media.ImagePane;
 import quiz.Quizable;
 
 public class SportTeams implements DomainViews {

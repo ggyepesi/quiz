@@ -1,7 +1,7 @@
 package quiz;
 
 import aux.GridBagUtils;
-import objectview.Card;
+import objectview.render.Card;
 import quiz.ui.PairingManager;
 import objectview.viewconfig.ViewConfig;
 

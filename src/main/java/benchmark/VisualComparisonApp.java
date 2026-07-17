@@ -1,6 +1,6 @@
 package benchmark;
 
-import objectview.Card;
+import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
 import oscar.OscarNomination;
 import objectview.viewconfig.ViewConfigAdapter;

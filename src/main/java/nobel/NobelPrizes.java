@@ -14,10 +14,10 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import aux.ResourceFinder;
-import objectview.DomainViews;
+import objectview.viewconfig.DomainViews;
 import quiz.QuizableGroup;
-import objectview.GroupView;
-import objectview.ImagePane;
+import objectview.render.GroupView;
+import objectview.media.ImagePane;
 import quiz.Quizable;
 
 public class NobelPrizes implements DomainViews {

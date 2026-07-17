@@ -10,7 +10,7 @@ import java.util.TreeSet;
 import language.Language;
 import objectview.annotations.Reference;
 import quiz.QuizableGroup;
-import objectview.ImagePane;
+import objectview.media.ImagePane;
 import quiz.QuizableAdapter;
 
 public class State extends QuizableAdapter {

@@ -1,8 +1,8 @@
 package quiz.curation.ui;
 
-import objectview.CardListView;
-import objectview.RenderContext;
-import objectview.SearchPanel;
+import objectview.render.CardListView;
+import objectview.render.RenderContext;
+import objectview.search.SearchPanel;
 import quiz.Quizable;
 import quiz.curation.Corrections;
 import quiz.curation.ManualCuration;

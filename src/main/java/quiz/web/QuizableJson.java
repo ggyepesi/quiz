@@ -2,8 +2,8 @@ package quiz.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import objectview.FieldLabels;
-import objectview.ImageRef;
+import objectview.render.FieldLabels;
+import objectview.media.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import objectview.viewconfig.ViewConfigJsonIO;
