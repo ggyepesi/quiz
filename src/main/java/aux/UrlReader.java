@@ -1,5 +1,7 @@
 package aux;
 
+import objectview.utils.UrlOpener;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;

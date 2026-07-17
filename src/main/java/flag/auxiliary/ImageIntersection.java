@@ -2,7 +2,7 @@ package flag.auxiliary;
 
 import javax.swing.*;
 
-import aux.CachedImage;
+import objectview.utils.swing.CachedImage;
 import aux.Constants;
 
 import java.awt.*;

@@ -12,7 +12,7 @@ import objectview.viewconfig.ViewConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 import objectview.annotations.Link;
 import objectview.field.DynamicFields;
 
@@ -1405,7 +1405,7 @@ public class Card extends JPanel {
             if (blurred == src) {
                 return original;
             }
-            return new ImagePane(name, viewable, new aux.CachedImage(blurred), false, false);
+            return new ImagePane(name, viewable, new objectview.utils.swing.CachedImage(blurred), false, false);
         } catch (Throwable e) {
             return original;
         }

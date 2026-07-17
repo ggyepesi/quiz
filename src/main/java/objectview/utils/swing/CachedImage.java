@@ -1,13 +1,12 @@
-package aux;
+package objectview.utils.swing;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URI;
 import javax.imageio.ImageIO;
-import org.apache.batik.transcoder.*;
-import org.apache.batik.transcoder.image.JPEGTranscoder;
-import org.apache.batik.transcoder.image.PNGTranscoder;
+
+import objectview.utils.UrlOpener;
 
 /**
  * Generic lazy cached image.
@@ -187,28 +186,15 @@ public class CachedImage {
     }
 
     private byte[] transcodeImageBuf(boolean jpeg) throws Exception {
-        TranscoderInput input =
-                new TranscoderInput(new ByteArrayInputStream(imageBuf));
+        byte[] raster = SvgRasterizer.active().rasterize(imageBuf, jpeg);
 
-        ByteArrayOutputStream out =
-                new ByteArrayOutputStream();
-
-        TranscoderOutput output =
-                new TranscoderOutput(out);
-
-        Transcoder transcoder;
-
-        if (jpeg) {
-            transcoder = new JPEGTranscoder();
-            transcoder.addTranscodingHint(JPEGTranscoder.KEY_QUALITY, 0.40f);
-        } else {
-            transcoder = new PNGTranscoder();
+        if (raster == null) {
+            throw new IllegalStateException(
+                    "SVG image but no SvgRasterizer registered (host must call "
+                            + "SvgRasterizer.setActive): " + forDebug);
         }
 
-        transcoder.setErrorHandler(new ErrorHandlerImpl(forDebug));
-        transcoder.transcode(input, output);
-
-        return out.toByteArray();
+        return raster;
     }
 
     private Image scaleFullImage(
@@ -286,36 +272,5 @@ public class CachedImage {
         }
 
         return buffered;
-    }
-}
-
-class ErrorHandlerImpl implements ErrorHandler {
-    private final String forDebug;
-
-    ErrorHandlerImpl(String forDebug) {
-        this.forDebug = forDebug;
-    }
-
-    @Override
-    public void error(TranscoderException ex) throws TranscoderException {
-        System.out.println("TranscoderException error: " + forDebug);
-        ex.printStackTrace();
-    }
-
-    @Override
-    public void fatalError(TranscoderException ex) throws TranscoderException {
-        System.out.println("TranscoderException fatal: "
-                + forDebug
-                + ", "
-                + ex.getMessage());
-        ex.printStackTrace();
-    }
-
-    @Override
-    public void warning(TranscoderException ex) throws TranscoderException {
-        System.out.println("TranscoderException warning: "
-                + forDebug
-                + ", "
-                + ex.getMessage());
     }
 }

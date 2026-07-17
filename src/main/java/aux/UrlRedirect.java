@@ -1,5 +1,7 @@
 package aux;
 
+import objectview.utils.UrlOpener;
+
 import java.io.*;
 import java.util.regex.*;
 

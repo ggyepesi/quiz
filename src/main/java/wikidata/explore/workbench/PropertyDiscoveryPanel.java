@@ -258,7 +258,7 @@ public class PropertyDiscoveryPanel extends JPanel {
         // The Discover tab is narrow, so this long control row would wrap and
         // clip its trailing fields/buttons. Keep them reachable via a
         // horizontal scrollbar.
-        add(aux.ScrollPaneUtils.horizontalOnly(controls), BorderLayout.NORTH);
+        add(objectview.utils.swing.ScrollPaneUtils.horizontalOnly(controls), BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
 
         cancelButton.setEnabled(false);
@@ -765,7 +765,7 @@ public class PropertyDiscoveryPanel extends JPanel {
     // --- Static helpers ---
 
     private static void openInBrowser(String url) {
-        aux.BrowserLauncher.open(url);
+        objectview.utils.BrowserLauncher.open(url);
     }
 
     // --- Table model ---

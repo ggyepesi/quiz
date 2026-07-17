@@ -1,6 +1,6 @@
 package objectview.render;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 
 import javax.swing.*;
 import java.awt.*;

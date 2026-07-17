@@ -73,7 +73,7 @@ public final class FieldAccess {
         // year/month/day/monthDay) owns that vocabulary — resolve through the type,
         // not reflection, so precision-aware views are authoritative. Stays
         // type-agnostic: no instanceof of any concrete value type.
-        if (obj instanceof aux.Addressable a && a.viewNames().contains(name)) {
+        if (obj instanceof objectview.utils.Addressable a && a.viewNames().contains(name)) {
             return a.view(name);
         }
         // A Viewable reads through the ONE FieldSet bridge — a dynamic property map OR

@@ -12,7 +12,7 @@ import java.util.TreeSet;
 
 import aux.Constants;
 import aux.Pair;
-import aux.UrlOpener;
+import objectview.utils.UrlOpener;
 
 // Produces name -> portrait-link for names parsed from nobel prizes with motivation (nobelprizewithmotivation.txt)
 // Uses manually fixed names from namesforportraitlinks.txt and looks for name-variations produced by NameVariations for

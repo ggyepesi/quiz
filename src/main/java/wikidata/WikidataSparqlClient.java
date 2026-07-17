@@ -1,6 +1,6 @@
 package wikidata;
 
-import aux.RetryAfter;
+import objectview.utils.RetryAfter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

@@ -2,7 +2,7 @@ package objectview.search;
 import objectview.*;
 import objectview.field.ViewableFieldPaths;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 import objectview.media.ImagePane;
 import objectview.render.*;
 import objectview.viewconfig.FieldTypeSource;
@@ -421,7 +421,7 @@ public class SearchPanel extends JPanel
         // toolbar's second row of buttons would otherwise be clipped and
         // unreachable. A horizontal-only scroll pane keeps every control
         // reachable while never stealing vertical room from the results.
-        topControls = aux.ScrollPaneUtils.horizontalOnly(top);
+        topControls = objectview.utils.swing.ScrollPaneUtils.horizontalOnly(top);
         add(topControls, BorderLayout.NORTH);
 
         resultsPanel.setLayout(

@@ -108,7 +108,7 @@ public class TransformEngine {
      * Projects {@code targetType.outField} from a typed PATH on the entity a
      * reference points to: {@code out ← via.<sourcePath>}. The path can address a
      * type's views (e.g. {@code date.year}, {@code date.monthDay} via
-     * {@link aux.Addressable}) — so extraction is the path, not a convention baked
+     * {@link objectview.utils.Addressable}) — so extraction is the path, not a convention baked
      * into a construct. The referent's value is authoritative (it OVERWRITES) and
      * is coerced to the target field's runtime type (an int year → a FlexibleDate).
      * No query — the referent is already in the pool, resolved by qid to the

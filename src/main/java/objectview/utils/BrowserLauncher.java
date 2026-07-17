@@ -1,4 +1,4 @@
-package aux;
+package objectview.utils;
 
 import java.awt.Desktop;
 import java.net.URI;

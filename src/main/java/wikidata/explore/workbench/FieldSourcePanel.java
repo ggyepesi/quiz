@@ -1,6 +1,6 @@
 package wikidata.explore.workbench;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 
 import wikidata.explore.codegen.GeneratedQuizableSourceGenerator;
 import wikidata.explore.rule.RuleNode;

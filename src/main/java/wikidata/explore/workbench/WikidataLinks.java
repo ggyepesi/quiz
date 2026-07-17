@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  * One place for rendering a Wikidata id (QID or PID) as a clickable link, so
  * every panel — result tables, the class panel's type/relation/subtype fields,
  * the Explore member lists — links consistently to the entity's Wikidata page.
- * Opens via {@link aux.BrowserLauncher}.
+ * Opens via {@link objectview.utils.BrowserLauncher}.
  */
 public final class WikidataLinks {
 
@@ -42,7 +42,7 @@ public final class WikidataLinks {
     public static void open(String id) {
         String u = url(id);
         if (u != null) {
-            aux.BrowserLauncher.open(u);
+            objectview.utils.BrowserLauncher.open(u);
         }
     }
 
@@ -160,7 +160,7 @@ public final class WikidataLinks {
         pane.addHyperlinkListener(e -> {
             if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED
                     && e.getURL() != null) {
-                aux.BrowserLauncher.open(e.getURL().toString());
+                objectview.utils.BrowserLauncher.open(e.getURL().toString());
             }
         });
         setHtml(pane, htmlFragment);

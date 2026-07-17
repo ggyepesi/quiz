@@ -9,7 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import aux.Constants;
-import aux.UrlOpener;
+import objectview.utils.UrlOpener;
 
 public class PortraitLinkExtractor {
     static private final Pattern linkPattern = Pattern.compile("<a href=\"(/wiki/[^\"#:]+)\"[^>]*>([^<]+)</a>");

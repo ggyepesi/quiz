@@ -3,7 +3,7 @@ package myth;
 import java.io.*;
 import java.util.*;
 
-import aux.UrlOpener;
+import objectview.utils.UrlOpener;
 
 public class MythologyEngine {
 

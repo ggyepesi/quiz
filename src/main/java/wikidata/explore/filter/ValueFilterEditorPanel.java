@@ -1,6 +1,6 @@
 package wikidata.explore.filter;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 
 import javax.swing.*;
 import java.awt.*;

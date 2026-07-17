@@ -1,4 +1,4 @@
-package aux;
+package objectview.utils;
 
 import org.junit.jupiter.api.Test;
 

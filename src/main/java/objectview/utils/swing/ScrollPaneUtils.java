@@ -1,4 +1,4 @@
-package aux;
+package objectview.utils.swing;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;

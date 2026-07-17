@@ -1,6 +1,6 @@
 package quiz;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
 import quiz.model.QuizMode;

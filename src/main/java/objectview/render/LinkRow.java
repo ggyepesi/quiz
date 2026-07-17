@@ -1,6 +1,6 @@
 package objectview.render;
 
-import aux.BrowserLauncher;
+import objectview.utils.BrowserLauncher;
 import objectview.search.SearchPanel;
 
 import javax.swing.*;

@@ -177,7 +177,7 @@ public class SingleRootClassModelPanel extends JPanel {
         // This panel lives in the narrow left split, so the button row would
         // otherwise wrap and clip "Add field"/"Remove". Keep them reachable
         // via a horizontal scrollbar.
-        add(aux.ScrollPaneUtils.horizontalOnly(buttons), BorderLayout.NORTH);
+        add(objectview.utils.swing.ScrollPaneUtils.horizontalOnly(buttons), BorderLayout.NORTH);
         add(new JScrollPane(tree), BorderLayout.CENTER);
 
         renameClassButton.addActionListener(e -> renameClass());

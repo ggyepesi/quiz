@@ -149,7 +149,7 @@ public class QueryTableResultPanel
             url = text;
         }
 
-        aux.BrowserLauncher.open(url);
+        objectview.utils.BrowserLauncher.open(url);
     }
 
     private static final class LinkRenderer

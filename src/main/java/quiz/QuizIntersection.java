@@ -23,7 +23,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-import aux.CachedImage;
+import objectview.utils.swing.CachedImage;
 import flag.State;
 import flag.auxiliary.ImageIntersection;
 import objectview.media.ImagePane;

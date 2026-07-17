@@ -1,6 +1,6 @@
 package objectview.render;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 import objectview.media.ImagePane;
 import objectview.search.SearchPanel;
 import objectview.Viewable;

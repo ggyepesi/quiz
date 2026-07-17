@@ -1,6 +1,6 @@
 package quiz.ocr;
 
-import aux.CachedImage;
+import objectview.utils.swing.CachedImage;
 import aux.RememberingFileChooser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;

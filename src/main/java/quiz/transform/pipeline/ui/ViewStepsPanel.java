@@ -1,6 +1,6 @@
 package quiz.transform.pipeline.ui;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 import quiz.Quizable;
 import quiz.transform.ui.DomainField;
 import objectview.field.FieldKind;

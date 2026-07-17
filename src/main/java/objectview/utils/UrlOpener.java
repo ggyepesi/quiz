@@ -1,4 +1,4 @@
-package aux;
+package objectview.utils;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;

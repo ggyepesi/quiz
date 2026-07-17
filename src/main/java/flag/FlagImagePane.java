@@ -1,6 +1,6 @@
 package flag;
 
-import aux.CachedImage;
+import objectview.utils.swing.CachedImage;
 import quiz.Quizable;
 import objectview.media.ImagePane;
 

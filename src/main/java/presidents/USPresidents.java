@@ -15,7 +15,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import aux.CachedImage;
+import objectview.utils.swing.CachedImage;
 import aux.FlexibleDate;
 import quiz.QuizableGroup;
 import objectview.render.GroupView;

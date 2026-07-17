@@ -1,6 +1,6 @@
 package flag;
 
-import aux.CachedImage;
+import objectview.utils.swing.CachedImage;
 import aux.Constants;
 import aux.ResourceFinder;
 
@@ -12,7 +12,7 @@ import java.util.TreeMap;
 /**
  * Flag-specific CachedImage.
  *
- * Keeps old flag-specific behavior out of aux.CachedImage:
+ * Keeps old flag-specific behavior out of objectview.utils.swing.CachedImage:
  * - JPEG fallback map
  * - hard-coded flag/jpeg directory
  * - Constants.getSvgDirectory()
@@ -60,7 +60,7 @@ public class FlagCachedImage extends CachedImage {
     }
 
     /**
-     * Requires aux.CachedImage to expose this protected hook.
+     * Requires objectview.utils.swing.CachedImage to expose this protected hook.
      */
     @Override
     protected void ensureBytesLoaded() throws Exception {

@@ -2,7 +2,7 @@ package nobel;
 
 import java.io.*;
 
-import aux.UrlOpener;
+import objectview.utils.UrlOpener;
 
 public class NoImageExtractor {
     public static String download(String name) throws Exception {

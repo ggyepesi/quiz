@@ -503,6 +503,6 @@ public class NodeSamplePanel extends JPanel {
     }
 
     private static void openInBrowser(String url) {
-        aux.BrowserLauncher.open(url);
+        objectview.utils.BrowserLauncher.open(url);
     }
 }

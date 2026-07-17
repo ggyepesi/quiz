@@ -45,6 +45,9 @@ public class QuizFactory {
                 return quiz.ocr.QuizImageBlurrer.blur(type, name, src);
             }
         });
+        // Register the Batik-backed SVG rasterizer so objectview can display SVG
+        // images without carrying a Batik dependency of its own.
+        objectview.utils.swing.SvgRasterizer.setActive(new aux.BatikSvgRasterizer());
     }
 
     private record QuizOption(

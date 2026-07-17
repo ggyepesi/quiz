@@ -1,6 +1,6 @@
 package wikidata.explore.workbench;
 
-import aux.GridBagUtils;
+import objectview.utils.swing.GridBagUtils;
 import objectview.render.Card;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;

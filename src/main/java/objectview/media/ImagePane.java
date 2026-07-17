@@ -21,8 +21,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
 
-import aux.CachedImage;
-import aux.TitleUtils;
+import objectview.utils.swing.CachedImage;
+import objectview.utils.TitleUtils;
 import objectview.Viewable;
 import objectview.render.CardListView;
 import org.slf4j.Logger;
