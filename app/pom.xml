@@ -15,9 +15,9 @@
     <dependencies>
         <!-- The rendering/search library module. -->
         <dependency>
-            <groupId>org.example</groupId>
+            <groupId>io.github.ggyepesi</groupId>
             <artifactId>objectview</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <!-- slf4j binding (objectview only declares the api). -->
