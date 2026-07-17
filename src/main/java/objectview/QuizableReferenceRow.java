@@ -1,5 +1,8 @@
 package objectview;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import quiz.Quizable;
 import objectview.viewconfig.QuizablePanelConfig;
 
@@ -22,6 +25,9 @@ import java.util.List;
  * (handled by {@link QuizablePanel}), which is the rare case.
  */
 public class QuizableReferenceRow extends QuizableTextRow {
+
+    private static final Logger log = LoggerFactory.getLogger(QuizableReferenceRow.class);
+
 
     private static final int TRI_W = 12;
     private static final Color VALUE_COLOR = new Color(0, 80, 180);
@@ -118,7 +124,7 @@ public class QuizableReferenceRow extends QuizableTextRow {
     @Override
     protected void valueClicked(MouseEvent e) {
         if (NAV_DEBUG) {
-            System.err.println("[nav] ref valueClicked navigate=" + navigate
+            log.debug("[nav] ref valueClicked navigate=" + navigate
                     + " target='" + (target == null ? "null" : target.getDisplayName())
                     + "'");
         }
@@ -171,7 +177,7 @@ public class QuizableReferenceRow extends QuizableTextRow {
         }
         boolean focused = renderContext != null && renderContext.focusTopLevel(target);
         if (NAV_DEBUG) {
-            System.err.println("[nav] openOrFocus target='" + target.getDisplayName()
+            log.debug("[nav] openOrFocus target='" + target.getDisplayName()
                     + "' focused=" + focused
                     + (focused ? "" : " -> opening a window"));
         }

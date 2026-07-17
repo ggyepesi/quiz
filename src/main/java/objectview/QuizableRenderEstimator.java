@@ -1,5 +1,8 @@
 package objectview;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import quiz.Quizable;
 import objectview.viewconfig.QuizablePanelConfig;
 
@@ -7,6 +10,9 @@ import java.lang.reflect.Field;
 import java.util.*;
 
 public final class QuizableRenderEstimator {
+
+    private static final Logger log = LoggerFactory.getLogger(QuizableRenderEstimator.class);
+
 
     public enum Mode {
         /**
@@ -163,7 +169,7 @@ public final class QuizableRenderEstimator {
         if (c.visits % c.reportEvery == 0) {
             long ms = (System.nanoTime() - c.startedNanos) / 1_000_000;
 
-            System.out.println(
+            log.debug(
                     "Estimator progress: visits=" + c.visits
                             + " panels=" + c.panels
                             + " references=" + c.references
@@ -175,22 +181,22 @@ public final class QuizableRenderEstimator {
     }
 
     public static void print(Estimate e) {
-        System.out.println("Render estimate: " + e.mode());
-        System.out.println("  panels      = " + e.panels());
-        System.out.println("  references  = " + e.references());
-        System.out.println("  leafValues  = " + e.leafValues());
-        System.out.println("  collections = " + e.collections());
-        System.out.println("  maps        = " + e.maps());
-        System.out.println("  maxDepth    = " + e.maxDepth());
+        log.debug("Render estimate: " + e.mode());
+        log.debug("  panels      = " + e.panels());
+        log.debug("  references  = " + e.references());
+        log.debug("  leafValues  = " + e.leafValues());
+        log.debug("  collections = " + e.collections());
+        log.debug("  maps        = " + e.maps());
+        log.debug("  maxDepth    = " + e.maxDepth());
 
-        System.out.println("  most reached:");
+        log.debug("  most reached:");
 
         e.reachabilityCount().entrySet().stream()
          .sorted(Map.Entry.<String, Integer>comparingByValue()
                           .reversed())
          .limit(20)
          .forEach(en ->
-                          System.out.println("    "
+                          log.debug("    "
                                                      + en.getKey()
                                                      + " -> "
                                                      + en.getValue()));

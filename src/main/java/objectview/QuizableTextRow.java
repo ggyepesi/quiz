@@ -1,5 +1,8 @@
 package objectview;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
@@ -10,6 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class QuizableTextRow extends JComponent implements QuizableTextSelectable {
+
+    private static final Logger log = LoggerFactory.getLogger(QuizableTextRow.class);
+
     private static final int PAD_X = 6;
     private static final int PAD_Y = 4;
     private static final int GAP = 8;
@@ -170,7 +176,7 @@ public class QuizableTextRow extends JComponent implements QuizableTextSelectabl
         boolean nearStationary = pressPoint != null && p.distance(pressPoint) <= CLICK_SLOP;
         boolean click = selection.isEmpty() || nearStationary;
         if (NAV_DEBUG) {
-            System.err.println("[click] end on '" + valueText() + "' empty="
+            log.debug("[click] end on '" + valueText() + "' empty="
                     + selection.isEmpty() + " moved="
                     + (pressPoint == null ? "?" : (int) p.distance(pressPoint))
                     + (click ? " -> valueClicked" : " -> text SELECTION (no click)"));

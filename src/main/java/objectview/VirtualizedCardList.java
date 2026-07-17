@@ -1,5 +1,8 @@
 package objectview;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import quiz.Quizable;
 
 import javax.swing.JComponent;
@@ -41,6 +44,9 @@ import java.util.function.Function;
 public final class VirtualizedCardList
         extends JComponent
         implements Scrollable, VirtualizedQuizableContainer {
+
+    private static final Logger log = LoggerFactory.getLogger(VirtualizedCardList.class);
+
 
     private static final int BUFFER = 6;
     private static final int DEFAULT_ROW = 140;
@@ -309,14 +315,13 @@ public final class VirtualizedCardList
         navGeneration++;
 
         if (DEBUG) {
-            System.err.printf(
-                    "[nav] start q=%s i=%d top=%d total=%d extent=%d%n",
+            log.debug(
+                    "[nav] start q={} i={} top={} total={} extent={}",
                     q.getDisplayName(),
                     i,
                     tops[i],
                     totalHeight(),
-                    viewport.getExtentSize().height
-                             );
+                    viewport.getExtentSize().height);
         }
 
         buildIfNeeded(q);
@@ -344,14 +349,13 @@ public final class VirtualizedCardList
         if (DEBUG) {
             JComponent card = built.get(q);
 
-            System.err.printf(
-                    "[nav] after q=%s viewY=%d cardY=%d cardH=%d top=%d%n",
+            log.debug(
+                    "[nav] after q={} viewY={} cardY={} cardH={} top={}",
                     q.getDisplayName(),
                     viewport.getViewPosition().y,
                     card != null ? card.getY() : -1,
                     card != null ? card.getHeight() : -1,
-                    tops[i]
-                             );
+                    tops[i]);
         }
 
         return built.get(q);

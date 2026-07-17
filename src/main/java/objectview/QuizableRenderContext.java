@@ -1,5 +1,8 @@
 package objectview;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import quiz.Quizable;
 import objectview.viewconfig.QuizablePanelConfig;
 
@@ -14,6 +17,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class QuizableRenderContext {
+
+    private static final Logger log = LoggerFactory.getLogger(QuizableRenderContext.class);
+
     private final Set<Object> topLevel =
             Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -236,7 +242,7 @@ public class QuizableRenderContext {
         }
 
         if (NAV_DEBUG) {
-            System.err.println("[nav] focusTopLevel object='"
+            log.debug("[nav] focusTopLevel object='"
                     + (object instanceof Quizable q ? q.getDisplayName() : object)
                     + "' fromMap=" + (fromMap != null)
                     + " resolved=" + (component != null)

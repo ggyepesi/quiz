@@ -1,5 +1,8 @@
 package objectview;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import aux.GridBagUtils;
 import objectview.annotations.Link;
 import objectview.annotations.QuizableInline;
@@ -60,6 +63,9 @@ import java.util.List;
  * single top-pinning {@link Box.Filler} per root card.
  */
 public class QuizablePanel extends JPanel {
+
+    private static final Logger log = LoggerFactory.getLogger(QuizablePanel.class);
+
     // A complex collection/map field renders under a collapsible header,
     // collapsed by default (threshold 0 => no list auto-expands); click the
     // header to expand. Toggleable per collection.
@@ -241,10 +247,10 @@ public class QuizablePanel extends JPanel {
         }
 
         public static void print() {
-            System.out.println("TextRows=" + textRows);
-            System.out.println("TextBlocks=" + textBlocks);
-            System.out.println("ReferenceRows=" + referenceRows);
-            System.out.println("Panels=" + panels);
+            log.debug("TextRows=" + textRows);
+            log.debug("TextBlocks=" + textBlocks);
+            log.debug("ReferenceRows=" + referenceRows);
+            log.debug("Panels=" + panels);
         }
     }
 
@@ -1351,7 +1357,7 @@ public class QuizablePanel extends JPanel {
 
 
     private void addOpenListener(Component c, Quizable q) {
-        //System.out.println("ADD open listener to " + q.getName());
+        //log.debug("ADD open listener to " + q.getName());
         c.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
