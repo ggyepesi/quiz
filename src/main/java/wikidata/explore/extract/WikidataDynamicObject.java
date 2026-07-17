@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Link;
 import objectview.annotations.NotQuizableField;
 import objectview.annotations.Provenance;
-import quiz.DynamicFields;
+import objectview.field.DynamicFields;
 import quiz.QuizableAdapter;
 import quiz.source.Source;
 import quiz.source.WikidataSource;

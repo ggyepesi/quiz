@@ -1,7 +1,7 @@
 package wikidata.explore.extract;
 
 import quiz.Quizable;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.QuizableGroupView;
 import objectview.QuizableViews;
 

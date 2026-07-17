@@ -1,7 +1,6 @@
 package objectview.field;
 
-import quiz.DynamicFields;
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,27 +49,50 @@ public final class DynamicFieldSet implements FieldSet {
             // Authoritative + complete: typed even for a null/absent or single value.
             return schema.fields();
         }
+
         List<FieldRef> out = new ArrayList<>();
-        for (Map.Entry<String, Object> e : object.dynamicFieldValues().entrySet()) {
+
+        for (Map.Entry<String, Object> e
+                : object.dynamicFieldValues().entrySet()) {
+
             out.add(fieldRef(e.getKey(), e.getValue()));
         }
+
         return out;
     }
 
     private static FieldRef fieldRef(String name, Object value) {
-        boolean collection = value instanceof Collection<?> || (value != null && value.getClass().isArray());
-        boolean reference = value instanceof Quizable
-                || (value instanceof Collection<?> c && anyQuizable(c));
-        String typeLabel = value == null ? null : value.getClass().getSimpleName();
-        return FieldRef.of(name, FieldKind.ofValue(value), typeLabel, reference, collection, false);
+        boolean collection =
+                value instanceof Collection<?>
+                        || (value != null
+                        && value.getClass().isArray());
+
+        boolean reference =
+                value instanceof Viewable
+                        || (value instanceof Collection<?> c
+                        && anyViewable(c));
+
+        String typeLabel =
+                value == null
+                        ? null
+                        : value.getClass().getSimpleName();
+
+        return FieldRef.of(
+                name,
+                FieldKind.ofValue(value),
+                typeLabel,
+                reference,
+                collection,
+                false);
     }
 
-    private static boolean anyQuizable(Collection<?> c) {
+    private static boolean anyViewable(Collection<?> c) {
         for (Object o : c) {
-            if (o instanceof Quizable) {
+            if (o instanceof Viewable) {
                 return true;
             }
         }
+
         return false;
     }
 }

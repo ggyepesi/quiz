@@ -1,6 +1,5 @@
 package quiz;
 
-import objectview.QuizableGroup;
 import objectview.QuizablePanel;
 import objectview.QuizableRenderContext;
 import objectview.viewconfig.QuizablePanelConfig;

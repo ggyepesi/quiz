@@ -4,7 +4,7 @@ package objectview.field;
 /**
  * One field of a domain object — its name, value shape and display type — regardless
  * of whether the object is a reflected {@link quiz.Quizable} (declared Java fields)
- * or a dynamic property map ({@link quiz.DynamicFields}). The rendering / search /
+ * or a dynamic property map ({@link DynamicFields}). The rendering / search /
  * sort / config machinery reads this instead of re-deriving field metadata two ways.
  *
  * <p>The <b>render hints</b> ({@link #inline()}, {@link #link()}, {@link #provenance()},

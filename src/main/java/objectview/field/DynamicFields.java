@@ -1,4 +1,6 @@
-package quiz;
+package objectview.field;
+
+import quiz.Quizable;
 
 import java.util.Map;
 

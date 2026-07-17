@@ -1,6 +1,6 @@
 package language;
 
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 
 import java.util.List;
 import java.util.Map;

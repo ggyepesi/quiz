@@ -1,5 +1,7 @@
 package objectview;
 
+import quiz.QuizableGroup;
+
 public record GroupNode(QuizableGroup group) {
     public String getName() {
         return group.getName();

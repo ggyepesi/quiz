@@ -4,7 +4,7 @@ import aux.Constants;
 import aux.UrlLineProcessor;
 import aux.UrlReader;
 import quiz.GroupReader;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 
 import java.io.BufferedReader;
 import java.net.URL;

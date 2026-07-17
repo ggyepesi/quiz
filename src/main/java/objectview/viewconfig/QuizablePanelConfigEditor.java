@@ -1,5 +1,6 @@
 package objectview.viewconfig;
 
+import objectview.field.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import quiz.QuizableFieldPaths;
@@ -108,7 +109,7 @@ public class QuizablePanelConfigEditor extends JPanel {
 
         // A dynamic (map-held) type has no minor-field concept — that's a card
         // rendering distinction; here every field is shown, so no checkbox.
-        if (!minorOnly && !(sample instanceof quiz.DynamicFields)) {
+        if (!minorOnly && !(sample instanceof DynamicFields)) {
             allMinorFieldsBox.setSelected(sourceConfig.isAllMinorFields());
             allMinorFieldsBox.addActionListener(e -> {
                 tableModel.fireTableDataChanged();
@@ -150,7 +151,7 @@ public class QuizablePanelConfigEditor extends JPanel {
 
         // A dynamic sample: enumerate its map-held fields (no declared Java fields,
         // no minor-field concept). Reflection types keep the original path exactly.
-        if (sample instanceof quiz.DynamicFields) {
+        if (sample instanceof DynamicFields) {
             addDynamicFieldRows(sample);
             return;
         }
@@ -172,7 +173,7 @@ public class QuizablePanelConfigEditor extends JPanel {
     }
 
     private void addDynamicFieldRows(Quizable dynamicSample) {
-        quiz.DynamicFields dyn = (quiz.DynamicFields) dynamicSample;
+        DynamicFields dyn = (DynamicFields) dynamicSample;
         // Identity row first: `name` isn't in the property map (it's the display
         // name), but search/sort/view configs must be able to include/exclude it
         // like any other field — otherwise it's invisible yet always searched.
@@ -214,7 +215,7 @@ public class QuizablePanelConfigEditor extends JPanel {
     }
 
     private static boolean hasFields(Quizable q) {
-        if (q instanceof quiz.DynamicFields d) {
+        if (q instanceof DynamicFields d) {
             return !d.dynamicFieldValues().isEmpty();
         }
         return !QuizableAdapter.getAllFields(q.getClass()).isEmpty();

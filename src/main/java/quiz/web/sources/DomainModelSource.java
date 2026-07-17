@@ -1,7 +1,7 @@
 package quiz.web.sources;
 
 import quiz.Quizable;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 import quiz.transform.ui.DomainModel;

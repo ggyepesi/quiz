@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import quiz.transform.View;
 import wikidata.explore.extract.WikidataDynamicObject;
 

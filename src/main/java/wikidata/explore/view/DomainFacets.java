@@ -1,5 +1,6 @@
 package wikidata.explore.view;
 
+import objectview.FieldLabels;
 import objectview.facet.Facet;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -145,7 +146,7 @@ public final class DomainFacets {
 
     /** true/1/yes → the humanized field name; else "Not <name>". */
     static String booleanBucket(String value, String fieldName) {
-        return quiz.FieldLabels.booleanBucket(value, fieldName);
+        return FieldLabels.booleanBucket(value, fieldName);
     }
 
     private static boolean isBooleanField(GeneratedClassModel clazz, String fieldName) {

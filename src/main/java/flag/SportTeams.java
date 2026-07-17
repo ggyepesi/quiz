@@ -12,7 +12,7 @@ import aux.UploadURLParser;
 import aux.UrlLineProcessor;
 import aux.UrlReader;
 import objectview.facet.Facet;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.QuizableGroupView;
 import objectview.ImagePane;
 import quiz.Quizable;

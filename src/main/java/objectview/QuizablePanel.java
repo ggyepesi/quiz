@@ -4,6 +4,7 @@ import aux.GridBagUtils;
 import objectview.annotations.Link;
 import objectview.annotations.QuizableInline;
 import objectview.annotations.QuizableReference;
+import objectview.field.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import objectview.viewconfig.QuizablePanelConfig;
@@ -615,7 +616,7 @@ public class QuizablePanel extends JPanel {
 
             // A DynamicFields object's map IS its field set — render each entry as
             // its own field (flat), never the map as one "dynamicFields" block.
-            if (quizable instanceof quiz.DynamicFields df
+            if (quizable instanceof DynamicFields df
                     && value == df.dynamicFieldValues()) {
                 for (Map.Entry<String, Object> entry
                         : df.dynamicFieldValues().entrySet()) {
@@ -633,7 +634,7 @@ public class QuizablePanel extends JPanel {
                 if (flag) {
                     textRows.add(new QuizableTextBlock.Row(
                             null, fieldPath, value,
-                            List.of(quiz.FieldLabels.humanize(name))));
+                            List.of(FieldLabels.humanize(name))));
                 }
                 continue;
             }
@@ -692,7 +693,7 @@ public class QuizablePanel extends JPanel {
         if (value instanceof Boolean flag) {
             if (flag) {
                 textRows.add(new QuizableTextBlock.Row(null, fieldPath, value,
-                        List.of(quiz.FieldLabels.humanize(key))));
+                        List.of(FieldLabels.humanize(key))));
             }
             return row;
         }
@@ -757,7 +758,7 @@ public class QuizablePanel extends JPanel {
         // content behind a "dynamicFields (n)" header. Render it normally; only
         // genuine value collections/maps collapse.
         boolean isDynamicContainer =
-                quizable instanceof quiz.DynamicFields df
+                quizable instanceof DynamicFields df
                         && value == df.dynamicFieldValues();
         boolean isCollectionOrMap =
                 (value instanceof Collection<?> || value instanceof Map<?, ?>)

@@ -1,5 +1,6 @@
 package quiz;
 
+import objectview.field.DynamicFields;
 import objectview.field.FieldRef;
 import objectview.field.FieldSet;
 import objectview.ImagePane;

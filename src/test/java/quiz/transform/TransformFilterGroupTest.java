@@ -3,7 +3,7 @@ package quiz.transform;
 import org.junit.jupiter.api.Test;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 

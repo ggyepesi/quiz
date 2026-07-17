@@ -1,8 +1,8 @@
 package objectview.facet;
 
 import quiz.Quizable;
-import objectview.QuizableGroup;
-import objectview.QuizableGroup.Role;
+import quiz.QuizableGroup;
+import objectview.ViewableGroup.Role;
 
 import java.util.ArrayList;
 import java.util.Collection;

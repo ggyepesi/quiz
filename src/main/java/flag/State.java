@@ -8,7 +8,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import language.Language;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.annotations.QuizableReference;
 import objectview.ImagePane;
 import quiz.QuizableAdapter;

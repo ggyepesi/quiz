@@ -1,6 +1,6 @@
 package quiz.transform;
 
-import quiz.DynamicFields;
+import objectview.field.DynamicFields;
 import quiz.QuizableAdapter;
 import objectview.annotations.NotQuizableField;
 

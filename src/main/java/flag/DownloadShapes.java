@@ -9,7 +9,7 @@ import java.util.Map.Entry;
 import aux.CachedImage;
 import aux.Constants;
 import aux.ResourceFinder;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.ImagePane;
 
 import java.util.TreeMap;

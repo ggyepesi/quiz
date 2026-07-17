@@ -1,6 +1,6 @@
 package quiz.transform.app;
 
-import quiz.DynamicFields;
+import objectview.field.DynamicFields;
 import quiz.Quizable;
 import wikidata.explore.extract.WikidataDynamicObject;
 

@@ -1,4 +1,4 @@
-package quiz;
+package objectview;
 
 import java.util.Locale;
 

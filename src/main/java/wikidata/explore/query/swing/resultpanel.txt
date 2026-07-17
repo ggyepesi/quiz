@@ -1,6 +1,6 @@
 package wikidata.explore.query.swing;
 
-import quiz.DynamicFields;
+import objectview.field.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import objectview.MultiQuizableView;

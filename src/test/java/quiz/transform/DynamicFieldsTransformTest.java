@@ -1,7 +1,7 @@
 package quiz.transform;
 
 import org.junit.jupiter.api.Test;
-import quiz.DynamicFields;
+import objectview.field.DynamicFields;
 import quiz.QuizableAdapter;
 
 import java.util.Collection;

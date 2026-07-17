@@ -13,7 +13,7 @@ import java.util.Map.Entry;
 
 import aux.*;
 import quiz.GroupReader;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import quiz.Quizable;
 
 import objectview.ImagePane;

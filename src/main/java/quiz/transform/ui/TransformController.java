@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
 import quiz.Quizable;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import quiz.transform.View;
 import objectview.viewconfig.FieldTypeSource;
 

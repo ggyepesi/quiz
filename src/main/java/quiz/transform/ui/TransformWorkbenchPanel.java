@@ -4,7 +4,7 @@ import objectview.GroupTreeBrowser;
 import objectview.MultiQuizableView;
 import objectview.QuizableSearchPanel;
 import quiz.Quizable;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
 import objectview.QuizablePanelView;
 

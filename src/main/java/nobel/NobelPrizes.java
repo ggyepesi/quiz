@@ -14,7 +14,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import aux.ResourceFinder;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.QuizableGroupView;
 import objectview.ImagePane;
 import quiz.Quizable;

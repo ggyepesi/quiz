@@ -3,6 +3,7 @@ package objectview;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import objectview.viewconfig.QuizablePanelConfig;
+import quiz.QuizableGroup;
 
 import javax.swing.*;
 import java.awt.*;

@@ -1,8 +1,8 @@
 package quiz.transform;
 
 import quiz.Quizable;
-import objectview.QuizableGroup;
-import objectview.QuizableGroup.Role;
+import quiz.QuizableGroup;
+import objectview.ViewableGroup.Role;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 import objectview.facet.FacetTree;

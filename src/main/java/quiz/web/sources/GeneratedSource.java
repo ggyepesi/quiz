@@ -1,8 +1,9 @@
 package quiz.web.sources;
 
-import quiz.DynamicFields;
+import objectview.FieldLabels;
+import objectview.field.DynamicFields;
 import quiz.Quizable;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 import quiz.web.QuizableSource;
@@ -186,7 +187,7 @@ public class GeneratedSource implements QuizableSource {
             } else if (Boolean.TRUE.equals(isBool.get(name))) {
                 // "Won" / "Not won" buckets (a Winners grouping), not true/false.
                 facets.add(Facet.mapped(name, name,
-                        v -> quiz.FieldLabels.booleanBucket(v, name)));
+                        v -> FieldLabels.booleanBucket(v, name)));
             } else {
                 int d = distinct.getOrDefault(name, Set.of()).size();
                 if (d >= 2 && d <= MAX_BUCKETS) {

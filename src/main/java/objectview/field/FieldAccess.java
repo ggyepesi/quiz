@@ -1,6 +1,5 @@
 package objectview.field;
 
-import quiz.DynamicFields;
 import quiz.QuizableAdapter;
 
 import java.lang.reflect.Field;

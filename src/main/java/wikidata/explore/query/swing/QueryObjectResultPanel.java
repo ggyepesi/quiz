@@ -1,7 +1,7 @@
 package wikidata.explore.query.swing;
 
 import objectview.QuizableRenderContext;
-import quiz.DynamicFields;
+import objectview.field.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import objectview.MultiQuizableView;

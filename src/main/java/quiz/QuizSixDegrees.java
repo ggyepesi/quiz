@@ -1,7 +1,6 @@
 package quiz;
 
 import aux.GridBagUtils;
-import objectview.QuizableGroup;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.BFSShortestPath;

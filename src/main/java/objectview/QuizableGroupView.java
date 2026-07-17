@@ -1,6 +1,7 @@
 package objectview;
 
 import quiz.Quizable;
+import quiz.QuizableGroup;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;

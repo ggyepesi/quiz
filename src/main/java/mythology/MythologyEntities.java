@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.util.*;
 
 import aux.Constants;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import quiz.Quizable;
 import objectview.QuizableGroupView;
 import objectview.QuizableViews;

@@ -2,7 +2,7 @@ package quiz.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import quiz.Quizable;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 
 import java.util.ArrayList;
 import java.util.HashSet;

@@ -9,7 +9,7 @@ import java.util.TreeMap;
 import aux.Constants;
 import aux.UploadURLParser;
 import aux.UrlReader;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import quiz.GroupReader;
 
 public class ReadFlagGroups {

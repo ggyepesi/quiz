@@ -4,7 +4,7 @@ import aux.Constants;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import quiz.Quizable;
-import objectview.QuizableGroup;
+import quiz.QuizableGroup;
 import objectview.QuizableGroupView;
 import objectview.QuizableViews;
 import wikidata.explore.extract.WikidataDynamicObject;
