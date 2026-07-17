@@ -3,7 +3,7 @@ package objectview.field;
 
 /**
  * One field of a domain object — its name, value shape and display type — regardless
- * of whether the object is a reflected {@link quiz.Quizable} (declared Java fields)
+ * of whether the object is a reflected {@link objectview.Viewable} (declared Java fields)
  * or a dynamic property map ({@link DynamicFields}). The rendering / search /
  * sort / config machinery reads this instead of re-deriving field metadata two ways.
  *
@@ -15,7 +15,7 @@ package objectview.field;
  * DynamicFields} fork. See #87.
  *
  * <p>Traversal into a reference is composition, not a method here: read the value and
- * wrap it — {@code FieldSet.of((Quizable) set.read("nominee"))} — mirroring {@code
+ * wrap it — {@code FieldSet.of((Viewable) set.read("nominee"))} — mirroring {@code
  * FieldAccess.getPath}.
  */
 public interface FieldRef {
@@ -28,7 +28,7 @@ public interface FieldRef {
     /** A display type label, e.g. "Integer", "Category", "List&lt;Category&gt;" (or null). */
     String typeLabel();
 
-    /** An entity-valued field (its value is a {@link quiz.Quizable}). */
+    /** An entity-valued field (its value is a {@link objectview.Viewable}). */
     boolean reference();
 
     /** A multi-valued field (its value is a collection/array). */

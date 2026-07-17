@@ -1,7 +1,7 @@
 package objectview;
 
 import aux.GridBagUtils;
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
@@ -35,7 +35,7 @@ public final class QuizableValueRenderer {
             return imageComponent(fieldName, fieldPath, imagePane);
         }
 
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             return quizableComponent(visited, ancestors, renderContext, fieldName, fieldPath, q, config, fill);
         }
 
@@ -90,13 +90,13 @@ public final class QuizableValueRenderer {
 
     private static JComponent quizableComponent(
             Set<Object> visited, Set<Object> ancestors, QuizableRenderContext renderContext,
-            String fieldName, List<String> fieldPath, Quizable q, QuizablePanelConfig config, boolean fill) {
+            String fieldName, List<String> fieldPath, Viewable q, QuizablePanelConfig config, boolean fill) {
         return quizableComponent(visited, ancestors, renderContext, fieldName, fieldPath, q, config, fill, false);
     }
 
     private static JComponent quizableComponent(
             Set<Object> visited, Set<Object> ancestors, QuizableRenderContext renderContext,
-            String fieldName, List<String> fieldPath, Quizable q, QuizablePanelConfig config, boolean fill,
+            String fieldName, List<String> fieldPath, Viewable q, QuizablePanelConfig config, boolean fill,
             boolean suppressTitle) {
         JPanel panel = basePanel(fieldName, fieldPath, q);
 
@@ -192,7 +192,7 @@ public final class QuizableValueRenderer {
         }
 
 
-        if (item instanceof Quizable q) {
+        if (item instanceof Viewable q) {
             // A member that is itself a top-level card navigates to it instead
             // of expanding in place (see QuizablePanel.collapsibleReference).
             if (renderContext != null && renderContext.isTopLevel(q)) {
@@ -280,7 +280,7 @@ public final class QuizableValueRenderer {
                 continue;
             }
 
-            if (item instanceof Quizable) {
+            if (item instanceof Viewable) {
                 return false;
             }
 
@@ -306,7 +306,7 @@ public final class QuizableValueRenderer {
                 continue;
             }
 
-            if (value instanceof Quizable) {
+            if (value instanceof Viewable) {
                 return false;
             }
 

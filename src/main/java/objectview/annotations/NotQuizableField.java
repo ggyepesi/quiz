@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a field as "not quizable".
  *
- * Not quizable fields are to the Quizable object, they never appear in any quiz context.
+ * Not quizable fields are to the Viewable object, they never appear in any quiz context.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

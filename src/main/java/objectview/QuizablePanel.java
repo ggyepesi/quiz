@@ -8,7 +8,7 @@ import objectview.annotations.Link;
 import objectview.annotations.QuizableInline;
 import objectview.annotations.QuizableReference;
 import objectview.field.DynamicFields;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.QuizableAdapter;
 import objectview.viewconfig.QuizablePanelConfig;
 
@@ -19,17 +19,17 @@ import java.util.*;
 import java.util.List;
 
 /**
- * Renders a {@link Quizable} as a card by reflecting over its fields.
+ * Renders a {@link Viewable} as a card by reflecting over its fields.
  *
  * <h3>Field annotations (rendering hints)</h3>
  * <ul>
  *   <li><b>(none)</b> — scalar leaves (String/number/enum) fold into a
  *       shared, drag-selectable {@link QuizableTextBlock}. A nested
- *       {@link Quizable} value — whether a single field or a member of a
+ *       {@link Viewable} value — whether a single field or a member of a
  *       collection/map, at any depth — renders as a <i>collapsed
  *       reference chip</i>.</li>
  *   <li>{@link QuizableInline @QuizableInline} — force the
- *       nested Quizable(s) to render fully expanded inline (recursively). Use
+ *       nested Viewable(s) to render fully expanded inline (recursively). Use
  *       only on small, bounded structures (e.g. a log tree); never on
  *       broad/cyclic graphs.</li>
  *   <li>{@link QuizableReference @QuizableReference} — explicit chip;
@@ -71,7 +71,7 @@ public class QuizablePanel extends JPanel {
     // header to expand. Toggleable per collection.
     private static final int COLLECTION_COLLAPSE_THRESHOLD = 0;
 
-    private final Quizable quizable;
+    private final Viewable quizable;
     private final QuizablePanelConfig config;
     private final boolean fill;
 
@@ -174,7 +174,7 @@ public class QuizablePanel extends JPanel {
         return Collections.newSetFromMap(new IdentityHashMap<>());
     }
 
-    public QuizablePanel(Quizable quizable,
+    public QuizablePanel(Viewable quizable,
                          QuizablePanelConfig config,
                          boolean fill) {
         this(identitySetOf(), identitySetOf(), new QuizableRenderContext(),
@@ -183,7 +183,7 @@ public class QuizablePanel extends JPanel {
 
     // Root render whose own title is suppressed -- e.g. an "Open in window"
     // frame already shows the name in its title bar.
-    public QuizablePanel(Quizable quizable,
+    public QuizablePanel(Viewable quizable,
                          QuizablePanelConfig config,
                          boolean fill,
                          boolean suppressTitle) {
@@ -191,15 +191,15 @@ public class QuizablePanel extends JPanel {
                 true, quizable, config, fill, new ArrayList<>(), null, null, suppressTitle);
     }
 
-    public QuizablePanel(Quizable quizable,
+    public QuizablePanel(Viewable quizable,
                          QuizablePanelConfig config,
-                         Collection<? extends Quizable> topLevel,
+                         Collection<? extends Viewable> topLevel,
                          boolean fill) {
         this(identitySetOf(), identitySetOf(), new QuizableRenderContext(topLevel),
                 true, quizable, config, fill, new ArrayList<>(), null, null);
     }
 
-    public QuizablePanel(Quizable quizable,
+    public QuizablePanel(Viewable quizable,
                          QuizablePanelConfig config,
                          QuizableRenderContext renderContext,
                          boolean fill) {
@@ -212,7 +212,7 @@ public class QuizablePanel extends JPanel {
                          Set<Object> ancestors,
                          QuizableRenderContext renderContext,
                          boolean rootRender,
-                         Quizable quizable,
+                         Viewable quizable,
                          QuizablePanelConfig config,
                          boolean fill,
                          List<String> path) {
@@ -220,7 +220,7 @@ public class QuizablePanel extends JPanel {
                 quizable, config, fill, path, null, null);
     }
 
-    public QuizablePanel(Quizable quizable,
+    public QuizablePanel(Viewable quizable,
                          QuizablePanelConfig config,
                          boolean fill,
                          JComponent compiledView) {
@@ -258,11 +258,11 @@ public class QuizablePanel extends JPanel {
                          Set<Object> ancestors,
                          QuizableRenderContext renderContext,
                          boolean rootRender,
-                         Quizable quizable,
+                         Viewable quizable,
                          QuizablePanelConfig config,
                          boolean fill,
                          List<String> path,
-                         List<Quizable> objectPath,
+                         List<Viewable> objectPath,
                          JComponent compiledView) {
         this(visited, ancestors, renderContext, rootRender, quizable, config,
                 fill, path, objectPath, compiledView, false);
@@ -272,18 +272,18 @@ public class QuizablePanel extends JPanel {
                          Set<Object> ancestors,
                          QuizableRenderContext renderContext,
                          boolean rootRender,
-                         Quizable quizable,
+                         Viewable quizable,
                          QuizablePanelConfig config,
                          boolean fill,
                          List<String> path,
-                         List<Quizable> objectPath,
+                         List<Viewable> objectPath,
                          JComponent compiledView,
                          boolean suppressTitle) {
         this.suppressTitle = suppressTitle;
         RenderStats.panel(quizable);
         // addMouseListener(new DeepComponentInspector());
 
-        List<Quizable> objectPath1 = objectPath == null
+        List<Viewable> objectPath1 = objectPath == null
                 ? new ArrayList<>()
                 : new ArrayList<>(objectPath);
 
@@ -500,11 +500,11 @@ public class QuizablePanel extends JPanel {
         return header;
     }
 
-    private JComponent createTitleHeader(Quizable q) {
+    private JComponent createTitleHeader(Viewable q) {
         return createTitleHeader(q, false);
     }
 
-    private JComponent createTitleHeader(Quizable q, boolean focusTopLevel) {
+    private JComponent createTitleHeader(Viewable q, boolean focusTopLevel) {
         String title = safeName(q);
 
         if (title.isEmpty()) {
@@ -557,7 +557,7 @@ public class QuizablePanel extends JPanel {
         return header;
     }
 
-    private void addCompactReference(Quizable q, boolean focusTopLevel) {
+    private void addCompactReference(Viewable q, boolean focusTopLevel) {
         QuizablePanelConfig openCfg = configForNested(q);
 
         addSingle(
@@ -574,7 +574,7 @@ public class QuizablePanel extends JPanel {
         setMinimumSize(new Dimension(100, 42));
     }
 
-    private String objectPathTitle(Quizable target) {
+    private String objectPathTitle(Viewable target) {
         List<String> names = new ArrayList<>();
 
         if (quizable != null
@@ -709,7 +709,7 @@ public class QuizablePanel extends JPanel {
         // dynamic field while becoming a collapsible, toggleable chip (#87). A
         // collection of references keeps the collection renderer (whose items are
         // already collapsible chips).
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             if (!textRows.isEmpty()) {
                 row = addTextBlock(textRows, row);
                 textRows.clear();
@@ -812,9 +812,9 @@ public class QuizablePanel extends JPanel {
             return row;
         }
 
-        // A bare (non-annotated) single Quizable is a collapsible chip too,
+        // A bare (non-annotated) single Viewable is a collapsible chip too,
         // matching collection members -- see the class doc.
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             JComponent comp = collapsibleReference(fieldName, fieldPath, q);
 
             if (comp != null) {
@@ -928,7 +928,7 @@ public class QuizablePanel extends JPanel {
             List<String> fieldPath,
             Object value
                                                     ) {
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             return collapsibleReference(fieldName, fieldPath, q);
         }
 
@@ -942,13 +942,13 @@ public class QuizablePanel extends JPanel {
 
         if (value instanceof Collection<?> collection) {
             for (Object item : collection) {
-                if (item instanceof Quizable q) {
+                if (item instanceof Viewable q) {
                     addReferenceToPanel(panel, "", q, fieldPath, row++);
                 }
             }
         } else if (value instanceof Map<?, ?> map) {
             for (Object item : map.values()) {
-                if (item instanceof Quizable q) {
+                if (item instanceof Viewable q) {
                     addReferenceToPanel(panel, "", q, fieldPath, row++);
                 }
             }
@@ -957,7 +957,7 @@ public class QuizablePanel extends JPanel {
         return row == 0 ? null : panel;
     }
 
-    // Opposite of createReferenceFieldComponent: each nested Quizable is
+    // Opposite of createReferenceFieldComponent: each nested Viewable is
     // expanded fully in place rather than shown as a click-to-open chip.
     // Only reached for @QuizableInline fields, so the broad/cyclic graphs
     // that rely on the reference default are never expanded here.
@@ -966,7 +966,7 @@ public class QuizablePanel extends JPanel {
             List<String> fieldPath,
             Object value) {
 
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             return inlineQuizable(q, fieldPath);
         }
 
@@ -984,7 +984,7 @@ public class QuizablePanel extends JPanel {
         int row = 0;
 
         for (Object item : items) {
-            if (!(item instanceof Quizable q)) {
+            if (!(item instanceof Viewable q)) {
                 continue;
             }
 
@@ -992,7 +992,7 @@ public class QuizablePanel extends JPanel {
             // chip (▶/▼), so the titled-border list (e.g. a query log's `steps`) is a
             // scannable set of expandable items rather than one flat wall of every
             // step's content. Expand state is keyed by the target identity, so each
-            // chip toggles independently. (A single inline Quizable — handled above —
+            // chip toggles independently. (A single inline Viewable — handled above —
             // still expands in place.)
             JComponent nested = collapsibleReference("", fieldPath, q);
 
@@ -1011,13 +1011,13 @@ public class QuizablePanel extends JPanel {
         return row == 0 ? null : panel;
     }
 
-    private JComponent inlineQuizable(Quizable q, List<String> fieldPath) {
+    private JComponent inlineQuizable(Viewable q, List<String> fieldPath) {
         return inlineQuizable(q, fieldPath, false);
     }
 
     // suppressTitle: the name is already shown above (the chip that expanded
     // into this body, or a same-named wrapper), so don't repeat it as a title.
-    private JComponent inlineQuizable(Quizable q, List<String> fieldPath, boolean suppressTitle) {
+    private JComponent inlineQuizable(Viewable q, List<String> fieldPath, boolean suppressTitle) {
         QuizablePanel nested =
                 new QuizablePanel(
                         copyVisited(),
@@ -1038,7 +1038,7 @@ public class QuizablePanel extends JPanel {
     private void addReferenceToPanel(
             JPanel panel,
             String fieldName,
-            Quizable q,
+            Viewable q,
             List<String> fieldPath,
             int row
     ) {
@@ -1051,7 +1051,7 @@ public class QuizablePanel extends JPanel {
                         new Insets(2, 6, 2, 6)));
     }
 
-    // A Quizable reference renders as a collapsed chip by default; clicking
+    // A Viewable reference renders as a collapsed chip by default; clicking
     // it (see QuizableReferenceRow) flips renderContext expand state and
     // rebuilds the card, so here it renders the chip plus the inline panel.
     // Children of the inline panel are themselves collapsed chips, so only
@@ -1059,7 +1059,7 @@ public class QuizablePanel extends JPanel {
     private JComponent collapsibleReference(
             String fieldName,
             List<String> fieldPath,
-            Quizable target) {
+            Viewable target) {
         return collapsibleReference(fieldName, fieldPath, target, false);
     }
 
@@ -1070,7 +1070,7 @@ public class QuizablePanel extends JPanel {
     private JComponent collapsibleReference(
             String fieldName,
             List<String> fieldPath,
-            Quizable target,
+            Viewable target,
             boolean defaultExpanded) {
 
         // A reference to something that is itself a top-level card in this view
@@ -1175,7 +1175,7 @@ public class QuizablePanel extends JPanel {
             return false;
         }
 
-        if (value instanceof Quizable) {
+        if (value instanceof Viewable) {
             return false;
         }
 
@@ -1185,7 +1185,7 @@ public class QuizablePanel extends JPanel {
 
         if (value instanceof Map<?, ?> map) {
             for (Object v : map.values()) {
-                if (v instanceof Quizable || v instanceof ImagePane || v instanceof MediaValue
+                if (v instanceof Viewable || v instanceof ImagePane || v instanceof MediaValue
                         || v instanceof Collection<?> || v instanceof Map<?, ?>) {
                     return false;
                 }
@@ -1195,7 +1195,7 @@ public class QuizablePanel extends JPanel {
 
         if (value instanceof Collection<?> collection) {
             for (Object item : collection) {
-                if (item instanceof Quizable || item instanceof ImagePane || item instanceof MediaValue
+                if (item instanceof Viewable || item instanceof ImagePane || item instanceof MediaValue
                         || item instanceof Collection<?> || item instanceof Map<?, ?>) {
                     return false;
                 }
@@ -1231,13 +1231,13 @@ public class QuizablePanel extends JPanel {
     }
 
     private QuizablePanelConfig defaultConfigForValue(Object value) {
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             return configForNested(q);
         }
 
         if (value instanceof Collection<?> col) {
             for (Object item : col) {
-                if (item instanceof Quizable q) {
+                if (item instanceof Viewable q) {
                     return configForNested(q);
                 }
             }
@@ -1245,7 +1245,7 @@ public class QuizablePanel extends JPanel {
 
         if (value instanceof Map<?, ?> map) {
             for (Object v : map.values()) {
-                if (v instanceof Quizable q) {
+                if (v instanceof Viewable q) {
                     return configForNested(q);
                 }
             }
@@ -1256,7 +1256,7 @@ public class QuizablePanel extends JPanel {
                 .setThumb(config.isThumb());
     }
 
-    private QuizablePanelConfig configForNested(Quizable q) {
+    private QuizablePanelConfig configForNested(Viewable q) {
         QuizablePanelConfig fromContext =
                 renderContext.configFor(q.getClass());
 
@@ -1319,7 +1319,7 @@ public class QuizablePanel extends JPanel {
         }
     }
 
-    private void addFocusTopLevelListener(Component c, Quizable q) {
+    private void addFocusTopLevelListener(Component c, Viewable q) {
         c.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -1356,7 +1356,7 @@ public class QuizablePanel extends JPanel {
     }
 
 
-    private void addOpenListener(Component c, Quizable q) {
+    private void addOpenListener(Component c, Viewable q) {
         //log.debug("ADD open listener to " + q.getName());
         c.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -1372,14 +1372,14 @@ public class QuizablePanel extends JPanel {
         });
     }
 
-    private void openInFrame(Quizable q) {
+    private void openInFrame(Viewable q) {
         new QuizableFrame(q,
                 QuizablePanelConfig.allWithMinorFields(q.getClass())
                         .setAddListener(config.isAddListener())
                         .setThumb(config.isThumb()));
     }
 
-    private String safeName(Quizable q) {
+    private String safeName(Viewable q) {
         String n = q == null ? null : q.getName();
         return n == null ? "" : n;
     }
@@ -1446,7 +1446,7 @@ public class QuizablePanel extends JPanel {
             if (value == null) {
                 continue;
             }
-            if (value instanceof Quizable child && owner.equals(safeName(child))) {
+            if (value instanceof Viewable child && owner.equals(safeName(child))) {
                 sameNamedChild = true;
             } else {
                 otherValuedFields++;
@@ -1460,7 +1460,7 @@ public class QuizablePanel extends JPanel {
         return sameNamedChild && otherValuedFields == 0;
     }
 
-    public Quizable getQuizable() {
+    public Viewable getQuizable() {
         return quizable;
     }
 
@@ -1483,11 +1483,11 @@ public class QuizablePanel extends JPanel {
             return false;
         }
 
-        // Force-expand a nested Quizable rendered as a reference CHIP (e.g. a query
+        // Force-expand a nested Viewable rendered as a reference CHIP (e.g. a query
         // log's `steps` item) so a match deeper inside it renders + highlights.
         // idx>0 skips the root card itself; idx<size means the hit is INSIDE it.
         boolean changed = false;
-        if (idx > 0 && idx < path.size() && obj instanceof Quizable q
+        if (idx > 0 && idx < path.size() && obj instanceof Viewable q
                 && renderContext != null && !renderContext.isTopLevel(q)
                 && renderContext.setExpanded(q, true)) {
             changed = true;
@@ -1514,7 +1514,7 @@ public class QuizablePanel extends JPanel {
         }
 
         String part = path.get(idx);
-        // "name" is a synthetic leaf (Quizable.getName()), not a real field.
+        // "name" is a synthetic leaf (Viewable.getName()), not a real field.
         if ("name".equals(part)) {
             return changed;
         }

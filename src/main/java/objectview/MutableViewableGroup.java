@@ -1,6 +1,7 @@
 package objectview;
 
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * The MUTATE contract of a {@link ViewableGroup}, self-typed in {@code G} so a
@@ -34,5 +35,19 @@ public interface MutableViewableGroup<
 
     G role(Role role);
 
-    G keyRef(T keyRef);
+    G keyRef(Viewable keyRef);
+
+    // Covariant reads: a builder working with the concrete G sees G-typed children /
+    // parent (the read interface only promises ViewableGroup<T>).
+    @Override
+    G getChild(String name);
+
+    @Override
+    Collection<G> getChildren();
+
+    @Override
+    Map<String, G> getChildrenMap();
+
+    @Override
+    G getParent();
 }

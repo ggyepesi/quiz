@@ -31,7 +31,7 @@ class FacetGrouperNestedTest {
         Facet byYear = Facet.derived("by year",
                 q -> List.of(String.valueOf(((WikidataDynamicObject) q).get("year"))));
 
-        QuizableGroup root = FacetGrouper.groupNested(
+        QuizableGroup root = FacetGrouper.groupNested(QuizableGroup::new, 
                 "All Nomination", all, List.of(byCategory, byYear));
 
         // Universe holds everything.

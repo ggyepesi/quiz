@@ -101,12 +101,12 @@ public class QuizablePanelSearchAndSort {
      *  (not live components, of which only the visible ones exist) and return the
      *  matching quizables per field title, in field-then-data order. The caller
      *  navigates these hits one at a time, building each card on demand. */
-    public Map<String, List<quiz.Quizable>> searchQuizables(
-            List<quiz.Quizable> quizables,
+    public Map<String, List<objectview.Viewable>> searchQuizables(
+            List<objectview.Viewable> quizables,
             List<String> queryTokens,
             QuizablePanelConfig searchConfig) {
 
-        Map<String, List<quiz.Quizable>> out = new LinkedHashMap<>();
+        Map<String, List<objectview.Viewable>> out = new LinkedHashMap<>();
 
         if (quizables == null || quizables.isEmpty() || searchConfig == null
                 || queryTokens == null || queryTokens.isEmpty()) {
@@ -150,9 +150,9 @@ public class QuizablePanelSearchAndSort {
         }
 
         for (QuizableFieldPaths.FieldPath fp : paths) {
-            List<quiz.Quizable> hits = null;
+            List<objectview.Viewable> hits = null;
 
-            for (quiz.Quizable q : quizables) {
+            for (objectview.Viewable q : quizables) {
                 Object value = extractValue(q, fp.path());
 
                 if (containsAllTokens(normalize(flattenForSearch(value)), queryTokens)) {
@@ -221,17 +221,17 @@ public class QuizablePanelSearchAndSort {
     /** Data-centric sort: order the quizables themselves by the sort paths — used
      *  by the virtualized view, which sorts data (not live components) then
      *  re-virtualizes. Reuses the same key logic, read straight from the quizable. */
-    public List<quiz.Quizable> sortQuizables(
-            List<quiz.Quizable> quizables,
+    public List<objectview.Viewable> sortQuizables(
+            List<objectview.Viewable> quizables,
             List<QuizableFieldPaths.FieldPath> sortPaths) {
 
-        List<quiz.Quizable> out = new ArrayList<>(quizables);
+        List<objectview.Viewable> out = new ArrayList<>(quizables);
         out.sort(Comparator.comparing(q -> buildSortKeyQ(q, sortPaths)));
         return out;
     }
 
     private String buildSortKeyQ(
-            quiz.Quizable quizable,
+            objectview.Viewable quizable,
             List<QuizableFieldPaths.FieldPath> paths) {
 
         StringBuilder sb = new StringBuilder();
@@ -302,7 +302,7 @@ public class QuizablePanelSearchAndSort {
         String part =
                 path.get(idx);
 
-        if ("name".equals(part) && obj instanceof Quizable q) {
+        if ("name".equals(part) && obj instanceof Viewable q) {
             return q.getName();
         }
 
@@ -310,7 +310,7 @@ public class QuizablePanelSearchAndSort {
         // (e.g. `won`) or a declared Java field, behind one interface, no `instanceof
         // DynamicFields` fork. has() (vs a present-null value) mirrors the old
         // containsKey guard so an absent field still returns null.
-        if (obj instanceof Quizable q) {
+        if (obj instanceof Viewable q) {
             objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
             if (fs.has(part)) {
                 return extractRecursive(fs.read(part), path, idx + 1);
@@ -347,7 +347,7 @@ public class QuizablePanelSearchAndSort {
             return "";
         }
 
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             return q.getName();
         }
 
@@ -442,7 +442,7 @@ public class QuizablePanelSearchAndSort {
             return "";
         }
 
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             return normalize(q.getName());
         }
 
@@ -471,7 +471,7 @@ public class QuizablePanelSearchAndSort {
         if (o == null) {
             return "";
         }
-        return o instanceof Quizable q
+        return o instanceof Viewable q
                 ? normalize(q.getName())
                 : normalize(String.valueOf(o));
     }

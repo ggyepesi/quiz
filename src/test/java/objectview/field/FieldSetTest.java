@@ -1,7 +1,7 @@
 package objectview.field;
 
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.QuizableAdapter;
 import quiz.transform.app.ProductClass;
 import quiz.transform.app.ProductField;
@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The seam's promise: a reflected {@link Quizable} and a {@link WikidataDynamicObject}
+ * The seam's promise: a reflected {@link Viewable} and a {@link WikidataDynamicObject}
  * expose the SAME field metadata + values through {@link FieldSet}, so machinery can
  * read one interface instead of branching on {@code instanceof DynamicFields}.
  */
@@ -29,8 +29,8 @@ class FieldSetTest {
         String title = "Casino";
         int year = 1995;
         boolean won = true;
-        Quizable director;                       // reference (null value, typed by field)
-        List<Quizable> cast = new ArrayList<>(); // collection
+        Viewable director;                       // reference (null value, typed by field)
+        List<Viewable> cast = new ArrayList<>(); // collection
 
         @Override public String getIdentifier() { return title; }
         @Override public String getDisplayName() { return title; }

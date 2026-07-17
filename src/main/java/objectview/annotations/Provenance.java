@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a {@code Quizable}-valued field as <b>provenance</b> (a
+ * Marks a {@code Viewable}-valued field as <b>provenance</b> (a
  * {@link quiz.source.Source}): where the owner's data came from, not a
  * first-class entity of the domain.
  *

@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * Rendering hint for QuizablePanel.
  *
- * Fields annotated with @QuizableReference contain real Quizable relations,
+ * Fields annotated with @QuizableReference contain real Viewable relations,
  * but should be rendered compactly as clickable references instead of fully
  * recursively expanded inline.
  *

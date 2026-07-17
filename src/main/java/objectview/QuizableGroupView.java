@@ -1,6 +1,6 @@
 package objectview;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.QuizableGroup;
 
 import javax.swing.*;
@@ -127,7 +127,7 @@ public class QuizableGroupView extends JPanel {
         }
 
         QuizablePanelView view = new QuizablePanelView();
-        for (Quizable q : group.getMembers()) {
+        for (Viewable q : group.getMembers()) {
             view.addQuizable(q);
         }
 

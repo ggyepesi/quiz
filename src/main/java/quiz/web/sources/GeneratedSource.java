@@ -132,8 +132,8 @@ public class GeneratedSource implements QuizableSource {
         // auto-derived facets are independent browse dimensions, so keep them flat.
         List<Facet> declared = declaredFacets();
         return declared.isEmpty()
-                ? FacetGrouper.group("All " + type, all, autoFacets(all))
-                : FacetGrouper.groupNested("All " + type, all, declared);
+                ? FacetGrouper.group(QuizableGroup::new, "All " + type, all, autoFacets(all))
+                : FacetGrouper.groupNested(QuizableGroup::new, "All " + type, all, declared);
     }
 
     /** The class's declared {@link GeneratedFacet}s (translated to runtime facets),

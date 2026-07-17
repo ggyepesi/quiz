@@ -77,8 +77,8 @@ public final class DomainModelSource implements QuizableSource {
             return null;
         }
         return mode == GroupMode.FLAT
-                ? FacetGrouper.group(rootName, load(), facets)
-                : FacetGrouper.groupNested(rootName, load(), facets);
+                ? FacetGrouper.group(QuizableGroup::new, rootName, load(), facets)
+                : FacetGrouper.groupNested(QuizableGroup::new, rootName, load(), facets);
     }
 
     private synchronized DomainModel domain() throws Exception {

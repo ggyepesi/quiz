@@ -1,6 +1,6 @@
 package objectview.field;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.Collection;
 import java.util.Date;
@@ -38,7 +38,7 @@ public enum FieldKind {
         if (v instanceof Collection) {
             return COLLECTION;
         }
-        if (v instanceof Quizable) {
+        if (v instanceof Viewable) {
             return REFERENCE;
         }
         return TEXT;
@@ -70,7 +70,7 @@ public enum FieldKind {
         if (Collection.class.isAssignableFrom(c)) {
             return COLLECTION;
         }
-        if (Quizable.class.isAssignableFrom(c)) {
+        if (Viewable.class.isAssignableFrom(c)) {
             return REFERENCE;
         }
         if (CharSequence.class.isAssignableFrom(c)) {

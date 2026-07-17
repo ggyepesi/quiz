@@ -32,7 +32,7 @@ public abstract class DefaultViewableGroup<
     private Role role = Role.UNIVERSE;
 
     @NotQuizableField
-    private T keyRef;
+    private Viewable keyRef;
 
     // The tree back-ref — structure, not content (and cyclic); never a card row.
     @NotQuizableField
@@ -86,12 +86,12 @@ public abstract class DefaultViewableGroup<
     }
 
     @Override
-    public T getKeyRef() {
+    public Viewable getKeyRef() {
         return keyRef;
     }
 
     @Override
-    public G keyRef(T keyRef) {
+    public G keyRef(Viewable keyRef) {
         this.keyRef = keyRef;
         return self();
     }

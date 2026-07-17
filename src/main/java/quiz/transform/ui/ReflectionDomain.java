@@ -85,7 +85,11 @@ public final class ReflectionDomain implements DomainModel {
     /** Build a domain from a {@link QuizableViews} builder (e.g. {@code new SportTeams()}). */
     public static ReflectionDomain of(QuizableViews views) throws Exception {
         views.buildViews();
-        return new ReflectionDomain(views.getQuizables().values());
+        // getQuizables() is typed Viewable (objectview SPI); the elements are Quizables.
+        @SuppressWarnings("unchecked")
+        Collection<? extends Quizable> roots =
+                (Collection<? extends Quizable>) (Collection<?>) views.getQuizables().values();
+        return new ReflectionDomain(roots);
     }
 
     @SuppressWarnings("unchecked")

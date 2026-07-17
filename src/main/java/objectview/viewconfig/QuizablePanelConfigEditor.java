@@ -1,7 +1,7 @@
 package objectview.viewconfig;
 
 import objectview.field.DynamicFields;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.QuizableAdapter;
 import quiz.QuizableFieldPaths;
 
@@ -28,7 +28,7 @@ public class QuizablePanelConfigEditor extends JPanel {
     private final boolean minorOnly;
     // A sample instance for a DYNAMIC (map-held) type — enumerate its fields from
     // the property map rather than declared Java fields. Null = reflection type.
-    private final Quizable sample;
+    private final Viewable sample;
 
     private final JCheckBox allMinorFieldsBox = new JCheckBox("All minor fields");
     private Runnable changeListener;
@@ -53,12 +53,12 @@ public class QuizablePanelConfigEditor extends JPanel {
     }
 
     /** Dynamic: enumerate {@code sample}'s map-held fields (a WDO/DynamicQuizable). */
-    public QuizablePanelConfigEditor(QuizablePanelConfig config, Quizable sample) {
+    public QuizablePanelConfigEditor(QuizablePanelConfig config, Viewable sample) {
         this(config, false, false, sample);
     }
 
     public QuizablePanelConfigEditor(QuizablePanelConfig config,
-                                     boolean nestedDefaultNameOnly, Quizable sample) {
+                                     boolean nestedDefaultNameOnly, Viewable sample) {
         this(config, nestedDefaultNameOnly, false, sample);
     }
 
@@ -96,7 +96,7 @@ public class QuizablePanelConfigEditor extends JPanel {
     private QuizablePanelConfigEditor(QuizablePanelConfig config,
                                       boolean nestedDefaultNameOnly,
                                       boolean minorOnly,
-                                      Quizable sample) {
+                                      Viewable sample) {
         this.sourceConfig = config == null
                 ? new QuizablePanelConfig()
                 : config.copy();
@@ -156,7 +156,7 @@ public class QuizablePanelConfigEditor extends JPanel {
             return;
         }
 
-        Class<? extends Quizable> cls = sourceConfig.getCls();
+        Class<? extends Viewable> cls = sourceConfig.getCls();
         if (cls == null) {
             return;
         }
@@ -172,7 +172,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         }
     }
 
-    private void addDynamicFieldRows(Quizable dynamicSample) {
+    private void addDynamicFieldRows(Viewable dynamicSample) {
         DynamicFields dyn = (DynamicFields) dynamicSample;
         // Identity row first: `name` isn't in the property map (it's the display
         // name), but search/sort/view configs must be able to include/exclude it
@@ -194,14 +194,14 @@ public class QuizablePanelConfigEditor extends JPanel {
                 continue;
             }
             Object value = e.getValue();
-            Quizable child = firstQuizable(value);
+            Viewable child = firstQuizable(value);
             // Only offer expand (nested) when the referenced value actually has
             // fields — a bare reference (e.g. a WDO with no dynamic fields) would
             // otherwise open an empty child editor. When the model (type source)
             // is present it decides: a name-only reference gives no nested source,
             // so it stays a reference chip with no dead-end "+fields" expansion.
             boolean modelExpandable = info == null || info.nested() != null;
-            Class<? extends Quizable> nested =
+            Class<? extends Viewable> nested =
                     modelExpandable && child != null && hasFields(child)
                             ? asQuizableClass(child.getClass()) : null;
 
@@ -214,36 +214,36 @@ public class QuizablePanelConfigEditor extends JPanel {
         }
     }
 
-    private static boolean hasFields(Quizable q) {
+    private static boolean hasFields(Viewable q) {
         if (q instanceof DynamicFields d) {
             return !d.dynamicFieldValues().isEmpty();
         }
         return !QuizableAdapter.getAllFields(q.getClass()).isEmpty();
     }
 
-    private static Quizable firstQuizable(Object v) {
-        if (v instanceof Quizable q) {
+    private static Viewable firstQuizable(Object v) {
+        if (v instanceof Viewable q) {
             return q;
         }
         if (v instanceof Collection<?> c) {
             for (Object i : c) {
-                if (i instanceof Quizable q) return q;
+                if (i instanceof Viewable q) return q;
             }
         }
         if (v instanceof Map<?, ?> m) {
             for (Object i : m.values()) {
-                if (i instanceof Quizable q) return q;
+                if (i instanceof Viewable q) return q;
             }
         }
         return null;
     }
 
     @SuppressWarnings("unchecked")
-    private static Class<? extends Quizable> asQuizableClass(Class<?> cls) {
-        return (Class<? extends Quizable>) cls;
+    private static Class<? extends Viewable> asQuizableClass(Class<?> cls) {
+        return (Class<? extends Viewable>) cls;
     }
 
-    private static String dynamicTypeLabel(Object value, Quizable child) {
+    private static String dynamicTypeLabel(Object value, Viewable child) {
         if (child != null) {
             return value instanceof Collection<?>
                     ? "Collection<" + child.typeName() + ">"
@@ -255,7 +255,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         return value == null ? "" : value.getClass().getSimpleName();
     }
 
-    private boolean hasMinorFields(Class<? extends Quizable> cls) {
+    private boolean hasMinorFields(Class<? extends Viewable> cls) {
         for (Field field : QuizableAdapter.getAllFields(cls)) {
             if (!Modifier.isStatic(field.getModifiers())
                     && QuizableAdapter.isMinorField(field)) {
@@ -265,7 +265,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         return false;
     }
 
-    private void addFieldRows(Class<? extends Quizable> cls, boolean minor) {
+    private void addFieldRows(Class<? extends Viewable> cls, boolean minor) {
         for (Field field : QuizableAdapter.getConfigurableFields(cls)) {
             if (Modifier.isStatic(field.getModifiers())) {
                 continue;
@@ -281,7 +281,7 @@ public class QuizablePanelConfigEditor extends JPanel {
 
             String fieldName = field.getName();
             QuizablePanelConfig selectedChild = sourceConfig.getFieldConfig(fieldName);
-            Class<? extends Quizable> nestedClass =
+            Class<? extends Viewable> nestedClass =
                     QuizableFieldPaths.nestedQuizableClass(field);
 
             Row row = Row.field(field, describeFieldType(field), nestedClass);
@@ -541,7 +541,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         tableModel.fireTableDataChanged();
     }
 
-    private QuizablePanelConfig nameOnlyConfig(Class<? extends Quizable> cls) {
+    private QuizablePanelConfig nameOnlyConfig(Class<? extends Viewable> cls) {
         QuizablePanelConfig cfg = QuizablePanelConfig.of(cls);
         cfg.setAllFields(false);
         cfg.setAllMinorFields(false);
@@ -554,12 +554,12 @@ public class QuizablePanelConfigEditor extends JPanel {
     private String describeFieldType(Field field) {
         Class<?> type = field.getType();
 
-        if (Quizable.class.isAssignableFrom(type)) {
+        if (Viewable.class.isAssignableFrom(type)) {
             return type.getSimpleName();
         }
 
         if (java.util.Collection.class.isAssignableFrom(type)) {
-            Class<? extends Quizable> nested =
+            Class<? extends Viewable> nested =
                     QuizableFieldPaths.nestedQuizableClass(field);
 
             return nested != null
@@ -568,7 +568,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         }
 
         if (java.util.Map.class.isAssignableFrom(type)) {
-            Class<? extends Quizable> nested =
+            Class<? extends Viewable> nested =
                     QuizableFieldPaths.nestedQuizableClass(field);
 
             return nested != null
@@ -585,7 +585,7 @@ public class QuizablePanelConfigEditor extends JPanel {
         }
 
         int count = 0;
-        Class<? extends Quizable> cls = sourceConfig.getCls();
+        Class<? extends Viewable> cls = sourceConfig.getCls();
 
         if (cls == null) {
             return 0;
@@ -843,8 +843,8 @@ public class QuizablePanelConfigEditor extends JPanel {
         final Field field;                 // null for a dynamic (map-held) field
         final String fieldName;
         final String typeLabel;
-        final Class<? extends Quizable> nestedClass;
-        final Quizable nestedSample;        // a sample of the referenced value (dynamic)
+        final Class<? extends Viewable> nestedClass;
+        final Viewable nestedSample;        // a sample of the referenced value (dynamic)
 
         boolean use;
         QuizablePanelConfigEditor childEditor;
@@ -852,8 +852,8 @@ public class QuizablePanelConfigEditor extends JPanel {
         String nestedLabel;                 // model class name for the expand caption
 
         private Row(boolean special, boolean minorBlock, Field field, String fieldName,
-                    String typeLabel, Class<? extends Quizable> nestedClass,
-                    Quizable nestedSample) {
+                    String typeLabel, Class<? extends Viewable> nestedClass,
+                    Viewable nestedSample) {
             this.special = special;
             this.minorBlock = minorBlock;
             this.field = field;
@@ -871,12 +871,12 @@ public class QuizablePanelConfigEditor extends JPanel {
             return new Row(true, true, null, "Minor fields", "", null, null);
         }
 
-        static Row field(Field field, String typeLabel, Class<? extends Quizable> nestedClass) {
+        static Row field(Field field, String typeLabel, Class<? extends Viewable> nestedClass) {
             return new Row(false, false, field, field.getName(), typeLabel, nestedClass, null);
         }
 
         static Row dynamic(String name, String typeLabel,
-                           Class<? extends Quizable> nestedClass, Quizable nestedSample) {
+                           Class<? extends Viewable> nestedClass, Viewable nestedSample) {
             return new Row(false, false, null, name, typeLabel, nestedClass, nestedSample);
         }
     }

@@ -1,13 +1,13 @@
 package objectview;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import javax.swing.JComponent;
 import java.util.List;
 
 public interface VirtualizedQuizableContainer {
-    List<Quizable> items();
-    Quizable topVisibleItem();
-    JComponent navigateToTop(Quizable item);
-    void setItems(List<Quizable> orderedItems);
+    List<Viewable> items();
+    Viewable topVisibleItem();
+    JComponent navigateToTop(Viewable item);
+    void setItems(List<Viewable> orderedItems);
 }

@@ -1,6 +1,6 @@
 package objectview.facet;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.QuizableAdapter;
 
 import java.lang.reflect.Field;
@@ -14,7 +14,7 @@ final class FacetKeys {
 
     private FacetKeys() {}
 
-    static List<String> fromField(Quizable q, String fieldPath) {
+    static List<String> fromField(Viewable q, String fieldPath) {
         List<String> out = new ArrayList<>();
         for (Object leaf : resolve(q, fieldPath)) {
             out.addAll(keysOf(leaf));
@@ -22,9 +22,9 @@ final class FacetKeys {
         return out;
     }
 
-    /** The {@link Quizable} value(s) of a field — for reference facets. */
-    static List<Quizable> refsFromField(Quizable q, String fieldPath) {
-        List<Quizable> out = new ArrayList<>();
+    /** The {@link Viewable} value(s) of a field — for reference facets. */
+    static List<Viewable> refsFromField(Viewable q, String fieldPath) {
+        List<Viewable> out = new ArrayList<>();
         for (Object leaf : resolve(q, fieldPath)) {
             out.addAll(refsOf(leaf));
         }
@@ -37,7 +37,7 @@ final class FacetKeys {
      * language's name, and {@code nominee.name} the nominee's name. A single-segment
      * path returns that field's value(s), identical to a direct read.
      */
-    private static List<Object> resolve(Quizable q, String fieldPath) {
+    private static List<Object> resolve(Viewable q, String fieldPath) {
         List<Object> current = new ArrayList<>();
         current.add(q);
         for (String segment : fieldPath.split("\\.")) {
@@ -51,10 +51,10 @@ final class FacetKeys {
     }
 
     private static Object readField(Object obj, String name) {
-        // A Quizable reads through the ONE FieldSet bridge (#87) — a dynamic property
+        // A Viewable reads through the ONE FieldSet bridge (#87) — a dynamic property
         // map or declared Java fields, no `instanceof DynamicFields` fork. Facet paths
         // are real field names, so a plain read (null when absent) is all we need.
-        if (obj instanceof Quizable q) {
+        if (obj instanceof Viewable q) {
             return objectview.field.FieldSet.of(q).read(name);
         }
         Field f = QuizableAdapter.getField(obj.getClass(), name);
@@ -86,14 +86,14 @@ final class FacetKeys {
         }
     }
 
-    private static List<Quizable> refsOf(Object value) {
+    private static List<Viewable> refsOf(Object value) {
         if (value == null) {
             return List.of();
         }
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             return List.of(q);
         }
-        List<Quizable> out = new ArrayList<>();
+        List<Viewable> out = new ArrayList<>();
         if (value instanceof Collection<?> c) {
             for (Object item : c) {
                 out.addAll(refsOf(item));
@@ -110,7 +110,7 @@ final class FacetKeys {
         if (value == null) {
             return List.of();
         }
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             return single(q.getDisplayName());
         }
         if (value instanceof Collection<?> c) {

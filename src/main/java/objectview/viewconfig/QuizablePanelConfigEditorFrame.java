@@ -1,6 +1,6 @@
 package objectview.viewconfig;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.QuizablePanel;
 
 import javax.swing.*;
@@ -8,14 +8,14 @@ import java.awt.*;
 
 public class QuizablePanelConfigEditorFrame extends JFrame {
 
-    private final Quizable sample;
+    private final Viewable sample;
 
     private final JPanel editorHolder = new JPanel(new BorderLayout());
     private final JPanel previewPanel = new JPanel(new BorderLayout());
 
     private QuizablePanelConfigEditor editor;
 
-    public QuizablePanelConfigEditorFrame(Quizable sample,
+    public QuizablePanelConfigEditorFrame(Viewable sample,
                                           QuizablePanelConfig initialConfig) {
         super("View Config Editor - " + sample.getClass().getSimpleName());
 

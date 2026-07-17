@@ -65,7 +65,7 @@ class TransformFilterGroupTest {
         assertEquals(3, winners.size(), "only the 3 won=true nominations survive the filter");
 
         // GROUP per category, then per year (nested drill-down).
-        QuizableGroup root = FacetGrouper.groupNested("Winners", winners,
+        QuizableGroup root = FacetGrouper.groupNested(QuizableGroup::new, "Winners", winners,
                 List.of(Facet.field("category"), Facet.field("year")));
 
         assertEquals(3, root.getMembers().size(), "all winners at the root");

@@ -1,6 +1,6 @@
 package objectview;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
@@ -11,13 +11,13 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 
 public class QuizableFrame {
-    private static final Map<Quizable, WeakReference<JFrame>> openFrames = new IdentityHashMap<>();
+    private static final Map<Viewable, WeakReference<JFrame>> openFrames = new IdentityHashMap<>();
 
-    public QuizableFrame(Quizable q, QuizablePanelConfig cfg) {
+    public QuizableFrame(Viewable q, QuizablePanelConfig cfg) {
         this(q.getName(), q, cfg);
     }
 
-    public QuizableFrame(String title, Quizable quizable,
+    public QuizableFrame(String title, Viewable quizable,
                          QuizablePanelConfig config) {
         if (quizable == null) {
             return;
@@ -61,7 +61,7 @@ public class QuizableFrame {
         frame.setVisible(true);
     }
 
-    private static JFrame getExistingFrame(Quizable quizable) {
+    private static JFrame getExistingFrame(Viewable quizable) {
         WeakReference<JFrame> ref = openFrames.get(quizable);
 
         if (ref == null) {

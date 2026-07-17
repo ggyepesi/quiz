@@ -31,8 +31,9 @@ public interface ViewableGroup<T extends Viewable> {
     Role getRole();
 
     /** For a reference bucket: the entity this bucket stands for (its members share
-     *  it), so the UI can show that entity's own card. */
-    T getKeyRef();
+     *  it), so the UI can show that entity's own card. Any Viewable, not necessarily
+     *  a member. */
+    Viewable getKeyRef();
 
     ViewableGroup<T> getChild(String name);
 

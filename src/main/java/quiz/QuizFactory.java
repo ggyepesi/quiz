@@ -204,7 +204,12 @@ public class QuizFactory {
         this.qvs = qvs;
         qvs.buildViews();
         rootView = qvs.getGroupView();
-        quizables = qvs.getQuizables();
+        // getQuizables() is typed Viewable (objectview SPI); every element is in fact a
+        // Quizable here, so narrow it for the quiz-side generation code.
+        @SuppressWarnings("unchecked")
+        Map<String, ? extends Quizable> qz =
+                (Map<String, ? extends Quizable>) (Map<String, ?>) qvs.getQuizables();
+        quizables = qz;
 
         //System.out.println("Create QuizableFilterCollectionFrame");
         //new QuizableFilterCollectionFrame(quizables.values(), cls);

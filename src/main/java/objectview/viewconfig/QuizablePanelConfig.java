@@ -1,6 +1,6 @@
 package objectview.viewconfig;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.QuizableAdapter;
 
 import java.lang.reflect.Field;
@@ -12,7 +12,7 @@ public class QuizablePanelConfig {
 
     // Explicitly configured fields. These are shown regardless of minor/non-minor.
     private final Map<String, QuizablePanelConfig> fields = new LinkedHashMap<>();
-    private Class<? extends Quizable> cls;
+    private Class<? extends Viewable> cls;
 
     private transient final Map<Class<?>, List<Field>> visibleFieldsCache =
             new ConcurrentHashMap<>();
@@ -29,18 +29,18 @@ public class QuizablePanelConfig {
     private boolean blurImages = false;
     private AnswerType answerType = AnswerType.AUTO;
 
-    public static QuizablePanelConfig of(Class<? extends Quizable> cls) {
+    public static QuizablePanelConfig of(Class<? extends Viewable> cls) {
         QuizablePanelConfig c = new QuizablePanelConfig();
         c.cls = cls;
         c.allFields = true;
         return c;
     }
 
-    public static QuizablePanelConfig all(Class<? extends Quizable> cls) {
+    public static QuizablePanelConfig all(Class<? extends Viewable> cls) {
         return of(cls).initializeAllFields(true);
     }
 
-    public static QuizablePanelConfig allWithMinorFields(Class<? extends Quizable> cls) {
+    public static QuizablePanelConfig allWithMinorFields(Class<? extends Viewable> cls) {
         return of(cls).setAllMinorFields(true).initializeAllFields(true);
     }
 
@@ -108,8 +108,8 @@ public class QuizablePanelConfig {
     }
 
     private QuizablePanelConfig defaultChildConfigForField(Field f) {
-        if (Quizable.class.isAssignableFrom(f.getType())) {
-            @SuppressWarnings("unchecked") Class<? extends Quizable> sub = (Class<? extends Quizable>) f.getType();
+        if (Viewable.class.isAssignableFrom(f.getType())) {
+            @SuppressWarnings("unchecked") Class<? extends Viewable> sub = (Class<? extends Viewable>) f.getType();
 
             return QuizablePanelConfig.of(sub);
         }
@@ -219,11 +219,11 @@ public class QuizablePanelConfig {
         return this;
     }
 
-    public Class<? extends Quizable> getCls() {
+    public Class<? extends Viewable> getCls() {
         return cls;
     }
 
-    public QuizablePanelConfig setCls(Class<? extends Quizable> c) {
+    public QuizablePanelConfig setCls(Class<? extends Viewable> c) {
         cls = c;
         return this;
     }

@@ -1,7 +1,7 @@
 package objectview;
 
 import quiz.ListField;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.QuizableAdapter;
 import objectview.viewconfig.QuizablePanelConfig;
 
@@ -17,11 +17,11 @@ import java.util.Map;
 
 public class QuizableListView extends JPanel {
 
-    private final Map<String, ? extends Quizable> quizables;
+    private final Map<String, ? extends Viewable> quizables;
     private final List<String> keys = new ArrayList<>();
     private final JList<String> list;
 
-    public QuizableListView(Map<String, ? extends Quizable> quizables,
+    public QuizableListView(Map<String, ? extends Viewable> quizables,
                             Iterable<String> memberKeys) {
         this.quizables = quizables;
 
@@ -56,7 +56,7 @@ public class QuizableListView extends JPanel {
             return;
         }
 
-        Quizable q = quizables.get(key);
+        Viewable q = quizables.get(key);
         if (q == null) {
             return;
         }
@@ -90,7 +90,7 @@ public class QuizableListView extends JPanel {
                                                       int index,
                                                       boolean isSelected,
                                                       boolean cellHasFocus) {
-            Quizable q = quizables.get(key);
+            Viewable q = quizables.get(key);
 
             title.setText(q == null ? key : safeName(q));
             summary.setText(q == null ? "" : buildSummary(q));
@@ -109,7 +109,7 @@ public class QuizableListView extends JPanel {
         }
     }
 
-    private String buildSummary(Quizable q) {
+    private String buildSummary(Viewable q) {
         try {
             List<Field> fields = getListFields(q.getClass());
             List<String> parts = new ArrayList<>();
@@ -120,7 +120,7 @@ public class QuizableListView extends JPanel {
                     continue;
                 }
 
-                String text = value instanceof Quizable qq
+                String text = value instanceof Viewable qq
                         ? qq.getName()
                         : String.valueOf(value);
 
@@ -160,7 +160,7 @@ public class QuizableListView extends JPanel {
         return fields;
     }
 
-    private String safeName(Quizable q) {
+    private String safeName(Viewable q) {
         String name = q.getName();
         return name == null || name.isBlank()
                 ? String.valueOf(q)

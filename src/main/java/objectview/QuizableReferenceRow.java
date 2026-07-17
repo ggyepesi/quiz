@@ -3,7 +3,7 @@ package objectview;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A reference to another {@link Quizable}, rendered on top of {@link QuizableTextRow}
+ * A reference to another {@link Viewable}, rendered on top of {@link QuizableTextRow}
  * (inheriting selection, search highlight, wrapping, keyboard + popup copy) with a
  * leading expand/collapse triangle. Left-click toggles in-place expansion — or jumps
  * to the target's card when it's itself a top-level card ({@code navigate}); the copy
@@ -33,7 +33,7 @@ public class QuizableReferenceRow extends QuizableTextRow {
     private static final Color VALUE_COLOR = new Color(0, 80, 180);
     private static final Color TRI_COLOR = new Color(120, 120, 120);
 
-    private final Quizable target;
+    private final Viewable target;
     private final QuizableRenderContext renderContext;
     private final QuizablePanelConfig openConfig;
     private final String openTitle;
@@ -45,7 +45,7 @@ public class QuizableReferenceRow extends QuizableTextRow {
 
     public QuizableReferenceRow(String fieldName,
                                 List<String> fieldPath,
-                                Quizable target,
+                                Viewable target,
                                 QuizableRenderContext renderContext,
                                 QuizablePanelConfig openConfig,
                                 String openTitle,
@@ -56,7 +56,7 @@ public class QuizableReferenceRow extends QuizableTextRow {
 
     public QuizableReferenceRow(String fieldName,
                                 List<String> fieldPath,
-                                Quizable target,
+                                Viewable target,
                                 QuizableRenderContext renderContext,
                                 QuizablePanelConfig openConfig,
                                 String openTitle,
@@ -198,7 +198,7 @@ public class QuizableReferenceRow extends QuizableTextRow {
                         .setThumb(true));
     }
 
-    private static String name(Quizable target) {
+    private static String name(Viewable target) {
         String n = target == null ? null : target.getName();
         return n == null ? "" : n;
     }

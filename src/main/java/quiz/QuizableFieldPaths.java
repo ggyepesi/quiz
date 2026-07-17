@@ -1,5 +1,7 @@
 package quiz;
 
+import objectview.Viewable;
+
 import objectview.field.DynamicFields;
 import objectview.field.FieldRef;
 import objectview.field.FieldSet;
@@ -61,7 +63,7 @@ public final class QuizableFieldPaths {
             return out;
         }
 
-        if (!Quizable.class.isAssignableFrom(config.getCls())) {
+        if (!Viewable.class.isAssignableFrom(config.getCls())) {
             return out;
         }
 
@@ -110,11 +112,11 @@ public final class QuizableFieldPaths {
      * Field paths enumerated from a SAMPLE INSTANCE — so a {@link DynamicFields}
      * object (a snapshot WDO, a DynamicQuizable) whose fields live in a property map
      * (not declared Java fields) still yields its fields, with nested paths followed
-     * through reference values up to {@link #SAMPLE_MAX_DEPTH}. A reflection Quizable
+     * through reference values up to {@link #SAMPLE_MAX_DEPTH}. A reflection Viewable
      * falls back to its declared fields. Branch-cycle-safe. This makes the nested,
      * typed field model work over dynamic domains, not just reflected ones.
      */
-    public static List<FieldPath> collectFromSample(Quizable sample, FieldFilter filter) {
+    public static List<FieldPath> collectFromSample(Viewable sample, FieldFilter filter) {
         List<FieldPath> out = new ArrayList<>();
         if (sample == null) {
             return out;
@@ -127,7 +129,7 @@ public final class QuizableFieldPaths {
         return dedupByPath(out);
     }
 
-    private static void collectSample(Quizable obj, List<String> prefix, String titlePrefix,
+    private static void collectSample(Viewable obj, List<String> prefix, String titlePrefix,
                                       FieldFilter filter, Set<Object> branch, List<FieldPath> out) {
         if (obj == null || !branch.add(obj)) {
             return;
@@ -160,7 +162,7 @@ public final class QuizableFieldPaths {
         path.add(name);
         String title = titlePrefix.isEmpty() ? name : titlePrefix + "." + name;
 
-        Quizable child = firstQuizable(value);
+        Viewable child = firstQuizable(value);
         if (child != null) {
             // A reference: offer the reference ITSELF (for invert / group-by-
             // reference), its display name, and (bounded) its nested fields.
@@ -176,18 +178,18 @@ public final class QuizableFieldPaths {
         }
     }
 
-    private static Quizable firstQuizable(Object v) {
-        if (v instanceof Quizable q) {
+    private static Viewable firstQuizable(Object v) {
+        if (v instanceof Viewable q) {
             return q;
         }
         if (v instanceof Collection<?> c) {
             for (Object i : c) {
-                if (i instanceof Quizable q) return q;
+                if (i instanceof Viewable q) return q;
             }
         }
         if (v instanceof Map<?, ?> m) {
             for (Object i : m.values()) {
-                if (i instanceof Quizable q) return q;
+                if (i instanceof Viewable q) return q;
             }
         }
         return null;
@@ -199,7 +201,7 @@ public final class QuizableFieldPaths {
                                 String titlePrefix,
                                 FieldFilter filter,
                                 List<FieldPath> out) {
-        if (config == null || cls == null || !Quizable.class.isAssignableFrom(cls)) {
+        if (config == null || cls == null || !Viewable.class.isAssignableFrom(cls)) {
             return;
         }
 
@@ -404,12 +406,12 @@ public final class QuizableFieldPaths {
     }
 
     @SuppressWarnings("unchecked")
-    private static Class<? extends Quizable> asQuizableClass(Class<?> cls) {
-        return (Class<? extends Quizable>) cls;
+    private static Class<? extends Viewable> asQuizableClass(Class<?> cls) {
+        return (Class<? extends Viewable>) cls;
     }
 
     @SuppressWarnings("unchecked")
-    public static Class<? extends Quizable> nestedQuizableClass(Field field) {
+    public static Class<? extends Viewable> nestedQuizableClass(Field field) {
         if (field == null) {
             return null;
         }
@@ -420,8 +422,8 @@ public final class QuizableFieldPaths {
             return null;
         }
 
-        if (Quizable.class.isAssignableFrom(type)) {
-            return (Class<? extends Quizable>) type;
+        if (Viewable.class.isAssignableFrom(type)) {
+            return (Class<? extends Viewable>) type;
         }
 
         if (Collection.class.isAssignableFrom(type)) {
@@ -430,8 +432,8 @@ public final class QuizableFieldPaths {
             if (g instanceof ParameterizedType pt) {
                 Type arg = pt.getActualTypeArguments()[0];
 
-                if (arg instanceof Class<?> c && Quizable.class.isAssignableFrom(c)) {
-                    return (Class<? extends Quizable>) c;
+                if (arg instanceof Class<?> c && Viewable.class.isAssignableFrom(c)) {
+                    return (Class<? extends Viewable>) c;
                 }
             }
 
@@ -444,8 +446,8 @@ public final class QuizableFieldPaths {
             if (g instanceof ParameterizedType pt) {
                 Type value = pt.getActualTypeArguments()[1];
 
-                if (value instanceof Class<?> c && Quizable.class.isAssignableFrom(c)) {
-                    return (Class<? extends Quizable>) c;
+                if (value instanceof Class<?> c && Viewable.class.isAssignableFrom(c)) {
+                    return (Class<? extends Viewable>) c;
                 }
             }
 

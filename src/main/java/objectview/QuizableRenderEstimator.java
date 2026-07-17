@@ -3,7 +3,7 @@ package objectview;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import java.lang.reflect.Field;
@@ -44,7 +44,7 @@ public final class QuizableRenderEstimator {
     private QuizableRenderEstimator() {}
 
     public static Estimate estimate(
-            Quizable root,
+            Viewable root,
             QuizablePanelConfig config,
             Mode mode
                                    ) {
@@ -82,7 +82,7 @@ public final class QuizableRenderEstimator {
 
         c.maxDepth = Math.max(c.maxDepth, depth);
 
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             countReach(q, c);
             visitQuizable(q, config, visited, ancestors, depth, mode, c);
             return;
@@ -114,7 +114,7 @@ public final class QuizableRenderEstimator {
     }
 
     private static void visitQuizable(
-            Quizable q,
+            Viewable q,
             QuizablePanelConfig config,
             Set<Object> visited,
             Set<Object> ancestors,
@@ -160,7 +160,7 @@ public final class QuizableRenderEstimator {
         ancestors.remove(q);
     }
 
-    private static void countReach(Quizable q, Counter c) {
+    private static void countReach(Viewable q, Counter c) {
         String key = q.getClass().getSimpleName() + "." + q.getIdentifier();
         c.reachabilityCount.merge(key, 1, Integer::sum);
 

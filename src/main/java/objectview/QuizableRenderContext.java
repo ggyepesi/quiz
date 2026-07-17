@@ -3,7 +3,7 @@ package objectview;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
@@ -55,7 +55,7 @@ public class QuizableRenderContext {
     private final Map<Class<?>, QuizablePanelConfig> classConfigs =
             new HashMap<>();
 
-    // Quizable references the user has opened/closed in place, keyed by identity so
+    // Viewable references the user has opened/closed in place, keyed by identity so
     // the same target stays in sync wherever it appears in the card. Tri-state
     // (mirrors collectionExpanded): absent = use the caller's default, else the
     // explicit user choice — so a reference can render expanded-by-default (e.g. a
@@ -189,7 +189,7 @@ public class QuizableRenderContext {
         this.inPlaceNavigation = inPlaceNavigation;
     }
 
-    public QuizableRenderContext(Collection<? extends Quizable> quizables) {
+    public QuizableRenderContext(Collection<? extends Viewable> quizables) {
         if (quizables != null) {
             topLevel.addAll(quizables);
         }
@@ -201,7 +201,7 @@ public class QuizableRenderContext {
         }
     }
 
-    public void addTopLevels(Collection<? extends Quizable> quizables) {
+    public void addTopLevels(Collection<? extends Viewable> quizables) {
         if (quizables != null) {
             topLevel.addAll(quizables);
         }
@@ -243,7 +243,7 @@ public class QuizableRenderContext {
 
         if (NAV_DEBUG) {
             log.debug("[nav] focusTopLevel object='"
-                    + (object instanceof Quizable q ? q.getDisplayName() : object)
+                    + (object instanceof Viewable q ? q.getDisplayName() : object)
                     + "' fromMap=" + (fromMap != null)
                     + " resolved=" + (component != null)
                     + " parent=" + (component == null || component.getParent() == null
@@ -265,7 +265,7 @@ public class QuizableRenderContext {
         Container parent = component.getParent();
 
         if (parent instanceof VirtualizedCardList vcl
-                && object instanceof Quizable q) {
+                && object instanceof Viewable q) {
             // Variable-height virtualization: the card's absolute offset shifts as
             // scrolling measures its neighbours, so delegate to a stabilizing scroll
             // (a plain setViewPosition lands a few cards off, intermittently).
@@ -326,7 +326,7 @@ public class QuizableRenderContext {
     // one card FRESH at its new size — never grown in place.
     private boolean collapsibleCards = false;
     private final Map<Object, Boolean> cardExpanded = new IdentityHashMap<>();
-    private final java.util.List<java.util.function.Consumer<Quizable>> cardToggleHandlers =
+    private final java.util.List<java.util.function.Consumer<Viewable>> cardToggleHandlers =
             new java.util.ArrayList<>();
 
     public boolean collapsibleCards() {
@@ -368,14 +368,14 @@ public class QuizableRenderContext {
     /** Registers a handler (the view) that rebuilds a single card after its
      *  collapse/expand state changed. Additive so a shared context can drive
      *  several virtualized sections; each rebuilds only the card it owns. */
-    public void addCardToggleHandler(java.util.function.Consumer<Quizable> handler) {
+    public void addCardToggleHandler(java.util.function.Consumer<Viewable> handler) {
         if (handler != null) {
             cardToggleHandlers.add(handler);
         }
     }
 
-    public void notifyCardToggled(Quizable q) {
-        for (java.util.function.Consumer<Quizable> handler : cardToggleHandlers) {
+    public void notifyCardToggled(Viewable q) {
+        for (java.util.function.Consumer<Viewable> handler : cardToggleHandlers) {
             handler.accept(q);
         }
     }

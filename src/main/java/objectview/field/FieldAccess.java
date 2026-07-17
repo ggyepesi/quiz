@@ -76,17 +76,17 @@ public final class FieldAccess {
         if (obj instanceof aux.Addressable a && a.viewNames().contains(name)) {
             return a.view(name);
         }
-        // A Quizable reads through the ONE FieldSet bridge — a dynamic property map OR
+        // A Viewable reads through the ONE FieldSet bridge — a dynamic property map OR
         // declared Java fields behind one interface, no `instanceof DynamicFields`
         // fork (#87). has() distinguishes a present-but-null field (return its value)
         // from an absent one (fall through to identity), preserving the layered
         // map -> reflection -> identity fallback exactly.
-        if (obj instanceof quiz.Quizable q) {
+        if (obj instanceof objectview.Viewable q) {
             FieldSet fs = FieldSet.of(q);
             if (fs.has(name)) {
                 return fs.read(name);
             }
-            // Identity / display come from the Quizable contract, not a raw field: for a
+            // Identity / display come from the Viewable contract, not a raw field: for a
             // dynamic object `name`/`qid` aren't in the property map (they're identity,
             // @NotQuizableField), so getDisplayName()/getIdentifier() are the right source.
             if ("name".equals(name)) {
@@ -97,7 +97,7 @@ public final class FieldAccess {
             }
             return null;
         }
-        // A non-Quizable nested value (a heterogeneous map value, a JDK type, …):
+        // A non-Viewable nested value (a heterogeneous map value, a JDK type, …):
         // reflect. Reading is tolerant — return null rather than crash a caller
         // enumerating/inspecting arbitrary domains.
         Field f = QuizableAdapter.getField(obj.getClass(), name);
@@ -113,14 +113,14 @@ public final class FieldAccess {
     }
 
     private static void writeField(Object obj, String name, Object value) {
-        // A Quizable writes through the ONE FieldSet bridge — a dynamic object stores a
+        // A Viewable writes through the ONE FieldSet bridge — a dynamic object stores a
         // projected view field in its property map (no compiled class needed), a typed
-        // Quizable sets its declared field — with no `instanceof DynamicFields` fork (#87).
-        if (obj instanceof quiz.Quizable q) {
+        // Viewable sets its declared field — with no `instanceof DynamicFields` fork (#87).
+        if (obj instanceof objectview.Viewable q) {
             FieldSet.of(q).write(name, value);
             return;
         }
-        // A non-Quizable nested owner (a plain POJO with a declared field): reflect.
+        // A non-Viewable nested owner (a plain POJO with a declared field): reflect.
         Field f = QuizableAdapter.getField(obj.getClass(), name);
         if (f != null) {
             try {

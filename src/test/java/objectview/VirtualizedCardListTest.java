@@ -2,7 +2,7 @@ package objectview;
 
 import objectview.VirtualizedCardList;
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
+import objectview.Viewable;
 
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -38,27 +38,24 @@ class VirtualizedCardListTest {
     private static final int VIEW_W = 300;
     private static final int VIEW_H = 400;
 
-    /** A trivial Quizable identified by index. */
-    private static final class Item implements Quizable {
+    /** A trivial Viewable identified by index. */
+    private static final class Item implements Viewable {
         private final String id;
 
         Item(String id) { this.id = id; }
 
         @Override public String getIdentifier() { return id; }
         @Override public String getDisplayName() { return id; }
-        @Override public boolean hasField(String fieldName) { return false; }
-        @Override public boolean hasAnyField() { return false; }
-        @Override public boolean hasFields(Collection<String> fieldNames) { return false; }
-        @Override public HashMap<List<Object>, Quizable> generateUniqueCombinations(
-                List<String> fieldNames) { return new HashMap<>(); }
-        @Override public Quizable project(List<String> f, List<Object> v) { return this; }
+        @Override public objectview.field.FieldSet fields() {
+            return objectview.field.FieldSet.of(this);
+        }
         @Override public String toString() { return id; }
     }
 
     /** The current (mutable, so we can "expand") real height of each item. */
-    private final Map<Quizable, Integer> realHeight = new IdentityHashMap<>();
+    private final Map<Viewable, Integer> realHeight = new IdentityHashMap<>();
 
-    private JComponent card(Quizable q) {
+    private JComponent card(Viewable q) {
         // Reads its height LIVE from the map, so "expanding" an item (mutating the
         // map) changes the already-built card's preferred size — exactly what
         // QuizablePanel.refresh() does in the app when a reference expands in place.

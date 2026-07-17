@@ -11,9 +11,9 @@ import objectview.field.FieldSet;
  * <p>A host plugs in its own object by adapting it to {@code Viewable}: a hand-written
  * POJO, a dynamic property-map object, a graph node — each supplies identity/name/type
  * and a {@link FieldSet} over its fields (declared via reflection, or a map, or
- * anything else). {@code quiz.Quizable} is one such adapter.
+ * anything else). {@code objectview.Viewable} is one such adapter.
  *
- * <p>The accessor names are deliberately the plain-getter ones (not "Quizable"-flavoured)
+ * <p>The accessor names are deliberately the plain-getter ones (not "Viewable"-flavoured)
  * so a host's existing objects adapt with no call-site churn.
  */
 public interface Viewable {

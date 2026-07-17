@@ -1,6 +1,6 @@
 package objectview.facet;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.List;
 import java.util.function.Function;
@@ -15,10 +15,10 @@ import java.util.function.Function;
  *       so its bucket can show that object's card;</li>
  *   <li>a derived/mapped facet -> whatever the supplied function returns.</li>
  * </ul>
- * The same operation as {@code Quizable.generateUniqueCombinations}, lifted
+ * The same operation as {@code Viewable.generateUniqueCombinations}, lifted
  * from one object to the whole collection.
  */
-public record Facet(String label, Function<Quizable, List<FacetKey>> keys) {
+public record Facet(String label, Function<Viewable, List<FacetKey>> keys) {
 
     /** Facet by a field, labelled by the field name. */
     public static Facet field(String fieldName) {
@@ -31,7 +31,7 @@ public record Facet(String label, Function<Quizable, List<FacetKey>> keys) {
     }
 
     /** A derived facet: value keys computed from the member (e.g. a predicate). */
-    public static Facet derived(String label, Function<Quizable, List<String>> keys) {
+    public static Facet derived(String label, Function<Viewable, List<String>> keys) {
         return new Facet(label, q -> values(keys.apply(q)));
     }
 
@@ -55,7 +55,7 @@ public record Facet(String label, Function<Quizable, List<FacetKey>> keys) {
     }
 
     /**
-     * Facet by a field whose value(s) are themselves {@link Quizable}s — the
+     * Facet by a field whose value(s) are themselves {@link Viewable}s — the
      * member is bucketed under each referenced entity, and the bucket carries
      * that entity so the UI can render its card.
      */

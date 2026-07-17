@@ -99,7 +99,7 @@ public final class View {
         List<? extends Quizable> members = members(sources);
         String label = name + "  (" + members.size() + ")";
         if (grouping.isEmpty()) {
-            return FacetGrouper.group(label, members, List.of());
+            return FacetGrouper.group(QuizableGroup::new, label, members, List.of());
         }
 
         QuizableGroup root = new QuizableGroup(label).role(Role.UNIVERSE);

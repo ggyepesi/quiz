@@ -1,7 +1,7 @@
 package objectview;
 
 import objectview.viewconfig.FieldTypeSource;
-import quiz.Quizable;
+import objectview.Viewable;
 
 import javax.swing.*;
 import java.awt.*;
@@ -44,8 +44,8 @@ public class MultiQuizableView extends JPanel {
 
     public void addSection(
             String title,
-            Class<? extends Quizable> type,
-            List<? extends Quizable> objects) {
+            Class<? extends Viewable> type,
+            List<? extends Viewable> objects) {
 
         addSection(title, type, objects, null, null, null);
     }
@@ -56,9 +56,9 @@ public class MultiQuizableView extends JPanel {
      *  {@code fieldTypes} — so a DynamicFields section stays model-typed. */
     public void addSection(
             String title,
-            Class<? extends Quizable> type,
-            List<? extends Quizable> objects,
-            Quizable sample,
+            Class<? extends Viewable> type,
+            List<? extends Viewable> objects,
+            Viewable sample,
             java.util.Set<String> hiddenFields,
             FieldTypeSource fieldTypes) {
 
@@ -82,7 +82,7 @@ public class MultiQuizableView extends JPanel {
 
         // Pre-register every object so cross-references render as chips.
         for (Section s : sections) {
-            for (Quizable q : s.objects()) {
+            for (Viewable q : s.objects()) {
                 context.addTopLevel(q);
             }
         }
@@ -111,7 +111,7 @@ public class MultiQuizableView extends JPanel {
         QuizablePanelView view = new QuizablePanelView();
         view.setRenderContext(context);
 
-        for (Quizable q : s.objects()) {
+        for (Viewable q : s.objects()) {
             view.addQuizable(q);
         }
         view.createCardsPanel(Math.max(1, columns));
@@ -184,9 +184,9 @@ public class MultiQuizableView extends JPanel {
 
     private record Section(
             String title,
-            Class<? extends Quizable> type,
-            List<Quizable> objects,
-            Quizable sample,
+            Class<? extends Viewable> type,
+            List<Viewable> objects,
+            Viewable sample,
             java.util.Set<String> hiddenFields,
             FieldTypeSource fieldTypes) {
     }

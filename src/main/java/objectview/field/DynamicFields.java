@@ -1,11 +1,11 @@
 package objectview.field;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.Map;
 
 /**
- * A {@link Quizable} that carries runtime-discovered fields (a property map)
+ * A {@link Viewable} that carries runtime-discovered fields (a property map)
  * in addition to, or instead of, its declared Java fields — e.g. generated
  * Wikidata objects whose schema isn't known at compile time.
  *
@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public interface DynamicFields {
 
-    /** Field name → value. Values may be scalars, {@link Quizable} references,
+    /** Field name → value. Values may be scalars, {@link Viewable} references,
      *  or collections/maps of either. */
     Map<String, Object> dynamicFieldValues();
 }

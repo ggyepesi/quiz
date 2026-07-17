@@ -2,7 +2,7 @@ package quiz.ui;
 
 import objectview.QuizablePanelSearchAndSort;
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.QuizableFieldPaths;
 import quiz.transform.DynamicQuizable;
 import objectview.viewconfig.QuizablePanelConfig;
@@ -47,23 +47,23 @@ class DynamicSearchConfigTest {
     }
 
     @Test void searchMatchesTheConfiguredDynamicFieldOnly() {
-        List<Quizable> pool = List.of(
+        List<Viewable> pool = List.of(
                 nomination("N1", "Casablanca", true),
                 nomination("N2", "Citizen Kane", false));
 
         QuizablePanelSearchAndSort engine = new QuizablePanelSearchAndSort();
 
         // won checked, name not: "casablanca" finds nothing, "true" hits won.
-        Map<String, List<Quizable>> byName = engine.searchQuizables(
+        Map<String, List<Viewable>> byName = engine.searchQuizables(
                 pool, List.of("casablanca"), explicit("won"));
         assertTrue(byName.isEmpty(), byName.toString());
 
-        Map<String, List<Quizable>> byWon = engine.searchQuizables(
+        Map<String, List<Viewable>> byWon = engine.searchQuizables(
                 pool, List.of("true"), explicit("won"));
         assertEquals(1, byWon.getOrDefault("won", List.of()).size(), byWon.toString());
 
         // name checked: the display name matches again.
-        Map<String, List<Quizable>> withName = engine.searchQuizables(
+        Map<String, List<Viewable>> withName = engine.searchQuizables(
                 pool, List.of("casablanca"), explicit("name"));
         assertEquals(1, withName.getOrDefault("name", List.of()).size(),
                 withName.toString());
@@ -77,7 +77,7 @@ class DynamicSearchConfigTest {
 
         List<QuizableFieldPaths.FieldPath> sortPaths =
                 QuizableFieldPaths.collect(explicit("year"));
-        List<Quizable> sorted = new QuizablePanelSearchAndSort()
+        List<Viewable> sorted = new QuizablePanelSearchAndSort()
                 .sortQuizables(List.of(a, b), sortPaths);
 
         assertEquals("B", sorted.get(0).getDisplayName());   // 1999 first

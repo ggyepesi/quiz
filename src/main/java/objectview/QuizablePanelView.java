@@ -1,7 +1,7 @@
 package objectview;
 
 import aux.GridBagUtils;
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import javax.swing.*;
@@ -12,7 +12,7 @@ import java.util.List;
 public class QuizablePanelView {
     private JFrame frame = null;
 
-    private final List<Quizable> quizables = new ArrayList<>();
+    private final List<Viewable> quizables = new ArrayList<>();
     private final List<RawImageEntry> rawImageEntries = new ArrayList<>();
 
     private final List<JPanel> cards = new ArrayList<>();
@@ -73,11 +73,11 @@ public class QuizablePanelView {
         return cardsByName;
     }
 
-    public void addQuizable(Quizable quizable) {
+    public void addQuizable(Viewable quizable) {
         addQuizable(quizable, true, true);
     }
 
-    public void addQuizable(Quizable quizable,
+    public void addQuizable(Viewable quizable,
                             boolean addTitle,
                             boolean addListeners) {
         if (quizable != null) {
@@ -126,7 +126,7 @@ public class QuizablePanelView {
         // One resolver per section; the shared context tries each, so a reference to
         // a card in ANY section resolves (not just the last section to register).
         context.addTopLevelResolver(o ->
-                o instanceof Quizable q ? virtualList.buildIfNeeded(q) : null);
+                o instanceof Viewable q ? virtualList.buildIfNeeded(q) : null);
         // Collapsible cards toggle by rebuilding the one card fresh (factory-driven),
         // so it re-measures at its new size instead of growing in place.
         context.addCardToggleHandler(q -> {
@@ -192,7 +192,7 @@ public class QuizablePanelView {
 
     // Card factory for the virtualized list: build the card, register it, and
     // index it by name for getCardsByName.
-    private javax.swing.JComponent buildVirtualCard(Quizable q) {
+    private javax.swing.JComponent buildVirtualCard(Viewable q) {
         QuizablePanel panel = buildQuizableCard(q);
         String name = q.getName();
         if (name != null && !name.isEmpty()) {
@@ -205,7 +205,7 @@ public class QuizablePanelView {
         return virtualList;
     }
 
-    private QuizablePanel buildQuizableCard(Quizable q) {
+    private QuizablePanel buildQuizableCard(Viewable q) {
         QuizablePanelConfig cfg =
                 QuizablePanelConfig.all(q.getClass())
                         .setAddListener(true)
@@ -231,7 +231,7 @@ public class QuizablePanelView {
      * Falls back to a deferred add if the cards panel hasn't been built
      * yet, in which case the card appears on the first render.
      */
-    public void addQuizableLive(Quizable q) {
+    public void addQuizableLive(Viewable q) {
         if (q == null) {
             return;
         }
@@ -265,7 +265,7 @@ public class QuizablePanelView {
      * re-index / re-sort it. No-op if {@code q} has no card yet. Call on
      * the EDT.
      */
-    public void refreshQuizable(Quizable q) {
+    public void refreshQuizable(Viewable q) {
         if (q == null || virtualList == null) {
             return;
         }
@@ -291,13 +291,13 @@ public class QuizablePanelView {
      * live. Convenient for incremental feeds (e.g. a query log) that don't
      * track whether a given item has been rendered yet. Call on the EDT.
      */
-    public void upsertQuizable(Quizable q) {
+    public void upsertQuizable(Viewable q) {
         if (q == null || virtualList == null) {
             return;
         }
 
         boolean known = false;
-        for (Quizable item : virtualList.items()) {
+        for (Viewable item : virtualList.items()) {
             if (item == q) {
                 known = true;
                 break;
@@ -327,7 +327,7 @@ public class QuizablePanelView {
         return c;
     }
 
-    private QuizablePanel findCard(Quizable q) {
+    private QuizablePanel findCard(Viewable q) {
         return virtualList != null && virtualList.builtCard(q) instanceof QuizablePanel qp
                 ? qp : null;
     }
@@ -349,7 +349,7 @@ public class QuizablePanelView {
                 new QuizableRenderContext(quizables);
 
         // First pass: register class configs before rendering.
-        for (Quizable q : quizables) {
+        for (Viewable q : quizables) {
             if (q == null) {
                 continue;
             }
@@ -363,7 +363,7 @@ public class QuizablePanelView {
         }
 
         // Second pass: create direct QuizablePanel cards.
-        for (Quizable q : quizables) {
+        for (Viewable q : quizables) {
             if (q == null) {
                 continue;
             }
@@ -447,7 +447,7 @@ public class QuizablePanelView {
         frame.setLayout(new BorderLayout(6, 6));
 
         if (!quizables.isEmpty()) {
-            Quizable first = quizables.getFirst();
+            Viewable first = quizables.getFirst();
 
             QuizableSearchPanel searchPanel =
                     new QuizableSearchPanel(first.getClass());

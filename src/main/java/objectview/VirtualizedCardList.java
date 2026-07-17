@@ -3,7 +3,7 @@ package objectview;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import javax.swing.JComponent;
 import javax.swing.JScrollPane;
@@ -27,11 +27,11 @@ import java.util.Set;
 import java.util.function.Function;
 
 /**
- * A vertically virtualized list of Quizable cards.
+ * A vertically virtualized list of Viewable cards.
  *
  * <p>The list owns:
  * <ul>
- *   <li>the ordered Quizable items,</li>
+ *   <li>the ordered Viewable items,</li>
  *   <li>the currently materialized card components,</li>
  *   <li>measured and estimated card heights,</li>
  *   <li>viewport navigation and lazy card creation.</li>
@@ -66,7 +66,7 @@ public final class VirtualizedCardList
      * Mutable so the owner can apply a new view configuration by replacing the
      * factory. Existing built cards are then discarded and rebuilt lazily.
      */
-    private Function<Quizable, JComponent> cardFactory;
+    private Function<Viewable, JComponent> cardFactory;
 
     // Notified with each card as it's (re)materialized on scroll, so an owner can
     // re-apply transient decoration a fresh card would otherwise lack — e.g. the
@@ -76,20 +76,20 @@ public final class VirtualizedCardList
     // Invoked at the start of navigateToTop, so the owner can reveal the target
     // (e.g. expand a collapsed card whose search-hit field is hidden) before it
     // is built and scrolled into view.
-    private java.util.function.Consumer<Quizable> onNavigateReveal;
+    private java.util.function.Consumer<Viewable> onNavigateReveal;
 
-    private List<Quizable> items = new ArrayList<>();
+    private List<Viewable> items = new ArrayList<>();
 
-    private final Map<Quizable, JComponent> built =
+    private final Map<Viewable, JComponent> built =
             new IdentityHashMap<>();
 
     /**
      * Exact currently measured height per object.
      */
-    private final Map<Quizable, Integer> heights =
+    private final Map<Viewable, Integer> heights =
             new IdentityHashMap<>();
 
-    private final Map<Quizable, Integer> indexByItem =
+    private final Map<Viewable, Integer> indexByItem =
             new IdentityHashMap<>();
 
     /**
@@ -109,7 +109,7 @@ public final class VirtualizedCardList
     private int navGeneration;
 
     public VirtualizedCardList(
-            Function<Quizable, JComponent> cardFactory) {
+            Function<Viewable, JComponent> cardFactory) {
 
         this.cardFactory = Objects.requireNonNull(
                 cardFactory,
@@ -126,7 +126,7 @@ public final class VirtualizedCardList
      * Cards are recreated lazily when they next enter the visible range.
      */
     public void setCardFactory(
-            Function<Quizable, JComponent> cardFactory) {
+            Function<Viewable, JComponent> cardFactory) {
 
         this.cardFactory = Objects.requireNonNull(
                 cardFactory,
@@ -167,7 +167,7 @@ public final class VirtualizedCardList
     }
 
     @Override
-    public void setItems(List<Quizable> newItems) {
+    public void setItems(List<Viewable> newItems) {
         items = new ArrayList<>(
                 newItems == null ? List.of() : newItems
         );
@@ -188,7 +188,7 @@ public final class VirtualizedCardList
         updateVisible();
     }
 
-    public void appendItem(Quizable q) {
+    public void appendItem(Viewable q) {
         if (q == null) {
             return;
         }
@@ -210,12 +210,12 @@ public final class VirtualizedCardList
     }
 
     @Override
-    public List<Quizable> items() {
+    public List<Viewable> items() {
         return Collections.unmodifiableList(items);
     }
 
     @Override
-    public Quizable topVisibleItem() {
+    public Viewable topVisibleItem() {
         if (viewport == null || items.isEmpty()) {
             return null;
         }
@@ -227,14 +227,14 @@ public final class VirtualizedCardList
                         );
     }
 
-    public JComponent builtCard(Quizable q) {
+    public JComponent builtCard(Viewable q) {
         return built.get(q);
     }
 
     /**
      * Builds and positions a card without scrolling to it.
      */
-    public JComponent buildIfNeeded(Quizable q) {
+    public JComponent buildIfNeeded(Viewable q) {
         int i = indexOf(q);
 
         if (i < 0) {
@@ -261,7 +261,7 @@ public final class VirtualizedCardList
     /**
      * Builds the card and scrolls enough to make it visible.
      */
-    public JComponent ensureVisible(Quizable q) {
+    public JComponent ensureVisible(Viewable q) {
         int i = indexOf(q);
 
         if (i < 0) {
@@ -296,7 +296,7 @@ public final class VirtualizedCardList
      * Builds the card and attempts to pin its top to the viewport top.
      */
     @Override
-    public JComponent navigateToTop(Quizable q) {
+    public JComponent navigateToTop(Viewable q) {
         int i = indexOf(q);
 
         if (i < 0 || viewport == null) {
@@ -362,7 +362,7 @@ public final class VirtualizedCardList
     }
 
     private void repinIfDrifted(
-            Quizable q,
+            Viewable q,
             int expectedIndex) {
 
         if (viewport == null || indexOf(q) != expectedIndex) {
@@ -438,7 +438,7 @@ public final class VirtualizedCardList
         return maxScrollY() + extent;
     }
 
-    int topOf(Quizable q) {
+    int topOf(Viewable q) {
         int i = indexOf(q);
         return i < 0 ? -1 : tops[i];
     }
@@ -449,12 +449,12 @@ public final class VirtualizedCardList
                 : tops[tops.length - 1];
     }
 
-    private int indexOf(Quizable q) {
+    private int indexOf(Viewable q) {
         Integer i = indexByItem.get(q);
         return i == null ? -1 : i;
     }
 
-    private int rowHeight(Quizable q) {
+    private int rowHeight(Viewable q) {
         Integer exact = heights.get(q);
 
         if (exact != null) {
@@ -489,7 +489,7 @@ public final class VirtualizedCardList
             int index,
             JComponent card) {
 
-        Quizable q = items.get(index);
+        Viewable q = items.get(index);
 
         card.setBounds(
                 0,
@@ -514,7 +514,7 @@ public final class VirtualizedCardList
     }
 
     private boolean measureCardIfChanged(
-            Quizable q,
+            Viewable q,
             JComponent card) {
 
         if (q == null || card == null) {
@@ -546,7 +546,7 @@ public final class VirtualizedCardList
     }
 
     private void updateClassEstimate(
-            Quizable q,
+            Viewable q,
             int measured,
             Integer previousExactHeight) {
 
@@ -655,7 +655,7 @@ public final class VirtualizedCardList
         boolean heightsChanged = false;
 
         for (int i = first; i <= last; i++) {
-            Quizable q = items.get(i);
+            Viewable q = items.get(i);
             JComponent card = built.get(q);
 
             if (card == null) {
@@ -702,7 +702,7 @@ public final class VirtualizedCardList
         return heightsChanged || moved;
     }
 
-    private JComponent buildCard(Quizable q) {
+    private JComponent buildCard(Viewable q) {
         JComponent card = cardFactory.apply(q);
 
         if (card == null) {
@@ -729,7 +729,7 @@ public final class VirtualizedCardList
     /** Registers a handler invoked at the start of {@link #navigateToTop} so the
      *  owner can reveal the target (e.g. expand a collapsed card) before it's
      *  built and scrolled into view. */
-    public void setNavigateRevealHandler(java.util.function.Consumer<Quizable> handler) {
+    public void setNavigateRevealHandler(java.util.function.Consumer<Viewable> handler) {
         this.onNavigateReveal = handler;
     }
 
@@ -740,7 +740,7 @@ public final class VirtualizedCardList
             int first,
             int last) {
 
-        Set<Quizable> keep =
+        Set<Viewable> keep =
                 Collections.newSetFromMap(
                         new IdentityHashMap<>()
                                          );
@@ -752,11 +752,11 @@ public final class VirtualizedCardList
             keep.add(items.get(i));
         }
 
-        for (Iterator<Map.Entry<Quizable, JComponent>> iterator =
+        for (Iterator<Map.Entry<Viewable, JComponent>> iterator =
              built.entrySet().iterator();
              iterator.hasNext(); ) {
 
-            Map.Entry<Quizable, JComponent> entry =
+            Map.Entry<Viewable, JComponent> entry =
                     iterator.next();
 
             if (!keep.contains(entry.getKey())) {
@@ -795,7 +795,7 @@ public final class VirtualizedCardList
                 maxScrollY()
                                ));
 
-        List<Map.Entry<Quizable, JComponent>> byScreenY =
+        List<Map.Entry<Viewable, JComponent>> byScreenY =
                 new ArrayList<>(built.entrySet());
 
         byScreenY.sort(
@@ -806,8 +806,8 @@ public final class VirtualizedCardList
 
         int previousIndex = Integer.MIN_VALUE;
 
-        for (Map.Entry<Quizable, JComponent> entry : byScreenY) {
-            Quizable q = entry.getKey();
+        for (Map.Entry<Viewable, JComponent> entry : byScreenY) {
+            Viewable q = entry.getKey();
             JComponent card = entry.getValue();
 
             int index = indexOf(q);
@@ -869,7 +869,7 @@ public final class VirtualizedCardList
      * changed (e.g. collapse/expand), so the new size is re-measured rather than
      * grown in place. No-op if the card isn't built. Call on the EDT.
      */
-    public void invalidateCard(Quizable q) {
+    public void invalidateCard(Viewable q) {
         if (q == null) {
             return;
         }

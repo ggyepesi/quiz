@@ -26,7 +26,7 @@ import aux.TitleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import quiz.ImageRef;
-import quiz.Quizable;
+import objectview.Viewable;
 
 public class ImagePane extends JPanel
         implements MouseListener, MouseMotionListener, ImageRef {
@@ -59,7 +59,7 @@ public class ImagePane extends JPanel
     }
 
     private String title = "";
-    private Quizable quizable;
+    private Viewable quizable;
     private CachedImage cachedImage;
 
     // The actual image painted by this ImagePane. It may be thumb/full/crop.
@@ -102,18 +102,18 @@ public class ImagePane extends JPanel
         draggingFrame.setTitle(key);
     }
 
-    public ImagePane(String title, String url, Quizable quizable, boolean addTitle) throws Exception {
+    public ImagePane(String title, String url, Viewable quizable, boolean addTitle) throws Exception {
         this(title, url, quizable, addTitle, true);
     }
 
-    public ImagePane(String title, String url, Quizable quizable,
+    public ImagePane(String title, String url, Viewable quizable,
                      boolean addTitle, boolean isSvg) throws Exception {
         this(title, url, quizable, addTitle, isSvg,
                 ImageKind.THUMB,
                 LoadPolicy.IMMEDIATE);
     }
 
-    public ImagePane(String title, String url, Quizable quizable,
+    public ImagePane(String title, String url, Viewable quizable,
                      boolean addTitle, boolean isSvg,
                      ImageKind imageKind,
                      LoadPolicy loadPolicy) throws Exception {
@@ -124,7 +124,7 @@ public class ImagePane extends JPanel
                 imageKind, loadPolicy);
     }
 
-    public ImagePane(String title, String url, Quizable quizable,
+    public ImagePane(String title, String url, Viewable quizable,
                      boolean addTitle, boolean isSvg,
                      boolean loadThumbnailImmediately) throws Exception {
         this(title, url, quizable, addTitle, isSvg,
@@ -139,14 +139,14 @@ public class ImagePane extends JPanel
         return new CachedImage(title, url, isSvg);
     }
 
-    public ImagePane(String title, Quizable quizable, CachedImage cachedImage,
+    public ImagePane(String title, Viewable quizable, CachedImage cachedImage,
                      boolean addListeners, boolean addTitle) throws Exception {
         super();
         init(title, quizable, cachedImage, addTitle, addListeners,
                 ImageKind.THUMB, LoadPolicy.IMMEDIATE);
     }
 
-    public ImagePane(String title, Quizable quizable, CachedImage cachedImage,
+    public ImagePane(String title, Viewable quizable, CachedImage cachedImage,
                      boolean addListeners) throws Exception {
         super();
         init(title, quizable, cachedImage, false, addListeners,
@@ -154,7 +154,7 @@ public class ImagePane extends JPanel
         dragEnabled = true;
     }
 
-    public ImagePane(String title, Quizable quizable, CachedImage cachedImage,
+    public ImagePane(String title, Viewable quizable, CachedImage cachedImage,
                      boolean addListeners, boolean addTitle,
                      ImageKind imageKind, LoadPolicy loadPolicy) throws Exception {
         super();
@@ -178,7 +178,7 @@ public class ImagePane extends JPanel
         }
     }
 
-    private void init(String title, Quizable quizable, CachedImage cachedImage,
+    private void init(String title, Viewable quizable, CachedImage cachedImage,
                       boolean addTitle, boolean addListeners,
                       ImageKind imageKind, LoadPolicy loadPolicy)
             throws Exception {
@@ -273,7 +273,7 @@ public class ImagePane extends JPanel
         this.selectionListener = selectionListener;
     }
 
-    public Quizable getQuizable() {
+    public Viewable getQuizable() {
         return quizable;
     }
 

@@ -77,7 +77,7 @@ public class QuizableSearchPanel extends JPanel
     private final JPanel resultsPanel =
             new JPanel();
 
-    private final List<Quizable> originalQuizables =
+    private final List<Viewable> originalQuizables =
             new ArrayList<>();
 
     private final List<Component> originalTargetOrder =
@@ -98,7 +98,7 @@ public class QuizableSearchPanel extends JPanel
     private VirtualizedQuizableContainer virtualList;   // non-null when the target is data-backed/virtualized
     // Quizables matching the current query in a virtualized view, so a card rebuilt
     // on scroll-back can be re-highlighted (see quizablePanelMaterialized).
-    private final java.util.Set<quiz.Quizable> virtualHits =
+    private final java.util.Set<objectview.Viewable> virtualHits =
             java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
     private JScrollPane targetScrollPane;
     private JDialog searchDialog;
@@ -112,7 +112,7 @@ public class QuizableSearchPanel extends JPanel
     private boolean suppressSearchEvents = false;
 
     // The class this section searches (for the shared config's per-class tab).
-    private Class<? extends Quizable> searchClass;
+    private Class<? extends Viewable> searchClass;
 
     // The top toolbar (search input + config buttons); hidden in coordinated
     // mode, where the shared MultiSearchBar owns the input + config and each
@@ -260,11 +260,11 @@ public class QuizableSearchPanel extends JPanel
             // Keep your place across the resort: anchor on the highlighted search
             // hit if any, else the card currently at the top of the viewport, and
             // re-pin it at the top in the new order.
-            Quizable anchor = currentHit instanceof QuizablePanel qp
+            Viewable anchor = currentHit instanceof QuizablePanel qp
                     ? qp.getQuizable()
                     : virtualList.topVisibleItem();
 
-            List<Quizable> ordered =
+            List<Viewable> ordered =
                     searchAndSort.sortQuizables(virtualList.items(), sortPaths);
             virtualList.setItems(ordered);
             if (anchor != null) {
@@ -330,14 +330,14 @@ public class QuizableSearchPanel extends JPanel
     }
 
 
-    public QuizableSearchPanel(Class<? extends Quizable> cls) {
+    public QuizableSearchPanel(Class<? extends Viewable> cls) {
         this(cls, null);
     }
 
     /** @param sample a sample instance for a DYNAMIC type (WDO/DynamicQuizable), so
      *                the search/sort/view-config editors enumerate its map-held
      *                fields; null for a reflection type. */
-    public QuizableSearchPanel(Class<? extends Quizable> cls, Quizable sample) {
+    public QuizableSearchPanel(Class<? extends Viewable> cls, Viewable sample) {
         this.searchClass = cls;
         setLayout(new BorderLayout(6, 6));
 
@@ -439,7 +439,7 @@ public class QuizableSearchPanel extends JPanel
     }
 
     private QuizablePanelConfig nameOnlyConfig(
-            Class<? extends Quizable> cls) {
+            Class<? extends Viewable> cls) {
 
         QuizablePanelConfig cfg =
                 QuizablePanelConfig.of(cls);
@@ -618,7 +618,7 @@ public class QuizableSearchPanel extends JPanel
 
     private void rebuildSearchIndex() {
         // A virtual/data-backed target is searched directly from its complete
-        // Quizable item list. Only ordinary component-backed targets need the
+        // Viewable item list. Only ordinary component-backed targets need the
         // rendered-component index.
         if (virtualList == null) {
             searchAndSort.rebuildSearchIndex(
@@ -973,7 +973,7 @@ public class QuizableSearchPanel extends JPanel
         List<QuizablePanel> panels =
                 new ArrayList<>();
 
-        List<Quizable> quizables =
+        List<Viewable> quizables =
                 originalQuizables.isEmpty()
                         ? collectQuizablesFromCurrentTarget()
                         : new ArrayList<>(originalQuizables);
@@ -981,7 +981,7 @@ public class QuizableSearchPanel extends JPanel
         QuizableRenderContext context =
                 new QuizableRenderContext(quizables);
 
-        for (Quizable q : quizables) {
+        for (Viewable q : quizables) {
             if (q == null) {
                 continue;
             }
@@ -1027,8 +1027,8 @@ public class QuizableSearchPanel extends JPanel
         }
     }
 
-    private List<Quizable> collectQuizablesFromCurrentTarget() {
-        List<Quizable> out =
+    private List<Viewable> collectQuizablesFromCurrentTarget() {
+        List<Viewable> out =
                 new ArrayList<>();
 
         if (targetPanel == null) {
@@ -1101,7 +1101,7 @@ public class QuizableSearchPanel extends JPanel
         }
 
         String s =
-                normalize(value instanceof Quizable q
+                normalize(value instanceof Viewable q
                                   ? q.getName()
                                   : value.toString());
 
@@ -1639,7 +1639,7 @@ public class QuizableSearchPanel extends JPanel
     // a time; each card is built on demand by the VirtualizedCardList. ---
 
     private void searchSyncVirtual(List<String> queryTokens) {
-        Map<String, List<Quizable>> matchesByField =
+        Map<String, List<Viewable>> matchesByField =
                 searchAndSort.searchQuizables(
                         virtualList.items(),
                         queryTokens,
@@ -1661,7 +1661,7 @@ public class QuizableSearchPanel extends JPanel
 
         Map<String, HitGroupQ> groups = new LinkedHashMap<>();
 
-        for (Map.Entry<String, List<Quizable>> e : matchesByField.entrySet()) {
+        for (Map.Entry<String, List<Viewable>> e : matchesByField.entrySet()) {
             HitGroupQ g = new HitGroupQ(
                     e.getKey(),
                     pathByTitle.get(e.getKey()),
@@ -1739,7 +1739,7 @@ public class QuizableSearchPanel extends JPanel
     private void navigateToCurrentVirtual(HitGroupQ g) {
         clearHighlights();
 
-        Quizable q = g.hits.get(g.index);
+        Viewable q = g.hits.get(g.index);
         JComponent card = virtualList.navigateToTop(q);
 
         if (card == null) {
@@ -1793,7 +1793,7 @@ public class QuizableSearchPanel extends JPanel
 
     private static class HitGroupQ {
         final String title;
-        final List<Quizable> hits = new ArrayList<>();
+        final List<Viewable> hits = new ArrayList<>();
         final QuizableFieldPaths.FieldPath fieldPath;
         final List<String> queryTokens;
         int index = 0;

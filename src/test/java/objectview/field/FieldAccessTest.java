@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * getPath is tolerant over arbitrary domains: `name`/`qid` come from the Quizable
+ * getPath is tolerant over arbitrary domains: `name`/`qid` come from the Viewable
  * contract (not a raw field), a collection intermediate is descended, and a missing
  * field yields null instead of throwing.
  */

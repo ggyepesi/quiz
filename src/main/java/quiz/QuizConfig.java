@@ -1,5 +1,7 @@
 package quiz;
 
+import objectview.Viewable;
+
 import objectview.viewconfig.QuizablePanelConfig;
 
 /**
@@ -11,7 +13,7 @@ public final class QuizConfig {
     private final QuizablePanelConfig searchConfig;
     private final QuizablePanelConfig sortConfig;
 
-    public QuizConfig(Class<? extends Quizable> cls) {
+    public QuizConfig(Class<? extends Viewable> cls) {
         this.viewConfig = QuizablePanelConfig.of(cls).initializeAllFields(true);
         this.searchConfig = QuizablePanelConfig.of(cls).initializeAllFields(true);
         this.sortConfig = QuizablePanelConfig.of(cls).initializeAllFields(true);

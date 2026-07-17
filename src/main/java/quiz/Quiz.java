@@ -1,5 +1,7 @@
 package quiz;
 
+import objectview.Viewable;
+
 import objectview.QuizablePanel;
 import objectview.QuizableRenderContext;
 import objectview.viewconfig.QuizablePanelConfig;
@@ -182,7 +184,7 @@ public abstract class Quiz extends Thread {
         }
     }
 
-    private static void collectAllFieldPaths(Class<? extends Quizable> cls,
+    private static void collectAllFieldPaths(Class<? extends Viewable> cls,
                                              List<String> prefix,
                                              List<List<String>> out) {
         if (cls == null) return;

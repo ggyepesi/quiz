@@ -8,10 +8,10 @@ import java.lang.annotation.Target;
 /**
  * Rendering hint for QuizablePanel, the opposite of {@link QuizableReference}.
  *
- * By default a nested Quizable that lives inside a collection or map is
+ * By default a nested Viewable that lives inside a collection or map is
  * rendered compactly as a clickable reference chip (which opens a detail
  * window). Annotate the field with @QuizableInline to instead expand each
- * nested Quizable fully, in place, within the parent card.
+ * nested Viewable fully, in place, within the parent card.
  *
  * Use only where the nested structure is small and bounded (e.g. a log
  * tree of workflow -> steps). Do NOT use it on broad or cyclic graphs such

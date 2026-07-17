@@ -1,5 +1,7 @@
 package quiz.web;
 
+import objectview.Viewable;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import quiz.Quizable;
 import quiz.QuizableGroup;
@@ -28,7 +30,7 @@ public record GroupNode(
         Set<String> ids = new HashSet<>();
         collectIds(g, ids);
 
-        Quizable k = g.getKeyRef();
+        Viewable k = g.getKeyRef();
         QuizableView.Ref ref = k == null
                 ? null
                 : new QuizableView.Ref(

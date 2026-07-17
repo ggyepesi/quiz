@@ -1,6 +1,6 @@
 package objectview.viewconfig;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.ImagePane;
 
 import java.util.Collection;
@@ -9,7 +9,7 @@ import java.util.Map;
 public final class QuizablePanelConfigAdapter {
     private QuizablePanelConfigAdapter() {}
 
-    public static QuizablePanelConfig fromOldArgs(Quizable q,
+    public static QuizablePanelConfig fromOldArgs(Viewable q,
                                                   boolean showNames,
                                                   boolean showImages,
                                                   boolean expand) {
@@ -18,7 +18,7 @@ public final class QuizablePanelConfigAdapter {
             return QuizablePanelConfig.leaf();
         }
 
-        Class<? extends Quizable> cls = q.getClass();
+        Class<? extends Viewable> cls = q.getClass();
 
         if (expand) {
             return QuizablePanelConfig.all(cls)
@@ -40,14 +40,14 @@ public final class QuizablePanelConfigAdapter {
             return QuizablePanelConfig.leaf();
         }
 
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             // IMPORTANT: compact by default, do not recurse here.
             return nameOnlyConfig(q.getClass());
         }
 
         if (value instanceof Collection<?> collection) {
             for (Object item : collection) {
-                if (item instanceof Quizable q) {
+                if (item instanceof Viewable q) {
                     return QuizablePanelConfig.all(q.getClass());
                 }
             }
@@ -56,7 +56,7 @@ public final class QuizablePanelConfigAdapter {
 
         if (value instanceof Map<?, ?> map) {
             for (Object item : map.values()) {
-                if (item instanceof Quizable q) {
+                if (item instanceof Viewable q) {
                     return QuizablePanelConfig.all(q.getClass());
                 }
             }
@@ -75,16 +75,16 @@ public final class QuizablePanelConfigAdapter {
             return QuizablePanelConfig.leaf();
         }
 
-        if (Quizable.class.isAssignableFrom(type)) {
+        if (Viewable.class.isAssignableFrom(type)) {
             @SuppressWarnings("unchecked")
-            Class<? extends Quizable> qCls = (Class<? extends Quizable>) type;
+            Class<? extends Viewable> qCls = (Class<? extends Viewable>) type;
             return nameOnlyConfig(qCls);
         }
 
         return QuizablePanelConfig.leaf();
     }
 
-    private static QuizablePanelConfig nameOnlyConfig(Class<? extends Quizable> cls) {
+    private static QuizablePanelConfig nameOnlyConfig(Class<? extends Viewable> cls) {
         return QuizablePanelConfig.of(cls)
                 .setAddListener(true)
                 .setThumb(true);

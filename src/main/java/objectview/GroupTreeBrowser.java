@@ -1,6 +1,6 @@
 package objectview;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.viewconfig.FieldTypeSource;
 import objectview.viewconfig.QuizablePanelConfig;
 import quiz.QuizableGroup;
@@ -21,8 +21,8 @@ public final class GroupTreeBrowser extends JPanel {
 
     public GroupTreeBrowser(
             QuizableGroup root,
-            Class<? extends Quizable> memberClass,
-            Quizable sample,
+            Class<? extends Viewable> memberClass,
+            Viewable sample,
             Set<String> hiddenFields,
             FieldTypeSource fieldTypes) {
 

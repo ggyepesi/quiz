@@ -1,6 +1,6 @@
 package objectview.facet;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 /**
  * One bucket key produced by a {@link Facet} for a member.
@@ -12,13 +12,13 @@ import quiz.Quizable;
  *       bucket can show that entity's own card.</li>
  * </ul>
  */
-public record FacetKey(String name, Quizable ref) {
+public record FacetKey(String name, Viewable ref) {
 
     public static FacetKey of(String name) {
         return new FacetKey(name, null);
     }
 
-    public static FacetKey of(Quizable ref) {
+    public static FacetKey of(Viewable ref) {
         return ref == null ? null : new FacetKey(ref.getDisplayName(), ref);
     }
 
