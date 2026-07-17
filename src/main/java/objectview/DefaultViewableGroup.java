@@ -12,8 +12,7 @@ import java.util.TreeMap;
  * Default reflection-backed implementation of a {@link MutableViewableGroup},
  * self-typed in {@code G} so a concrete subclass's child/fluent methods return the
  * subclass type. Abstract because it can't {@code new} a {@code G} — a leaf supplies
- * {@link #newChild(String)} (e.g. {@code quiz.QuizableGroup}). Extracted from the
- * former {@code quiz.QuizableGroup}.
+ * {@link #newChild(String)} (a host's own group class supplies the concrete type).
  *
  * @param <T> member type
  * @param <G> the concrete self-type

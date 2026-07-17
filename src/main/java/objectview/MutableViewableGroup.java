@@ -5,7 +5,7 @@ import java.util.Map;
 
 /**
  * The MUTATE contract of a {@link ViewableGroup}, self-typed in {@code G} so a
- * concrete leaf (e.g. {@code quiz.QuizableGroup}) sees its own type flow through the
+ * concrete leaf (a host's own group class) sees its own type flow through the
  * fluent/child-returning methods — no casts, no covariance gap. A builder like
  * {@link objectview.facet.FacetGrouper} works against {@code G} so it never names a
  * host's concrete group.
