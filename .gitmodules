@@ -1,0 +1,3 @@
+[submodule "objectview"]
+	path = objectview
+	url = https://github.com/ggyepesi/objectview.git
