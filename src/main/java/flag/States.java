@@ -17,18 +17,18 @@ import quiz.QuizableGroup;
 import quiz.Quizable;
 
 import objectview.ImagePane;
-import objectview.QuizableGroupView;
-import objectview.QuizableViews;
+import objectview.ViewableGroupView;
+import objectview.ViewableViews;
 
 import java.util.TreeMap;
 
-public class States implements QuizableViews {
+public class States implements ViewableViews {
     static boolean downloadSvgs = false;
 
     // state -> {(flag, seal, etc.)->image}
     private final Map<String, State> states = new TreeMap<>();
     private final QuizableGroup root = new QuizableGroup("All");
-    private QuizableGroupView groupView;
+    private ViewableGroupView groupView;
     private boolean built;
 
     // state -> {state -> {imageKey starting with "Flag of " -> fullState}}
@@ -54,7 +54,7 @@ public class States implements QuizableViews {
     }
 
     @Override
-    public QuizableGroupView getGroupView() {
+    public ViewableGroupView getGroupView() {
         return groupView;
     }
 
@@ -88,7 +88,7 @@ public class States implements QuizableViews {
         System.out.println(root.getChildren().size() + " groups, " +
                                    root.getMembers().size() + " vs. " + states.size());
         mem();
-        groupView = new QuizableGroupView(root);
+        groupView = new ViewableGroupView(root);
         built = true;
     }
 

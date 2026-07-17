@@ -39,7 +39,7 @@ import java.util.function.Function;
  *
  * <p>The list does not know how a card is configured or rendered. Card creation
  * is delegated to {@code cardFactory}. This allows callers such as grouped views
- * to supply their own QuizablePanelConfig and QuizableRenderContext.
+ * to supply their own ViewablePanelConfig and ViewableRenderContext.
  */
 public final class VirtualizedCardList
         extends JComponent

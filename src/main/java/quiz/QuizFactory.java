@@ -11,15 +11,15 @@ import mythology.Creature;
 import mythology.MythologyEntities;
 import nobel.NobelPrize;
 import nobel.NobelPrizes;
+import objectview.ViewableViews;
+import objectview.viewconfig.ViewablePanelConfig;
 import oscar.OscarNomination;
 import oscar.OscarNominations;
 import presidents.President;
 import presidents.USPresidents;
 import objectview.ImageBlurrer;
-import objectview.QuizableGroupView;
-import objectview.QuizableViews;
-import objectview.viewconfig.QuizablePanelConfig;
-import objectview.viewconfig.QuizablePanelConfigEditor;
+import objectview.ViewableGroupView;
+import objectview.viewconfig.ViewablePanelConfigEditor;
 
 import java.awt.*;
 import java.awt.event.WindowAdapter;
@@ -50,7 +50,7 @@ public class QuizFactory {
     private record QuizOption(
             String icon,
             String name,
-            QuizableViews views,
+            ViewableViews views,
             Class<? extends QuizableAdapter> cls
     ) {}
 
@@ -67,7 +67,7 @@ public class QuizFactory {
     /** A built-in Quizable domain (icon, name, builder) — exposed so the transform
      *  domain navigator (and later the web server) can offer the same domains as
      *  the quiz, alongside the generated Wikidata datasets. */
-    public record BuiltInDomain(String icon, String name, QuizableViews views) {}
+    public record BuiltInDomain(String icon, String name, ViewableViews views) {}
 
     public static List<BuiltInDomain> builtInDomains() {
         List<BuiltInDomain> out = new java.util.ArrayList<>();
@@ -85,8 +85,8 @@ public class QuizFactory {
     private static JFrame quizFrame;
 
     private final Map<String, ? extends Quizable> quizables;
-    private final QuizableGroupView rootView;
-    private final QuizableViews qvs;
+    private final ViewableGroupView rootView;
+    private final ViewableViews qvs;
 
     public static void main(String[] args) {
         Constants.setFontSizeMultiplier(1.5f);
@@ -216,7 +216,7 @@ public class QuizFactory {
         return buttonPanel;
     }
 
-    public QuizFactory(QuizableViews qvs) throws Exception {
+    public QuizFactory(ViewableViews qvs) throws Exception {
         this.qvs = qvs;
         qvs.buildViews();
         rootView = qvs.getGroupView();
@@ -232,16 +232,16 @@ public class QuizFactory {
     }
 
     public JFrame showQuizzes() {
-        QuizablePanelConfig queryConfig = QuizablePanelConfig.of(cls)
+        ViewablePanelConfig queryConfig = ViewablePanelConfig.of(cls)
                                                              .initializeAllFields(true)
                                                              .setAddListener(true);       // or false if you don’t want UI listeners
-        QuizablePanelConfigEditor queryEditor = new QuizablePanelConfigEditor(queryConfig);
+        ViewablePanelConfigEditor queryEditor = new ViewablePanelConfigEditor(queryConfig);
 
-        QuizablePanelConfig answerConfig = QuizablePanelConfig.of(cls)
-                .initializeAllFields(true)
-                .setAddListener(false)
-                .setThumb(true);
-        QuizablePanelConfigEditor answerEditor = new QuizablePanelConfigEditor(answerConfig);
+        ViewablePanelConfig answerConfig = ViewablePanelConfig.of(cls)
+                                                              .initializeAllFields(true)
+                                                              .setAddListener(false)
+                                                              .setThumb(true);
+        ViewablePanelConfigEditor answerEditor = new ViewablePanelConfigEditor(answerConfig);
 
         JPanel queryEditorPanel = new JPanel();
         queryEditorPanel.setLayout(new BoxLayout(queryEditorPanel, BoxLayout.Y_AXIS));
@@ -302,8 +302,8 @@ public class QuizFactory {
     }
 
     private JButton getCreateQuizButton(ButtonGroup group,
-                                        QuizablePanelConfigEditor queryEditor,
-                                        QuizablePanelConfigEditor answerEditor) {
+                                        ViewablePanelConfigEditor queryEditor,
+                                        ViewablePanelConfigEditor answerEditor) {
         JButton createQuizButton = new JButton("Create quiz");
         createQuizButton.addActionListener(e -> {
             DefaultMutableTreeNode node =
@@ -314,8 +314,8 @@ public class QuizFactory {
             }
             QuizableGroup selectedGroup = node == null ? null : (QuizableGroup) rootView.getQuizableGroup(node);
 
-            QuizablePanelConfig queryConfig = queryEditor.getConfig().copy();
-            QuizablePanelConfig answerConfig = answerEditor.getConfig().copy();
+            ViewablePanelConfig queryConfig = queryEditor.getConfig().copy();
+            ViewablePanelConfig answerConfig = answerEditor.getConfig().copy();
 
             queryConfig.setAddListener(false);
             answerConfig.setAddListener(false);
@@ -330,11 +330,11 @@ public class QuizFactory {
         return createQuizButton;
     }
 
-    private void showQuiz(QuizablePanelConfig queryConfig,
-                            QuizablePanelConfig answerConfig,
-                            QuizAnswerType answerType,
-                            QuizableGroup selectedGroup,
-                            Map<String, ? extends Quizable> quizables) {
+    private void showQuiz(ViewablePanelConfig queryConfig,
+                          ViewablePanelConfig answerConfig,
+                          QuizAnswerType answerType,
+                          QuizableGroup selectedGroup,
+                          Map<String, ? extends Quizable> quizables) {
         Quiz quiz = createQuiz(queryConfig, answerConfig, answerType,
                                selectedGroup, quizables);
         String message = quiz.prepareQuiz();
@@ -346,11 +346,11 @@ public class QuizFactory {
         }
     }
 
-    private Quiz createQuiz(QuizablePanelConfig queryConfig,
-                             QuizablePanelConfig answerConfig,
-                             QuizAnswerType answerType,
-                             QuizableGroup selectedGroup,
-                             Map<String, ? extends Quizable> quizables) {
+    private Quiz createQuiz(ViewablePanelConfig queryConfig,
+                            ViewablePanelConfig answerConfig,
+                            QuizAnswerType answerType,
+                            QuizableGroup selectedGroup,
+                            Map<String, ? extends Quizable> quizables) {
         return switch (answerType) {
             case ABCD, LIST ->
                     new QuizListABCD(queryConfig, answerConfig, answerType,

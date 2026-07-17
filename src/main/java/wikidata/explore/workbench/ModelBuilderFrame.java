@@ -1,8 +1,8 @@
 package wikidata.explore.workbench;
 
 import aux.SplitPaneUtils;
-import objectview.QuizablePanelView;
-import objectview.QuizableRenderContext;
+import objectview.ViewablePanelView;
+import objectview.ViewableRenderContext;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import aux.Constants;
@@ -768,11 +768,11 @@ public class ModelBuilderFrame extends JFrame {
         if (lastCollisions.isEmpty()) {
             return;
         }
-        QuizablePanelView view = new QuizablePanelView();
+        ViewablePanelView view = new ViewablePanelView();
         // Share the instances panel's render context so clicking a colliding
         // entity navigates to (focuses + scrolls to) its card in the instances
         // window instead of opening a detached copy.
-        QuizableRenderContext shared = instancesPanel.activeRenderContext();
+        ViewableRenderContext shared = instancesPanel.activeRenderContext();
         if (shared != null) {
             view.setRenderContext(shared);
             view.setInPlaceNavigation(true);
@@ -863,7 +863,7 @@ public class ModelBuilderFrame extends JFrame {
 
     // A "Transform…" dialog: edit the domain's TransformConfig as JSON, Run it
     // against the loaded pool (invert mutates in place; reify materializes new
-    // view-class objects, shown in a QuizablePanelView), and Save it next to the
+    // view-class objects, shown in a ViewablePanelView), and Save it next to the
     // model so the next domain generation/serve picks the constructs up.
     private void showTransformDialog() {
         if (lastRun == null || lastRun.dynamicObjects() == null
@@ -931,7 +931,7 @@ public class ModelBuilderFrame extends JFrame {
                         status.setText(sb.toString().trim());
                         logWindow.info("Transform: " + sb);
                         if (!out.created().isEmpty()) {
-                            QuizablePanelView view = new QuizablePanelView();
+                            ViewablePanelView view = new ViewablePanelView();
                             for (WikidataDynamicObject o : out.created()) {
                                 view.addQuizable(o);
                             }

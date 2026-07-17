@@ -1,6 +1,6 @@
 package quiz;
 
-import objectview.viewconfig.QuizablePanelConfigEditor;
+import objectview.viewconfig.ViewablePanelConfigEditor;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,15 +11,15 @@ import java.awt.*;
 public class QuizConfigEditor extends JPanel {
 
     private final QuizConfig quizConfig;
-    private final QuizablePanelConfigEditor viewEditor;
-    private final QuizablePanelConfigEditor searchEditor;
-    private final QuizablePanelConfigEditor sortEditor;
+    private final ViewablePanelConfigEditor viewEditor;
+    private final ViewablePanelConfigEditor searchEditor;
+    private final ViewablePanelConfigEditor sortEditor;
 
     public QuizConfigEditor(QuizConfig config) {
         this.quizConfig = config;
-        this.viewEditor = new QuizablePanelConfigEditor(config.getViewConfig());
-        this.searchEditor = new QuizablePanelConfigEditor(config.getSearchConfig());
-        this.sortEditor = new QuizablePanelConfigEditor(config.getSortConfig());
+        this.viewEditor = new ViewablePanelConfigEditor(config.getViewConfig());
+        this.searchEditor = new ViewablePanelConfigEditor(config.getSearchConfig());
+        this.sortEditor = new ViewablePanelConfigEditor(config.getSortConfig());
         buildLayout();
     }
 

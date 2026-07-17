@@ -14,13 +14,13 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import aux.ResourceFinder;
+import objectview.ViewableViews;
 import quiz.QuizableGroup;
-import objectview.QuizableGroupView;
+import objectview.ViewableGroupView;
 import objectview.ImagePane;
 import quiz.Quizable;
-import objectview.QuizableViews;
 
-public class NobelPrizes implements QuizableViews {
+public class NobelPrizes implements ViewableViews {
     public final static Map<String, NobelPrize.Domain> domainAndYearStarts = Map.of(
             "The Nobel Prize in Physics", NobelPrize.Domain.PHYSICS,
             "The Nobel Prize in Chemistry", NobelPrize.Domain.CHEMISTRY,
@@ -31,7 +31,7 @@ public class NobelPrizes implements QuizableViews {
             "“No Nobel Prize was awarded this year.", NobelPrize.Domain.NONE);
     
     private final QuizableGroup rootGroup = new QuizableGroup("All");
-    private QuizableGroupView groupView;
+    private ViewableGroupView groupView;
     private final Map<String, NobelPrize> nobelPrizes = new TreeMap<>();
     private final Map<String, Laureate> laureatesByName = new TreeMap<>();
 
@@ -201,7 +201,7 @@ public class NobelPrizes implements QuizableViews {
     public void buildViews() throws Exception {
         String filename = Constants.nobelDirectory + "nobelprizewithmotivation.txt"; // nobeltest 
         readNobelPrices(filename);
-        groupView = new QuizableGroupView(rootGroup);
+        groupView = new ViewableGroupView(rootGroup);
     }
 
     private void store(NobelPrize prize) {
@@ -212,7 +212,7 @@ public class NobelPrizes implements QuizableViews {
     }
 
     @Override
-    public QuizableGroupView getGroupView() {
+    public ViewableGroupView getGroupView() {
         return groupView;
     }
 

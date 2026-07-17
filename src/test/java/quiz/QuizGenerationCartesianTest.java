@@ -1,7 +1,7 @@
 package quiz;
 
+import objectview.viewconfig.ViewablePanelConfig;
 import org.junit.jupiter.api.Test;
-import objectview.viewconfig.QuizablePanelConfig;
 
 import java.util.*;
 
@@ -17,13 +17,13 @@ class QuizGenerationCartesianTest {
                 List.of("q1", "q2"),
                 List.of("a1", "a2", "a3")));
 
-        QuizablePanelConfig queryConfig = QuizablePanelConfig.of(TestItem.class);
+        ViewablePanelConfig queryConfig = ViewablePanelConfig.of(TestItem.class);
         queryConfig.setAllFields(false);
-        queryConfig.addField("queries", QuizablePanelConfig.leaf());
+        queryConfig.addField("queries", ViewablePanelConfig.leaf());
 
-        QuizablePanelConfig answerConfig = QuizablePanelConfig.of(TestItem.class);
+        ViewablePanelConfig answerConfig = ViewablePanelConfig.of(TestItem.class);
         answerConfig.setAllFields(false);
-        answerConfig.addField("answers", QuizablePanelConfig.leaf());
+        answerConfig.addField("answers", ViewablePanelConfig.leaf());
 
         TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null, items);
 
@@ -46,14 +46,14 @@ class QuizGenerationCartesianTest {
                 List.of("lang1", "lang2"),
                 List.of("a")));
 
-        QuizablePanelConfig queryConfig = QuizablePanelConfig.of(TestItem.class);
+        ViewablePanelConfig queryConfig = ViewablePanelConfig.of(TestItem.class);
         queryConfig.setAllFields(false);
-        queryConfig.addField("queries", QuizablePanelConfig.leaf());
-        queryConfig.addField("languages", QuizablePanelConfig.leaf());
+        queryConfig.addField("queries", ViewablePanelConfig.leaf());
+        queryConfig.addField("languages", ViewablePanelConfig.leaf());
 
-        QuizablePanelConfig answerConfig = QuizablePanelConfig.of(TestItem.class);
+        ViewablePanelConfig answerConfig = ViewablePanelConfig.of(TestItem.class);
         answerConfig.setAllFields(false);
-        answerConfig.addField("answers", QuizablePanelConfig.leaf());
+        answerConfig.addField("answers", ViewablePanelConfig.leaf());
 
         TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null, items);
 
@@ -71,13 +71,13 @@ class QuizGenerationCartesianTest {
         items.put("emptyQuery", new TestItem("emptyQuery", List.of(), List.of("a1")));
         items.put("emptyAnswer", new TestItem("emptyAnswer", List.of("q1"), List.of()));
 
-        QuizablePanelConfig queryConfig = QuizablePanelConfig.of(TestItem.class);
+        ViewablePanelConfig queryConfig = ViewablePanelConfig.of(TestItem.class);
         queryConfig.setAllFields(false);
-        queryConfig.addField("queries", QuizablePanelConfig.leaf());
+        queryConfig.addField("queries", ViewablePanelConfig.leaf());
 
-        QuizablePanelConfig answerConfig = QuizablePanelConfig.of(TestItem.class);
+        ViewablePanelConfig answerConfig = ViewablePanelConfig.of(TestItem.class);
         answerConfig.setAllFields(false);
-        answerConfig.addField("answers", QuizablePanelConfig.leaf());
+        answerConfig.addField("answers", ViewablePanelConfig.leaf());
 
         TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null, items);
 
@@ -85,8 +85,8 @@ class QuizGenerationCartesianTest {
     }
 
     private static class TestQuiz extends Quiz {
-        TestQuiz(QuizablePanelConfig queryConfig,
-                 QuizablePanelConfig answerConfig,
+        TestQuiz(ViewablePanelConfig queryConfig,
+                 ViewablePanelConfig answerConfig,
                  QuizableGroup group,
                  Map<String, ? extends Quizable> quizables) {
             super(queryConfig, answerConfig, group, quizables);

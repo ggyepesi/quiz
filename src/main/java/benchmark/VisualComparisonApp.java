@@ -1,9 +1,9 @@
 package benchmark;
 
+import objectview.viewconfig.ViewablePanelConfig;
 import oscar.OscarNomination;
-import objectview.viewconfig.QuizablePanelConfig;
-import objectview.viewconfig.QuizablePanelConfigAdapter;
-import objectview.QuizablePanel;
+import objectview.viewconfig.ViewablePanelConfigAdapter;
+import objectview.ViewablePanel;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.*;
@@ -34,21 +34,21 @@ public class VisualComparisonApp {
         targetRecord.setWinner(true);
 
         // 3. Generate the exact full configuration frame rules
-        QuizablePanelConfig fullConfig = QuizablePanelConfigAdapter.fromOldArgs(
+        ViewablePanelConfig fullConfig = ViewablePanelConfigAdapter.fromOldArgs(
                 targetRecord, true, true, true
-        );
+                                                                               );
 
         // 4. Construct the Main Frame Wrapper
-        JFrame frame = new JFrame("QuizablePanel Visual Verification");
+        JFrame frame = new JFrame("ViewablePanel Visual Verification");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
-        // The live reflection-driven QuizablePanel view (the only renderer now).
+        // The live reflection-driven ViewablePanel view (the only renderer now).
         JPanel container = new JPanel(new BorderLayout());
         container.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        container.add(new JLabel("Reflection Loop (QuizablePanel)", SwingConstants.CENTER), BorderLayout.NORTH);
+        container.add(new JLabel("Reflection Loop (ViewablePanel)", SwingConstants.CENTER), BorderLayout.NORTH);
 
-        QuizablePanel panel = new QuizablePanel(targetRecord, fullConfig, false);
+        ViewablePanel panel = new ViewablePanel(targetRecord, fullConfig, false);
         container.add(panel, BorderLayout.CENTER);
 
         // 5. Pack and display the frame window

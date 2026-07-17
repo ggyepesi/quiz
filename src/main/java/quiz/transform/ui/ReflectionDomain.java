@@ -1,11 +1,11 @@
 package quiz.transform.ui;
 
+import objectview.ViewableViews;
+import objectview.field.ViewableFieldPaths;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import objectview.field.QuizableFieldPaths;
 import objectview.field.FieldKind;
-import objectview.QuizableViews;
-import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.ViewablePanelConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -22,7 +22,7 @@ import java.util.Set;
  * A {@link DomainModel} over hand-written {@code Quizable} domain objects (Nobel,
  * State, SportTeam, …) — the schema is derived by REFLECTION from the instance
  * classes ({@link QuizableAdapter#getAllFields}), a reference being a
- * {@code @QuizableReference} field or a {@code Quizable}-typed field/element, a
+ * {@code @ViewableReference} field or a {@code Quizable}-typed field/element, a
  * collection being a {@code Collection}/{@code Map}. The transform engine reads
  * these declared fields directly (FieldAccess falls back to reflection), so the
  * same view pipeline runs over them.
@@ -82,8 +82,8 @@ public final class ReflectionDomain implements DomainModel {
         }
     }
 
-    /** Build a domain from a {@link QuizableViews} builder (e.g. {@code new SportTeams()}). */
-    public static ReflectionDomain of(QuizableViews views) throws Exception {
+    /** Build a domain from a {@link ViewableViews} builder (e.g. {@code new SportTeams()}). */
+    public static ReflectionDomain of(ViewableViews views) throws Exception {
         views.buildViews();
         // getQuizables() is typed Viewable (objectview SPI); the elements are Quizables.
         @SuppressWarnings("unchecked")
@@ -99,11 +99,11 @@ public final class ReflectionDomain implements DomainModel {
             return;
         }
         List<DomainField> fields = new ArrayList<>();
-        // QuizableFieldPaths gives the NESTED field paths (e.g. nominee.name) the
+        // ViewableFieldPaths gives the NESTED field paths (e.g. nominee.name) the
         // config editor renders — so nested/cross-class arguments appear for free.
-        QuizablePanelConfig config =
-                QuizablePanelConfig.all((Class<? extends Quizable>) cls);
-        for (QuizableFieldPaths.FieldPath fp : QuizableFieldPaths.collect(config)) {
+        ViewablePanelConfig config =
+                ViewablePanelConfig.all((Class<? extends Quizable>) cls);
+        for (ViewableFieldPaths.FieldPath fp : ViewableFieldPaths.collect(config)) {
             Field leaf = fp.leafField();
             boolean ref = leaf != null && isReferenceField(leaf);
             boolean col = leaf != null && isCollectionField(leaf);

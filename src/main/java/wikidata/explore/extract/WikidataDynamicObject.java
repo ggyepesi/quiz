@@ -2,7 +2,7 @@ package wikidata.explore.extract;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Link;
-import objectview.annotations.NotQuizableField;
+import objectview.annotations.NotViewableField;
 import objectview.annotations.Provenance;
 import objectview.field.DynamicFields;
 import quiz.QuizableAdapter;
@@ -32,36 +32,36 @@ import java.util.concurrent.ConcurrentHashMap;
 // rather than fail on. Only "name"/"qid" round-trip.
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class WikidataDynamicObject extends QuizableAdapter implements DynamicFields {
-    // Identity + provenance. Hidden from the card (@NotQuizableField) because
+    // Identity + provenance. Hidden from the card (@NotViewableField) because
     // they're surfaced together as one collapsed "source" chip below — the raw
     // QID and wiki URL no longer clutter every card's top level. The QID is
     // still the canonical key (equals/hashCode, snapshots, web serving); these
     // annotations only affect Quizable rendering, not Jackson persistence.
-    @NotQuizableField
+    @NotViewableField
     private String qid;
     // Identity/display name — the card TITLE, not a field row. Like qid it is
     // re-injected once as an identity field by getConfigurableFields; without
-    // @NotQuizableField it also leaks into getAllFields, so `name` showed up TWICE
+    // @NotViewableField it also leaks into getAllFields, so `name` showed up TWICE
     // in sort/search/viewconfig (and as a redundant field row).
-    @NotQuizableField
+    @NotViewableField
     private String name;
 
-    @NotQuizableField
+    @NotViewableField
     @Link
     private String wikidataUrl;
 
-    // The dynamic data. NOTE: NOT @NotQuizableField — QuizablePanel renders this
+    // The dynamic data. NOTE: NOT @NotViewableField — ViewablePanel renders this
     // map's entries AS the object's fields (see isDynamicContainer there); hiding
     // it would hide all the data. Its unwanted "dynamicFields" titled border is
-    // dropped in QuizablePanel instead.
+    // dropped in ViewablePanel instead.
     private final Map<String, Object> dynamicFields =
             new LinkedHashMap<>();
 
     // Web/runtime only (not persisted): the domain type this object is served
-    // under, since all generated objects share this one Java class. @NotQuizableField
+    // under, since all generated objects share this one Java class. @NotViewableField
     // so the class STAMP doesn't render as a `type` field (distinct from the P31
     // `type` data field a domain may declare).
-    @NotQuizableField
+    @NotViewableField
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String type;
 
@@ -71,7 +71,7 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     // preserves declaration order). Derived from the QID, so it is rebuilt by
     // the constructor / qid setter and never persisted (the snapshot store
     // rebuilds objects through the constructor). @Provenance drives both: render
-    // as a collapsed chip (QuizablePanel) and exclude from entity-type grouping
+    // as a collapsed chip (ViewablePanel) and exclude from entity-type grouping
     // (QueryObjectResultPanel).
     @Provenance
     @JsonIgnore

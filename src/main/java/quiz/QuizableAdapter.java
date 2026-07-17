@@ -1,12 +1,11 @@
 package quiz;
 
 import objectview.ViewableAdapter;
-import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.ViewablePanelConfig;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -40,16 +39,16 @@ public abstract class QuizableAdapter
 
 
     public HashMap<List<Object>, Quizable> generateUniqueCombinations(List<String> fieldNames) {
-        QuizablePanelConfig cfg = QuizablePanelConfig.of(getClass());
+        ViewablePanelConfig cfg = ViewablePanelConfig.of(getClass());
         if (fieldNames != null) {
             for (String name : fieldNames) {
-                cfg.addField(name, QuizablePanelConfig.leaf());
+                cfg.addField(name, ViewablePanelConfig.leaf());
             }
         }
         return generateUniqueCombinations(cfg);
     }
 
-    public HashMap<List<Object>, Quizable> generateUniqueCombinations(QuizablePanelConfig config) {
+    public HashMap<List<Object>, Quizable> generateUniqueCombinations(ViewablePanelConfig config) {
         if (config == null) {
             return new HashMap<>();
         }
@@ -81,7 +80,7 @@ public abstract class QuizableAdapter
                 continue;
             }
 
-            QuizablePanelConfig childConfig = config.getFieldConfig(fieldName);
+            ViewablePanelConfig childConfig = config.getFieldConfig(fieldName);
             List<FieldAlternative> alternatives = generateFieldAlternatives(field, fieldValue, childConfig);
 
             if (!alternatives.isEmpty()) {
@@ -131,7 +130,7 @@ public abstract class QuizableAdapter
 
     private List<FieldAlternative> generateFieldAlternatives(Field field,
                                                              Object fieldValue,
-                                                             QuizablePanelConfig childConfig) {
+                                                             ViewablePanelConfig childConfig) {
 
         Class<?> fieldType = field.getType();
         List<FieldAlternative> alternatives = new ArrayList<>();
@@ -156,7 +155,7 @@ public abstract class QuizableAdapter
     }
 
     private List<FieldAlternative> generateValueAlternatives(Object value,
-                                                             QuizablePanelConfig childConfig,
+                                                             ViewablePanelConfig childConfig,
                                                              boolean isMapValue,
                                                              Object mapKey) {
         List<FieldAlternative> alternatives = new ArrayList<>();
@@ -233,7 +232,7 @@ public abstract class QuizableAdapter
         return other;
     }
 
-    public Quizable project(QuizablePanelConfig config, List<Object> flatValues) {
+    public Quizable project(ViewablePanelConfig config, List<Object> flatValues) {
         if (config == null) {
             throw new IllegalArgumentException("config must not be null");
         }
@@ -249,7 +248,7 @@ public abstract class QuizableAdapter
         return projected;
     }
 
-    private QuizableAdapter projectRecursive(QuizablePanelConfig config,
+    private QuizableAdapter projectRecursive(ViewablePanelConfig config,
                                              List<Object> flatValues,
                                              Index index) {
         QuizableAdapter other = createNew();
@@ -260,7 +259,7 @@ public abstract class QuizableAdapter
                 continue;
             }
 
-            QuizablePanelConfig childConfig = config.getFieldConfig(fieldName);
+            ViewablePanelConfig childConfig = config.getFieldConfig(fieldName);
 
             try {
                 Field otherField = getField(other.getClass(), fieldName);
@@ -290,7 +289,7 @@ public abstract class QuizableAdapter
 
     @SuppressWarnings("unchecked")
     private ProjectionResult projectFieldValue(Field field,
-                                               QuizablePanelConfig childConfig,
+                                               ViewablePanelConfig childConfig,
                                                List<Object> flatValues,
                                                Index index,
                                                Object currentTargetValue) throws Exception {

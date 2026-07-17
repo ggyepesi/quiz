@@ -2,7 +2,7 @@ package language;
 
 import objectview.annotations.MinorField;
 import quiz.QuizableAdapter;
-import objectview.annotations.QuizableReference;
+import objectview.annotations.ViewableReference;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,7 @@ public class Language extends QuizableAdapter {
     private final List<String> countries = new ArrayList<>();
     @MinorField
     private final List<String> scripts = new ArrayList<>();
-    @QuizableReference
+    @ViewableReference
     private final List<LanguageFamily> leafFamilies = new ArrayList<>();
 
     public Language(String name) {

@@ -1,19 +1,19 @@
 package language;
 
+import objectview.annotations.ViewableReference;
 import quiz.QuizableAdapter;
-import objectview.annotations.QuizableReference;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class LanguageFamily extends QuizableAdapter {
     private final String name;
-    @QuizableReference
+    @ViewableReference
     private LanguageFamily parent;
 
     private final List<LanguageFamily> children = new ArrayList<>();
 
-    @QuizableReference
+    @ViewableReference
     private final List<Language> languages = new ArrayList<>();
 
     public LanguageFamily(String name) {

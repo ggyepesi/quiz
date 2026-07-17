@@ -1,7 +1,6 @@
 package objectview;
 
 import objectview.viewconfig.FieldTypeSource;
-import objectview.Viewable;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,8 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Hosts several {@link QuizablePanelView}s side by side that share one
- * {@link QuizableRenderContext}, so a reference field in one view (e.g. a
+ * Hosts several {@link ViewablePanelView}s side by side that share one
+ * {@link ViewableRenderContext}, so a reference field in one view (e.g. a
  * constellation's {@code stars}) renders as a chip that, on click, scrolls
  * to and flashes the target's card in its own view — and vice versa.
  *
@@ -28,7 +27,7 @@ import java.util.List;
  */
 public class MultiQuizableView extends JPanel {
 
-    private final QuizableRenderContext context = new QuizableRenderContext();
+    private final ViewableRenderContext context = new ViewableRenderContext();
     private final List<Section> sections = new ArrayList<>();
     private boolean built;
 
@@ -38,7 +37,7 @@ public class MultiQuizableView extends JPanel {
     }
 
     /** The shared context, e.g. to pre-register extra objects. */
-    public QuizableRenderContext context() {
+    public ViewableRenderContext context() {
         return context;
     }
 
@@ -88,7 +87,7 @@ public class MultiQuizableView extends JPanel {
         }
 
         List<JComponent> bodies = new ArrayList<>();
-        List<QuizableSearchPanel> engines = new ArrayList<>();
+        List<ViewableSearchPanel> engines = new ArrayList<>();
         for (Section s : sections) {
             bodies.add(buildSection(s, columnsPerView, engines));
         }
@@ -107,8 +106,8 @@ public class MultiQuizableView extends JPanel {
     }
 
     private JComponent buildSection(
-            Section s, int columns, List<QuizableSearchPanel> engines) {
-        QuizablePanelView view = new QuizablePanelView();
+            Section s, int columns, List<ViewableSearchPanel> engines) {
+        ViewablePanelView view = new ViewablePanelView();
         view.setRenderContext(context);
 
         for (Viewable q : s.objects()) {
@@ -127,9 +126,9 @@ public class MultiQuizableView extends JPanel {
             // config toolbar is hidden (the shared bar owns those), but it keeps
             // its own per-field results panel + per-panel navigation, and
             // highlights this section's cards. Driven by the shared bar.
-            QuizableSearchPanel engine = s.sample() != null
-                    ? new QuizableSearchPanel(s.type(), s.sample())
-                    : new QuizableSearchPanel(s.type());
+            ViewableSearchPanel engine = s.sample() != null
+                    ? new ViewableSearchPanel(s.type(), s.sample())
+                    : new ViewableSearchPanel(s.type());
             if (s.hiddenFields() != null) {
                 engine.setHiddenFields(s.hiddenFields());
             }

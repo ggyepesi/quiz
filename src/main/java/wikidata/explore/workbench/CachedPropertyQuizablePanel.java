@@ -1,11 +1,11 @@
 package wikidata.explore.workbench;
 
 import aux.GridBagUtils;
+import objectview.ViewablePanel;
+import objectview.ViewableSearchPanel;
+import objectview.viewconfig.ViewablePanelConfig;
 import quiz.Quizable;
-import objectview.viewconfig.QuizablePanelConfig;
-import objectview.QuizablePanel;
-import objectview.QuizableRenderContext;
-import objectview.QuizableSearchPanel;
+import objectview.ViewableRenderContext;
 import wikidata.explore.WikidataProperty;
 import wikidata.explore.WikidataPropertyStore;
 
@@ -27,8 +27,8 @@ public class CachedPropertyQuizablePanel extends JPanel {
     private final JScrollPane cardsScrollPane =
             new JScrollPane(cardsPanel);
 
-    private final QuizableSearchPanel searchPanel =
-            new QuizableSearchPanel(WikidataPropertyQuizable.class);
+    private final ViewableSearchPanel searchPanel =
+            new ViewableSearchPanel(WikidataPropertyQuizable.class);
 
     private final JLabel statusLabel =
             new JLabel(" ");
@@ -97,25 +97,25 @@ public class CachedPropertyQuizablePanel extends JPanel {
         cardsPanel.removeAll();
 
         List<Quizable> quizables = new ArrayList<>(properties);
-        QuizableRenderContext context =
-                new QuizableRenderContext(quizables);
+        ViewableRenderContext context =
+                new ViewableRenderContext(quizables);
 
-        QuizablePanelConfig config =
-                QuizablePanelConfig.of(WikidataPropertyQuizable.class);
+        ViewablePanelConfig config =
+                ViewablePanelConfig.of(WikidataPropertyQuizable.class);
 
         config.setAllFields(false);
         config.setThumb(false);
         config.setAddListener(false);
-        config.addField("name", QuizablePanelConfig.leaf());
-        config.addField("pid", QuizablePanelConfig.leaf());
-        config.addField("description", QuizablePanelConfig.leaf());
+        config.addField("name", ViewablePanelConfig.leaf());
+        config.addField("pid", ViewablePanelConfig.leaf());
+        config.addField("description", ViewablePanelConfig.leaf());
         context.putClassConfig(WikidataPropertyQuizable.class, config);
 
         int row = 0;
 
         for (WikidataPropertyQuizable property : properties) {
-            QuizablePanel panel =
-                    new QuizablePanel(property, config.copy(), context, false);
+            ViewablePanel panel =
+                    new ViewablePanel(property, config.copy(), context, false);
 
             context.registerTopLevel(property, panel);
 

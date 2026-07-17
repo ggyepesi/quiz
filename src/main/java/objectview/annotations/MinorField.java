@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
  *
  * Minor fields are hidden in compact/default views but may still be:
  *
- * - explicitly enabled in QuizablePanelConfig
+ * - explicitly enabled in ViewablePanelConfig
  * - shown in standalone/detail views
  * - offered in config editors under a separate section
  *

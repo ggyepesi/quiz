@@ -88,7 +88,7 @@ public final class FieldAccess {
             }
             // Identity / display come from the Viewable contract, not a raw field: for a
             // dynamic object `name`/`qid` aren't in the property map (they're identity,
-            // @NotQuizableField), so getDisplayName()/getIdentifier() are the right source.
+            // @NotViewableField), so getDisplayName()/getIdentifier() are the right source.
             if ("name".equals(name)) {
                 return q.getDisplayName();
             }

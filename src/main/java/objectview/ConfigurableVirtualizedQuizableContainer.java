@@ -1,8 +1,8 @@
 package objectview;
 
-import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.ViewablePanelConfig;
 
 public interface ConfigurableVirtualizedQuizableContainer
         extends VirtualizedQuizableContainer {
-    void setCardConfig(QuizablePanelConfig config);
+    void setCardConfig(ViewablePanelConfig config);
 }

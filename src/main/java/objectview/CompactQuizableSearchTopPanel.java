@@ -5,7 +5,7 @@ import java.awt.*;
 
 /**
  * Optional helper if you prefer replacing the top-panel construction in
- * QuizableSearchPanel with a small reusable class.
+ * ViewableSearchPanel with a small reusable class.
  */
 public class CompactQuizableSearchTopPanel extends JPanel {
 

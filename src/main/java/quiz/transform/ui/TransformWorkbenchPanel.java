@@ -1,12 +1,9 @@
 package quiz.transform.ui;
 
-import objectview.GroupTreeBrowser;
-import objectview.MultiQuizableView;
-import objectview.QuizableSearchPanel;
+import objectview.*;
 import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
-import objectview.QuizablePanelView;
 
 import javax.swing.*;
 import java.awt.*;
@@ -157,7 +154,7 @@ public final class TransformWorkbenchPanel extends JPanel {
         }
 
         if (byType.size() <= 1) {
-            QuizablePanelView v = new QuizablePanelView();
+            ViewablePanelView v = new ViewablePanelView();
             for (Quizable m : members) {
                 v.addQuizable(m);
             }
@@ -177,7 +174,7 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     /** A grouped (facet) result: a role-aware collapsible outline of the buckets —
      *  category ▸ year ▸ members — with a search / sort / fields bar above it (the
-     *  data-centric counterpart to the flat view's QuizableSearchPanel). */
+     *  data-centric counterpart to the flat view's ViewableSearchPanel). */
     private JComponent groupView(QuizableGroup root, String type) {
         Quizable sample = controller.sampleOf(type);
         Class<? extends Quizable> cls = sample != null ? sampleClass(sample) : Quizable.class;
@@ -187,13 +184,13 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     /** Wraps a card view with the shared search + sort + view-config panel
      *  (sample-driven, so it's dynamic-aware + model-typed). */
-    private JComponent searchableView(QuizablePanelView v, String type) {
+    private JComponent searchableView(ViewablePanelView v, String type) {
         v.createCardsPanel(1);
         JPanel panel = new JPanel(new BorderLayout());
         Quizable sample = controller.sampleOf(type);
         if (sample != null) {
-            QuizableSearchPanel engine =
-                    new QuizableSearchPanel(sampleClass(sample), sample);
+            ViewableSearchPanel engine =
+                    new ViewableSearchPanel(sampleClass(sample), sample);
             engine.setHiddenFields(controller.structuralFields(type));
             engine.setFieldTypes(controller.fieldTypes(type));
             engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());

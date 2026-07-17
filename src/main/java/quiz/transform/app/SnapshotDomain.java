@@ -1,7 +1,7 @@
 package quiz.transform.app;
 
+import objectview.field.ViewableFieldPaths;
 import quiz.Quizable;
-import objectview.field.QuizableFieldPaths;
 import objectview.field.FieldAccess;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
@@ -62,8 +62,8 @@ public final class SnapshotDomain implements DomainModel {
         }
         java.util.Set<String> structural = structuralFields(type);
         List<DomainField> out = new ArrayList<>();
-        for (QuizableFieldPaths.FieldPath fp
-                : QuizableFieldPaths.collectFromSample(sample, QuizableFieldPaths.ALL_FIELDS)) {
+        for (ViewableFieldPaths.FieldPath fp
+                : ViewableFieldPaths.collectFromSample(sample, ViewableFieldPaths.ALL_FIELDS)) {
             String head = fp.dotted().contains(".")
                     ? fp.dotted().substring(0, fp.dotted().indexOf('.'))
                     : fp.dotted();

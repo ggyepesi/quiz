@@ -1,8 +1,8 @@
 package quiz;
 
 import aux.GridBagUtils;
-import objectview.QuizablePanel;
-import objectview.viewconfig.QuizablePanelConfig;
+import objectview.ViewablePanel;
+import objectview.viewconfig.ViewablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,18 +19,18 @@ public class QuizCategorize extends Quiz {
     private final QuizableGroup categoryRoot;
 
     private final List<CategoryItem> remainingItems = new ArrayList<>();
-    private final Map<QuizablePanel, CategoryItem> itemByPanel =
+    private final Map<ViewablePanel, CategoryItem> itemByPanel =
             new IdentityHashMap<>();
 
-    private QuizablePanel selectedPanel;
+    private ViewablePanel selectedPanel;
     private JButton nextButton;
     private int solvedInRound = 0;
     private int roundSize = 0;
 
-    public QuizCategorize(QuizablePanelConfig queryConfig,
+    public QuizCategorize(ViewablePanelConfig queryConfig,
                           QuizableGroup categoryRoot,
                           Map<String, ? extends Quizable> quizables) {
-        super(queryConfig, new QuizablePanelConfig(), categoryRoot, quizables);
+        super(queryConfig, new ViewablePanelConfig(), categoryRoot, quizables);
         this.categoryRoot = categoryRoot;
     }
 
@@ -146,7 +146,7 @@ public class QuizCategorize extends Quiz {
         int col = 0;
 
         for (CategoryItem item : round) {
-            QuizablePanel card = createQueryPanel(item.quizable);
+            ViewablePanel card = createQueryPanel(item.quizable);
 
             itemByPanel.put(card, item);
 
@@ -232,7 +232,7 @@ public class QuizCategorize extends Quiz {
         return panel;
     }
 
-    private void selectCard(QuizablePanel card) {
+    private void selectCard(ViewablePanel card) {
         if (!itemByPanel.containsKey(card)) {
             return;
         }
@@ -272,7 +272,7 @@ public class QuizCategorize extends Quiz {
         }
     }
 
-    private void markCorrect(QuizablePanel panel, QuizableGroup category) {
+    private void markCorrect(ViewablePanel panel, QuizableGroup category) {
         markCorrectTrial();
         panel.setOpaque(true);
         panel.setBackground(new Color(170, 255, 170));
@@ -302,7 +302,7 @@ public class QuizCategorize extends Quiz {
         panel.repaint();
     }
 
-    private void flashWrong(QuizablePanel panel) {
+    private void flashWrong(ViewablePanel panel) {
         markWrongTrial();
         panel.setOpaque(true);
         panel.setBackground(new Color(255, 190, 190));
@@ -321,7 +321,7 @@ public class QuizCategorize extends Quiz {
         timer.start();
     }
 
-    private void resetUnsolvedCard(QuizablePanel panel) {
+    private void resetUnsolvedCard(ViewablePanel panel) {
         if (!itemByPanel.containsKey(panel)) {
             return;
         }

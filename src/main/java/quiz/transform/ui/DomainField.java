@@ -1,7 +1,6 @@
 package quiz.transform.ui;
-import objectview.field.QuizableFieldPaths;
 
-import objectview.field.QuizableFieldPaths.FieldPath;
+import objectview.field.ViewableFieldPaths.FieldPath;
 import objectview.field.FieldKind;
 
 /**

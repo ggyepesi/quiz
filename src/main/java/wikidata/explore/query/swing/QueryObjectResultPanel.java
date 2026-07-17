@@ -1,12 +1,9 @@
 package wikidata.explore.query.swing;
 
-import objectview.QuizableRenderContext;
+import objectview.*;
 import objectview.field.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import objectview.MultiQuizableView;
-import objectview.QuizablePanelView;
-import objectview.QuizableSearchPanel;
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -40,14 +37,14 @@ public class QueryObjectResultPanel
     private final JPanel holder =
             new JPanel(new BorderLayout());
 
-    private QuizableRenderContext activeContext;
+    private ViewableRenderContext activeContext;
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
         add(holder, BorderLayout.CENTER);
     }
 
-    public QuizableRenderContext activeRenderContext() {
+    public ViewableRenderContext activeRenderContext() {
         return activeContext;
     }
 
@@ -191,8 +188,8 @@ public class QueryObjectResultPanel
     }
 
     private JComponent searchPanelView(ObjectQueryResult result) {
-        QuizablePanelView view =
-                new QuizablePanelView();
+        ViewablePanelView view =
+                new ViewablePanelView();
 
         List<Quizable> typed =
                 new ArrayList<>();
@@ -226,8 +223,8 @@ public class QueryObjectResultPanel
         Quizable first =
                 shown.getFirst();
 
-        QuizableSearchPanel searchPanel =
-                new QuizableSearchPanel(first.getClass());
+        ViewableSearchPanel searchPanel =
+                new ViewableSearchPanel(first.getClass());
 
         searchPanel.setTarget(
                 view.getCardsPanel(),

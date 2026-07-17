@@ -40,7 +40,7 @@ public interface FieldRef {
 
     // --- render hints (annotation-derived; a dynamic field reports false / "") ------
 
-    /** {@code @QuizableInline} — render the referent(s) fully expanded inline. */
+    /** {@code @ViewableInline} — render the referent(s) fully expanded inline. */
     boolean inline();
 
     /** {@code @Link} — the (String) value is an external URL to render as a link. */
@@ -52,7 +52,7 @@ public interface FieldRef {
     /** {@code @Provenance} — a source/metadata field (chip; skipped by reference walks). */
     boolean provenance();
 
-    /** {@code @QuizableReference} — force reference-chip rendering. */
+    /** {@code @ViewableReference} — force reference-chip rendering. */
     boolean quizableReference();
 
     /** A field with no render hints — used for a dynamic (map-held) field, which has

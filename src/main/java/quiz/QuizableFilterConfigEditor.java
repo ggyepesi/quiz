@@ -1,7 +1,7 @@
 package quiz;
-import objectview.field.QuizableFieldPaths;
+import objectview.field.ViewableFieldPaths;
 
-import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.ViewablePanelConfig;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class QuizableFilterConfigEditor extends JPanel {
-    private final QuizablePanelConfig fieldConfig;
+    private final ViewablePanelConfig fieldConfig;
     private final List<FieldOption> fieldOptions = new ArrayList<>();
     private final List<Row> rows = new ArrayList<>();
 
@@ -22,16 +22,16 @@ public class QuizableFilterConfigEditor extends JPanel {
     private final JButton addButton = new JButton("Add filter");
     private final JButton clearButton = new JButton("Clear");
 
-    public QuizableFilterConfigEditor(QuizablePanelConfig fieldConfig) {
+    public QuizableFilterConfigEditor(ViewablePanelConfig fieldConfig) {
         this(fieldConfig, null);
     }
 
     public QuizableFilterConfigEditor(
-            QuizablePanelConfig fieldConfig,
+            ViewablePanelConfig fieldConfig,
             QuizableFilterConfig existing
     ) {
         this.fieldConfig = fieldConfig == null
-                ? new QuizablePanelConfig()
+                ? new ViewablePanelConfig()
                 : fieldConfig.copy();
 
         setLayout(new BorderLayout(8, 8));
@@ -54,13 +54,13 @@ public class QuizableFilterConfigEditor extends JPanel {
     private void buildFieldOptions() {
         fieldOptions.clear();
 
-        List<QuizableFieldPaths.FieldPath> paths =
-                QuizableFieldPaths.collect(
+        List<ViewableFieldPaths.FieldPath> paths =
+                ViewableFieldPaths.collect(
                         fieldConfig,
-                        QuizableFieldPaths.NOT_IMAGE_PANE_FIELDS
-                );
+                        ViewableFieldPaths.NOT_IMAGE_PANE_FIELDS
+                                          );
 
-        for (QuizableFieldPaths.FieldPath fp : paths) {
+        for (ViewableFieldPaths.FieldPath fp : paths) {
             fieldOptions.add(new FieldOption(fp.title(), fp.path()));
         }
     }

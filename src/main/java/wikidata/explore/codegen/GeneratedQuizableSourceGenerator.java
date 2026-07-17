@@ -1,5 +1,4 @@
 package wikidata.explore.codegen;
-import objectview.field.QuizableFieldPaths;
 
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
@@ -64,7 +63,7 @@ public class GeneratedQuizableSourceGenerator {
                      .anyMatch(GeneratedFieldModel::renderAsReference);
 
         if (needsReferenceImport) {
-            sb.append("import quiz.annotations.QuizableReference;\n\n");
+            sb.append("import quiz.annotations.ViewableReference;\n\n");
         }
 
         sb.append("public class ").append(className)
@@ -77,18 +76,18 @@ public class GeneratedQuizableSourceGenerator {
         }
 
         // QID stays the identity (getIdentifier), but the raw QID/URL are
-        // hidden from the card (@NotQuizableField) and surfaced together as one
+        // hidden from the card (@NotViewableField) and surfaced together as one
         // collapsed "source" chip below — mirrors WikidataDynamicObject so typed
         // and dynamic instances render the same.
-        sb.append("    @quiz.annotations.NotQuizableField\n");
+        sb.append("    @quiz.annotations.NotViewableField\n");
         sb.append("    public String qid = \"\";\n");
-        sb.append("    @quiz.annotations.NotQuizableField\n");
+        sb.append("    @quiz.annotations.NotViewableField\n");
         sb.append("    @quiz.annotations.Link\n");
         sb.append("    public String wikidataUrl = \"\";\n");
         // Identity/display name = the card TITLE, re-injected once as an identity
-        // field by getConfigurableFields; without @NotQuizableField it also leaks
+        // field by getConfigurableFields; without @NotViewableField it also leaks
         // into getAllFields and shows up TWICE in sort/search/viewconfig.
-        sb.append("    @quiz.annotations.NotQuizableField\n");
+        sb.append("    @quiz.annotations.NotViewableField\n");
         sb.append("    public String name = \"\";\n\n");
 
         for (GeneratedFieldModel field : fields) {
@@ -101,7 +100,7 @@ public class GeneratedQuizableSourceGenerator {
             }
 
             if (field.renderAsReference()) {
-                sb.append("    @QuizableReference\n");
+                sb.append("    @ViewableReference\n");
             }
             // Quantity fields sort by their leading number, not lexically.
             if (effectiveType(field) == FieldType.NUMBER) {
@@ -125,7 +124,7 @@ public class GeneratedQuizableSourceGenerator {
         }
 
         // Provenance LAST so it renders as an unobtrusive footer chip below the
-        // real fields (the QID/URL above are hidden via @NotQuizableField).
+        // real fields (the QID/URL above are hidden via @NotViewableField).
         // @Provenance drives the collapsed-chip rendering and keeps Source out
         // of entity-type grouping. Populated by GeneratedQuizableMapper.
         sb.append("\n");
@@ -212,7 +211,7 @@ public class GeneratedQuizableSourceGenerator {
         // A cross-reference to another class IN THIS PROJECT: the whole domain
         // is compiled together in one package, so name the target class directly
         // (e.g. an Episode's "characters" -> Character). This is what lets
-        // QuizableFieldPaths recurse into the referenced class's fields for
+        // ViewableFieldPaths recurse into the referenced class's fields for
         // nested search/sort/config.
         if (project != null && type != null && !type.isBlank()) {
             String sanitized = sanitizeClassName(type);

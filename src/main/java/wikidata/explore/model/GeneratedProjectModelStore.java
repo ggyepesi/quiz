@@ -110,7 +110,7 @@ public final class GeneratedProjectModelStore {
 
     // A model saved before canonicalization carries a vestigial `name` field per
     // class (identity/display now comes from CanonicalSpec + the generated
-    // @NotQuizableField name). Drop them on load so the editor and generation
+    // @NotViewableField name). Drop them on load so the editor and generation
     // see a clean model — you don't have to hand-delete per class.
     private static void stripLegacyNameFields(
             GeneratedProjectModel model) {

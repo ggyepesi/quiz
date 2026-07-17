@@ -8,7 +8,7 @@ import java.util.List;
  * The fields of a domain object, backing-agnostic: declared Java fields via
  * reflection ({@link ReflectionFieldSet}) or a dynamic property map ({@link
  * DynamicFieldSet}). This is the ONE interface the machinery reads — {@code
- * QuizablePanel}, the config editors, the search index, the sort keys — so it
+ * ViewablePanel}, the config editors, the search index, the sort keys — so it
  * never branches on {@code instanceof DynamicFields}. Nothing is migrated onto
  * it yet; this is the seam. See #87.
  *

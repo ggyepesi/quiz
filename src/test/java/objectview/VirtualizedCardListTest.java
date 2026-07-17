@@ -58,7 +58,7 @@ class VirtualizedCardListTest {
     private JComponent card(Viewable q) {
         // Reads its height LIVE from the map, so "expanding" an item (mutating the
         // map) changes the already-built card's preferred size — exactly what
-        // QuizablePanel.refresh() does in the app when a reference expands in place.
+        // ViewablePanel.refresh() does in the app when a reference expands in place.
         return new JPanel() {
             @Override
             public Dimension getPreferredSize() {

@@ -1,11 +1,6 @@
 package objectview;
 
-import objectview.annotations.Link;
-import objectview.annotations.MinorField;
-import objectview.annotations.NotQuizableField;
-import objectview.annotations.Provenance;
-import objectview.annotations.QuizableInline;
-import objectview.annotations.QuizableReference;
+import objectview.annotations.*;
 import objectview.field.FieldSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,18 +21,18 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public abstract class ViewableAdapter implements Viewable {
 
-    @NotQuizableField
+    @NotViewableField
     private static final Logger log = LoggerFactory.getLogger(ViewableAdapter.class);
 
-    @NotQuizableField
+    @NotViewableField
     private static final Map<Class<?>, List<Field>> ALL_FIELDS_CACHE =
             new ConcurrentHashMap<>();
 
-    @NotQuizableField
+    @NotViewableField
     private static final Map<Class<?>, Map<String, Field>> FIELD_CACHE =
             new ConcurrentHashMap<>();
 
-    @NotQuizableField
+    @NotViewableField
     private transient FieldSet fieldSet;
 
     public static boolean isMinorField(Field field) {
@@ -46,12 +41,12 @@ public abstract class ViewableAdapter implements Viewable {
 
     public static boolean isQuizableReference(Field field) {
         return field != null
-                && field.isAnnotationPresent(QuizableReference.class);
+                && field.isAnnotationPresent(ViewableReference.class);
     }
 
     public static boolean isQuizableInline(Field field) {
         return field != null
-                && field.isAnnotationPresent(QuizableInline.class);
+                && field.isAnnotationPresent(ViewableInline.class);
     }
 
     public static boolean isLinkField(Field field) {
@@ -64,7 +59,7 @@ public abstract class ViewableAdapter implements Viewable {
 
     public static boolean isNotQuizableField(Field field) {
         return field != null
-                && field.isAnnotationPresent(NotQuizableField.class);
+                && field.isAnnotationPresent(NotViewableField.class);
     }
 
     public static boolean isValidQuizValue(Object value) {
@@ -92,7 +87,7 @@ public abstract class ViewableAdapter implements Viewable {
      * {@link #getAllFields} PLUS the identity fields (name, qid) for entity
      * objects.
      *
-     * <p>Those are {@code @NotQuizableField} — hidden from the card — but are
+     * <p>Those are {@code @NotViewableField} — hidden from the card — but are
      * legitimately searchable / sortable / configurable, and a bare reference
      * object (a WikidataDynamicObject with no dynamic fields) has nothing else
      * to offer. Non-entity Viewables (no {@code qid} field) are unchanged.</p>
@@ -130,7 +125,7 @@ public abstract class ViewableAdapter implements Viewable {
         return out;
     }
 
-    // Declared field by name up the hierarchy, INCLUDING @NotQuizableField ones
+    // Declared field by name up the hierarchy, INCLUDING @NotViewableField ones
     // (which getAllFields deliberately drops).
     private static Field rawDeclaredField(Class<?> cls, String name) {
         for (Class<?> c = cls;

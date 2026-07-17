@@ -8,8 +8,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import language.Language;
+import objectview.annotations.ViewableReference;
 import quiz.QuizableGroup;
-import objectview.annotations.QuizableReference;
 import objectview.ImagePane;
 import quiz.QuizableAdapter;
 
@@ -19,12 +19,12 @@ public class State extends QuizableAdapter {
     private final List<ImagePane> armsVersions = new ArrayList<>();
     private final List<ImagePane> shapeVersions = new ArrayList<>();
 
-    @QuizableReference
+    @ViewableReference
     private final Map<String, QuizableGroup> groups = new TreeMap<>();
 
     private final Set<String> currencies = new TreeSet<>();
     private final Set<String> capitals = new TreeSet<>();
-    @QuizableReference
+    @ViewableReference
     private final List<Language> languages = new ArrayList<>();
 
     public State(String name) {

@@ -1,9 +1,6 @@
 package objectview;
 
-import objectview.Viewable;
-import objectview.ViewableAdapter;
-import objectview.viewconfig.QuizablePanelConfig;
-import objectview.ViewableGroup;
+import objectview.viewconfig.ViewablePanelConfig;
 
 import javax.swing.*;
 import java.awt.*;
@@ -18,7 +15,7 @@ public final class VirtualizedGroupTreeView extends JPanel
     private final ViewableGroup<?> root;
     private final VirtualizedCardList rows;
     private final JScrollPane rowsScroll;
-    private final QuizableRenderContext renderContext = new QuizableRenderContext();
+    private final ViewableRenderContext renderContext = new ViewableRenderContext();
 
     private final Set<ViewableGroup<?>> expandedGroups =
             Collections.newSetFromMap(new IdentityHashMap<>());
@@ -31,14 +28,14 @@ public final class VirtualizedGroupTreeView extends JPanel
 
     private final List<Viewable> visibleRows = new ArrayList<>();
 
-    private QuizablePanelConfig cardConfig;
+    private ViewablePanelConfig cardConfig;
     private Comparator<Viewable> memberComparator;
     private Viewable lastNavigated;
-    private QuizablePanelTargetListener targetListener;
+    private ViewablePanelTargetListener targetListener;
 
     public VirtualizedGroupTreeView(
             ViewableGroup<?> root,
-            QuizablePanelConfig cardConfig) {
+            ViewablePanelConfig cardConfig) {
 
         this.root = Objects.requireNonNull(root, "root");
         this.cardConfig = cardConfig == null ? null : cardConfig.copy();
@@ -63,7 +60,7 @@ public final class VirtualizedGroupTreeView extends JPanel
         });
 
         rows.setOnCardBuilt(component -> {
-            QuizablePanel panel = findQuizablePanel(component);
+            ViewablePanel panel = findQuizablePanel(component);
             if (panel != null && targetListener != null) {
                 targetListener.quizablePanelMaterialized(panel);
             }
@@ -77,11 +74,11 @@ public final class VirtualizedGroupTreeView extends JPanel
         rebuildVisibleRows();
     }
 
-    public void setTargetListener(QuizablePanelTargetListener listener) {
+    public void setTargetListener(ViewablePanelTargetListener listener) {
         this.targetListener = listener;
     }
 
-    public QuizableRenderContext renderContext() {
+    public ViewableRenderContext renderContext() {
         return renderContext;
     }
 
@@ -164,7 +161,7 @@ public final class VirtualizedGroupTreeView extends JPanel
     }
 
     @Override
-    public void setCardConfig(QuizablePanelConfig config) {
+    public void setCardConfig(ViewablePanelConfig config) {
         cardConfig = config == null ? null : config.copy();
         rows.setCardFactory(this::createRowComponent);
     }
@@ -318,9 +315,9 @@ public final class VirtualizedGroupTreeView extends JPanel
         indented.setBorder(BorderFactory.createEmptyBorder(
                 2, row.depth * INDENT, 2, 4));
 
-        QuizablePanelConfig config = configFor(row.member);
+        ViewablePanelConfig config = configFor(row.member);
 
-        QuizablePanel card = new QuizablePanel(
+        ViewablePanel card = new ViewablePanel(
                 row.member,
                 config,
                 renderContext,
@@ -332,15 +329,15 @@ public final class VirtualizedGroupTreeView extends JPanel
         return indented;
     }
 
-    private QuizablePanelConfig configFor(Viewable member) {
+    private ViewablePanelConfig configFor(Viewable member) {
         if (cardConfig == null) {
             @SuppressWarnings("unchecked")
             Class<? extends Viewable> cls =
                     (Class<? extends Viewable>) member.getClass();
-            return QuizablePanelConfig.all(cls);
+            return ViewablePanelConfig.all(cls);
         }
 
-        QuizablePanelConfig copy = cardConfig.copy();
+        ViewablePanelConfig copy = cardConfig.copy();
 
         if (copy.getCls() == null) {
             @SuppressWarnings("unchecked")
@@ -400,14 +397,14 @@ public final class VirtualizedGroupTreeView extends JPanel
                 : null;
     }
 
-    private static QuizablePanel findQuizablePanel(Component root) {
-        if (root instanceof QuizablePanel panel) {
+    private static ViewablePanel findQuizablePanel(Component root) {
+        if (root instanceof ViewablePanel panel) {
             return panel;
         }
 
         if (root instanceof Container container) {
             for (Component child : container.getComponents()) {
-                QuizablePanel found = findQuizablePanel(child);
+                ViewablePanel found = findQuizablePanel(child);
                 if (found != null) {
                     return found;
                 }

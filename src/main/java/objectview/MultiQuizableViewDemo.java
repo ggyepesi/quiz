@@ -14,7 +14,7 @@ import java.util.Set;
  * sharing one render context. Constellation cards show their stars and
  * neighbours as chips; star cards show their constellation as a chip.
  * Click any chip to navigate (scroll to + flash) the target's card in its
- * own view. The QuizablePanel equivalent of the old hand-built TypePanelDemo.
+ * own view. The ViewablePanel equivalent of the old hand-built TypePanelDemo.
  */
 public class MultiQuizableViewDemo {
 

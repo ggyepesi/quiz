@@ -1,8 +1,8 @@
 package wikidata.explore.query.swing;
 
-import objectview.QuizablePanelView;
-import objectview.QuizableRenderContext;
-import objectview.QuizableSearchPanel;
+import objectview.ViewablePanelView;
+import objectview.ViewableRenderContext;
+import objectview.ViewableSearchPanel;
 import wikidata.explore.query.core.QueryStatus;
 import wikidata.explore.query.log.LogKind;
 import wikidata.explore.query.log.LogListener;
@@ -20,7 +20,7 @@ public class WorkflowLogWindow implements LogListener {
     private final List<LogNode> workflows =
             new ArrayList<>();
 
-    private QuizablePanelView view;
+    private ViewablePanelView view;
     private JFrame frame;
 
     @Override
@@ -66,14 +66,14 @@ public class WorkflowLogWindow implements LogListener {
             return;
         }
 
-        QuizablePanelView v =
-                new QuizablePanelView();
+        ViewablePanelView v =
+                new ViewablePanelView();
 
         // Birdseye: each query-log entry renders collapsed (title + toggle) and
         // expands on demand, so a long history (and long entries like the name-
         // collision list) stays scannable. Context must be set before the cards
         // build so they pick it up; shared, so streamed new entries collapse too.
-        QuizableRenderContext ctx = new QuizableRenderContext();
+        ViewableRenderContext ctx = new ViewableRenderContext();
         ctx.setCollapsibleCards(true);
         v.setRenderContext(ctx);
 
@@ -83,8 +83,8 @@ public class WorkflowLogWindow implements LogListener {
 
         v.createCardsPanel(1);
 
-        QuizableSearchPanel search =
-                new QuizableSearchPanel(LogNode.class);
+        ViewableSearchPanel search =
+                new ViewableSearchPanel(LogNode.class);
 
         search.setTarget(
                 v.getCardsPanel(),

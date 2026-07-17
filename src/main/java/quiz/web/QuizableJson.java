@@ -6,8 +6,8 @@ import objectview.FieldLabels;
 import objectview.ImageRef;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import objectview.viewconfig.QuizablePanelConfigJsonIO;
-import objectview.viewconfig.QuizablePanelConfigJsonIO.JsonConfig;
+import objectview.viewconfig.ViewablePanelConfigJsonIO;
+import objectview.viewconfig.ViewablePanelConfigJsonIO.JsonConfig;
 
 import java.lang.reflect.Field;
 import java.net.URLEncoder;
@@ -24,8 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Builds a {@link QuizableView} from any {@link Quizable} by reflecting over
- * its fields, mirroring {@code QuizablePanel.addRenderedField}: scalars
- * become text/list, {@code @Link} becomes link, {@code @QuizableInline}
+ * its fields, mirroring {@code ViewablePanel.addRenderedField}: scalars
+ * become text/list, {@code @Link} becomes link, {@code @ViewableInline}
  * embeds nested views, and any other Quizable (single or in a
  * collection/map) becomes a lazy reference.
  */
@@ -435,8 +435,8 @@ public final class QuizableJson {
         }
         JsonConfig c = CONFIG_CACHE.computeIfAbsent(typeName, t -> {
             JsonConfig loaded =
-                    QuizablePanelConfigJsonIO.loadJson(
-                            QuizablePanelConfigJsonIO.fileForType(t));
+                    ViewablePanelConfigJsonIO.loadJson(
+                            ViewablePanelConfigJsonIO.fileForType(t));
             return loaded == null ? NO_CONFIG : loaded;
         });
         return c == NO_CONFIG ? null : c;

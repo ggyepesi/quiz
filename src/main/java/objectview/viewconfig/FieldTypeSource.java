@@ -1,7 +1,7 @@
 package objectview.viewconfig;
 
 /**
- * Optional typed-field info for {@link QuizablePanelConfigEditor} — a generic
+ * Optional typed-field info for {@link ViewablePanelConfigEditor} — a generic
  * seam letting a caller override the editor's sample reflection with authoritative
  * types (e.g. a compiled model schema). Purely mechanical: the editor asks for a
  * field's display type, whether it's structural (hide it), and the source for its

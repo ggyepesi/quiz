@@ -11,15 +11,14 @@ import aux.Constants;
 import aux.UploadURLParser;
 import aux.UrlLineProcessor;
 import aux.UrlReader;
+import objectview.ViewableViews;
 import objectview.facet.Facet;
 import quiz.QuizableGroup;
-import objectview.QuizableGroupView;
+import objectview.ViewableGroupView;
 import objectview.ImagePane;
 import quiz.Quizable;
 
-import objectview.QuizableViews;
-
-public class SportTeams implements QuizableViews {
+public class SportTeams implements ViewableViews {
     static final char[] ends = new char[] {'*', '†'};
 
     static final Set<String> canada = Set.of("Alberta", "British Columbia", "Manitoba", "Ontario", "Quebec");
@@ -39,7 +38,7 @@ public class SportTeams implements QuizableViews {
 
     static final boolean downloadSvgs = false;
 
-    private QuizableGroupView groupView;
+    private ViewableGroupView groupView;
     private Map<String, Quizable> quizables;
     private QuizableGroup rootGroup;
 
@@ -57,7 +56,7 @@ public class SportTeams implements QuizableViews {
     }
     
     @Override
-    public QuizableGroupView getGroupView() {
+    public ViewableGroupView getGroupView() {
         return groupView;
     }
 
@@ -70,7 +69,7 @@ public class SportTeams implements QuizableViews {
             readLogos(file);
         }
         System.out.println("Root " + rootGroup.getChildren().size() + ", " + rootGroup);
-        groupView = new QuizableGroupView(rootGroup);
+        groupView = new ViewableGroupView(rootGroup);
     }
 
     public void readLogos(String filename) throws Exception {

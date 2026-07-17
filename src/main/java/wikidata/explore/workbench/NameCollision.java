@@ -2,7 +2,7 @@ package wikidata.explore.workbench;
 
 import quiz.Quizable;
 import quiz.QuizableAdapter;
-import objectview.annotations.QuizableReference;
+import objectview.annotations.ViewableReference;
 
 import java.util.List;
 
@@ -20,7 +20,7 @@ public class NameCollision extends QuizableAdapter {
 
     public String name = "";
 
-    @QuizableReference
+    @ViewableReference
     public List<Quizable> entities = List.of();
 
     public NameCollision() {

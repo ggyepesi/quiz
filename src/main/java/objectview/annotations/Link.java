@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a {@code String} field whose value is a URL.
  *
- * QuizablePanel renders such a field as a clickable hyperlink — left-click
+ * ViewablePanel renders such a field as a clickable hyperlink — left-click
  * opens it in the browser, right-click copies it — instead of folding it
  * into the shared (drag-to-select) text block. Non-String or blank values
  * fall back to the default rendering.

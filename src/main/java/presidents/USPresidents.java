@@ -9,6 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import aux.Constants;
+import objectview.ViewableViews;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -17,13 +18,11 @@ import org.jsoup.select.Elements;
 import aux.CachedImage;
 import aux.FlexibleDate;
 import quiz.QuizableGroup;
-import objectview.QuizableGroupView;
+import objectview.ViewableGroupView;
 import objectview.ImagePane;
 import quiz.Quizable;
 
-import objectview.QuizableViews;
-
-public class USPresidents implements QuizableViews {
+public class USPresidents implements ViewableViews {
     private static final String url = Constants.wiki  + "List_of_presidents_of_the_United_States";
     
     private static final Pattern NAME_DATE_PATTERN = Pattern.compile(
@@ -40,7 +39,7 @@ public class USPresidents implements QuizableViews {
 
     public void show() throws Exception {
         buildViews();
-        new QuizableGroupView(root).showFrame();
+        new ViewableGroupView(root).showFrame();
     }
 
     public Collection<President> getPresidents() {
@@ -216,8 +215,8 @@ public class USPresidents implements QuizableViews {
     }
 
     @Override
-    public QuizableGroupView getGroupView() {
-        return new QuizableGroupView(root);
+    public ViewableGroupView getGroupView() {
+        return new ViewableGroupView(root);
     }
 
     @Override

@@ -5,8 +5,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import quiz.Quizable;
 import quiz.QuizableGroup;
-import objectview.QuizableGroupView;
-import objectview.QuizableViews;
+import objectview.ViewableGroupView;
+import objectview.ViewableViews;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.io.File;
@@ -14,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OscarNominations implements QuizableViews {
+public class OscarNominations implements ViewableViews {
     private static final String CACHE_FILE = Constants.oscarDataDirectory + "oscar-winners.json";
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -23,7 +23,7 @@ public class OscarNominations implements QuizableViews {
 
     private QuizableGroup root = new QuizableGroup("All");
 
-    private QuizableGroupView groupView;
+    private ViewableGroupView groupView;
 
     public OscarNominations() {
     }
@@ -77,7 +77,7 @@ public class OscarNominations implements QuizableViews {
             add(n);
         }
 
-        groupView = new QuizableGroupView(root);
+        groupView = new ViewableGroupView(root);
     }
 
     public void saveToFile() throws Exception {
@@ -160,7 +160,7 @@ public class OscarNominations implements QuizableViews {
             addToGroups(e.getKey(), e.getValue());
         }
 
-        groupView = new QuizableGroupView(root);
+        groupView = new ViewableGroupView(root);
     }
 
     private void add(OscarNomination n) {
@@ -223,9 +223,9 @@ public class OscarNominations implements QuizableViews {
     }
 
     @Override
-    public QuizableGroupView getGroupView() {
+    public ViewableGroupView getGroupView() {
         if (groupView == null) {
-            groupView = new QuizableGroupView(root);
+            groupView = new ViewableGroupView(root);
         }
 
         return groupView;

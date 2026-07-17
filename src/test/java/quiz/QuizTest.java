@@ -1,7 +1,7 @@
 package quiz;
 
 import org.junit.jupiter.api.Test;
-import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.ViewablePanelConfig;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,13 +33,13 @@ class QuizGenerationTest {
                 List.of("q3"),
                 List.of()));
 
-        QuizablePanelConfig queryConfig = QuizablePanelConfig.of(TestCard.class);
+        ViewablePanelConfig queryConfig = ViewablePanelConfig.of(TestCard.class);
         queryConfig.setAllFields(false);
-        queryConfig.addField("queries", QuizablePanelConfig.leaf());
+        queryConfig.addField("queries", ViewablePanelConfig.leaf());
 
-        QuizablePanelConfig answerConfig = QuizablePanelConfig.of(TestCard.class);
+        ViewablePanelConfig answerConfig = ViewablePanelConfig.of(TestCard.class);
         answerConfig.setAllFields(false);
-        answerConfig.addField("answers", QuizablePanelConfig.leaf());
+        answerConfig.addField("answers", ViewablePanelConfig.leaf());
 
         TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null, cards);
 
@@ -56,8 +56,8 @@ class QuizGenerationTest {
     }
 
     private static class TestQuiz extends Quiz {
-        TestQuiz(QuizablePanelConfig queryConfig,
-                 QuizablePanelConfig answerConfig,
+        TestQuiz(ViewablePanelConfig queryConfig,
+                 ViewablePanelConfig answerConfig,
                  QuizableGroup group,
                  Map<String, ? extends Quizable> quizables) {
             super(queryConfig, answerConfig, group, quizables);

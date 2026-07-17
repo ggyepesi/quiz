@@ -1,5 +1,4 @@
 package wikidata.explore.codegen;
-import objectview.field.QuizableFieldPaths;
 
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -46,7 +45,7 @@ public class GeneratedQuizableRuntimeBuilder {
 
         // Generate every class into the SAME package and compile them in one
         // pass, so typed cross-references (e.g. Character <-> Episode) resolve.
-        // That is what lets QuizableFieldPaths recurse into a referenced class's
+        // That is what lets ViewableFieldPaths recurse into a referenced class's
         // fields for nested search/sort/config, and keeps cross-refs typed (not
         // raw) when mapped.
         Map<String, String> sources = new LinkedHashMap<>();           // qcn -> source

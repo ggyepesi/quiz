@@ -4,8 +4,8 @@ import objectview.field.DynamicFields;
 import quiz.Quizable;
 import quiz.QuizableAdapter;
 import objectview.MultiQuizableView;
-import objectview.QuizablePanelView;
-import objectview.QuizableSearchPanel;
+import objectview.ViewablePanelView;
+import objectview.ViewableSearchPanel;
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -43,10 +43,10 @@ public class QueryObjectResultPanel
 
     // The render context backing the currently-shown cards, so other views
     // (e.g. the name-collision panel) can share it and navigate to a card here.
-    private objectview.QuizableRenderContext activeContext;
+    private objectview.ViewableRenderContext activeContext;
 
     /** Render context of the cards currently shown, or null if none. */
-    public objectview.QuizableRenderContext activeRenderContext() {
+    public objectview.ViewableRenderContext activeRenderContext() {
         return activeContext;
     }
 

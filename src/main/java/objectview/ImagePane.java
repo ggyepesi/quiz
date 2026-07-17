@@ -25,8 +25,6 @@ import aux.CachedImage;
 import aux.TitleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import objectview.ImageRef;
-import objectview.Viewable;
 
 public class ImagePane extends JPanel
         implements MouseListener, MouseMotionListener, ImageRef {
@@ -446,7 +444,7 @@ public class ImagePane extends JPanel
             java.awt.Toolkit.getDefaultToolkit().beep();   // nothing to enlarge
             return;
         }
-        QuizablePanelView v = new QuizablePanelView();
+        ViewablePanelView v = new ViewablePanelView();
         try {
             ImagePane pane = new ImagePane(
                     title,

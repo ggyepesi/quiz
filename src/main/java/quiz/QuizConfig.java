@@ -2,26 +2,26 @@ package quiz;
 
 import objectview.Viewable;
 
-import objectview.viewconfig.QuizablePanelConfig;
+import objectview.viewconfig.ViewablePanelConfig;
 
 /**
  * Bundled configurations for viewing, searching, and sorting quiz data.
  */
 public final class QuizConfig {
 
-    private final QuizablePanelConfig viewConfig;
-    private final QuizablePanelConfig searchConfig;
-    private final QuizablePanelConfig sortConfig;
+    private final ViewablePanelConfig viewConfig;
+    private final ViewablePanelConfig searchConfig;
+    private final ViewablePanelConfig sortConfig;
 
     public QuizConfig(Class<? extends Viewable> cls) {
-        this.viewConfig = QuizablePanelConfig.of(cls).initializeAllFields(true);
-        this.searchConfig = QuizablePanelConfig.of(cls).initializeAllFields(true);
-        this.sortConfig = QuizablePanelConfig.of(cls).initializeAllFields(true);
+        this.viewConfig = ViewablePanelConfig.of(cls).initializeAllFields(true);
+        this.searchConfig = ViewablePanelConfig.of(cls).initializeAllFields(true);
+        this.sortConfig = ViewablePanelConfig.of(cls).initializeAllFields(true);
     }
 
-    public QuizablePanelConfig getViewConfig() { return viewConfig; }
-    public QuizablePanelConfig getSearchConfig() { return searchConfig; }
-    public QuizablePanelConfig getSortConfig() { return sortConfig; }
+    public ViewablePanelConfig getViewConfig() { return viewConfig; }
+    public ViewablePanelConfig getSearchConfig() { return searchConfig; }
+    public ViewablePanelConfig getSortConfig() { return sortConfig; }
 
     /** Deep copy */
     public QuizConfig copy() {

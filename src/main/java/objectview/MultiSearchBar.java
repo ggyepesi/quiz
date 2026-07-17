@@ -23,15 +23,15 @@ import java.util.function.Function;
  */
 public class MultiSearchBar extends JPanel {
 
-    private final List<QuizableSearchPanel> engines;
+    private final List<ViewableSearchPanel> engines;
     private final JTextField field = new JTextField(30);
     private final JCheckBox fieldHighlight = new JCheckBox("Highlight fields");
     private final javax.swing.Timer debounce;
 
-    public MultiSearchBar(List<QuizableSearchPanel> engines) {
+    public MultiSearchBar(List<ViewableSearchPanel> engines) {
         super(new FlowLayout(FlowLayout.LEFT, 6, 4));
         this.engines = new ArrayList<>(engines);
-        for (QuizableSearchPanel e : this.engines) {
+        for (ViewableSearchPanel e : this.engines) {
             e.setCoordinated(true);
         }
 
@@ -45,7 +45,7 @@ public class MultiSearchBar extends JPanel {
         });
 
         fieldHighlight.addActionListener(e -> {
-            for (QuizableSearchPanel eng : this.engines) {
+            for (ViewableSearchPanel eng : this.engines) {
                 eng.setFieldHighlight(fieldHighlight.isSelected());
             }
             runSearch();
@@ -55,11 +55,11 @@ public class MultiSearchBar extends JPanel {
         JButton sortCfg = new JButton("Sort Config…");
         JButton viewCfg = new JButton("View Config…");
         searchCfg.addActionListener(e -> openConfig("Search Configuration",
-                QuizableSearchPanel::searchEditor, eng -> runSearch()));
+                                                    ViewableSearchPanel::searchEditor, eng -> runSearch()));
         sortCfg.addActionListener(e -> openConfig("Sort Configuration",
-                QuizableSearchPanel::sortEditor, QuizableSearchPanel::applySort));
+                                                  ViewableSearchPanel::sortEditor, ViewableSearchPanel::applySort));
         viewCfg.addActionListener(e -> openConfig("View Configuration",
-                QuizableSearchPanel::viewEditor, QuizableSearchPanel::applyView));
+                                                  ViewableSearchPanel::viewEditor, ViewableSearchPanel::applyView));
 
         add(field);
         add(fieldHighlight);
@@ -70,7 +70,7 @@ public class MultiSearchBar extends JPanel {
 
     private void runSearch() {
         String query = field.getText();
-        for (QuizableSearchPanel e : engines) {
+        for (ViewableSearchPanel e : engines) {
             e.runCoordinatedSearch(query);
         }
     }
@@ -78,10 +78,10 @@ public class MultiSearchBar extends JPanel {
     // Single config dialog with one tab per class (classes as roots): each tab
     // hosts that section's editor; Apply re-applies + re-runs for every section.
     private void openConfig(String title,
-                            Function<QuizableSearchPanel, JComponent> editor,
-                            Consumer<QuizableSearchPanel> onApply) {
+                            Function<ViewableSearchPanel, JComponent> editor,
+                            Consumer<ViewableSearchPanel> onApply) {
         JTabbedPane tabs = new JTabbedPane();
-        for (QuizableSearchPanel e : engines) {
+        for (ViewableSearchPanel e : engines) {
             tabs.addTab(e.sectionTypeName(), editor.apply(e));
         }
 
@@ -90,7 +90,7 @@ public class MultiSearchBar extends JPanel {
                 Dialog.ModalityType.MODELESS);
         JButton apply = new JButton("Apply");
         apply.addActionListener(a -> {
-            for (QuizableSearchPanel e : engines) {
+            for (ViewableSearchPanel e : engines) {
                 onApply.accept(e);
             }
         });
