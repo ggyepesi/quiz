@@ -9,193 +9,396 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
- * Builds (or tags) a group tree from members and facet declarations, replacing
- * per-dataset hand-built trees. Generic in the member type {@code T} and the concrete
- * group type {@code G}, so it never names a host's concrete group: a host passes its
- * own {@code newRoot} factory (e.g. {@code QuizableGroup::new}) and gets that type back.
+ * Builds or tags a group tree from members and facet declarations, replacing
+ * per-dataset hand-built trees.
  *
- * <p>Shape: {@code root (universe, all members) -> facet node (a dimension, no direct
- * members) -> bucket (one facet value, its members)}. Roles ({@link Role}) are tagged
- * so the UI can treat facet nodes as non-selectable headers and buckets/the universe as
- * quiz scopes. Methods that CREATE a root take {@code newRoot}; methods that graft onto
- * an existing group don't (a group self-creates its children).
+ * <p>The implementation is generic in the member type {@code T} and the concrete
+ * group type {@code G}, so it never names a host-specific concrete group. A host
+ * passes its own root factory, for example {@code QuizableGroup::new}, and gets
+ * that same concrete type back.
+ *
+ * <p>Typical shape:
+ *
+ * <pre>
+ * root (UNIVERSE, all members)
+ *   -> facet node (FACET, no direct members)
+ *      -> bucket node (BUCKET, matching members)
+ * </pre>
+ *
+ * <p>Roles are assigned so a UI can treat facet nodes as non-selectable headers
+ * and buckets or the universe as selectable scopes.
+ *
+ * <p>Methods that create a root accept a {@code newRoot} factory. Methods that
+ * graft onto an existing group do not need one because groups create correctly
+ * typed children through {@link MutableViewableGroup#getOrCreateChild(String)}.
  */
 public final class FacetGrouper {
 
-    private FacetGrouper() {}
+    private FacetGrouper() {
+    }
 
-    /** Build a fresh faceted tree from members. */
-    public static <T extends Viewable, G extends MutableViewableGroup<T, G>> G group(
+    /**
+     * Builds a fresh tree containing one independent branch for each facet.
+     */
+    public static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    G group(
             Function<String, G> newRoot,
             String rootName,
             Collection<? extends T> members,
-            List<Facet> facets) {
+            List<Facet<T>> facets) {
 
-        G root = newRoot.apply(rootName).role(Role.UNIVERSE);
-        for (T m : members) {
-            if (m != null) {
-                root.addMember(m);
-            }
-        }
+        Objects.requireNonNull(newRoot, "newRoot");
+        Objects.requireNonNull(rootName, "rootName");
+        Objects.requireNonNull(members, "members");
+
+        G root = Objects.requireNonNull(
+                                newRoot.apply(rootName),
+                                "newRoot returned null")
+                        .role(Role.UNIVERSE);
+
+        addMembers(root, members);
         return addFacets(root, members, facets);
     }
 
-    /** Build a NESTED drill-down tree: the facets apply in order, each partitioning
-     *  the buckets produced by the previous. */
-    public static <T extends Viewable, G extends MutableViewableGroup<T, G>> G groupNested(
+    /**
+     * Builds a fresh nested drill-down tree.
+     *
+     * <p>The facets are applied in order, with every facet partitioning the
+     * buckets produced by the previous facet.
+     */
+    public static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    G groupNested(
             Function<String, G> newRoot,
             String rootName,
             Collection<? extends T> members,
-            List<Facet> facets) {
+            List<Facet<T>> facets) {
 
-        G root = newRoot.apply(rootName).role(Role.UNIVERSE);
-        for (T m : members) {
-            if (m != null) {
-                root.addMember(m);
-            }
-        }
+        Objects.requireNonNull(newRoot, "newRoot");
+        Objects.requireNonNull(rootName, "rootName");
+        Objects.requireNonNull(members, "members");
+
+        G root = Objects.requireNonNull(
+                                newRoot.apply(rootName),
+                                "newRoot returned null")
+                        .role(Role.UNIVERSE);
+
+        addMembers(root, members);
         nest(root, members, facets, 0);
         return root;
     }
 
-    /** Graft one nested drill-down CHAIN of facets onto an existing root. */
-    public static <T extends Viewable, G extends MutableViewableGroup<T, G>> void graftNested(
+    /**
+     * Grafts one nested drill-down chain of facets onto an existing root.
+     */
+    public static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    void graftNested(
             G root,
             Collection<? extends T> members,
-            List<Facet> chain) {
+            List<Facet<T>> chain) {
+
+        Objects.requireNonNull(root, "root");
+        Objects.requireNonNull(members, "members");
+
         nest(root, members, chain, 0);
     }
 
-    /** Graft a TREE of facet dimensions onto an existing {@code parent}. */
-    public static <T extends Viewable, G extends MutableViewableGroup<T, G>> void graftTree(
+    /**
+     * Grafts a tree of facet dimensions onto an existing parent.
+     */
+    public static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    void graftTree(
             G parent,
             Collection<? extends T> members,
-            List<FacetTree> dims) {
-        if (dims == null) {
+            List<FacetTree<T>> dimensions) {
+
+        Objects.requireNonNull(parent, "parent");
+        Objects.requireNonNull(members, "members");
+
+        if (dimensions == null || dimensions.isEmpty()) {
             return;
         }
-        for (FacetTree dim : dims) {
-            Facet facet = dim.facet();
-            G facetNode = parent.getOrCreateChild(facet.label()).role(Role.FACET);
+
+        for (FacetTree<T> dimension : dimensions) {
+            if (dimension == null || dimension.facet() == null) {
+                continue;
+            }
+
+            Facet<T> facet = dimension.facet();
+            G facetNode = parent
+                    .getOrCreateChild(facet.label())
+                    .role(Role.FACET);
 
             Map<String, G> buckets = new LinkedHashMap<>();
             Map<String, List<T>> bucketMembers = new LinkedHashMap<>();
-            for (T m : members) {
-                if (m == null) {
-                    continue;
-                }
-                for (FacetKey key : facet.keys().apply(m)) {
-                    if (key == null || !key.isUsable()) {
-                        continue;
-                    }
-                    G bucket = facetNode.getOrCreateChild(key.name()).role(Role.BUCKET);
-                    if (key.ref() != null) {
-                        bucket.keyRef(key.ref());
-                    }
-                    bucket.addMember(m);
-                    buckets.putIfAbsent(key.name(), bucket);
-                    bucketMembers.computeIfAbsent(key.name(), k -> new ArrayList<>()).add(m);
-                }
-            }
-            for (Map.Entry<String, G> e : buckets.entrySet()) {
-                graftTree(e.getValue(), bucketMembers.get(e.getKey()), dim.children());
+
+            populateBuckets(
+                    facetNode,
+                    members,
+                    facet,
+                    buckets,
+                    bucketMembers);
+
+            for (Map.Entry<String, G> entry : buckets.entrySet()) {
+                List<T> membersOfBucket = bucketMembers.get(entry.getKey());
+
+                graftTree(
+                        entry.getValue(),
+                        membersOfBucket != null
+                                ? membersOfBucket
+                                : List.of(),
+                        dimension.children());
             }
         }
     }
 
-    // Partition members by facets[depth] under parent, then recurse into each bucket.
-    private static <T extends Viewable, G extends MutableViewableGroup<T, G>> void nest(
-            G parent,
-            Collection<? extends T> members,
-            List<Facet> facets,
-            int depth) {
-        if (facets == null || depth >= facets.size()) {
-            return;
-        }
-        Facet facet = facets.get(depth);
-        G facetNode = parent.getOrCreateChild(facet.label()).role(Role.FACET);
-
-        Map<String, G> buckets = new LinkedHashMap<>();
-        Map<String, List<T>> bucketMembers = new LinkedHashMap<>();
-        for (T m : members) {
-            if (m == null) {
-                continue;
-            }
-            for (FacetKey key : facet.keys().apply(m)) {
-                if (key == null || !key.isUsable()) {
-                    continue;
-                }
-                G bucket = facetNode.getOrCreateChild(key.name()).role(Role.BUCKET);
-                if (key.ref() != null) {
-                    bucket.keyRef(key.ref());
-                }
-                bucket.addMember(m);
-                buckets.putIfAbsent(key.name(), bucket);
-                bucketMembers.computeIfAbsent(key.name(), k -> new ArrayList<>()).add(m);
-            }
-        }
-        for (Map.Entry<String, G> e : buckets.entrySet()) {
-            nest(e.getValue(), bucketMembers.get(e.getKey()), facets, depth + 1);
-        }
-    }
-
-    /** Graft facet dimensions onto an existing root. Each facet becomes a FACET child;
-     *  its values become BUCKETs. Reference buckets carry their key entity. */
-    public static <T extends Viewable, G extends MutableViewableGroup<T, G>> G addFacets(
+    /**
+     * Grafts independent facet dimensions onto an existing root.
+     *
+     * <p>Each facet becomes a {@link Role#FACET} child. Its values become
+     * {@link Role#BUCKET} children. Reference buckets carry their key entity.
+     */
+    public static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    G addFacets(
             G root,
             Collection<? extends T> members,
-            List<Facet> facets) {
+            List<Facet<T>> facets) {
 
-        for (Facet facet : facets) {
-            G facetNode = root.getOrCreateChild(facet.label()).role(Role.FACET);
+        Objects.requireNonNull(root, "root");
+        Objects.requireNonNull(members, "members");
 
-            for (T m : members) {
-                if (m == null) {
-                    continue;
-                }
-                for (FacetKey key : facet.keys().apply(m)) {
-                    if (key == null || !key.isUsable()) {
-                        continue;
-                    }
-                    G bucket = facetNode.getOrCreateChild(key.name()).role(Role.BUCKET);
-                    if (key.ref() != null) {
-                        bucket.keyRef(key.ref());
-                    }
-                    bucket.addMember(m);
-                }
-            }
+        if (facets == null || facets.isEmpty()) {
+            return root;
         }
+
+        for (Facet<T> facet : facets) {
+            if (facet == null) {
+                continue;
+            }
+
+            G facetNode = root
+                    .getOrCreateChild(facet.label())
+                    .role(Role.FACET);
+
+            populateBuckets(
+                    facetNode,
+                    members,
+                    facet,
+                    null,
+                    null);
+        }
+
         return root;
     }
 
-    /** Tag an existing (hand-built) tree by structure: root=UNIVERSE, internal
-     *  nodes=FACET headers, leaves=BUCKETs. */
-    public static <T extends Viewable, G extends MutableViewableGroup<T, G>> G assignRoles(G root) {
+    /**
+     * Tags an existing hand-built tree by structure:
+     *
+     * <ul>
+     *   <li>the root becomes {@link Role#UNIVERSE}</li>
+     *   <li>internal descendants become {@link Role#FACET}</li>
+     *   <li>leaf descendants become {@link Role#BUCKET}</li>
+     * </ul>
+     */
+    public static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    G assignRoles(G root) {
+
+        Objects.requireNonNull(root, "root");
+
         assignRoles(root, 0);
         return root;
     }
 
-    private static <T extends Viewable, G extends MutableViewableGroup<T, G>> void assignRoles(
-            G g, int depth) {
-        boolean leaf = g.getChildren().isEmpty();
-        g.role(depth == 0 ? Role.UNIVERSE : leaf ? Role.BUCKET : Role.FACET);
-        for (G c : g.getChildren()) {
-            assignRoles(c, depth + 1);
+    /**
+     * Re-parents a root's direct children under one named facet node and then
+     * assigns roles to the resulting tree.
+     *
+     * <p>If a child with {@code facetLabel} already exists, it is reused. That
+     * node is not added beneath itself.
+     */
+    public static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    G wrapChildrenAsFacet(
+            G root,
+            String facetLabel) {
+
+        Objects.requireNonNull(root, "root");
+        Objects.requireNonNull(facetLabel, "facetLabel");
+
+        List<G> existingChildren = new ArrayList<>(root.getChildren());
+        G facet = root.getOrCreateChild(facetLabel);
+
+        for (G child : existingChildren) {
+            if (child == null || child == facet) {
+                continue;
+            }
+
+            /*
+             * Remove the child from the old parent before adding it to the new
+             * parent. This avoids the child temporarily appearing in both maps.
+             */
+            root.getChildrenMap().remove(child.getIdentifier());
+            facet.addChild(child);
+        }
+
+        return assignRoles(root);
+    }
+
+    /**
+     * Partitions members by {@code facets[depth]} under {@code parent}, then
+     * recursively applies the next facet to each resulting bucket.
+     */
+    private static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    void nest(
+            G parent,
+            Collection<? extends T> members,
+            List<Facet<T>> facets,
+            int depth) {
+
+        if (facets == null || depth >= facets.size()) {
+            return;
+        }
+
+        Facet<T> facet = facets.get(depth);
+        if (facet == null) {
+            nest(parent, members, facets, depth + 1);
+            return;
+        }
+
+        G facetNode = parent
+                .getOrCreateChild(facet.label())
+                .role(Role.FACET);
+
+        Map<String, G> buckets = new LinkedHashMap<>();
+        Map<String, List<T>> bucketMembers = new LinkedHashMap<>();
+
+        populateBuckets(
+                facetNode,
+                members,
+                facet,
+                buckets,
+                bucketMembers);
+
+        for (Map.Entry<String, G> entry : buckets.entrySet()) {
+            List<T> membersOfBucket = bucketMembers.get(entry.getKey());
+
+            nest(
+                    entry.getValue(),
+                    membersOfBucket != null
+                            ? membersOfBucket
+                            : List.of(),
+                    facets,
+                    depth + 1);
         }
     }
 
-    /** Re-parent a root's direct children under one named FACET node, then tag roles. */
-    public static <T extends Viewable, G extends MutableViewableGroup<T, G>> G wrapChildrenAsFacet(
-            G root, String facetLabel) {
-        List<G> kids = new ArrayList<>(root.getChildren());
-        G facet = root.getOrCreateChild(facetLabel);
-        for (G k : kids) {
-            facet.addChild(k);
-            root.getChildrenMap().remove(k.getIdentifier());
+    /**
+     * Creates or reuses buckets for one facet and assigns members to them.
+     *
+     * @param buckets optional map receiving created buckets by key name
+     * @param bucketMembers optional map receiving members grouped by key name
+     */
+    private static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    void populateBuckets(
+            G facetNode,
+            Collection<? extends T> members,
+            Facet<T> facet,
+            Map<String, G> buckets,
+            Map<String, List<T>> bucketMembers) {
+
+        for (T member : members) {
+            if (member == null) {
+                continue;
+            }
+
+            Collection<FacetKey> keys = facet.keys().apply(member);
+            if (keys == null || keys.isEmpty()) {
+                continue;
+            }
+
+            for (FacetKey key : keys) {
+                if (key == null || !key.isUsable()) {
+                    continue;
+                }
+
+                G bucket = facetNode
+                        .getOrCreateChild(key.name())
+                        .role(Role.BUCKET);
+
+                if (key.ref() != null) {
+                    bucket.keyRef(key.ref());
+                }
+
+                bucket.addMember(member);
+
+                if (buckets != null) {
+                    buckets.putIfAbsent(key.name(), bucket);
+                }
+
+                if (bucketMembers != null) {
+                    bucketMembers
+                            .computeIfAbsent(
+                                    key.name(),
+                                    ignored -> new ArrayList<>())
+                            .add(member);
+                }
+            }
         }
-        return assignRoles(root);
+    }
+
+    /**
+     * Adds all non-null members to a group.
+     */
+    private static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    void addMembers(
+            G group,
+            Collection<? extends T> members) {
+
+        for (T member : members) {
+            if (member != null) {
+                group.addMember(member);
+            }
+        }
+    }
+
+    private static <
+            T extends Viewable,
+            G extends MutableViewableGroup<T, G>>
+    void assignRoles(G group, int depth) {
+
+        boolean leaf = group.getChildren().isEmpty();
+
+        group.role(
+                depth == 0
+                        ? Role.UNIVERSE
+                        : leaf
+                          ? Role.BUCKET
+                          : Role.FACET);
+
+        for (G child : group.getChildren()) {
+            assignRoles(child, depth + 1);
+        }
     }
 }

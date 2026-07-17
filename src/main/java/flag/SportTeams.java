@@ -27,7 +27,7 @@ public class SportTeams implements QuizableViews {
     /** The domain's configured grouping (League/Country/State/City/Stadium),
      *  declared WITH the domain — served generically (DomainModelSource), no
      *  bespoke source. Parallel dimensions, so use the FLAT group mode. */
-    public static List<Facet> webFacets() {
+    public static List<Facet<Quizable>> webFacets() {
         return List.of(
                 Facet.field("league", "League"),
                 Facet.mapped("Country", "state",

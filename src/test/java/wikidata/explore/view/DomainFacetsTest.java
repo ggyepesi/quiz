@@ -1,4 +1,5 @@
 package wikidata.explore.view;
+import quiz.Quizable;
 
 import org.junit.jupiter.api.Test;
 import objectview.facet.Facet;
@@ -78,13 +79,13 @@ class DomainFacetsTest {
         edition.expectation(wikidata.explore.model.FieldExpectation.EXPECTED);
         c.fields().add(edition);
 
-        List<Facet> facets = DomainFacets.toFacets(c);
+        List<Facet<Quizable>> facets = DomainFacets.toFacets(c);
         assertTrue(facets.stream().anyMatch(f -> f.label().contains("edition")
                 && f.label().contains("present")), facets.toString());
     }
 
     @Test void presenceFacetBucketsMissingVsPresent() {
-        Facet f = Facet.presence("edition", "edition: present / missing");
+        Facet<Quizable> f = Facet.presence("edition", "edition: present / missing");
 
         wikidata.explore.extract.WikidataDynamicObject has =
                 new wikidata.explore.extract.WikidataDynamicObject("N1", "has");
@@ -92,8 +93,8 @@ class DomainFacetsTest {
         wikidata.explore.extract.WikidataDynamicObject lacks =
                 new wikidata.explore.extract.WikidataDynamicObject("N2", "lacks");
 
-        assertEquals("present", f.keys().apply(has).get(0).name());
-        assertEquals("missing", f.keys().apply(lacks).get(0).name());
+        assertEquals("present", f.keys().apply(has).iterator().next().name());
+        assertEquals("missing", f.keys().apply(lacks).iterator().next().name());
     }
 
     @Test void entityValueFacetUsesReference() {
@@ -103,7 +104,7 @@ class DomainFacetsTest {
                 "category", FieldType.ENTITY, FieldCardinality.COLLECTION);
         c.fields().add(cat);
 
-        Facet f = DomainFacets.toFacet(
+        Facet<Quizable> f = DomainFacets.toFacet(
                 new GeneratedFacet("by category", "category",
                         GeneratedFacet.Bucketing.VALUE), c);
         assertNotNull(f);

@@ -37,7 +37,7 @@ public final class DomainModelSource implements QuizableSource {
 
     private final String type;
     private final Loader loader;
-    private final List<Facet> facets;
+    private final List<Facet<Quizable>> facets;
     private final GroupMode mode;
     private final String rootName;
     private DomainModel cached;
@@ -47,11 +47,11 @@ public final class DomainModelSource implements QuizableSource {
     }
 
     /** @param facets configured grouping for {@link #rootGroup()} (empty = no groups). */
-    public DomainModelSource(String type, Loader loader, List<Facet> facets) {
+    public DomainModelSource(String type, Loader loader, List<Facet<Quizable>> facets) {
         this(type, loader, facets, GroupMode.NESTED, null);
     }
 
-    public DomainModelSource(String type, Loader loader, List<Facet> facets,
+    public DomainModelSource(String type, Loader loader, List<Facet<Quizable>> facets,
                              GroupMode mode, String rootName) {
         this.type = type;
         this.loader = loader;

@@ -56,28 +56,54 @@ public final class ViewCompiler {
         // sequence — depth 0 is a dimension off the root, depth d nests under the
         // last group at depth d-1. A reference field keys by the entity (invert),
         // a scalar by its value.
-        List<FacetTree> dims = new ArrayList<>();
-        List<FacetTree> path = new ArrayList<>();   // path.get(d) = open ancestor at depth d
+        // Build with a MUTABLE intermediate (children are added as deeper GROUP_BY ops
+        // arrive), then freeze into immutable FacetTrees.
+        List<FacetNodeBuilder> dimNodes = new ArrayList<>();
+        List<FacetNodeBuilder> path = new ArrayList<>();   // path.get(d) = open ancestor at depth d
         for (OperationSpec op : ops) {
             if (op == null || op.kind != OperationKind.GROUP_BY || op.field == null) {
                 continue;
             }
-            FacetTree node = new FacetTree(op.field.reference()
+            FacetNodeBuilder node = new FacetNodeBuilder(op.field.reference()
                     ? Facet.reference(op.field.field())
                     : Facet.field(op.field.field()));
             int depth = Math.max(0, Math.min(op.depth, path.size()));
             if (depth == 0) {
-                dims.add(node);
+                dimNodes.add(node);
             } else {
-                path.get(depth - 1).children().add(node);
+                path.get(depth - 1).children.add(node);
             }
             while (path.size() > depth) {
                 path.remove(path.size() - 1);
             }
             path.add(node);
         }
+        List<FacetTree<Quizable>> dims = new ArrayList<>();
+        for (FacetNodeBuilder n : dimNodes) {
+            dims.add(n.build());
+        }
         view.groupTree(dims);
 
         return view;
+    }
+
+    // Mutable builder for a facet-dimension tree: ViewCompiler assembles it incrementally
+    // (adding children as deeper GROUP_BY ops arrive), then freezes it into the immutable
+    // FacetTree records via build().
+    private static final class FacetNodeBuilder {
+        final Facet<Quizable> facet;
+        final List<FacetNodeBuilder> children = new ArrayList<>();
+
+        FacetNodeBuilder(Facet<Quizable> facet) {
+            this.facet = facet;
+        }
+
+        FacetTree<Quizable> build() {
+            List<FacetTree<Quizable>> kids = new ArrayList<>();
+            for (FacetNodeBuilder c : children) {
+                kids.add(c.build());
+            }
+            return new FacetTree<>(facet, kids);
+        }
     }
 }

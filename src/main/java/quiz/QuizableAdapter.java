@@ -1,12 +1,6 @@
 package quiz;
 
 import objectview.ViewableAdapter;
-import objectview.annotations.Provenance;
-import objectview.annotations.Link;
-import objectview.annotations.MinorField;
-import objectview.annotations.NotQuizableField;
-import objectview.annotations.QuizableInline;
-import objectview.annotations.QuizableReference;
 import objectview.viewconfig.QuizablePanelConfig;
 
 import java.lang.reflect.Field;
@@ -18,7 +12,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class QuizableAdapter
         extends ViewableAdapter

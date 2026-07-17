@@ -1,4 +1,5 @@
 package wikidata.explore.view;
+import quiz.Quizable;
 
 import objectview.FieldLabels;
 import objectview.facet.Facet;
@@ -24,8 +25,8 @@ public final class DomainFacets {
     private DomainFacets() {}
 
     /** Translate every declared facet of {@code clazz} into a runtime facet. */
-    public static List<Facet> toFacets(GeneratedClassModel clazz) {
-        List<Facet> out = new ArrayList<>();
+    public static List<Facet<Quizable>> toFacets(GeneratedClassModel clazz) {
+        List<Facet<Quizable>> out = new ArrayList<>();
         if (clazz == null) {
             return out;
         }

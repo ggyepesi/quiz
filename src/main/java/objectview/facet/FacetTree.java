@@ -1,21 +1,25 @@
 package objectview.facet;
 
-import java.util.ArrayList;
+import objectview.Viewable;
+
 import java.util.List;
+import java.util.Objects;
 
 /**
- * A grouping dimension as a TREE: a {@link Facet} plus the sub-dimensions applied
- * <em>within each of its buckets</em>. Sibling children are PARALLEL sub-dimensions
- * (every bucket shows all of them side by side); a lone child is a nested drill-down.
- *
- * <p>This is the structural counterpart to a flat facet list: {@code category ->
- * [year]} drills year within each category bucket, while {@code category -> [year,
- * language]} shows both year and language as parallel breakdowns inside every
- * category. {@link FacetGrouper#graftTree} renders it.
+ * A facet dimension with optional child dimensions.
  */
-public record FacetTree(Facet facet, List<FacetTree> children) {
+public record FacetTree<T extends Viewable>(
+        Facet<T> facet,
+        List<FacetTree<T>> children) {
 
-    public FacetTree(Facet facet) {
-        this(facet, new ArrayList<>());
+    public FacetTree {
+        Objects.requireNonNull(facet, "facet");
+        children = children == null
+                ? List.of()
+                : List.copyOf(children);
+    }
+
+    public FacetTree(Facet<T> facet) {
+        this(facet, List.of());
     }
 }

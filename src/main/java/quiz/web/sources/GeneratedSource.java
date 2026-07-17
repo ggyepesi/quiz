@@ -130,7 +130,7 @@ public class GeneratedSource implements QuizableSource {
         // Prefer the grouping the user DECLARED on the model. Declared facets are an
         // ordered drill-down (e.g. category → year → the nominations), so nest them;
         // auto-derived facets are independent browse dimensions, so keep them flat.
-        List<Facet> declared = declaredFacets();
+        List<Facet<Quizable>> declared = declaredFacets();
         return declared.isEmpty()
                 ? FacetGrouper.group(QuizableGroup::new, "All " + type, all, autoFacets(all))
                 : FacetGrouper.groupNested(QuizableGroup::new, "All " + type, all, declared);
@@ -138,7 +138,7 @@ public class GeneratedSource implements QuizableSource {
 
     /** The class's declared {@link GeneratedFacet}s (translated to runtime facets),
      *  or empty if there's no model file or no facets declared for this type. */
-    private List<Facet> declaredFacets() {
+    private List<Facet<Quizable>> declaredFacets() {
         if (modelFile == null || !modelFile.isFile()) {
             return List.of();
         }
@@ -154,7 +154,7 @@ public class GeneratedSource implements QuizableSource {
     }
 
     /** Derive facets from the dynamic schema over a sample of the data. */
-    private static List<Facet> autoFacets(Collection<? extends Quizable> all) {
+    private static List<Facet<Quizable>> autoFacets(Collection<? extends Quizable> all) {
         Map<String, Boolean> isRef = new LinkedHashMap<>();
         Map<String, Boolean> isBool = new LinkedHashMap<>();
         Map<String, Set<String>> distinct = new LinkedHashMap<>();
@@ -177,7 +177,7 @@ public class GeneratedSource implements QuizableSource {
             }
         }
 
-        List<Facet> facets = new ArrayList<>();
+        List<Facet<Quizable>> facets = new ArrayList<>();
         for (String name : isRef.keySet()) {
             if (isImageKey(name)) {
                 continue;
