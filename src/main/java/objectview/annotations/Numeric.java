@@ -10,8 +10,8 @@ import java.lang.annotation.Target;
  * its rendered text — so "1538 K" sorts as 1538 and "26" as 26.
  *
  * <p>Decouples sorting from the value's Java type: the sort needs to know only
- * "this field is numeric", not that the value is a {@link quiz.Quantity}. Any
- * field whose display starts with a number can use it.
+ * "this field is numeric", not the value's concrete type (e.g. a host's
+ * measured-quantity type). Any field whose display starts with a number can use it.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
