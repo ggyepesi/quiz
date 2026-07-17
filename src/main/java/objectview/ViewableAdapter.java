@@ -7,6 +7,8 @@ import objectview.annotations.Provenance;
 import objectview.annotations.QuizableInline;
 import objectview.annotations.QuizableReference;
 import objectview.field.FieldSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -23,6 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code QuizableAdapter}; quiz projection remains in {@code QuizableAdapter}.</p>
  */
 public abstract class ViewableAdapter implements Viewable {
+
+    @NotQuizableField
+    private static final Logger log = LoggerFactory.getLogger(ViewableAdapter.class);
 
     @NotQuizableField
     private static final Map<Class<?>, List<Field>> ALL_FIELDS_CACHE =
@@ -117,11 +122,8 @@ public abstract class ViewableAdapter implements Viewable {
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (Field f : out) {
             if (!seen.add(f.getName())) {
-                System.err.println(
-                        "[cfgfields] DUPLICATE '"
-                                + f.getName()
-                                + "' in "
-                                + cls.getName());
+                log.debug("configurable fields: duplicate '{}' in {}",
+                        f.getName(), cls.getName());
             }
         }
 
@@ -231,7 +233,7 @@ public abstract class ViewableAdapter implements Viewable {
         try {
             return hasField(getField(getClass(), fieldName));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warn("hasField('{}') on {} failed", fieldName, getClass().getName(), e);
             return false;
         }
     }
@@ -279,7 +281,7 @@ public abstract class ViewableAdapter implements Viewable {
                         || adapter.hasAnyField();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warn("hasField reflection on {} failed", getClass().getName(), e);
             return false;
         }
 

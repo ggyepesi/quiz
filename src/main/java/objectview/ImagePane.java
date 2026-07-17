@@ -23,11 +23,16 @@ import javax.swing.SwingWorker;
 
 import aux.CachedImage;
 import aux.TitleUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import quiz.ImageRef;
 import quiz.Quizable;
 
 public class ImagePane extends JPanel
         implements MouseListener, MouseMotionListener, ImageRef {
+
+    private static final Logger log = LoggerFactory.getLogger(ImagePane.class);
+
     public interface SelectionListener {
         void selected(ImagePane imagePane);
     }
@@ -169,7 +174,7 @@ public class ImagePane extends JPanel
             this.selectionListener = other.selectionListener;
             setKey(other.key);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warn("image operation failed", e);
         }
     }
 
@@ -338,7 +343,7 @@ public class ImagePane extends JPanel
                     revalidate();
                 } catch (Exception e) {
                     imageLoadFailed = true;
-                    e.printStackTrace();
+                    log.warn("image operation failed", e);
                 }
 
                 repaint();
@@ -463,7 +468,7 @@ public class ImagePane extends JPanel
 
             v.addImagePane(title, pane);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warn("image operation failed", e);
         }
         v.show(title);
     }
@@ -521,7 +526,7 @@ public class ImagePane extends JPanel
                 }
                 showImageView(longTitle, full, true);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("image operation failed", e);
             }
         } else {
             selectionListener.selected(this);
@@ -593,7 +598,7 @@ public class ImagePane extends JPanel
                 String t = title + "[" + r.x + ", " + r.y + ", " + r.width + "x" + r.height + "]";
                 showImageView(t, cropped, false);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("image operation failed", e);
             }
         } else {
             repaint();
