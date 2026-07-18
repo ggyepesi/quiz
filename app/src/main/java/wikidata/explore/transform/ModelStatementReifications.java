@@ -749,9 +749,15 @@ public final class ModelStatementReifications {
                 .count();
         log.message("Self-referential reify atoms (#99): " + dropped
                 + " dropped (witnessed phantom), " + (findings.size() - dropped)
-                + " kept (no witness):\n");
+                + " kept (no witness). Dropped:\n");
+        // Only the DROPPED decisions are logged in detail — they removed a record,
+        // so they're the auditable ones. KEPT (fully self-referential but legitimate,
+        // e.g. a film that IS its Best-International-Feature nominee) is the normal
+        // case and its count above is enough; listing all of them floods the log.
         for (TransformEngine.SelfRefFinding finding : findings) {
-            log.message("  " + finding + "\n");
+            if (finding.decision() == TransformEngine.SelfRefDecision.DROPPED) {
+                log.message("  " + finding + "\n");
+            }
         }
     }
 
