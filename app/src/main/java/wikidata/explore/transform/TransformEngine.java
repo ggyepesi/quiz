@@ -193,6 +193,11 @@ public class TransformEngine {
      */
     public List<WikidataDynamicObject> applyReify(
             List<WikidataDynamicObject> pool, ReifyConstruct c) {
+        // Per-call audit state: reset so a reused engine doesn't carry a prior
+        // call's demotions/findings into this result. Callers that aggregate across
+        // several applyReify calls must collect after each call (see reify()).
+        demoted.clear();
+        selfRefFindings.clear();
         List<WikidataDynamicObject> created = new ArrayList<>();
         if (pool == null || c == null || c.sourceType() == null
                 || c.listField() == null || c.targetType() == null) {

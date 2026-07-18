@@ -75,4 +75,33 @@ class SelfReferentialReifyDropTest {
         assertTrue(result.contains(personReal),
                 "the genuine person-rooted nomination is kept");
     }
+
+    @Test
+    void reusingEngineDoesNotLeakDemotionsOrFindings() {
+        WikidataDynamicObject work = obj("Qwork", "The Whale", "Oscarnominations");
+        WikidataDynamicObject cat = obj("Qbsa", "Best Supporting Actress", "Award");
+        WikidataDynamicObject phantom = obj("st-bare", "x", "Statement");
+        phantom.put("category", cat);
+        work.put("nominations", List.of(phantom));
+        WikidataDynamicObject person = obj("Qperson", "Hong Chau", "Oscarnominations");
+        WikidataDynamicObject real = obj("st-real", "x", "Statement");
+        real.put("category", cat);
+        real.put("forWork", work);
+        person.put("nominations", List.of(real));
+
+        TransformEngine engine = new TransformEngine();
+
+        // First call drops the phantom, recording a demotion + a finding.
+        engine.applyReify(new ArrayList<>(List.of(work, person, phantom, real)),
+                nominationReify());
+        assertFalse(engine.demoted().isEmpty(), "first call demotes the phantom");
+        assertFalse(engine.selfReferenceFindings().isEmpty(), "first call has findings");
+
+        // Reusing the engine on a clean pool must NOT carry the first call's state.
+        engine.applyReify(new ArrayList<>(), nominationReify());
+        assertTrue(engine.demoted().isEmpty(),
+                "a reused engine's demotions reset per applyReify call");
+        assertTrue(engine.selfReferenceFindings().isEmpty(),
+                "a reused engine's findings reset per applyReify call");
+    }
 }

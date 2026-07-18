@@ -707,6 +707,7 @@ public final class ModelStatementReifications {
         List<WikidataDynamicObject> created =
                 new ArrayList<>();
         TransformEngine engine = new TransformEngine();
+        List<String> findings = new ArrayList<>();
 
         for (Reification reification : derive(project)) {
             List<WikidataDynamicObject> records =
@@ -714,6 +715,10 @@ public final class ModelStatementReifications {
                             pool,
                             reification.reify());
             created.addAll(records);
+            findings.addAll(engine.selfReferenceFindings());
+            if (demotedOut != null) {
+                demotedOut.addAll(engine.demoted());
+            }
 
             if (log != null) {
                 logReify(log, reification, records.size(),
@@ -721,23 +726,15 @@ public final class ModelStatementReifications {
             }
         }
 
-        logSelfReferenceFindings(log, engine);
-
-        if (demotedOut != null) {
-            demotedOut.addAll(engine.demoted());
-        }
+        logSelfReferenceFindings(log, findings);
 
         return created;
     }
 
     // #99: audit the self-referential phantom drop in the generation log so each
     // decision (DROPPED with its witness, or KEPT for lack of one) is verifiable.
-    private static void logSelfReferenceFindings(GenerationLog log, TransformEngine engine) {
-        if (log == null) {
-            return;
-        }
-        List<String> findings = engine.selfReferenceFindings();
-        if (findings.isEmpty()) {
+    private static void logSelfReferenceFindings(GenerationLog log, List<String> findings) {
+        if (log == null || findings.isEmpty()) {
             return;
         }
         long dropped = findings.stream().filter(s -> s.startsWith("DROPPED")).count();
@@ -874,11 +871,16 @@ public final class ModelStatementReifications {
 
         List<WikidataDynamicObject> created = new ArrayList<>();
         TransformEngine engine = new TransformEngine();
+        List<String> findings = new ArrayList<>();
 
         for (Reification reification : derive(project)) {
             List<WikidataDynamicObject> records =
                     engine.applyReify(pool, reification.reify());
             created.addAll(records);
+            findings.addAll(engine.selfReferenceFindings());
+            if (demotedOut != null) {
+                demotedOut.addAll(engine.demoted());
+            }
 
             if (log != null) {
                 logReify(log, reification, records.size(),
@@ -886,11 +888,7 @@ public final class ModelStatementReifications {
             }
         }
 
-        logSelfReferenceFindings(log, engine);
-
-        if (demotedOut != null) {
-            demotedOut.addAll(engine.demoted());
-        }
+        logSelfReferenceFindings(log, findings);
 
         return created;
     }
