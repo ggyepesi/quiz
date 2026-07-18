@@ -128,8 +128,17 @@ public class LogNode extends QuizableAdapter {
                 || req.startsWith("http");
 
         if (qt.contains("api") || apiRequest) {
+            // Correct a mislabeled type: subqueries are logged as "SPARQL" by
+            // default, but an action-API request is not SPARQL — relabel it so the
+            // display reads "API", not "SPARQL".
+            if (apiRequest && !qt.contains("api")) {
+                queryType = "API";
+            }
             String url = firstHttpLine(request);
-            link = url == null ? null : "Open request|" + url;
+            // The api.php query carries raw '|' (ids=Q1|Q2, props=labels|claims) and
+            // spaces, which java.net.URI rejects ("Illegal character") so the browser
+            // never opens. Percent-encode those so the link works.
+            link = url == null ? null : "Open request|" + sanitizeUrl(url);
         } else if (qt.contains("sparql")) {
             link = "Open in query service|https://query.wikidata.org/#"
                     + encodeFragment(req);
@@ -140,6 +149,18 @@ public class LogNode extends QuizableAdapter {
 
     private static String encodeFragment(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    // Percent-encode the characters an api.php URL commonly carries unescaped that
+    // java.net.URI rejects, so BrowserLauncher can open it. Leaves already-valid
+    // characters (incl. already-'%'-escaped sequences) untouched.
+    private static String sanitizeUrl(String url) {
+        return url.replace(" ", "%20")
+                .replace("|", "%7C")
+                .replace("{", "%7B")
+                .replace("}", "%7D")
+                .replace("\\", "%5C")
+                .replace("^", "%5E");
     }
 
     private static String firstHttpLine(String text) {
