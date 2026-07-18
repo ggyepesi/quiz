@@ -227,6 +227,32 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             wikidata.explore.transform.DeadStubPrune.apply(
                                     everything, genLog);
 
+                    // Un-stamp LOAD-BACKBONE classes (served=false): they stay in the
+                    // pool as referents (labels/fields intact, so nominee/forWork/
+                    // category still resolve) but lose their type, so they are NOT
+                    // saved as roots or served as their own type. Only served classes
+                    // (e.g. Nomination) remain a product; the transform app derives
+                    // Film/Person/Category as views. Runs AFTER every type-dependent
+                    // transform (reify/inverts/canonicalize/companion) has used them.
+                    java.util.Set<String> backbone = new java.util.HashSet<>();
+                    for (GeneratedClassModel c : project.classes()) {
+                        if (!c.served()) {
+                            backbone.add(c.className());
+                        }
+                    }
+                    if (!backbone.isEmpty()) {
+                        int unstamped = 0;
+                        for (WikidataDynamicObject o : shared.values()) {
+                            if (o != null && backbone.contains(o.typeName())) {
+                                o.type(null);
+                                unstamped++;
+                            }
+                        }
+                        genLog.message("Backbone (unserved) classes " + backbone
+                                + ": un-stamped " + unstamped
+                                + " referents — kept in pool, not served.\n");
+                    }
+
                     // The served/saved pool: the whole shared pool (every class's
                     // roots + their referenced children) minus demoted reified
                     // duplicates and dead stubs, plus the reified records. This IS
