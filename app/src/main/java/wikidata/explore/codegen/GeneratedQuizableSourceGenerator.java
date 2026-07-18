@@ -63,7 +63,7 @@ public class GeneratedQuizableSourceGenerator {
                      .anyMatch(GeneratedFieldModel::renderAsReference);
 
         if (needsReferenceImport) {
-            sb.append("import quiz.annotations.Reference;\n\n");
+            sb.append("import objectview.annotations.Reference;\n\n");
         }
 
         sb.append("public class ").append(className)
@@ -79,15 +79,15 @@ public class GeneratedQuizableSourceGenerator {
         // hidden from the card (@Hidden) and surfaced together as one
         // collapsed "source" chip below — mirrors WikidataDynamicObject so typed
         // and dynamic instances render the same.
-        sb.append("    @quiz.annotations.Hidden\n");
+        sb.append("    @objectview.annotations.Hidden\n");
         sb.append("    public String qid = \"\";\n");
-        sb.append("    @quiz.annotations.Hidden\n");
-        sb.append("    @quiz.annotations.Link\n");
+        sb.append("    @objectview.annotations.Hidden\n");
+        sb.append("    @objectview.annotations.Link\n");
         sb.append("    public String wikidataUrl = \"\";\n");
         // Identity/display name = the card TITLE, re-injected once as an identity
         // field by getConfigurableFields; without @Hidden it also leaks
         // into getAllFields and shows up TWICE in sort/search/viewconfig.
-        sb.append("    @quiz.annotations.Hidden\n");
+        sb.append("    @objectview.annotations.Hidden\n");
         sb.append("    public String name = \"\";\n\n");
 
         for (GeneratedFieldModel field : fields) {
@@ -104,7 +104,7 @@ public class GeneratedQuizableSourceGenerator {
             }
             // Quantity fields sort by their leading number, not lexically.
             if (effectiveType(field) == FieldType.NUMBER) {
-                sb.append("    @quiz.annotations.Numeric\n");
+                sb.append("    @objectview.annotations.Numeric\n");
             }
 
             sb.append("    public ")
@@ -128,7 +128,7 @@ public class GeneratedQuizableSourceGenerator {
         // @Provenance drives the collapsed-chip rendering and keeps Source out
         // of entity-type grouping. Populated by GeneratedQuizableMapper.
         sb.append("\n");
-        sb.append("    @quiz.annotations.Provenance\n");
+        sb.append("    @objectview.annotations.Provenance\n");
         sb.append("    @com.fasterxml.jackson.annotation.JsonIgnore\n");
         sb.append("    public quiz.source.Source source;\n");
 

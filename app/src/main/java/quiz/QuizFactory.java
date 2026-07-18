@@ -45,9 +45,9 @@ public class QuizFactory {
                 return quiz.ocr.QuizImageBlurrer.blur(type, name, src);
             }
         });
-        // Register the Batik-backed SVG rasterizer so objectview can display SVG
-        // images without carrying a Batik dependency of its own.
-        objectview.utils.swing.SvgRasterizer.setActive(new aux.BatikSvgRasterizer());
+        // (SVG rasterization is registered via ServiceLoader — see
+        // META-INF/services/objectview.utils.swing.SvgRasterizer -> aux.BatikSvgRasterizer,
+        // so it works from any entry point, not only those that load QuizFactory.)
     }
 
     private record QuizOption(
