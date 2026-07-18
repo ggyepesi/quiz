@@ -99,9 +99,22 @@ public class TransformEngine {
         for (InvertConstruct c : config.inverts) {
             applyInvert(pool, c);
         }
+        // applyReify resets demoted/findings per call (so a reused engine can't leak
+        // a prior call's state). Across several reifies we must AGGREGATE, or only the
+        // last reify's demotions/findings would survive on the engine — silently
+        // dropping the earlier ones from the caller's view of what was demoted.
+        java.util.Set<WikidataDynamicObject> allDemoted =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        List<SelfRefFinding> allFindings = new ArrayList<>();
         for (ReifyConstruct c : config.reifies) {
             created.addAll(applyReify(pool, c));
+            allDemoted.addAll(demoted);
+            allFindings.addAll(selfRefFindings);
         }
+        demoted.clear();
+        demoted.addAll(allDemoted);
+        selfRefFindings.clear();
+        selfRefFindings.addAll(allFindings);
         return created;
     }
 
@@ -264,16 +277,12 @@ public class TransformEngine {
                     // source entity, so a relation denormalized onto both endpoints
                     // resolves to the SAME (subject, work) on either side.
                     Object subjectForName = null;
-                    boolean inverseQual = false;
                     for (ReifyConstruct.Role r : c.roles()) {
                         if (r == null || r.field() == null || r.field().isBlank()) {
                             continue;
                         }
                         Object raw = r.from() == null || r.from().isBlank()
                                 ? null : el.get(r.from());
-                        if (raw != null) {
-                            inverseQual = true;   // a real qualifier (the inverse copy)
-                        }
                         Object v = raw == null && r.fallbackToSource() ? src : raw;
                         if (v != null) {
                             el.put(r.field(), v);
@@ -285,7 +294,12 @@ public class TransformEngine {
                             el.recordOrigin(r.field(), FieldOrigin.MISSING);
                         }
                     }
-                    if (inverseQual) {
+                    // "Had an inverse qualifier" (a denormalized copy of a nomination
+                    // whose canonical form is the work's own statement) is a property
+                    // of the recorded origins, not a separate flag: it's true iff some
+                    // role drew from a REAL qualifier. A STATEMENT_VALUE role (the ps:
+                    // value, not an inverse relation) must NOT count.
+                    if (hasQualifierOriginRole(el, c.roles())) {
                         hadInverseQual.add(el);
                     }
                     Object namePrefix = subjectForName != null ? subjectForName : src;
@@ -548,6 +562,22 @@ public class TransformEngine {
         return r.fallbackToSource()
                 ? FieldOrigin.QUALIFIER
                 : FieldOrigin.STATEMENT_VALUE;
+    }
+
+    // Whether any role on this atom drew from a REAL qualifier (origin QUALIFIER) —
+    // i.e. it is a denormalized inverse copy. Derived from the recorded origins so
+    // there is one source of truth; a STATEMENT_VALUE origin does not count.
+    private static boolean hasQualifierOriginRole(
+            WikidataDynamicObject atom, List<ReifyConstruct.Role> roles) {
+        for (ReifyConstruct.Role r : roles) {
+            if (r == null || r.field() == null || r.field().isBlank()) {
+                continue;
+            }
+            if (atom.origin(r.field()) == FieldOrigin.QUALIFIER) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // A witness confirms `phantom` is a denormalized self-copy of a genuine record:

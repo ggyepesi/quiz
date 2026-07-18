@@ -113,6 +113,13 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<String> missingQualifierBox = new JComboBox<>(
             new String[]{POL_AUTO, POL_SUBJECT, POL_VALUE, POL_MISSING});
 
+    // #99: the SEMANTIC role this qualifier plays when reified. IDENTITY = the
+    // subject's own role (e.g. nominee — the subject IS the nominee), so a witness
+    // that references the subject through it is NOT evidence of a denormalized copy.
+    // REFERENCE (default) = a pointer to another entity (forWork, edition).
+    private final JComboBox<wikidata.explore.model.RoleKind> roleKindBox =
+            new JComboBox<>(wikidata.explore.model.RoleKind.values());
+
     private final JSpinner limitSpinner =
             new JSpinner(new SpinnerNumberModel(50, 1, 10000, 10));
 
@@ -290,6 +297,7 @@ public class FieldSourcePanel extends JPanel {
         qualifierPidField.setText(m.qualifierPid());
         missingQualifierBox.setSelectedItem(
                 policyLabel(m.missingQualifierPolicy()));
+        roleKindBox.setSelectedItem(m.roleKind());
         refreshStatementFieldControls();
         expectationBox.setSelectedItem(field.expectation());
         propertyLabel.setText(m.displayProperty());
@@ -441,6 +449,19 @@ public class FieldSourcePanel extends JPanel {
                 y++,
                 "Missing qualifier:",
                 missingQualifierBox);
+
+        roleKindBox.setToolTipText("<html>Reify (#99): the semantic role this "
+                + "qualifier plays.<br><b>IDENTITY</b> — the subject's own role "
+                + "(e.g. <b>nominee</b>: the statement subject IS the nominee), so a "
+                + "record that names the subject through it is a DIFFERENT event, not "
+                + "a denormalized self-copy.<br><b>REFERENCE</b> — a pointer to "
+                + "another entity (<b>forWork</b>, <b>edition</b>); the default.</html>");
+        GridBagUtils.labeledRow(
+                form,
+                c,
+                y++,
+                "Reify role:",
+                roleKindBox);
 
         // Canonical identity is configured once, at class level, in
         // StatementSourcePanel. Keeping a second per-field dedup control here
@@ -644,10 +665,13 @@ public class FieldSourcePanel extends JPanel {
                 field)) {
             m.missingQualifierPolicy(
                     policyValue(missingQualifierBox));
+            m.roleKind((wikidata.explore.model.RoleKind)
+                    roleKindBox.getSelectedItem());
         } else {
             // A fallback policy only means something for a scalar ENTITY
             // qualifier loaded directly from a StatementClass.
             m.missingQualifierPolicy(null);
+            m.roleKind(wikidata.explore.model.RoleKind.REFERENCE);
         }
 
         // Keep the editor, validator and runtime on the shared semantic rule if
@@ -920,6 +944,11 @@ public class FieldSourcePanel extends JPanel {
             missingQualifierBox.setSelectedItem(POL_AUTO);
         }
 
+        roleKindBox.setEnabled(policyEnabled);
+        if (!policyEnabled) {
+            roleKindBox.setSelectedItem(wikidata.explore.model.RoleKind.REFERENCE);
+        }
+
         missingQualifierBox.setToolTipText(
                 policyEnabled
                         ? "<html>Value used when this scalar ENTITY qualifier "
@@ -1185,6 +1214,7 @@ public class FieldSourcePanel extends JPanel {
         propertyPidField.setText("");
         qualifierPidField.setText("");
         missingQualifierBox.setSelectedItem(POL_AUTO);
+        roleKindBox.setSelectedItem(wikidata.explore.model.RoleKind.REFERENCE);
         propertyLabel.setText("(not selected)");
         renderModeBox.setSelectedItem(FieldRenderMode.AUTO);
         requiredBox.setSelected(false);

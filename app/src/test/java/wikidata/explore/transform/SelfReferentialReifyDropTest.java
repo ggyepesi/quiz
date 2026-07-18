@@ -108,6 +108,44 @@ class SelfReferentialReifyDropTest {
     }
 
     @Test
+    void applyAggregatesDemotionsAcrossMultipleReifies() {
+        // apply() runs each reify through applyReify, which resets its per-call audit
+        // state. The aggregate on the engine must still reflect BOTH reifies, not just
+        // the last one, or earlier demotions/findings are silently lost.
+        TransformConfig config = new TransformConfig();
+        List<WikidataDynamicObject> pool = new ArrayList<>();
+
+        // Two independent statement classes, each with a witnessed phantom.
+        for (String tag : List.of("A", "B")) {
+            WikidataDynamicObject work = obj("Qwork" + tag, "Work " + tag, "Src" + tag);
+            WikidataDynamicObject cat = obj("Qcat" + tag, "Category " + tag, "Award");
+            WikidataDynamicObject phantom = obj("st-bare" + tag, "x", "Statement");
+            phantom.put("category", cat);
+            work.put("nominations", List.of(phantom));
+            WikidataDynamicObject person = obj("Qp" + tag, "Person " + tag, "Src" + tag);
+            WikidataDynamicObject real = obj("st-real" + tag, "x", "Statement");
+            real.put("category", cat);
+            real.put("forWork", work);
+            person.put("nominations", List.of(real));
+            pool.addAll(List.of(work, person, phantom, real, cat));
+
+            config.reifies.add(new ReifyConstruct(
+                    "Src" + tag, "nominations", "Nomination", "source", "value", true,
+                    List.of(new ReifyConstruct.Role("nominee", "nominee", true),
+                            new ReifyConstruct.Role("forWork", "forWork", true)),
+                    List.of()));
+        }
+
+        TransformEngine engine = new TransformEngine();
+        engine.apply(pool, config);
+
+        assertTrue(engine.demoted().size() >= 2,
+                "both reifies' demoted phantoms survive on the engine, not just the last");
+        assertTrue(engine.selfReferenceFindings().size() >= 2,
+                "both reifies' findings survive on the engine, not just the last");
+    }
+
+    @Test
     void reusingEngineDoesNotLeakDemotionsOrFindings() {
         WikidataDynamicObject work = obj("Qwork", "The Whale", "Oscarnominations");
         WikidataDynamicObject cat = obj("Qbsa", "Best Supporting Actress", "Award");
