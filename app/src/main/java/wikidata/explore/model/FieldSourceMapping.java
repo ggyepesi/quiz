@@ -41,6 +41,16 @@ public class FieldSourceMapping {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private MissingQualifierPolicy missingQualifierPolicy;
 
+    /**
+     * The semantic role this field plays when reified (#99). Marks the subject's
+     * own identity ({@code IDENTITY} — e.g. nominee) apart from references to other
+     * entities ({@code REFERENCE} — e.g. forWork) so self-referential phantom
+     * detection only treats a REFERENCE role as evidence of denormalization.
+     * Persisted only when non-default; null reads back as {@code REFERENCE}.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private RoleKind roleKind;
+
     @Deprecated
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean subjectDefault;
@@ -154,6 +164,14 @@ public class FieldSourceMapping {
     public void missingQualifierPolicy(MissingQualifierPolicy value) {
         missingQualifierPolicy = value;
         subjectDefault = null;
+    }
+
+    public RoleKind roleKind() {
+        return roleKind == null ? RoleKind.REFERENCE : roleKind;
+    }
+
+    public void roleKind(RoleKind value) {
+        roleKind = value == RoleKind.REFERENCE ? null : value;
     }
 
     @Deprecated
@@ -321,6 +339,7 @@ public class FieldSourceMapping {
         matchRoleField = other.matchRoleField;
 
         missingQualifierPolicy = other.missingQualifierPolicy;
+        roleKind = other.roleKind;
         subjectDefault = other.subjectDefault;
         inDedupKey = other.inDedupKey;
 

@@ -501,6 +501,13 @@ public class TransformEngine {
             if (r == null || r.field() == null || r.field().isBlank()) {
                 continue;
             }
+            // Only a REFERENCE role counts (e.g. forWork): the witness's work IS the
+            // phantom's subject, so the phantom is its denormalized self-copy. A
+            // witness that merely names the subject through the IDENTITY role (e.g.
+            // nominee) is a DIFFERENT record — see the Diane Warren case (#99).
+            if (r.kind() == wikidata.explore.model.RoleKind.IDENTITY) {
+                continue;
+            }
             if (w.origin(r.field()) == FieldOrigin.QUALIFIER
                     && sameEntity(w.get(r.field()), subject)) {
                 return true;

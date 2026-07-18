@@ -19,6 +19,7 @@ public record CompiledFieldSource(
         String matchValueField,
         String matchRoleField,
         MissingQualifierPolicy missingQualifierPolicy,
+        wikidata.explore.model.RoleKind roleKind,
         RuleDirection direction,
         boolean requireLabel,
         String labelLanguage,
@@ -42,6 +43,9 @@ public record CompiledFieldSource(
         subjectField = clean(subjectField);
         matchValueField = clean(matchValueField);
         matchRoleField = clean(matchRoleField);
+        roleKind = roleKind == null
+                ? wikidata.explore.model.RoleKind.REFERENCE
+                : roleKind;
         direction = direction == null ? RuleDirection.ITEM_TO_ROOT : direction;
         labelLanguage = clean(labelLanguage);
         if (labelLanguage.isBlank()) {
@@ -76,6 +80,7 @@ public record CompiledFieldSource(
                 source.matchValueField(),
                 source.matchRoleField(),
                 source.missingQualifierPolicy(),
+                source.roleKind(),
                 source.direction(),
                 source.requireLabel(),
                 source.labelLanguage(),

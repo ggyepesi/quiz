@@ -37,7 +37,19 @@ public record ReifyConstruct(
      * forWorkQual ∨ source} resolve to the SAME (person, work) on both sides — and
      * {@link #dedupBy} then collapses the duplicate to one event.
      */
-    public record Role(String field, String from, boolean fallbackToSource) {}
+    public record Role(String field, String from, boolean fallbackToSource,
+                       wikidata.explore.model.RoleKind kind) {
+
+        /** Normalize a null kind to the default {@code REFERENCE}. */
+        public Role {
+            kind = kind == null ? wikidata.explore.model.RoleKind.REFERENCE : kind;
+        }
+
+        /** Back-compat: a role with no explicit kind is a {@code REFERENCE}. */
+        public Role(String field, String from, boolean fallbackToSource) {
+            this(field, from, fallbackToSource, wikidata.explore.model.RoleKind.REFERENCE);
+        }
+    }
 
     // Normalize nulls so older JSON (no roles/dedupBy) and call sites stay simple.
     public ReifyConstruct {

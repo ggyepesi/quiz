@@ -373,10 +373,12 @@ public final class ModelStatementReifications {
             switch (policy) {
                 case STATEMENT_SUBJECT ->
                         roles.add(new ReifyConstruct.Role(
-                                field.name(), field.name(), true));
+                                field.name(), field.name(), true,
+                                field.source().roleKind()));
                 case STATEMENT_VALUE ->
                         roles.add(new ReifyConstruct.Role(
-                                field.name(), valueField, false));
+                                field.name(), valueField, false,
+                                wikidata.explore.model.RoleKind.VALUE));
                 case MISSING -> {
                 }
             }
@@ -525,13 +527,15 @@ public final class ModelStatementReifications {
                         roles.add(new ReifyConstruct.Role(
                                 field.name(),
                                 field.name(),
-                                true));
+                                true,
+                                field.mapping().roleKind()));
 
                 case STATEMENT_VALUE ->
                         roles.add(new ReifyConstruct.Role(
                                 field.name(),
                                 valueField,
-                                false));
+                                false,
+                                wikidata.explore.model.RoleKind.VALUE));
 
                 case MISSING -> {
                     // No role: keep the qualifier absent.

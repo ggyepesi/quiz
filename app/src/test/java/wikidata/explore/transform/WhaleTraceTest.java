@@ -70,10 +70,13 @@ class WhaleTraceTest {
                 .enrich(pool, load, new FakeWikidataSparqlClient(), null);
 
         // Reify the loaded statements into Nominations, with subject-fallback ON for
-        // every role (the current inference) — nominee/forWork/edition.
+        // every role — nominee (the subject's IDENTITY) / forWork / edition (REFERENCEs).
+        // Here the witness (Hong Chau) references the film through forWork, a REFERENCE
+        // role, so the film's bare atom IS a denormalized self-copy — contrast Diane Warren.
         ReifyConstruct reify = new ReifyConstruct(
                 "OscarNominations", "__Nomination", "Nomination", "source", "value", true,
-                List.of(new ReifyConstruct.Role("nominee", "nominee", true),
+                List.of(new ReifyConstruct.Role("nominee", "nominee", true,
+                                wikidata.explore.model.RoleKind.IDENTITY),
                         new ReifyConstruct.Role("forWork", "forWork", true),
                         new ReifyConstruct.Role("edition", "edition", true)),
                 List.of());

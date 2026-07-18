@@ -5,9 +5,14 @@ import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
 import wikidata.explore.extract.WikidataDynamicObject;
 
+import wikidata.explore.model.RoleKind;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The Diane Warren case (a false drop), traced on real recorded data.
@@ -16,12 +21,15 @@ import java.util.Map;
  * nominations, for different films. The real reify loads only nominee(P2453),
  * forWork(P1686), year(P585) — NOT the song(P2553) or edition(P805). So a
  * statement of hers that lacks P1686 becomes fully self-referential (nominee and
- * forWork both fall back to her), and the witness match — which keys only on
- * category + "a real qualifier references the subject" — wrongly collapses it
- * against ANOTHER of her Best Original Song nominations (e.g. Marshall's atom,
- * whose P2453 is Diane Warren). That drops a genuine, distinct nomination.
+ * forWork both fall back to her), and the naive witness match — keying only on
+ * category + "a real qualifier references the subject" — collapsed it against
+ * ANOTHER of her Best Original Song nominations (Marshall's atom, whose P2453 is
+ * Diane Warren), dropping a genuine, distinct nomination.
  *
- * <p>This test documents the current (buggy) behavior so the fix can be measured.
+ * <p>The fix (#99): the witness that names her is naming her through the
+ * {@link RoleKind#IDENTITY} nominee role, not a {@link RoleKind#REFERENCE}
+ * forWork — so it does NOT witness a denormalization and the sparse nomination
+ * is correctly KEPT.
  */
 class DianeWarrenTraceTest {
 
@@ -72,10 +80,11 @@ class DianeWarrenTraceTest {
         new QualifierLoader().api(api)
                 .enrich(pool, load, new FakeWikidataSparqlClient(), null);
 
+        // nominee is the subject's OWN role (IDENTITY); forWork REFERENCEs a work.
         ReifyConstruct reify = new ReifyConstruct(
                 "OscarNominations", "__Nomination", "Nomination", "source", "value", true,
-                List.of(new ReifyConstruct.Role("nominee", "nominee", true),
-                        new ReifyConstruct.Role("forWork", "forWork", true)),
+                List.of(new ReifyConstruct.Role("nominee", "nominee", true, RoleKind.IDENTITY),
+                        new ReifyConstruct.Role("forWork", "forWork", true, RoleKind.REFERENCE)),
                 List.of());
 
         TransformEngine engine = new TransformEngine();
@@ -84,5 +93,12 @@ class DianeWarrenTraceTest {
         System.out.println("Diane Warren trace: kept=" + nominations.size()
                 + " demoted=" + engine.demoted().size());
         engine.selfReferenceFindings().forEach(f -> System.out.println("  " + f));
+
+        // All three statements promote to distinct nominations; the sparse one is
+        // named only through the IDENTITY nominee role, so it is NOT witnessed.
+        assertTrue(engine.demoted().isEmpty(),
+                "the sparse Diane Warren nomination is kept — its only 'witness' "
+                        + "names her through the IDENTITY nominee role, not forWork");
+        assertFalse(nominations.isEmpty(), "nominations were promoted");
     }
 }
