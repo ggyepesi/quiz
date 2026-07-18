@@ -146,6 +146,48 @@ class SelfReferentialReifyDropTest {
     }
 
     @Test
+    void applyKeysWitnessOnTheSlotViaThePairedLoadValueField() {
+        // apply() joins each reify to its QualifierLoadConfig (listField ==
+        // statementField) to recover the reified value field, so the witness match
+        // keys on the event slot even through the whole-Transform path. Here the
+        // phantom carries an incidental "song" the witness lacks — dropped only if the
+        // slot context (category), not the broad field set, is used.
+        WikidataDynamicObject work = obj("Qwork", "A Film", "Src");
+        WikidataDynamicObject cat = obj("Qcat", "Best Original Song", "Award");
+        WikidataDynamicObject phantom = obj("st-film", "x", "Statement");
+        phantom.put("category", cat);
+        phantom.put("song", obj("Qsong", "Some Song", "Work"));
+        work.put("nominations", List.of(phantom));
+        WikidataDynamicObject person = obj("Qp", "A Songwriter", "Src");
+        WikidataDynamicObject real = obj("st-person", "x", "Statement");
+        real.put("category", cat);
+        real.put("forWork", work);
+        person.put("nominations", List.of(real));
+
+        TransformConfig config = new TransformConfig();
+        // The Load names the value field (category); its statementField matches the
+        // reify's listField, which is how apply() recovers it.
+        config.qualifierLoads.add(new QualifierLoadConfig(
+                "Src", "P1411", "nominations", "Statement", "category", "",
+                List.of()));
+        config.reifies.add(new ReifyConstruct(
+                "Src", "nominations", "Nomination", "source", "value", true,
+                List.of(new ReifyConstruct.Role("nominee", "nominee", true),
+                        new ReifyConstruct.Role("forWork", "forWork", true)),
+                List.of()));
+
+        TransformEngine engine = new TransformEngine();
+        List<WikidataDynamicObject> pool =
+                new ArrayList<>(List.of(work, person, phantom, real, cat));
+        engine.apply(pool, config);   // client==null: the Load isn't run, but its
+                                      // valueField is still joined to the reify
+
+        assertTrue(engine.demoted().contains(phantom),
+                "apply() drops the phantom via the paired Load's category value field, "
+                        + "despite the incidental 'song' the witness lacks");
+    }
+
+    @Test
     void reusingEngineDoesNotLeakDemotionsOrFindings() {
         WikidataDynamicObject work = obj("Qwork", "The Whale", "Oscarnominations");
         WikidataDynamicObject cat = obj("Qbsa", "Best Supporting Actress", "Award");

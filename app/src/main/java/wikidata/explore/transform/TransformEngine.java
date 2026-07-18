@@ -103,11 +103,24 @@ public class TransformEngine {
         // a prior call's state). Across several reifies we must AGGREGATE, or only the
         // last reify's demotions/findings would survive on the engine — silently
         // dropping the earlier ones from the caller's view of what was demoted.
+        // Each reify's category field lives on its paired Load: a QualifierLoadConfig
+        // attaches statements under statementField, which the reify lifts via the
+        // SAME name as its listField (both are "__" + className). So join on that to
+        // give applyReify the reified value field — the phantom witness match keys on
+        // the event slot, not on every incidentally-loaded field.
+        java.util.Map<String, String> valueFieldByList = new java.util.HashMap<>();
+        if (config.qualifierLoads != null) {
+            for (QualifierLoadConfig q : config.qualifierLoads) {
+                if (q != null && q.statementField() != null) {
+                    valueFieldByList.put(q.statementField(), q.valueField());
+                }
+            }
+        }
         java.util.Set<WikidataDynamicObject> allDemoted =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         List<SelfRefFinding> allFindings = new ArrayList<>();
         for (ReifyConstruct c : config.reifies) {
-            created.addAll(applyReify(pool, c));
+            created.addAll(applyReify(pool, c, valueFieldByList.get(c.listField())));
             allDemoted.addAll(demoted);
             allFindings.addAll(selfRefFindings);
         }
