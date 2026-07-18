@@ -283,6 +283,17 @@ public class TransformEngine {
             result = dedupPreferringWorkAnchored(result, c.dedupBy(), srcField, c.roles());
         }
 
+        // #99: drop WITNESSED self-referential phantom atoms. A fully self-referential
+        // atom (every role field fell back to the subject) is a phantom only when a
+        // WITNESS exists — another atom in the same category whose real qualifier
+        // references this atom's subject, i.e. the genuine record that this one is a
+        // denormalized self-copy of. Without a witness it is a legitimate
+        // self-nomination (a film IS its Best-Picture nominee; an honorary subject IS
+        // the nominee) and is kept. Generic — reads Phase-1 origins, no domain constants.
+        if (c.promote()) {
+            result = dropWitnessedSelfReferences(result, c, srcField);
+        }
+
         // Dedup must remove duplicates from the SERVED set, not merely the returned
         // list. A promoted statement is type-stamped IN PLACE (and is also reachable
         // from its source's list field + the pool), so a dropped duplicate stays
@@ -360,6 +371,130 @@ public class TransformEngine {
             return !col.isEmpty();
         }
         return true;
+    }
+
+    // ---- #99: witnessed self-referential phantom drop ----
+
+    private static List<WikidataDynamicObject> dropWitnessedSelfReferences(
+            List<WikidataDynamicObject> atoms, ReifyConstruct c, String srcField) {
+
+        List<WikidataDynamicObject> kept = new ArrayList<>();
+        for (WikidataDynamicObject atom : atoms) {
+            if (isFullySelfReferential(atom, c.roles())
+                    && hasWitness(atom, atoms, c, srcField)) {
+                continue;   // a real record for this subject/category exists → phantom
+            }
+            kept.add(atom);
+        }
+        return kept;
+    }
+
+    /**
+     * A reified atom is fully self-referential when every role field that got a
+     * value fell back to the statement subject (origin
+     * {@link FieldOrigin#SUBJECT_FALLBACK}) and none came from a real qualifier.
+     */
+    private static boolean isFullySelfReferential(
+            WikidataDynamicObject atom, List<ReifyConstruct.Role> roles) {
+
+        boolean anyFallbackRole = false;
+        for (ReifyConstruct.Role r : roles) {
+            if (r == null || r.field() == null || r.field().isBlank()) {
+                continue;
+            }
+            FieldOrigin origin = atom.origin(r.field());
+            if (origin == FieldOrigin.QUALIFIER) {
+                return false;   // a real qualifier value anchors this atom
+            }
+            if (origin == FieldOrigin.SUBJECT_FALLBACK) {
+                anyFallbackRole = true;
+            }
+        }
+        return anyFallbackRole;
+    }
+
+    // A witness confirms `phantom` is a denormalized self-copy of a genuine record:
+    // another atom that (a) is itself anchored by a real qualifier, (b) references
+    // the phantom's subject via a REAL (qualifier-origin) role, and (c) agrees with
+    // the phantom on its context fields (category etc. — every data field the
+    // phantom did NOT fall back on). (c) is what keeps a film's legitimate
+    // Best-Picture self-nomination (a different category) from being dropped.
+    private static boolean hasWitness(
+            WikidataDynamicObject phantom, List<WikidataDynamicObject> atoms,
+            ReifyConstruct c, String srcField) {
+
+        Object subject = phantom.get(srcField);
+        if (subject == null) {
+            return false;
+        }
+
+        java.util.Set<String> roleFields = new java.util.HashSet<>();
+        for (ReifyConstruct.Role r : c.roles()) {
+            if (r != null && r.field() != null && !r.field().isBlank()) {
+                roleFields.add(r.field());
+            }
+        }
+        // The phantom's context: its data fields that are neither role fields nor
+        // the source/element back-refs — the real category/year identifying it.
+        java.util.Map<String, Object> context = new java.util.HashMap<>();
+        for (java.util.Map.Entry<String, Object> e : phantom.dynamicFields().entrySet()) {
+            String f = e.getKey();
+            if (!roleFields.contains(f)
+                    && !f.equals(srcField)
+                    && !f.equals(c.elementField())) {
+                context.put(f, e.getValue());
+            }
+        }
+
+        for (WikidataDynamicObject w : atoms) {
+            if (w == phantom || isFullySelfReferential(w, c.roles())) {
+                continue;
+            }
+            if (referencesSubject(w, subject, c.roles())
+                    && agreesOnContext(w, context)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean referencesSubject(
+            WikidataDynamicObject w, Object subject, List<ReifyConstruct.Role> roles) {
+
+        for (ReifyConstruct.Role r : roles) {
+            if (r == null || r.field() == null || r.field().isBlank()) {
+                continue;
+            }
+            if (w.origin(r.field()) == FieldOrigin.QUALIFIER
+                    && sameEntity(w.get(r.field()), subject)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean agreesOnContext(
+            WikidataDynamicObject w, java.util.Map<String, Object> context) {
+
+        for (java.util.Map.Entry<String, Object> e : context.entrySet()) {
+            if (!sameEntity(w.get(e.getKey()), e.getValue())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean sameEntity(Object a, Object b) {
+        if (a == b) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a instanceof WikidataDynamicObject x && b instanceof WikidataDynamicObject y) {
+            return x.qid() != null && x.qid().equals(y.qid());
+        }
+        return a.equals(b);
     }
 
     private static List<WikidataDynamicObject> dedup(
