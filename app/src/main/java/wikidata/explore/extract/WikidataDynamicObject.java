@@ -77,6 +77,15 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     @JsonIgnore
     private transient Source source;
 
+    // Reify provenance: per-field origin (qualifier vs subject-fallback vs
+    // missing), recorded by the reify step and read by later passes to detect
+    // degenerate/self-referential atoms generically. Sidecar metadata only —
+    // @Hidden + @JsonIgnore + transient keep it out of rendering, field listing,
+    // and serialization (it is never a data field).
+    @Hidden
+    @JsonIgnore
+    private transient Map<String, FieldOrigin> fieldOrigins;
+
     public WikidataDynamicObject() {
         this("", "");
     }
@@ -220,6 +229,28 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
             return;
         }
         dynamicFields.put(fieldName, value);
+    }
+
+    /** Records where a field's value came from during reification (sidecar
+     *  provenance, not a data field). See {@link FieldOrigin}. */
+    public void recordOrigin(String fieldName, FieldOrigin origin) {
+        if (fieldName == null || fieldName.isBlank() || origin == null) {
+            return;
+        }
+        if (fieldOrigins == null) {
+            fieldOrigins = new java.util.HashMap<>();
+        }
+        fieldOrigins.put(fieldName, origin);
+    }
+
+    /** The recorded origin of a field, or {@code null} if none was recorded. */
+    public FieldOrigin origin(String fieldName) {
+        return fieldOrigins == null ? null : fieldOrigins.get(fieldName);
+    }
+
+    /** All recorded field origins (empty if none). */
+    public Map<String, FieldOrigin> fieldOrigins() {
+        return fieldOrigins == null ? Map.of() : fieldOrigins;
     }
 
     public void merge(String fieldName, Object value) {

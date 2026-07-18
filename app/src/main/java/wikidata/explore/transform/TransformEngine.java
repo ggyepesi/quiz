@@ -1,6 +1,7 @@
 package wikidata.explore.transform;
 
 import wikidata.WikidataSparqlClient;
+import wikidata.explore.extract.FieldOrigin;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -229,9 +230,15 @@ public class TransformEngine {
                         Object v = raw == null && r.fallbackToSource() ? src : raw;
                         if (v != null) {
                             el.put(r.field(), v);
+                            el.recordOrigin(r.field(),
+                                    raw != null
+                                            ? FieldOrigin.QUALIFIER
+                                            : FieldOrigin.SUBJECT_FALLBACK);
                             if (subjectForName == null) {
                                 subjectForName = v;
                             }
+                        } else {
+                            el.recordOrigin(r.field(), FieldOrigin.MISSING);
                         }
                     }
                     if (inverseQual) {
