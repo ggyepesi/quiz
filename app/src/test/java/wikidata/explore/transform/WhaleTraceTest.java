@@ -82,7 +82,7 @@ class WhaleTraceTest {
                 List.of());
 
         TransformEngine engine = new TransformEngine();
-        List<WikidataDynamicObject> nominations = engine.applyReify(pool, reify);
+        List<WikidataDynamicObject> nominations = engine.applyReify(pool, reify, "category");
 
         // Trace: two statements loaded → two Nomination atoms built, the film's dropped.
         System.out.println("Whale trace: " + nominations.size()

@@ -88,7 +88,7 @@ class DianeWarrenTraceTest {
                 List.of());
 
         TransformEngine engine = new TransformEngine();
-        List<WikidataDynamicObject> nominations = engine.applyReify(pool, reify);
+        List<WikidataDynamicObject> nominations = engine.applyReify(pool, reify, "category");
 
         System.out.println("Diane Warren trace: kept=" + nominations.size()
                 + " demoted=" + engine.demoted().size());

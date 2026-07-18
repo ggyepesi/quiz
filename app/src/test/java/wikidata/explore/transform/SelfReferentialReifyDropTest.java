@@ -64,7 +64,8 @@ class SelfReferentialReifyDropTest {
         List<WikidataDynamicObject> pool = new ArrayList<>(List.of(
                 work, person, filmPhantom, filmBestPicture, personReal,
                 bestSupporting, bestPicture));
-        List<WikidataDynamicObject> result = engine.applyReify(pool, nominationReify());
+        List<WikidataDynamicObject> result =
+                engine.applyReify(pool, nominationReify(), "category");
 
         assertFalse(result.contains(filmPhantom),
                 "the film's witnessed self-referential phantom is dropped");
@@ -74,6 +75,36 @@ class SelfReferentialReifyDropTest {
                 "the film's legitimate Best Picture self-nomination (no witness) is kept");
         assertTrue(result.contains(personReal),
                 "the genuine person-rooted nomination is kept");
+    }
+
+    @Test
+    void incidentalQualifierOnPhantomDoesNotBlockTheWitness() {
+        // The witness match keys on the event SLOT (category), not on every loaded
+        // field. A phantom that carries an incidental qualifier the witness lacks
+        // (here a "song") must still be recognized as the witness's self-copy.
+        WikidataDynamicObject work = obj("Qwork", "A Film", "Oscarnominations");
+        WikidataDynamicObject cat = obj("Qbos", "Best Original Song", "Award");
+
+        WikidataDynamicObject filmPhantom = obj("st-film", "x", "Statement");
+        filmPhantom.put("category", cat);
+        filmPhantom.put("song", obj("Qsong", "Some Song", "Work")); // incidental, witness-less
+        work.put("nominations", List.of(filmPhantom));
+
+        WikidataDynamicObject person = obj("Qperson", "A Songwriter", "Oscarnominations");
+        WikidataDynamicObject personReal = obj("st-person", "x", "Statement");
+        personReal.put("category", cat);
+        personReal.put("forWork", work);   // REFERENCEs the film → witnesses its phantom
+        person.put("nominations", List.of(personReal));
+
+        TransformEngine engine = new TransformEngine();
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(
+                work, person, filmPhantom, personReal, cat));
+        List<WikidataDynamicObject> result =
+                engine.applyReify(pool, nominationReify(), "category");
+
+        assertFalse(result.contains(filmPhantom),
+                "the phantom is dropped despite carrying an incidental 'song' the witness lacks");
+        assertTrue(result.contains(personReal), "the genuine record is kept");
     }
 
     @Test
@@ -93,12 +124,12 @@ class SelfReferentialReifyDropTest {
 
         // First call drops the phantom, recording a demotion + a finding.
         engine.applyReify(new ArrayList<>(List.of(work, person, phantom, real)),
-                nominationReify());
+                nominationReify(), "category");
         assertFalse(engine.demoted().isEmpty(), "first call demotes the phantom");
         assertFalse(engine.selfReferenceFindings().isEmpty(), "first call has findings");
 
         // Reusing the engine on a clean pool must NOT carry the first call's state.
-        engine.applyReify(new ArrayList<>(), nominationReify());
+        engine.applyReify(new ArrayList<>(), nominationReify(), "category");
         assertTrue(engine.demoted().isEmpty(),
                 "a reused engine's demotions reset per applyReify call");
         assertTrue(engine.selfReferenceFindings().isEmpty(),

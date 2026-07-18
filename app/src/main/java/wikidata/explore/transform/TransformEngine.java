@@ -32,13 +32,33 @@ public class TransformEngine {
         return demoted;
     }
 
-    // Human-readable audit of the self-referential phantom drop (#99): one line per
+    // Structured audit of the self-referential phantom drop (#99): one entry per
     // fully self-referential atom — DROPPED (with the witnessing atom) or KEPT (no
-    // witness) — so the decisions can be double-checked in the generation log.
-    private final List<String> selfRefFindings = new ArrayList<>();
+    // witness) — with the exact identity fields the decision keyed on, so it can be
+    // double-checked in the generation log.
+    private final List<SelfRefFinding> selfRefFindings = new ArrayList<>();
 
-    /** Audit lines for the self-referential phantom drop (#99). */
-    public List<String> selfReferenceFindings() {
+    /** Whether a fully self-referential atom was dropped as a witnessed phantom. */
+    public enum SelfRefDecision { DROPPED, KEPT }
+
+    /**
+     * A structured record of one self-referential-phantom decision (#99): the atom,
+     * the witnessing atom (null when kept), the identity fields the match keyed on,
+     * and a human-readable reason. Its {@link #toString()} is the audit line.
+     */
+    public record SelfRefFinding(SelfRefDecision decision, WikidataDynamicObject atom,
+                                 WikidataDynamicObject witness,
+                                 List<String> identityFields, String reason) {
+        @Override
+        public String toString() {
+            return decision + " self-nomination " + describe(atom)
+                    + (witness != null ? " — witnessed by " + describe(witness) : "")
+                    + " on " + identityFields + " — " + reason;
+        }
+    }
+
+    /** Structured audit of the self-referential phantom drop (#99). */
+    public List<SelfRefFinding> selfReferenceFindings() {
         return selfRefFindings;
     }
 
@@ -193,6 +213,18 @@ public class TransformEngine {
      */
     public List<WikidataDynamicObject> applyReify(
             List<WikidataDynamicObject> pool, ReifyConstruct c) {
+        return applyReify(pool, c, null);
+    }
+
+    /**
+     * As {@link #applyReify(List, ReifyConstruct)}, but told the reified statement's
+     * VALUE field (the category, from {@code QualifierLoadConfig.valueField}). That
+     * field is the primary identity of the reified event slot, so the self-referential
+     * phantom witness match keys on it (plus any real role value) rather than on every
+     * incidentally-loaded field. Pass {@code null} to key on the legacy broad context.
+     */
+    public List<WikidataDynamicObject> applyReify(
+            List<WikidataDynamicObject> pool, ReifyConstruct c, String valueField) {
         // Per-call audit state: reset so a reused engine doesn't carry a prior
         // call's demotions/findings into this result. Callers that aggregate across
         // several applyReify calls must collect after each call (see reify()).
@@ -303,7 +335,8 @@ public class TransformEngine {
         // self-nomination (a film IS its Best-Picture nominee; an honorary subject IS
         // the nominee) and is kept. Generic — reads Phase-1 origins, no domain constants.
         if (c.promote()) {
-            result = dropWitnessedSelfReferences(result, c, srcField, selfRefFindings);
+            result = dropWitnessedSelfReferences(
+                    result, c, srcField, valueField, selfRefFindings);
         }
 
         // Dedup must remove duplicates from the SERVED set, not merely the returned
@@ -389,20 +422,36 @@ public class TransformEngine {
 
     private static List<WikidataDynamicObject> dropWitnessedSelfReferences(
             List<WikidataDynamicObject> atoms, ReifyConstruct c, String srcField,
-            List<String> findingsOut) {
+            String valueField, List<SelfRefFinding> findingsOut) {
 
         List<WikidataDynamicObject> kept = new ArrayList<>();
         for (WikidataDynamicObject atom : atoms) {
-            if (isFullySelfReferential(atom, c.roles())) {
-                WikidataDynamicObject witness = findWitness(atom, atoms, c, srcField);
-                if (witness != null) {
-                    findingsOut.add("DROPPED self-nomination " + describe(atom)
-                            + " — witnessed by " + describe(witness));
-                    continue;   // a real record for this subject/category exists → phantom
-                }
-                findingsOut.add("KEPT self-nomination " + describe(atom)
-                        + " — no witness found");
+            Object subject = atom.get(srcField);
+            if (subject == null
+                    || !isFullySelfReferential(atom, subject, c.roles())) {
+                kept.add(atom);
+                continue;
             }
+            List<String> identity = identityFields(atom, c, srcField, valueField);
+            if (identity.isEmpty()) {
+                // No field identifies this event slot — can't confirm a witness is
+                // about the SAME event, so keep it (an empty context would match any
+                // subject-referencing atom, a false positive).
+                findingsOut.add(new SelfRefFinding(SelfRefDecision.KEPT, atom, null,
+                        identity, "fully self-referential but nothing identifies its slot"));
+                kept.add(atom);
+                continue;
+            }
+            WikidataDynamicObject witness =
+                    findWitness(atom, subject, atoms, c, identity);
+            if (witness != null) {
+                findingsOut.add(new SelfRefFinding(SelfRefDecision.DROPPED, atom, witness,
+                        identity, "a real record references this subject through a "
+                                + "REFERENCE role on the same slot"));
+                continue;   // a genuine record exists → this is its denormalized self-copy
+            }
+            findingsOut.add(new SelfRefFinding(SelfRefDecision.KEPT, atom, null,
+                    identity, "fully self-referential but no witness on the same slot"));
             kept.add(atom);
         }
         return kept;
@@ -413,12 +462,13 @@ public class TransformEngine {
     }
 
     /**
-     * A reified atom is fully self-referential when every role field that got a
-     * value fell back to the statement subject (origin
-     * {@link FieldOrigin#SUBJECT_FALLBACK}) and none came from a real qualifier.
+     * A reified atom is fully self-referential when every role field that got a value
+     * fell back to the statement subject — origin {@link FieldOrigin#SUBJECT_FALLBACK}
+     * AND the value actually IS the subject — and none came from a real qualifier or
+     * the statement value. The value check guards against a mislabeled origin.
      */
     private static boolean isFullySelfReferential(
-            WikidataDynamicObject atom, List<ReifyConstruct.Role> roles) {
+            WikidataDynamicObject atom, Object subject, List<ReifyConstruct.Role> roles) {
 
         boolean anyFallbackRole = false;
         for (ReifyConstruct.Role r : roles) {
@@ -431,10 +481,61 @@ public class TransformEngine {
                 return false;   // a real value (qualifier or statement value) anchors it
             }
             if (origin == FieldOrigin.SUBJECT_FALLBACK) {
+                if (!sameEntity(atom.get(r.field()), subject)) {
+                    return false;   // labeled a fallback but the value isn't the subject
+                }
                 anyFallbackRole = true;
             }
         }
         return anyFallbackRole;
+    }
+
+    /**
+     * The fields that identify a reified event's slot: the reified value (the
+     * category, {@code valueField}) plus any role the atom anchored on a REAL value.
+     * Incidental loaded qualifiers (song, edition, year) are deliberately excluded —
+     * they vary within one slot and would make a genuine witness look different. When
+     * no {@code valueField} is known, fall back to the legacy broad context (every
+     * field that is not a role, the source, or the element back-ref).
+     */
+    private static List<String> identityFields(
+            WikidataDynamicObject atom, ReifyConstruct c, String srcField,
+            String valueField) {
+
+        java.util.Set<String> roleFields = new java.util.HashSet<>();
+        for (ReifyConstruct.Role r : c.roles()) {
+            if (r != null && r.field() != null && !r.field().isBlank()) {
+                roleFields.add(r.field());
+            }
+        }
+
+        List<String> fields = new ArrayList<>();
+        if (valueField != null && !valueField.isBlank()) {
+            if (!valueField.equals(srcField) && !valueField.equals(c.elementField())
+                    && nonEmpty(atom.get(valueField))) {
+                fields.add(valueField);
+            }
+            for (ReifyConstruct.Role r : c.roles()) {
+                if (r == null || r.field() == null || r.field().isBlank()) {
+                    continue;
+                }
+                FieldOrigin o = atom.origin(r.field());
+                if (o == FieldOrigin.QUALIFIER || o == FieldOrigin.STATEMENT_VALUE) {
+                    fields.add(r.field());
+                }
+            }
+            return fields;
+        }
+
+        // Legacy broad context (no valueField supplied).
+        for (java.util.Map.Entry<String, Object> e : atom.dynamicFields().entrySet()) {
+            String f = e.getKey();
+            if (!roleFields.contains(f) && !f.equals(srcField)
+                    && !f.equals(c.elementField()) && nonEmpty(e.getValue())) {
+                fields.add(f);
+            }
+        }
+        return fields;
     }
 
     // The origin of a role's value: a real qualifier (fallback-to-source role with a
@@ -450,48 +551,33 @@ public class TransformEngine {
     }
 
     // A witness confirms `phantom` is a denormalized self-copy of a genuine record:
-    // another atom that (a) is itself anchored by a real qualifier, (b) references
-    // the phantom's subject via a REAL (qualifier-origin) role, and (c) agrees with
-    // the phantom on its context fields (category etc. — every data field the
-    // phantom did NOT fall back on). (c) is what keeps a film's legitimate
-    // Best-Picture self-nomination (a different category) from being dropped.
+    // another atom that (a) is not itself a fully self-referential phantom, (b)
+    // references the phantom's subject via a REAL (qualifier-origin) REFERENCE role,
+    // and (c) agrees with the phantom on its identity fields (the category and any
+    // real role value). (c) is what keeps a film's legitimate Best-Picture
+    // self-nomination (a different category) from being dropped by a different-slot
+    // witness.
     private static WikidataDynamicObject findWitness(
-            WikidataDynamicObject phantom, List<WikidataDynamicObject> atoms,
-            ReifyConstruct c, String srcField) {
-
-        Object subject = phantom.get(srcField);
-        if (subject == null) {
-            return null;
-        }
-
-        java.util.Set<String> roleFields = new java.util.HashSet<>();
-        for (ReifyConstruct.Role r : c.roles()) {
-            if (r != null && r.field() != null && !r.field().isBlank()) {
-                roleFields.add(r.field());
-            }
-        }
-        // The phantom's context: its data fields that are neither role fields nor
-        // the source/element back-refs — the real category/year identifying it.
-        java.util.Map<String, Object> context = new java.util.HashMap<>();
-        for (java.util.Map.Entry<String, Object> e : phantom.dynamicFields().entrySet()) {
-            String f = e.getKey();
-            if (!roleFields.contains(f)
-                    && !f.equals(srcField)
-                    && !f.equals(c.elementField())) {
-                context.put(f, e.getValue());
-            }
-        }
+            WikidataDynamicObject phantom, Object subject,
+            List<WikidataDynamicObject> atoms, ReifyConstruct c,
+            List<String> identityFields) {
 
         for (WikidataDynamicObject w : atoms) {
-            if (w == phantom || isFullySelfReferential(w, c.roles())) {
+            if (w == phantom
+                    || isFullySelfReferential(w, w.get(sourceField(c)), c.roles())) {
                 continue;
             }
             if (referencesSubject(w, subject, c.roles())
-                    && agreesOnContext(w, context)) {
+                    && agreesOnIdentity(w, phantom, identityFields)) {
                 return w;
             }
         }
         return null;
+    }
+
+    private static String sourceField(ReifyConstruct c) {
+        return c.sourceField() == null || c.sourceField().isBlank()
+                ? c.sourceType().toLowerCase() : c.sourceField();
     }
 
     private static boolean referencesSubject(
@@ -516,11 +602,15 @@ public class TransformEngine {
         return false;
     }
 
-    private static boolean agreesOnContext(
-            WikidataDynamicObject w, java.util.Map<String, Object> context) {
+    // The witness must match the phantom on EVERY identity field (category + any real
+    // role value). Comparing by the phantom's values, not a snapshot, so it stays
+    // correct regardless of when qualifiers were loaded.
+    private static boolean agreesOnIdentity(
+            WikidataDynamicObject w, WikidataDynamicObject phantom,
+            List<String> identityFields) {
 
-        for (java.util.Map.Entry<String, Object> e : context.entrySet()) {
-            if (!sameEntity(w.get(e.getKey()), e.getValue())) {
+        for (String f : identityFields) {
+            if (!sameEntity(w.get(f), phantom.get(f))) {
                 return false;
             }
         }
