@@ -118,13 +118,21 @@ public class LogNode extends QuizableAdapter {
         }
 
         String qt = queryType.toLowerCase();
+        String req = request.strip();
 
-        if (qt.contains("sparql")) {
-            link = "Open in query service|https://query.wikidata.org/#"
-                    + encodeFragment(request.strip());
-        } else if (qt.contains("api")) {
+        // An action-API request (wbgetentities, …) is an HTTP URL, not SPARQL —
+        // even when the surrounding group inherited a "sparql" type. Detect it by
+        // content so its link opens the API URL, not a WDQS page (which fails).
+        boolean apiRequest = req.contains("api.php")
+                || req.contains("wbgetentities")
+                || req.startsWith("http");
+
+        if (qt.contains("api") || apiRequest) {
             String url = firstHttpLine(request);
             link = url == null ? null : "Open request|" + url;
+        } else if (qt.contains("sparql")) {
+            link = "Open in query service|https://query.wikidata.org/#"
+                    + encodeFragment(req);
         } else {
             link = null;
         }

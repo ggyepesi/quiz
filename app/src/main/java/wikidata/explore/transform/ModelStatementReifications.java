@@ -721,11 +721,32 @@ public final class ModelStatementReifications {
             }
         }
 
+        logSelfReferenceFindings(log, engine);
+
         if (demotedOut != null) {
             demotedOut.addAll(engine.demoted());
         }
 
         return created;
+    }
+
+    // #99: audit the self-referential phantom drop in the generation log so each
+    // decision (DROPPED with its witness, or KEPT for lack of one) is verifiable.
+    private static void logSelfReferenceFindings(GenerationLog log, TransformEngine engine) {
+        if (log == null) {
+            return;
+        }
+        List<String> findings = engine.selfReferenceFindings();
+        if (findings.isEmpty()) {
+            return;
+        }
+        long dropped = findings.stream().filter(s -> s.startsWith("DROPPED")).count();
+        log.message("Self-referential reify atoms (#99): " + dropped
+                + " dropped (witnessed phantom), " + (findings.size() - dropped)
+                + " kept (no witness):\n");
+        for (String finding : findings) {
+            log.message("  " + finding + "\n");
+        }
     }
 
     private static void logReify(
@@ -864,6 +885,8 @@ public final class ModelStatementReifications {
                         valueFilterGaps(reification, project));
             }
         }
+
+        logSelfReferenceFindings(log, engine);
 
         if (demotedOut != null) {
             demotedOut.addAll(engine.demoted());

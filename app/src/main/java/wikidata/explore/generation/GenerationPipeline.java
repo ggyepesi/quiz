@@ -297,7 +297,7 @@ public class GenerationPipeline {
                 wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         List<WikidataDynamicObject> reified =
                 wikidata.explore.transform.ModelStatementReifications.reify(
-                        compiledSnapshot, pool, null, demoted);   // pool.addAll(reified) inside
+                        compiledSnapshot, pool, log, demoted);   // pool.addAll(reified) inside
 
         // Compiled-model transforms (parity-proven); the rest still read raw.
         wikidata.explore.transform.FieldValueRestrictions.apply(compiledSnapshot, pool);

@@ -32,6 +32,16 @@ public class TransformEngine {
         return demoted;
     }
 
+    // Human-readable audit of the self-referential phantom drop (#99): one line per
+    // fully self-referential atom — DROPPED (with the witnessing atom) or KEPT (no
+    // witness) — so the decisions can be double-checked in the generation log.
+    private final List<String> selfRefFindings = new ArrayList<>();
+
+    /** Audit lines for the self-referential phantom drop (#99). */
+    public List<String> selfReferenceFindings() {
+        return selfRefFindings;
+    }
+
     /**
      * Applies a domain's whole Transform to the pool, returning the objects it
      * created (the reified ones; inverts mutate existing objects in place). The
@@ -291,7 +301,7 @@ public class TransformEngine {
         // self-nomination (a film IS its Best-Picture nominee; an honorary subject IS
         // the nominee) and is kept. Generic — reads Phase-1 origins, no domain constants.
         if (c.promote()) {
-            result = dropWitnessedSelfReferences(result, c, srcField);
+            result = dropWitnessedSelfReferences(result, c, srcField, selfRefFindings);
         }
 
         // Dedup must remove duplicates from the SERVED set, not merely the returned
@@ -376,17 +386,28 @@ public class TransformEngine {
     // ---- #99: witnessed self-referential phantom drop ----
 
     private static List<WikidataDynamicObject> dropWitnessedSelfReferences(
-            List<WikidataDynamicObject> atoms, ReifyConstruct c, String srcField) {
+            List<WikidataDynamicObject> atoms, ReifyConstruct c, String srcField,
+            List<String> findingsOut) {
 
         List<WikidataDynamicObject> kept = new ArrayList<>();
         for (WikidataDynamicObject atom : atoms) {
-            if (isFullySelfReferential(atom, c.roles())
-                    && hasWitness(atom, atoms, c, srcField)) {
-                continue;   // a real record for this subject/category exists → phantom
+            if (isFullySelfReferential(atom, c.roles())) {
+                WikidataDynamicObject witness = findWitness(atom, atoms, c, srcField);
+                if (witness != null) {
+                    findingsOut.add("DROPPED self-nomination " + describe(atom)
+                            + " — witnessed by " + describe(witness));
+                    continue;   // a real record for this subject/category exists → phantom
+                }
+                findingsOut.add("KEPT self-nomination " + describe(atom)
+                        + " — no witness found");
             }
             kept.add(atom);
         }
         return kept;
+    }
+
+    private static String describe(WikidataDynamicObject o) {
+        return o.qid() + " \"" + o.getDisplayName() + "\"";
     }
 
     /**
@@ -419,13 +440,13 @@ public class TransformEngine {
     // the phantom on its context fields (category etc. — every data field the
     // phantom did NOT fall back on). (c) is what keeps a film's legitimate
     // Best-Picture self-nomination (a different category) from being dropped.
-    private static boolean hasWitness(
+    private static WikidataDynamicObject findWitness(
             WikidataDynamicObject phantom, List<WikidataDynamicObject> atoms,
             ReifyConstruct c, String srcField) {
 
         Object subject = phantom.get(srcField);
         if (subject == null) {
-            return false;
+            return null;
         }
 
         java.util.Set<String> roleFields = new java.util.HashSet<>();
@@ -452,10 +473,10 @@ public class TransformEngine {
             }
             if (referencesSubject(w, subject, c.roles())
                     && agreesOnContext(w, context)) {
-                return true;
+                return w;
             }
         }
-        return false;
+        return null;
     }
 
     private static boolean referencesSubject(

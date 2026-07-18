@@ -201,6 +201,8 @@ public class RuleTreeExtractor {
             MembershipBackbone backbone =
                     runBackbone(rootNode, membershipTargets, progress);
             List<WikidataDynamicObject> members = backbone.members();
+            progress.message("wbgetentities will fetch for " + members.size()
+                    + " member entities (plus any QID-only label refs).\n");
             if (!membershipTargets.isEmpty()) {
                 materializeMembershipTargets(
                         members, membershipTargets, backbone.edges());
@@ -749,8 +751,9 @@ public class RuleTreeExtractor {
         String names = outgoingFields.stream().map(RuleIncludedField::fieldName)
                                      .reduce((a, b) -> a + ", " + b).orElse("");
         int batches = (memberQids.size() + 49) / 50;
-        try (GenerationLog.Group g = progress.group("wbgetentities [" + names + "] — "
-                                                            + memberQids.size() + " members, " + batches + " batches")) {
+        try (GenerationLog.Group g = progress.group("wbgetentities FIELDS [" + names + "] — "
+                                                            + memberQids.size() + " members, " + batches
+                                                            + " batches (P31 type + outgoing entity claims)")) {
             Map<String, WikidataApiClient.ApiEntity> details =
                     api().getEntities(memberQids, pids, g::subquery);
             int filled = applyEntityClaims(members, outgoingFields, details);
@@ -814,8 +817,9 @@ public class RuleTreeExtractor {
                                         .map(WikidataDynamicObject::qid)
                                         .filter(q -> q != null && q.matches("Q\\d+"))
                                         .toList();
-        try (GenerationLog.Group g = progress.group("wbgetentities labels — "
-                                                            + qids.size() + " refs, " + ((qids.size() + 49) / 50) + " batches")) {
+        try (GenerationLog.Group g = progress.group("wbgetentities LABELS — "
+                                                            + qids.size() + " refs, " + ((qids.size() + 49) / 50)
+                                                            + " batches (names for QID-only references)")) {
             Map<String, WikidataApiClient.ApiEntity> details =
                     api().getEntities(qids, List.of(), g::subquery);   // labels only
             int filled = applyLabels(placeholders, details);
