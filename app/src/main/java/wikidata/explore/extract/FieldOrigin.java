@@ -15,6 +15,10 @@ public enum FieldOrigin {
     /** The value came from the statement's own qualifier (a real value). */
     QUALIFIER,
 
+    /** The value is the reified statement's own value (a STATEMENT_VALUE role) — a
+     *  real value, not a qualifier and not the subject. */
+    STATEMENT_VALUE,
+
     /** The qualifier was absent; the value fell back to the statement subject. */
     SUBJECT_FALLBACK,
 

@@ -240,10 +240,7 @@ public class TransformEngine {
                         Object v = raw == null && r.fallbackToSource() ? src : raw;
                         if (v != null) {
                             el.put(r.field(), v);
-                            el.recordOrigin(r.field(),
-                                    raw != null
-                                            ? FieldOrigin.QUALIFIER
-                                            : FieldOrigin.SUBJECT_FALLBACK);
+                            el.recordOrigin(r.field(), originOf(raw, r));
                             if (subjectForName == null) {
                                 subjectForName = v;
                             }
@@ -424,14 +421,27 @@ public class TransformEngine {
                 continue;
             }
             FieldOrigin origin = atom.origin(r.field());
-            if (origin == FieldOrigin.QUALIFIER) {
-                return false;   // a real qualifier value anchors this atom
+            if (origin == FieldOrigin.QUALIFIER
+                    || origin == FieldOrigin.STATEMENT_VALUE) {
+                return false;   // a real value (qualifier or statement value) anchors it
             }
             if (origin == FieldOrigin.SUBJECT_FALLBACK) {
                 anyFallbackRole = true;
             }
         }
         return anyFallbackRole;
+    }
+
+    // The origin of a role's value: a real qualifier (fallback-to-source role with a
+    // present qualifier), the reified statement's own value (a STATEMENT_VALUE role,
+    // fallbackToSource == false), or the subject fallback (absent qualifier).
+    private static FieldOrigin originOf(Object raw, ReifyConstruct.Role r) {
+        if (raw == null) {
+            return FieldOrigin.SUBJECT_FALLBACK;
+        }
+        return r.fallbackToSource()
+                ? FieldOrigin.QUALIFIER
+                : FieldOrigin.STATEMENT_VALUE;
     }
 
     // A witness confirms `phantom` is a denormalized self-copy of a genuine record:
