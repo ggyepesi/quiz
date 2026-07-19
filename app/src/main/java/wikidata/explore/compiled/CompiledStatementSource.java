@@ -9,13 +9,19 @@ public record CompiledStatementSource(
         String configuredSourceClassName,
         String sourceClassName,
         String propertyPid,
-        String valueField) {
+        String valueField,
+        String valueSelectionName) {
 
     public CompiledStatementSource {
         configuredSourceClassName = clean(configuredSourceClassName);
         sourceClassName = clean(sourceClassName);
         propertyPid = clean(propertyPid);
         valueField = clean(valueField);
+        valueSelectionName = clean(valueSelectionName);
+    }
+
+    public boolean hasValueSelection() {
+        return !valueSelectionName.isBlank();
     }
 
     public boolean configured() {
@@ -41,7 +47,8 @@ public record CompiledStatementSource(
                 source.sourceClassName(),
                 resolvedClassName,
                 source.propertyPid(),
-                valueField);
+                valueField,
+                source.valueSelectionName());
     }
 
     private static String clean(String value) {

@@ -25,6 +25,11 @@ public final class StatementClassSource {
     private String sourceClassName = "";
     private String propertyPid = "";
 
+    // Optional: a VOCABULARY Selection whose values are the reify's value domain
+    // (the allowed statement values + their labels), replacing the value filter
+    // otherwise inherited from a source class. Blank = derive as before.
+    private String valueSelectionName = "";
+
     public StatementClassSource() {
     }
 
@@ -70,6 +75,19 @@ public final class StatementClassSource {
         propertyPid = clean(value);
     }
 
+    /** A VOCABULARY Selection supplying the reify's value domain; blank = none. */
+    public String valueSelectionName() {
+        return valueSelectionName == null ? "" : valueSelectionName;
+    }
+
+    public void valueSelectionName(String value) {
+        valueSelectionName = clean(value);
+    }
+
+    public boolean hasValueSelection() {
+        return !valueSelectionName().isBlank();
+    }
+
     public boolean hasSourceClass() {
         return !sourceClassName.isBlank();
     }
@@ -96,9 +114,11 @@ public final class StatementClassSource {
     }
 
     public StatementClassSource copy() {
-        return new StatementClassSource(
+        StatementClassSource c = new StatementClassSource(
                 sourceClassName,
                 propertyPid);
+        c.valueSelectionName = valueSelectionName;
+        return c;
     }
 
     @Override

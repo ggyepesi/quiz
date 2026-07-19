@@ -148,6 +148,23 @@ public final class ModelStatementReifications {
         String valueTypeQid =
                 clean(statementClass.instanceMapping().sourceQid());
 
+        // A referenced VOCABULARY Selection IS the value domain (production →
+        // Selection): its values/type override the class-derived filter. Blank
+        // valueSelectionName keeps the classic behavior. Mirrors the compiled path.
+        if (statementSource.hasValueSelection()) {
+            wikidata.explore.model.Selection sel =
+                    project.findSelection(statementSource.valueSelectionName());
+            if (sel != null
+                    && sel.kind() == wikidata.explore.model.Selection.Kind.VOCABULARY) {
+                if (!sel.valueQids().isEmpty()) {
+                    valueQids = new ArrayList<>(sel.valueQids());
+                }
+                if (sel.hasValueType()) {
+                    valueTypeQid = sel.valueTypeQid();
+                }
+            }
+        }
+
         QualifierLoadConfig load = new QualifierLoadConfig(
                 sourceClassName,
                 statementPid,
@@ -260,6 +277,24 @@ public final class ModelStatementReifications {
 
         String valueTypeQid =
                 clean(statementClass.sourceMapping().sourceQid());
+
+        // A referenced VOCABULARY Selection IS the value domain (production →
+        // Selection): its values/type override the class-derived filter. Blank
+        // valueSelectionName keeps the classic behavior.
+        if (statementSource.hasValueSelection()) {
+            wikidata.explore.model.Selection sel =
+                    project.findSelection(statementSource.valueSelectionName())
+                           .orElse(null);
+            if (sel != null
+                    && sel.kind() == wikidata.explore.model.Selection.Kind.VOCABULARY) {
+                if (!sel.valueQids().isEmpty()) {
+                    valueQids = new ArrayList<>(sel.valueQids());
+                }
+                if (sel.hasValueType()) {
+                    valueTypeQid = sel.valueTypeQid();
+                }
+            }
+        }
 
         QualifierLoadConfig load = new QualifierLoadConfig(
                 sourceClassName,

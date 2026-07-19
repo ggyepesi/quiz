@@ -43,7 +43,8 @@ public final class ProjectModelCompiler {
                 snapshot.name(),
                 snapshot.generationDepth(),
                 snapshot.rootClass().className(),
-                classes);
+                classes,
+                snapshot.selections());
     }
 
     private static CompiledClass compileClass(
