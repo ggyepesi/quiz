@@ -25,7 +25,7 @@ class CanonicalSpecTest {
     @Test
     void reifiedClassInfersDerivedGrainAndFieldDisplayName() {
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
-        nomination.statementSourceClass("OscarNominations");   // => reified/derived
+        nomination.statementSource(new StatementClassSource("OscarNominations", "P1411"));   // => reified/derived
 
         nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
@@ -55,7 +55,7 @@ class CanonicalSpecTest {
         // reify — they must not enter the identity key, or e.g. won=null vs won=<x>
         // would split the two denormalized copies of one statement.
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("OscarNominations");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
@@ -69,7 +69,7 @@ class CanonicalSpecTest {
     @Test
     void reDeriveClearsAStaleSavedSpec() {
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("OscarNominations");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         nom.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
 
@@ -91,7 +91,7 @@ class CanonicalSpecTest {
     @Test
     void explicitSpecOverridesInference() {
         GeneratedClassModel c = new GeneratedClassModel("Nomination");
-        c.statementSourceClass("OscarNominations");
+        c.statementSource(new StatementClassSource("OscarNominations", "P1411"));
 
         CanonicalSpec explicit = new CanonicalSpec()
                 .kind(CanonicalSpec.Kind.DERIVED)
@@ -137,7 +137,7 @@ class CanonicalSpecTest {
         project.addClass(source);
 
         GeneratedClassModel c = new GeneratedClassModel("Nomination");
-        c.statementSourceClass("OscarNominations");
+        c.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         c.instanceMapping().propertyPid("P1411");
         c.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         c.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);

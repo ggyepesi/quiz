@@ -5,8 +5,19 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 /**
  * Defines where the instances of a statement-reification class come from.
  *
- * <p>For example, a {@code Nomination} class may reify the {@code P1411}
- * statements of every member of the {@code OscarNominations} source class.</p>
+ * <p>A statement class is identified by the Wikidata property whose statements
+ * become its instances ({@link #isConfigured()} keys on the property, not on a
+ * source class). The source class names the already-extracted members whose
+ * statements are loaded.</p>
+ *
+ * <p>The model treats the source class as <i>structurally</i> optional — a blank
+ * {@code sourceClassName} is meant to load statement subjects directly (see
+ * {@link #discoversSubjectsDirectly()}). That direct-discovery load phase is NOT
+ * yet implemented: generation and validation currently require a source class, so
+ * a blank one is a configuration error today. The optionality is groundwork for
+ * folding a backbone class into its statement class later; until the loader
+ * exists, always configure a source class (e.g. {@code OscarNominations} for
+ * {@code Nomination}'s {@code P1411}).</p>
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public final class StatementClassSource {
@@ -17,25 +28,46 @@ public final class StatementClassSource {
     public StatementClassSource() {
     }
 
-    public StatementClassSource(String sourceClassName, String propertyPid) {
+    /**
+     * Creates a direct statement source without a modeled source class.
+     */
+    public StatementClassSource(String propertyPid) {
+        propertyPid(propertyPid);
+    }
+
+    /**
+     * Creates a statement source optionally restricted to a modeled source class.
+     * A blank {@code sourceClassName} means direct subject discovery.
+     */
+    public StatementClassSource(
+            String sourceClassName,
+            String propertyPid) {
+
         sourceClassName(sourceClassName);
         propertyPid(propertyPid);
     }
 
+    /**
+     * Optional modeled class whose loaded members restrict the statement subjects.
+     * Blank means that matching subjects are discovered directly.
+     */
     public String sourceClassName() {
         return sourceClassName;
     }
 
     public void sourceClassName(String value) {
-        sourceClassName = value == null ? "" : value.trim();
+        sourceClassName = clean(value);
     }
 
+    /**
+     * Wikidata property whose statements become instances of the statement class.
+     */
     public String propertyPid() {
         return propertyPid;
     }
 
     public void propertyPid(String value) {
-        propertyPid = value == null ? "" : value.trim();
+        propertyPid = clean(value);
     }
 
     public boolean hasSourceClass() {
@@ -46,21 +78,41 @@ public final class StatementClassSource {
         return propertyPid.matches("(?i)P\\d+");
     }
 
+    /**
+     * A statement source is configured as soon as it has a valid statement
+     * property. The source class is an optional restriction, not part of the
+     * statement-class identity.
+     */
     public boolean isConfigured() {
-        return hasSourceClass() && hasProperty();
+        return hasProperty();
+    }
+
+    /**
+     * Whether the loader must discover statement subjects instead of reusing the
+     * instances of a configured source class.
+     */
+    public boolean discoversSubjectsDirectly() {
+        return isConfigured() && !hasSourceClass();
     }
 
     public StatementClassSource copy() {
-        return new StatementClassSource(sourceClassName, propertyPid);
+        return new StatementClassSource(
+                sourceClassName,
+                propertyPid);
     }
 
     @Override
     public String toString() {
-        if (!hasSourceClass()) {
+        if (!hasProperty()) {
             return "(not configured)";
         }
-        return hasProperty()
+
+        return hasSourceClass()
                 ? sourceClassName + " / " + propertyPid
-                : sourceClassName;
+                : "direct / " + propertyPid;
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
     }
 }

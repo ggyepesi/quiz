@@ -27,7 +27,8 @@ class FieldExpectationsTest {
     private static GeneratedProjectModel modelWithEdition(FieldExpectation level) {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("OscarNominations");   // reifying class
+        nom.statementSource(new wikidata.explore.model.StatementClassSource(
+                "OscarNominations", "P1411"));   // reifying class
         GeneratedFieldModel edition =
                 nom.addField("edition", FieldType.ENTITY, FieldCardinality.SINGLE);
         edition.expectation(level);

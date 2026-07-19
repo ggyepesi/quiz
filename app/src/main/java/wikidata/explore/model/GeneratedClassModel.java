@@ -31,9 +31,11 @@ public class GeneratedClassModel {
     private String discriminatorQid = "";
     private String alias = "";
 
-    // Explicitly groups the two values that define a statement class:
-    // the source model class and the Wikidata property whose statements are
-    // promoted into instances of this class.
+    // The statement property defines the class's production grain. A source
+    // model class supplies the subject population from its extracted members.
+    // The source class is structurally optional (blank = discover subjects
+    // directly), but that direct-discovery loader is not yet implemented, so a
+    // source class is currently required — see StatementClassSource.
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private StatementClassSource statementSource;
 
@@ -193,9 +195,18 @@ public class GeneratedClassModel {
         }
     }
 
+    /**
+     * Whether this class is produced from Wikidata statements.
+     *
+     * <p>Keys on the statement property, not on the source class — the property
+     * is what defines a statement class. A source class is structurally optional
+     * (its members would supply the subjects), but the direct-discovery loader
+     * for the blank case is not yet implemented, so generation still requires
+     * one.</p>
+     */
     public boolean reifiesStatements() {
         StatementClassSource source = statementSource();
-        return source != null && source.hasSourceClass();
+        return source != null && source.isConfigured();
     }
 
     public String statementPropertyPid() {

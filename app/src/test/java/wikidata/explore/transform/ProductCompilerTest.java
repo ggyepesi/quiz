@@ -35,7 +35,8 @@ class ProductCompilerTest {
         m.addClass(new GeneratedClassModel("Type"));
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("OscarNominations");   // -> reify `source` back-ref
+        nom.statementSource(new wikidata.explore.model.StatementClassSource(
+                "OscarNominations", "P1411"));   // -> reify `source` back-ref
         ref(nom, "nominee", "OscarNominations", FieldCardinality.AUTO);
         ref(nom, "forWork", "ForWork", FieldCardinality.AUTO);      // ForWork is UNMODELED
         ref(nom, "target", "Category", FieldCardinality.COLLECTION);
