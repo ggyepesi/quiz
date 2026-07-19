@@ -90,10 +90,6 @@ public final class ProjectModelCompiler {
                 CompiledFieldSource.from(
                         clazz.effectiveInstanceMapping(project)),
                 clazz.seedQids(),
-                compileFacets(
-                        clazz.facets(),
-                        effectiveFields,
-                        clazz.className()),
                 canonical,
                 CompiledStatementSource.from(
                         statement,
@@ -103,42 +99,6 @@ public final class ProjectModelCompiler {
                         StatementFieldSemantics.statementValueFieldName(clazz)),
                 ownFields,
                 effectiveFields);
-    }
-
-    private static List<CompiledFacet> compileFacets(
-            List<GeneratedFacet> facets,
-            List<CompiledField> effectiveFields,
-            String className) {
-
-        List<CompiledFacet> result = new ArrayList<>();
-        Map<String, CompiledField> fields =
-                fieldIndex(effectiveFields);
-
-        for (GeneratedFacet facet : facets) {
-            if (facet == null) {
-                continue;
-            }
-
-            String configured = clean(facet.fieldName());
-            CompiledField resolved =
-                    fields.get(configured.toLowerCase(Locale.ROOT));
-
-            if (resolved == null) {
-                // A facet is a presentation grouping; a stale one (its field was
-                // renamed or removed) must not block generation. Drop it rather
-                // than failing the compile — the same leniency the validator gives
-                // an unmodeled reference.
-                continue;
-            }
-
-            result.add(new CompiledFacet(
-                    facet.name(),
-                    resolved.name(),
-                    facet.bucketing(),
-                    facet.rangeSize()));
-        }
-
-        return result;
     }
 
     private static CompiledCanonical compileCanonical(

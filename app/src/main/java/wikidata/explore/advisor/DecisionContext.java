@@ -92,15 +92,6 @@ public record DecisionContext(
                 c -> c != clazz && clazz.className().equals(c.baseClassName()));
     }
 
-    public boolean hasFacetOnField(String fieldName) {
-        return fieldName != null && !fieldName.isBlank() && clazz != null
-                && clazz.facets().stream().anyMatch(f -> fieldName.equals(f.fieldName()));
-    }
-
-    public boolean hasAnyFacet() {
-        return clazz != null && !clazz.facets().isEmpty();
-    }
-
     public boolean qualifiersLoaded() {
         if (transform == null || clazz == null) {
             return false;

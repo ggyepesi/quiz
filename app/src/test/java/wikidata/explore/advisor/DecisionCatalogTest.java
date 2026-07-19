@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedFacet;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.transform.QualifierLoadConfig;
@@ -63,18 +62,6 @@ class DecisionCatalogTest {
         assertResolved(ev, "denormalization", false);
     }
 
-    @Test void facetResolvesTypeStructure() {
-        GeneratedClassModel c = new GeneratedClassModel();
-        c.className("Oscarnominations");
-        c.instanceMapping().propertyPid("P1411");
-        c.instanceMapping().additionalTypeQids().add("Q102427");
-        c.fields().add(field("type", "P31"));
-        c.facets().add(new GeneratedFacet("by type", "type",
-                GeneratedFacet.Bucketing.VALUE));
-
-        assertResolved(DecisionCatalog.evaluate(ctx(c, null)), "type-structure", true);
-    }
-
     @Test void transformResolvesQualifiersAndDenormalization() {
         GeneratedClassModel c = new GeneratedClassModel();
         c.className("Oscarnominations");
@@ -106,7 +93,6 @@ class DecisionCatalogTest {
         assertFalse(ids.contains("targets"), ids.toString());
         assertFalse(ids.contains("qualifiers"), ids.toString());
         assertTrue(ids.contains("membership"), ids.toString());
-        assertTrue(ids.contains("facets"), ids.toString());
     }
 
     private static void assertResolved(

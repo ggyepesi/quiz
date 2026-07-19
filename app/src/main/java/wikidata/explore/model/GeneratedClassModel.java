@@ -1,6 +1,7 @@
 package wikidata.explore.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GeneratedClassModel {
 
     private String className;
@@ -51,7 +53,6 @@ public class GeneratedClassModel {
             new FieldSourceMapping();
 
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
-    private final List<GeneratedFacet> facets = new ArrayList<>();
     private final List<String> seedQids = new ArrayList<>();
 
     private CanonicalSpec canonical;
@@ -229,10 +230,6 @@ public class GeneratedClassModel {
         return fields;
     }
 
-    public List<GeneratedFacet> facets() {
-        return facets;
-    }
-
     public List<GeneratedFieldModel> effectiveFields(
             GeneratedProjectModel project) {
         return effectiveFields(project, new HashSet<>());
@@ -393,7 +390,6 @@ public class GeneratedClassModel {
 
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.seedQids.addAll(seedQids);
-        copy.facets.addAll(facets);
         copy.canonical =
                 canonical == null ? null : canonical.copy();
 

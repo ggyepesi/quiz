@@ -7,7 +7,6 @@ import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedFacet;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.model.StatementClassSource;
@@ -119,25 +118,6 @@ class ProjectModelCompilerTest {
     }
 
     @Test
-    void aStaleFacetFieldIsDroppedNotFatal() {
-        GeneratedProjectModel p = project("stalefacet");
-        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        nom.facets().add(new GeneratedFacet(
-                "by category", "category", GeneratedFacet.Bucketing.VALUE));
-        nom.facets().add(new GeneratedFacet(
-                "by ghost", "ghost", GeneratedFacet.Bucketing.VALUE));  // no such field
-        p.addClass(nom);
-
-        CompiledClass cn = ProjectModelCompiler.compile(p)
-                .findClass("Nomination").orElseThrow();
-
-        assertEquals(1, cn.facets().size(),
-                "the stale facet is dropped, the valid one kept — not a fatal compile");
-        assertEquals("category", cn.facets().get(0).fieldName());
-    }
-
-    @Test
     void compilesAModelWhoseRootWasSplitBySerialization() throws Exception {
         // A saved model serializes its root both as `rootClass` and inside
         // `classes`, so on reload the root is a separate object from its same-named
@@ -158,22 +138,6 @@ class ProjectModelCompilerTest {
                 .count();
         assertEquals(1, roots,
                 "the split root compiles to a single class, not a duplicate");
-    }
-
-    @Test
-    void facetsAreCarried() {
-        GeneratedProjectModel p = project("facets");
-        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        nom.facets().add(new GeneratedFacet(
-                "by category", "category", GeneratedFacet.Bucketing.VALUE));
-        p.addClass(nom);
-
-        CompiledClass cn = ProjectModelCompiler.compile(p)
-                .findClass("Nomination").orElseThrow();
-
-        assertEquals(1, cn.facets().size());
-        assertEquals("category", cn.facets().get(0).fieldName());
     }
 
     @Test

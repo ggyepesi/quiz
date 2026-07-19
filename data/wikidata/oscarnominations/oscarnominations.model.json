@@ -41,7 +41,7 @@
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "category",
       "type" : "ENTITY",
-      "entityClassName" : "Category",
+      "entityClassName" : "OscarCategories",
       "cardinality" : "AUTO",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -233,19 +233,6 @@
         "sourceType" : "SPARQL"
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
-    } ] ],
-    "facets" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFacet",
-      "name" : "by category",
-      "fieldName" : "category",
-      "bucketing" : "VALUE",
-      "rangeSize" : 10
-    }, {
-      "@class" : "wikidata.explore.model.GeneratedFacet",
-      "name" : "by decade",
-      "fieldName" : "year",
-      "bucketing" : "RANGE",
-      "rangeSize" : 10
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
@@ -492,19 +479,6 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
-    "facets" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFacet",
-      "name" : "by category",
-      "fieldName" : "category",
-      "bucketing" : "VALUE",
-      "rangeSize" : 10
-    }, {
-      "@class" : "wikidata.explore.model.GeneratedFacet",
-      "name" : "by decade",
-      "fieldName" : "year",
-      "bucketing" : "RANGE",
-      "rangeSize" : 10
-    } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
@@ -548,14 +522,13 @@
       "sourceType" : "SPARQL"
     },
     "fields" : [ "java.util.ArrayList", [ ] ],
-    "facets" : [ "java.util.ArrayList", [ ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : null
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "className" : "ForWork",
     "baseClassName" : "",
-    "discriminatorPid" : "",
+    "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
     "generationDepth" : 1,
@@ -563,8 +536,8 @@
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
-      "propertyPid" : "",
-      "propertyLabel" : "",
+      "propertyPid" : "P31",
+      "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "subjectField" : "",
       "matchValueField" : "",
@@ -584,9 +557,16 @@
       "sourceType" : "SPARQL"
     },
     "fields" : [ "java.util.ArrayList", [ ] ],
-    "facets" : [ "java.util.ArrayList", [ ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "canonical" : null
+    "canonical" : {
+      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "kind" : "WIKIDATA_ENTITY",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en"
+    }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.Selection",

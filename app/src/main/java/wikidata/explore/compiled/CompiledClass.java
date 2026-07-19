@@ -24,7 +24,6 @@ public final class CompiledClass {
     private final CompiledFieldSource sourceMapping;
 
     private final List<String> seedQids;
-    private final List<CompiledFacet> facets;
     private final CompiledCanonical canonical;
     private final CompiledStatementSource statementSource;
     private final List<CompiledField> ownFields;
@@ -41,7 +40,6 @@ public final class CompiledClass {
             int generationDepth,
             CompiledFieldSource sourceMapping,
             List<String> seedQids,
-            List<CompiledFacet> facets,
             CompiledCanonical canonical,
             CompiledStatementSource statementSource,
             List<CompiledField> ownFields,
@@ -58,7 +56,6 @@ public final class CompiledClass {
                 ? CompiledFieldSource.from(null)
                 : sourceMapping;
         this.seedQids = seedQids == null ? List.of() : List.copyOf(seedQids);
-        this.facets = facets == null ? List.of() : List.copyOf(facets);
         this.canonical = canonical == null
                 ? CompiledCanonical.from(null)
                 : canonical;
@@ -97,7 +94,6 @@ public final class CompiledClass {
     public CompiledFieldSource membership() { return sourceMapping; }
 
     public List<String> seedQids() { return seedQids; }
-    public List<CompiledFacet> facets() { return facets; }
     public CompiledCanonical canonical() { return canonical; }
     public CompiledStatementSource statementSource() { return statementSource; }
     public boolean statementClass() {

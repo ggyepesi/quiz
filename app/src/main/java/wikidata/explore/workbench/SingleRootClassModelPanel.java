@@ -20,7 +20,6 @@ public class SingleRootClassModelPanel extends JPanel {
     private final JButton renameClassButton = new JButton("Rename class");
     private final JButton addClassButton = new JButton("Add class");
     private final JButton addFieldButton = new JButton("Add field");
-    private final JButton suggestFacetsButton = new JButton("Suggest facets");
     private final JButton removeButton = new JButton("Remove");
 
     public SingleRootClassModelPanel(GeneratedProjectModel projectModel) {
@@ -169,9 +168,6 @@ public class SingleRootClassModelPanel extends JPanel {
         buttons.add(renameClassButton);
         buttons.add(addClassButton);
         buttons.add(addFieldButton);
-        suggestFacetsButton.setToolTipText("Propose grouping facets from this "
-                + "class's fields (by type, by the membership target, by decade)");
-        buttons.add(suggestFacetsButton);
         buttons.add(removeButton);
 
         // This panel lives in the narrow left split, so the button row would
@@ -183,32 +179,7 @@ public class SingleRootClassModelPanel extends JPanel {
         renameClassButton.addActionListener(e -> renameClass());
         addClassButton.addActionListener(e -> addClass());
         addFieldButton.addActionListener(e -> addField());
-        suggestFacetsButton.addActionListener(e -> suggestFacets());
         removeButton.addActionListener(e -> removeSelected());
-    }
-
-    // Add proposed grouping facets to the selected class (deduped by field+bucketing).
-    private void suggestFacets() {
-        GeneratedClassModel cls = selectedClassOrRoot();
-        int added = 0;
-        for (GeneratedFacet s : wikidata.explore.view.DomainFacets.suggestFor(cls)) {
-            boolean exists = cls.facets().stream().anyMatch(f ->
-                    f.fieldName().equals(s.fieldName())
-                            && f.bucketing() == s.bucketing());
-            if (!exists) {
-                cls.facets().add(s);
-                added++;
-            }
-        }
-        if (added == 0) {
-            JOptionPane.showMessageDialog(this,
-                    "No new facets to suggest for " + cls.className()
-                            + " (need a type / membership-target / date field).",
-                    "Suggest facets", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        refresh();
-        selectClass(cls);
     }
 
     private DefaultMutableTreeNode buildTree() {
@@ -228,11 +199,6 @@ public class SingleRootClassModelPanel extends JPanel {
                 }
 
                 classNode.add(fieldNode);
-            }
-
-            // Declared grouping facets, after the fields.
-            for (GeneratedFacet facet : cls.facets()) {
-                classNode.add(new DefaultMutableTreeNode(facet));
             }
 
             projectNode.add(classNode);
@@ -331,15 +297,6 @@ public class SingleRootClassModelPanel extends JPanel {
             projectModel.removeClass(c);
             refresh();
             return;
-        }
-
-        if (selected instanceof GeneratedFacet facet) {
-            for (GeneratedClassModel c : projectModel.classes()) {
-                if (c.facets().remove(facet)) {
-                    break;
-                }
-            }
-            refresh();
         }
     }
 
@@ -463,10 +420,6 @@ public class SingleRootClassModelPanel extends JPanel {
                 setText(t.toString());
                 setForeground(sel ? getTextSelectionColor()
                         : new Color(60, 90, 120));
-            } else if (uo instanceof GeneratedFacet facet) {
-                setText("⊞ " + facet);   // grouping dimension, distinct from fields
-                setForeground(sel ? getTextSelectionColor()
-                        : new Color(120, 90, 60));
             }
             return this;
         }

@@ -10,10 +10,6 @@ import quiz.web.QuizableSource;
 import quiz.web.QuizableStore;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.GeneratedProjectModelStore;
-import wikidata.explore.view.DomainFacets;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -127,30 +123,7 @@ public class GeneratedSource implements QuizableSource {
     @Override
     public QuizableGroup rootGroup() throws Exception {
         Collection<? extends Quizable> all = load();
-        // Prefer the grouping the user DECLARED on the model. Declared facets are an
-        // ordered drill-down (e.g. category → year → the nominations), so nest them;
-        // auto-derived facets are independent browse dimensions, so keep them flat.
-        List<Facet<Quizable>> declared = declaredFacets();
-        return declared.isEmpty()
-                ? FacetGrouper.group(QuizableGroup::new, "All " + type, all, autoFacets(all))
-                : FacetGrouper.groupNested(QuizableGroup::new, "All " + type, all, declared);
-    }
-
-    /** The class's declared {@link GeneratedFacet}s (translated to runtime facets),
-     *  or empty if there's no model file or no facets declared for this type. */
-    private List<Facet<Quizable>> declaredFacets() {
-        if (modelFile == null || !modelFile.isFile()) {
-            return List.of();
-        }
-        try {
-            GeneratedProjectModel model =
-                    new GeneratedProjectModelStore().load(modelFile);
-            GeneratedClassModel clazz = model.findClass(type);
-            return clazz == null ? List.of() : DomainFacets.toFacets(clazz);
-        } catch (Exception e) {
-            // A missing/older model shouldn't break browsing — auto-derive instead.
-            return List.of();
-        }
+        return FacetGrouper.group(QuizableGroup::new, "All " + type, all, autoFacets(all));
     }
 
     /** Derive facets from the dynamic schema over a sample of the data. */

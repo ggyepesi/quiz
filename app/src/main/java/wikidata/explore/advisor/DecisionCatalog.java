@@ -58,7 +58,7 @@ public final class DecisionCatalog {
                     "\"By type…\"",
                     "Run By type…; mixed-per-target → facet, clean-per-instance → subclass.",
                     DecisionContext::relational,
-                    ctx -> ctx.hasSubclass() || ctx.hasFacetOnField(ctx.typeFieldName())),
+                    ctx -> ctx.hasSubclass()),
 
             new StructuralDecision(
                     "qualifiers",
@@ -74,15 +74,7 @@ public final class DecisionCatalog {
                     "\"Qualifiers…\" proposes a canonical reify",
                     "A member-kind entity qualifier (e.g. nominee) signals denormalization → reify.",
                     DecisionContext::relational,
-                    DecisionContext::reified),
-
-            new StructuralDecision(
-                    "facets",
-                    "Declare how to browse/quiz it (grouping facets).",
-                    "\"Suggest facets\"",
-                    "by target, by type, by decade.",
-                    ctx -> ctx.clazz() != null,
-                    DecisionContext::hasAnyFacet));
+                    DecisionContext::reified));
 
     public static List<StructuralDecision> all() {
         return DECISIONS;
