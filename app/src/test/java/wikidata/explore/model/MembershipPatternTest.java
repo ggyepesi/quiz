@@ -55,6 +55,28 @@ class MembershipPatternTest {
         assertEquals(MembershipPattern.UNCONFIGURED, MembershipPattern.of(clazz()));
     }
 
+    @Test void referencedOnlyClassIsDerivedFromTheFieldThatTargetsIt() {
+        GeneratedProjectModel p = new GeneratedProjectModel();
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        GeneratedFieldModel forWork =
+                nom.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE);
+        forWork.entityClassName("ForWork");
+        forWork.mapping().qualifierPid("P1686");
+        p.addClass(nom);
+
+        GeneratedClassModel forWorkClass = new GeneratedClassModel("ForWork");
+        p.addClass(forWorkClass);
+        p.rootClass(nom);
+
+        // Bare, no membership of its own -> UNCONFIGURED without project context...
+        assertEquals(MembershipPattern.UNCONFIGURED, MembershipPattern.of(forWorkClass));
+        // ...but REFERENCED once we can see the field that targets it.
+        assertEquals(MembershipPattern.REFERENCED,
+                MembershipPattern.of(forWorkClass, p));
+        assertEquals("Derived from Nomination.forWork (P1686)",
+                MembershipPattern.describe(forWorkClass, p));
+    }
+
     @Test void reifiedDiscoveredWithSelection() {
         GeneratedClassModel c = clazz();
         StatementClassSource s = new StatementClassSource("P1411");

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.Selection;
+import wikidata.explore.model.VocabularySelection;
 
 import java.util.List;
 
@@ -21,7 +22,7 @@ class CompiledSelectionTest {
         src.instanceMapping().additionalTypeQids().add("Q102427");
         project.addClass(src);
 
-        Selection cats = new Selection("OscarCategories", Selection.Kind.VOCABULARY);
+        VocabularySelection cats = new VocabularySelection("OscarCategories");
         cats.valueQids(List.of("Q102427", "Q106301"));
         project.addSelection(cats);
 
@@ -30,7 +31,8 @@ class CompiledSelectionTest {
         assertEquals(1, compiled.selections().size());
         Selection found = compiled.findSelection("oscarcategories").orElseThrow();
         assertEquals(Selection.Kind.VOCABULARY, found.kind());
-        assertTrue(found.valueQids().containsAll(List.of("Q102427", "Q106301")));
+        assertTrue(((VocabularySelection) found).valueQids()
+                .containsAll(List.of("Q102427", "Q106301")));
     }
 
     @Test void noSelectionsIsEmptyNotNull() {

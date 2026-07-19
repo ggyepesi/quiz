@@ -8,8 +8,8 @@ import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.Selection;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.VocabularySelection;
 
 import java.util.List;
 
@@ -30,7 +30,7 @@ class SelectionValueDomainTest {
         src.instanceMapping().additionalTypeQids().add("Q102427");   // class-derived filter
         project.addClass(src);
 
-        Selection vocab = new Selection("OscarCategories", Selection.Kind.VOCABULARY);
+        VocabularySelection vocab = new VocabularySelection("OscarCategories");
         vocab.valueQids(List.of("Q900", "Q901"));                    // DIFFERENT set
         project.addSelection(vocab);
 

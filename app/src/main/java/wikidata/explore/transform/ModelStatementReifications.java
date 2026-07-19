@@ -163,13 +163,12 @@ public final class ModelStatementReifications {
         if (statementSource.hasValueSelection()) {
             wikidata.explore.model.Selection sel =
                     project.findSelection(statementSource.valueSelectionName());
-            if (sel != null
-                    && sel.kind() == wikidata.explore.model.Selection.Kind.VOCABULARY) {
-                if (!sel.valueQids().isEmpty()) {
-                    valueQids = new ArrayList<>(sel.valueQids());
+            if (sel instanceof wikidata.explore.model.VocabularySelection vs) {
+                if (!vs.valueQids().isEmpty()) {
+                    valueQids = new ArrayList<>(vs.valueQids());
                 }
-                if (sel.hasValueType()) {
-                    valueTypeQid = sel.valueTypeQid();
+                if (vs.hasValueType()) {
+                    valueTypeQid = vs.valueTypeQid();
                 }
             }
         }
@@ -306,13 +305,12 @@ public final class ModelStatementReifications {
             wikidata.explore.model.Selection sel =
                     project.findSelection(statementSource.valueSelectionName())
                            .orElse(null);
-            if (sel != null
-                    && sel.kind() == wikidata.explore.model.Selection.Kind.VOCABULARY) {
-                if (!sel.valueQids().isEmpty()) {
-                    valueQids = new ArrayList<>(sel.valueQids());
+            if (sel instanceof wikidata.explore.model.VocabularySelection vs) {
+                if (!vs.valueQids().isEmpty()) {
+                    valueQids = new ArrayList<>(vs.valueQids());
                 }
-                if (sel.hasValueType()) {
-                    valueTypeQid = sel.valueTypeQid();
+                if (vs.hasValueType()) {
+                    valueTypeQid = vs.valueTypeQid();
                 }
             }
         }

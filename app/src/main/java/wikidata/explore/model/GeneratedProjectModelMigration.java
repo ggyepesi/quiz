@@ -89,11 +89,43 @@ public final class GeneratedProjectModelMigration {
             }
         }
 
+        upgradeSelections(project);
+
         return new Result(
                 statementSources,
                 qualifierPolicies,
                 canonicalSpecs,
                 dedupFlagsCleared);
+    }
+
+    /**
+     * Upgrades any selection whose runtime class is exactly the base
+     * {@link Selection} to its concrete subtype by {@link Selection#kind()}. A stray
+     * base carries no data fields, so only name+kind need to be carried. Defensive:
+     * models are normally saved with the concrete {@code @class}; this catches any
+     * that predate the split. Rewrites the list only if at least one was upgraded.
+     */
+    private static void upgradeSelections(GeneratedProjectModel project) {
+        List<Selection> current = project.selections();
+        boolean anyUpgraded = false;
+        List<Selection> upgraded = new ArrayList<>(current.size());
+
+        for (Selection s : current) {
+            if (s != null && s.getClass() == Selection.class) {
+                Selection replacement = switch (s.kind()) {
+                    case VOCABULARY -> new VocabularySelection(s.name());
+                    case POPULATION -> new PopulationSelection(s.name());
+                };
+                upgraded.add(replacement);
+                anyUpgraded = true;
+            } else {
+                upgraded.add(s);
+            }
+        }
+
+        if (anyUpgraded) {
+            project.replaceSelections(upgraded);
+        }
     }
 
     private static boolean hasLegacyDedupFlags(

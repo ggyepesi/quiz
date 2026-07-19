@@ -57,9 +57,8 @@ Consequences of this framing:
   QID (+ label + `wikidata` link). That is *not* "unconfigured" — a QID-identity
   class is **complete the moment a field points at it** (identity intrinsic,
   membership derived, fields additive). "Unconfigured" on the tree node is a
-  category error; the honest label names the deriving field, e.g.
-  *"Derived from forWork (P1686)"*. *(Label wording is a pending display fix; the
-  underlying model is already correct.)*
+  category error; the tree node names the deriving field instead —
+  *"Derived from Nomination.forWork (P1686)"* (`MembershipPattern.REFERENCED`).
 - Even fieldless, it is **load-bearing**: it is the **join key** for the inverted
   views — "all nominations of a nominee", "every nomination for a work" are
   inverts *over the shared QID identity*. No identity holder, nothing to group by.
@@ -176,14 +175,14 @@ The explorer tabs in the modelbuilder (`ModelSourceWorkbenchPanel`) do this:
   field / qualifier field via the Add-Field path. A **Values** tab shows the
   actual value labels so you can see what you'd be capturing.
 
-**Referenced-only classes and discovery.** These tabs sample from a class's
-*membership*, and a referenced-only class has none — so today you feed the
-inspector a sample QID by hand rather than have it auto-sample a `Nominee` you
-already generated. Two enablers close that loop (pending): sample a referenced
-class from **its own generated referents**, and **load its declared fields'
-properties onto its referents** (generalizing the current hardcoded `P31 → type`
-hook in `QualifierLoader`) so a declared `type`/`genre` actually populates on
-regenerate.
+**Referenced-only classes and discovery.** A referenced class's declared
+entity property-fields **do load** onto its referents on regenerate — declaring
+`Nominee.type (P31)` / `ForWork.genre (P136)` is the whole configuration
+(`ReferentFieldLoad`, run after `ReferentClassStamp`; outgoing entity claims via
+`wbgetentities`). What is still *pending* is discovery *convenience*: these tabs
+sample from a class's *membership*, and a referenced-only class has none, so today
+you feed the inspector a sample QID by hand rather than have it auto-sample a
+`Nominee` you already generated.
 
 ---
 

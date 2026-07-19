@@ -287,6 +287,22 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 + " referent(s) with their declared class.\n");
                     }
 
+                    // Load a referenced-only class's DECLARED entity property-fields
+                    // onto its (now class-stamped) referents — e.g. Nominee.type (P31),
+                    // ForWork.genre (P136). No-op unless such fields are declared, so
+                    // it costs nothing until the model opts in. Needs wbgetentities;
+                    // mirror QualifierLoader's own client.
+                    int loadedReferentFields =
+                            wikidata.explore.transform.ReferentFieldLoad.apply(
+                                    project, shared.values(),
+                                    new wikidata.api.WikidataApiClient(
+                                            "QuizProject/1.0 (ggyepesi@gmail.com)"),
+                                    genLog);
+                    if (loadedReferentFields > 0) {
+                        genLog.message("Loaded " + loadedReferentFields
+                                + " referent field value(s) from declared PIDs.\n");
+                    }
+
                     // The served/saved pool: the whole shared pool (every class's
                     // roots + their referenced children) minus demoted reified
                     // duplicates and dead stubs, plus the reified records. This IS

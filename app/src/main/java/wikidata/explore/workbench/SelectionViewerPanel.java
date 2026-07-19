@@ -5,11 +5,13 @@ import objectview.render.RenderContext;
 import objectview.utils.swing.GridBagUtils;
 import objectview.viewconfig.ViewConfig;
 import quiz.Quizable;
+import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.SelectionContentResolver;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.Selection;
+import wikidata.explore.model.VocabularySelection;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,8 +27,12 @@ import java.util.List;
  */
 public class SelectionViewerPanel extends JPanel {
 
+    /** Sample size for a POPULATION selection's bounded subject query. */
+    private static final int POPULATION_SAMPLE_LIMIT = 200;
+
     private final GeneratedProjectModel project;
     private final WikidataApiClient api;
+    private final WikidataSparqlClient sparql;
 
     private final JComboBox<String> selectionBox = new JComboBox<>();
     private final JButton showButton = new JButton("Show content");
@@ -38,10 +44,12 @@ public class SelectionViewerPanel extends JPanel {
     private final JTextField newQidsField = new JTextField(24);
     private final JButton addButton = new JButton("Add & show");
 
-    public SelectionViewerPanel(GeneratedProjectModel project, WikidataApiClient api) {
+    public SelectionViewerPanel(GeneratedProjectModel project, WikidataApiClient api,
+                                WikidataSparqlClient sparql) {
         super(new BorderLayout(6, 6));
         this.project = project;
         this.api = api;
+        this.sparql = sparql;
         cardsScroll.getVerticalScrollBar().setUnitIncrement(18);
         cardsScroll.setPreferredSize(new Dimension(460, 520));
 
@@ -89,7 +97,7 @@ public class SelectionViewerPanel extends JPanel {
             status.setText("Enter at least one QID (e.g. Q102427).");
             return;
         }
-        Selection s = new Selection(name, Selection.Kind.VOCABULARY);
+        VocabularySelection s = new VocabularySelection(name);
         s.valueQids(qids);
         project.addSelection(s);
         newNameField.setText("");
@@ -131,7 +139,8 @@ public class SelectionViewerPanel extends JPanel {
         new SwingWorker<List<WikidataDynamicObject>, Void>() {
             @Override
             protected List<WikidataDynamicObject> doInBackground() {
-                return new SelectionContentResolver().resolve(selection, api, null);
+                return new SelectionContentResolver().resolve(
+                        selection, sparql, api, POPULATION_SAMPLE_LIMIT, null);
             }
 
             @Override
@@ -176,7 +185,8 @@ public class SelectionViewerPanel extends JPanel {
 
         cards.revalidate();
         cards.repaint();
+        boolean sampled = selection.kind() == Selection.Kind.POPULATION;
         status.setText(selection.name() + " [" + selection.kind() + "]: "
-                + content.size() + " member(s)");
+                + content.size() + (sampled ? " sampled member(s)" : " member(s)"));
     }
 }

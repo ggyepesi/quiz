@@ -7,7 +7,7 @@ import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.Selection;
+import wikidata.explore.model.VocabularySelection;
 
 import java.util.List;
 
@@ -30,7 +30,7 @@ class ReferentClassStampTest {
         p.addClass(new GeneratedClassModel("Nominee"));
 
         // Categories are a closed vocabulary -> a Selection is their type, not a class.
-        p.addSelection(new Selection("OscarCategories", Selection.Kind.VOCABULARY));
+        p.addSelection(new VocabularySelection("OscarCategories"));
 
         p.rootClass(nom);
         return p;

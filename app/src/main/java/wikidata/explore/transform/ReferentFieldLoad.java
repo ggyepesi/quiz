@@ -1,0 +1,172 @@
+package wikidata.explore.transform;
+
+import wikidata.api.WikidataApiClient;
+import wikidata.explore.extract.GenerationLog;
+import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.FieldType;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.MembershipPattern;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Loads a REFERENCED-only class's declared entity-valued property-fields onto its
+ * referents — the general form of "give an identity holder its own fields." A
+ * referenced-only class (e.g. {@code Nominee}, {@code ForWork}) has no membership
+ * of its own and is never extracted as a root, so the normal field pipeline never
+ * runs for it; its members only ever appear as referents. This pass closes that
+ * gap: declaring {@code Nominee.type} (P31) or {@code ForWork.genre} (P136) makes
+ * the field fill from each referent entity's outgoing claim for that property.
+ *
+ * <p>So <em>declaring the field IS the configuration</em> — nothing hardcoded.
+ * Run AFTER {@link ReferentClassStamp} (referents must know their class) and after
+ * a value domain / labels pass. Scope: OUTGOING, entity-valued property-fields
+ * fetched via {@code wbgetentities}; incoming or literal fields are out of scope
+ * for this pass. Values are labelled refs (a SINGLE field takes the first value, a
+ * COLLECTION keeps all); an already-populated field is left alone.
+ */
+public final class ReferentFieldLoad {
+
+    private ReferentFieldLoad() {}
+
+    /** @return the number of (referent, field) values loaded. */
+    public static int apply(
+            GeneratedProjectModel model,
+            Collection<WikidataDynamicObject> pool,
+            WikidataApiClient api,
+            GenerationLog log) {
+
+        if (model == null || pool == null || api == null) {
+            return 0;
+        }
+
+        // Referenced-only classes and their entity-valued property-fields.
+        Map<String, List<GeneratedFieldModel>> byClass = new LinkedHashMap<>();
+        for (GeneratedClassModel c : model.classes()) {
+            if (c == null
+                    || MembershipPattern.of(c, model) != MembershipPattern.REFERENCED) {
+                continue;
+            }
+            List<GeneratedFieldModel> fields = new ArrayList<>();
+            for (GeneratedFieldModel f : c.fields()) {
+                if (f != null && f.type() == FieldType.ENTITY
+                        && clean(f.mapping().propertyPid()).matches("(?i)P\\d+")) {
+                    fields.add(f);
+                }
+            }
+            if (!fields.isEmpty()) {
+                byClass.put(c.className(), fields);
+            }
+        }
+        if (byClass.isEmpty()) {
+            return 0;
+        }
+
+        // Index the referents actually in the pool by their stamped class.
+        Map<String, List<WikidataDynamicObject>> referents = new LinkedHashMap<>();
+        for (WikidataDynamicObject o : pool) {
+            if (o == null || o.qid() == null || !o.qid().matches("Q\\d+")) {
+                continue;
+            }
+            if (byClass.containsKey(o.typeName())) {
+                referents.computeIfAbsent(o.typeName(), k -> new ArrayList<>()).add(o);
+            }
+        }
+
+        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
+        int loaded = 0;
+        for (Map.Entry<String, List<GeneratedFieldModel>> e : byClass.entrySet()) {
+            List<WikidataDynamicObject> objs = referents.get(e.getKey());
+            if (objs == null || objs.isEmpty()) {
+                continue;
+            }
+            for (GeneratedFieldModel f : e.getValue()) {
+                loaded += loadField(e.getKey(), objs, f, api, sink);
+            }
+        }
+        return loaded;
+    }
+
+    private static int loadField(
+            String className, List<WikidataDynamicObject> objs,
+            GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
+
+        String pid = clean(field.mapping().propertyPid());
+        List<String> qids = new ArrayList<>(objs.size());
+        for (WikidataDynamicObject o : objs) {
+            qids.add(o.qid());
+        }
+
+        Map<String, WikidataApiClient.ApiEntity> details;
+        try {
+            details = api.getEntities(qids, List.of(pid), log::subquery);
+        } catch (Exception ex) {
+            if (Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
+            } else {
+                log.message("Referent field load " + className + "." + field.name()
+                        + " (" + pid + ") failed (" + ex.getMessage() + ")\n");
+            }
+            return 0;
+        }
+
+        // Label the distinct value entities once.
+        Set<String> valueQids = new LinkedHashSet<>();
+        for (WikidataDynamicObject o : objs) {
+            WikidataApiClient.ApiEntity e = details.get(o.qid());
+            if (e != null) {
+                valueQids.addAll(e.claim(pid));
+            }
+        }
+        Map<String, WikidataApiClient.ApiEntity> labels;
+        try {
+            labels = valueQids.isEmpty()
+                    ? Map.of()
+                    : api.getEntities(new ArrayList<>(valueQids), List.of(), log::subquery);
+        } catch (Exception ex) {
+            labels = Map.of();
+        }
+
+        boolean collection = field.cardinality() != null
+                && field.cardinality().isCollection();
+        int loaded = 0;
+        for (WikidataDynamicObject o : objs) {
+            WikidataApiClient.ApiEntity e = details.get(o.qid());
+            if (e == null || o.get(field.name()) != null) {
+                continue;   // no data, or already populated
+            }
+            List<WikidataDynamicObject> values = new ArrayList<>();
+            for (String vq : e.claim(pid)) {
+                WikidataApiClient.ApiEntity le = labels.get(vq);
+                String label = le == null || le.label() == null || le.label().isBlank()
+                        ? vq : le.label();
+                values.add(new WikidataDynamicObject(vq, label));
+            }
+            if (values.isEmpty()) {
+                continue;
+            }
+            o.put(field.name(), collection ? values : values.get(0));
+            loaded++;
+        }
+        log.message("Referent field load " + className + "." + field.name()
+                + " (" + pid + ") -> " + loaded + " value(s)\n");
+        return loaded;
+    }
+
+    private static String clean(String s) {
+        if (s == null) {
+            return "";
+        }
+        s = s.trim();
+        int slash = s.lastIndexOf('/');
+        return slash >= 0 ? s.substring(slash + 1) : s;
+    }
+}

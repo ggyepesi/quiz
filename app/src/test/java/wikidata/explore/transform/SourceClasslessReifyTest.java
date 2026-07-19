@@ -8,8 +8,8 @@ import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.Selection;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.VocabularySelection;
 
 import java.util.List;
 
@@ -27,7 +27,7 @@ class SourceClasslessReifyTest {
     private static GeneratedProjectModel project() {
         GeneratedProjectModel project = new GeneratedProjectModel();
 
-        Selection vocab = new Selection("OscarCategories", Selection.Kind.VOCABULARY);
+        VocabularySelection vocab = new VocabularySelection("OscarCategories");
         vocab.valueQids(List.of("Q102427", "Q106301"));
         project.addSelection(vocab);
 

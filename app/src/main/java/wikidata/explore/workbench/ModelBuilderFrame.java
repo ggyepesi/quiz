@@ -397,7 +397,7 @@ public class ModelBuilderFrame extends JFrame {
     // vocabulary and see its members.
     private void showSelectionsWindow() {
         if (selectionsWindow == null) {
-            selectionsPanel = new SelectionViewerPanel(projectModel, apiClient);
+            selectionsPanel = new SelectionViewerPanel(projectModel, apiClient, client);
             selectionsWindow = new JFrame("Selections");
             selectionsWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             selectionsWindow.setLayout(new BorderLayout());

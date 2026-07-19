@@ -1,8 +1,8 @@
 package wikidata.explore.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,19 +13,21 @@ import java.util.List;
  *
  * <p>This replaces the config-classes that overloaded "class" with non-product
  * roles. The entity pool is already the cache (one instance per QID); a Selection is
- * just a named, rule-defined subset of it. Two live roles (facets are a view-time
- * concern and are deliberately not modelled here; a partition that changes what is
- * loaded is a subclass, using the existing discriminator machinery):
+ * just a named, rule-defined subset of it. This base type carries only the identity
+ * (name + kind); the data fields live on the concrete subtypes so each role is
+ * self-contained:
  *
  * <ul>
- *   <li>{@link Kind#VOCABULARY} — a value domain: the allowed values of a field,
- *       given explicitly or by a P31 type filter (e.g. the Oscar categories);</li>
- *   <li>{@link Kind#POPULATION} — a subject set defined by a membership relation
- *       (e.g. the entities with P1411 into those categories) that a reify draws
- *       its subjects from.</li>
+ *   <li>{@link VocabularySelection} ({@link Kind#VOCABULARY}) — a value domain: the
+ *       allowed values of a field, given explicitly or by a P31 type filter (e.g. the
+ *       Oscar categories);</li>
+ *   <li>{@link PopulationSelection} ({@link Kind#POPULATION}) — a subject set defined
+ *       by a membership relation (e.g. the entities with P1411 into those categories)
+ *       that a reify draws its subjects from.</li>
  * </ul>
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Selection {
 
     public enum Kind {
@@ -37,15 +39,6 @@ public class Selection {
 
     private String name = "";
     private Kind kind = Kind.VOCABULARY;
-
-    // VOCABULARY: the allowed values, given explicitly and/or by a P31 type filter.
-    private final List<String> valueQids = new ArrayList<>();
-    private String valueTypeQid = "";
-
-    // POPULATION: subjects are the entities with `relationPid` into `targetQids`
-    // (e.g. P1411 into the Oscar categories). Empty targetQids = the relation alone.
-    private String relationPid = "";
-    private final List<String> targetQids = new ArrayList<>();
 
     public Selection() {
     }
@@ -71,65 +64,20 @@ public class Selection {
         kind = value == null ? Kind.VOCABULARY : value;
     }
 
-    public List<String> valueQids() {
-        return valueQids;
-    }
-
-    public void valueQids(List<String> values) {
-        valueQids.clear();
-        addQids(valueQids, values);
-    }
-
-    public String valueTypeQid() {
-        return valueTypeQid == null ? "" : valueTypeQid;
-    }
-
-    public void valueTypeQid(String value) {
-        valueTypeQid = value == null ? "" : value.trim();
-    }
-
-    public boolean hasValueType() {
-        return valueTypeQid().matches("(?i)Q\\d+");
-    }
-
-    public String relationPid() {
-        return relationPid == null ? "" : relationPid;
-    }
-
-    public void relationPid(String value) {
-        relationPid = value == null ? "" : value.trim();
-    }
-
-    public List<String> targetQids() {
-        return targetQids;
-    }
-
-    public void targetQids(List<String> values) {
-        targetQids.clear();
-        addQids(targetQids, values);
-    }
-
-    /** A Selection is configured once its rule can select something. */
+    /** A Selection is configured once its rule can select something. The base type
+     *  carries no rule, so it is never configured; subtypes override. */
     public boolean isConfigured() {
-        if (name().isBlank()) {
-            return false;
-        }
-        return switch (kind()) {
-            case VOCABULARY -> !valueQids.isEmpty() || hasValueType();
-            case POPULATION -> relationPid().matches("(?i)P\\d+");
-        };
+        return false;
     }
 
+    /** A base copy carrying only identity; subtypes override to copy their data. */
     public Selection copy() {
-        Selection c = new Selection(name, kind);
-        c.valueTypeQid = valueTypeQid;
-        c.valueQids.addAll(valueQids);
-        c.relationPid = relationPid;
-        c.targetQids.addAll(targetQids);
-        return c;
+        return new Selection(name(), kind());
     }
 
-    private static void addQids(List<String> into, List<String> values) {
+    /** Appends the QID-shaped, trimmed entries of {@code values} to {@code into}
+     *  (skipping nulls/non-QIDs). Shared by the concrete selections' setters. */
+    protected static void addQids(List<String> into, List<String> values) {
         if (values == null) {
             return;
         }

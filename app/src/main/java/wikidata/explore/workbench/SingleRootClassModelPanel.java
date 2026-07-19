@@ -162,7 +162,7 @@ public class SingleRootClassModelPanel extends JPanel {
         tree.setToggleClickCount(0);
         tree.setRowHeight(28);
         tree.setFont(tree.getFont().deriveFont(14f));
-        tree.setCellRenderer(new ClassPatternTreeRenderer());
+        tree.setCellRenderer(new ClassPatternTreeRenderer(projectModel));
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         buttons.add(renameClassButton);
@@ -399,6 +399,16 @@ public class SingleRootClassModelPanel extends JPanel {
     // toString, used for expansion-path keys) is untouched.
     private static final class ClassPatternTreeRenderer
             extends javax.swing.tree.DefaultTreeCellRenderer {
+        // Held so a referenced-only class can be labelled by the field that derives
+        // it (e.g. "Derived from Nomination.forWork (P1686)") instead of
+        // "Unconfigured". The project's identity is stable across reloads (its
+        // contents are replaced in place), so a single reference is safe.
+        private final GeneratedProjectModel project;
+
+        ClassPatternTreeRenderer(GeneratedProjectModel project) {
+            this.project = project;
+        }
+
         @Override public Component getTreeCellRendererComponent(
                 JTree tree, Object value, boolean sel, boolean expanded,
                 boolean leaf, int row, boolean focus) {
@@ -416,7 +426,7 @@ public class SingleRootClassModelPanel extends JPanel {
                 if (cls.hasBase()) {
                     t.append(" : ").append(cls.baseClassName());
                 }
-                t.append("   [").append(MembershipPattern.describe(cls)).append(']');
+                t.append("   [").append(MembershipPattern.describe(cls, project)).append(']');
                 setText(t.toString());
                 setForeground(sel ? getTextSelectionColor()
                         : new Color(60, 90, 120));
