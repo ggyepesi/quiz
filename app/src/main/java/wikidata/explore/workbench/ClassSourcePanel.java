@@ -43,13 +43,6 @@ public class ClassSourcePanel extends JPanel {
     private final JTextField classNameField = new JTextField(18);
     private final JTextField aliasField = new JTextField(18);
 
-    // Served (product) vs load-backbone. Unchecked = extracted + reified-from but
-    // NOT emitted as its own served type; its instances stay as pool referents so
-    // refs resolve. Only served classes become roots (e.g. Nomination); the
-    // transform app derives Film/Person/Category as views over them.
-    private final JCheckBox servedBox =
-            new JCheckBox("Served (product) class", true);
-
     // "Extends" base class: this class inherits the base's fields/membership
     // and adds its own (see GeneratedClassModel.effectiveFields). Blank = none.
     private static final String NO_BASE = "(none)";
@@ -188,7 +181,6 @@ public class ClassSourcePanel extends JPanel {
 
         classNameField.setText(clazz.className());
         aliasField.setText(clazz.alias());
-        servedBox.setSelected(clazz.served());
         searchTextField.setText(clazz.className());
 
         populateBaseClasses();
@@ -310,16 +302,6 @@ public class ClassSourcePanel extends JPanel {
                 + "name stays the identity everything references, so aliasing "
                 + "never breaks the model.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Alias:", aliasField);
-
-        servedBox.setToolTipText("<html>Whether generation emits this class as a "
-                + "served <b>product</b> type, or keeps it as a load-only "
-                + "<b>backbone</b>.<br>Unchecked: still extracted and reified-from, "
-                + "but its instances are un-stamped before save — they stay in the "
-                + "pool as referents (so nominee/forWork/category resolve) yet aren't "
-                + "served as their own type. Leaves the finest atom (e.g. Nomination) "
-                + "as the sole product; Film/Person/Category become views in the "
-                + "transform app.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Serve:", servedBox);
 
         baseClassBox.setToolTipText("<html>Extend another class: this class "
                 + "inherits the base's fields and membership and adds its own "
@@ -872,7 +854,6 @@ public class ClassSourcePanel extends JPanel {
 
         clazz.className(classNameField.getText());
         clazz.alias(aliasField.getText());
-        clazz.served(servedBox.isSelected());
 
         Object base = baseClassBox.getSelectedItem();
         clazz.baseClassName(base == null || NO_BASE.equals(base) ? "" : base.toString());
@@ -1075,7 +1056,6 @@ public class ClassSourcePanel extends JPanel {
         titleLabel.setText("Class");
         classNameField.setText("");
         aliasField.setText("");
-        servedBox.setSelected(true);
         searchTextField.setText("");
         typeQidField.setText("");
         typeLabel.setText("(not selected)");

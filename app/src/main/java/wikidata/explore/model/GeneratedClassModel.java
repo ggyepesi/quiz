@@ -47,13 +47,6 @@ public class GeneratedClassModel {
 
     private int generationDepth = 1;
 
-    // Whether this class is a served PRODUCT of generation, or only a LOAD backbone
-    // (extracted + reified-from, but not emitted as its own served type). Backbone
-    // classes stay in the pool as referents (labels/fields intact, so refs resolve)
-    // but are un-stamped before save, so they aren't roots. Default true keeps every
-    // existing domain unchanged — you opt a class OUT. See #99 / production-vs-view.
-    private boolean served = true;
-
     private final FieldSourceMapping instanceMapping =
             new FieldSourceMapping();
 
@@ -97,16 +90,6 @@ public class GeneratedClassModel {
 
     public void generationDepth(int depth) {
         generationDepth = Math.max(0, depth);
-    }
-
-    /** Whether generation emits this class as a served type (true) or keeps it as a
-     *  load-only backbone (false) — see the {@code served} field. */
-    public boolean served() {
-        return served;
-    }
-
-    public void served(boolean value) {
-        served = value;
     }
 
     public String alias() {
@@ -397,7 +380,6 @@ public class GeneratedClassModel {
                 new GeneratedClassModel(className);
 
         copy.generationDepth = generationDepth;
-        copy.served = served;
         copy.baseClassName = baseClassName;
         copy.discriminatorPid = discriminatorPid;
         copy.discriminatorQid = discriminatorQid;
