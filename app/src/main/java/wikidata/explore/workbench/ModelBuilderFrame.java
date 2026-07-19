@@ -111,8 +111,8 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton showGraphButton =
             new JButton("Model graph");
 
-    private final JButton showSourcesButton =
-            new JButton("Sources");
+    private final JButton showSelectionsButton =
+            new JButton("Selections");
 
     private final JButton showGuideButton =
             new JButton("Guide…");
@@ -120,8 +120,8 @@ public class ModelBuilderFrame extends JFrame {
     private JFrame guideWindow;
     private ModelingGuidePanel guidePanel;
 
-    private JFrame sourcesWindow;
-    private SourceViewerPanel sourcesPanel;
+    private JFrame selectionsWindow;
+    private SelectionViewerPanel selectionsPanel;
 
     // Companion window holding the discovery tools (Explore/Sample/Discover/
     // WikiProject/Properties), like the instances + logs windows.
@@ -279,10 +279,10 @@ public class ModelBuilderFrame extends JFrame {
         header.add(showRuleTreeButton);
         header.add(showExplorerButton);
         header.add(showGraphButton);
-        showSourcesButton.setToolTipText("Browse the domain's Sources — named "
+        showSelectionsButton.setToolTipText("Browse the domain's Selections — named "
                 + "vocabularies/populations referenced but never served; declare a "
                 + "vocabulary and inspect its members");
-        header.add(showSourcesButton);
+        header.add(showSelectionsButton);
         showGuideButton.setToolTipText("Guided build steps for the selected class: "
                 + "what's done, what's next, the tool for it, and the hint");
         header.add(showGuideButton);
@@ -391,23 +391,23 @@ public class ModelBuilderFrame extends JFrame {
     // Model-as-graph view: classes are nodes, entity-reference fields are edges.
     // Clicking a node selects that class in the workbench (the graph is a map +
     // selector, not an editor — the class/field panels stay where they are).
-    // Browse the domain's Sources — named selections over the entity pool
-    // (vocabularies / populations) that are referenced but never served. A Source's
-    // content is inspectable even though it isn't a product; declare a vocabulary
-    // and see its members.
-    private void showSourcesWindow() {
-        if (sourcesWindow == null) {
-            sourcesPanel = new SourceViewerPanel(projectModel, apiClient);
-            sourcesWindow = new JFrame("Sources");
-            sourcesWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            sourcesWindow.setLayout(new BorderLayout());
-            sourcesWindow.add(sourcesPanel, BorderLayout.CENTER);
-            sourcesWindow.setSize(560, 680);
-            sourcesWindow.setLocationByPlatform(true);
+    // Browse the domain's Selections — named selections over the entity pool
+    // (vocabularies / populations) that are referenced but never served. A
+    // Selection's content is inspectable even though it isn't a product; declare a
+    // vocabulary and see its members.
+    private void showSelectionsWindow() {
+        if (selectionsWindow == null) {
+            selectionsPanel = new SelectionViewerPanel(projectModel, apiClient);
+            selectionsWindow = new JFrame("Selections");
+            selectionsWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            selectionsWindow.setLayout(new BorderLayout());
+            selectionsWindow.add(selectionsPanel, BorderLayout.CENTER);
+            selectionsWindow.setSize(560, 680);
+            selectionsWindow.setLocationByPlatform(true);
         }
-        sourcesPanel.refreshSources();
-        sourcesWindow.setVisible(true);
-        sourcesWindow.toFront();
+        selectionsPanel.refreshSelections();
+        selectionsWindow.setVisible(true);
+        selectionsWindow.toFront();
     }
 
     private void showGraphWindow() {
@@ -615,7 +615,7 @@ public class ModelBuilderFrame extends JFrame {
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());
         showGraphButton.addActionListener(e -> showGraphWindow());
-        showSourcesButton.addActionListener(e -> showSourcesWindow());
+        showSelectionsButton.addActionListener(e -> showSelectionsWindow());
 
         // Wire the WikiProject seed panel to the selected class: pick one entity
         // as the membership type, or add/replace the class's seed-QID set.

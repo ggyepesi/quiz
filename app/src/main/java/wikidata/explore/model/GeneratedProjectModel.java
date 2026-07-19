@@ -16,11 +16,11 @@ public class GeneratedProjectModel {
 
     private final List<GeneratedClassModel> classes = new ArrayList<>();
 
-    // Named non-product configurations (vocabularies, populations, facets) that
-    // classes/fields reference but which are never served — see Source. Empty for
-    // every existing model; a domain opts into them as roles are pulled out of
+    // Named non-product selections (vocabularies, populations) over the entity pool
+    // that productions reference but which are never served — see Selection. Empty
+    // for every existing model; a domain opts into them as roles are pulled out of
     // "class" overloading.
-    private final List<Source> sources = new ArrayList<>();
+    private final List<Selection> selections = new ArrayList<>();
 
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
@@ -135,22 +135,22 @@ public class GeneratedProjectModel {
         return Collections.unmodifiableList(classes);
     }
 
-    /** The domain's named non-product Sources (vocabularies/populations/facets). */
-    public List<Source> sources() {
-        return Collections.unmodifiableList(sources);
+    /** The domain's named non-product Selections (vocabularies/populations). */
+    public List<Selection> selections() {
+        return Collections.unmodifiableList(selections);
     }
 
-    public void addSource(Source source) {
-        if (source != null) {
-            sources.add(source);
+    public void addSelection(Selection selection) {
+        if (selection != null) {
+            selections.add(selection);
         }
     }
 
-    public Source findSource(String name) {
+    public Selection findSelection(String name) {
         if (name == null || name.isBlank()) {
             return null;
         }
-        for (Source s : sources) {
+        for (Selection s : selections) {
             if (s != null && s.name().equalsIgnoreCase(name.trim())) {
                 return s;
             }
@@ -169,8 +169,8 @@ public class GeneratedProjectModel {
         this.generationDepth = other.generationDepth;
         this.classes.clear();
         this.classes.addAll(other.classes);
-        this.sources.clear();
-        this.sources.addAll(other.sources);
+        this.selections.clear();
+        this.selections.addAll(other.selections);
 
         // Serialization has no object identity, so the root is written both as
         // `rootClass` and inside `classes` and deserializes as two separate
@@ -284,9 +284,9 @@ public class GeneratedProjectModel {
             }
         }
 
-        for (Source s : sources) {
+        for (Selection s : selections) {
             if (s != null) {
-                c.sources.add(s.copy());
+                c.selections.add(s.copy());
             }
         }
 

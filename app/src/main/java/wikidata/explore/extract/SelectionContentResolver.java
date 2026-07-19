@@ -1,22 +1,22 @@
 package wikidata.explore.extract;
 
 import wikidata.api.WikidataApiClient;
-import wikidata.explore.model.Source;
+import wikidata.explore.model.Selection;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Resolves a {@link Source}'s CONTENT to displayable objects — the members you can
- * browse even though a Source is never a served product. This is what keeps a
- * Source's content inspectable: a vocabulary genuinely IS its values, so you can
+ * Resolves a {@link Selection}'s CONTENT to displayable objects — the members you can
+ * browse even though a Selection is never a served product. This is what keeps a
+ * Selection's content inspectable: a vocabulary genuinely IS its values, so you can
  * see its members (labelled) in the workbench without it being a class.
  *
  * <p>The same resolution feeds the later slices — the reify value constraint reads
  * the QID set, and reference rendering reads the labels.
  */
-public final class SourceContentResolver {
+public final class SelectionContentResolver {
 
     /**
      * A VOCABULARY's explicit value QIDs resolved to labelled objects via
@@ -25,14 +25,14 @@ public final class SourceContentResolver {
      * filter — is left to a later slice (it needs a query, not a QID lookup).
      */
     public List<WikidataDynamicObject> resolve(
-            Source source, WikidataApiClient api, GenerationLog log) {
+            Selection selection, WikidataApiClient api, GenerationLog log) {
 
         List<WikidataDynamicObject> out = new ArrayList<>();
-        if (source == null || api == null) {
+        if (selection == null || api == null) {
             return out;
         }
         List<String> qids = new ArrayList<>();
-        for (String q : source.valueQids()) {
+        for (String q : selection.valueQids()) {
             if (q != null && q.matches("(?i)Q\\d+")) {
                 qids.add(q);
             }
@@ -55,7 +55,7 @@ public final class SourceContentResolver {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
             } else {
-                sink.message("Source \"" + source.name()
+                sink.message("Selection \"" + selection.name()
                         + "\" content resolution failed (" + ex.getMessage() + ")\n");
             }
         }

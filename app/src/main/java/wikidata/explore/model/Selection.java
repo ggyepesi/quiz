@@ -12,7 +12,7 @@ import java.util.List;
  * constrained. The counterpart to a product {@link GeneratedClassModel}.
  *
  * <p>This replaces the config-classes that overloaded "class" with non-product
- * roles. The entity pool is already the cache (one instance per QID); a Source is
+ * roles. The entity pool is already the cache (one instance per QID); a Selection is
  * just a named, rule-defined subset of it. Two live roles (facets are a view-time
  * concern and are deliberately not modelled here; a partition that changes what is
  * loaded is a subclass, using the existing discriminator machinery):
@@ -26,7 +26,7 @@ import java.util.List;
  * </ul>
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class Source {
+public class Selection {
 
     public enum Kind {
         /** A value domain: allowed field values (explicit QIDs and/or a P31 type). */
@@ -47,10 +47,10 @@ public class Source {
     private String relationPid = "";
     private final List<String> targetQids = new ArrayList<>();
 
-    public Source() {
+    public Selection() {
     }
 
-    public Source(String name, Kind kind) {
+    public Selection(String name, Kind kind) {
         name(name);
         kind(kind);
     }
@@ -109,7 +109,7 @@ public class Source {
         addQids(targetQids, values);
     }
 
-    /** A Source is configured once its rule can select something. */
+    /** A Selection is configured once its rule can select something. */
     public boolean isConfigured() {
         if (name().isBlank()) {
             return false;
@@ -120,8 +120,8 @@ public class Source {
         };
     }
 
-    public Source copy() {
-        Source c = new Source(name, kind);
+    public Selection copy() {
+        Selection c = new Selection(name, kind);
         c.valueTypeQid = valueTypeQid;
         c.valueQids.addAll(valueQids);
         c.relationPid = relationPid;

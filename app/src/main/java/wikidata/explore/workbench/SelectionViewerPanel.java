@@ -6,10 +6,10 @@ import objectview.utils.swing.GridBagUtils;
 import objectview.viewconfig.ViewConfig;
 import quiz.Quizable;
 import wikidata.api.WikidataApiClient;
-import wikidata.explore.extract.SourceContentResolver;
+import wikidata.explore.extract.SelectionContentResolver;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.Source;
+import wikidata.explore.model.Selection;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,18 +17,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Browse a {@link Source}'s CONTENT (slice 2 of the Source construct). A Source is
- * never a served product, but its content is inspectable: pick a Source, resolve
+ * Browse a {@link Selection}'s CONTENT (slice 2 of the Selection construct). A Selection is
+ * never a served product, but its content is inspectable: pick a Selection, resolve
  * its members (labelled), and render them as the same cards used everywhere else —
  * so making the Oscar categories a vocabulary hides nothing, it just stops them
  * being a class. Reuses the shared Card rendering rather than a bespoke widget.
  */
-public class SourceViewerPanel extends JPanel {
+public class SelectionViewerPanel extends JPanel {
 
     private final GeneratedProjectModel project;
     private final WikidataApiClient api;
 
-    private final JComboBox<String> sourceBox = new JComboBox<>();
+    private final JComboBox<String> selectionBox = new JComboBox<>();
     private final JButton showButton = new JButton("Show content");
     private final JLabel status = new JLabel(" ");
     private final JPanel cards = new JPanel(new GridBagLayout());
@@ -38,7 +38,7 @@ public class SourceViewerPanel extends JPanel {
     private final JTextField newQidsField = new JTextField(24);
     private final JButton addButton = new JButton("Add & show");
 
-    public SourceViewerPanel(GeneratedProjectModel project, WikidataApiClient api) {
+    public SelectionViewerPanel(GeneratedProjectModel project, WikidataApiClient api) {
         super(new BorderLayout(6, 6));
         this.project = project;
         this.api = api;
@@ -46,8 +46,8 @@ public class SourceViewerPanel extends JPanel {
         cardsScroll.setPreferredSize(new Dimension(460, 520));
 
         JPanel viewRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        viewRow.add(new JLabel("Source:"));
-        viewRow.add(sourceBox);
+        viewRow.add(new JLabel("Selection:"));
+        viewRow.add(selectionBox);
         viewRow.add(showButton);
 
         // Inline "declare a vocabulary": a name + QIDs, so the construct is usable
@@ -89,49 +89,49 @@ public class SourceViewerPanel extends JPanel {
             status.setText("Enter at least one QID (e.g. Q102427).");
             return;
         }
-        Source s = new Source(name, Source.Kind.VOCABULARY);
+        Selection s = new Selection(name, Selection.Kind.VOCABULARY);
         s.valueQids(qids);
-        project.addSource(s);
+        project.addSelection(s);
         newNameField.setText("");
         newQidsField.setText("");
-        refreshSources();
-        sourceBox.setSelectedItem(name + "  [" + Source.Kind.VOCABULARY + "]");
+        refreshSelections();
+        selectionBox.setSelectedItem(name + "  [" + Selection.Kind.VOCABULARY + "]");
         showSelected();
     }
 
-    /** Re-read the project's sources into the selector — call when the window opens,
-     *  since sources can be added/edited while it's closed. */
-    public void refreshSources() {
-        String previous = (String) sourceBox.getSelectedItem();
-        sourceBox.removeAllItems();
-        for (Source s : project.sources()) {
-            sourceBox.addItem(s.name() + "  [" + s.kind() + "]");
+    /** Re-read the project's selections into the selector — call when the window opens,
+     *  since selections can be added/edited while it's closed. */
+    public void refreshSelections() {
+        String previous = (String) selectionBox.getSelectedItem();
+        selectionBox.removeAllItems();
+        for (Selection s : project.selections()) {
+            selectionBox.addItem(s.name() + "  [" + s.kind() + "]");
         }
         if (previous != null) {
-            sourceBox.setSelectedItem(previous);
+            selectionBox.setSelectedItem(previous);
         }
-        boolean any = sourceBox.getItemCount() > 0;
+        boolean any = selectionBox.getItemCount() > 0;
         showButton.setEnabled(any);
         if (!any) {
             cards.removeAll();
             cards.revalidate();
             cards.repaint();
-            status.setText("No sources declared in this domain.");
+            status.setText("No selections declared in this domain.");
         }
     }
 
     private void showSelected() {
-        int i = sourceBox.getSelectedIndex();
-        if (i < 0 || i >= project.sources().size()) {
+        int i = selectionBox.getSelectedIndex();
+        if (i < 0 || i >= project.selections().size()) {
             return;
         }
-        Source source = project.sources().get(i);
-        status.setText("Resolving \"" + source.name() + "\" …");
+        Selection selection = project.selections().get(i);
+        status.setText("Resolving \"" + selection.name() + "\" …");
         showButton.setEnabled(false);
         new SwingWorker<List<WikidataDynamicObject>, Void>() {
             @Override
             protected List<WikidataDynamicObject> doInBackground() {
-                return new SourceContentResolver().resolve(source, api, null);
+                return new SelectionContentResolver().resolve(selection, api, null);
             }
 
             @Override
@@ -142,23 +142,25 @@ public class SourceViewerPanel extends JPanel {
                 } catch (Exception ex) {
                     content = new ArrayList<>();
                 }
-                render(source, content);
+                render(selection, content);
                 showButton.setEnabled(true);
             }
         }.execute();
     }
 
-    private void render(Source source, List<WikidataDynamicObject> content) {
+    private void render(Selection selection, List<WikidataDynamicObject> content) {
         cards.removeAll();
 
         List<Quizable> quizables = new ArrayList<>(content);
         RenderContext context = new RenderContext(quizables);
 
         ViewConfig config = ViewConfig.of(WikidataDynamicObject.class);
-        config.setAllFields(false);
+        // Render all (non-hidden) fields so the @Provenance "selection: Wikidata" chip —
+        // the link to the entity — shows on each member. A bare vocabulary member has
+        // only that chip besides its title, so this stays clean.
+        config.setAllFields(true);
         config.setThumb(false);
         config.setAddListener(false);
-        config.addField("name", ViewConfig.leaf());
         context.putClassConfig(WikidataDynamicObject.class, config);
 
         int row = 0;
@@ -174,7 +176,7 @@ public class SourceViewerPanel extends JPanel {
 
         cards.revalidate();
         cards.repaint();
-        status.setText(source.name() + " [" + source.kind() + "]: "
+        status.setText(selection.name() + " [" + selection.kind() + "]: "
                 + content.size() + " member(s)");
     }
 }
