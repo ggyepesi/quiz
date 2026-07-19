@@ -16,6 +16,12 @@ public class GeneratedProjectModel {
 
     private final List<GeneratedClassModel> classes = new ArrayList<>();
 
+    // Named non-product configurations (vocabularies, populations, facets) that
+    // classes/fields reference but which are never served — see Source. Empty for
+    // every existing model; a domain opts into them as roles are pulled out of
+    // "class" overloading.
+    private final List<Source> sources = new ArrayList<>();
+
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
         classes.add(rootClass);
@@ -129,6 +135,29 @@ public class GeneratedProjectModel {
         return Collections.unmodifiableList(classes);
     }
 
+    /** The domain's named non-product Sources (vocabularies/populations/facets). */
+    public List<Source> sources() {
+        return Collections.unmodifiableList(sources);
+    }
+
+    public void addSource(Source source) {
+        if (source != null) {
+            sources.add(source);
+        }
+    }
+
+    public Source findSource(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        for (Source s : sources) {
+            if (s != null && s.name().equalsIgnoreCase(name.trim())) {
+                return s;
+            }
+        }
+        return null;
+    }
+
     /** Replaces this model's contents (name + classes) with another's, in
      *  place — so references held to this instance (the workbench panels) keep
      *  pointing at the same object after loading a saved model. */
@@ -140,6 +169,8 @@ public class GeneratedProjectModel {
         this.generationDepth = other.generationDepth;
         this.classes.clear();
         this.classes.addAll(other.classes);
+        this.sources.clear();
+        this.sources.addAll(other.sources);
 
         // Serialization has no object identity, so the root is written both as
         // `rootClass` and inside `classes` and deserializes as two separate
@@ -250,6 +281,12 @@ public class GeneratedProjectModel {
             if (c.rootClass == null) {
                 c.rootClass = rootClass.copy();
                 c.classes.addFirst(c.rootClass);
+            }
+        }
+
+        for (Source s : sources) {
+            if (s != null) {
+                c.sources.add(s.copy());
             }
         }
 
