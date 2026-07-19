@@ -23,6 +23,10 @@ public class WorkflowLogWindow implements LogListener {
     private CardListView view;
     private JFrame frame;
 
+    // Set when an update was skipped because the user had scrolled up (so their
+    // selection wasn't destroyed); replayed when they return to the bottom.
+    private boolean deferredUpdates;
+
     @Override
     public void logChanged(
             LogNode root,
@@ -41,11 +45,19 @@ public class WorkflowLogWindow implements LogListener {
                 boolean atBottom = bar == null
                         || bar.getValue() + bar.getVisibleAmount() >= bar.getMaximum() - 48;
 
-                view.upsertViewable(root);
-
-                if (atBottom && bar != null) {
-                    // After the upsert lays out, jump to the (new) bottom.
-                    SwingUtilities.invokeLater(() -> bar.setValue(bar.getMaximum()));
+                // Only refresh the cards while tailing (at the bottom). Once the user
+                // has scrolled up to READ or SELECT, the continuous upserts during a
+                // run were rebuilding the cards under the cursor and destroying the
+                // selection — so hold updates until they scroll back down (the LogNode
+                // data still updates; only the redraw is deferred).
+                if (atBottom) {
+                    view.upsertViewable(root);
+                    if (bar != null) {
+                        // After the upsert lays out, jump to the (new) bottom.
+                        SwingUtilities.invokeLater(() -> bar.setValue(bar.getMaximum()));
+                    }
+                } else {
+                    deferredUpdates = true;
                 }
             }
         });
@@ -113,6 +125,22 @@ public class WorkflowLogWindow implements LogListener {
 
         frame = f;
         view = v;
+
+        // Catch up on updates deferred while scrolled up, once the user returns to
+        // the bottom (e.g. a run that finished while they were reading/selecting).
+        JScrollBar catchUpBar = verticalBar();
+        if (catchUpBar != null) {
+            catchUpBar.addAdjustmentListener(e -> {
+                boolean atBottom = catchUpBar.getValue() + catchUpBar.getVisibleAmount()
+                        >= catchUpBar.getMaximum() - 48;
+                if (atBottom && deferredUpdates && view != null) {
+                    deferredUpdates = false;
+                    for (LogNode w : new ArrayList<>(workflows)) {
+                        view.upsertViewable(w);
+                    }
+                }
+            });
+        }
 
         f.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
