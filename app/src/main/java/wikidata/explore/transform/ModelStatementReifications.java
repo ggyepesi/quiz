@@ -89,24 +89,33 @@ public final class ModelStatementReifications {
 
         // Resolve to the actual class name case-insensitively, so the
         // qualifier-load entityType matches the type stamped on pool objects.
-        GeneratedClassModel sourceClassModel =
-                project.findClass(statementSource.sourceClassName());
         String statementPid = clean(statementSource.propertyPid());
-
-        if (sourceClassModel == null
-                || !statementPid.matches("P\\d+")) {
+        if (!statementPid.matches("P\\d+")) {
             return null;
         }
 
-        String sourceClassName = sourceClassModel.className();
+        // No source class => DISCOVER the subjects (POPULATION). Mirrors the
+        // compiled path.
+        boolean discoverSubjects = !statementSource.hasSourceClass();
+        GeneratedClassModel sourceClassModel = discoverSubjects
+                ? null
+                : project.findClass(statementSource.sourceClassName());
+        if (!discoverSubjects && sourceClassModel == null) {
+            return null;
+        }
+        String sourceClassName = discoverSubjects
+                ? internalSubjectType(statementClass.className())
+                : sourceClassModel.className();
         String valueField = findValueField(
                 statementClass, statementPid);
 
-        List<String> valueQids = valueQids(
-                statementClass,
-                sourceClassModel,
-                statementPid,
-                valueField);
+        List<String> valueQids = sourceClassModel == null
+                ? new ArrayList<>()
+                : valueQids(
+                        statementClass,
+                        sourceClassModel,
+                        statementPid,
+                        valueField);
 
         List<QualifierLoadConfig.Qualifier> qualifiers =
                 new ArrayList<>();
@@ -175,7 +184,8 @@ public final class ModelStatementReifications {
                         ? valueTypeQid
                         : "",
                 qualifiers,
-                valueQids);
+                valueQids,
+                discoverSubjects);
 
         ReifyConstruct reify = new ReifyConstruct(
                 sourceClassName,
@@ -225,15 +235,24 @@ public final class ModelStatementReifications {
 
         CompiledStatementSource statementSource =
                 statementClass.statementSource();
-        String sourceClassName = statementSource.sourceClassName();
         String statementPid = clean(statementSource.propertyPid());
-
-        CompiledClass sourceClassModel =
-                project.findClass(sourceClassName).orElse(null);
-        if (sourceClassModel == null
-                || !statementPid.matches("P\\d+")) {
+        if (!statementPid.matches("P\\d+")) {
             return null;
         }
+
+        // No source class => DISCOVER the subjects (POPULATION): the entities that
+        // carry this statement into the value domain. They are stamped an internal
+        // load type, never a served class. Requires a bounded value domain (guard).
+        boolean discoverSubjects = !statementSource.hasSourceClass();
+        CompiledClass sourceClassModel = discoverSubjects
+                ? null
+                : project.findClass(statementSource.sourceClassName()).orElse(null);
+        if (!discoverSubjects && sourceClassModel == null) {
+            return null;
+        }
+        String sourceClassName = discoverSubjects
+                ? internalSubjectType(statementClass.className())
+                : sourceClassModel.className();
 
         // The value role is resolved ONCE at compile (CompiledStatementSource) from
         // the explicit statement-value role; the reify reads it here. Fall back to the
@@ -242,8 +261,9 @@ public final class ModelStatementReifications {
         if (valueField.isBlank()) {
             valueField = findValueField(statementClass, statementPid);
         }
-        List<String> valueQids = valueQids(
-                statementClass, sourceClassModel, statementPid, valueField);
+        List<String> valueQids = sourceClassModel == null
+                ? new ArrayList<>()
+                : valueQids(statementClass, sourceClassModel, statementPid, valueField);
 
         List<QualifierLoadConfig.Qualifier> qualifiers = new ArrayList<>();
         String primaryListField = "";
@@ -304,7 +324,8 @@ public final class ModelStatementReifications {
                 valueField,
                 valueTypeQid.matches("Q\\d+") ? valueTypeQid : "",
                 qualifiers,
-                valueQids);
+                valueQids,
+                discoverSubjects);
 
         ReifyConstruct reify = new ReifyConstruct(
                 sourceClassName,
@@ -318,6 +339,12 @@ public final class ModelStatementReifications {
                 primaryListField);
 
         return new Reification(load, reify);
+    }
+
+    /** Internal load type stamped on discovered (source-class-less) subjects — never
+     *  a served class; the reify sources on it and it is un-stamped before serving. */
+    private static String internalSubjectType(String statementClassName) {
+        return "__subject_" + clean(statementClassName);
     }
 
     private static String findValueField(

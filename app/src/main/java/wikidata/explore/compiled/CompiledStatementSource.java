@@ -24,9 +24,15 @@ public record CompiledStatementSource(
         return !valueSelectionName.isBlank();
     }
 
+    /** A statement class is defined by its PROPERTY; the source class is optional
+     *  (blank => the reify discovers its subjects). Matches the editable model's
+     *  StatementClassSource.isConfigured(). */
     public boolean configured() {
-        return !sourceClassName.isBlank()
-                && propertyPid.matches("(?i)P\\d+");
+        return propertyPid.matches("(?i)P\\d+");
+    }
+
+    public boolean hasSourceClass() {
+        return !sourceClassName.isBlank();
     }
 
     /**

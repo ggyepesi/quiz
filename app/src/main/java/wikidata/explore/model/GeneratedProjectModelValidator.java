@@ -155,6 +155,14 @@ public final class GeneratedProjectModelValidator {
         }
     }
 
+    // A source-class-less reify must bound the subjects it discovers: a P31
+    // value-type filter, or a referenced VOCABULARY Selection supplying the values.
+    private static boolean hasBoundedValueDomain(
+            GeneratedClassModel clazz, StatementClassSource source) {
+        return clean(clazz.instanceMapping().sourceQid()).matches("(?i)Q\\d+")
+                || source.hasValueSelection();
+    }
+
     private static void validateStatementClass(
             GeneratedProjectModel project,
             GeneratedClassModel clazz,
@@ -163,17 +171,26 @@ public final class GeneratedProjectModelValidator {
         StatementClassSource source = clazz.statementSource();
 
         if (source == null
-                || clean(source.sourceClassName()).isBlank()) {
-            problems.add(Problem.error(
-                    clazz.className(),
-                    "Statement source class is required."));
-            return;
-        }
-
-        if (!clean(source.propertyPid()).matches("(?i)P\\d+")) {
+                || !clean(source.propertyPid()).matches("(?i)P\\d+")) {
             problems.add(Problem.error(
                     clazz.className(),
                     "Statement property must be a valid PID."));
+            return;
+        }
+
+        // The source class is OPTIONAL: blank means the reify DISCOVERS its subjects
+        // (the entities carrying the property into the value domain). That needs a
+        // bounded value domain — a value-type filter, an explicit value set, or a
+        // referenced VOCABULARY — else the membership scan is unbounded.
+        if (clean(source.sourceClassName()).isBlank()) {
+            if (!hasBoundedValueDomain(clazz, source)) {
+                problems.add(Problem.error(
+                        clazz.className(),
+                        "A statement class with no source class discovers its "
+                                + "subjects and needs a bounded value domain "
+                                + "(value type, value set, or a VOCABULARY)."));
+            }
+            return;
         }
 
         GeneratedClassModel sourceClass =
