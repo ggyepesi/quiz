@@ -26,14 +26,24 @@ public record QualifierLoadConfig(
         String valueTypeQid,
         List<Qualifier> qualifiers,
         List<String> valueQids,
-        boolean discoverSubjects) {
+        boolean discoverSubjects,
+        String valueDomainName) {
+
+    /** Back-compat 9-arg form (no named value domain — used for logging only). */
+    public QualifierLoadConfig(String entityType, String propertyPid,
+            String statementField, String statementType, String valueField,
+            String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids,
+            boolean discoverSubjects) {
+        this(entityType, propertyPid, statementField, statementType, valueField,
+                valueTypeQid, qualifiers, valueQids, discoverSubjects, "");
+    }
 
     /** Back-compat 8-arg form: subjects already exist in the pool (no discovery). */
     public QualifierLoadConfig(String entityType, String propertyPid,
             String statementField, String statementType, String valueField,
             String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, valueQids, false);
+                valueTypeQid, qualifiers, valueQids, false, "");
     }
 
     /** Back-compat 7-arg form (no explicit value QIDs). */
@@ -41,7 +51,7 @@ public record QualifierLoadConfig(
             String statementField, String statementType, String valueField,
             String valueTypeQid, List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, List.of(), false);
+                valueTypeQid, qualifiers, List.of(), false, "");
     }
 
     /** Back-compat 6-arg form (no value-type filter). */
@@ -49,7 +59,15 @@ public record QualifierLoadConfig(
             String statementField, String statementType, String valueField,
             List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                "", qualifiers, List.of(), false);
+                "", qualifiers, List.of(), false, "");
+    }
+
+    /** A human label for where the value domain came from (a VOCABULARY Selection
+     *  name), for the discovery log; blank => describe it generically. */
+    public String valueDomainLabel() {
+        return valueDomainName == null || valueDomainName.isBlank()
+                ? valueQids.size() + " allowed values"
+                : "Selection '" + valueDomainName + "'";
     }
 
     /** When set (e.g. Q19020 "Academy Awards"), keep only statements whose main

@@ -32,6 +32,7 @@ public final class PopulationSubjectLoader {
             String relationPid,
             Set<String> targetValues,
             String entityType,
+            String domainLabel,
             WikidataSparqlClient client,
             GenerationLog log) {
 
@@ -54,10 +55,12 @@ public final class PopulationSubjectLoader {
             }
         }
 
+        String label = domainLabel == null || domainLabel.isBlank()
+                ? "its value domain" : domainLabel;
         String query = buildQuery(relationPid, targetValues);
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group g = sink.group(
-                "Discover population subjects " + relationPid)) {
+                "Discover subjects: " + relationPid + " into " + label)) {
             int rows = 0;
             for (WikidataBinding binding : client.query(query)) {
                 String qid = binding.qid("subject");
@@ -75,7 +78,8 @@ public final class PopulationSubjectLoader {
                 // without a modeled source class.
                 o.type(entityType);
             }
-            g.subquery("Population subject discovery", query, rows + " subjects");
+            g.subquery("Subjects with " + relationPid + " into " + label,
+                    query, rows + " subjects");
         } catch (Exception e) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();

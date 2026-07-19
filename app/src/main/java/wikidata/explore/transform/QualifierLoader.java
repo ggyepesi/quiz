@@ -95,7 +95,7 @@ public class QualifierLoader {
             List<WikidataDynamicObject> discovered =
                     new PopulationSubjectLoader().discover(
                             pool, cfg.propertyPid(), allowedValues,
-                            cfg.entityType(), client, log);
+                            cfg.entityType(), cfg.valueDomainLabel(), client, log);
 
             // SPARQL discovery yields QIDs only — load the subjects' labels via
             // wbgetentities so they render as names, not bare QIDs, when referenced.

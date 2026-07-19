@@ -185,7 +185,8 @@ public final class ModelStatementReifications {
                         : "",
                 qualifiers,
                 valueQids,
-                discoverSubjects);
+                discoverSubjects,
+                statementSource.valueSelectionName());
 
         ReifyConstruct reify = new ReifyConstruct(
                 sourceClassName,
@@ -325,7 +326,8 @@ public final class ModelStatementReifications {
                 valueTypeQid.matches("Q\\d+") ? valueTypeQid : "",
                 qualifiers,
                 valueQids,
-                discoverSubjects);
+                discoverSubjects,
+                statementSource.valueSelectionName());
 
         ReifyConstruct reify = new ReifyConstruct(
                 sourceClassName,
