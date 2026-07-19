@@ -92,9 +92,38 @@ public class QualifierLoader {
         // them the load type, and index them — before the empty-pool bail. Guarded by
         // the value set (no unbounded membership scan).
         if (cfg.discoverSubjects() && allowedValues != null) {
-            for (WikidataDynamicObject s : new PopulationSubjectLoader().discover(
-                    pool, cfg.propertyPid(), allowedValues, cfg.entityType(),
-                    client, log)) {
+            List<WikidataDynamicObject> discovered =
+                    new PopulationSubjectLoader().discover(
+                            pool, cfg.propertyPid(), allowedValues,
+                            cfg.entityType(), client, log);
+
+            // SPARQL discovery yields QIDs only — load the subjects' labels via
+            // wbgetentities so they render as names, not bare QIDs, when referenced.
+            List<String> newQids = new ArrayList<>();
+            for (WikidataDynamicObject s : discovered) {
+                if (s != null && s.qid() != null && s.qid().matches("Q\\d+")) {
+                    newQids.add(s.qid());
+                }
+            }
+            if (!newQids.isEmpty()) {
+                try {
+                    Map<String, WikidataApiClient.ApiEntity> details =
+                            api().getEntities(newQids, java.util.List.of());
+                    for (WikidataDynamicObject s : discovered) {
+                        WikidataApiClient.ApiEntity e = details.get(s.qid());
+                        if (e != null && e.label() != null && !e.label().isBlank()) {
+                            s.name(e.label());
+                        }
+                    }
+                } catch (Exception e) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        Thread.currentThread().interrupt();
+                    }
+                    // best effort: a subject keeps its QID label
+                }
+            }
+
+            for (WikidataDynamicObject s : discovered) {
                 if (s != null && s.qid() != null && s.qid().matches("Q\\d+")) {
                     pool.add(s);   // a newly-discovered subject joins the shared pool
                     byQid.putIfAbsent(s.qid(), s);

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,15 +32,19 @@ class PopulationSubjectLoaderTest {
         FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient()
                 .row(Map.of("subject", "Q105883400"));
         FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .entity("Q105883400", "The Whale")              // label for the subject
                 .statement("Q105883400", "P1411", "Q105883400$s", "Q102427", Map.of());
 
         List<WikidataDynamicObject> pool = new ArrayList<>();   // NO source-class members
         List<WikidataDynamicObject> created = new QualifierLoader().api(api)
                 .enrich(pool, cfg(true, List.of("Q102427")), sparql, null);
 
-        assertTrue(pool.stream().anyMatch(o -> "Q105883400".equals(o.qid())
-                        && "OscarNominations".equals(o.typeName())),
+        WikidataDynamicObject subject = pool.stream()
+                .filter(o -> "Q105883400".equals(o.qid())).findFirst().orElseThrow();
+        assertEquals("OscarNominations", subject.typeName(),
                 "the population subject was discovered, stamped, and pooled");
+        assertEquals("The Whale", subject.getDisplayName(),
+                "its label was resolved, not left as a bare QID");
         assertFalse(created.isEmpty(),
                 "its statement was loaded, ready to reify");
     }
