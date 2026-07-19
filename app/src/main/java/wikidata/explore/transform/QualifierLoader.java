@@ -73,9 +73,6 @@ public class QualifierLoader {
                 byQid.putIfAbsent(o.qid(), o);
             }
         }
-        if (byQid.isEmpty()) {
-            return created;
-        }
 
         String valueField = blankTo(cfg.valueField(), "value");
         String stmtType = blankTo(cfg.statementType(), cfg.statementField());
@@ -88,6 +85,26 @@ public class QualifierLoader {
         } else if (cfg.hasValueType() && client != null) {
             allowedValues = new HashSet<>(
                     fetchValueQids(client, cfg.valueTypeQid(), log));
+        }
+
+        // POPULATION subjects: with no source-class members in the pool, discover the
+        // entities that carry the statement property into the value domain, stamp
+        // them the load type, and index them — before the empty-pool bail. Guarded by
+        // the value set (no unbounded membership scan).
+        if (cfg.discoverSubjects() && allowedValues != null) {
+            for (WikidataDynamicObject s : new PopulationSubjectLoader().discover(
+                    pool, cfg.propertyPid(), allowedValues, cfg.entityType(),
+                    client, log)) {
+                if (s != null && s.qid() != null && s.qid().matches("Q\\d+")) {
+                    pool.add(s);   // a newly-discovered subject joins the shared pool
+                    byQid.putIfAbsent(s.qid(), s);
+                    poolByQid.putIfAbsent(s.qid(), s);
+                }
+            }
+        }
+
+        if (byQid.isEmpty()) {
+            return created;
         }
 
         List<String> qualifierPids = new ArrayList<>();

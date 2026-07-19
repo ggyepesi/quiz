@@ -1,0 +1,102 @@
+package wikidata.explore.transform;
+
+import wikidata.WikidataBinding;
+import wikidata.WikidataSparqlClient;
+import wikidata.explore.extract.GenerationLog;
+import wikidata.explore.extract.WikidataDynamicObject;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Discovers the subjects of a POPULATION Selection — the entities that carry the
+ * reify's statement property into the value domain — so a reify can draw its
+ * subjects from a population instead of the members of a source class.
+ *
+ * <p>This is the parked direct-discovery loader, revived with a real home and a
+ * guard: it refuses to run without a bounded value set (an unbounded
+ * {@code ?s wdt:P ?v} membership query would scan all of Wikidata). Discovered
+ * objects are stamped {@code entityType} (an internal load type, never a served
+ * product) and reuse any already-labelled pool instance by QID.
+ */
+public final class PopulationSubjectLoader {
+
+    /** @return the NEWLY created subject objects (already added to the caller's
+     *  indexes by the caller); an existing pool object is reused, not duplicated. */
+    public List<WikidataDynamicObject> discover(
+            Collection<WikidataDynamicObject> pool,
+            String relationPid,
+            Set<String> targetValues,
+            String entityType,
+            WikidataSparqlClient client,
+            GenerationLog log) {
+
+        List<WikidataDynamicObject> created = new ArrayList<>();
+        if (client == null
+                || relationPid == null || !relationPid.matches("(?i)P\\d+")
+                || targetValues == null || targetValues.isEmpty()
+                || entityType == null || entityType.isBlank()) {
+            // The guard: no bounded value set (or no relation) => refuse, rather
+            // than run an all-of-Wikidata membership scan.
+            return created;
+        }
+
+        Map<String, WikidataDynamicObject> known = new LinkedHashMap<>();
+        if (pool != null) {
+            for (WikidataDynamicObject o : pool) {
+                if (o != null && o.qid() != null && o.qid().matches("Q\\d+")) {
+                    known.putIfAbsent(o.qid(), o);
+                }
+            }
+        }
+
+        String query = buildQuery(relationPid, targetValues);
+        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
+        try (GenerationLog.Group g = sink.group(
+                "Discover population subjects " + relationPid)) {
+            int rows = 0;
+            for (WikidataBinding binding : client.query(query)) {
+                String qid = binding.qid("subject");
+                if (qid == null || !qid.matches("Q\\d+")) {
+                    continue;
+                }
+                rows++;
+                WikidataDynamicObject o = known.get(qid);
+                if (o == null) {
+                    o = new WikidataDynamicObject(qid, qid);
+                    known.put(qid, o);
+                    created.add(o);
+                }
+                // Stamp the internal load type so QualifierLoader/reify can select it
+                // without a modeled source class.
+                o.type(entityType);
+            }
+            g.subquery("Population subject discovery", query, rows + " subjects");
+        } catch (Exception e) {
+            if (Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
+            } else {
+                sink.message("Population subject discovery failed ("
+                        + e.getMessage() + ")\n");
+            }
+        }
+        return created;
+    }
+
+    private static String buildQuery(String relationPid, Set<String> targetValues) {
+        StringBuilder q = new StringBuilder(
+                "SELECT DISTINCT ?subject WHERE {\n  ?subject wdt:")
+                .append(relationPid).append(" ?value .\n  VALUES ?value {");
+        for (String qid : targetValues) {
+            if (qid != null && qid.matches("(?i)Q\\d+")) {
+                q.append(" wd:").append(qid);
+            }
+        }
+        q.append(" }\n}");
+        return q.toString();
+    }
+}

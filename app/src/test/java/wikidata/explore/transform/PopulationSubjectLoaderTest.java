@@ -1,0 +1,58 @@
+package wikidata.explore.transform;
+
+import org.junit.jupiter.api.Test;
+import wikidata.FakeWikidataSparqlClient;
+import wikidata.api.FakeWikidataApiClient;
+import wikidata.explore.extract.WikidataDynamicObject;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Slice 3b: a reify can draw its subjects from a POPULATION — with no source-class
+ * members in the pool, QualifierLoader discovers the entities carrying the
+ * statement property into the value domain, stamps them the load type, adds them
+ * to the pool, and loads their statements. Guarded: no value set => no discovery.
+ */
+class PopulationSubjectLoaderTest {
+
+    private static QualifierLoadConfig cfg(boolean discover, List<String> valueQids) {
+        return new QualifierLoadConfig(
+                "OscarNominations", "P1411", "__Nomination", "Nomination",
+                "category", "", List.of(), valueQids, discover);
+    }
+
+    @Test void discoversSubjectsAndLoadsTheirStatements() {
+        // Membership query returns the film; its P1411 statement is a Best Picture.
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient()
+                .row(Map.of("subject", "Q105883400"));
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .statement("Q105883400", "P1411", "Q105883400$s", "Q102427", Map.of());
+
+        List<WikidataDynamicObject> pool = new ArrayList<>();   // NO source-class members
+        List<WikidataDynamicObject> created = new QualifierLoader().api(api)
+                .enrich(pool, cfg(true, List.of("Q102427")), sparql, null);
+
+        assertTrue(pool.stream().anyMatch(o -> "Q105883400".equals(o.qid())
+                        && "OscarNominations".equals(o.typeName())),
+                "the population subject was discovered, stamped, and pooled");
+        assertFalse(created.isEmpty(),
+                "its statement was loaded, ready to reify");
+    }
+
+    @Test void refusesToDiscoverWithoutAValueSet() {
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient()
+                .row(Map.of("subject", "Q105883400"));
+        List<WikidataDynamicObject> pool = new ArrayList<>();
+
+        // discoverSubjects=true but no valueQids/valueType => the guard refuses.
+        new QualifierLoader().api(new FakeWikidataApiClient())
+                .enrich(pool, cfg(true, List.of()), sparql, null);
+
+        assertTrue(pool.isEmpty(), "no unbounded membership scan without a value set");
+    }
+}

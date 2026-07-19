@@ -25,14 +25,23 @@ public record QualifierLoadConfig(
         String valueField,
         String valueTypeQid,
         List<Qualifier> qualifiers,
-        List<String> valueQids) {
+        List<String> valueQids,
+        boolean discoverSubjects) {
+
+    /** Back-compat 8-arg form: subjects already exist in the pool (no discovery). */
+    public QualifierLoadConfig(String entityType, String propertyPid,
+            String statementField, String statementType, String valueField,
+            String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids) {
+        this(entityType, propertyPid, statementField, statementType, valueField,
+                valueTypeQid, qualifiers, valueQids, false);
+    }
 
     /** Back-compat 7-arg form (no explicit value QIDs). */
     public QualifierLoadConfig(String entityType, String propertyPid,
             String statementField, String statementType, String valueField,
             String valueTypeQid, List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, List.of());
+                valueTypeQid, qualifiers, List.of(), false);
     }
 
     /** Back-compat 6-arg form (no value-type filter). */
@@ -40,7 +49,7 @@ public record QualifierLoadConfig(
             String statementField, String statementType, String valueField,
             List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                "", qualifiers, List.of());
+                "", qualifiers, List.of(), false);
     }
 
     /** When set (e.g. Q19020 "Academy Awards"), keep only statements whose main
