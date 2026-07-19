@@ -822,6 +822,12 @@ public class ModelBuilderFrame extends JFrame {
         if (c == null) {
             return "No class selected.";
         }
+        // A statement class is populated by reification (its subjects come from a
+        // source class or are discovered), not by a membership query — so it needs
+        // no membership target. GenerateDomainQuery reifies it regardless.
+        if (c.reifiesStatements()) {
+            return null;
+        }
         var m = c.effectiveInstanceMapping(projectModel);
         boolean hasTarget = m != null && !m.sourceQid().isBlank();
         boolean hasExtraTypes = m != null && !m.additionalTypeQids().isEmpty();
