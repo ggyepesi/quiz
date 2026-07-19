@@ -6,41 +6,46 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A named, reusable configuration of a SET of entities or values that productions
- * consume and fields reference, but which is NEVER served as a product in its own
- * right. The counterpart to a product {@link GeneratedClassModel}: a class defines
- * an entity you serve; a Source defines where a field's values — or a production's
- * subjects — come from.
+ * A named SELECTION over the shared entity pool — a rule that picks a set of
+ * Wikidata entities, materialized (and cached) for a production to reference. It
+ * is never a served product; it only shapes how a product's fields are loaded or
+ * constrained. The counterpart to a product {@link GeneratedClassModel}.
  *
- * <p>This exists to stop overloading "class" with the roles that aren't products.
- * A class was quietly doing four jobs at once (the served grain, the load backbone,
- * a value vocabulary, a grouping facet); Source names the non-product ones so they
- * stop masquerading as classes with phantom "instances" (e.g. the Oscar categories,
- * which are a vocabulary, not 57 served entities). Each role is a {@link Kind}.
+ * <p>This replaces the config-classes that overloaded "class" with non-product
+ * roles. The entity pool is already the cache (one instance per QID); a Source is
+ * just a named, rule-defined subset of it. Two live roles (facets are a view-time
+ * concern and are deliberately not modelled here; a partition that changes what is
+ * loaded is a subclass, using the existing discriminator machinery):
+ *
+ * <ul>
+ *   <li>{@link Kind#VOCABULARY} — a value domain: the allowed values of a field,
+ *       given explicitly or by a P31 type filter (e.g. the Oscar categories);</li>
+ *   <li>{@link Kind#POPULATION} — a subject set defined by a membership relation
+ *       (e.g. the entities with P1411 into those categories) that a reify draws
+ *       its subjects from.</li>
+ * </ul>
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class Source {
 
-    /** The orthogonal roles a "class" used to blur into one. */
     public enum Kind {
-        /** An enumerated / type-constrained VALUE set with labels — a field is
-         *  restricted to it and renders its members' labels (e.g. Oscar categories). */
+        /** A value domain: allowed field values (explicit QIDs and/or a P31 type). */
         VOCABULARY,
-        /** A SUBJECT set defined by a membership query — a reify draws its subjects
-         *  from it (e.g. the P1411 members that back Nomination). */
-        POPULATION,
-        /** A value PARTITION used to group a product at view time (e.g. P31 type). */
-        FACET
+        /** A subject set: entities matching a membership relation, for a reify. */
+        POPULATION
     }
 
     private String name = "";
     private Kind kind = Kind.VOCABULARY;
 
-    // VOCABULARY: the allowed values, given explicitly and/or as a P31 type filter.
-    // A field constrained to this source keeps only these values and renders their
-    // labels. POPULATION / FACET config is added as those kinds are wired.
+    // VOCABULARY: the allowed values, given explicitly and/or by a P31 type filter.
     private final List<String> valueQids = new ArrayList<>();
     private String valueTypeQid = "";
+
+    // POPULATION: subjects are the entities with `relationPid` into `targetQids`
+    // (e.g. P1411 into the Oscar categories). Empty targetQids = the relation alone.
+    private String relationPid = "";
+    private final List<String> targetQids = new ArrayList<>();
 
     public Source() {
     }
@@ -72,13 +77,7 @@ public class Source {
 
     public void valueQids(List<String> values) {
         valueQids.clear();
-        if (values != null) {
-            for (String v : values) {
-                if (v != null && v.matches("(?i)Q\\d+")) {
-                    valueQids.add(v.trim());
-                }
-            }
-        }
+        addQids(valueQids, values);
     }
 
     public String valueTypeQid() {
@@ -93,19 +92,51 @@ public class Source {
         return valueTypeQid().matches("(?i)Q\\d+");
     }
 
-    /** A VOCABULARY needs at least one way to bound its values; other kinds only
-     *  need a name until their own config is wired. */
+    public String relationPid() {
+        return relationPid == null ? "" : relationPid;
+    }
+
+    public void relationPid(String value) {
+        relationPid = value == null ? "" : value.trim();
+    }
+
+    public List<String> targetQids() {
+        return targetQids;
+    }
+
+    public void targetQids(List<String> values) {
+        targetQids.clear();
+        addQids(targetQids, values);
+    }
+
+    /** A Source is configured once its rule can select something. */
     public boolean isConfigured() {
         if (name().isBlank()) {
             return false;
         }
-        return kind() != Kind.VOCABULARY || !valueQids.isEmpty() || hasValueType();
+        return switch (kind()) {
+            case VOCABULARY -> !valueQids.isEmpty() || hasValueType();
+            case POPULATION -> relationPid().matches("(?i)P\\d+");
+        };
     }
 
     public Source copy() {
         Source c = new Source(name, kind);
         c.valueTypeQid = valueTypeQid;
         c.valueQids.addAll(valueQids);
+        c.relationPid = relationPid;
+        c.targetQids.addAll(targetQids);
         return c;
+    }
+
+    private static void addQids(List<String> into, List<String> values) {
+        if (values == null) {
+            return;
+        }
+        for (String v : values) {
+            if (v != null && v.trim().matches("(?i)Q\\d+")) {
+                into.add(v.trim());
+            }
+        }
     }
 }

@@ -55,19 +55,36 @@ class SourceTest {
         assertEquals(List.of("Q102427", "Q106301"), found.valueQids());
     }
 
-    @Test void sourcesRoundTripThroughTheStore(@TempDir Path dir) throws Exception {
+    @Test void aPopulationNeedsARelationToBeConfigured() {
+        Source pop = new Source("OscarNominees", Source.Kind.POPULATION);
+        assertFalse(pop.isConfigured(), "no relation yet");
+        pop.relationPid("P1411");
+        pop.targetQids(List.of("Q102427"));
+        assertTrue(pop.isConfigured());
+    }
+
+    @Test void bothKindsRoundTripThroughTheStore(@TempDir Path dir) throws Exception {
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass().className("Nomination");
         p.addSource(oscarCategories());
+        Source pop = new Source("OscarNominees", Source.Kind.POPULATION);
+        pop.relationPid("P1411");
+        pop.targetQids(List.of("Q102427", "Q106301"));
+        p.addSource(pop);
 
         GeneratedProjectModelStore store = new GeneratedProjectModelStore();
         File f = dir.resolve("m.model.json").toFile();
         store.save(p, f);
         GeneratedProjectModel loaded = store.load(f);
 
-        Source s = loaded.findSource("OscarCategories");
-        assertEquals(Source.Kind.VOCABULARY, s.kind());
-        assertEquals("Q19020", s.valueTypeQid());
-        assertEquals(List.of("Q102427", "Q106301"), s.valueQids());
+        Source v = loaded.findSource("OscarCategories");
+        assertEquals(Source.Kind.VOCABULARY, v.kind());
+        assertEquals("Q19020", v.valueTypeQid());
+        assertEquals(List.of("Q102427", "Q106301"), v.valueQids());
+
+        Source pop2 = loaded.findSource("OscarNominees");
+        assertEquals(Source.Kind.POPULATION, pop2.kind());
+        assertEquals("P1411", pop2.relationPid());
+        assertEquals(List.of("Q102427", "Q106301"), pop2.targetQids());
     }
 }
