@@ -164,6 +164,14 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             wikidata.explore.compiled.ProjectModelCompiler.compile(project);
                     wikidata.explore.transform.ModelStatementReifications.enrich(
                             compiledProject, reifyPool, context.sparql(), genLog);
+                    // A source-class-less reify DISCOVERS its subjects, which enrich
+                    // added to reifyPool but not to the shared registry. Fold them in
+                    // (same instances) so they flow through every transform below and
+                    // reach the served pool as referents — their internal __subject_
+                    // type is un-stamped before save.
+                    for (WikidataDynamicObject o : reifyPool) {
+                        shared.adoptIfAbsent(o);
+                    }
                     List<WikidataDynamicObject> enrichedSnapshot =
                             wikidata.explore.transform.PoolCopy.deepCopy(shared.values());
                     java.util.Set<WikidataDynamicObject> demoted =
@@ -226,6 +234,24 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     java.util.Set<WikidataDynamicObject> deadStubs =
                             wikidata.explore.transform.DeadStubPrune.apply(
                                     everything, genLog);
+
+                    // Un-stamp the internal __subject_ load type: discovered POPULATION
+                    // subjects sourced the reify but are not a served product — they
+                    // stay in the pool as plain labelled referents (nominee/forWork/
+                    // source), not a served type. Runs after reify has used the type.
+                    int unstampedSubjects = 0;
+                    for (WikidataDynamicObject o : shared.values()) {
+                        if (o != null && o.typeName() != null
+                                && o.typeName().startsWith("__subject_")) {
+                            o.type(null);
+                            unstampedSubjects++;
+                        }
+                    }
+                    if (unstampedSubjects > 0) {
+                        genLog.message("Un-stamped " + unstampedSubjects
+                                + " discovered subject(s) — kept as referents, "
+                                + "not served.\n");
+                    }
 
                     // The served/saved pool: the whole shared pool (every class's
                     // roots + their referenced children) minus demoted reified

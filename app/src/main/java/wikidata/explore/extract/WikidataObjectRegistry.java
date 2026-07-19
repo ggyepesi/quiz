@@ -34,6 +34,19 @@ public class WikidataObjectRegistry {
         return key.isBlank() ? null : byQid.get(key);
     }
 
+    /** Adopt an already-built object into the registry if its QID is not present —
+     *  keeping the SAME instance (not a fresh empty one), so references to it stay
+     *  valid. Used to fold discovered POPULATION subjects into the shared pool. */
+    public void adoptIfAbsent(WikidataDynamicObject object) {
+        if (object == null) {
+            return;
+        }
+        String key = cleanQid(object.qid());
+        if (!key.isBlank()) {
+            byQid.putIfAbsent(key, object);
+        }
+    }
+
     public Collection<WikidataDynamicObject> values() {
         return byQid.values();
     }
