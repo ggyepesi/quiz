@@ -270,6 +270,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.transform.FieldExpectations.apply(
                             compiledProject, pool, genLog);
 
+                    // Data-quality audit (#99): now that only the finest atom is
+                    // served, probe for inconsistencies (surviving witnessed phantoms)
+                    // explicitly — they no longer surface as a weird member card.
+                    wikidata.explore.transform.ConsistencyReport.check(
+                            compiledProject, reified, genLog);
+
                     // ONE shared mapper over the SERVED POOL: each QID -> one typed
                     // instance, cross-refs resolve to those same instances. Mapping
                     // the pool (rather than the extractor's roots) makes the
