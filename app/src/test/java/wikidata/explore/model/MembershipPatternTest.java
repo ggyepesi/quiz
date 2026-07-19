@@ -54,4 +54,22 @@ class MembershipPatternTest {
     @Test void unconfigured() {
         assertEquals(MembershipPattern.UNCONFIGURED, MembershipPattern.of(clazz()));
     }
+
+    @Test void reifiedDiscoveredWithSelection() {
+        GeneratedClassModel c = clazz();
+        StatementClassSource s = new StatementClassSource("P1411");
+        s.valueSelectionName("OscarCategories");
+        c.statementSource(s);
+        assertEquals(MembershipPattern.REIFIED, MembershipPattern.of(c));
+        assertEquals("Reified statements (P1411 · discovered → Selection 'OscarCategories')",
+                MembershipPattern.describe(c));
+    }
+
+    @Test void reifiedFromSourceClass() {
+        GeneratedClassModel c = clazz();
+        c.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        assertEquals(MembershipPattern.REIFIED, MembershipPattern.of(c));
+        assertEquals("Reified statements (P1411 of OscarNominations)",
+                MembershipPattern.describe(c));
+    }
 }

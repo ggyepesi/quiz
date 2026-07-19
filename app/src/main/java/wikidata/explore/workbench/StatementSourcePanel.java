@@ -141,12 +141,25 @@ public class StatementSourcePanel extends JPanel {
                 RuleNode.cleanPid(
                         statementPropField.getText());
 
-        clazz.statementSource(
-                sourceClass.isBlank()
-                        ? null
-                        : new StatementClassSource(
-                        sourceClass,
-                        statementPid));
+        // The source class is OPTIONAL: a blank one means subjects are discovered
+        // directly from the statement property (guarded by a value domain). Only a
+        // blank property AND blank source class means "not a statement class" — a
+        // set property alone is enough, so we must NOT null the source in that case
+        // (doing so silently reverted a discovered-subject statement class, e.g.
+        // the Oscars Nomination, to a plain class on every applyEdits).
+        if (statementPid.isBlank() && sourceClass.isBlank()) {
+            clazz.statementSource(null);
+        } else {
+            StatementClassSource next =
+                    new StatementClassSource(sourceClass, statementPid);
+            // Preserve a value Selection (VOCABULARY domain) already configured on
+            // the class; the panel doesn't edit it yet, so don't drop it.
+            StatementClassSource prior = clazz.statementSource();
+            if (prior != null && prior.hasValueSelection()) {
+                next.valueSelectionName(prior.valueSelectionName());
+            }
+            clazz.statementSource(next);
+        }
 
         clazz.instanceMapping().sourceQid(
                 RuleNode.cleanQid(
@@ -451,8 +464,9 @@ public class StatementSourcePanel extends JPanel {
 
         JLabel explanation =
                 new JLabel(
-                        "Instances are statements of a property "
-                                + "on members of a source class.");
+                        "Instances are statements of a property — on members of a "
+                                + "source class, or on subjects discovered from the "
+                                + "property itself (leave \"Reify from\" blank).");
         explanation.setFont(
                 explanation.getFont()
                            .deriveFont(Font.ITALIC));
@@ -463,8 +477,9 @@ public class StatementSourcePanel extends JPanel {
             classNameField);
 
         reifyFromBox.setToolTipText(
-                "The source class whose statements become "
-                        + "instances of this class.");
+                "Optional: the source class whose statements become instances of "
+                        + "this class. Leave blank to discover subjects directly "
+                        + "from the statement property.");
         GridBagUtils.labeledRow(form, row++,
             "Reify from:",
             reifyFromBox);

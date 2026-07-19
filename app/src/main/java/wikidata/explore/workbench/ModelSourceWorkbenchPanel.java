@@ -643,10 +643,14 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                 // Switching class kind now writes the explicit source object.
                 // It no longer creates a hidden dependency between the legacy
                 // statementSourceClass field and instanceMapping.propertyPid.
+                //
+                // The source class is OPTIONAL (subjects can be discovered from the
+                // statement property alone), so a single-class model still becomes a
+                // valid statement class — a blank source class yields a property-only
+                // source, refined in the statement panel. Previously a blank source
+                // produced a null here, so the kind couldn't switch at all.
                 clazz.statementSource(
-                        sourceClass.isBlank()
-                                ? null
-                                : new StatementClassSource(
+                        new StatementClassSource(
                                 sourceClass,
                                 "P1411"));
             }

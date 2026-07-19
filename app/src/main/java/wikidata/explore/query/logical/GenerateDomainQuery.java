@@ -272,6 +272,21 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 + "not served.\n");
                     }
 
+                    // Stamp each statement instance's ENTITY-field referents with the
+                    // (bare) class the field declares — e.g. Nomination.nominee ->
+                    // Nominee, forWork -> ForWork, category -> Category. This resolves
+                    // the reference (typeName reads the class instead of falling back,
+                    // and it is no longer collapsed to a bare label) and readies the
+                    // class to grow fields later. Runs AFTER the __subject_ un-stamp so
+                    // a discovered subject that is also a referent gets its real class.
+                    int stampedReferents =
+                            wikidata.explore.transform.ReferentClassStamp.apply(
+                                    project, reified);
+                    if (stampedReferents > 0) {
+                        genLog.message("Stamped " + stampedReferents
+                                + " referent(s) with their declared class.\n");
+                    }
+
                     // The served/saved pool: the whole shared pool (every class's
                     // roots + their referenced children) minus demoted reified
                     // duplicates and dead stubs, plus the reified records. This IS

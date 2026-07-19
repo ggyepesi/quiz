@@ -13,6 +13,10 @@ public enum MembershipPattern {
 
     /** No usable membership relation and no seed QIDs yet. */
     UNCONFIGURED("Unconfigured"),
+    /** Instances are REIFIED from statements — configured by a statement property
+     *  (+ an optional source class or discovered subjects), not by a membership
+     *  query. So a statement class is never "Unconfigured". */
+    REIFIED("Reified statements"),
     /** {@code P31 = Qx} — every member is the same single type. */
     SINGLE_TYPE("Single type"),
     /** {@code P31 ∈ {type, subtypes…}} — members span several (sub)types. */
@@ -38,6 +42,12 @@ public enum MembershipPattern {
     public static MembershipPattern of(GeneratedClassModel clazz) {
         if (clazz == null) {
             return UNCONFIGURED;
+        }
+        // A statement/reify class draws its members from a statement property (+ an
+        // optional source class or discovered subjects), not from a membership query —
+        // so it's configured by its reify, never "Unconfigured".
+        if (clazz.reifiesStatements()) {
+            return REIFIED;
         }
         FieldSourceMapping m = clazz.instanceMapping();
         String pid = clean(m.propertyPid());
@@ -74,6 +84,17 @@ public enum MembershipPattern {
         FieldSourceMapping m = clazz.instanceMapping();
         String pid = clean(m.propertyPid());
         return switch (p) {
+            case REIFIED -> {
+                StatementClassSource s = clazz.statementSource();
+                String prop = s == null ? "" : clean(s.propertyPid());
+                String origin = s != null && s.hasSourceClass()
+                        ? " of " + s.sourceClassName()
+                        : " · discovered";
+                String domain = s != null && s.hasValueSelection()
+                        ? " → Selection '" + s.valueSelectionName() + "'"
+                        : "";
+                yield p.label + " (" + prop + origin + domain + ")";
+            }
             case SINGLE_TYPE -> p.label + " (" + clean(m.sourceQid()) + ")";
             case MULTI_TYPE -> p.label + " (P31, +"
                     + m.additionalTypeQids().size() + ")";

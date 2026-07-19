@@ -94,10 +94,13 @@ public final class GeneratedProjectModelValidator {
 
             if (field.type() == FieldType.ENTITY
                     && !clean(field.entityClassName()).isBlank()
-                    && project.findClass(field.entityClassName()) == null) {
+                    && project.findClass(field.entityClassName()) == null
+                    && project.findSelection(field.entityClassName()) == null) {
                 // An unmodeled ref target is a valid state, not an error: the field
                 // renders as a display-name string (no class promotion, no QID chip)
-                // — e.g. Nomination.forWork -> ForWork, which has no class. Warn so a
+                // — e.g. Nomination.forWork -> ForWork, which has no class. A target
+                // naming a VOCABULARY Selection (e.g. category -> OscarCategories) is
+                // fully resolved, not dangling, so it's excluded above. Warn so a
                 // genuine typo is still visible, but don't block the save.
                 problems.add(Problem.warning(
                         path(clazz, field),
