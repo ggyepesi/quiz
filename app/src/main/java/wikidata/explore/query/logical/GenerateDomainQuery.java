@@ -235,21 +235,40 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             wikidata.explore.transform.DeadStubPrune.apply(
                                     everything, genLog);
 
-                    // Un-stamp the internal __subject_ load type: discovered POPULATION
-                    // subjects sourced the reify but are not a served product — they
-                    // stay in the pool as plain labelled referents (nominee/forWork/
-                    // source), not a served type. Runs after reify has used the type.
+                    // Clean internal plumbing off the served pool: (1) un-stamp the
+                    // __subject_ load type — discovered POPULATION subjects sourced the
+                    // reify but are not a served product, so they stay as plain
+                    // labelled referents (nominee/forWork/source), not a served type;
+                    // (2) strip __-prefixed statement-list fields (e.g. __Nomination) —
+                    // the reify already promoted those to top-level records, so a
+                    // referent must not carry the raw statement list (a nominee/forWork
+                    // showing __Nomination). Runs after reify + transforms have used them.
                     int unstampedSubjects = 0;
+                    int strippedFields = 0;
                     for (WikidataDynamicObject o : shared.values()) {
-                        if (o != null && o.typeName() != null
+                        if (o == null) {
+                            continue;
+                        }
+                        if (o.typeName() != null
                                 && o.typeName().startsWith("__subject_")) {
                             o.type(null);
                             unstampedSubjects++;
                         }
+                        java.util.List<String> internal = new java.util.ArrayList<>();
+                        for (String k : o.dynamicFields().keySet()) {
+                            if (k != null && k.startsWith("__")) {
+                                internal.add(k);
+                            }
+                        }
+                        for (String k : internal) {
+                            o.remove(k);
+                            strippedFields++;
+                        }
                     }
-                    if (unstampedSubjects > 0) {
+                    if (unstampedSubjects > 0 || strippedFields > 0) {
                         genLog.message("Un-stamped " + unstampedSubjects
-                                + " discovered subject(s) — kept as referents, "
+                                + " discovered subject(s), stripped " + strippedFields
+                                + " internal statement field(s) — kept as referents, "
                                 + "not served.\n");
                     }
 
