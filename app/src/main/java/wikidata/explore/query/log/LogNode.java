@@ -7,7 +7,9 @@ import quiz.QuizableAdapter;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -39,7 +41,10 @@ public class LogNode extends QuizableAdapter {
     private LogStatus status = LogStatus.PENDING;
 
     private String description;
-    private String parameters;
+    // A LIST (one "key = value" per element) rather than a joined blob, so the
+    // card renders the request parameters as a collapsible collection instead of a
+    // single wall of text (e.g. the "domain = oscarnominations" entry).
+    private List<String> parameters;
     private String skeleton;
     private String request;
 
@@ -188,8 +193,8 @@ public class LogNode extends QuizableAdapter {
         return this;
     }
 
-    LogNode parameters(String parameters) {
-        this.parameters = emptyToNull(parameters);
+    LogNode parameters(List<String> parameters) {
+        this.parameters = parameters == null || parameters.isEmpty() ? null : parameters;
         return this;
     }
 
@@ -221,24 +226,16 @@ public class LogNode extends QuizableAdapter {
 
     // --- shared formatting helpers ---
 
-    static String formatParameters(Map<String, String> params) {
+    static List<String> formatParameters(Map<String, String> params) {
         if (params == null || params.isEmpty()) {
             return null;
         }
 
-        StringBuilder sb = new StringBuilder();
-
+        List<String> rows = new ArrayList<>(params.size());
         for (Map.Entry<String, String> e : params.entrySet()) {
-            if (!sb.isEmpty()) {
-                sb.append("\n");
-            }
-
-            sb.append(e.getKey())
-              .append(" = ")
-              .append(e.getValue());
+            rows.add(e.getKey() + " = " + e.getValue());
         }
-
-        return sb.toString();
+        return rows;
     }
 
     static boolean blank(String s) {
@@ -271,7 +268,7 @@ public class LogNode extends QuizableAdapter {
     public String title() { return title; }
     public String queryType() { return queryType; }
     public String description() { return description; }
-    public String parameters() { return parameters; }
+    public List<String> parameters() { return parameters; }
     public String skeleton() { return skeleton; }
     public String request() { return request; }
     public String link() { return link; }
