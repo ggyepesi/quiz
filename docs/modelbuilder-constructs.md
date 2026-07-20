@@ -158,9 +158,36 @@ The *shape of a reference* picks the construct:
 So `Nominee`/`ForWork` are selections/unions, not classes; `Ceremony` is a class.
 This is the domain boundary: the domain owns `Nomination` + the relations +
 `Ceremony`; `Human`/`Film`/`Song` are a **general entity layer** the domain selects
-into (see [[domain-library-extends]]). Constructing a tag-set vocabulary, for now,
-is just the distinct `P31` types appearing in the field's referents
-(`ValueVocabularyDiscovery`, `pid = P31`); other construction methods can come later.
+into (see [[domain-library-extends]]).
+
+### How a vocabulary is built
+
+One mechanism, read either direction — **pin one end of a relation, collect the
+other**:
+
+- **pin the object** (a type), collect **subjects** → instances-of: `?x wdt:P31
+  wd:<type>`. How a homogeneous value domain like `OscarCategories` is derived (the
+  category type → its instances); also what Override-QID / `SampleClassQuery` do.
+- **pin the subjects** (a population), collect **objects** → the distinct values a
+  property takes: `NomineeTypes` = the `P31` objects of the nominees, `WorkGenres`
+  = the `P136` objects of the works.
+
+And two roles it serves, distinguished by whether it *bounds* or *reports*:
+
+- **constraint** — authored/authoritative, *filters* the load (`OscarCategories` as
+  the reify's value domain). Set by hand; never overwritten by data.
+- **descriptive** — *reports* what a field took, for faceting/subclassing
+  (`NomineeTypes`, `WorkGenres`). Derived FROM the data.
+
+The clean way to build a **descriptive** vocabulary is as a **by-product of loading
+the field**, not a separate query: declare an entity property-field on a referenced
+class (e.g. `Nominee.type = P31`, outgoing, COLLECTION) with its **target set to a
+vocabulary name**, and `ReferentFieldLoad` auto-creates that `VocabularySelection`
+and refreshes it to the distinct values it loaded — **exhaustive** (every value, not
+a sample) and **free** (the load already fetched them). *Declaring the field IS the
+discovery.* (`ValueVocabularyDiscovery` — the pin-the-subjects-via-SPARQL form —
+remains for *previewing* a vocabulary ahead of loading, or authoring a constraint
+from data; the Selections viewer's "Discover vocab" row exposes it.)
 
 **Pending (settled, parked) — the member-class layer.** A flat union of per-type
 fields on one class *clashes* on field names (Human's `date` vs Film's `date`); the
