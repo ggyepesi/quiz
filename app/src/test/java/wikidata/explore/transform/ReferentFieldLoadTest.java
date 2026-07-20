@@ -84,8 +84,8 @@ class ReferentFieldLoadTest {
         assertEquals(2024, ((aux.FlexibleDate) y).getYear());
     }
 
-    /** Loading a field whose target is a VocabularySelection refreshes that vocab to
-     *  the distinct loaded values — the descriptive vocabulary is built for free. */
+    /** Loading a field whose target names a (not-yet-existing) vocabulary auto-creates
+     *  and fills it from the distinct loaded values — the descriptive vocab, for free. */
     @Test void buildsAVocabularyFromTheLoadedFieldValues() {
         GeneratedProjectModel model = new GeneratedProjectModel();
 
@@ -101,7 +101,7 @@ class ReferentFieldLoadTest {
         type.entityClassName("NomineeTypes");   // target = a descriptive vocabulary
         model.addClass(nominee);
 
-        model.addSelection(new VocabularySelection("NomineeTypes"));   // starts empty
+        // NomineeTypes intentionally NOT pre-created — the load auto-creates it.
         model.rootClass(nom);
 
         WikidataDynamicObject a = new WikidataDynamicObject("Q42", "Meryl Streep");

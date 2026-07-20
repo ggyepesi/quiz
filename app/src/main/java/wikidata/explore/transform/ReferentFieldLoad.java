@@ -239,13 +239,23 @@ public final class ReferentFieldLoad {
         log.message("Referent field load " + className + "." + field.name()
                 + " (" + pid + ") -> " + loaded + " value(s)\n");
 
-        // If this field's target is a VocabularySelection, REFRESH it to the distinct
-        // values just loaded — a DESCRIPTIVE vocabulary built as a by-product of the
-        // load (e.g. Nominee.type -> NomineeTypes = the distinct P31 types), exhaustive
-        // and free (no extra query). Refresh, not accumulate: the vocab tracks the data.
-        if (model != null) {
-            Selection target = model.findSelection(field.entityClassName());
-            if (target instanceof VocabularySelection vocab) {
+        // If this field's target is a VocabularySelection (or a not-yet-existing
+        // name that isn't a class), REFRESH/CREATE it from the distinct values just
+        // loaded — a DESCRIPTIVE vocabulary built as a by-product of the load (e.g.
+        // Nominee.type -> NomineeTypes = the distinct P31 types), exhaustive and free
+        // (no extra query). Refresh, not accumulate: the vocab tracks the current data.
+        String targetName = field.entityClassName();
+        if (model != null && targetName != null && !targetName.isBlank()
+                && model.findClass(targetName) == null) {
+            Selection existing = model.findSelection(targetName);
+            VocabularySelection vocab = null;
+            if (existing instanceof VocabularySelection v) {
+                vocab = v;
+            } else if (existing == null) {
+                vocab = new VocabularySelection(targetName);   // configure-as-new-vocab
+                model.addSelection(vocab);
+            }
+            if (vocab != null) {
                 vocab.valueQids(new ArrayList<>(valueQids));
                 log.message("Built vocabulary '" + vocab.name() + "' from "
                         + className + "." + field.name() + " -> "
