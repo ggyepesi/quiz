@@ -41,12 +41,16 @@ public class LogNode extends QuizableAdapter {
     private LogStatus status = LogStatus.PENDING;
 
     private String description;
-    // A LIST (one "key = value" per element) rather than a joined blob, so the
-    // card renders the request parameters as a collapsible collection instead of a
-    // single wall of text (e.g. the "domain = oscarnominations" entry).
-    private List<String> parameters;
+    // Short "key = value" lines, kept inline (a String) so they show at a glance —
+    // the long, collapsible content is the separate `messages` list below.
+    private String parameters;
     private String skeleton;
+    // The actual query text (SPARQL / action-API URL). Drives {@link #link}.
     private String request;
+    // Human-readable log lines emitted against this node (message()/append()) — NOT
+    // requests. A LIST (one line per element) so a long body (e.g. the reify recipe
+    // or the "DROPPED self-nomination …" run) renders as a collapsible collection.
+    private List<String> messages;
 
     // A runnable link derived from request + queryType: SPARQL opens the
     // Wikidata Query Service editor, API opens the HTTP request. Carried as
@@ -114,6 +118,20 @@ public class LogNode extends QuizableAdapter {
     void appendRequest(String text) {
         request = appendText(request, text);
         updateLink();
+    }
+
+    /** Appends log text as message LINES (split on newlines) — a message is not a
+     *  request, so it renders as its own collapsible collection, not in the query. */
+    void appendMessage(String text) {
+        if (blank(text)) {
+            return;
+        }
+        if (messages == null) {
+            messages = new ArrayList<>();
+        }
+        for (String line : text.split("\n")) {
+            messages.add(line);
+        }
     }
 
     private void updateLink() {
@@ -193,8 +211,8 @@ public class LogNode extends QuizableAdapter {
         return this;
     }
 
-    LogNode parameters(List<String> parameters) {
-        this.parameters = parameters == null || parameters.isEmpty() ? null : parameters;
+    LogNode parameters(String parameters) {
+        this.parameters = emptyToNull(parameters);
         return this;
     }
 
@@ -226,16 +244,19 @@ public class LogNode extends QuizableAdapter {
 
     // --- shared formatting helpers ---
 
-    static List<String> formatParameters(Map<String, String> params) {
+    static String formatParameters(Map<String, String> params) {
         if (params == null || params.isEmpty()) {
             return null;
         }
 
-        List<String> rows = new ArrayList<>(params.size());
+        StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, String> e : params.entrySet()) {
-            rows.add(e.getKey() + " = " + e.getValue());
+            if (!sb.isEmpty()) {
+                sb.append("\n");
+            }
+            sb.append(e.getKey()).append(" = ").append(e.getValue());
         }
-        return rows;
+        return sb.toString();
     }
 
     static boolean blank(String s) {
@@ -268,9 +289,10 @@ public class LogNode extends QuizableAdapter {
     public String title() { return title; }
     public String queryType() { return queryType; }
     public String description() { return description; }
-    public List<String> parameters() { return parameters; }
+    public String parameters() { return parameters; }
     public String skeleton() { return skeleton; }
     public String request() { return request; }
+    public List<String> messages() { return messages; }
     public String link() { return link; }
     public LogStatus status() { return status; }
     public String summary() { return summary; }

@@ -117,7 +117,7 @@ public class WorkflowRecorder {
             return;
         }
 
-        node.appendRequest(text);
+        node.appendMessage(text);
         fire(false);
     }
 
@@ -128,7 +128,7 @@ public class WorkflowRecorder {
         }
 
         LogNode target = stack.peek();
-        (target == null ? root : target).appendRequest(text);
+        (target == null ? root : target).appendMessage(text);
         fire(false);
     }
 

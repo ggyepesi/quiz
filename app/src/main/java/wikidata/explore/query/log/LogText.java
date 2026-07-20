@@ -50,6 +50,9 @@ public final class LogText {
         sb.append('\n');
 
         appendBlock(sb, indent + "    | ", node.request());
+        if (node.messages() != null && !node.messages().isEmpty()) {
+            appendBlock(sb, indent + "    | ", String.join("\n", node.messages()));
+        }
         if (notBlank(node.error())) {
             sb.append(indent).append("    ! ").append(node.error().strip()).append('\n');
         }
