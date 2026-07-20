@@ -112,23 +112,55 @@ served* — it is not a product class, it shapes how other things load or render
 Its content is inspectable in the Selections viewer (`SelectionViewerPanel`,
 resolved by `SelectionContentResolver`).
 
-Two kinds (today one class + a `Kind` enum; the natural refactor is two
-subclasses, **`VocabularySelection`** / **`PopulationSelection`**, so each carries
-only its own fields and illegal combinations become unrepresentable):
+Two concrete subclasses (`VocabularySelection` / `PopulationSelection`), so each
+carries only its own fields and illegal combinations are unrepresentable:
 
-- **`VOCABULARY`** — a **value domain**: the allowed values of a field (explicit
-  QIDs and/or a `P31` type filter). Example: `OscarCategories` = the 59 category
-  QIDs. A referent field can point at it as its *type* (e.g. `category →
-  OscarCategories`), and a reify reads it as its value filter — one vocabulary,
-  referenced in both roles, never duplicated.
-- **`POPULATION`** — a **subject set**: the entities matching a membership relation
-  (`relationPid` into `targetQids`), for a reify to draw its subjects from — e.g.
-  "the entities with `P1411` into the Oscar categories" (the nominee subjects).
+- **`VocabularySelection`** — a named QID set with **two roles**, told apart by
+  where a field's value sits relative to the set:
+  - **value domain** — the value *is a member*. `category → OscarCategories`: the
+    value *is* "Best Picture", one of the 59. Homogeneous (a fixed instance set);
+    doubles as the reify's value filter — one vocabulary, both roles, never
+    duplicated.
+  - **union tag set** — the value *is an instance-of a member*. `nominee →
+    NomineeTypes`: the value is Meryl Streep, whose `P31` *is* "human", one of the
+    tags. The members are *types*, not values (see below).
+- **`PopulationSelection`** — a **subject set**: the entities matching a membership
+  relation (`relationPid` into `targetQids`), for a reify to draw its subjects from
+  — e.g. "the entities with `P1411` into the Oscar categories" (the nominee
+  subjects). Browsable (sampled) in the viewer via the resolver's POPULATION path.
 
 A Selection is the right home for a **closed, known vocabulary**; a **bare
 identity-holder class** is the right home for an **open set discovered from data**.
 That asymmetry is the design rule: closed vocabulary → Selection; open discovered
 set → referenced-only class.
+
+### Vocabulary as a union's type — `nominee` vs `ceremony`
+
+When one field holds values of **different types** — a nominee can be a human, a
+film, a song — that field is a **tagged union**, not a class to subclass. Its type
+*is* a vocabulary: the **tag set** of alternatives, with a discriminator (`P31`)
+picking which one a given value is — `nominee : ⟨discriminator = P31, tags =
+{human, film, song, …}⟩`. The tags are independent general classes (Human, Film)
+sharing no common essence, so `HumanNominee`/`FilmNominee` were never subclasses of
+a `Nominee` — they're union members. **Union the field; don't subclass the target.**
+
+The *shape of a reference* picks the construct:
+
+- **heterogeneous** field (mixed value-types) → a **union**; its type is a tag-set
+  vocabulary. `nominee`/`forWork` — thin *selections over general entities*, holding
+  nothing domain-specific but the relation membership; the type-dependent data
+  (occupation, genre) belongs to whichever general class each value is.
+- **homogeneous** field (one type, many instances) → a **value-domain** vocabulary
+  bounds it. `category`.
+- **single-typed** field pointing at a **domain-owned** entity with its own data →
+  a real **class**. `ceremony` — a `Ceremony` that carries its own `year`.
+
+So `Nominee`/`ForWork` are selections/unions, not classes; `Ceremony` is a class.
+This is the domain boundary: the domain owns `Nomination` + the relations +
+`Ceremony`; `Human`/`Film`/`Song` are a **general entity layer** the domain selects
+into (see [[domain-library-extends]]). Constructing a tag-set vocabulary, for now,
+is just the distinct `P31` types appearing in the field's referents
+(`ValueVocabularyDiscovery`, `pid = P31`); other construction methods can come later.
 
 ---
 
