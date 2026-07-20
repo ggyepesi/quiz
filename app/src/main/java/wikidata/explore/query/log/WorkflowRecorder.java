@@ -117,7 +117,7 @@ public class WorkflowRecorder {
             return;
         }
 
-        node.appendMessage(text);
+        node.appendRequest(text);
         fire(false);
     }
 
