@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 public class FieldSourcePanel extends JPanel {
 
     private static final String NEW_CLASS_SENTINEL = "New class...";
+    private static final String NEW_VOCAB_SENTINEL = "New vocabulary...";
 
     private GeneratedFieldModel field;
     private GeneratedProjectModel projectModel;
@@ -543,6 +544,24 @@ public class FieldSourcePanel extends JPanel {
                     name = GeneratedQuizableSourceGenerator.sanitizeClassName(name.trim());
                     if (projectModel != null) {
                         projectModel.addClass(new GeneratedClassModel(name));
+                    }
+                    refreshObjectTypeBox(name);
+                } else {
+                    refreshObjectTypeBox(
+                            field != null ? field.entityClassName() : "");
+                }
+            } else if (NEW_VOCAB_SENTINEL.equals(objectTypeBox.getSelectedItem())) {
+                // A vocabulary target (a value domain / tag set) — NOT a class, so it
+                // doesn't show as an Unconfigured class and doesn't block the load's
+                // auto-build. Empty now; generation fills it from the field's values.
+                String name = JOptionPane.showInputDialog(
+                        this, "New vocabulary name:", "Add vocabulary",
+                        JOptionPane.PLAIN_MESSAGE);
+                if (name != null && !name.isBlank()) {
+                    name = GeneratedQuizableSourceGenerator.sanitizeClassName(name.trim());
+                    if (projectModel != null && projectModel.findSelection(name) == null
+                            && projectModel.findClass(name) == null) {
+                        projectModel.addSelection(new VocabularySelection(name));
                     }
                     refreshObjectTypeBox(name);
                 } else {
@@ -1175,10 +1194,18 @@ public class FieldSourcePanel extends JPanel {
                 for (GeneratedClassModel cls : projectModel.classes()) {
                     objectTypeBox.addItem(cls.className());
                 }
+                // Vocabularies are valid targets too (a value domain / tag set).
+                for (Selection s : projectModel.selections()) {
+                    if (s instanceof VocabularySelection) {
+                        objectTypeBox.addItem(s.name());
+                    }
+                }
             }
             objectTypeBox.addItem(NEW_CLASS_SENTINEL);
+            objectTypeBox.addItem(NEW_VOCAB_SENTINEL);
             if (selectedClass != null && !selectedClass.isBlank()
-                    && !NEW_CLASS_SENTINEL.equals(selectedClass)) {
+                    && !NEW_CLASS_SENTINEL.equals(selectedClass)
+                    && !NEW_VOCAB_SENTINEL.equals(selectedClass)) {
                 // Add if not already in the list (e.g., a class not yet in registry)
                 boolean found = false;
                 for (int i = 0; i < objectTypeBox.getItemCount(); i++) {

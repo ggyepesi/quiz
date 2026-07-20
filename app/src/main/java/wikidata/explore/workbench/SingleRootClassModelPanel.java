@@ -204,6 +204,18 @@ public class SingleRootClassModelPanel extends JPanel {
             projectNode.add(classNode);
         }
 
+        // Selections (vocabularies / populations) shown inline, so the domain's
+        // value domains are visible in the tree — not hidden behind the Selections
+        // window, and clearly NOT classes.
+        if (!projectModel.selections().isEmpty()) {
+            DefaultMutableTreeNode selectionsNode =
+                    new DefaultMutableTreeNode("Selections");
+            for (Selection s : projectModel.selections()) {
+                selectionsNode.add(new DefaultMutableTreeNode(s));
+            }
+            projectNode.add(selectionsNode);
+        }
+
         return projectNode;
     }
 
@@ -430,6 +442,19 @@ public class SingleRootClassModelPanel extends JPanel {
                 setText(t.toString());
                 setForeground(sel ? getTextSelectionColor()
                         : new Color(60, 90, 120));
+            } else if (uo instanceof Selection seln) {
+                String detail;
+                if (seln instanceof VocabularySelection v) {
+                    detail = "vocabulary · " + v.valueQids().size() + " value(s)";
+                } else if (seln instanceof PopulationSelection p) {
+                    detail = "population"
+                            + (p.relationPid().isBlank() ? "" : " · " + p.relationPid());
+                } else {
+                    detail = String.valueOf(seln.kind());
+                }
+                setText("◇ " + seln.name() + "   [" + detail + "]");
+                setForeground(sel ? getTextSelectionColor()
+                        : new Color(90, 110, 60));
             }
             return this;
         }
