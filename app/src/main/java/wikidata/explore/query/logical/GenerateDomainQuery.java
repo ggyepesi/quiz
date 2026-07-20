@@ -315,6 +315,16 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     pool.addAll(reified);
 
+                    // Drop orphans: labelled but untyped nodes referenced by nothing
+                    // — subjects of nominations that were dropped (phantom / disallowed
+                    // value), left floating in the pool. Not roots, not referenced, no
+                    // fields; DeadStubPrune misses them because they resolved a label.
+                    java.util.Set<WikidataDynamicObject> orphans =
+                            wikidata.explore.transform.OrphanPrune.apply(pool, genLog);
+                    if (!orphans.isEmpty()) {
+                        pool.removeIf(orphans::contains);
+                    }
+
                     // Field expectations (#96): coverage report + drop REQUIRED-missing
                     // records + keep EXPECTED-missing ones. Same pass the Remap runs.
                     wikidata.explore.transform.FieldExpectations.apply(
