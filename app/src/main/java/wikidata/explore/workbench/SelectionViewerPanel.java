@@ -8,6 +8,7 @@ import quiz.Quizable;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.SelectionContentResolver;
+import wikidata.explore.extract.ValueVocabularyDiscovery;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.Selection;
@@ -44,6 +45,13 @@ public class SelectionViewerPanel extends JPanel {
     private final JTextField newQidsField = new JTextField(24);
     private final JButton addButton = new JButton("Add & show");
 
+    // Discover a vocabulary from a property's DISTINCT values over sample subjects —
+    // e.g. the P31 types of some nominees, the P136 genres of some works.
+    private final JTextField discNameField = new JTextField(14);
+    private final JTextField discPidField = new JTextField(6);
+    private final JTextField discSubjectsField = new JTextField(20);
+    private final JButton discoverButton = new JButton("Discover & add");
+
     public SelectionViewerPanel(GeneratedProjectModel project, WikidataApiClient api,
                                 WikidataSparqlClient sparql) {
         super(new BorderLayout(6, 6));
@@ -68,10 +76,28 @@ public class SelectionViewerPanel extends JPanel {
         newRow.add(addButton);
         newQidsField.setToolTipText("Comma- or space-separated QIDs, e.g. Q102427 Q106301");
 
+        // Discover a vocabulary: name + property + a few sample subjects, and the
+        // property's distinct values over them become the vocabulary. This is how a
+        // referenced class's `type` (P31) / `genre` (P136) gets a value domain
+        // without pasting QIDs — sample a handful of nominees / works.
+        JPanel discRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        discRow.add(new JLabel("Discover vocab:"));
+        discRow.add(discNameField);
+        discRow.add(new JLabel("prop:"));
+        discRow.add(discPidField);
+        discRow.add(new JLabel("subjects:"));
+        discRow.add(discSubjectsField);
+        discRow.add(discoverButton);
+        discPidField.setToolTipText("The property whose distinct values form the "
+                + "vocabulary, e.g. P31 (type) or P136 (genre).");
+        discSubjectsField.setToolTipText("A few sample subject QIDs to profile "
+                + "(e.g. some nominee or work QIDs), comma/space-separated.");
+
         JPanel top = new JPanel();
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
         top.add(viewRow);
         top.add(newRow);
+        top.add(discRow);
 
         add(top, BorderLayout.NORTH);
         add(cardsScroll, BorderLayout.CENTER);
@@ -79,6 +105,77 @@ public class SelectionViewerPanel extends JPanel {
 
         showButton.addActionListener(e -> showSelected());
         addButton.addActionListener(e -> addVocabulary());
+        discoverButton.addActionListener(e -> discoverVocabulary());
+    }
+
+    /** Run a value-vocabulary discovery and materialize it as a VocabularySelection. */
+    private void discoverVocabulary() {
+        String name = discNameField.getText().trim();
+        String pid = discPidField.getText().trim();
+        if (name.isBlank()) {
+            status.setText("Give the vocabulary a name.");
+            return;
+        }
+        if (!pid.matches("(?i)P\\d+")) {
+            status.setText("Enter a property, e.g. P31 (type) or P136 (genre).");
+            return;
+        }
+        List<String> subjects = new ArrayList<>();
+        for (String tok : discSubjectsField.getText().split("[,\\s]+")) {
+            if (tok != null && tok.trim().matches("(?i)Q\\d+")) {
+                subjects.add(tok.trim());
+            }
+        }
+        if (subjects.isEmpty()) {
+            status.setText("Enter a few sample subject QIDs (e.g. some nominees).");
+            return;
+        }
+        if (sparql == null) {
+            status.setText("No SPARQL client available for discovery.");
+            return;
+        }
+
+        status.setText("Discovering " + pid + " values over " + subjects.size()
+                + " subject(s)…");
+        discoverButton.setEnabled(false);
+        new SwingWorker<List<WikidataDynamicObject>, Void>() {
+            @Override
+            protected List<WikidataDynamicObject> doInBackground() {
+                return new ValueVocabularyDiscovery()
+                        .discover(subjects, pid, 200, 500, sparql, api, null);
+            }
+
+            @Override
+            protected void done() {
+                List<WikidataDynamicObject> values;
+                try {
+                    values = get();
+                } catch (Exception ex) {
+                    values = new ArrayList<>();
+                }
+                discoverButton.setEnabled(true);
+                if (values.isEmpty()) {
+                    status.setText("No " + pid + " values discovered over those subjects.");
+                    return;
+                }
+                List<String> qids = new ArrayList<>();
+                for (WikidataDynamicObject v : values) {
+                    qids.add(v.qid());
+                }
+                VocabularySelection s = new VocabularySelection(name);
+                s.valueQids(qids);
+                project.addSelection(s);
+                discNameField.setText("");
+                discPidField.setText("");
+                discSubjectsField.setText("");
+                refreshSelections();
+                selectionBox.setSelectedItem(name + "  [" + Selection.Kind.VOCABULARY + "]");
+                render(s, values);
+                status.setText(name + " [VOCABULARY]: discovered " + values.size()
+                        + " value(s) — set a field's target to \"" + name
+                        + "\" to use it as its value domain.");
+            }
+        }.execute();
     }
 
     private void addVocabulary() {
