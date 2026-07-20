@@ -8,6 +8,8 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
+import wikidata.explore.model.Selection;
+import wikidata.explore.model.VocabularySelection;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -91,7 +93,7 @@ public final class ReferentFieldLoad {
                 continue;
             }
             for (GeneratedFieldModel f : e.getValue()) {
-                loaded += loadField(e.getKey(), objs, f, api, sink);
+                loaded += loadField(model, e.getKey(), objs, f, api, sink);
             }
         }
         return loaded;
@@ -104,10 +106,11 @@ public final class ReferentFieldLoad {
     }
 
     private static int loadField(
-            String className, List<WikidataDynamicObject> objs,
+            GeneratedProjectModel model, String className,
+            List<WikidataDynamicObject> objs,
             GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
         return field.type() == FieldType.ENTITY
-                ? loadEntityField(className, objs, field, api, log)
+                ? loadEntityField(model, className, objs, field, api, log)
                 : loadLiteralField(className, objs, field, api, log);
     }
 
@@ -172,7 +175,8 @@ public final class ReferentFieldLoad {
     }
 
     private static int loadEntityField(
-            String className, List<WikidataDynamicObject> objs,
+            GeneratedProjectModel model, String className,
+            List<WikidataDynamicObject> objs,
             GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
 
         String pid = clean(field.mapping().propertyPid());
@@ -234,6 +238,20 @@ public final class ReferentFieldLoad {
         }
         log.message("Referent field load " + className + "." + field.name()
                 + " (" + pid + ") -> " + loaded + " value(s)\n");
+
+        // If this field's target is a VocabularySelection, REFRESH it to the distinct
+        // values just loaded — a DESCRIPTIVE vocabulary built as a by-product of the
+        // load (e.g. Nominee.type -> NomineeTypes = the distinct P31 types), exhaustive
+        // and free (no extra query). Refresh, not accumulate: the vocab tracks the data.
+        if (model != null) {
+            Selection target = model.findSelection(field.entityClassName());
+            if (target instanceof VocabularySelection vocab) {
+                vocab.valueQids(new ArrayList<>(valueQids));
+                log.message("Built vocabulary '" + vocab.name() + "' from "
+                        + className + "." + field.name() + " -> "
+                        + valueQids.size() + " distinct value(s)\n");
+            }
+        }
         return loaded;
     }
 

@@ -8,6 +8,7 @@ import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.VocabularySelection;
 
 import java.util.List;
 import java.util.Map;
@@ -81,6 +82,45 @@ class ReferentFieldLoadTest {
         Object y = ceremony.get("year");
         assertInstanceOf(aux.FlexibleDate.class, y);
         assertEquals(2024, ((aux.FlexibleDate) y).getYear());
+    }
+
+    /** Loading a field whose target is a VocabularySelection refreshes that vocab to
+     *  the distinct loaded values — the descriptive vocabulary is built for free. */
+    @Test void buildsAVocabularyFromTheLoadedFieldValues() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        model.addClass(nom);
+
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        GeneratedFieldModel type =
+                nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        type.mapping().propertyPid("P31");
+        type.entityClassName("NomineeTypes");   // target = a descriptive vocabulary
+        model.addClass(nominee);
+
+        model.addSelection(new VocabularySelection("NomineeTypes"));   // starts empty
+        model.rootClass(nom);
+
+        WikidataDynamicObject a = new WikidataDynamicObject("Q42", "Meryl Streep");
+        a.type("Nominee");
+        WikidataDynamicObject b = new WikidataDynamicObject("Q7", "The Iron Lady");
+        b.type("Nominee");
+
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .entity("Q42", "Meryl Streep", Map.of("P31", List.of("Q5")))       // human
+                .entity("Q7", "The Iron Lady", Map.of("P31", List.of("Q11424")))   // film
+                .entity("Q5", "human")
+                .entity("Q11424", "film");
+
+        ReferentFieldLoad.apply(model, List.of(a, b), api, null);
+
+        VocabularySelection built =
+                (VocabularySelection) model.findSelection("NomineeTypes");
+        assertEquals(List.of("Q5", "Q11424"), built.valueQids(),
+                "the vocabulary is the distinct P31 values actually loaded");
     }
 
     /** No declared property-fields on the referenced class -> nothing loads. */
