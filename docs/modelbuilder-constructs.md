@@ -162,6 +162,13 @@ into (see [[domain-library-extends]]). Constructing a tag-set vocabulary, for no
 is just the distinct `P31` types appearing in the field's referents
 (`ValueVocabularyDiscovery`, `pid = P31`); other construction methods can come later.
 
+**Pending (settled, parked) — the member-class layer.** A flat union of per-type
+fields on one class *clashes* on field names (Human's `date` vs Film's `date`); the
+resolution is to make the union's members real general classes and **stamp a referent
+by its ACTUAL `P31` type** (Human/Film), not the generic union name — so each renders
+under its own short-named schema, no prefixes. That's `ReferentClassStamp` stamping
+the member class instead of `Nominee`. Deferred until ceremony + type/genre are wired.
+
 ---
 
 ## Identity at a glance
