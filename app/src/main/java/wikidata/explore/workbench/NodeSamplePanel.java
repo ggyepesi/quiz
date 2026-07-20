@@ -142,8 +142,16 @@ public class NodeSamplePanel extends JPanel {
         buttonRow.add(statusLabel);
         buttonRow.add(cardinalityHintLabel);
 
+        JLabel hint = new JLabel(
+                "<html>Pulls a few instances of the selected class (or a chosen "
+                + "field) and shows their real values — to eyeball the data and "
+                + "to detect a field's <b>cardinality</b> (single vs. list) before "
+                + "you commit to it.</html>");
+        hint.setFont(hint.getFont().deriveFont(java.awt.Font.ITALIC));
+
         top.add(contextLabel, BorderLayout.NORTH);
         top.add(buttonRow, BorderLayout.CENTER);
+        top.add(hint, BorderLayout.SOUTH);
 
         add(top, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);

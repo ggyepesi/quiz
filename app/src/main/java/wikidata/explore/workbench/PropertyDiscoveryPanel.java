@@ -255,10 +255,25 @@ public class PropertyDiscoveryPanel extends JPanel {
         controls.add(searchField);
         controls.add(statusLabel);
 
+        JLabel hint = new JLabel(
+                "<html>Profiles the selected class's members: which properties they "
+                + "<b>have</b> (outgoing) or which <b>reference</b> them (incoming), "
+                + "ranked by coverage — click a row to turn a property into a field. "
+                + "<b>Override QID</b> profiles a class the tree node doesn't supply "
+                + "(a referenced-only class has none). <b>By target…</b> profiles one "
+                + "instance per membership target; <b>By type…</b> groups targets by "
+                + "recipient P31; <b>Qualifiers…</b> finds the relation's qualifiers."
+                + "</html>");
+        hint.setFont(hint.getFont().deriveFont(java.awt.Font.ITALIC));
+
         // The Discover tab is narrow, so this long control row would wrap and
         // clip its trailing fields/buttons. Keep them reachable via a
         // horizontal scrollbar.
-        add(objectview.utils.swing.ScrollPaneUtils.horizontalOnly(controls), BorderLayout.NORTH);
+        JPanel north = new JPanel(new BorderLayout(4, 2));
+        north.add(hint, BorderLayout.NORTH);
+        north.add(objectview.utils.swing.ScrollPaneUtils.horizontalOnly(controls),
+                BorderLayout.CENTER);
+        add(north, BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
 
         cancelButton.setEnabled(false);
