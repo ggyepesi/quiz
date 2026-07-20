@@ -28,10 +28,12 @@ import java.util.Set;
  *
  * <p>So <em>declaring the field IS the configuration</em> — nothing hardcoded.
  * Run AFTER {@link ReferentClassStamp} (referents must know their class) and after
- * a value domain / labels pass. Scope: OUTGOING, entity-valued property-fields
- * fetched via {@code wbgetentities}; incoming or literal fields are out of scope
- * for this pass. Values are labelled refs (a SINGLE field takes the first value, a
- * COLLECTION keeps all); an already-populated field is left alone.
+ * a value domain / labels pass. Scope: OUTGOING property-fields — ENTITY (labelled
+ * refs via {@code wbgetentities}), DATE (a {@link aux.FlexibleDate}) and STRING
+ * (the raw literal, both read off the statements' mainsnak) — so a referenced class
+ * can carry its own attributes, e.g. a {@code Ceremony} with a {@code year}/{@code
+ * date}. Incoming relations are still out of scope. A SINGLE field takes the first
+ * value, a COLLECTION keeps all; an already-populated field is left alone.
  */
 public final class ReferentFieldLoad {
 
@@ -57,7 +59,7 @@ public final class ReferentFieldLoad {
             }
             List<GeneratedFieldModel> fields = new ArrayList<>();
             for (GeneratedFieldModel f : c.fields()) {
-                if (f != null && f.type() == FieldType.ENTITY
+                if (f != null && loadableType(f.type())
                         && clean(f.mapping().propertyPid()).matches("(?i)P\\d+")) {
                     fields.add(f);
                 }
@@ -95,7 +97,81 @@ public final class ReferentFieldLoad {
         return loaded;
     }
 
+    /** Entity refs (outgoing claims), dates and plain strings load onto referents;
+     *  other kinds (boolean/auto) aren't a referent property load. */
+    private static boolean loadableType(FieldType t) {
+        return t == FieldType.ENTITY || t == FieldType.DATE || t == FieldType.STRING;
+    }
+
     private static int loadField(
+            String className, List<WikidataDynamicObject> objs,
+            GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
+        return field.type() == FieldType.ENTITY
+                ? loadEntityField(className, objs, field, api, log)
+                : loadLiteralField(className, objs, field, api, log);
+    }
+
+    /** DATE / STRING: the property's literal value(s) read off the statements
+     *  (mainsnak) — a DATE becomes a {@link aux.FlexibleDate}, a STRING the raw
+     *  literal. This is what lets a Ceremony carry its own {@code year}/{@code date}. */
+    private static int loadLiteralField(
+            String className, List<WikidataDynamicObject> objs,
+            GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
+
+        String pid = clean(field.mapping().propertyPid());
+        List<String> qids = new ArrayList<>(objs.size());
+        for (WikidataDynamicObject o : objs) {
+            qids.add(o.qid());
+        }
+
+        Map<String, List<WikidataApiClient.ApiStatement>> stmts;
+        try {
+            stmts = api.getStatements(qids, pid, List.of(), log::subquery);
+        } catch (Exception ex) {
+            if (Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
+            } else {
+                log.message("Referent field load " + className + "." + field.name()
+                        + " (" + pid + ") failed (" + ex.getMessage() + ")\n");
+            }
+            return 0;
+        }
+
+        boolean collection = field.cardinality() != null
+                && field.cardinality().isCollection();
+        boolean date = field.type() == FieldType.DATE;
+        int loaded = 0;
+        for (WikidataDynamicObject o : objs) {
+            if (o.get(field.name()) != null) {
+                continue;
+            }
+            List<WikidataApiClient.ApiStatement> ss = stmts.get(o.qid());
+            if (ss == null || ss.isEmpty()) {
+                continue;
+            }
+            List<Object> values = new ArrayList<>();
+            for (WikidataApiClient.ApiStatement s : ss) {
+                String raw = s.value();
+                if (raw == null || raw.isBlank()) {
+                    continue;
+                }
+                Object v = date ? aux.FlexibleDate.fromWikidataLiteral(raw) : raw;
+                if (v != null) {
+                    values.add(v);
+                }
+            }
+            if (values.isEmpty()) {
+                continue;
+            }
+            o.put(field.name(), collection ? values : values.get(0));
+            loaded++;
+        }
+        log.message("Referent field load " + className + "." + field.name()
+                + " (" + pid + ") -> " + loaded + " value(s)\n");
+        return loaded;
+    }
+
+    private static int loadEntityField(
             String className, List<WikidataDynamicObject> objs,
             GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
 

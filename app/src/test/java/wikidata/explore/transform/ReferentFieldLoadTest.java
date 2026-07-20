@@ -51,6 +51,38 @@ class ReferentFieldLoadTest {
                 ((WikidataDynamicObject) ((List<?>) genreVal).get(0)).getDisplayName());
     }
 
+    /** A DATE property-field on a referenced class loads as a FlexibleDate from the
+     *  statement's literal value — e.g. a Ceremony's year/date (P585). */
+    @Test void loadsADateLiteralFieldOntoReferents() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.addField("ceremony", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Ceremony");
+        model.addClass(nom);
+
+        GeneratedClassModel ceremonyClass = new GeneratedClassModel("Ceremony");
+        GeneratedFieldModel year =
+                ceremonyClass.addField("year", FieldType.DATE, FieldCardinality.SINGLE);
+        year.mapping().propertyPid("P585");
+        model.addClass(ceremonyClass);
+        model.rootClass(nom);
+
+        WikidataDynamicObject ceremony =
+                new WikidataDynamicObject("Q100", "97th Academy Awards");
+        ceremony.type("Ceremony");
+
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .statement("Q100", "P585", "Q100$s1", "+2024-03-10T00:00:00Z", Map.of());
+
+        int loaded = ReferentFieldLoad.apply(model, List.of(ceremony), api, null);
+
+        assertEquals(1, loaded);
+        Object y = ceremony.get("year");
+        assertInstanceOf(aux.FlexibleDate.class, y);
+        assertEquals(2024, ((aux.FlexibleDate) y).getYear());
+    }
+
     /** No declared property-fields on the referenced class -> nothing loads. */
     @Test void doesNothingWhenTheReferencedClassHasNoPropertyFields() {
         GeneratedProjectModel model = new GeneratedProjectModel();
