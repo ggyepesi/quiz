@@ -292,9 +292,17 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // ForWork.genre (P136). No-op unless such fields are declared, so
                     // it costs nothing until the model opts in. Needs wbgetentities;
                     // mirror QualifierLoader's own client.
+                    // Roots = the shared pool AND the reified records: a referenced
+                    // class's members may live ONLY nested inside a reified record
+                    // (e.g. Ceremony as a Nomination's P805 qualifier value, never a
+                    // top-level subject), and ReferentFieldLoad flattens the reachable
+                    // graph to find them.
+                    List<WikidataDynamicObject> referentLoadRoots =
+                            new ArrayList<>(shared.values());
+                    referentLoadRoots.addAll(reified);
                     int loadedReferentFields =
                             wikidata.explore.transform.ReferentFieldLoad.apply(
-                                    project, shared.values(),
+                                    project, referentLoadRoots,
                                     new wikidata.api.WikidataApiClient(
                                             "QuizProject/1.0 (ggyepesi@gmail.com)"),
                                     genLog);

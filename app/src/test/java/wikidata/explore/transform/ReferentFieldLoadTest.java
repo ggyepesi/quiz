@@ -123,6 +123,44 @@ class ReferentFieldLoadTest {
                 "the vocabulary is the distinct P31 values actually loaded");
     }
 
+    /** A referent that exists ONLY nested inside another record (never a top-level
+     *  pool entry) is still found and loaded — e.g. a Ceremony as a Nomination's P805
+     *  qualifier value. The pool passed in contains only the Nomination. */
+    @Test void loadsOntoAReferentReachableOnlyThroughANestedField() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.addField("ceremony", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Ceremony");
+        model.addClass(nom);
+
+        GeneratedClassModel ceremonyClass = new GeneratedClassModel("Ceremony");
+        ceremonyClass.addField("year", FieldType.DATE, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P585");
+        model.addClass(ceremonyClass);
+        model.rootClass(nom);
+
+        // The ceremony is stamped and nested inside the nomination, but NOT a member
+        // of the pool the caller passes (mirrors a qualifier-only referent).
+        WikidataDynamicObject ceremony =
+                new WikidataDynamicObject("Q100", "97th Academy Awards");
+        ceremony.type("Ceremony");
+        WikidataDynamicObject nomination =
+                new WikidataDynamicObject("Q900$stmt", "The Brutalist — Best Picture");
+        nomination.type("Nomination");
+        nomination.put("ceremony", ceremony);
+
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .statement("Q100", "P585", "Q100$s1", "+2025-03-02T00:00:00Z", Map.of());
+
+        int loaded = ReferentFieldLoad.apply(
+                model, List.of(nomination), api, null);   // pool = Nomination only
+
+        assertEquals(1, loaded);
+        assertInstanceOf(aux.FlexibleDate.class, ceremony.get("year"));
+        assertEquals(2025, ((aux.FlexibleDate) ceremony.get("year")).getYear());
+    }
+
     /** No declared property-fields on the referenced class -> nothing loads. */
     @Test void doesNothingWhenTheReferencedClassHasNoPropertyFields() {
         GeneratedProjectModel model = new GeneratedProjectModel();

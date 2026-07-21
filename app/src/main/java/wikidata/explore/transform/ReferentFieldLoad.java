@@ -11,8 +11,12 @@ import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.model.Selection;
 import wikidata.explore.model.VocabularySelection;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -74,9 +78,14 @@ public final class ReferentFieldLoad {
             return 0;
         }
 
-        // Index the referents actually in the pool by their stamped class.
+        // Index the referents by their stamped class. Walk the WHOLE reachable
+        // graph (entity field values), not just the top-level pool: a referent can
+        // exist ONLY nested inside another record — e.g. a Ceremony is a qualifier
+        // value (P805) of a Nomination, never an extraction subject, so it never
+        // lands in the top-level pool the way Nominee/ForWork (which ARE subjects)
+        // do. Flattening finds it regardless of which pool the caller passes.
         Map<String, List<WikidataDynamicObject>> referents = new LinkedHashMap<>();
-        for (WikidataDynamicObject o : pool) {
+        for (WikidataDynamicObject o : collectReachable(pool)) {
             if (o == null || o.qid() == null || !o.qid().matches("Q\\d+")) {
                 continue;
             }
@@ -263,6 +272,48 @@ public final class ReferentFieldLoad {
             }
         }
         return loaded;
+    }
+
+    /** All distinct (by identity) {@link WikidataDynamicObject}s reachable from the
+     *  roots through entity field values — flattens nested referents into one list so
+     *  a qualifier-only referent (never a top-level pool entry) is still indexed. */
+    private static List<WikidataDynamicObject> collectReachable(
+            Collection<WikidataDynamicObject> roots) {
+        Set<WikidataDynamicObject> seen =
+                Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<WikidataDynamicObject> queue = new ArrayDeque<>();
+        for (WikidataDynamicObject r : roots) {
+            if (r != null && seen.add(r)) {
+                queue.addLast(r);
+            }
+        }
+        List<WikidataDynamicObject> out = new ArrayList<>(seen.size());
+        while (!queue.isEmpty()) {
+            WikidataDynamicObject o = queue.pollFirst();   // FIFO: preserve root order
+            out.add(o);
+            for (Object v : o.dynamicFieldValues().values()) {
+                pushReachable(v, seen, queue);
+            }
+        }
+        return out;
+    }
+
+    private static void pushReachable(
+            Object v, Set<WikidataDynamicObject> seen,
+            Deque<WikidataDynamicObject> queue) {
+        if (v instanceof WikidataDynamicObject w) {
+            if (seen.add(w)) {
+                queue.addLast(w);
+            }
+        } else if (v instanceof Collection<?> c) {
+            for (Object item : c) {
+                pushReachable(item, seen, queue);
+            }
+        } else if (v instanceof Map<?, ?> m) {
+            for (Object item : m.values()) {
+                pushReachable(item, seen, queue);
+            }
+        }
     }
 
     private static String clean(String s) {
