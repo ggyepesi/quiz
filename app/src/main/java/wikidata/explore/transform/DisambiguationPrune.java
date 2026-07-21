@@ -3,12 +3,17 @@ package wikidata.explore.transform;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.FieldType;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -30,8 +35,12 @@ import java.util.Set;
  * just that member). So the nomination survives — it merely loses its wrong ceremony
  * link — rather than being dropped over one bad qualifier.
  *
- * <p>Walks the whole reachable graph, because such a referent can live ONLY nested
- * inside another record (a qualifier value never promoted to a top-level pool entry).
+ * <p>Scoped for cost: only entities STAMPED as a modeled class are vetted (a wrong
+ * reference always lands as one of those; raw type/genre value entities are skipped),
+ * and when a class already carries its own P31 as a declared field (e.g. Nominee.type)
+ * that is read off the instance instead of re-fetched. So the only network cost is a
+ * P31 fetch for the stamped members whose P31 we don't already have (e.g. Ceremony,
+ * ForWork). Walks the reachable graph, since such a referent can be nested-only.
  */
 public final class DisambiguationPrune {
 
@@ -48,6 +57,7 @@ public final class DisambiguationPrune {
     /** @return the pruned top-level objects — the caller removes them from the served
      *  pool (nested ones simply become unreachable once references are scrubbed). */
     public static Set<WikidataDynamicObject> apply(
+            GeneratedProjectModel model,
             Collection<WikidataDynamicObject> pool,
             WikidataApiClient api,
             GenerationLog log) {
@@ -59,43 +69,78 @@ public final class DisambiguationPrune {
         }
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
 
-        List<WikidataDynamicObject> reachable = collectReachable(pool);
-        LinkedHashSet<String> qids = new LinkedHashSet<>();
-        for (WikidataDynamicObject o : reachable) {
-            if (o.qid() != null && o.qid().matches("Q\\d+")) {
-                qids.add(o.qid());
-            }
-        }
-        if (qids.isEmpty()) {
-            return removed;
-        }
-
-        Map<String, WikidataApiClient.ApiEntity> details;
-        try {
-            details = api.getEntities(new ArrayList<>(qids), List.of("P31"), sink::subquery);
-        } catch (Exception ex) {
-            if (Thread.currentThread().isInterrupted()) {
-                Thread.currentThread().interrupt();
-            } else {
-                sink.message("Disambiguation prune P31 fetch failed ("
-                        + ex.getMessage() + ")\n");
-            }
-            return removed;
-        }
-
-        Set<String> badQids = new HashSet<>();
-        for (String q : qids) {
-            WikidataApiClient.ApiEntity e = details.get(q);
-            if (e == null) {
-                continue;
-            }
-            for (String t : e.claim("P31")) {
-                if (INTERNAL_TYPES.contains(t)) {
-                    badQids.add(q);
-                    break;
+        // Modeled class names (the stamps we vet) and, per class, the declared field
+        // that already holds its P31 (so we needn't fetch it).
+        Set<String> modeled = new HashSet<>();
+        Map<String, String> p31FieldByClass = new HashMap<>();
+        if (model != null) {
+            for (GeneratedClassModel c : model.classes()) {
+                if (c == null) {
+                    continue;
+                }
+                modeled.add(c.className());
+                for (GeneratedFieldModel f : c.fields()) {
+                    if (f != null && f.type() == FieldType.ENTITY
+                            && "P31".equals(clean(f.mapping().propertyPid()))) {
+                        p31FieldByClass.put(c.className(), f.name());
+                        break;
+                    }
                 }
             }
         }
+
+        Set<String> badQids = new HashSet<>();
+        LinkedHashSet<String> needFetch = new LinkedHashSet<>();
+        List<WikidataDynamicObject> reachable = collectReachable(pool);
+        for (WikidataDynamicObject o : reachable) {
+            String qid = o.qid();
+            if (qid == null || !qid.matches("Q\\d+")) {
+                continue;
+            }
+            // Only vet STAMPED domain members; a wrong reference becomes one. Raw
+            // value entities (type/genre tags) are unstamped and skipped.
+            if (o.typeName() == null || !modeled.contains(o.typeName())) {
+                continue;
+            }
+            String p31Field = p31FieldByClass.get(o.typeName());
+            Object p31Value = p31Field == null ? null : o.get(p31Field);
+            if (p31Value != null) {
+                if (hasInternalType(p31Value)) {   // P31 already on the instance
+                    badQids.add(qid);
+                }
+            } else {
+                needFetch.add(qid);
+            }
+        }
+
+        if (!needFetch.isEmpty()) {
+            Map<String, WikidataApiClient.ApiEntity> details;
+            try {
+                details = api.getEntities(
+                        new ArrayList<>(needFetch), List.of("P31"), sink::subquery);
+            } catch (Exception ex) {
+                if (Thread.currentThread().isInterrupted()) {
+                    Thread.currentThread().interrupt();
+                } else {
+                    sink.message("Disambiguation prune P31 fetch failed ("
+                            + ex.getMessage() + ")\n");
+                }
+                details = Map.of();
+            }
+            for (String q : needFetch) {
+                WikidataApiClient.ApiEntity e = details.get(q);
+                if (e == null) {
+                    continue;
+                }
+                for (String t : e.claim("P31")) {
+                    if (INTERNAL_TYPES.contains(t)) {
+                        badQids.add(q);
+                        break;
+                    }
+                }
+            }
+        }
+
         if (badQids.isEmpty()) {
             return removed;
         }
@@ -111,6 +156,21 @@ public final class DisambiguationPrune {
                 + " Wikimedia-internal referent(s) " + new ArrayList<>(badQids)
                 + ", references scrubbed (referencing records kept)\n");
         return removed;
+    }
+
+    /** True if any value member is a WDO whose QID is a Wikimedia-internal type. */
+    private static boolean hasInternalType(Object p31Value) {
+        if (p31Value instanceof WikidataDynamicObject w) {
+            return w.qid() != null && INTERNAL_TYPES.contains(w.qid());
+        }
+        if (p31Value instanceof Collection<?> c) {
+            for (Object item : c) {
+                if (hasInternalType(item)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Clears field values that point at a bad QID: a single-valued field is removed
@@ -152,6 +212,15 @@ public final class DisambiguationPrune {
     private static boolean isBad(Object v, Set<String> badQids) {
         return v instanceof WikidataDynamicObject w
                 && w.qid() != null && badQids.contains(w.qid());
+    }
+
+    private static String clean(String s) {
+        if (s == null) {
+            return "";
+        }
+        s = s.trim();
+        int slash = s.lastIndexOf('/');
+        return slash >= 0 ? s.substring(slash + 1) : s;
     }
 
     private static List<WikidataDynamicObject> collectReachable(

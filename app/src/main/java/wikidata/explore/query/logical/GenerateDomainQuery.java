@@ -332,7 +332,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // neither counts nor pollutes a descriptive vocabulary.
                     java.util.Set<WikidataDynamicObject> disambig =
                             wikidata.explore.transform.DisambiguationPrune.apply(
-                                    pool,
+                                    project, pool,
                                     new wikidata.api.WikidataApiClient(
                                             "QuizProject/1.0 (ggyepesi@gmail.com)"),
                                     genLog);

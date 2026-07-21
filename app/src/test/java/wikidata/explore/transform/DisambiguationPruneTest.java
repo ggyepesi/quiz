@@ -3,6 +3,10 @@ package wikidata.explore.transform;
 import org.junit.jupiter.api.Test;
 import wikidata.api.FakeWikidataApiClient;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldType;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.List;
 import java.util.Map;
@@ -14,6 +18,24 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DisambiguationPruneTest {
+
+    /** Model: Nomination.ceremony -> Ceremony, Nominee.type (P31) -> a vocab. */
+    private static GeneratedProjectModel model() {
+        GeneratedProjectModel m = new GeneratedProjectModel();
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.addField("ceremony", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Ceremony");
+        nom.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        m.addClass(nom);
+        m.addClass(new GeneratedClassModel("Ceremony"));   // no P31 field -> fetched
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P31");             // P31 read off the instance
+        m.addClass(nominee);
+        m.rootClass(nom);
+        return m;
+    }
 
     /** A nomination whose ceremony (a nested P805 referent) is a disambiguation page:
      *  the page is pruned and the link scrubbed, but the nomination is KEPT. */
@@ -34,7 +56,6 @@ class DisambiguationPruneTest {
         goodNom.type("Nomination");
         goodNom.put("ceremony", realCeremony);
 
-        // Pool holds the two nominations; the disambig ceremony is only nested.
         List<WikidataDynamicObject> pool =
                 new java.util.ArrayList<>(List.of(badNom, goodNom));
 
@@ -42,21 +63,41 @@ class DisambiguationPruneTest {
                 .entity("Q1209673", "1968 Academy Awards",
                         Map.of("P31", List.of("Q4167410")))     // disambiguation page
                 .entity("Q100", "39th Academy Awards",
-                        Map.of("P31", List.of("Q4504495")))     // award ceremony
-                .entity("Q9$s1", "A Time for Burning — Best Documentary")
-                .entity("Q9$s2", "Some Film — Best Picture");
+                        Map.of("P31", List.of("Q4504495")));    // award ceremony
 
         Set<WikidataDynamicObject> removed =
-                DisambiguationPrune.apply(pool, api, null);
+                DisambiguationPrune.apply(model(), pool, api, null);
         pool.removeIf(removed::contains);
 
-        // The nomination is kept, its bad ceremony link cleared.
         assertTrue(pool.contains(badNom), "the nomination survives");
         assertNull(badNom.get("ceremony"), "the disambiguation link is scrubbed");
-        // The good nomination's real ceremony is untouched.
         assertEquals(realCeremony, goodNom.get("ceremony"));
-        // The disambiguation page is not served (unreachable / removed).
         assertFalse(pool.contains(disambig));
+    }
+
+    /** A stamped member that already carries its P31 (Nominee.type) is vetted WITHOUT
+     *  a fetch: a nominee whose loaded P31 is a disambiguation page is pruned. */
+    @Test void detectsViaTheAlreadyLoadedP31FieldWithoutFetching() {
+        WikidataDynamicObject badNominee =
+                new WikidataDynamicObject("Q999", "Some disambiguation");
+        badNominee.type("Nominee");
+        badNominee.put("type", List.of(
+                new WikidataDynamicObject("Q4167410", "Wikimedia disambiguation page")));
+        WikidataDynamicObject nom = new WikidataDynamicObject("Q9$s1", "n");
+        nom.type("Nomination");
+        nom.put("nominee", badNominee);
+
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(List.of(nom));
+
+        // No entity() stubs: if it tried to fetch, it would find nothing — proving the
+        // detection came from the instance's own P31 field.
+        FakeWikidataApiClient api = new FakeWikidataApiClient();
+
+        Set<WikidataDynamicObject> removed =
+                DisambiguationPrune.apply(model(), pool, api, null);
+
+        assertTrue(removed.contains(badNominee));
+        assertNull(nom.get("nominee"), "the bad nominee link is scrubbed");
     }
 
     /** No internal-type referents -> nothing pruned. */
@@ -69,10 +110,9 @@ class DisambiguationPruneTest {
         List<WikidataDynamicObject> pool = new java.util.ArrayList<>(List.of(nom));
 
         FakeWikidataApiClient api = new FakeWikidataApiClient()
-                .entity("Q9$s1", "n")
                 .entity("Q100", "39th Academy Awards", Map.of("P31", List.of("Q4504495")));
 
-        assertTrue(DisambiguationPrune.apply(pool, api, null).isEmpty());
+        assertTrue(DisambiguationPrune.apply(model(), pool, api, null).isEmpty());
         assertEquals(c, nom.get("ceremony"));
     }
 }
