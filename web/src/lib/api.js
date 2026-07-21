@@ -58,6 +58,12 @@ export function getDimensions(type) {
   return json(`${apiBase()}/api/dimensions?type=${encodeURIComponent(type)}`);
 }
 
+/** Per-field coverage + verdict for a type: [{ label, path, present, total,
+ *  expectation, verdict }] — the data-quality report. */
+export function getCoverage(type) {
+  return json(`${apiBase()}/api/coverage?type=${encodeURIComponent(type)}`);
+}
+
 /** @returns {Promise<object|null>} full QuizableView */
 export function getQuizable(type, id) {
   return json(`${apiBase()}/api/quizable/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);

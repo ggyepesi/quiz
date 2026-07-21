@@ -106,6 +106,7 @@
       {/each}
     </nav>
     <div class="actions">
+      <a class="play ghost" href="/quality">Quality</a>
       <a class="play ghost" href="/builder">Builder</a>
       <a class="play ghost" href="/pairing">Pair up →</a>
       <a class="play" href="/quiz">Play quiz →</a>
