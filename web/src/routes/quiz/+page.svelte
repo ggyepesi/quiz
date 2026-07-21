@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { getDomains, getFields, getGroups, getQuiz, assetUrl } from '$lib/api.js';
+  import { getDomains, getFields, getGroups, getDimensions, getQuiz, assetUrl } from '$lib/api.js';
   import GroupTree from '$lib/GroupTree.svelte';
   import FieldPicker from '$lib/FieldPicker.svelte';
   import ImageCarousel from '$lib/ImageCarousel.svelte';
@@ -12,10 +12,33 @@
   let fields = $state([]);
   let groupTree = $state(null);
   let group = $state('');
+  let dimensions = $state([]);
   let promptFields = $state([]);
   let answerFields = $state([]);
   let n = $state(10);
   let loadingFields = $state(false);
+
+  // The field PATHS the current group is scoped by (constant across its members) —
+  // parsed from the group's fullName ("All Nomination/type/human" → dimension "type")
+  // and mapped label→path via the declared dimensions (label "type" → "nominee.type").
+  function excludedPaths(g) {
+    const set = new Set();
+    if (!g) return set;
+    const segs = g.split('/');
+    const labelToPath = new Map(dimensions.map((d) => [d.label, d.path]));
+    for (let k = 1; k < segs.length; k += 2) {
+      set.add(labelToPath.get(segs[k]) ?? segs[k]);
+    }
+    return set;
+  }
+  const excluded = $derived(excludedPaths(group));
+
+  function selectGroup(fn) {
+    group = fn;
+    const ex = excludedPaths(fn);
+    promptFields = promptFields.filter((p) => !ex.has(p));
+    answerFields = answerFields.filter((a) => !ex.has(a));
+  }
 
   function togglePrompt(name, on) {
     if (on) {
@@ -77,9 +100,13 @@
       const a = (txt ?? fields.find((f) => !promptFields.includes(f.name)) ?? fields[0])?.name;
       answerFields = a ? [a] : [];
 
-      const tree = await getGroups(t);
+      const [tree, dims] = await Promise.all([
+        getGroups(t),
+        getDimensions(t).catch(() => [])
+      ]);
       if (type !== t) return;
       groupTree = tree;
+      dimensions = dims ?? [];
       group = tree ? tree.fullName : '';
     } finally {
       if (type === t) loadingFields = false;
@@ -160,7 +187,7 @@
             <div class="group-field">
               <span class="field-label">Group</span>
               <div class="group-tree">
-                <GroupTree node={groupTree} selected={group} onSelect={(fn) => (group = fn)} />
+                <GroupTree node={groupTree} selected={group} onSelect={selectGroup} />
               </div>
             </div>
           {/if}
@@ -170,6 +197,7 @@
                 {type}
                 {promptFields}
                 {answerFields}
+                exclude={excluded}
                 onPrompt={togglePrompt}
                 onAnswer={toggleAnswer}
               />

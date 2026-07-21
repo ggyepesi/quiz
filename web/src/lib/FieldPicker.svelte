@@ -12,7 +12,10 @@
     answerFields,
     onPrompt,
     onAnswer,
-    depth = 0
+    depth = 0,
+    // Field paths to hide — the dimension(s) the current quiz group is scoped by are
+    // constant across its members, so they'd be a degenerate prompt / giveaway answer.
+    exclude = new Set()
   } = $props();
 
   let fields = $state([]);
@@ -38,6 +41,7 @@
 {:else}
   {#each fields as f}
     {@const fp = full(f.name)}
+    {#if !exclude.has(fp)}
     <div class="frow">
       <span class="fname" style="padding-left:{depth * 14}px">
         {#if f.expandable}
@@ -51,7 +55,8 @@
       <span class="cb"><input type="checkbox" checked={answerFields.includes(fp)} onchange={(e) => onAnswer(fp, e.currentTarget.checked)} /></span>
     </div>
     {#if f.expandable && open[fp]}
-      <Self {type} path={fp} {promptFields} {answerFields} {onPrompt} {onAnswer} depth={depth + 1} />
+      <Self {type} path={fp} {promptFields} {answerFields} {onPrompt} {onAnswer} {exclude} depth={depth + 1} />
+    {/if}
     {/if}
   {/each}
 {/if}
