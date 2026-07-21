@@ -16,6 +16,8 @@ import wikidata.explore.generation.GenerationRun;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
+import wikidata.explore.model.Selection;
+import wikidata.explore.model.VocabularySelection;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.logical.GenerateDomainQuery;
@@ -677,6 +679,18 @@ public class ModelBuilderFrame extends JFrame {
 
             if (run != null) {
                 instancesPanel.accept(run.objectResult());
+                // Generation runs on a COPY of the model, so a descriptive vocabulary
+                // built from the loaded data (e.g. NomineeType, WorkGenre) lands on
+                // that copy and is otherwise lost. Fold the built values back into the
+                // live model so "Save domain" persists them — only filling vocabularies
+                // that are still EMPTY here, never overwriting authored constraint
+                // vocabularies (e.g. OscarCategories).
+                int filledVocabs = mergeBuiltVocabularies(run.modelSnapshot());
+                if (filledVocabs > 0) {
+                    classModelPanel.refresh();
+                    logWindow.info(filledVocabs + " vocabulary(ies) filled from the "
+                            + "generated data — use \"Save domain\" to persist them.");
+                }
                 // Do NOT auto-save: generating used to silently overwrite the
                 // project snapshot (a greekmyth run clobbered constellations).
                 // The run is held in memory + shown here; persisting is explicit
@@ -690,6 +704,43 @@ public class ModelBuilderFrame extends JFrame {
                 instancesPanel.clear();
             }
         });
+    }
+
+    /** Fold vocabularies BUILT during generation (from a referenced field's loaded
+     *  values) back into the live model, so they survive "Save domain". Fills only a
+     *  vocabulary that is still empty here — a built descriptive vocab (NomineeType,
+     *  WorkGenre) — and never overwrites an authored constraint vocab that already has
+     *  values (OscarCategories). Creates the vocab locally if generation invented it.
+     *  @return how many vocabularies were newly filled/created. */
+    private int mergeBuiltVocabularies(GeneratedProjectModel built) {
+        return mergeBuiltVocabularies(built, projectModel);
+    }
+
+    /** Package-private + static so it is unit-testable without a live frame. */
+    static int mergeBuiltVocabularies(
+            GeneratedProjectModel built, GeneratedProjectModel into) {
+        if (built == null || into == null) {
+            return 0;
+        }
+        int filled = 0;
+        for (Selection s : built.selections()) {
+            if (!(s instanceof VocabularySelection v)
+                    || v.valueQids() == null || v.valueQids().isEmpty()) {
+                continue;
+            }
+            Selection existing = into.findSelection(v.name());
+            if (existing == null) {
+                VocabularySelection created = new VocabularySelection(v.name());
+                created.valueQids(new java.util.ArrayList<>(v.valueQids()));
+                into.addSelection(created);
+                filled++;
+            } else if (existing instanceof VocabularySelection target
+                    && (target.valueQids() == null || target.valueQids().isEmpty())) {
+                target.valueQids(new java.util.ArrayList<>(v.valueQids()));
+                filled++;
+            }
+        }
+        return filled;
     }
 
     // Greek myth (and history generally) has many distinct entities sharing a
