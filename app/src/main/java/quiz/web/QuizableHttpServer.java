@@ -78,6 +78,7 @@ public class QuizableHttpServer {
         context("/api/groups", this::handleGroups);
         context("/api/dimensions", this::handleDimensions);
         context("/api/coverage", this::handleCoverage);
+        context("/api/missing", this::handleMissing);
         context("/api/chart/", this::handleChart);
 
         // Model-builder (workbench) endpoints — read-only first slice, gated by
@@ -379,6 +380,19 @@ public class QuizableHttpServer {
         String type = queryParam(ex, "type");
         try {
             writeJson(ex, 200, store.coverage(type));
+        } catch (Exception e) {
+            writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    // GET /api/missing?type=T&path=P&limit=N -> members lacking a value at P (the
+    // drill-down behind a coverage gap): [{id,name,type}], id is a Q-id to link to WD.
+    private void handleMissing(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+        String path = queryParam(ex, "path");
+        int limit = intParam(ex, "limit", 200);
+        try {
+            writeJson(ex, 200, store.missing(type, path, limit));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }

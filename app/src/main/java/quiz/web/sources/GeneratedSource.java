@@ -229,12 +229,40 @@ public class GeneratedSource implements QuizableSource {
     @Override
     public List<Coverage.FieldCoverage> coverage() throws Exception {
         Collection<? extends Quizable> all = load();
-        List<Dimension> dims = declaredDimensions(new ArrayList<>(all));
+        List<Dimension> paths = coveragePaths(new ArrayList<>(all));
         Map<String, String> expectations = new LinkedHashMap<>();
-        for (Dimension d : dims) {
+        for (Dimension d : paths) {
             expectations.put(d.path(), expectationForPath(d.path()));
         }
-        return Coverage.of(all, dims, expectations);
+        return Coverage.of(all, paths, expectations);
+    }
+
+    // The paths the validator checks coverage for: the served type's DECLARED model
+    // fields (so a field is checked even if the sample is homogeneous — e.g. Nominee.type
+    // is all "human" among the first alphabetical nominees) plus the nested vocab paths.
+    // Falls back to the sample-derived dimensions for a legacy/unmodeled snapshot.
+    private List<Dimension> coveragePaths(Collection<? extends Quizable> sample) {
+        wikidata.explore.model.GeneratedClassModel c =
+                model == null ? null : model.findClass(type);
+        if (c == null) {
+            return declaredDimensions(sample);
+        }
+        List<Dimension> out = new ArrayList<>();
+        java.util.Set<String> seen = new HashSet<>();
+        for (wikidata.explore.model.GeneratedFieldModel f : c.fields()) {
+            if (f == null || f.name() == null || structural.contains(f.name())) {
+                continue;
+            }
+            if (seen.add(f.name())) {
+                out.add(new Dimension(f.name(), f.name(), Dimension.Kind.VALUE));
+            }
+        }
+        for (String[] p : vocabFacetPaths) {
+            if (seen.add(p[0])) {
+                out.add(new Dimension(p[1], p[0], Dimension.Kind.VALUE));
+            }
+        }
+        return out;
     }
 
     // The declared expectation (NONE / EXPECTED / REQUIRED) of the LEAF field a dotted

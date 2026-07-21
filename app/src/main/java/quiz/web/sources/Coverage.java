@@ -73,7 +73,7 @@ public final class Coverage {
     }
 
     /** Resolves a dotted path over one member and reports whether any value survives. */
-    private static boolean hasValue(Quizable q, String path) {
+    public static boolean hasValue(Quizable q, String path) {
         List<Object> current = new ArrayList<>();
         current.add(q);
         for (String seg : path.split("\\.")) {

@@ -1,12 +1,30 @@
 <script>
   import { onMount } from 'svelte';
-  import { getDomains, getCoverage } from '$lib/api.js';
+  import { getDomains, getCoverage, getMissing } from '$lib/api.js';
 
   let domains = $state([]);
   let type = $state('');
   let rows = $state([]);
   let loading = $state(false);
   let error = $state(null);
+
+  // Drill-down: the currently expanded field path + its missing members.
+  let openPath = $state(null);
+  let missing = $state([]);
+  let loadingMissing = $state(false);
+
+  const wikidata = (id) => (/^Q\d+$/.test(id) ? `https://www.wikidata.org/wiki/${id}` : null);
+
+  async function drill(r) {
+    if (openPath === r.path) {
+      openPath = null;
+      return;
+    }
+    openPath = r.path;
+    loadingMissing = true;
+    missing = (await getMissing(type, r.path).catch(() => [])) ?? [];
+    loadingMissing = false;
+  }
 
   const rank = { VIOLATION: 0, GAP: 1, OK: 2 };
   const sorted = $derived(
@@ -32,6 +50,8 @@
 
   async function selectType(t) {
     type = t;
+    openPath = null;
+    missing = [];
     loading = true;
     rows = (await getCoverage(t)) ?? [];
     loading = false;
@@ -81,8 +101,11 @@
         </thead>
         <tbody>
           {#each sorted as r}
-            <tr>
+            {@const gap = r.total - r.present}
+            <tr class:drillable={gap > 0} class:open={openPath === r.path}
+                onclick={() => gap > 0 && drill(r)}>
               <td class="fld">
+                <span class="caret">{gap > 0 ? (openPath === r.path ? '▾' : '▸') : ''}</span>
                 <span class="nm">{r.label}</span>
                 {#if r.path !== r.label}<span class="path">{r.path}</span>{/if}
               </td>
@@ -91,10 +114,34 @@
                 <span class="pctn">{pct(r)}%</span>
               </td>
               <td class="num">{r.present.toLocaleString()}</td>
-              <td class="num" class:miss={r.total - r.present > 0}>{(r.total - r.present).toLocaleString()}</td>
+              <td class="num" class:miss={gap > 0}>{gap.toLocaleString()}</td>
               <td class="exp">{r.expectation === 'NONE' ? '—' : r.expectation.toLowerCase()}</td>
               <td><span class="badge {r.verdict}">{r.verdict.toLowerCase()}</span></td>
             </tr>
+            {#if openPath === r.path}
+              <tr class="detail">
+                <td colspan="6">
+                  {#if loadingMissing}
+                    <span class="hint">Loading missing members…</span>
+                  {:else if missing.length}
+                    <div class="mhead">{gap.toLocaleString()} missing <b>{r.label}</b> — showing {missing.length}:</div>
+                    <div class="mlist">
+                      {#each missing as m}
+                        <span class="mitem">
+                          {m.name}
+                          {#if wikidata(m.id)}
+                            <a href={wikidata(m.id)} target="_blank" rel="noopener" title="Open in Wikidata">↗ {m.id}</a>
+                          {/if}
+                        </span>
+                      {/each}
+                    </div>
+                    <div class="mfoot">Next: check other sources (DBpedia) for a candidate fill.</div>
+                  {:else}
+                    <span class="hint">No missing members resolved.</span>
+                  {/if}
+                </td>
+              </tr>
+            {/if}
           {/each}
         </tbody>
       </table>
@@ -156,4 +203,17 @@
 
   .foot { margin-top: 14px; font-size: 12px; color: var(--muted); }
   .foot .badge { text-transform: none; }
+
+  tr.drillable { cursor: pointer; }
+  tr.drillable:hover { background: var(--chip-bg); }
+  tr.open { background: var(--accent-weak); }
+  .caret { display: inline-block; width: 14px; color: var(--faint); }
+  .fld { flex-direction: row; align-items: baseline; gap: 6px; }
+
+  tr.detail td { background: var(--panel); padding: 10px 14px; }
+  .mhead { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .mlist { display: flex; flex-wrap: wrap; gap: 5px 10px; max-height: 220px; overflow-y: auto; }
+  .mitem { font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+  .mitem a { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 11px; }
+  .mfoot { margin-top: 10px; font-size: 11px; color: var(--faint); font-style: italic; }
 </style>
