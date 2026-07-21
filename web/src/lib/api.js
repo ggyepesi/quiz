@@ -64,13 +64,6 @@ export function getCoverage(type) {
   return json(`${apiBase()}/api/coverage?type=${encodeURIComponent(type)}`);
 }
 
-/** The members of a type MISSING a value at `path` (up to `limit`): [{id,name,type}]
- *  — the drill-down worklist behind a coverage gap. */
-export function getMissing(type, path, limit = 200) {
-  const p = new URLSearchParams({ type, path, limit });
-  return json(`${apiBase()}/api/missing?${p}`);
-}
-
 /** @returns {Promise<object|null>} full QuizableView */
 export function getQuizable(type, id) {
   return json(`${apiBase()}/api/quizable/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);

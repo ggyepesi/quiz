@@ -293,15 +293,111 @@ public class GeneratedSource implements QuizableSource {
     }
 
     private List<Dimension> declaredDimensions(Collection<? extends Quizable> all) {
+        List<Dimension> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        wikidata.explore.model.GeneratedClassModel c =
+                model == null ? null : model.findClass(type);
+        if (c != null) {
+            // Detection = the MODEL for typed fields (vocabulary / class-ref / boolean):
+            // a field IS a dimension because of its declared type, NOT because a sample
+            // is low-cardinality. Fixes a large vocab dropped by the bucket cap
+            // (WorkGenre, 129) and a homogeneous one (Nominee.type, all "human").
+            for (wikidata.explore.model.GeneratedFieldModel f : c.fields()) {
+                if (f == null || f.name() == null || structural.contains(f.name())) {
+                    continue;
+                }
+                Dimension.Kind kind = modelKind(f, all);
+                if (kind != null && seen.add(f.name())) {
+                    out.add(new Dimension(f.name(), f.name(), kind));
+                }
+            }
+            for (String[] p : vocabFacetPaths) {   // nested vocab tags — also model-declared
+                if (seen.add(p[0])) {
+                    out.add(new Dimension(p[1], p[0], kindForPath(all, p[0])));
+                }
+            }
+        }
+        // Sample-based FALLBACK — only for fields the model can't type (plain scalars),
+        // or EVERY field when the snapshot has no model. Never overrides the model.
+        sampledDimensions(all, seen, c == null, out);
+        return out;
+    }
+
+    // A field's dimension KIND from the MODEL, or null if the model can't classify it (a
+    // plain scalar — left to the sample fallback). A vocab field's ref-vs-value shape is
+    // read from ONE served value: a constraint vocab serves entities (REFERENCE), a
+    // descriptive vocab collapses to display-name strings (VALUE).
+    private Dimension.Kind modelKind(
+            wikidata.explore.model.GeneratedFieldModel f, Collection<? extends Quizable> all) {
+        if (f.type() == wikidata.explore.model.FieldType.BOOLEAN) {
+            return Dimension.Kind.BOOLEAN;
+        }
+        if (f.type() == wikidata.explore.model.FieldType.ENTITY) {
+            String t = f.entityClassName();
+            if (t != null && model.findClass(t) != null) {
+                return Dimension.Kind.REFERENCE;                 // targets a modeled class
+            }
+            if (t != null && model.findSelection(t)
+                    instanceof wikidata.explore.model.VocabularySelection) {
+                return kindForPath(all, f.name());               // targets a vocabulary
+            }
+        }
+        return null;
+    }
+
+    /** REFERENCE if the path's first served value is a chip (Viewable), else VALUE. */
+    private static Dimension.Kind kindForPath(
+            Collection<? extends Quizable> pool, String path) {
+        int seen = 0;
+        for (Quizable q : pool) {
+            Object v = resolveFirst(q, path);
+            if (v != null) {
+                return v instanceof objectview.Viewable
+                        ? Dimension.Kind.REFERENCE : Dimension.Kind.VALUE;
+            }
+            if (++seen >= 500) {
+                break;
+            }
+        }
+        return Dimension.Kind.VALUE;
+    }
+
+    private static Object resolveFirst(Quizable q, String path) {
+        List<Object> current = new ArrayList<>();
+        current.add(q);
+        for (String seg : path.split("\\.")) {
+            List<Object> next = new ArrayList<>();
+            for (Object o : current) {
+                if (o instanceof objectview.Viewable v) {
+                    Object val = objectview.field.FieldSet.of(v).read(seg);
+                    if (val instanceof Collection<?> col) {
+                        next.addAll(col);
+                    } else if (val != null) {
+                        next.add(val);
+                    }
+                }
+            }
+            current = next;
+        }
+        for (Object o : current) {
+            if (o != null) {
+                return o;
+            }
+        }
+        return null;
+    }
+
+    // The old sample heuristic, now a FALLBACK: a reference / boolean / low-cardinality
+    // scalar field the model didn't already declare. Refs and booleans are added only
+    // when {@code unmodeled} (a legacy snapshot has no model to type them).
+    private void sampledDimensions(
+            Collection<? extends Quizable> all, Set<String> seen,
+            boolean unmodeled, List<Dimension> out) {
         Map<String, Boolean> isRef = new LinkedHashMap<>();
         Map<String, Boolean> isBool = new LinkedHashMap<>();
         Map<String, Set<String>> distinct = new LinkedHashMap<>();
-        int seen = 0;
-
+        int n = 0;
         for (Quizable q : all) {
-            // Enumerate fields through the ONE FieldSet bridge (#87) — the object's
-            // fields regardless of backing, no `instanceof DynamicFields` fork. (This
-            // source serves dynamic snapshots, so in practice these are map fields.)
             objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
             for (objectview.field.FieldRef fr : fs.fields()) {
                 String name = fr.name();
@@ -310,35 +406,30 @@ public class GeneratedSource implements QuizableSource {
                 isBool.merge(name, v instanceof Boolean, Boolean::logicalAnd);
                 distinct.computeIfAbsent(name, k -> new HashSet<>()).addAll(scalarKeys(v));
             }
-            if (++seen >= 300) {
+            if (++n >= 300) {
                 break;
             }
         }
-
-        List<Dimension> dims = new ArrayList<>();
         for (String name : isRef.keySet()) {
-            if (isImageKey(name) || structural.contains(name)) {
+            if (seen.contains(name) || isImageKey(name) || structural.contains(name)) {
                 continue;
             }
-            if (Boolean.TRUE.equals(isRef.get(name))) {
-                dims.add(new Dimension(name, name, Dimension.Kind.REFERENCE));
-            } else if (Boolean.TRUE.equals(isBool.get(name))) {
-                // "Won" / "Not won" buckets (a Winners grouping), not true/false.
-                dims.add(new Dimension(name, name, Dimension.Kind.BOOLEAN));
-            } else {
+            boolean ref = Boolean.TRUE.equals(isRef.get(name));
+            boolean bool = Boolean.TRUE.equals(isBool.get(name));
+            if (unmodeled && ref) {
+                out.add(new Dimension(name, name, Dimension.Kind.REFERENCE));
+                seen.add(name);
+            } else if (unmodeled && bool) {
+                out.add(new Dimension(name, name, Dimension.Kind.BOOLEAN));
+                seen.add(name);
+            } else if (!ref && !bool) {
                 int d = distinct.getOrDefault(name, Set.of()).size();
                 if (d >= 2 && d <= MAX_BUCKETS) {
-                    dims.add(new Dimension(name, name, Dimension.Kind.VALUE));
+                    out.add(new Dimension(name, name, Dimension.Kind.VALUE));
+                    seen.add(name);
                 }
             }
         }
-        // Nested vocabulary dimensions (model-derived): group by a referent's vocab tag
-        // (a Nomination by its nominee's type / its work's genre). A VALUE dimension
-        // because bare vocab values collapse to display-name strings on the web serve.
-        for (String[] p : vocabFacetPaths) {
-            dims.add(new Dimension(p[1], p[0], Dimension.Kind.VALUE));
-        }
-        return dims;
     }
 
     private static Facet<Quizable> facetFor(Dimension d) {
