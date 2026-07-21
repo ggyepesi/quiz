@@ -40,6 +40,9 @@ public class GeneratedSource implements QuizableSource {
     private final File file;
     private final File modelFile;   // optional: the dataset's saved model (declared facets)
     private final Set<String> structural;   // fields to hide (e.g. a reify class's "source")
+    // Nested vocabulary dimensions {dottedPath, label} — e.g. {"nominee.type","type"},
+    // {"forWork.genre","genre"} — so a statement class groups by a referent's vocab tag.
+    private final List<String[]> vocabFacetPaths;
     private List<WikidataDynamicObject> members;
 
     public GeneratedSource(String type, File file) {
@@ -47,16 +50,57 @@ public class GeneratedSource implements QuizableSource {
     }
 
     public GeneratedSource(String type, File file, File modelFile) {
-        this(type, file, modelFile, structuralFor(type, loadModel(modelFile)));
+        this(type, file, modelFile, loadModel(modelFile));
     }
 
-    public GeneratedSource(String type, File file, File modelFile, Set<String> structural) {
+    private GeneratedSource(String type, File file, File modelFile,
+                            wikidata.explore.model.GeneratedProjectModel model) {
         this.type = type;
         this.file = file;
         this.modelFile = modelFile;
-        this.structural = structural == null ? Set.of() : structural;
+        this.structural = structuralFor(type, model);
+        this.vocabFacetPaths = vocabFacetPaths(type, model);
         // The card/field renderer (QuizableJson) hides the same structural fields.
         quiz.web.QuizableJson.registerStructural(type, this.structural);
+    }
+
+    // Nested vocab facet paths for a type: for each entity field F -> a modeled class C,
+    // each entity field G on C whose target is a VOCABULARY yields the path F.G (e.g.
+    // Nomination.nominee.type -> NomineeType). A DIRECT vocab field (category) is already
+    // an auto-facet, so it is not included here.
+    private static List<String[]> vocabFacetPaths(
+            String type, wikidata.explore.model.GeneratedProjectModel model) {
+        List<String[]> out = new ArrayList<>();
+        if (model == null) {
+            return out;
+        }
+        wikidata.explore.model.GeneratedClassModel t = model.findClass(type);
+        if (t == null) {
+            return out;
+        }
+        for (wikidata.explore.model.GeneratedFieldModel f : t.fields()) {
+            if (f == null || f.type() != wikidata.explore.model.FieldType.ENTITY) {
+                continue;
+            }
+            wikidata.explore.model.GeneratedClassModel c =
+                    f.entityClassName() == null ? null : model.findClass(f.entityClassName());
+            if (c == null) {
+                continue;   // f targets a vocabulary or nothing, not a nested class
+            }
+            for (wikidata.explore.model.GeneratedFieldModel g : c.fields()) {
+                if (g == null || g.type() != wikidata.explore.model.FieldType.ENTITY) {
+                    continue;
+                }
+                String vocab = g.entityClassName();
+                if (vocab != null && !vocab.isBlank()
+                        && model.findClass(vocab) == null
+                        && model.findSelection(vocab)
+                                instanceof wikidata.explore.model.VocabularySelection) {
+                    out.add(new String[] {f.name() + "." + g.name(), g.name()});
+                }
+            }
+        }
+        return out;
     }
 
     // The dataset's saved model, or null (legacy/untyped snapshot). Loaded once per
@@ -147,8 +191,7 @@ public class GeneratedSource implements QuizableSource {
         if (types.isEmpty()) types.add(defaultType);
         wikidata.explore.model.GeneratedProjectModel model = loadModel(modelFile);
         for (String t : types) {
-            store.register(new GeneratedSource(
-                    t, file, modelFile, structuralFor(t, model)));
+            store.register(new GeneratedSource(t, file, modelFile, model));
         }
     }
 
@@ -160,8 +203,15 @@ public class GeneratedSource implements QuizableSource {
     @Override
     public QuizableGroup rootGroup() throws Exception {
         Collection<? extends Quizable> all = load();
-        return FacetGrouper.group(
-                QuizableGroup::new, "All " + type, all, autoFacets(all, structural));
+        List<Facet<Quizable>> facets = new ArrayList<>(autoFacets(all, structural));
+        // Vocab-aware nested dimensions: group by a referent's vocabulary tag (a
+        // Nomination by its nominee's type / its work's genre). The dotted path is
+        // resolved by FacetKeys; a VALUE facet because bare vocab values are collapsed
+        // to display-name strings ("human", "drama film") on the web serve.
+        for (String[] p : vocabFacetPaths) {
+            facets.add(Facet.field(p[0], p[1]));
+        }
+        return FacetGrouper.group(QuizableGroup::new, "All " + type, all, facets);
     }
 
     /** Derive facets from the dynamic schema over a sample of the data. Structural
