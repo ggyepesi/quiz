@@ -8,8 +8,6 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
-import wikidata.explore.model.Selection;
-import wikidata.explore.model.VocabularySelection;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -248,29 +246,10 @@ public final class ReferentFieldLoad {
         log.message("Referent field load " + className + "." + field.name()
                 + " (" + pid + ") -> " + loaded + " value(s)\n");
 
-        // If this field's target is a VocabularySelection (or a not-yet-existing
-        // name that isn't a class), REFRESH/CREATE it from the distinct values just
-        // loaded — a DESCRIPTIVE vocabulary built as a by-product of the load (e.g.
-        // Nominee.type -> NomineeTypes = the distinct P31 types), exhaustive and free
-        // (no extra query). Refresh, not accumulate: the vocab tracks the current data.
-        String targetName = field.entityClassName();
-        if (model != null && targetName != null && !targetName.isBlank()
-                && model.findClass(targetName) == null) {
-            Selection existing = model.findSelection(targetName);
-            VocabularySelection vocab = null;
-            if (existing instanceof VocabularySelection v) {
-                vocab = v;
-            } else if (existing == null) {
-                vocab = new VocabularySelection(targetName);   // configure-as-new-vocab
-                model.addSelection(vocab);
-            }
-            if (vocab != null) {
-                vocab.valueQids(new ArrayList<>(valueQids));
-                log.message("Built vocabulary '" + vocab.name() + "' from "
-                        + className + "." + field.name() + " -> "
-                        + valueQids.size() + " distinct value(s)\n");
-            }
-        }
+        // NOTE: the DESCRIPTIVE vocabulary for this field's target (e.g. Nominee.type ->
+        // NomineeType) is NOT built here — that is done post-prune from the SERVED pool
+        // by DescriptiveVocabularyBuild, so it lists exactly the types that survive
+        // (a type whose only bearer was pruned must not linger in the vocabulary).
         return loaded;
     }
 

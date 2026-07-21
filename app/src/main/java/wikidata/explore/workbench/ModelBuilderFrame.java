@@ -716,29 +716,37 @@ public class ModelBuilderFrame extends JFrame {
         return mergeBuiltVocabularies(built, projectModel);
     }
 
-    /** Package-private + static so it is unit-testable without a live frame. */
+    /** Reflect the generation-derived DESCRIPTIVE vocabularies (NomineeType, WorkGenre)
+     *  into the live model so this session shows them. They are derived, so we REFRESH
+     *  (overwrite) — a stale value must not linger — but only the descriptive targets;
+     *  an authored constraint vocabulary (OscarCategories) is never touched. The values
+     *  are not persisted: {@code saveDomain} strips them and load re-derives from the
+     *  snapshot. Package-private + static so it is unit-testable without a live frame. */
     static int mergeBuiltVocabularies(
             GeneratedProjectModel built, GeneratedProjectModel into) {
         if (built == null || into == null) {
             return 0;
         }
+        java.util.Set<String> descriptive =
+                wikidata.explore.transform.DescriptiveVocabularyBuild.targets(into);
         int filled = 0;
-        for (Selection s : built.selections()) {
-            if (!(s instanceof VocabularySelection v)
-                    || v.valueQids() == null || v.valueQids().isEmpty()) {
+        for (String name : descriptive) {
+            if (!(built.findSelection(name) instanceof VocabularySelection src)) {
                 continue;
             }
-            Selection existing = into.findSelection(v.name());
-            if (existing == null) {
-                VocabularySelection created = new VocabularySelection(v.name());
-                created.valueQids(new java.util.ArrayList<>(v.valueQids()));
+            java.util.List<String> values = src.valueQids() == null
+                    ? java.util.List.of() : src.valueQids();
+            Selection existing = into.findSelection(name);
+            if (existing instanceof VocabularySelection target) {
+                target.valueQids(new java.util.ArrayList<>(values));   // refresh
+            } else if (existing == null) {
+                VocabularySelection created = new VocabularySelection(name);
+                created.valueQids(new java.util.ArrayList<>(values));
                 into.addSelection(created);
-                filled++;
-            } else if (existing instanceof VocabularySelection target
-                    && (target.valueQids() == null || target.valueQids().isEmpty())) {
-                target.valueQids(new java.util.ArrayList<>(v.valueQids()));
-                filled++;
+            } else {
+                continue;
             }
+            filled++;
         }
         return filled;
     }
@@ -1525,6 +1533,12 @@ public class ModelBuilderFrame extends JFrame {
             wikidata.explore.transform.Canonicalization.apply(snapshot, objects,
                     wikidata.explore.extract.GenerationLog.of(logWindow::info));
 
+            // Derive the descriptive vocabularies (NomineeType, WorkGenre) from the
+            // loaded pool — they are not persisted, so load is where they come back.
+            // acceptGenerationRun then folds them into the live model for display.
+            wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, objects,
+                    wikidata.explore.extract.GenerationLog.of(logWindow::info));
+
             GenerationPipeline pipeline = new GenerationPipeline();
             RuleNode plan = pipeline.plan(snapshot);
             GeneratedQuizableRuntime runtime = pipeline.buildRuntime(snapshot);
@@ -1803,7 +1817,18 @@ public class ModelBuilderFrame extends JFrame {
             if (active != null) {
                 active.generationDepth(((Number) depthSpinner.getValue()).intValue());
             }
-            new GeneratedProjectModelStore().save(projectModel, modelFile());
+            // A DESCRIPTIVE vocabulary (NomineeType, WorkGenre) is derived from the
+            // data, not authored — persist it as an EMPTY shell (still declared, so the
+            // field target resolves and the tree shows it) and re-derive its values from
+            // the snapshot on load. This keeps it from ever being saved stale.
+            GeneratedProjectModel toSave = projectModel.copy();
+            for (String name
+                    : wikidata.explore.transform.DescriptiveVocabularyBuild.targets(toSave)) {
+                if (toSave.findSelection(name) instanceof VocabularySelection v) {
+                    v.valueQids(new java.util.ArrayList<>());
+                }
+            }
+            new GeneratedProjectModelStore().save(toSave, modelFile());
             report.append("Config:    ").append(modelFile().getPath()).append('\n');
 
             RuleNode root = RuleTreeCompiler.compileProject(projectModel);

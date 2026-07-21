@@ -323,6 +323,23 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     pool.addAll(reified);
 
+                    // Drop Wikimedia-internal non-entities (a disambiguation / duplicated
+                    // / category page that slipped in as a wrong statement or qualifier
+                    // value, e.g. a P805 ceremony pointing at the "1968 Academy Awards"
+                    // DISAMBIGUATION page). The bad referent is removed and inbound
+                    // references scrubbed, but the referencing record is KEPT (it merely
+                    // loses that one wrong link). Before prune + vocab derivation so it
+                    // neither counts nor pollutes a descriptive vocabulary.
+                    java.util.Set<WikidataDynamicObject> disambig =
+                            wikidata.explore.transform.DisambiguationPrune.apply(
+                                    pool,
+                                    new wikidata.api.WikidataApiClient(
+                                            "QuizProject/1.0 (ggyepesi@gmail.com)"),
+                                    genLog);
+                    if (!disambig.isEmpty()) {
+                        pool.removeIf(disambig::contains);
+                    }
+
                     // Drop orphans: labelled but untyped nodes referenced by nothing
                     // — subjects of nominations that were dropped (phantom / disallowed
                     // value), left floating in the pool. Not roots, not referenced, no
@@ -337,6 +354,14 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // records + keep EXPECTED-missing ones. Same pass the Remap runs.
                     wikidata.explore.transform.FieldExpectations.apply(
                             compiledProject, pool, genLog);
+
+                    // Descriptive vocabularies (NomineeType, WorkGenre) derived from the
+                    // now-final SERVED pool — so a vocab lists exactly the type tags that
+                    // survive (a type whose only bearer was pruned must not linger). Uses
+                    // the editable `project` so the built values ride out on the run's
+                    // modelSnapshot and are folded back into the live model on accept.
+                    wikidata.explore.transform.DescriptiveVocabularyBuild.apply(
+                            project, pool, genLog);
 
                     // Data-quality audit (#99): now that only the finest atom is
                     // served, probe for inconsistencies (surviving witnessed phantoms)
