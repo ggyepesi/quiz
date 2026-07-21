@@ -68,9 +68,6 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton nameCollisionsButton =
             new JButton("Name collisions");
 
-    private final JButton transformButton =
-            new JButton("Transform…");
-
     private final JButton generateButton =
             new JButton("Generate instances");
 
@@ -309,13 +306,6 @@ public class ModelBuilderFrame extends JFrame {
             nameCollisionsButton.addActionListener(e -> showNameCollisions());
             updateNameCollisionsButton();
             toolbar.add(nameCollisionsButton);
-
-            transformButton.setToolTipText(
-                    "Apply this domain's Transform (invert / reify constructs) to "
-                            + "the loaded pool, materializing view classes you can "
-                            + "search, sort and serve");
-            transformButton.addActionListener(e -> showTransformDialog());
-            toolbar.add(transformButton);
 
             instancesWindow.add(toolbar, BorderLayout.NORTH);
             instancesWindow.add(instancesPanel, BorderLayout.CENTER);
@@ -939,150 +929,12 @@ public class ModelBuilderFrame extends JFrame {
         guideWindow.toFront();
     }
 
-    // The decision context = current project + active class + saved Transform.
+    // The decision context = current project + active class. (Reify/invert constructs
+    // now live on the model + compiled pipeline, so there is no separate transform.)
     private wikidata.explore.advisor.DecisionContext guideContext() {
         GeneratedClassModel active = activeClass();
-        wikidata.explore.transform.TransformConfig tc =
-                wikidata.explore.transform.TransformConfigStore.load(
-                        transformFile(projectModel.name()));
-        return new wikidata.explore.advisor.DecisionContext(projectModel, active, tc);
-    }
-
-    // The domain's Transform file, alongside its model: <domain>.transform.json.
-    private File transformFile(String name) {
-        File model = domainModelFile(name);
-        String fn = model.getName().replaceFirst("\\.model\\.json$", "")
-                + ".transform.json";
-        return new File(model.getParentFile(), fn);
-    }
-
-    // A "Transform…" dialog: edit the domain's TransformConfig as JSON, Run it
-    // against the loaded pool (invert mutates in place; reify materializes new
-    // view-class objects, shown in a CardListView), and Save it next to the
-    // model so the next domain generation/serve picks the constructs up.
-    private void showTransformDialog() {
-        if (lastRun == null || lastRun.dynamicObjects() == null
-                || lastRun.dynamicObjects().isEmpty()) {
-            JOptionPane.showMessageDialog(instancesWindow,
-                    "Generate the domain first — a Transform operates on the "
-                            + "loaded pool.",
-                    "Transform", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        File file = transformFile(projectModel.name());
-        wikidata.explore.transform.TransformConfig cfg =
-                wikidata.explore.transform.TransformConfigStore.load(file);
-        String initial = wikidata.explore.transform.TransformConfigStore.toJson(cfg);
-
-        JTextArea editor = new JTextArea(initial, 18, 56);
-        editor.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
-        JScrollPane scroll = new JScrollPane(editor);
-
-        JButton run = new JButton("Run");
-        JButton save = new JButton("Save");
-        JLabel status = new JLabel(" ");
-
-        run.addActionListener(e -> {
-            // A qualifier-load makes a network call — run off the EDT so the UI
-            // stays responsive; collect results and show them back on the EDT.
-            final wikidata.explore.transform.TransformConfig c;
-            try {
-                c = wikidata.explore.transform.TransformConfigStore
-                        .fromJson(editor.getText());
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(instancesWindow, ex.getMessage(),
-                        "Transform failed", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            run.setEnabled(false);
-            status.setText("Running…");
-            new javax.swing.SwingWorker<TransformOutcome, Void>() {
-                @Override protected TransformOutcome doInBackground() {
-                    List<WikidataDynamicObject> pool =
-                            new java.util.ArrayList<>(lastRun.dynamicObjects());
-                    wikidata.explore.extract.GenerationLog tlog =
-                            wikidata.explore.extract.GenerationLog.of(logWindow::info);
-                    List<WikidataDynamicObject> created =
-                            new wikidata.explore.transform.TransformEngine()
-                                    .apply(pool, c, client, tlog);
-                    java.util.Map<String, Integer> byType =
-                            new java.util.LinkedHashMap<>();
-                    for (WikidataDynamicObject o : pool) {
-                        if (o != null && o.typeName() != null) {
-                            byType.merge(o.typeName(), 1, Integer::sum);
-                        }
-                    }
-                    return new TransformOutcome(created, byType);
-                }
-
-                @Override protected void done() {
-                    run.setEnabled(true);
-                    try {
-                        TransformOutcome out = get();
-                        StringBuilder sb = new StringBuilder("Pool after transform: ");
-                        out.byType().forEach((t, n) ->
-                                sb.append(t).append('=').append(n).append("  "));
-                        status.setText(sb.toString().trim());
-                        logWindow.info("Transform: " + sb);
-                        if (!out.created().isEmpty()) {
-                            CardListView view = new CardListView();
-                            for (WikidataDynamicObject o : out.created()) {
-                                view.addViewable(o);
-                            }
-                            String t = out.created().get(0).typeName();
-                            view.show("Transform output — " + t
-                                    + " (" + out.created().size() + ")", 1);
-                        } else {
-                            JOptionPane.showMessageDialog(instancesWindow,
-                                    "Transform ran but produced no new objects.\n" + sb,
-                                    "Transform", JOptionPane.INFORMATION_MESSAGE);
-                        }
-                    } catch (Exception ex) {
-                        status.setText(" ");
-                        Throwable cause = ex instanceof java.util.concurrent.ExecutionException
-                                && ex.getCause() != null ? ex.getCause() : ex;
-                        JOptionPane.showMessageDialog(instancesWindow,
-                                cause.getMessage(), "Transform failed",
-                                JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-            }.execute();
-        });
-
-        save.addActionListener(e -> {
-            try {
-                wikidata.explore.transform.TransformConfig c =
-                        wikidata.explore.transform.TransformConfigStore
-                                .fromJson(editor.getText());
-                wikidata.explore.transform.TransformConfigStore.save(file, c);
-                status.setText("Saved " + file.getName());
-                logWindow.info("Transform saved: " + file.getPath());
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(instancesWindow,
-                        ex.getMessage(), "Save failed", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        buttons.add(run);
-        buttons.add(save);
-
-        JPanel panel = new JPanel(new BorderLayout(4, 4));
-        panel.add(new JLabel("Constructs for \"" + projectModel.name()
-                + "\"  (" + file.getName() + ")"), BorderLayout.NORTH);
-        panel.add(scroll, BorderLayout.CENTER);
-        JPanel south = new JPanel(new BorderLayout());
-        south.add(buttons, BorderLayout.WEST);
-        south.add(status, BorderLayout.SOUTH);
-        panel.add(south, BorderLayout.SOUTH);
-
-        JDialog dialog = new JDialog(instancesWindow, "Transform — "
-                + projectModel.name(), false);
-        dialog.setContentPane(panel);
-        dialog.pack();
-        dialog.setLocationRelativeTo(instancesWindow);
-        dialog.setVisible(true);
+        return new wikidata.explore.advisor.DecisionContext(
+                projectModel, active, new wikidata.explore.transform.TransformConfig());
     }
 
     // Surfaces a generation failure visibly (a dialog plus the log) rather than
@@ -1849,6 +1701,10 @@ public class ModelBuilderFrame extends JFrame {
                 registerDataset(n, runSig);
                 report.append("Registry:  ")
                       .append(quiz.DatasetRegistry.defaultFile().getPath()).append('\n');
+
+                File counts = countsFile();
+                appendCountsRecord(counts, lastRun.dynamicObjects());
+                report.append("Counts:    ").append(counts.getPath()).append('\n');
             } else {
                 report.append("Instances: (none generated yet — run "
                                        + "\"Generate instances\" first; not "
@@ -1866,6 +1722,56 @@ public class ModelBuilderFrame extends JFrame {
                     JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             reportGenerationError(ex);
+        }
+    }
+
+    // The domain's counts log, alongside its snapshot: <domain>.counts.tsv.
+    private File countsFile() {
+        File snap = snapshotFile();
+        return new File(snap.getParentFile(),
+                snap.getName().replaceFirst("\\.snapshot\\.json$", "") + ".counts.tsv");
+    }
+
+    // Appends ONE timestamped per-class row (distinct-qid counts) per save, so runs
+    // can be diffed over time — the stable "perfect" counts vs a drift. Reified records
+    // key by their unique statement id, so a class like Nomination counts correctly.
+    private void appendCountsRecord(File file, List<WikidataDynamicObject> pool) {
+        java.util.Map<String, java.util.Set<String>> byType = new java.util.TreeMap<>();
+        for (WikidataDynamicObject o : pool) {
+            if (o == null) {
+                continue;
+            }
+            String t = o.typeName();
+            String qid = o.qid();
+            if (t == null || t.isBlank() || "WikidataDynamicObject".equals(t)
+                    || qid == null || qid.isBlank()) {
+                continue;
+            }
+            byType.computeIfAbsent(t, k -> new java.util.HashSet<>()).add(qid);
+        }
+        List<java.util.Map.Entry<String, java.util.Set<String>>> sorted =
+                new java.util.ArrayList<>(byType.entrySet());
+        sorted.sort((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()));
+        int total = sorted.stream().mapToInt(e -> e.getValue().size()).sum();
+
+        StringBuilder row = new StringBuilder(
+                java.time.LocalDateTime.now().withNano(0).toString());
+        row.append("\ttotal=").append(total);
+        for (java.util.Map.Entry<String, java.util.Set<String>> e : sorted) {
+            row.append('\t').append(e.getKey()).append('=').append(e.getValue().size());
+        }
+        row.append('\n');
+        try {
+            boolean fresh = !file.isFile();
+            try (java.io.FileWriter w = new java.io.FileWriter(file, true)) {
+                if (fresh) {
+                    w.write("# " + projectModel.name()
+                            + " — per-class distinct-qid counts, one row per save\n");
+                }
+                w.write(row.toString());
+            }
+        } catch (Exception ex) {
+            logWindow.info("Could not write counts file: " + ex.getMessage());
         }
     }
 
@@ -2019,11 +1925,5 @@ public class ModelBuilderFrame extends JFrame {
         p.add(component, BorderLayout.CENTER);
 
         return p;
-    }
-
-    // Result of a background Transform run, handed back to the EDT.
-    private record TransformOutcome(
-            List<WikidataDynamicObject> created,
-            java.util.Map<String, Integer> byType) {
     }
 }
