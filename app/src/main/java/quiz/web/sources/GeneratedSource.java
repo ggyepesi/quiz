@@ -68,7 +68,7 @@ public class GeneratedSource implements QuizableSource {
     // each entity field G on C whose target is a VOCABULARY yields the path F.G (e.g.
     // Nomination.nominee.type -> NomineeType). A DIRECT vocab field (category) is already
     // an auto-facet, so it is not included here.
-    private static List<String[]> vocabFacetPaths(
+    static List<String[]> vocabFacetPaths(
             String type, wikidata.explore.model.GeneratedProjectModel model) {
         List<String[]> out = new ArrayList<>();
         if (model == null) {
@@ -119,7 +119,7 @@ public class GeneratedSource implements QuizableSource {
     // Structural (hidden) fields for a type: a statement-reification class carries a
     // "source" back-reference (provenance), not a user attribute. Same rule as
     // SnapshotDomain.structuralFields on the desktop side.
-    private static Set<String> structuralFor(
+    static Set<String> structuralFor(
             String type, wikidata.explore.model.GeneratedProjectModel model) {
         if (model == null) {
             return Set.of();
@@ -203,21 +203,28 @@ public class GeneratedSource implements QuizableSource {
     @Override
     public QuizableGroup rootGroup() throws Exception {
         Collection<? extends Quizable> all = load();
-        List<Facet<Quizable>> facets = new ArrayList<>(autoFacets(all, structural));
-        // Vocab-aware nested dimensions: group by a referent's vocabulary tag (a
-        // Nomination by its nominee's type / its work's genre). The dotted path is
-        // resolved by FacetKeys; a VALUE facet because bare vocab values are collapsed
-        // to display-name strings ("human", "drama film") on the web serve.
-        for (String[] p : vocabFacetPaths) {
-            facets.add(Facet.field(p[0], p[1]));
+        List<Facet<Quizable>> facets = new ArrayList<>();
+        for (Dimension d : declaredDimensions(all)) {
+            facets.add(facetFor(d));
         }
         return FacetGrouper.group(QuizableGroup::new, "All " + type, all, facets);
     }
 
-    /** Derive facets from the dynamic schema over a sample of the data. Structural
-     *  fields (a reify class's "source" back-ref) are not grouping dimensions. */
-    private static List<Facet<Quizable>> autoFacets(
-            Collection<? extends Quizable> all, Set<String> structural) {
+    /**
+     * The DECLARED groupable dimensions for this type — an explicit, ordered list the
+     * web serves so the client can re-facet LIVE (flip among them). The declaration is
+     * model-derived where possible: a referent's vocabulary tag (nominee.type,
+     * forWork.genre) comes from the model; each top-level field's KIND (reference /
+     * boolean / low-cardinality value) is read from a sample so an unmodeled snapshot
+     * still yields dimensions. Structural fields (a reify "source" back-ref) are never
+     * dimensions. Execution (building the actual grouping) stays at serve time.
+     */
+    @Override
+    public List<Dimension> dimensions() throws Exception {
+        return declaredDimensions(load());
+    }
+
+    private List<Dimension> declaredDimensions(Collection<? extends Quizable> all) {
         Map<String, Boolean> isRef = new LinkedHashMap<>();
         Map<String, Boolean> isBool = new LinkedHashMap<>();
         Map<String, Set<String>> distinct = new LinkedHashMap<>();
@@ -240,25 +247,39 @@ public class GeneratedSource implements QuizableSource {
             }
         }
 
-        List<Facet<Quizable>> facets = new ArrayList<>();
+        List<Dimension> dims = new ArrayList<>();
         for (String name : isRef.keySet()) {
             if (isImageKey(name) || structural.contains(name)) {
                 continue;
             }
             if (Boolean.TRUE.equals(isRef.get(name))) {
-                facets.add(Facet.reference(name, name));
+                dims.add(new Dimension(name, name, Dimension.Kind.REFERENCE));
             } else if (Boolean.TRUE.equals(isBool.get(name))) {
                 // "Won" / "Not won" buckets (a Winners grouping), not true/false.
-                facets.add(Facet.mapped(name, name,
-                        v -> FieldLabels.booleanBucket(v, name)));
+                dims.add(new Dimension(name, name, Dimension.Kind.BOOLEAN));
             } else {
                 int d = distinct.getOrDefault(name, Set.of()).size();
                 if (d >= 2 && d <= MAX_BUCKETS) {
-                    facets.add(Facet.field(name, name));
+                    dims.add(new Dimension(name, name, Dimension.Kind.VALUE));
                 }
             }
         }
-        return facets;
+        // Nested vocabulary dimensions (model-derived): group by a referent's vocab tag
+        // (a Nomination by its nominee's type / its work's genre). A VALUE dimension
+        // because bare vocab values collapse to display-name strings on the web serve.
+        for (String[] p : vocabFacetPaths) {
+            dims.add(new Dimension(p[1], p[0], Dimension.Kind.VALUE));
+        }
+        return dims;
+    }
+
+    private static Facet<Quizable> facetFor(Dimension d) {
+        return switch (d.kind()) {
+            case REFERENCE -> Facet.reference(d.path(), d.label());
+            case BOOLEAN -> Facet.mapped(d.path(), d.label(),
+                    v -> FieldLabels.booleanBucket(v, d.label()));
+            case VALUE -> Facet.field(d.path(), d.label());
+        };
     }
 
     private static boolean hasReference(Object v) {

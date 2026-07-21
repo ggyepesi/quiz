@@ -76,6 +76,7 @@ public class QuizableHttpServer {
         context("/api/pairing", this::handlePairing);
         context("/api/fields", this::handleFields);
         context("/api/groups", this::handleGroups);
+        context("/api/dimensions", this::handleDimensions);
         context("/api/chart/", this::handleChart);
 
         // Model-builder (workbench) endpoints — read-only first slice, gated by
@@ -352,6 +353,17 @@ public class QuizableHttpServer {
         try {
             QuizableGroup root = store.rootGroup(type);
             writeJson(ex, 200, root == null ? null : GroupNode.of(root));
+        } catch (Exception e) {
+            writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    // GET /api/dimensions?type=T -> the DECLARED groupable dimensions [{label,path,kind}]
+    // the client offers for live re-faceting (grouping executed on demand).
+    private void handleDimensions(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+        try {
+            writeJson(ex, 200, store.dimensions(type));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }

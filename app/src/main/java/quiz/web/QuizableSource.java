@@ -26,4 +26,13 @@ public interface QuizableSource {
     default QuizableGroup rootGroup() throws Exception {
         return null;
     }
+
+    /**
+     * The DECLARED groupable dimensions the client can re-facet by (live). Empty by
+     * default; a generated source derives them from the model + data. Served so the
+     * client offers "group by …" and the view executes the grouping on demand.
+     */
+    default java.util.List<quiz.web.sources.Dimension> dimensions() throws Exception {
+        return java.util.List.of();
+    }
 }
