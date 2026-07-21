@@ -119,11 +119,6 @@ public class ModelBuilderFrame extends JFrame {
     private JFrame guideWindow;
     private ModelingGuidePanel guidePanel;
 
-    private final JButton showCurateButton =
-            new JButton("Curate…");
-    private JFrame curateWindow;
-    private CoveragePanel coveragePanel;
-
     private JFrame selectionsWindow;
     private SelectionViewerPanel selectionsPanel;
 
@@ -290,9 +285,6 @@ public class ModelBuilderFrame extends JFrame {
         showGuideButton.setToolTipText("Guided build steps for the selected class: "
                 + "what's done, what's next, the tool for it, and the hint");
         header.add(showGuideButton);
-        showCurateButton.setToolTipText("Consistency validation over the last generated "
-                + "pool: per-field coverage + verdicts (the curate worklist)");
-        header.add(showCurateButton);
 
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.add(header, BorderLayout.NORTH);
@@ -660,7 +652,6 @@ public class ModelBuilderFrame extends JFrame {
 
         showRuleTreeButton.addActionListener(e -> showRuleTree());
         showGuideButton.addActionListener(e -> showGuide());
-        showCurateButton.addActionListener(e -> showCurate());
 
         showQueryLogsButton.addActionListener(e ->
                                                       logWindow.show(this));
@@ -936,24 +927,6 @@ public class ModelBuilderFrame extends JFrame {
         guidePanel.refresh();
         guideWindow.setVisible(true);
         guideWindow.toFront();
-    }
-
-    // The CURATE stage: consistency validation over the last generated pool. Per served
-    // type + model field, coverage + a verdict against the field's expectation. The
-    // reusable Coverage computation reads WDO + model directly — no web round-trip.
-    private void showCurate() {
-        if (curateWindow == null) {
-            coveragePanel = new CoveragePanel();
-            curateWindow = new JFrame("Curate — data quality");
-            curateWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            curateWindow.setContentPane(coveragePanel);
-            curateWindow.setSize(640, 460);
-            curateWindow.setLocationRelativeTo(this);
-        }
-        coveragePanel.refresh(
-                lastRun == null ? null : lastRun.dynamicObjects(), projectModel);
-        curateWindow.setVisible(true);
-        curateWindow.toFront();
     }
 
     // The decision context = current project + active class. (Reify/invert constructs

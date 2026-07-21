@@ -67,6 +67,7 @@ public final class TransformWorkbenchPanel extends JPanel {
         if (controller.canSave()) {
             top.add(button("Save as domain…", this::saveAsDomain));
         }
+        top.add(button("Validate…", this::showValidation));
         if (controller.domain() instanceof quiz.curation.Curatable c && c.curation() != null) {
             top.add(button("Curate…", () -> openCuration(c.curation())));
         }
@@ -84,6 +85,18 @@ public final class TransformWorkbenchPanel extends JPanel {
         JButton b = new JButton(text);
         b.addActionListener(e -> action.run());
         return b;
+    }
+
+    /** Consistency validation over the full working schema (base + derived + facets):
+     *  per-field coverage; drill a gap into the members missing it. Front of curate. */
+    private void showValidation() {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Validate — consistency / coverage", Dialog.ModalityType.MODELESS);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(new ValidationPanel(controller.domain()), BorderLayout.CENTER);
+        dialog.setSize(760, 560);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     /** Open the manual-curation panel over this domain; re-render on any change. */
