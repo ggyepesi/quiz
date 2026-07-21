@@ -43,6 +43,7 @@ public class GeneratedSource implements QuizableSource {
     // Nested vocabulary dimensions {dottedPath, label} — e.g. {"nominee.type","type"},
     // {"forWork.genre","genre"} — so a statement class groups by a referent's vocab tag.
     private final List<String[]> vocabFacetPaths;
+    private final wikidata.explore.model.GeneratedProjectModel model;   // for field expectations
     private List<WikidataDynamicObject> members;
 
     public GeneratedSource(String type, File file) {
@@ -60,6 +61,7 @@ public class GeneratedSource implements QuizableSource {
         this.modelFile = modelFile;
         this.structural = structuralFor(type, model);
         this.vocabFacetPaths = vocabFacetPaths(type, model);
+        this.model = model;
         // The card/field renderer (QuizableJson) hides the same structural fields.
         quiz.web.QuizableJson.registerStructural(type, this.structural);
     }
@@ -227,7 +229,39 @@ public class GeneratedSource implements QuizableSource {
     @Override
     public List<Coverage.FieldCoverage> coverage() throws Exception {
         Collection<? extends Quizable> all = load();
-        return Coverage.of(all, declaredDimensions(new ArrayList<>(all)));
+        List<Dimension> dims = declaredDimensions(new ArrayList<>(all));
+        Map<String, String> expectations = new LinkedHashMap<>();
+        for (Dimension d : dims) {
+            expectations.put(d.path(), expectationForPath(d.path()));
+        }
+        return Coverage.of(all, dims, expectations);
+    }
+
+    // The declared expectation (NONE / EXPECTED / REQUIRED) of the LEAF field a dotted
+    // path resolves to in the model — e.g. "forWork.genre" -> ForWork.genre.expectation.
+    private String expectationForPath(String path) {
+        if (model == null) {
+            return "NONE";
+        }
+        wikidata.explore.model.GeneratedClassModel c = model.findClass(type);
+        wikidata.explore.model.GeneratedFieldModel f = null;
+        for (String seg : path.split("\\.")) {
+            if (c == null) {
+                return "NONE";
+            }
+            f = null;
+            for (wikidata.explore.model.GeneratedFieldModel cand : c.fields()) {
+                if (cand != null && seg.equals(cand.name())) {
+                    f = cand;
+                    break;
+                }
+            }
+            if (f == null) {
+                return "NONE";
+            }
+            c = f.entityClassName() == null ? null : model.findClass(f.entityClassName());
+        }
+        return f == null ? "NONE" : f.expectation().name();
     }
 
     private List<Dimension> declaredDimensions(Collection<? extends Quizable> all) {

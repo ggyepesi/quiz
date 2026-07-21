@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -30,20 +31,28 @@ class CoverageTest {
                 new Dimension("ceremony", "ceremony", Dimension.Kind.REFERENCE),
                 new Dimension("genre", "forWork.genre", Dimension.Kind.VALUE),
                 new Dimension("forWork", "forWork", Dimension.Kind.REFERENCE));
+        // ceremony REQUIRED (missing => a VIOLATION), genre EXPECTED (missing => a GAP),
+        // forWork REQUIRED but fully present (=> OK).
+        Map<String, String> exp = Map.of(
+                "ceremony", "REQUIRED", "forWork.genre", "EXPECTED", "forWork", "REQUIRED");
 
-        List<Coverage.FieldCoverage> cov = Coverage.of(List.of(n1, n2), dims);
+        List<Coverage.FieldCoverage> cov = Coverage.of(List.of(n1, n2), dims, exp);
 
         Coverage.FieldCoverage ceremony = byLabel(cov, "ceremony");
         assertEquals(1, ceremony.present());
         assertEquals(2, ceremony.total());
         assertEquals(1, ceremony.missing());
+        assertEquals("VIOLATION", ceremony.verdict());   // REQUIRED + missing
 
         Coverage.FieldCoverage genre = byLabel(cov, "genre");
         assertEquals(1, genre.present());   // only work Q7 has a genre
         assertEquals(2, genre.total());
+        assertEquals("GAP", genre.verdict());            // EXPECTED + missing
 
-        // forWork is present on both (even the one whose work has no genre).
-        assertEquals(2, byLabel(cov, "forWork").present());
+        // forWork is present on both -> OK despite being REQUIRED.
+        Coverage.FieldCoverage forWork = byLabel(cov, "forWork");
+        assertEquals(2, forWork.present());
+        assertEquals("OK", forWork.verdict());
     }
 
     private static Coverage.FieldCoverage byLabel(

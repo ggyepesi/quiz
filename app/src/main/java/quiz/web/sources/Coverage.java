@@ -7,6 +7,7 @@ import quiz.Quizable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The first consistency check: per-field COVERAGE over a served pool — how many members
@@ -18,8 +19,15 @@ import java.util.List;
  */
 public final class Coverage {
 
-    /** Coverage of one field path across the pool. */
-    public record FieldCoverage(String label, String path, int present, int total) {
+    /**
+     * Coverage of one field path across the pool, judged against the field's declared
+     * expectation. {@code verdict}: VIOLATION (a REQUIRED field is missing on some
+     * member — an anomaly), GAP (an EXPECTED field is missing — a benign / enrich-able
+     * coverage gap), or OK (no expectation, or fully covered).
+     */
+    public record FieldCoverage(
+            String label, String path, int present, int total,
+            String expectation, String verdict) {
         public int missing() { return total - present; }
         public double pct() {
             return total == 0 ? 0.0 : Math.round(1000.0 * present / total) / 10.0;
@@ -28,9 +36,11 @@ public final class Coverage {
 
     private Coverage() {}
 
-    /** Coverage for each declared dimension's path (ceremony, forWork.genre, …). */
+    /** Coverage + verdict for each declared dimension's path (ceremony, forWork.genre,
+     *  …), given each path's declared expectation (NONE / EXPECTED / REQUIRED). */
     public static List<FieldCoverage> of(
-            Collection<? extends Quizable> pool, List<Dimension> dimensions) {
+            Collection<? extends Quizable> pool, List<Dimension> dimensions,
+            Map<String, String> expectationByPath) {
         int total = pool.size();
         List<FieldCoverage> out = new ArrayList<>();
         for (Dimension d : dimensions) {
@@ -40,9 +50,26 @@ public final class Coverage {
                     present++;
                 }
             }
-            out.add(new FieldCoverage(d.label(), d.path(), present, total));
+            String expectation = expectationByPath == null
+                    ? "NONE" : expectationByPath.getOrDefault(d.path(), "NONE");
+            out.add(new FieldCoverage(
+                    d.label(), d.path(), present, total,
+                    expectation, verdict(expectation, total - present)));
         }
         return out;
+    }
+
+    private static String verdict(String expectation, int missing) {
+        if (missing <= 0) {
+            return "OK";
+        }
+        if ("REQUIRED".equals(expectation)) {
+            return "VIOLATION";
+        }
+        if ("EXPECTED".equals(expectation)) {
+            return "GAP";
+        }
+        return "OK";
     }
 
     /** Resolves a dotted path over one member and reports whether any value survives. */
