@@ -126,9 +126,12 @@ public class QuizableHttpServer {
 
     private void handleList(HttpExchange ex) throws IOException {
         String type = queryParam(ex, "type");
+        String group = queryParam(ex, "group");   // optional: a dimension bucket fullName
 
         try {
-            Collection<Quizable> qs = store.list(type);
+            Collection<Quizable> qs = group == null || group.isBlank()
+                    ? store.list(type)
+                    : store.members(type, group);   // live re-facet: bucket members only
             if (qs == null) {
                 writeJson(ex, 404, Map.of("error", "unknown type: " + type));
                 return;

@@ -45,9 +45,17 @@ export async function getDomains() {
   return types.length ? [{ name: 'All', types }] : [];
 }
 
-/** @returns {Promise<Array<{id:string,name:string,type:string}>>} shallow list */
-export function getList(type) {
-  return json(`${apiBase()}/api/quizables?type=${encodeURIComponent(type)}`);
+/** @returns {Promise<Array<{id:string,name:string,type:string}>>} shallow list.
+ *  With `group` (a dimension bucket fullName), returns only that bucket's members. */
+export function getList(type, group = '') {
+  const p = new URLSearchParams({ type });
+  if (group) p.set('group', group);
+  return json(`${apiBase()}/api/quizables?${p}`);
+}
+
+/** The declared groupable dimensions for a type: [{ label, path, kind }]. */
+export function getDimensions(type) {
+  return json(`${apiBase()}/api/dimensions?type=${encodeURIComponent(type)}`);
 }
 
 /** @returns {Promise<object|null>} full QuizableView */

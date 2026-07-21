@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { getDomains, getList, getQuizable } from '$lib/api.js';
+  import { getDomains, getList, getQuizable, getDimensions, getGroups } from '$lib/api.js';
   import QuizableCard from '$lib/QuizableCard.svelte';
 
   let domains = $state([]);
@@ -13,9 +13,22 @@
   let error = $state(null);
   let q = $state('');
 
+  // Live re-faceting: the declared dimensions + the chosen one's buckets.
+  let dimensions = $state([]);
+  let groups = $state(null);
+  let groupBy = $state('');          // selected dimension label ('' = none)
+  let activeBucket = $state(null);   // selected bucket fullName (null = all)
+
   const filtered = $derived(
     items.filter((i) => i.name.toLowerCase().includes(q.toLowerCase()))
   );
+
+  // Buckets of the chosen dimension, read from the matching facet in the group tree.
+  const buckets = $derived.by(() => {
+    if (!groupBy || !groups?.children) return [];
+    const facet = groups.children.find((c) => c.name === groupBy);
+    return facet?.children ?? [];
+  });
 
   onMount(async () => {
     try {
@@ -32,8 +45,35 @@
     selected = null;
     selectedId = null;
     q = '';
+    groupBy = '';
+    activeBucket = null;
     loadingList = true;
-    items = (await getList(t)) ?? [];
+    const [list, dims, grp] = await Promise.all([
+      getList(t),
+      getDimensions(t).catch(() => []),
+      getGroups(t).catch(() => null)
+    ]);
+    items = list ?? [];
+    dimensions = dims ?? [];
+    groups = grp;
+    loadingList = false;
+  }
+
+  function onGroupByChange() {
+    activeBucket = null;
+    reloadItems();
+  }
+
+  async function selectBucket(b) {
+    activeBucket = activeBucket === b.fullName ? null : b.fullName;
+    await reloadItems();
+  }
+
+  async function reloadItems() {
+    loadingList = true;
+    selected = null;
+    selectedId = null;
+    items = (await getList(type, activeBucket ?? '')) ?? [];
     loadingList = false;
   }
 
@@ -50,12 +90,19 @@
     <div class="brand">Quiz<span class="dot">·</span><span class="sub">explorer</span></div>
     <nav class="tabs">
       {#each domains as d}
-        <div class="domain" title={d.name}>
+        <label class="domain" class:active={d.types.includes(type)} title={d.name}>
           <span class="domain-name">{d.name}</span>
-          {#each d.types as t}
-            <button class="tab" class:active={t === type} onclick={() => selectType(t)}>{t}</button>
-          {/each}
-        </div>
+          <select
+            class="domain-select"
+            value={d.types.includes(type) ? type : ''}
+            onchange={(e) => e.currentTarget.value && selectType(e.currentTarget.value)}
+          >
+            {#if !d.types.includes(type)}<option value="" disabled>Class…</option>{/if}
+            {#each d.types as t}
+              <option value={t}>{t}</option>
+            {/each}
+          </select>
+        </label>
       {/each}
     </nav>
     <div class="actions">
@@ -74,6 +121,32 @@
       <div class="search">
         <input placeholder="Search…" bind:value={q} />
       </div>
+      {#if dimensions.length}
+        <div class="groupby">
+          <span class="gb-label">Group by</span>
+          <select bind:value={groupBy} onchange={onGroupByChange}>
+            <option value="">None</option>
+            {#each dimensions as d}
+              <option value={d.label}>{d.label}</option>
+            {/each}
+          </select>
+        </div>
+        {#if groupBy && buckets.length}
+          <div class="buckets">
+            {#each buckets as b}
+              <button
+                class="bucket"
+                class:active={activeBucket === b.fullName}
+                onclick={() => selectBucket(b)}
+                title={b.name}
+              >
+                <span class="bk-name">{b.name}</span>
+                <span class="bk-count">{b.count}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      {/if}
       <div class="list">
         {#if loadingList}
           <p class="hint">Loading…</p>
@@ -140,14 +213,18 @@
     color: var(--muted);
     margin-right: 2px;
   }
-  .tab {
-    padding: 5px 12px;
-    border-radius: 999px;
-    color: var(--muted);
+  .domain.active .domain-name { color: var(--accent); }
+  .domain-select {
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line-strong);
+    background: var(--chip-bg);
+    color: var(--fg);
     font-weight: 500;
+    max-width: 150px;
   }
-  .tab:hover { background: var(--chip-bg); color: var(--fg); }
-  .tab.active { background: var(--accent); color: #fff; }
+  .domain.active .domain-select { border-color: var(--accent); color: var(--accent); }
+  .domain-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
 
   .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
   .play {
@@ -192,6 +269,50 @@
     outline: none;
   }
   .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+
+  .groupby {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .gb-label { font-size: 12px; color: var(--muted); }
+  .groupby select {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+    color: var(--fg);
+    outline: none;
+  }
+  .groupby select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+
+  .buckets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px 12px;
+    max-height: 168px;
+    overflow-y: auto;
+    border-bottom: 1px solid var(--line);
+  }
+  .bucket {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--chip-bg);
+    color: var(--fg);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .bucket:hover { background: var(--accent-weak); }
+  .bucket.active { background: var(--accent); color: #fff; }
+  .bk-count { color: var(--faint); font-variant-numeric: tabular-nums; }
+  .bucket.active .bk-count { color: #ffffffcc; }
 
   .list { flex: 1; overflow-y: auto; padding: 6px; }
   .row {
