@@ -39,6 +39,7 @@ public class GeneratedSource implements QuizableSource {
     private final String type;
     private final File file;
     private final File modelFile;   // optional: the dataset's saved model (declared facets)
+    private final Set<String> structural;   // fields to hide (e.g. a reify class's "source")
     private List<WikidataDynamicObject> members;
 
     public GeneratedSource(String type, File file) {
@@ -46,9 +47,41 @@ public class GeneratedSource implements QuizableSource {
     }
 
     public GeneratedSource(String type, File file, File modelFile) {
+        this(type, file, modelFile, structuralFor(type, loadModel(modelFile)));
+    }
+
+    public GeneratedSource(String type, File file, File modelFile, Set<String> structural) {
         this.type = type;
         this.file = file;
         this.modelFile = modelFile;
+        this.structural = structural == null ? Set.of() : structural;
+        // The card/field renderer (QuizableJson) hides the same structural fields.
+        quiz.web.QuizableJson.registerStructural(type, this.structural);
+    }
+
+    // The dataset's saved model, or null (legacy/untyped snapshot). Loaded once per
+    // registerAll and shared across the per-type sources.
+    private static wikidata.explore.model.GeneratedProjectModel loadModel(File modelFile) {
+        if (modelFile == null || !modelFile.isFile()) {
+            return null;
+        }
+        try {
+            return new wikidata.explore.model.GeneratedProjectModelStore().load(modelFile);
+        } catch (Exception ignore) {
+            return null;
+        }
+    }
+
+    // Structural (hidden) fields for a type: a statement-reification class carries a
+    // "source" back-reference (provenance), not a user attribute. Same rule as
+    // SnapshotDomain.structuralFields on the desktop side.
+    private static Set<String> structuralFor(
+            String type, wikidata.explore.model.GeneratedProjectModel model) {
+        if (model == null) {
+            return Set.of();
+        }
+        wikidata.explore.model.GeneratedClassModel c = model.findClass(type);
+        return c != null && c.reifiesStatements() ? Set.of("source") : Set.of();
     }
 
     @Override
@@ -112,7 +145,11 @@ public class GeneratedSource implements QuizableSource {
             }
         }
         if (types.isEmpty()) types.add(defaultType);
-        for (String t : types) store.register(new GeneratedSource(t, file, modelFile));
+        wikidata.explore.model.GeneratedProjectModel model = loadModel(modelFile);
+        for (String t : types) {
+            store.register(new GeneratedSource(
+                    t, file, modelFile, structuralFor(t, model)));
+        }
     }
 
     @Override
@@ -123,11 +160,14 @@ public class GeneratedSource implements QuizableSource {
     @Override
     public QuizableGroup rootGroup() throws Exception {
         Collection<? extends Quizable> all = load();
-        return FacetGrouper.group(QuizableGroup::new, "All " + type, all, autoFacets(all));
+        return FacetGrouper.group(
+                QuizableGroup::new, "All " + type, all, autoFacets(all, structural));
     }
 
-    /** Derive facets from the dynamic schema over a sample of the data. */
-    private static List<Facet<Quizable>> autoFacets(Collection<? extends Quizable> all) {
+    /** Derive facets from the dynamic schema over a sample of the data. Structural
+     *  fields (a reify class's "source" back-ref) are not grouping dimensions. */
+    private static List<Facet<Quizable>> autoFacets(
+            Collection<? extends Quizable> all, Set<String> structural) {
         Map<String, Boolean> isRef = new LinkedHashMap<>();
         Map<String, Boolean> isBool = new LinkedHashMap<>();
         Map<String, Set<String>> distinct = new LinkedHashMap<>();
@@ -152,7 +192,7 @@ public class GeneratedSource implements QuizableSource {
 
         List<Facet<Quizable>> facets = new ArrayList<>();
         for (String name : isRef.keySet()) {
-            if (isImageKey(name)) {
+            if (isImageKey(name) || structural.contains(name)) {
                 continue;
             }
             if (Boolean.TRUE.equals(isRef.get(name))) {

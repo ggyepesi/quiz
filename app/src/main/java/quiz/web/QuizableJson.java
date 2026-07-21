@@ -396,13 +396,16 @@ public final class QuizableJson {
             // declared Java fields OR a dynamic property map, behind one interface —
             // and render each through one builder. No `instanceof DynamicFields` fork.
             List<QuizableView.Field> fields = new ArrayList<>();
+            Set<String> structural = STRUCTURAL_BY_TYPE.getOrDefault(type, Set.of());
             objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
             for (objectview.field.FieldRef fr : fs.fields()) {
                 String fn = fr.name();
                 // "name" is the display name (rendered from the header, not as a field);
                 // "__"-prefixed keys are internal plumbing (e.g. the reify's
-                // "__Nomination" statement-list scratch field), never user-facing.
-                if ("name".equals(fn) || (fn != null && fn.startsWith("__"))) {
+                // "__Nomination" statement-list scratch field), never user-facing;
+                // structural fields (a reify class's "source" back-ref) are hidden too.
+                if ("name".equals(fn) || (fn != null && fn.startsWith("__"))
+                        || structural.contains(fn)) {
                     continue;
                 }
                 Object value = fs.read(fn);
@@ -428,6 +431,20 @@ public final class QuizableJson {
     private static final JsonConfig NO_CONFIG = new JsonConfig();
     private static final Map<String, JsonConfig> CONFIG_CACHE =
             new ConcurrentHashMap<>();
+
+    // Per-type STRUCTURAL fields to hide from cards/facets — plumbing that isn't a
+    // user-facing attribute, e.g. a reified statement class's "source" back-reference
+    // (provenance). Populated by the serving source (which has the model) at register
+    // time; the same convention SnapshotDomain applies on the desktop side.
+    private static final Map<String, Set<String>> STRUCTURAL_BY_TYPE =
+            new ConcurrentHashMap<>();
+
+    /** Registers the fields to hide for a served type (see {@link #STRUCTURAL_BY_TYPE}). */
+    public static void registerStructural(String type, Set<String> fields) {
+        if (type != null && !type.isBlank() && fields != null && !fields.isEmpty()) {
+            STRUCTURAL_BY_TYPE.put(type, Set.copyOf(fields));
+        }
+    }
 
     private static JsonConfig configFor(String typeName) {
         if (typeName == null || typeName.isBlank()) {
