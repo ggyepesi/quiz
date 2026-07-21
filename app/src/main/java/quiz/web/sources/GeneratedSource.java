@@ -224,6 +224,12 @@ public class GeneratedSource implements QuizableSource {
         return declaredDimensions(load());
     }
 
+    @Override
+    public List<Coverage.FieldCoverage> coverage() throws Exception {
+        Collection<? extends Quizable> all = load();
+        return Coverage.of(all, declaredDimensions(new ArrayList<>(all)));
+    }
+
     private List<Dimension> declaredDimensions(Collection<? extends Quizable> all) {
         Map<String, Boolean> isRef = new LinkedHashMap<>();
         Map<String, Boolean> isBool = new LinkedHashMap<>();

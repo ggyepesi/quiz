@@ -35,4 +35,13 @@ public interface QuizableSource {
     default java.util.List<quiz.web.sources.Dimension> dimensions() throws Exception {
         return java.util.List.of();
     }
+
+    /**
+     * Per-field COVERAGE over this source's members (present vs. missing per field) —
+     * the first consistency check. Empty by default; a generated source computes it.
+     */
+    default java.util.List<quiz.web.sources.Coverage.FieldCoverage> coverage()
+            throws Exception {
+        return java.util.List.of();
+    }
 }

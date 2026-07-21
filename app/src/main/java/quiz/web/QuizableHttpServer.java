@@ -77,6 +77,7 @@ public class QuizableHttpServer {
         context("/api/fields", this::handleFields);
         context("/api/groups", this::handleGroups);
         context("/api/dimensions", this::handleDimensions);
+        context("/api/coverage", this::handleCoverage);
         context("/api/chart/", this::handleChart);
 
         // Model-builder (workbench) endpoints — read-only first slice, gated by
@@ -367,6 +368,17 @@ public class QuizableHttpServer {
         String type = queryParam(ex, "type");
         try {
             writeJson(ex, 200, store.dimensions(type));
+        } catch (Exception e) {
+            writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    // GET /api/coverage?type=T -> per-field coverage [{label,path,present,total}] over
+    // the served pool (the first consistency check: present vs. missing per field).
+    private void handleCoverage(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+        try {
+            writeJson(ex, 200, store.coverage(type));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }
