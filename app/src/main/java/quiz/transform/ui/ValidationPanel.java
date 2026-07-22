@@ -5,7 +5,9 @@ import objectview.field.FieldSet;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
-import objectview.viewconfig.FieldRowContributor;
+import objectview.viewconfig.FieldRow;
+import objectview.viewconfig.FieldTableContributor;
+import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
 import quiz.Quizable;
 
@@ -34,7 +36,7 @@ import java.util.function.Function;
  * Consistency validation in the transform app — the front of the CURATE stage. It runs
  * over the WHOLE working schema the domain exposes (base classes, DERIVED classes and
  * facets), one type at a time. The coverage view IS the shared field-config table
- * ({@link ViewConfigEditor}) driven by a {@link FieldRowContributor}: per field it adds
+ * ({@link ViewConfigEditor}) driven by a {@link FieldTableContributor}: per field it adds
  * {@code Coverage} / {@code Present} / {@code Missing} columns. Select a gappy field to
  * drill into the members missing it — rendered with the shared {@link CardListView} /
  * {@link SearchPanel} (selectable, searchable cards), so a missing member IS the object,
@@ -71,7 +73,7 @@ public final class ValidationPanel extends JPanel {
             }
         }
 
-        coverage = new ViewConfigEditor(new CoverageColumns());
+        coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null, new CoverageColumns());
         coverage.setChangeListener(this::onFieldSelected);
 
         for (String t : domain.types()) {
@@ -122,21 +124,15 @@ public final class ValidationPanel extends JPanel {
         instances = type == null ? List.of() : byType.getOrDefault(type, List.of());
         selected = null;
 
-        List<String> paths = new ArrayList<>();
-        Map<String, DomainField> byPath = new LinkedHashMap<>();
-        if (type != null) {
-            for (DomainField f : domain.fields(type)) {
-                if (f.field() != null) {
-                    paths.add(f.field());
-                    byPath.put(f.field(), f);
-                }
-            }
-        }
-        // Rebuilding the rows clears the selection, which fires onFieldSelected and
-        // resets the drill to its placeholder.
-        coverage.setPathRows(paths,
-                type == null ? Set.of() : domain.structuralFields(type),
-                type == null ? null : PathTypeLabel.of(byPath, domain.fieldTypes(type)));
+        // Enumerate via the SHARED config source (same fields / order / types as the
+        // search/sort/view editors), rendered as an inline collapsible tree. Rebuilding
+        // clears the selection, which fires onFieldSelected and resets the drill.
+        Quizable sample = instances.isEmpty() ? null : instances.get(0);
+        coverage.setConfigRows(
+                sample == null ? new ViewConfig() : ViewConfig.all(sampleClass(sample)),
+                sample,
+                type == null ? null : domain.fieldTypes(type),
+                type == null ? Set.of() : domain.structuralFields(type));
         status.setText("   " + instances.size() + " " + (type == null ? "" : type)
                 + " instance(s)");
     }
@@ -169,7 +165,7 @@ public final class ValidationPanel extends JPanel {
 
     // The coverage plugin: single-select field picker + Coverage / Present / Missing
     // columns computed over the currently selected type's instances.
-    private final class CoverageColumns implements FieldRowContributor {
+    private final class CoverageColumns implements FieldTableContributor {
         @Override public SelectionMode selectionMode() {
             return SelectionMode.SINGLE;
         }
@@ -200,19 +196,30 @@ public final class ValidationPanel extends JPanel {
         return n;
     }
 
-    private static FieldRowContributor.ExtraColumn column(String header, int width,
-                                                          Function<String, Object> value) {
-        return new FieldRowContributor.ExtraColumn() {
-            @Override public String header() {
+    @SuppressWarnings("unchecked")
+    private static Class<? extends Viewable> sampleClass(Quizable q) {
+        return (Class<? extends Viewable>) q.getClass();
+    }
+
+    private static FieldTableContributor.ExtraColumn column(
+            String header,
+            int width,
+            Function<String, Object> value) {
+
+        return new FieldTableContributor.ExtraColumn() {
+            @Override
+            public String header() {
                 return header;
             }
 
-            @Override public int width() {
+            @Override
+            public int width() {
                 return width;
             }
 
-            @Override public Object value(String fieldPath) {
-                return value.apply(fieldPath);
+            @Override
+            public Object value(FieldRow row) {
+                return value.apply(row.path());
             }
         };
     }
