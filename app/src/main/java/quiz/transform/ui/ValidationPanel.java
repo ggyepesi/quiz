@@ -334,6 +334,12 @@ public final class ValidationPanel extends JPanel {
             for (Object o : current) {
                 if (o instanceof Viewable v) {
                     Object val = FieldSet.of(v).read(seg);
+                    // `name` is identity/display data (getName()), not a stored map/
+                    // reflected field, so a plain read misses it — fall back to it, else
+                    // the always-present name reads as 0% covered.
+                    if (val == null && "name".equals(seg)) {
+                        val = v.getName();
+                    }
                     if (val instanceof Collection<?> c) {
                         next.addAll(c);
                     } else if (val != null) {
