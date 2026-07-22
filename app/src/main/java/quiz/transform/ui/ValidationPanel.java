@@ -2,11 +2,13 @@ package quiz.transform.ui;
 
 import objectview.Viewable;
 import objectview.field.FieldSet;
+import objectview.render.CardListView;
+import objectview.render.RenderContext;
+import objectview.search.SearchPanel;
 import quiz.Quizable;
 
-import javax.swing.DefaultListModel;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -14,8 +16,6 @@ import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
-import java.awt.Desktop;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -26,14 +26,13 @@ import java.util.Set;
 
 /**
  * Consistency validation in the transform app — the front of the CURATE stage. Runs over
- * the WHOLE working schema the domain exposes: base classes, DERIVED classes (project /
- * join) and facets alike — per field, how many instances carry a value vs. how many are
- * missing. Select a gappy field to drill into the members missing it, each linked to
- * Wikidata: the worklist curation acts on (a manual fill, or a source enrichment).
+ * the WHOLE working schema the domain exposes (base classes, DERIVED classes and facets):
+ * per field, how many instances carry a value vs. how many are missing. Select a gappy
+ * field to drill into the members missing it — rendered with the shared {@link CardListView}
+ * / {@link SearchPanel} (selectable cards, searchable), so a missing member IS the object,
+ * ready for curation (a manual fill or a source enrichment).
  */
 public final class ValidationPanel extends JPanel {
-
-    private static final int MISSING_SHOWN = 500;
 
     private final DomainModel domain;
     private final DefaultTableModel table = new DefaultTableModel(
@@ -46,17 +45,11 @@ public final class ValidationPanel extends JPanel {
     private final JTable grid = new JTable(table);
     private final JLabel status = new JLabel(" ");
 
-    private final DefaultListModel<Missing> missingModel = new DefaultListModel<>();
-    private final JList<Missing> missingList = new JList<>(missingModel);
-    private final JLabel missingHead = new JLabel("Select a field with a gap to drill in.");
+    private final JPanel instancesHolder = new JPanel(new BorderLayout());
     private final Map<String, List<Quizable>> byType = new LinkedHashMap<>();
+    private Quizable selected;
 
     private record Row(String type, String path) {}
-    private record Missing(String name, String qid) {
-        @Override public String toString() {
-            return qid != null && qid.matches("Q\\d+") ? name + "   (" + qid + " ↗)" : name;
-        }
-    }
 
     public ValidationPanel(DomainModel domain) {
         super(new BorderLayout(6, 6));
@@ -75,30 +68,25 @@ public final class ValidationPanel extends JPanel {
         top.add(new JScrollPane(grid), BorderLayout.CENTER);
         top.add(status, BorderLayout.SOUTH);
 
-        JPanel bottom = new JPanel(new BorderLayout());
-        bottom.add(missingHead, BorderLayout.NORTH);
-        bottom.add(new JScrollPane(missingList), BorderLayout.CENTER);
-        missingList.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override public void mouseClicked(java.awt.event.MouseEvent ev) {
-                if (ev.getClickCount() == 2) {
-                    openInWikidata();
-                }
-            }
-        });
+        instancesHolder.add(
+                new JLabel("   Select a field with a gap to drill into its missing members."),
+                BorderLayout.NORTH);
 
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, bottom);
-        split.setResizeWeight(0.6);
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, instancesHolder);
+        split.setResizeWeight(0.5);
         add(split, BorderLayout.CENTER);
         refresh();
+    }
+
+    /** The last selected missing member — the target a curation/enrichment action fills. */
+    public Quizable selected() {
+        return selected;
     }
 
     public void refresh() {
         table.setRowCount(0);
         rows.clear();
         byType.clear();
-        missingModel.clear();
-        missingHead.setText("Select a field with a gap to drill in.");
-
         for (Quizable q : domain.instances()) {
             if (q != null && q.typeName() != null) {
                 byType.computeIfAbsent(q.typeName(), k -> new ArrayList<>()).add(q);
@@ -136,40 +124,61 @@ public final class ValidationPanel extends JPanel {
     }
 
     private void showMissing() {
-        missingModel.clear();
+        selected = null;
+        instancesHolder.removeAll();
         int i = grid.getSelectedRow();
         if (i < 0) {
+            instancesHolder.revalidate();
+            instancesHolder.repaint();
             return;
         }
         Row r = rows.get(grid.convertRowIndexToModel(i));
-        int shown = 0;
-        int gap = 0;
+        List<Quizable> missing = new ArrayList<>();
         for (Quizable q : byType.getOrDefault(r.type(), List.of())) {
             if (!has(q, r.path())) {
-                gap++;
-                if (shown < MISSING_SHOWN) {
-                    missingModel.addElement(new Missing(q.getDisplayName(), q.getIdentifier()));
-                    shown++;
-                }
+                missing.add(q);
             }
         }
-        missingHead.setText(gap == 0
-                ? r.type() + "." + r.path() + " — fully covered."
-                : gap + " missing " + r.type() + "." + r.path() + " — showing " + shown
-                        + "  (double-click to open in Wikidata)");
+        instancesHolder.add(header(r, missing.size()), BorderLayout.NORTH);
+        if (!missing.isEmpty()) {
+            instancesHolder.add(instancesView(missing, r.type()), BorderLayout.CENTER);
+        }
+        instancesHolder.revalidate();
+        instancesHolder.repaint();
     }
 
-    private void openInWikidata() {
-        Missing m = missingList.getSelectedValue();
-        if (m == null || m.qid() == null || !m.qid().matches("Q\\d+")
-                || !Desktop.isDesktopSupported()) {
-            return;
+    private JLabel header(Row r, int gap) {
+        return new JLabel(gap == 0
+                ? "   " + r.type() + "." + r.path() + " — fully covered."
+                : "   " + gap + " member(s) missing " + r.type() + "." + r.path());
+    }
+
+    // The shared instance rendering: selectable, searchable cards (same components the
+    // curation panel uses), so a missing member is the object — click to select it.
+    private JComponent instancesView(List<Quizable> missing, String type) {
+        CardListView v = new CardListView();
+        RenderContext ctx = new RenderContext();
+        ctx.setCollapsibleCards(true);
+        ctx.setSelectionEnabled(true);
+        ctx.addSelectionListener(o -> selected = o instanceof Quizable q ? q : null);
+        v.setRenderContext(ctx);
+        for (Quizable m : missing) {
+            v.addViewable(m);
         }
-        try {
-            Desktop.getDesktop().browse(URI.create("https://www.wikidata.org/wiki/" + m.qid()));
-        } catch (Exception ignore) {
-            // best-effort
-        }
+        v.createCardsPanel(1);
+
+        JPanel panel = new JPanel(new BorderLayout());
+        Quizable sample = missing.get(0);
+        @SuppressWarnings("unchecked")
+        Class<? extends Quizable> cls = (Class<? extends Quizable>) sample.getClass();
+        SearchPanel engine = new SearchPanel(cls, sample);
+        engine.setHiddenFields(domain.structuralFields(type));
+        engine.setFieldTypes(domain.fieldTypes(type));
+        engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
+        v.addTargetListener(engine);
+        panel.add(engine, BorderLayout.NORTH);
+        panel.add(v.getCardsScrollPane(), BorderLayout.CENTER);
+        return panel;
     }
 
     private static boolean has(Quizable q, String path) {
