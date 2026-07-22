@@ -41,7 +41,7 @@
     "snapshotPath" : "data/wikidata/oscarnominations/oscarnominations.snapshot.json",
     "types" : [ "Nomination", "Nominee", "ForWork", "Ceremony" ],
     "instanceCount" : 24776,
-    "savedAt" : "2026-07-20T17:48:23.251261",
+    "savedAt" : "2026-07-21T15:17:06.695287",
     "modelSignature" : "a667351b06c96b13eb71ce383cd829c700faf2632d10af4a8dcd010f25f8393f"
   } ]
 }

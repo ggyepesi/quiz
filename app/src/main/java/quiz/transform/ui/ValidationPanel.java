@@ -5,84 +5,108 @@ import objectview.field.FieldSet;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
+import objectview.viewconfig.FieldRowContributor;
+import objectview.viewconfig.ViewConfigEditor;
 import quiz.Quizable;
 
 import wikidata.WikidataSparqlClient;
 
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
- * Consistency validation in the transform app — the front of the CURATE stage. Runs over
- * the WHOLE working schema the domain exposes (base classes, DERIVED classes and facets):
- * per field, how many instances carry a value vs. how many are missing. Select a gappy
- * field to drill into the members missing it — rendered with the shared {@link CardListView}
- * / {@link SearchPanel} (selectable cards, searchable), so a missing member IS the object,
- * ready for curation (a manual fill or a source enrichment).
+ * Consistency validation in the transform app — the front of the CURATE stage. It runs
+ * over the WHOLE working schema the domain exposes (base classes, DERIVED classes and
+ * facets), one type at a time. The coverage view IS the shared field-config table
+ * ({@link ViewConfigEditor}) driven by a {@link FieldRowContributor}: per field it adds
+ * {@code Coverage} / {@code Present} / {@code Missing} columns. Select a gappy field to
+ * drill into the members missing it — rendered with the shared {@link CardListView} /
+ * {@link SearchPanel} (selectable, searchable cards), so a missing member IS the object,
+ * ready for curation (a manual fill or a source enrichment such as "Check DBpedia").
  */
 public final class ValidationPanel extends JPanel {
 
     private final DomainModel domain;
-    private final DefaultTableModel table = new DefaultTableModel(
-            new Object[] {"Type", "Field", "Coverage", "Present", "Missing"}, 0) {
-        @Override public boolean isCellEditable(int r, int c) {
-            return false;
-        }
-    };
-    private final List<Row> rows = new ArrayList<>();
-    private final JTable grid = new JTable(table);
+    private final Map<String, List<Quizable>> byType = new LinkedHashMap<>();
+
+    private final JComboBox<String> typeCombo = new JComboBox<>();
+    private final ViewConfigEditor coverage;
     private final JLabel status = new JLabel(" ");
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
-    private final Map<String, List<Quizable>> byType = new LinkedHashMap<>();
+    private final JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+
+    private String type;
+    private List<Quizable> instances = List.of();
     private Quizable selected;
     private WikidataSparqlClient dbpedia;
-
-    private record Row(String type, String path) {}
 
     public ValidationPanel(DomainModel domain) {
         super(new BorderLayout(6, 6));
         this.domain = domain;
 
-        grid.setRowHeight(22);
-        grid.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        grid.setAutoCreateRowSorter(true);
-        grid.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                showMissing();
+        for (Quizable q : domain.instances()) {
+            if (q != null && q.typeName() != null) {
+                byType.computeIfAbsent(q.typeName(), k -> new ArrayList<>()).add(q);
             }
-        });
+        }
+
+        coverage = new ViewConfigEditor(new CoverageColumns());
+        coverage.setChangeListener(this::onFieldSelected);
+
+        for (String t : domain.types()) {
+            if (!byType.getOrDefault(t, List.of()).isEmpty()) {
+                typeCombo.addItem(t);
+            }
+        }
+        typeCombo.addActionListener(e -> onType());
+
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        bar.add(new JLabel("Type:"));
+        bar.add(typeCombo);
+        bar.add(status);
 
         JPanel top = new JPanel(new BorderLayout());
-        top.add(new JScrollPane(grid), BorderLayout.CENTER);
-        top.add(status, BorderLayout.SOUTH);
+        top.add(bar, BorderLayout.NORTH);
+        top.add(coverage, BorderLayout.CENTER);
 
         instancesHolder.add(
                 new JLabel("   Select a field with a gap to drill into its missing members."),
                 BorderLayout.NORTH);
 
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, instancesHolder);
+        split.setTopComponent(top);
+        split.setBottomComponent(instancesHolder);
         split.setResizeWeight(0.5);
         add(split, BorderLayout.CENTER);
-        refresh();
+
+        if (typeCombo.getItemCount() > 0) {
+            typeCombo.setSelectedIndex(0);
+            onType();
+        }
+    }
+
+    // The bottom (drill) region carries a virtualized card list, which builds cards
+    // from its viewport height; setResizeWeight only governs *resize* distribution,
+    // so pin the divider once realized to give that viewport room.
+    @Override public void addNotify() {
+        super.addNotify();
+        SwingUtilities.invokeLater(() -> split.setDividerLocation(0.5));
     }
 
     /** The last selected missing member — the target a curation/enrichment action fills. */
@@ -90,80 +114,114 @@ public final class ValidationPanel extends JPanel {
         return selected;
     }
 
-    public void refresh() {
-        table.setRowCount(0);
-        rows.clear();
-        byType.clear();
-        for (Quizable q : domain.instances()) {
-            if (q != null && q.typeName() != null) {
-                byType.computeIfAbsent(q.typeName(), k -> new ArrayList<>()).add(q);
-            }
-        }
-        int gaps = 0;
-        for (String type : domain.types()) {
-            List<Quizable> instances = byType.getOrDefault(type, List.of());
-            if (instances.isEmpty()) {
-                continue;
-            }
-            Set<String> structural = domain.structuralFields(type);
-            Set<String> seen = new HashSet<>();
+    private void onType() {
+        type = (String) typeCombo.getSelectedItem();
+        instances = type == null ? List.of() : byType.getOrDefault(type, List.of());
+        selected = null;
+
+        List<String> paths = new ArrayList<>();
+        if (type != null) {
             for (DomainField f : domain.fields(type)) {
-                String path = f.field();
-                if (path == null || structural.contains(path) || !seen.add(path)) {
-                    continue;
+                if (f.field() != null) {
+                    paths.add(f.field());
                 }
-                int present = 0;
-                for (Quizable q : instances) {
-                    if (has(q, path)) {
-                        present++;
-                    }
-                }
-                int total = instances.size();
-                if (total - present > 0) {
-                    gaps++;
-                }
-                double pct = total == 0 ? 0 : Math.round(1000.0 * present / total) / 10.0;
-                rows.add(new Row(type, path));
-                table.addRow(new Object[] {type, path, pct + "%", present, total - present});
             }
         }
-        status.setText(gaps + " field(s) with gaps across " + byType.size() + " type(s).");
+        // Rebuilding the rows clears the selection, which fires onFieldSelected and
+        // resets the drill to its placeholder.
+        coverage.setPathRows(paths,
+                type == null ? Set.of() : domain.structuralFields(type),
+                type == null ? null : domain.fieldTypes(type));
+        status.setText("   " + instances.size() + " " + (type == null ? "" : type)
+                + " instance(s)");
     }
 
-    private void showMissing() {
+    private void onFieldSelected() {
+        String path = coverage.selectedPath();
         selected = null;
         instancesHolder.removeAll();
-        int i = grid.getSelectedRow();
-        if (i < 0) {
+        if (path == null) {
+            instancesHolder.add(new JLabel(
+                    "   Select a field with a gap to drill into its missing members."),
+                    BorderLayout.NORTH);
             instancesHolder.revalidate();
             instancesHolder.repaint();
             return;
         }
-        Row r = rows.get(grid.convertRowIndexToModel(i));
         List<Quizable> missing = new ArrayList<>();
-        for (Quizable q : byType.getOrDefault(r.type(), List.of())) {
-            if (!has(q, r.path())) {
+        for (Quizable q : instances) {
+            if (!has(q, path)) {
                 missing.add(q);
             }
         }
-        instancesHolder.add(header(r, missing.size()), BorderLayout.NORTH);
+        instancesHolder.add(header(path, missing.size()), BorderLayout.NORTH);
         if (!missing.isEmpty()) {
-            instancesHolder.add(instancesView(missing, r.type()), BorderLayout.CENTER);
+            instancesHolder.add(instancesView(missing, type), BorderLayout.CENTER);
         }
         instancesHolder.revalidate();
         instancesHolder.repaint();
     }
 
-    private JComponent header(Row r, int gap) {
+    // The coverage plugin: single-select field picker + Coverage / Present / Missing
+    // columns computed over the currently selected type's instances.
+    private final class CoverageColumns implements FieldRowContributor {
+        @Override public SelectionMode selectionMode() {
+            return SelectionMode.SINGLE;
+        }
+
+        @Override public List<ExtraColumn> columns() {
+            return List.of(
+                    column("Coverage", 80, this::pct),
+                    column("Present", 64, p -> String.valueOf(present(p))),
+                    column("Missing", 64, p -> String.valueOf(instances.size() - present(p))));
+        }
+
+        private String pct(String path) {
+            int total = instances.size();
+            if (total == 0) {
+                return "—";
+            }
+            return (Math.round(1000.0 * present(path) / total) / 10.0) + "%";
+        }
+    }
+
+    private int present(String path) {
+        int n = 0;
+        for (Quizable q : instances) {
+            if (has(q, path)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static FieldRowContributor.ExtraColumn column(String header, int width,
+                                                          Function<String, Object> value) {
+        return new FieldRowContributor.ExtraColumn() {
+            @Override public String header() {
+                return header;
+            }
+
+            @Override public int width() {
+                return width;
+            }
+
+            @Override public Object value(String fieldPath) {
+                return value.apply(fieldPath);
+            }
+        };
+    }
+
+    private JComponent header(String path, int gap) {
         JPanel h = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         h.add(new JLabel(gap == 0
-                ? r.type() + "." + r.path() + " — fully covered."
-                : gap + " member(s) missing " + r.type() + "." + r.path()));
+                ? type + "." + path + " — fully covered."
+                : gap + " member(s) missing " + type + "." + path));
         if (gap > 0) {
             JButton check = new JButton("Check DBpedia ↗");
-            check.setToolTipText("Look up the SELECTED member's \"" + leaf(r.path())
+            check.setToolTipText("Look up the SELECTED member's \"" + leaf(path)
                     + "\" on DBpedia (select a card first)");
-            check.addActionListener(e -> checkDbpedia(leaf(r.path())));
+            check.addActionListener(e -> checkDbpedia(leaf(path)));
             h.add(check);
         }
         return h;

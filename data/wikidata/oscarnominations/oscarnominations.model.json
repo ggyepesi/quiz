@@ -238,7 +238,7 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "kind" : "DERIVED",
-      "keyFields" : [ "java.util.ArrayList", [ "category", "ceremony", "forWork", "nominee" ] ],
+      "keyFields" : [ "java.util.ArrayList", [ "category", "forWork", "nominee", "ceremony" ] ],
       "displayNameMode" : "FIELD",
       "displayNameField" : "nominee",
       "displayNameTemplate" : "",
@@ -483,7 +483,7 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "kind" : "DERIVED",
-      "keyFields" : [ "java.util.ArrayList", [ "category", "ceremony", "forWork", "nominee" ] ],
+      "keyFields" : [ "java.util.ArrayList", [ "category", "forWork", "nominee", "ceremony" ] ],
       "displayNameMode" : "FIELD",
       "displayNameField" : "nominee",
       "displayNameTemplate" : "",
@@ -599,7 +599,7 @@
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "genre",
       "type" : "ENTITY",
-      "entityClassName" : "Genre",
+      "entityClassName" : "WorkGenre",
       "cardinality" : "AUTO",
       "renderMode" : "REFERENCE",
       "required" : false,

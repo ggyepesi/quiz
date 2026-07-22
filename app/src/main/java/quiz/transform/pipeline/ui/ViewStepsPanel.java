@@ -1,6 +1,8 @@
 package quiz.transform.pipeline.ui;
 
 import objectview.utils.swing.GridBagUtils;
+import objectview.viewconfig.FieldRowContributor;
+import objectview.viewconfig.ViewConfigEditor;
 import quiz.Quizable;
 import quiz.transform.ui.DomainField;
 import objectview.field.FieldKind;
@@ -14,7 +16,9 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class ViewStepsPanel extends JPanel {
 
@@ -27,7 +31,12 @@ public final class ViewStepsPanel extends JPanel {
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
 
-    private final FieldTreePanel fieldTree = new FieldTreePanel();
+    // The single-select field picker (the fold-in of the old FieldTreePanel): the
+    // shared field-config table run in SINGLE mode. It speaks dotted paths, so we
+    // keep the path -> DomainField map to recover the chosen field.
+    private final ViewConfigEditor fieldPicker =
+            new ViewConfigEditor(FieldRowContributor.SINGLE);
+    private final Map<String, DomainField> fieldByPath = new LinkedHashMap<>();
 
     private final JComboBox<FilterOperator> filterOperator =
             new JComboBox<>();
@@ -113,9 +122,9 @@ public final class ViewStepsPanel extends JPanel {
     private JComponent fieldBlock() {
         JPanel p = new JPanel(new BorderLayout(4, 4));
         p.setBorder(BorderFactory.createTitledBorder(
-                "Field — pick one (expand a reference to drill in)"));
-        fieldTree.setOnChange(this::onFieldSelectionChanged);
-        p.add(fieldTree, BorderLayout.CENTER);
+                "Field — pick one (a reference's nested fields are indented below it)"));
+        fieldPicker.setChangeListener(this::onFieldSelectionChanged);
+        p.add(fieldPicker, BorderLayout.CENTER);
         return p;
     }
 
@@ -205,16 +214,23 @@ public final class ViewStepsPanel extends JPanel {
         Object uo = node.getUserObject();
 
         if (uo instanceof GroupNode g && g.field() != null) {
-            fieldTree.selectPath(g.field().field());
+            fieldPicker.setSelectedPath(g.field().field());
         }
     }
 
     private void rebuildFieldTree() {
         String type = controller.selectedType();
+        fieldByPath.clear();
         if (type == null) {
-            fieldTree.setFields(List.of(), java.util.Set.of(), null);
+            fieldPicker.setPathRows(List.of(), java.util.Set.of(), null);
         } else {
-            fieldTree.setFields(controller.fields(type),
+            List<DomainField> fields = controller.fields(type);
+            List<String> paths = new ArrayList<>();
+            for (DomainField f : fields) {
+                fieldByPath.put(f.field(), f);
+                paths.add(f.field());
+            }
+            fieldPicker.setPathRows(paths,
                     controller.structuralFields(type), controller.fieldTypes(type));
         }
         onFieldSelectionChanged();
@@ -230,7 +246,7 @@ public final class ViewStepsPanel extends JPanel {
 
     /** The selected field, or null (no dialog) — for reacting to selection. */
     private DomainField currentField() {
-        return fieldTree.selectedField();
+        return fieldByPath.get(fieldPicker.selectedPath());
     }
 
     /** Re-offer only the operators that fit the checked field's shape. */
@@ -295,7 +311,7 @@ public final class ViewStepsPanel extends JPanel {
         }
         FilterCondition c = filterModel.get(i);
         if (c.field() != null) {
-            fieldTree.selectPath(c.field().field());
+            fieldPicker.setSelectedPath(c.field().field());
         }
         reloadOperators(kindOf(c.field()));
         filterOperator.setSelectedItem(c.operator());
