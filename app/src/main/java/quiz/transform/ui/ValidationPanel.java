@@ -50,7 +50,11 @@ public final class ValidationPanel extends JPanel {
     private final JLabel status = new JLabel(" ");
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
-    private final JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+    // Horizontal, NOT vertical: the coverage table's preferred HEIGHT grows with the
+    // field count, so a vertical split lets it starve the drill's card viewport to ~0
+    // and nothing renders. Side-by-side (like the main workbench) keeps the drill full
+    // height — the arrangement that reliably renders the virtualized cards.
+    private final JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
     private String type;
     private List<Quizable> instances = List.of();
@@ -101,9 +105,8 @@ public final class ValidationPanel extends JPanel {
         }
     }
 
-    // The bottom (drill) region carries a virtualized card list, which builds cards
-    // from its viewport height; setResizeWeight only governs *resize* distribution,
-    // so pin the divider once realized to give that viewport room.
+    // Split the space evenly once realized (setResizeWeight only governs *resize*
+    // distribution, not the initial divider seeded from preferred sizes).
     @Override public void addNotify() {
         super.addNotify();
         SwingUtilities.invokeLater(() -> split.setDividerLocation(0.5));
@@ -301,6 +304,16 @@ public final class ValidationPanel extends JPanel {
         v.addTargetListener(engine);
         panel.add(engine, BorderLayout.NORTH);
         panel.add(v.getCardsScrollPane(), BorderLayout.CENTER);
+
+        // The virtualized card list materializes cards off its viewport size. On the
+        // FIRST drill in a freshly shown dialog that size isn't settled yet and the
+        // build can miss; once the panel is laid out, force one rebuild so the cards
+        // always appear (not just after a warm-up dialog).
+        SwingUtilities.invokeLater(() -> {
+            if (v.getVirtualList() != null) {
+                v.getVirtualList().rebuild();
+            }
+        });
         return panel;
     }
 
