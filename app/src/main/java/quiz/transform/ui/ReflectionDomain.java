@@ -101,9 +101,14 @@ public final class ReflectionDomain implements DomainModel {
         List<DomainField> fields = new ArrayList<>();
         // ViewableFieldPaths gives the NESTED field paths (e.g. nominee.name) the
         // config editor renders — so nested/cross-class arguments appear for free.
+        // ALL_FIELDS: this feeds the transform pipeline picker and the coverage /
+        // validation view, which WANT media (a MEDIA field is presence-filterable and
+        // the missing-portrait / missing-flag worklist is the point). Search / sort /
+        // config editors exclude media by kind separately (NOT_MEDIA_FIELDS).
         ViewConfig config =
                 ViewConfig.all((Class<? extends Quizable>) cls);
-        for (ViewableFieldPaths.FieldPath fp : ViewableFieldPaths.collect(config)) {
+        for (ViewableFieldPaths.FieldPath fp
+                : ViewableFieldPaths.collect(config, ViewableFieldPaths.ALL_FIELDS)) {
             Field leaf = fp.leafField();
             boolean ref = leaf != null && isReferenceField(leaf);
             boolean col = leaf != null && isCollectionField(leaf);

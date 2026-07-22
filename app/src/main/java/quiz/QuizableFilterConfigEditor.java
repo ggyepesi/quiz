@@ -57,7 +57,7 @@ public class QuizableFilterConfigEditor extends JPanel {
         List<ViewableFieldPaths.FieldPath> paths =
                 ViewableFieldPaths.collect(
                         fieldConfig,
-                        ViewableFieldPaths.NOT_IMAGE_PANE_FIELDS
+                        ViewableFieldPaths.NOT_MEDIA_FIELDS
                                           );
 
         for (ViewableFieldPaths.FieldPath fp : paths) {
