@@ -7,15 +7,21 @@ import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
 import quiz.Quizable;
 
+import wikidata.WikidataSparqlClient;
+
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -48,6 +54,7 @@ public final class ValidationPanel extends JPanel {
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     private final Map<String, List<Quizable>> byType = new LinkedHashMap<>();
     private Quizable selected;
+    private WikidataSparqlClient dbpedia;
 
     private record Row(String type, String path) {}
 
@@ -147,10 +154,68 @@ public final class ValidationPanel extends JPanel {
         instancesHolder.repaint();
     }
 
-    private JLabel header(Row r, int gap) {
-        return new JLabel(gap == 0
-                ? "   " + r.type() + "." + r.path() + " — fully covered."
-                : "   " + gap + " member(s) missing " + r.type() + "." + r.path());
+    private JComponent header(Row r, int gap) {
+        JPanel h = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        h.add(new JLabel(gap == 0
+                ? r.type() + "." + r.path() + " — fully covered."
+                : gap + " member(s) missing " + r.type() + "." + r.path()));
+        if (gap > 0) {
+            JButton check = new JButton("Check DBpedia ↗");
+            check.setToolTipText("Look up the SELECTED member's \"" + leaf(r.path())
+                    + "\" on DBpedia (select a card first)");
+            check.addActionListener(e -> checkDbpedia(leaf(r.path())));
+            h.add(check);
+        }
+        return h;
+    }
+
+    // PROPOSE-only enrichment: look up the selected member's field on DBpedia and show
+    // the candidate(s). Next step: accept one → a Correction (origin "dbpedia") overlay.
+    private void checkDbpedia(String property) {
+        Quizable m = selected;
+        if (m == null) {
+            JOptionPane.showMessageDialog(this, "Select a member card first.");
+            return;
+        }
+        String qid = m.getIdentifier();
+        if (qid == null || !qid.matches("Q\\d+")) {
+            JOptionPane.showMessageDialog(this, "This member has no Wikidata QID to join on.");
+            return;
+        }
+        String name = m.getDisplayName();
+        new SwingWorker<List<String>, Void>() {
+            @Override protected List<String> doInBackground() {
+                return DBpediaLookup.candidates(dbpedia(), qid, property);
+            }
+            @Override protected void done() {
+                try {
+                    List<String> c = get();
+                    String msg = c.isEmpty()
+                            ? "DBpedia has no \"" + property + "\" for " + name + "."
+                            : "DBpedia \"" + property + "\" for " + name + ":\n  • "
+                                    + String.join("\n  • ", c);
+                    JOptionPane.showMessageDialog(ValidationPanel.this, msg,
+                            "DBpedia candidates", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(ValidationPanel.this,
+                            "DBpedia lookup failed: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private WikidataSparqlClient dbpedia() {
+        if (dbpedia == null) {
+            dbpedia = new WikidataSparqlClient(
+                    "QuizProject/1.0 (ggyepesi@gmail.com)", 2,
+                    WikidataSparqlClient.DBPEDIA_ENDPOINT);
+        }
+        return dbpedia;
+    }
+
+    private static String leaf(String path) {
+        int dot = path.lastIndexOf('.');
+        return dot >= 0 ? path.substring(dot + 1) : path;
     }
 
     // The shared instance rendering: selectable, searchable cards (same components the
