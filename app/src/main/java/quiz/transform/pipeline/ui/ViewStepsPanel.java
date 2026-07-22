@@ -1,10 +1,13 @@
 package quiz.transform.pipeline.ui;
 
+import objectview.Viewable;
 import objectview.utils.swing.GridBagUtils;
+import objectview.viewconfig.FieldRow;
 import objectview.viewconfig.FieldTableContributor;
+import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
+import quiz.Quizable;
 import quiz.transform.ui.DomainField;
-import quiz.transform.ui.PathTypeLabel;
 import objectview.field.FieldKind;
 import quiz.transform.ui.OperationKind;
 import quiz.transform.ui.OperationSpec;
@@ -31,12 +34,12 @@ public final class ViewStepsPanel extends JPanel {
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
 
-    // The single-select field picker (the fold-in of the old FieldTreePanel): the
-    // shared field-config table run in SINGLE mode. It speaks dotted paths, so we
-    // keep the path -> DomainField map to recover the chosen field.
+    // The single-select field picker: the shared field-config table in SINGLE mode over
+    // the SHARED config source, so it shows the same fields / order / types as the
+    // search/sort/view editors, with references as an inline collapsible tree. The
+    // chosen DomainField is rebuilt from the selected row's FieldRow.
     private final ViewConfigEditor fieldPicker =
-            new ViewConfigEditor(FieldTableContributor.SINGLE);
-    private final Map<String, DomainField> fieldByPath = new LinkedHashMap<>();
+            new ViewConfigEditor(new ViewConfig(), (Viewable) null, FieldTableContributor.SINGLE);
 
     private final JComboBox<FilterOperator> filterOperator =
             new JComboBox<>();
@@ -220,20 +223,22 @@ public final class ViewStepsPanel extends JPanel {
 
     private void rebuildFieldTree() {
         String type = controller.selectedType();
-        fieldByPath.clear();
         if (type == null) {
-            fieldPicker.setPathRows(List.of(), java.util.Set.of(), null);
+            fieldPicker.setConfigRows(new ViewConfig(), null, null, java.util.Set.of());
         } else {
-            List<DomainField> fields = controller.fields(type);
-            List<String> paths = new ArrayList<>();
-            for (DomainField f : fields) {
-                fieldByPath.put(f.field(), f);
-                paths.add(f.field());
-            }
-            fieldPicker.setPathRows(paths, controller.structuralFields(type),
-                    PathTypeLabel.of(fieldByPath, controller.fieldTypes(type)));
+            Quizable sample = controller.sampleOf(type);
+            fieldPicker.setConfigRows(
+                    sample == null ? new ViewConfig() : ViewConfig.all(sampleClass(sample)),
+                    sample,
+                    controller.fieldTypes(type),
+                    controller.structuralFields(type));
         }
         onFieldSelectionChanged();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<? extends Viewable> sampleClass(Quizable q) {
+        return (Class<? extends Viewable>) q.getClass();
     }
 
     private DomainField singleCheckedField() {
@@ -244,9 +249,25 @@ public final class ViewStepsPanel extends JPanel {
         return f;
     }
 
-    /** The selected field, or null (no dialog) — for reacting to selection. */
+    /** The selected field as a {@link DomainField}, rebuilt from the chosen row's
+     *  {@link FieldRow} (its leaf {@code Field} / nested source), so it no longer
+     *  depends on a path lookup that might not match the tree's paths. */
     private DomainField currentField() {
-        return fieldByPath.get(fieldPicker.selectedPath());
+        FieldRow row = fieldPicker.selectedRow();
+        if (row == null) {
+            return null;
+        }
+        String type = controller.selectedType();
+        boolean reference = row.nested() != null;
+        java.lang.reflect.Field leaf = row.field();
+        boolean collection = leaf != null
+                && (java.util.Collection.class.isAssignableFrom(leaf.getType())
+                        || java.util.Map.class.isAssignableFrom(leaf.getType()));
+        FieldKind kind = collection ? FieldKind.COLLECTION
+                : reference ? FieldKind.REFERENCE
+                : leaf != null ? FieldKind.ofClass(leaf.getType())
+                : FieldKind.ofTypeLabel(row.typeLabel());
+        return new DomainField(type, row.path(), reference, collection, kind);
     }
 
     /** Re-offer only the operators that fit the checked field's shape. */
