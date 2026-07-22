@@ -1,9 +1,8 @@
 package quiz.transform.pipeline.ui;
 
 import objectview.utils.swing.GridBagUtils;
-import objectview.viewconfig.FieldRowContributor;
+import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfigEditor;
-import quiz.Quizable;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.PathTypeLabel;
 import objectview.field.FieldKind;
@@ -36,7 +35,7 @@ public final class ViewStepsPanel extends JPanel {
     // shared field-config table run in SINGLE mode. It speaks dotted paths, so we
     // keep the path -> DomainField map to recover the chosen field.
     private final ViewConfigEditor fieldPicker =
-            new ViewConfigEditor(FieldRowContributor.SINGLE);
+            new ViewConfigEditor(FieldTableContributor.SINGLE);
     private final Map<String, DomainField> fieldByPath = new LinkedHashMap<>();
 
     private final JComboBox<FilterOperator> filterOperator =
