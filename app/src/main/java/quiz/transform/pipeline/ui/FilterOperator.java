@@ -7,6 +7,7 @@ import java.util.Set;
 
 import static objectview.field.FieldKind.BOOLEAN;
 import static objectview.field.FieldKind.COLLECTION;
+import static objectview.field.FieldKind.MEDIA;
 import static objectview.field.FieldKind.ORDERED;
 import static objectview.field.FieldKind.REFERENCE;
 import static objectview.field.FieldKind.TEXT;
@@ -28,9 +29,10 @@ public enum FilterOperator {
     BETWEEN("between", ORDERED),
     IS_TRUE("is true", BOOLEAN),
     IS_FALSE("is false", BOOLEAN),
-    // is empty / is not empty apply to every shape.
-    IS_EMPTY("is empty", BOOLEAN, ORDERED, TEXT, REFERENCE, COLLECTION),
-    IS_NOT_EMPTY("is not empty", BOOLEAN, ORDERED, TEXT, REFERENCE, COLLECTION);
+    // is empty / is not empty apply to every shape — including MEDIA, where presence
+    // IS the useful query (find members with a missing portrait / flag).
+    IS_EMPTY("is empty", BOOLEAN, ORDERED, TEXT, REFERENCE, COLLECTION, MEDIA),
+    IS_NOT_EMPTY("is not empty", BOOLEAN, ORDERED, TEXT, REFERENCE, COLLECTION, MEDIA);
 
     private final String label;
     private final Set<FieldKind> kinds;

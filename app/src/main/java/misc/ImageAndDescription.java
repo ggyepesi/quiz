@@ -18,12 +18,28 @@ import org.w3c.dom.Document;
 
 import aux.UrlLineProcessor;
 import aux.UrlReader;
+import objectview.media.MediaValue;
 
-public class ImageAndDescription implements Serializable {
+public class ImageAndDescription implements Serializable, MediaValue {
     private URL imageUrl;
     private transient Image image;
     private String description;
     private Set<String> categories = new TreeSet<>();
+
+    // MediaValue: a State flag / coat of arms IS a media value — it resolves to its
+    // own image resource (imageUrl) its own way, so the schema recognizes it as
+    // FieldKind.MEDIA and the renderer can build the pane lazily, no Swing in the model.
+    @Override public String mediaUrl() {
+        return imageUrl == null ? null : imageUrl.toString();
+    }
+
+    @Override public String mediaLabel() {
+        return description;
+    }
+
+    @Override public boolean mediaSvg() {
+        return imageUrl != null && imageUrl.toString().toLowerCase().endsWith(".svg");
+    }
 
     public String getDescription() {
         return description;

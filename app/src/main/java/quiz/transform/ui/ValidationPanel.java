@@ -123,10 +123,12 @@ public final class ValidationPanel extends JPanel {
         selected = null;
 
         List<String> paths = new ArrayList<>();
+        Map<String, DomainField> byPath = new LinkedHashMap<>();
         if (type != null) {
             for (DomainField f : domain.fields(type)) {
                 if (f.field() != null) {
                     paths.add(f.field());
+                    byPath.put(f.field(), f);
                 }
             }
         }
@@ -134,7 +136,7 @@ public final class ValidationPanel extends JPanel {
         // resets the drill to its placeholder.
         coverage.setPathRows(paths,
                 type == null ? Set.of() : domain.structuralFields(type),
-                type == null ? null : domain.fieldTypes(type));
+                type == null ? null : PathTypeLabel.of(byPath, domain.fieldTypes(type)));
         status.setText("   " + instances.size() + " " + (type == null ? "" : type)
                 + " instance(s)");
     }

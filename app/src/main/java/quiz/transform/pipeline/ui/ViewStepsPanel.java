@@ -5,6 +5,7 @@ import objectview.viewconfig.FieldRowContributor;
 import objectview.viewconfig.ViewConfigEditor;
 import quiz.Quizable;
 import quiz.transform.ui.DomainField;
+import quiz.transform.ui.PathTypeLabel;
 import objectview.field.FieldKind;
 import quiz.transform.ui.OperationKind;
 import quiz.transform.ui.OperationSpec;
@@ -230,8 +231,8 @@ public final class ViewStepsPanel extends JPanel {
                 fieldByPath.put(f.field(), f);
                 paths.add(f.field());
             }
-            fieldPicker.setPathRows(paths,
-                    controller.structuralFields(type), controller.fieldTypes(type));
+            fieldPicker.setPathRows(paths, controller.structuralFields(type),
+                    PathTypeLabel.of(fieldByPath, controller.fieldTypes(type)));
         }
         onFieldSelectionChanged();
     }
