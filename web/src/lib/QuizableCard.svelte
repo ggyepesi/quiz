@@ -78,7 +78,14 @@
     overflow-wrap: anywhere;
   }
 
-  .fields { margin: 0; display: flex; flex-direction: column; }
+  /* Query on the card's OWN width so deeply-nested cards collapse the two-column
+     field grid — otherwise a depth-3 card squeezes the value column to a few px and
+     names wrap one character per line. */
+  .fields { margin: 0; display: flex; flex-direction: column; container-type: inline-size; }
+  @container (max-width: 320px) {
+    .field { grid-template-columns: 1fr; gap: 2px; }
+    dt { font-weight: 600; }
+  }
   .field {
     display: grid;
     grid-template-columns: 132px 1fr;
