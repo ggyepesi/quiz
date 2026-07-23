@@ -96,20 +96,32 @@ public final class ProductDomain implements DomainModel, SchemaView {
 
     private FieldTypeSource sourceFor(String className) {
         ProductClass pc = schema.get(className);
-        return name -> {
-            ProductField f = pc == null ? null : pc.field(name);
-            if (f == null) {
-                return null;   // unknown (e.g. the `name` identity row) → reflect
+        return new FieldTypeSource() {
+            @Override public FieldTypeSource.FieldTypeInfo field(String name) {
+                ProductField f = pc == null ? null : pc.field(name);
+                if (f == null) {
+                    return null;   // unknown (e.g. the `name` identity row) → reflect
+                }
+                // A name-only reference (target has no fields beyond its identity, e.g.
+                // Category) stays a reference — identity is preserved for grouping —
+                // but offers no expansion: null nested source means no "+fields" button.
+                boolean recurse = f.reference() && f.nestedClassName() != null
+                        && !schema.fields(f.nestedClassName()).isEmpty();
+                FieldTypeSource nested = recurse ? sourceFor(f.nestedClassName()) : null;
+                String nestedName = recurse ? displayName(f.nestedClassName()) : null;
+                return new FieldTypeSource.FieldTypeInfo(
+                        f.typeLabel(), f.structural(), nestedName, nested);
             }
-            // A name-only reference (target has no fields beyond its identity, e.g.
-            // Category) stays a reference — identity is preserved for grouping —
-            // but offers no expansion: null nested source means no "+fields" button.
-            boolean recurse = f.reference() && f.nestedClassName() != null
-                    && !schema.fields(f.nestedClassName()).isEmpty();
-            FieldTypeSource nested = recurse ? sourceFor(f.nestedClassName()) : null;
-            String nestedName = recurse ? displayName(f.nestedClassName()) : null;
-            return new FieldTypeSource.FieldTypeInfo(
-                    f.typeLabel(), f.structural(), nestedName, nested);
+
+            @Override public java.util.List<String> fieldNames() {
+                // Enumerate the model's fields so a reference with NO current value is
+                // still expandable — its children come from the schema, not a sample.
+                java.util.List<String> names = new java.util.ArrayList<>();
+                for (ProductField f : schema.fields(className)) {
+                    names.add(f.name());
+                }
+                return names;
+            }
         };
     }
 

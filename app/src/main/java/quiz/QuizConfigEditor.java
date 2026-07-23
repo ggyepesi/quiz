@@ -1,5 +1,6 @@
 package quiz;
 
+import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfigEditor;
 
 import javax.swing.*;
@@ -17,9 +18,12 @@ public class QuizConfigEditor extends JPanel {
 
     public QuizConfigEditor(QuizConfig config) {
         this.quizConfig = config;
-        this.viewEditor = new ViewConfigEditor(config.getViewConfig());
-        this.searchEditor = new ViewConfigEditor(config.getSearchConfig());
-        this.sortEditor = new ViewConfigEditor(config.getSortConfig());
+        this.viewEditor = new ViewConfigEditor(config.getViewConfig(),
+                FieldTableContributor.REORDERABLE);
+        this.searchEditor = new ViewConfigEditor(config.getSearchConfig(),
+                FieldTableContributor.REORDERABLE);
+        this.sortEditor = new ViewConfigEditor(config.getSortConfig(),
+                FieldTableContributor.REORDERABLE);
         buildLayout();
     }
 
