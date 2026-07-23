@@ -115,7 +115,6 @@ public class NobelPrizes implements DomainViews {
                 LaureatesWithMotivation lwm = new LaureatesWithMotivation();
                 lwm.getLaureates().addAll(currentLaureates);
                 lwm.setMotivation(line);
-                lwm.setPrize(currentPrize);
                 currentPrize.getLaureatesWithMotivation().add(lwm);
                 currentLaureates.clear();
             } else {

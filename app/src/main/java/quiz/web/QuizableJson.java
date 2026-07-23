@@ -535,6 +535,13 @@ public final class QuizableJson {
                     ? QuizableView.Field.image(name, url)       // e.g. a sky chart
                     : linkField(name, url, name);               // e.g. a wikidata link
         }
+        // A nested Quizable with a BLANK display name is a structural grouping wrapper
+        // (e.g. Nobel's LaureatesWithMotivation groups laureates by a shared motivation)
+        // — render its CONTENTS inline rather than an empty chip.
+        if (isStructuralWrapper(value)) {
+            List<QuizableView> nodes = inlineNodes(value, visited);
+            return nodes.isEmpty() ? null : QuizableView.Field.inline(name, nodes);
+        }
         if (value instanceof Quizable q) {
             return referenceOrLink(name, q);
         }
@@ -693,6 +700,32 @@ public final class QuizableJson {
     private static QuizableView.Ref ref(Quizable q) {
         return new QuizableView.Ref(
                 q.getIdentifier(), q.getDisplayName(), q.typeName());
+    }
+
+    /** True when {@code value} is a nested Quizable (or a non-empty collection/map of
+     *  ONLY such) with a blank display name — a structural grouping wrapper that has no
+     *  label of its own, so it's shown by its contents (inline) rather than a blank
+     *  chip. A blank-named chip carries no information, so this is never worse. */
+    private static boolean isStructuralWrapper(Object value) {
+        if (value instanceof Quizable q) {
+            return isBlank(q.getDisplayName());
+        }
+        Collection<?> items = value instanceof Collection<?> c ? c
+                : value instanceof Map<?, ?> m ? m.values()
+                : null;
+        if (items == null || items.isEmpty()) {
+            return false;
+        }
+        for (Object item : items) {
+            if (!(item instanceof Quizable q) || !isBlank(q.getDisplayName())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     private static String enc(String s) {
