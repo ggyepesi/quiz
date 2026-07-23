@@ -110,4 +110,26 @@ public class FlagCachedImage extends CachedImage {
     public static boolean hasImageFile(String title) {
         return jpegFiles.get(title) != null;
     }
+
+    /** Resolve the flag KEY to a loadable URL — mirroring {@link #ensureBytesLoaded}'s
+     *  curated-SVG / explicit-URL resolution — so a saved media value points at a
+     *  reachable source, not a bare key. */
+    @Override
+    public String sourceUrl() {
+        if (title != null && !title.isBlank()) {
+            String filename = title;
+            if (svg && !filename.endsWith(".svg")) {
+                filename += ".svg";
+            }
+            if (!filename.startsWith("file:/")) {
+                filename = String.valueOf(
+                        ResourceFinder.toURL(Constants.getSvgDirectory() + filename));
+            }
+            return filename;
+        }
+        if (explicitUrl != null && !explicitUrl.isBlank()) {
+            return explicitUrl;
+        }
+        return super.sourceUrl();
+    }
 }

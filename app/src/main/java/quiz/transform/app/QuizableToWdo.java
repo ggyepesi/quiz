@@ -1,8 +1,11 @@
 package quiz.transform.app;
 
 import objectview.field.DynamicFields;
+import objectview.media.ImagePane;
+import objectview.utils.swing.CachedImage;
 import quiz.Quizable;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.extract.WikidataMediaValue;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -79,6 +82,24 @@ public final class QuizableToWdo {
             }
             return out;
         }
+        // A live Swing ImagePane can't be serialized into the pool — persist it as a
+        // metadata-only WikidataMediaValue (label + source url + svg), which round-trips
+        // and renders back to an ImagePane on load via FieldKind.MEDIA.
+        if (v instanceof ImagePane p) {
+            return toMediaValue(p);
+        }
         return v;
+    }
+
+    private static Object toMediaValue(ImagePane p) {
+        CachedImage image = p.getCachedImage();
+        if (image == null) {
+            return null;   // an in-memory-only image (no source) — nothing to persist
+        }
+        String url = image.sourceUrl();
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        return new WikidataMediaValue(p.getTitle(), url, image.isSvg());
     }
 }
