@@ -10,6 +10,7 @@ import wikidata.explore.extract.WikidataMediaValue;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +35,31 @@ public final class QuizableToWdo {
                 roots.add(w);
             }
         }
+        requireIdentities(seen.values());
         return roots;
+    }
+
+    /** Fail loud if any converted entity has a BLANK identity. The snapshot store keys
+     *  by qid and SILENTLY DROPS blank-qid entities (their refs then serialize as null),
+     *  so a blank identity is data loss, not a cosmetic issue — surface it at save
+     *  instead of shipping a broken snapshot. */
+    private static void requireIdentities(Collection<WikidataDynamicObject> entities) {
+        Map<String, Integer> blankByType = new LinkedHashMap<>();
+        for (WikidataDynamicObject w : entities) {
+            if (w.qid() == null || w.qid().isBlank()) {
+                blankByType.merge(
+                        w.typeName() == null || w.typeName().isBlank() ? "?" : w.typeName(),
+                        1, Integer::sum);
+            }
+        }
+        if (!blankByType.isEmpty()) {
+            int total = blankByType.values().stream().mapToInt(Integer::intValue).sum();
+            throw new IllegalStateException(
+                    total + " entity(ies) have a BLANK identity and would be silently "
+                    + "dropped from the snapshot (blank getIdentifier() -> no qid -> "
+                    + "nested refs become null). Give them a non-blank identity. "
+                    + "By type: " + blankByType);
+        }
     }
 
     private static Object convert(Object v, Map<Object, WikidataDynamicObject> seen) {
