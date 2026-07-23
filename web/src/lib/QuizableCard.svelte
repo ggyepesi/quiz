@@ -5,6 +5,18 @@
   import { assetUrl } from './api.js';
 
   let { view, heading = false } = $props();
+
+  // Collections show "fieldName (n)" like the desktop CollectionHeader convention.
+  const collectionLen = {
+    list: (f) => f.values?.length,
+    images: (f) => f.values?.length,
+    refs: (f) => f.refs?.length,
+    inline: (f) => f.nodes?.length,
+  };
+  const fieldLabel = (f) => {
+    const n = collectionLen[f.kind]?.(f);
+    return n == null ? f.name : `${f.name} (${n})`;
+  };
 </script>
 
 <div class="card" class:heading>
@@ -18,7 +30,7 @@
   <dl class="fields">
     {#each view.fields ?? [] as f}
       <div class="field">
-        <dt>{f.name}</dt>
+        <dt>{fieldLabel(f)}</dt>
         <dd>
           {#if f.kind === 'text'}
             {f.value}
