@@ -88,6 +88,12 @@ public final class QuizableToWdo {
         if (v instanceof ImagePane p) {
             return toMediaValue(p);
         }
+        // A hand-written domain's enum (e.g. NobelPrize.Domain) can't round-trip through
+        // the pool's locked-down Jackson typing — store its display string, which becomes
+        // a plain scalar facet dimension.
+        if (v instanceof Enum<?> e) {
+            return e.toString();
+        }
         return v;
     }
 
