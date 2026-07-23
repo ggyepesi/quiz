@@ -1,9 +1,6 @@
 package quiz.web;
 
 import quiz.web.sources.GeneratedSource;
-import quiz.web.sources.MythologySource;
-import quiz.web.sources.OscarSource;
-import quiz.web.sources.StateSource;
 
 /**
  * Launches the read-only Quizable JSON API.
@@ -25,24 +22,12 @@ public class QuizableServerMain {
         System.setProperty("objectview.lazyImages", "true");
 
         QuizableStore store = new QuizableStore();
-        // Sport teams: served generically — the domain declares its facets
-        // (SportTeams.webFacets), DomainModelSource groups by them. The State and
-        // Mythology sources stay bespoke: their trees are CURATED data (continents,
-        // affiliations), not derivable from fields.
-        store.register(new quiz.web.sources.DomainModelSource(
-                "SportTeam",
-                () -> quiz.transform.ui.ReflectionDomain.of(new flag.SportTeams()),
-                flag.SportTeams.webFacets(),
-                quiz.web.sources.DomainModelSource.GroupMode.FLAT,
-                "All teams"));
-        store.register(new StateSource());
-        store.register(new MythologySource());
-        store.register(new OscarSource());
 
-        // Generated-from-Wikidata datasets: serve EVERY dataset in
-        // the registry
-        // (constellations, greekmyth, …), each via registerAll (which serves
-        // every stamped class in its snapshot, e.g. Constellation AND its Stars).
+        // Serve ONLY snapshots listed in the DatasetRegistry — no bespoke per-type
+        // sources. Every domain is a snapshot now: generated-from-Wikidata datasets AND
+        // the hand-built ones (State, SportTeams, Mythology, Nobel, …) saved via the
+        // transform app's "Save as domain…". registerAll serves every stamped class in
+        // each snapshot (e.g. Constellation AND its Stars).
         quiz.DatasetRegistry registry = quiz.DatasetRegistry.load();
         if (registry.datasets().isEmpty()) {
             // First run / no registry yet: fall back to the constellations file.
@@ -67,7 +52,7 @@ public class QuizableServerMain {
 
         // Group served types by domain so the web client can list classes per
         // domain (it grows past a flat list). Registry datasets give the grouping;
-        // any leftover type (the hand-built sources) goes under "Other".
+        // any type not claimed by a dataset's declared types goes under "Other".
         java.util.LinkedHashMap<String, java.util.List<String>> domains =
                 new java.util.LinkedHashMap<>();
         java.util.Set<String> claimed = new java.util.HashSet<>();
