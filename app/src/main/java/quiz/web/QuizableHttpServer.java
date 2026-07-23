@@ -275,21 +275,46 @@ public class QuizableHttpServer {
     }
 
     private static ImageRef imageRefAt(Object value, Integer index) {
-        if (index == null) {
-            return value instanceof ImageRef r ? r : null;
-        }
-        if (value instanceof Collection<?> c) {
-            int i = 0;
-            for (Object item : c) {
-                if (i++ == index) {
-                    return item instanceof ImageRef r ? r : null;
+        Object v = value;
+        if (index != null) {
+            v = null;
+            if (value instanceof Collection<?> c) {
+                int i = 0;
+                for (Object item : c) {
+                    if (i++ == index) {
+                        v = item;
+                        break;
+                    }
                 }
+            }
+        }
+        return asImageRef(v);
+    }
+
+    /** A directly-renderable ImageRef, or a MediaValue rendered on demand — a saved
+     *  manual domain's images are metadata-only MediaValues, not live ImagePanes. */
+    private static ImageRef asImageRef(Object v) {
+        if (v instanceof ImageRef r) {
+            return r;
+        }
+        if (v instanceof objectview.media.MediaValue m
+                && m.mediaUrl() != null && !m.mediaUrl().isBlank()) {
+            try {
+                return new objectview.media.ImagePane(
+                        m.mediaLabel(), m.mediaUrl(), null, false, m.mediaSvg(), false);
+            } catch (Exception e) {
+                return null;
             }
         }
         return null;
     }
 
     private static Object fieldValue(Quizable q, String fieldName) {
+        // Snapshot-served objects are map-held (WikidataDynamicObject) — read the field
+        // from the dynamic map; only a hand-written bean needs reflection.
+        if (q instanceof objectview.field.DynamicFields dyn) {
+            return dyn.dynamicFieldValues().get(fieldName);
+        }
         Field f = QuizableAdapter.getField(q.getClass(), fieldName);
         if (f == null) {
             return null;

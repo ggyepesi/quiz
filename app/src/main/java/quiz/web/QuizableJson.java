@@ -520,7 +520,13 @@ public final class QuizableJson {
         // as an image rather than letting it fall through to text (a bare filename).
         if (value instanceof wikidata.explore.extract.WikidataMediaValue media
                 && media.hasUrl()) {
-            return QuizableView.Field.image(name, httpsUrl(media.url()));
+            // An http(s) url the browser can fetch directly (e.g. a Commons image);
+            // anything else (file:/bundled, from a saved manual domain) must be rendered
+            // by the server — same path as a declared ImageRef.
+            String url = isHttp(media.url())
+                    ? httpsUrl(media.url())
+                    : "/api/image/" + enc(ownerType) + "/" + enc(ownerId) + "/" + enc(name);
+            return QuizableView.Field.image(name, url);
         }
         if (value instanceof String s && isHttp(s)) {
             // https so it isn't mixed-content-blocked on an https page.
@@ -610,8 +616,13 @@ public final class QuizableJson {
         List<String> imageUrls = new ArrayList<>();
         int idx = 0;
         for (Object item : items) {
-            if (item instanceof ImageRef) {
-                imageUrls.add("/api/image/"
+            if (item instanceof wikidata.explore.extract.WikidataMediaValue m
+                    && m.hasUrl() && isHttp(m.url())) {
+                imageUrls.add(httpsUrl(m.url()));             // browser-fetchable directly
+            } else if (item instanceof ImageRef
+                    || (item instanceof wikidata.explore.extract.WikidataMediaValue m2
+                            && m2.hasUrl())) {
+                imageUrls.add("/api/image/"                  // server-rendered (file:/bundled)
                         + enc(ownerType) + "/" + enc(ownerId) + "/" + enc(name) + "/" + idx);
             }
             idx++;
