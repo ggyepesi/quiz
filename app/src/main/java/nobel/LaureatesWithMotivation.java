@@ -32,11 +32,20 @@ class LaureatesWithMotivation extends QuizableAdapter {
         return laureates;
     }
 
-    @Override
-    public String getIdentifier() { return ""; }
+    /** The shared laureates ARE the identity/label of this group — otherwise it renders
+     *  as a blank ref (empty name in the transform card and on the web). */
+    private String laureateNames() {
+        return laureates.stream()
+                .map(Laureate::getDisplayName)
+                .filter(n -> n != null && !n.isBlank())
+                .collect(java.util.stream.Collectors.joining(", "));
+    }
 
     @Override
-    public String getDisplayName() { return ""; }
+    public String getIdentifier() { return laureateNames(); }
+
+    @Override
+    public String getDisplayName() { return laureateNames(); }
 }
 
 class Laureate extends QuizableAdapter {
