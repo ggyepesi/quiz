@@ -17,14 +17,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class DescribeFieldTypeTest {
 
     private static String label(String field) {
+        return labelOn(State.class, field);
+    }
+
+    private static String labelOn(Class<? extends objectview.Viewable> cls, String field) {
         // Reflected path: no instance needed — enumeration uses config.getCls().
         List<FieldRow> rows = ConfigFieldRowSource.INSTANCE.rows(new FieldRowContext(
-                ViewConfig.all(State.class), null, false, false, Set.of(), null));
+                ViewConfig.all(cls), null, false, false, Set.of(), null));
         return rows.stream()
                 .filter(r -> field.equals(r.path()))
                 .map(FieldRow::typeLabel)
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("no row for " + field));
+                .orElseThrow(() -> new AssertionError("no row for " + field + " in " + rows));
     }
 
     @Test void nonViewableCollectionElementsAreShown() {
@@ -40,5 +44,15 @@ class DescribeFieldTypeTest {
 
     @Test void mapShowsKeyAndValueTypes() {
         assertEquals("Map<String, QuizableGroup>", label("groups"));
+    }
+
+    // QuizableGroup extends DefaultViewableGroup<Quizable, QuizableGroup>; its inherited
+    // children=Map<String,G> / members=Map<String,T> must resolve the type variables to
+    // the real bound types, not show bare G / T.
+    @Test void inheritedGenericFieldsResolveTypeVariables() {
+        assertEquals("Map<String, QuizableGroup>",
+                labelOn(quiz.QuizableGroup.class, "children"));
+        assertEquals("Map<String, Quizable>",
+                labelOn(quiz.QuizableGroup.class, "members"));
     }
 }
