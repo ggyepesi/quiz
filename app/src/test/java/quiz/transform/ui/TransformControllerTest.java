@@ -9,8 +9,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * The headless workbench logic: seeding the default pipeline, resetting on a type
- * change, and validating an operation's field shape — all without any Swing.
+ * The headless workbench logic: seeding the default pipeline, remembering each
+ * type's steps across a type change, and validating an operation's field shape —
+ * all without any Swing.
  */
 class TransformControllerTest {
 
@@ -37,23 +38,39 @@ class TransformControllerTest {
         return new TransformController(domain(), null);
     }
 
-    @Test void seedsTheDefaultOscarsPipeline() {
+    /** Build a "winners by category by year" view onto {@code Nomination} the way the
+     *  UI does — filter + two nested group-bys — so tests exercise a real pipeline
+     *  without any baked-in seed. */
+    private static void nominationView(TransformController c) {
+        c.selectType("Nomination");
+        OperationSpec byYear =
+                new OperationSpec(OperationKind.GROUP_BY, c.field("Nomination", "year"), null);
+        byYear.depth = 1;
+        c.replaceViewPipeline(List.of(
+                new OperationSpec(OperationKind.FILTER, c.field("Nomination", "won"), Boolean.TRUE),
+                new OperationSpec(OperationKind.GROUP_BY, c.field("Nomination", "category"), null),
+                byYear));
+    }
+
+    @Test void switchingToAFreshTypeGivesAnEmptyPipeline() {
         TransformController c = controller();
-        assertTrue(c.seedDefault());
+        nominationView(c);
+        assertFalse(c.pipeline().isEmpty());
+        c.selectType("Human");      // a type never configured — starts blank
+        assertTrue(c.pipeline().isEmpty());
+    }
+
+    @Test void returningToATypeRestoresItsPipeline() {
+        TransformController c = controller();
+        nominationView(c);
+        c.selectType("Human");      // stash Nomination's steps, blank slate
+        c.selectType("Nomination"); // its steps come back, not a reset
         assertEquals("Nomination", c.selectedType());
         assertEquals(
                 List.of(OperationKind.FILTER,
                         OperationKind.GROUP_BY,
                         OperationKind.GROUP_BY),
                 c.pipeline().stream().map(op -> op.kind).toList());
-    }
-
-    @Test void selectingATypeResetsThePipeline() {
-        TransformController c = controller();
-        c.seedDefault();
-        assertFalse(c.pipeline().isEmpty());
-        c.selectType("Nomination");
-        assertTrue(c.pipeline().isEmpty());
     }
 
     @Test void addingAValidFilterStepGrowsThePipeline() {
@@ -104,7 +121,7 @@ class TransformControllerTest {
 
     @Test void removeAndMoveReorderThePipeline() {
         TransformController c = controller();
-        c.seedDefault();                       // FILTER won, GROUP_BY category, GROUP_BY year
+        nominationView(c);                      // FILTER won, GROUP_BY category, GROUP_BY year
         c.removeOperation(0);                   // -> GROUP_BY category, GROUP_BY year
         assertEquals(2, c.pipeline().size());
         // Both group steps share the kind now, so reorder is verified by FIELD.

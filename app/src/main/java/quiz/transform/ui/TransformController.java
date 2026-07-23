@@ -28,6 +28,12 @@ public final class TransformController {
     private final List<OperationSpec> pipeline = new ArrayList<>();
     private String selectedType;
 
+    // Each member type keeps its OWN steps: switching classes stashes the current
+    // pipeline under the outgoing type and restores the incoming type's, so returning
+    // to a class brings its groups/filters back (Nomination keeps its seeded default)
+    // instead of resetting to empty every time.
+    private final Map<String, List<OperationSpec>> pipelineByType = new HashMap<>();
+
     // Per member type, a lazily-built map from field path -> a representative
     // non-null value — so field-shape inference is ONE pass over the instances per
     // type (built on first use), not a fresh scan on every field selection.
@@ -126,10 +132,19 @@ public final class TransformController {
 
     public String selectedType() { return selectedType; }
 
-    /** Select a member type — this resets the pipeline (a fresh view of it). */
+    /** Select a member type. Stashes the current type's steps and restores the
+     *  chosen type's remembered steps (empty if it has none yet), so switching
+     *  classes and back is non-destructive. */
     public void selectType(String type) {
+        if (selectedType != null) {
+            pipelineByType.put(selectedType, new ArrayList<>(pipeline));
+        }
         this.selectedType = type;
         pipeline.clear();
+        List<OperationSpec> remembered = pipelineByType.get(type);
+        if (remembered != null) {
+            pipeline.addAll(remembered);
+        }
     }
 
     /** The pipeline steps, read-only. */
@@ -289,26 +304,5 @@ public final class TransformController {
         View view = ViewCompiler.compile(name, selectedType, pipeline, domain.universe());
         List<? extends Quizable> members = view.members(domain.instances());
         return writer.save(name, members);
-    }
-
-    // --- default seed ---------------------------------------------------------
-
-    /** Seed a ready-to-run "Oscar winners by category by year" if the snapshot
-     *  supports it; returns true when it seeded (so the view can sync). */
-    public boolean seedDefault() {
-        if (!domain.types().contains("Nomination")) {
-            return false;
-        }
-        selectedType = "Nomination";
-        pipeline.clear();
-        DomainField won = field("Nomination", "won");
-        DomainField category = field("Nomination", "category");
-        DomainField year = field("Nomination", "year");
-        pipeline.add(new OperationSpec(OperationKind.FILTER, won, Boolean.TRUE));
-        pipeline.add(new OperationSpec(OperationKind.GROUP_BY, category, null));
-        OperationSpec byYear = new OperationSpec(OperationKind.GROUP_BY, year, null);
-        byYear.depth = 1;   // year drills down within each category bucket
-        pipeline.add(byYear);
-        return true;
     }
 }

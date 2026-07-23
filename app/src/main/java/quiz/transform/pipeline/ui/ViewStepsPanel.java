@@ -57,10 +57,6 @@ public final class ViewStepsPanel extends JPanel {
             new DefaultTreeModel(groupRoot);
     private final JTree groupTree = new JTree(groupTreeModel);
 
-    // Suppresses the member-combo listener while we set it programmatically (seeding),
-    // so mirroring the widget to the controller doesn't wipe the just-seeded steps.
-    private boolean syncing;
-
     public ViewStepsPanel(TransformController controller, Listener listener) {
         this.controller = controller;
         this.listener = listener;
@@ -72,13 +68,19 @@ public final class ViewStepsPanel extends JPanel {
         }
 
         memberTypeCombo.addActionListener(e -> {
-            if (syncing) {
+            String chosen = (String) memberTypeCombo.getSelectedItem();
+            // A JComboBox fires on re-selecting the value that's already showing;
+            // only a genuine type change should reset the steps (its groups/filters
+            // reference the old class's fields). Re-picking the same class keeps them.
+            if (java.util.Objects.equals(chosen, controller.selectedType())) {
                 return;
             }
-            controller.selectType((String) memberTypeCombo.getSelectedItem());
+            controller.selectType(chosen);
             rebuildFieldTree();
-            clearViewSteps();
-            fireChanged();
+            // Restore the chosen type's remembered steps into the widgets (empty tree
+            // if it has none) — not a blank wipe, so switching back brings its groups
+            // back. syncFromPipeline also re-renders and re-selects the top group.
+            syncFromPipeline();
         });
 
         add(memberRow(), BorderLayout.NORTH);
@@ -95,24 +97,12 @@ public final class ViewStepsPanel extends JPanel {
         reloadOperators(FieldKind.UNKNOWN);
         filterOperator.addActionListener(e -> updateFilterValueEnablement());
 
-        // Seed a ready-to-run default (e.g. Oscar winners by category by year) and
-        // mirror it into the controls, so the left panel matches the first render;
-        // otherwise just select the first member type.
-        if (controller.seedDefault()) {
-            selectComboSilently(controller.selectedType());
-            rebuildFieldTree();
-            syncFromPipeline();
-        } else if (memberTypeCombo.getItemCount() > 0) {
+        // Every class opens on its root group (all instances, no steps) — build
+        // groups/filters yourself. Select the first member type to seed the field tree.
+        if (memberTypeCombo.getItemCount() > 0) {
             controller.selectType((String) memberTypeCombo.getSelectedItem());
             rebuildFieldTree();
         }
-    }
-
-    /** Set the member combo without firing its listener (keeps the seeded steps). */
-    private void selectComboSilently(String type) {
-        syncing = true;
-        memberTypeCombo.setSelectedItem(type);
-        syncing = false;
     }
 
     private JComponent memberRow() {
@@ -394,12 +384,6 @@ public final class ViewStepsPanel extends JPanel {
         return last instanceof DefaultMutableTreeNode n ? n : groupRoot;
     }
 
-    private void clearViewSteps() {
-        filterModel.clear();
-        groupRoot.removeAllChildren();
-        groupTreeModel.reload();
-    }
-
     private void syncControllerPipeline() {
         controller.replaceViewPipeline(toOperations());
         fireChanged();
@@ -451,12 +435,24 @@ public final class ViewStepsPanel extends JPanel {
                                       );
 
         expandAllGroups();
+        selectFirstGroup();
         fireChanged();
     }
 
     private void expandAllGroups() {
         for (int i = 0; i < groupTree.getRowCount(); i++) {
             groupTree.expandRow(i);
+        }
+    }
+
+    /** Highlight the top-level grouping node so the group panel visibly reflects the
+     *  grouping that's rendered on the right — otherwise the seeded tree loads with no
+     *  selection and reads as inert. Also mirrors that field into the picker. */
+    private void selectFirstGroup() {
+        if (groupRoot.getChildCount() > 0) {
+            DefaultMutableTreeNode first =
+                    (DefaultMutableTreeNode) groupRoot.getChildAt(0);
+            groupTree.setSelectionPath(new TreePath(first.getPath()));
         }
     }
 
