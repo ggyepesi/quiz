@@ -12,10 +12,14 @@
   async function toggle() {
     open = !open;
     if (open && !child && !missing) {
-      loading = true;
-      child = await getQuizable(ref.type, ref.id);
-      missing = child === null;
-      loading = false;
+      if (ref.inline) {
+        child = ref.inline;   // a value object — contents embedded, no fetch
+      } else {
+        loading = true;
+        child = await getQuizable(ref.type, ref.id);
+        missing = child === null;
+        loading = false;
+      }
     }
   }
 </script>

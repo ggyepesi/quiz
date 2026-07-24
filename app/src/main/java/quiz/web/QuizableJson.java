@@ -535,21 +535,14 @@ public final class QuizableJson {
                     ? QuizableView.Field.image(name, url)       // e.g. a sky chart
                     : linkField(name, url, name);               // e.g. a wikidata link
         }
-        // A nested Quizable with a BLANK display name is a structural grouping wrapper
-        // (e.g. Nobel's LaureatesWithMotivation groups laureates by a shared motivation)
-        // — render its CONTENTS inline rather than an empty chip.
-        if (isStructuralWrapper(value)) {
-            List<QuizableView> nodes = inlineNodes(value, visited);
-            return nodes.isEmpty() ? null : QuizableView.Field.inline(name, nodes);
-        }
         if (value instanceof Quizable q) {
-            return referenceOrLink(name, q);
+            return referenceOrLink(name, q, visited);
         }
         if (value instanceof Collection<?> c) {
-            return collectionField(ownerType, ownerId, name, c);
+            return collectionField(ownerType, ownerId, name, c, visited);
         }
         if (value instanceof Map<?, ?> m) {
-            return collectionField(ownerType, ownerId, name, m.values());
+            return collectionField(ownerType, ownerId, name, m.values(), visited);
         }
         if (value instanceof Boolean flag) {
             return booleanField(name, flag);
@@ -569,7 +562,8 @@ public final class QuizableJson {
     // wikidata entity -- e.g. a constellation's hemisphere or its namesake --
     // isn't in the store, so an internal ref is a dead end; if it carries an
     // external URL (its @Link field) we link out to that page instead.
-    private static QuizableView.Field referenceOrLink(String name, Quizable q) {
+    private static QuizableView.Field referenceOrLink(
+            String name, Quizable q, Set<Object> visited) {
         boolean domainType = !q.typeName().equals(q.getClass().getSimpleName());
         if (!domainType) {
             String ext = externalUrl(q);
@@ -577,7 +571,7 @@ public final class QuizableJson {
                 return QuizableView.Field.link(name, q.getDisplayName(), ext);
             }
         }
-        return QuizableView.Field.ref(name, ref(q));
+        return QuizableView.Field.ref(name, ref(q, visited));
     }
 
     // The value of the first non-blank @Link (URL) field on the object, if any
@@ -616,7 +610,8 @@ public final class QuizableJson {
     }
 
     private static QuizableView.Field collectionField(
-            String ownerType, String ownerId, String name, Collection<?> items) {
+            String ownerType, String ownerId, String name, Collection<?> items,
+            Set<Object> visited) {
 
         // A collection of images (e.g. flag versions): one indexed image URL
         // per item, by position in the collection.
@@ -641,7 +636,7 @@ public final class QuizableJson {
         List<QuizableView.Ref> refs = new ArrayList<>();
         for (Object item : items) {
             if (item instanceof Quizable q) {
-                refs.add(ref(q));
+                refs.add(ref(q, visited));
             }
         }
         if (!refs.isEmpty()) {
@@ -697,9 +692,13 @@ public final class QuizableJson {
         return QuizableView.Field.link(name, label == null ? url : label, url);
     }
 
-    private static QuizableView.Ref ref(Quizable q) {
+    private static QuizableView.Ref ref(Quizable q, Set<Object> visited) {
+        // A value object isn't in the pool, so its chip can't be FETCHED to expand —
+        // carry its contents INLINE so the chip expands from embedded data. An entity's
+        // chip stays lazy (fetched by id). Rendering shape (chip) is uniform either way.
+        QuizableView inline = isValueObject(q) ? of(q, visited) : null;
         return new QuizableView.Ref(
-                q.getIdentifier(), q.getDisplayName(), q.typeName(), thumbUrl(q));
+                q.getIdentifier(), q.getDisplayName(), q.typeName(), thumbUrl(q), inline);
     }
 
     /** A small render URL for {@code q}'s first media field (e.g. a Laureate's portrait),
@@ -725,30 +724,12 @@ public final class QuizableJson {
         return "/api/image/" + enc(type) + "/" + enc(id) + "/" + enc(field);
     }
 
-    /** True when {@code value} is a nested Quizable (or a non-empty collection/map of
-     *  ONLY such) with a blank display name — a structural grouping wrapper that has no
-     *  label of its own, so it's shown by its contents (inline) rather than a blank
-     *  chip. A blank-named chip carries no information, so this is never worse. */
-    private static boolean isStructuralWrapper(Object value) {
-        if (value instanceof Quizable q) {
-            return isBlank(q.getDisplayName());
-        }
-        Collection<?> items = value instanceof Collection<?> c ? c
-                : value instanceof Map<?, ?> m ? m.values()
-                : null;
-        if (items == null || items.isEmpty()) {
-            return false;
-        }
-        for (Object item : items) {
-            if (!(item instanceof Quizable q) || !isBlank(q.getDisplayName())) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean isBlank(String s) {
-        return s == null || s.isBlank();
+    /** A value object either by its Java type (hand-written domain) or by the runtime
+     *  flag carried on a snapshot-loaded {@link WikidataDynamicObject}. */
+    private static boolean isValueObject(Quizable q) {
+        return q instanceof quiz.ValueObject
+                || (q instanceof wikidata.explore.extract.WikidataDynamicObject w
+                        && w.isValueObject());
     }
 
     private static String enc(String s) {

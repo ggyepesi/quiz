@@ -65,6 +65,12 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String type;
 
+    // Runtime marker (not a persisted field — implied by the inline representation):
+    // this object is a VALUE inlined in its parent, not a pooled, qid-keyed entity.
+    @Hidden
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private boolean valueObject;
+
     // Provenance grouped as one nested Quizable: renders as a collapsed
     // "source: Wikidata" chip that expands to the QID + link. Declared LAST so
     // it renders as an unobtrusive footer below the real fields (reflection
@@ -200,6 +206,15 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
 
     public void type(String type) {
         this.type = type;
+    }
+
+    /** A VALUE object: inlined in its parent, not pooled/keyed by qid. */
+    public boolean isValueObject() {
+        return valueObject;
+    }
+
+    public void valueObject(boolean valueObject) {
+        this.valueObject = valueObject;
     }
 
     /** True when a domain class was stamped ({@link #typeName()} would otherwise

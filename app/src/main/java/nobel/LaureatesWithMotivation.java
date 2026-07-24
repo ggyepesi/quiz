@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public
-class LaureatesWithMotivation extends QuizableAdapter {
+class LaureatesWithMotivation extends QuizableAdapter implements quiz.ValueObject {
     private final List<Laureate> laureates = new ArrayList<>();
     private MotivationParser.Motivation motivation;
 
@@ -23,15 +23,11 @@ class LaureatesWithMotivation extends QuizableAdapter {
         return laureates;
     }
 
-    /** A grouping wrapper has no natural name — its laureates ARE its content. It needs
-     *  a STABLE, content-derived id ONLY so the snapshot store can key/reference it (a
-     *  blank id is silently dropped, which nulled the whole chain) — short, unshown. The
-     *  laureates ARE the wrapper's natural label, so the DISPLAY name is their names:
-     *  it reads as a meaningful chip ("Marie Curie, Pierre Curie") you click to expand. */
+    /** A VALUE object ({@link quiz.ValueObject}) — inlined in its NobelPrize, no identity
+     *  invented. The laureate names are just its LABEL (shown as the inline section
+     *  heading), not an identifier. */
     @Override
-    public String getIdentifier() {
-        return Integer.toHexString(laureateNames().hashCode());
-    }
+    public String getIdentifier() { return laureateNames(); }
 
     @Override
     public String getDisplayName() { return laureateNames(); }

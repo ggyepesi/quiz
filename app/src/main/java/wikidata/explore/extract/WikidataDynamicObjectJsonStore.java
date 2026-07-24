@@ -105,7 +105,9 @@ public class WikidataDynamicObjectJsonStore {
             java.util.Set<WikidataDynamicObject> visited) {
         if (o == null || !visited.add(o)) return;
         String key = keyOf(o);
-        if (key != null) {
+        // A value object is inlined by encode(), NOT pooled — but still recurse its
+        // fields so nested ENTITIES (e.g. a Laureate under an inlined wrapper) are pooled.
+        if (key != null && !o.isValueObject()) {
             byQid.computeIfAbsent(key, k -> new ArrayList<>()).add(o);
         }
         for (Object v : o.dynamicFields().values()) {
@@ -192,7 +194,9 @@ public class WikidataDynamicObjectJsonStore {
 
     private Object encode(Object v) {
         if (v instanceof WikidataDynamicObject w) {
-            return new Ref(keyOf(w));
+            // A value object is serialized INLINE (a nested Entity) rather than a Ref to
+            // a pooled entity — it has no identity and belongs to this parent.
+            return w.isValueObject() ? inlineEntity(w) : new Ref(keyOf(w));
         }
         if (v instanceof aux.FlexibleDate d) {
             // The compact form carries the precision ("1959" vs "1959-04-06"),
@@ -287,6 +291,9 @@ public class WikidataDynamicObjectJsonStore {
         if (v instanceof Ref ref) {
             return byKey.get(ref.qid);
         }
+        if (v instanceof Entity e) {
+            return inlineWdo(e, byKey);   // an inlined value object (not a pool ref)
+        }
         if (v instanceof DateVal d) {
             return aux.FlexibleDate.parse(d.date);
         }
@@ -305,6 +312,34 @@ public class WikidataDynamicObjectJsonStore {
             }
         }
         return v;
+    }
+
+    /** A value object serialized in place: a nested {@link Entity} (no qid) with its
+     *  fields recursively encoded (entity fields still become Refs). */
+    private Entity inlineEntity(WikidataDynamicObject w) {
+        Entity e = new Entity();
+        e.qid = null;                       // a value has no identity
+        e.name = w.getDisplayName();
+        e.type = w.typeName();              // still carried, for rendering
+        for (Map.Entry<String, Object> f : w.dynamicFields().entrySet()) {
+            e.fields.put(f.getKey(), encode(f.getValue()));
+        }
+        return e;
+    }
+
+    /** Reconstruct an inlined value object (a field-value {@link Entity}, never a pool
+     *  member) — a WDO with no qid, marked as a value, fields decoded recursively. */
+    private WikidataDynamicObject inlineWdo(
+            Entity e, Map<String, WikidataDynamicObject> byKey) {
+        WikidataDynamicObject o = new WikidataDynamicObject(null, e.name);
+        if (e.type != null && !e.type.isBlank()) {
+            o.type(e.type);
+        }
+        o.valueObject(true);
+        for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
+            o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey));
+        }
+        return o;
     }
 
     private static String keyOf(WikidataDynamicObject o) {

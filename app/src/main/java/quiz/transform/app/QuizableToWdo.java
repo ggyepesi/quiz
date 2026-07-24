@@ -46,6 +46,9 @@ public final class QuizableToWdo {
     private static void requireIdentities(Collection<WikidataDynamicObject> entities) {
         Map<String, Integer> blankByType = new LinkedHashMap<>();
         for (WikidataDynamicObject w : entities) {
+            if (w.isValueObject()) {
+                continue;   // value objects are inlined — a blank id is expected/correct
+            }
             if (w.qid() == null || w.qid().isBlank()) {
                 blankByType.merge(
                         w.typeName() == null || w.typeName().isBlank() ? "?" : w.typeName(),
@@ -74,12 +77,16 @@ public final class QuizableToWdo {
             if (cached != null) {
                 return cached;
             }
-            String id = q.getIdentifier();
-            if (id == null || id.isBlank()) {
+            // A VALUE object is inlined, not pooled — it needs no identity (its display
+            // name is just a label). Everything else is an entity, keyed by identity.
+            boolean value = q instanceof quiz.ValueObject;
+            String id = value ? null : q.getIdentifier();
+            if (!value && (id == null || id.isBlank())) {
                 id = q.getDisplayName();
             }
             WikidataDynamicObject o = new WikidataDynamicObject(id, q.getDisplayName());
             o.type(q.typeName());
+            o.valueObject(value);
             seen.put(q, o);
             // Copy every field, whichever representation — no instanceof branch.
             objectview.field.FieldSet set = objectview.field.FieldSet.of(q);

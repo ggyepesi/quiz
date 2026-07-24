@@ -23,7 +23,10 @@ public record QuizableView(
         List<Field> fields) {
 
     /** A reference to another Quizable, resolved lazily by the client. */
-    public record Ref(String id, String name, String type, String thumb) {}
+    /** A chip. {@code inline} is the embedded expansion for a VALUE object (not pooled,
+     *  so it can't be fetched by id); null for an entity, whose chip fetches lazily. */
+    public record Ref(String id, String name, String type, String thumb,
+                      QuizableView inline) {}
 
     /**
      * One rendered field. {@code kind} selects which payload is populated:

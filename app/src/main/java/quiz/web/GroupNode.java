@@ -34,7 +34,7 @@ public record GroupNode(
         QuizableView.Ref ref = k == null
                 ? null
                 : new QuizableView.Ref(
-                        k.getIdentifier(), k.getDisplayName(), k.typeName(), null);
+                        k.getIdentifier(), k.getDisplayName(), k.typeName(), null, null);
 
         return new GroupNode(
                 g.getName(), g.getFullName(), g.getRole().name(),

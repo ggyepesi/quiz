@@ -7,7 +7,7 @@ import quiz.QuizableAdapter;
 
 public class MotivationParser {
 
-    public static class Motivation extends QuizableAdapter {
+    public static class Motivation extends QuizableAdapter implements quiz.ValueObject {
         public String action;
         public List<String> topics = new ArrayList<>();
         public String method;
@@ -25,11 +25,17 @@ public class MotivationParser {
             return s;
         }
 
+        // A VALUE object ({@link quiz.ValueObject}) — inlined in its
+        // LaureatesWithMotivation, no identity invented (a constant id had merged every
+        // motivation into one entity, cross-contaminating topics). The topics are its
+        // LABEL, not an identifier.
         @Override
-        public String getIdentifier() { return "Motivation"; }
+        public String getIdentifier() { return getDisplayName(); }
 
         @Override
-        public String getDisplayName() { return "Motivation"; }
+        public String getDisplayName() {
+            return topics.isEmpty() ? "Motivation" : String.join(", ", topics);
+        }
     }
 
     private static final List<String> ACTIONS = List.of(

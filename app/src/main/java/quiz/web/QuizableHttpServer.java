@@ -143,7 +143,7 @@ public class QuizableHttpServer {
             for (Quizable q : qs) {
                 items.add(new QuizableView.Ref(
                         q.getIdentifier(), q.getDisplayName(), q.typeName(),
-                        QuizableJson.thumbUrl(q)));
+                        QuizableJson.thumbUrl(q), null));
             }
             writeJson(ex, 200, items);
         } catch (Exception e) {
