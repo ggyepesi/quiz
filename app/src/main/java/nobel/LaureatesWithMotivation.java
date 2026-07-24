@@ -24,17 +24,17 @@ class LaureatesWithMotivation extends QuizableAdapter {
     }
 
     /** A grouping wrapper has no natural name — its laureates ARE its content. It needs
-     *  a STABLE, content-derived identity ONLY so the snapshot store can key/reference
-     *  it (a blank id is silently dropped, which nulled the whole chain). The display
-     *  name stays empty by design — the wrapper is shown by its contents, not a
-     *  redundant long label. */
+     *  a STABLE, content-derived id ONLY so the snapshot store can key/reference it (a
+     *  blank id is silently dropped, which nulled the whole chain) — short, unshown. The
+     *  laureates ARE the wrapper's natural label, so the DISPLAY name is their names:
+     *  it reads as a meaningful chip ("Marie Curie, Pierre Curie") you click to expand. */
     @Override
     public String getIdentifier() {
         return Integer.toHexString(laureateNames().hashCode());
     }
 
     @Override
-    public String getDisplayName() { return ""; }
+    public String getDisplayName() { return laureateNames(); }
 
     private String laureateNames() {
         return laureates.stream()
