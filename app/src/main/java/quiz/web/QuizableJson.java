@@ -699,7 +699,30 @@ public final class QuizableJson {
 
     private static QuizableView.Ref ref(Quizable q) {
         return new QuizableView.Ref(
-                q.getIdentifier(), q.getDisplayName(), q.typeName());
+                q.getIdentifier(), q.getDisplayName(), q.typeName(), thumbUrl(q));
+    }
+
+    /** A small render URL for {@code q}'s first media field (e.g. a Laureate's portrait),
+     *  so a chip / list item can show an avatar — null if it has none. Http media goes
+     *  direct; local (file:/bundled) media routes through the server render endpoint. */
+    public static String thumbUrl(Quizable q) {
+        objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
+        for (objectview.field.FieldRef fr : fs.fields()) {
+            Object v = fs.read(fr.name());
+            if (v instanceof wikidata.explore.extract.WikidataMediaValue m && m.hasUrl()) {
+                return isHttp(m.url())
+                        ? httpsUrl(m.url())
+                        : imageApi(q.typeName(), q.getIdentifier(), fr.name());
+            }
+            if (v instanceof objectview.media.ImageRef) {
+                return imageApi(q.typeName(), q.getIdentifier(), fr.name());
+            }
+        }
+        return null;
+    }
+
+    private static String imageApi(String type, String id, String field) {
+        return "/api/image/" + enc(type) + "/" + enc(id) + "/" + enc(field);
     }
 
     /** True when {@code value} is a nested Quizable (or a non-empty collection/map of

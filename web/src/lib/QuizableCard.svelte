@@ -4,7 +4,7 @@
   import ZoomableImage from './ZoomableImage.svelte';
   import { assetUrl } from './api.js';
 
-  let { view, heading = false } = $props();
+  let { view, heading = false, depth = 0 } = $props();
 
   // Collections show "fieldName (n)" like the desktop CollectionHeader convention.
   const collectionLen = {
@@ -19,7 +19,7 @@
   };
 </script>
 
-<div class="card" class:heading>
+<div class="card" class:heading class:nested={depth > 0} class:deep={depth > 2}>
   {#if heading}
     <div class="title">
       <span class="name">{view.name}</span>
@@ -49,14 +49,14 @@
           {:else if f.kind === 'link'}
             <a href={f.url} target="_blank" rel="noreferrer">{f.label} ↗</a>
           {:else if f.kind === 'ref'}
-            <QuizableChip ref={f.ref} />
+            <QuizableChip ref={f.ref} depth={depth + 1} />
           {:else if f.kind === 'refs'}
             <div class="refs">
-              {#each f.refs as r}<QuizableChip ref={r} />{/each}
+              {#each f.refs as r}<QuizableChip ref={r} depth={depth + 1} />{/each}
             </div>
           {:else if f.kind === 'inline'}
             <div class="inline">
-              {#each f.nodes as n}<Self view={n} heading={true} />{/each}
+              {#each f.nodes as n}<Self view={n} heading={true} depth={depth + 1} />{/each}
             </div>
           {/if}
         </dd>
@@ -93,13 +93,7 @@
   /* Query on the card's OWN width so deeply-nested cards collapse the two-column
      field grid — otherwise a depth-3 card squeezes the value column to a few px and
      names wrap one character per line. */
-  .fields { margin: 0; display: flex; flex-direction: column; container-type: inline-size; }
-  /* Below this width (deeply-nested/expanded cards) stack label-over-value so the value
-     always gets the full row — otherwise the fixed label column starves it. */
-  @container (max-width: 420px) {
-    .field { grid-template-columns: 1fr; gap: 2px; }
-    dt { font-weight: 600; }
-  }
+  .fields { margin: 0; display: flex; flex-direction: column; }
   .field {
     display: grid;
     /* minmax floors keep the value column from collapsing to a few px. */
@@ -108,6 +102,13 @@
     padding: 6px 0;
     align-items: start;
   }
+
+  /* A nested card ("section") stacks label-over-value so the value gets the full row,
+     and compacts progressively as it deepens. */
+  .card.nested .field { grid-template-columns: 1fr; gap: 2px; }
+  .card.nested .field dt { font-weight: 600; }
+  .card.nested.heading { padding: 10px 12px; box-shadow: none; }
+  .card.deep.heading { padding: 6px 8px; border-radius: var(--radius-sm); }
   .field + .field { border-top: 1px solid #f2f3f6; }
   dt { color: var(--muted); font-size: 0.86rem; padding-top: 1px; overflow-wrap: anywhere; }
   dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }

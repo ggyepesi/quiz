@@ -142,7 +142,8 @@ public class QuizableHttpServer {
             List<QuizableView.Ref> items = new ArrayList<>();
             for (Quizable q : qs) {
                 items.add(new QuizableView.Ref(
-                        q.getIdentifier(), q.getDisplayName(), q.typeName()));
+                        q.getIdentifier(), q.getDisplayName(), q.typeName(),
+                        QuizableJson.thumbUrl(q)));
             }
             writeJson(ex, 200, items);
         } catch (Exception e) {

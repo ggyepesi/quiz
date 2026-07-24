@@ -1,8 +1,8 @@
 <script>
-  import { getQuizable } from './api.js';
+  import { getQuizable, assetUrl } from './api.js';
   import QuizableCard from './QuizableCard.svelte';
 
-  let { ref } = $props();
+  let { ref, depth = 0 } = $props();
 
   let open = $state(false);
   let loading = $state(false);
@@ -23,6 +23,7 @@
 <div class="chip" class:open>
   <button class="head" onclick={toggle}>
     <span class="tri" class:open>▸</span>
+    {#if ref.thumb}<img class="avatar" src={assetUrl(ref.thumb)} alt="" loading="lazy" />{/if}
     <span class="name" title={ref.name}>{ref.name}</span>
   </button>
 
@@ -31,7 +32,7 @@
       {#if loading}
         <span class="hint">Loading…</span>
       {:else if child}
-        <QuizableCard view={child} />
+        <QuizableCard view={child} depth={depth} />
       {:else}
         <span class="hint">no detail available</span>
       {/if}
@@ -64,6 +65,16 @@
     flex: none;
   }
   .tri.open { transform: rotate(90deg); color: var(--muted); }
+
+  .avatar {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    align-self: center;
+    background: var(--chip-hover);
+  }
 
   /* Wrap at word boundaries, not mid-word — a long name like "Emil von Behring" breaks
      at spaces, never one char per line (full name in the title tooltip). */

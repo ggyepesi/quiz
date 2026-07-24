@@ -23,7 +23,7 @@ public record QuizableView(
         List<Field> fields) {
 
     /** A reference to another Quizable, resolved lazily by the client. */
-    public record Ref(String id, String name, String type) {}
+    public record Ref(String id, String name, String type, String thumb) {}
 
     /**
      * One rendered field. {@code kind} selects which payload is populated:
