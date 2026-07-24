@@ -298,11 +298,11 @@ public final class TransformController {
 
     public boolean canSave() { return writer != null; }
 
-    /** Persist the current view's members as a first-class domain; returns the
-     *  writer's status message. Throws on failure. */
+    /** Persist the WHOLE domain — every type's instances, the full reachable closure —
+     *  as a first-class domain, regardless of the selected type or pipeline, so picking
+     *  a nested type can't silently drop the roots. (Saving a derived/transformed subset
+     *  will be a separate action.) Returns the writer's status; throws on failure. */
     public String saveAsDomain(String name) throws Exception {
-        View view = ViewCompiler.compile(name, selectedType, pipeline, domain.universe());
-        List<? extends Quizable> members = view.members(domain.instances());
-        return writer.save(name, members);
+        return writer.save(name, domain.instances());
     }
 }

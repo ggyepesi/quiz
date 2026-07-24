@@ -265,13 +265,18 @@ public final class TransformWorkbenchPanel extends JPanel {
     }
 
     public static void launch(DomainModel domain, String title, DomainWriter writer) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame f = new JFrame("Transform Workbench — " + title);
-            f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            f.add(new TransformWorkbenchPanel(domain, writer));
-            f.setSize(1400, 900);
-            f.setLocationRelativeTo(null);
-            f.setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> openFrame(domain, title, writer));
+    }
+
+    /** Build + show the workbench frame and RETURN it (EDT-only), so a caller can track
+     *  it (e.g. to focus an already-open domain instead of reloading). */
+    public static JFrame openFrame(DomainModel domain, String title, DomainWriter writer) {
+        JFrame f = new JFrame("Transform Workbench — " + title);
+        f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        f.add(new TransformWorkbenchPanel(domain, writer));
+        f.setSize(1400, 900);
+        f.setLocationRelativeTo(null);
+        f.setVisible(true);
+        return f;
     }
 }

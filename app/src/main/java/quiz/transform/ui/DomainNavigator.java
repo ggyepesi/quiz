@@ -2,7 +2,9 @@ package quiz.transform.ui;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * First-navigation screen for the transform workbench: lists the given
@@ -31,9 +33,20 @@ public final class DomainNavigator {
         JLabel status = new JLabel(entries.size() + " domain(s)");
         JButton open = new JButton("Open in Transform Workbench");
 
+        // Reuse an already-open workbench instead of reloading the domain (which can be
+        // slow — Nobel re-parses + re-reads ~1000 portraits). Keyed by domain name.
+        Map<String, JFrame> openFrames = new HashMap<>();
+
         Runnable openSelected = () -> {
             DomainEntry e = list.getSelectedValue();
             if (e == null) {
+                return;
+            }
+            JFrame existing = openFrames.get(e.name());
+            if (existing != null && existing.isDisplayable()) {
+                existing.setExtendedState(Frame.NORMAL);   // un-minimize
+                existing.toFront();
+                existing.requestFocus();
                 return;
             }
             open.setEnabled(false);
@@ -44,7 +57,13 @@ public final class DomainNavigator {
                 }
                 @Override protected void done() {
                     try {
-                        TransformWorkbenchPanel.launch(get(), e.name(), writer);
+                        JFrame f = TransformWorkbenchPanel.openFrame(get(), e.name(), writer);
+                        openFrames.put(e.name(), f);
+                        f.addWindowListener(new java.awt.event.WindowAdapter() {
+                            @Override public void windowClosed(java.awt.event.WindowEvent we) {
+                                openFrames.remove(e.name());
+                            }
+                        });
                         status.setText(entries.size() + " domain(s)");
                     } catch (Exception ex) {
                         Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
