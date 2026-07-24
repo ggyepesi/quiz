@@ -23,7 +23,7 @@
 <div class="chip" class:open>
   <button class="head" onclick={toggle}>
     <span class="tri" class:open>▸</span>
-    <span class="name">{ref.name}</span>
+    <span class="name" title={ref.name}>{ref.name}</span>
   </button>
 
   {#if open}
@@ -65,7 +65,9 @@
   }
   .tri.open { transform: rotate(90deg); color: var(--muted); }
 
-  .name { overflow-wrap: anywhere; }
+  /* Wrap at word boundaries, not mid-word — a long name like "Emil von Behring" breaks
+     at spaces, never one char per line (full name in the title tooltip). */
+  .name { overflow-wrap: break-word; word-break: normal; }
 
   .body {
     margin: 6px 0 8px 9px;

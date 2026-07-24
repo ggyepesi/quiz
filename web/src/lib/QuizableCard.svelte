@@ -30,7 +30,7 @@
   <dl class="fields">
     {#each view.fields ?? [] as f}
       <div class="field">
-        <dt>{fieldLabel(f)}</dt>
+        <dt title={f.name}>{fieldLabel(f)}</dt>
         <dd>
           {#if f.kind === 'text'}
             {f.value}
@@ -94,13 +94,16 @@
      field grid — otherwise a depth-3 card squeezes the value column to a few px and
      names wrap one character per line. */
   .fields { margin: 0; display: flex; flex-direction: column; container-type: inline-size; }
-  @container (max-width: 320px) {
+  /* Below this width (deeply-nested/expanded cards) stack label-over-value so the value
+     always gets the full row — otherwise the fixed label column starves it. */
+  @container (max-width: 420px) {
     .field { grid-template-columns: 1fr; gap: 2px; }
     dt { font-weight: 600; }
   }
   .field {
     display: grid;
-    grid-template-columns: 132px 1fr;
+    /* minmax floors keep the value column from collapsing to a few px. */
+    grid-template-columns: minmax(0, 132px) minmax(0, 1fr);
     gap: 14px;
     padding: 6px 0;
     align-items: start;
