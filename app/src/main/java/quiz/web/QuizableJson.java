@@ -535,6 +535,13 @@ public final class QuizableJson {
                     ? QuizableView.Field.image(name, url)       // e.g. a sky chart
                     : linkField(name, url, name);               // e.g. a wikidata link
         }
+        // An anonymous nested object is structural: it contributes fields but has no
+        // useful chip label. This presentation decision is deliberately independent
+        // of whether the object is stored as an ENTITY or a VALUE.
+        if (isStructuralWrapper(value)) {
+            List<QuizableView> nodes = inlineNodes(value, visited);
+            return nodes.isEmpty() ? null : QuizableView.Field.inline(name, nodes);
+        }
         if (value instanceof Quizable q) {
             return referenceOrLink(name, q, visited);
         }
@@ -696,9 +703,11 @@ public final class QuizableJson {
         // A value object isn't in the pool, so its chip can't be FETCHED to expand —
         // carry its contents INLINE so the chip expands from embedded data. An entity's
         // chip stays lazy (fetched by id). Rendering shape (chip) is uniform either way.
-        QuizableView inline = isValueObject(q) ? of(q, visited) : null;
+        boolean valueObject = isValueObject(q);
+        QuizableView inline = valueObject ? of(q, visited) : null;
         return new QuizableView.Ref(
-                q.getIdentifier(), q.getDisplayName(), q.typeName(), thumbUrl(q), inline);
+                valueObject ? null : q.getIdentifier(),
+                q.getDisplayName(), q.typeName(), thumbUrl(q), inline);
     }
 
     /** A small render URL for {@code q}'s first media field (e.g. a Laureate's portrait),
@@ -730,6 +739,31 @@ public final class QuizableJson {
         return q instanceof quiz.ValueObject
                 || (q instanceof wikidata.explore.extract.WikidataDynamicObject w
                         && w.isValueObject());
+    }
+
+    /** True when {@code value} is a nested object, or a non-empty collection/map
+     *  consisting entirely of nested objects, with no visible label. Such values
+     *  are structural sections and expose their contents instead of an empty chip. */
+    private static boolean isStructuralWrapper(Object value) {
+        if (value instanceof Quizable q) {
+            return isBlank(q.getDisplayName());
+        }
+        Collection<?> items = value instanceof Collection<?> c ? c
+                : value instanceof Map<?, ?> m ? m.values()
+                : null;
+        if (items == null || items.isEmpty()) {
+            return false;
+        }
+        for (Object item : items) {
+            if (!(item instanceof Quizable q) || !isBlank(q.getDisplayName())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private static String enc(String s) {

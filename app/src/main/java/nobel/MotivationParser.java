@@ -179,7 +179,9 @@ public class MotivationParser {
 
         } else {
 
-            m.topics.add(text.trim());
+            String topic = text.trim();
+            if (!topic.isEmpty())
+                m.topics.add(topic);
         }
 
         return text;
