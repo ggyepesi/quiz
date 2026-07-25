@@ -83,6 +83,20 @@ public final class ViewStepsPanel extends JPanel {
         for (String t : controller.types()) {
             memberTypeCombo.addItem(t);
         }
+        // Show the instance count beside each type (display only — the item value stays
+        // the plain type name, which selectType and the pipeline rely on).
+        memberTypeCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(
+                    JList<?> list, Object value, int index,
+                    boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof String t) {
+                    setText(t + "  (" + controller.instanceCount(t) + ")");
+                }
+                return this;
+            }
+        });
 
         memberTypeCombo.addActionListener(e -> {
             String chosen = (String) memberTypeCombo.getSelectedItem();

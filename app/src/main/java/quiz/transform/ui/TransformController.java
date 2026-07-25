@@ -55,6 +55,21 @@ public final class TransformController {
     public Set<String> structuralFields(String type) { return domain.structuralFields(type); }
     public FieldTypeSource fieldTypes(String type) { return domain.fieldTypes(type); }
 
+    /** How many loaded instances are of {@code type} — shown next to the member-type
+     *  selector so the domain's size is visible. */
+    public int instanceCount(String type) {
+        if (type == null) {
+            return 0;
+        }
+        int n = 0;
+        for (Quizable q : domain.instances()) {
+            if (q != null && type.equals(q.typeName())) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     public Quizable sampleOf(String type) {
         for (Quizable q : domain.instances()) {
             if (q != null && type.equals(q.typeName())) {
