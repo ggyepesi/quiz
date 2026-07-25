@@ -43,5 +43,27 @@
     "instanceCount" : 24776,
     "savedAt" : "2026-07-21T15:17:06.695287",
     "modelSignature" : "a667351b06c96b13eb71ce383cd829c700faf2632d10af4a8dcd010f25f8393f"
+  }, {
+    "name" : "countries",
+    "key" : "countries",
+    "rootClass" : "State",
+    "modelPath" : "",
+    "ruletreePath" : "",
+    "snapshotPath" : "data/wikidata/transform/countries.snapshot.json",
+    "types" : [ "State", "QuizableGroup" ],
+    "instanceCount" : 1202,
+    "savedAt" : "2026-07-25T11:21:43.873570",
+    "modelSignature" : ""
+  }, {
+    "name" : "nobel-prizes",
+    "key" : "nobel-prizes",
+    "rootClass" : "NobelPrize",
+    "modelPath" : "",
+    "ruletreePath" : "",
+    "snapshotPath" : "data/wikidata/transform/nobel-prizes.snapshot.json",
+    "types" : [ "NobelPrize", "Laureate" ],
+    "instanceCount" : 3060,
+    "savedAt" : "2026-07-25T11:27:57.146815",
+    "modelSignature" : ""
   } ]
 }
