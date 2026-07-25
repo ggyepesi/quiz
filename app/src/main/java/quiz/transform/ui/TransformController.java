@@ -75,6 +75,57 @@ public final class TransformController {
         return fieldValues(type).get(path);
     }
 
+    /** Candidate filter values for {@code path}: the full constant set if the field is
+     *  a (live) enum, {@code true/false} for a boolean, else its distinct observed
+     *  values when low-cardinality. Empty for a high-cardinality or non-scalar field
+     *  (numbers, dates, references) so the filter falls back to free-text entry. Lets
+     *  the value input offer a picker for enum/categorical fields — e.g. flagStatus's
+     *  "no flag" — instead of a blank text box. */
+    public List<String> candidateValues(String type, String path) {
+        if (type == null || path == null) {
+            return List.of();
+        }
+        Object sample = sampleFieldValue(type, path);
+        if (sample instanceof Enum<?> e) {
+            List<String> out = new ArrayList<>();
+            for (Object c : e.getClass().getEnumConstants()) {
+                String s = c.toString();
+                if (!s.isBlank()) {
+                    out.add(s);
+                }
+            }
+            return out;
+        }
+        if (sample instanceof Boolean) {
+            return List.of("true", "false");
+        }
+        if (!(sample instanceof CharSequence)) {
+            return List.of();
+        }
+        final int cap = 25;
+        java.util.TreeSet<String> distinct = new java.util.TreeSet<>();
+        for (Quizable q : domain.instances()) {
+            if (q == null || !type.equals(q.typeName())) {
+                continue;
+            }
+            Object v = objectview.field.FieldAccess.getPath(q, path);
+            if (v == null) {
+                continue;
+            }
+            if (!(v instanceof CharSequence)) {
+                return List.of();
+            }
+            String s = v.toString();
+            if (!s.isBlank()) {
+                distinct.add(s);
+            }
+            if (distinct.size() > cap) {
+                return List.of();
+            }
+        }
+        return new ArrayList<>(distinct);
+    }
+
     /** The per-type {@code path -> representative non-null value} map, built in ONE
      *  pass over the instances (stopping once every field is resolved) and cached. */
     private Map<String, Object> fieldValues(String type) {

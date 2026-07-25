@@ -39,6 +39,12 @@ public final class FilterPredicates {
         if (v instanceof Number n) {
             return n.doubleValue();
         }
+        // A live enum value (e.g. State.FlagStatus.MISSING) compares by its display
+        // string, so it matches the "no flag" the value picker offers — and stays
+        // consistent with the snapshot, where the same field is already that string.
+        if (v instanceof Enum<?> e) {
+            return e.toString();
+        }
         return v;
     }
 

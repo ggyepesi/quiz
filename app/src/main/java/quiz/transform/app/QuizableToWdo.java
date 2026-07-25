@@ -92,7 +92,10 @@ public final class QuizableToWdo {
             objectview.field.FieldSet set = objectview.field.FieldSet.of(q);
             for (objectview.field.FieldRef ref : set.fields()) {
                 Object cv = convert(set.read(ref.name()), seen);
-                if (cv != null) {
+                // Skip null AND blank scalars — a blank value carries no information and
+                // would otherwise render as an empty field row (e.g. flagStatus="" for a
+                // state whose flag IS present; only the "no flag" case should show).
+                if (cv != null && !(cv instanceof String s && s.isBlank())) {
                     o.put(ref.name(), cv);
                 }
             }

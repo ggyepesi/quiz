@@ -43,8 +43,25 @@ public final class ViewStepsPanel extends JPanel {
 
     private final JComboBox<FilterOperator> filterOperator =
             new JComboBox<>();
-    private final JTextField filterValue = new JTextField(10);
+    // Editable so it doubles as a free-text box; its dropdown is repopulated per
+    // selected field with that field's candidate values (enum constants / distinct
+    // categorical values — e.g. flagStatus's "no flag"), empty for free-text fields.
+    private final JComboBox<String> filterValue = editableCombo();
     private final JTextField filterValue2 = new JTextField(10);
+
+    private static JComboBox<String> editableCombo() {
+        JComboBox<String> c = new JComboBox<>();
+        c.setEditable(true);
+        c.setPrototypeDisplayValue("wwwwwwww");
+        return c;
+    }
+
+    private static String comboText(JComboBox<String> combo) {
+        Object item = combo.isEditable()
+                ? combo.getEditor().getItem()
+                : combo.getSelectedItem();
+        return item == null ? "" : item.toString();
+    }
 
     private final DefaultListModel<FilterCondition> filterModel =
             new DefaultListModel<>();
@@ -260,9 +277,23 @@ public final class ViewStepsPanel extends JPanel {
         return new DomainField(type, row.path(), reference, collection, kind);
     }
 
-    /** Re-offer only the operators that fit the checked field's shape. */
+    /** Re-offer only the operators that fit the checked field's shape, and repopulate
+     *  the value picker with that field's candidate values. */
     private void onFieldSelectionChanged() {
-        reloadOperators(kindOf(currentField()));
+        DomainField f = currentField();
+        reloadOperators(kindOf(f));
+        populateValueChoices(f);
+    }
+
+    /** Repopulate the value combo's dropdown with the field's candidate values (enum /
+     *  categorical), leaving it editable for free-text fields. Clears the editor so the
+     *  user picks fresh for the newly-selected field. */
+    private void populateValueChoices(DomainField f) {
+        List<String> choices = f == null
+                ? List.of()
+                : controller.candidateValues(controller.selectedType(), f.field());
+        filterValue.setModel(new DefaultComboBoxModel<>(choices.toArray(new String[0])));
+        filterValue.setSelectedItem("");
     }
 
     /** The value shape of a field: the domain-populated {@link DomainField#kind()}
@@ -325,8 +356,9 @@ public final class ViewStepsPanel extends JPanel {
             fieldPicker.setSelectedPath(c.field().field());
         }
         reloadOperators(kindOf(c.field()));
+        populateValueChoices(c.field());
         filterOperator.setSelectedItem(c.operator());
-        filterValue.setText(c.value() == null ? "" : String.valueOf(c.value()));
+        filterValue.setSelectedItem(c.value() == null ? "" : String.valueOf(c.value()));
         filterValue2.setText(c.value2() == null ? "" : String.valueOf(c.value2()));
         updateFilterValueEnablement();
     }
@@ -342,7 +374,7 @@ public final class ViewStepsPanel extends JPanel {
             return;
         }
 
-        Object v1 = parseValue(filterValue.getText());
+        Object v1 = parseValue(comboText(filterValue));
         Object v2 = parseValue(filterValue2.getText());
 
         FilterCondition c = new FilterCondition(f, op, v1, v2);
