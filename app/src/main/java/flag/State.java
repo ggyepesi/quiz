@@ -14,10 +14,29 @@ import objectview.media.ImagePane;
 import quiz.QuizableAdapter;
 
 public class State extends QuizableAdapter {
+
+    /** Whether this state has a flag. Explicit (not just an empty flag list) so a
+     *  genuinely flagless territory — e.g. Kingman Reef — is a curatable fact in the
+     *  snapshot rather than a silent gap or a broken image. Derived at load: a state
+     *  gets a flag → {@link #AVAILABLE}; none resolves → stays {@link #MISSING}.
+     *  AVAILABLE serializes blank so it doesn't clutter the ~200 flagged cards (the
+     *  flag itself is the signal); only MISSING shows, as a "no flag" curation marker. */
+    public enum FlagStatus {
+        AVAILABLE(""),
+        MISSING("no flag");
+
+        private final String label;
+
+        FlagStatus(String label) { this.label = label; }
+
+        @Override public String toString() { return label; }
+    }
+
     private final String name;
     private final List<ImagePane> flagVersions = new ArrayList<>();
     private final List<ImagePane> armsVersions = new ArrayList<>();
     private final List<ImagePane> shapeVersions = new ArrayList<>();
+    private FlagStatus flagStatus = FlagStatus.MISSING;
 
     @Reference
     private final Map<String, QuizableGroup> groups = new TreeMap<>();
@@ -33,6 +52,22 @@ public class State extends QuizableAdapter {
 
     public boolean hasImagePane() {
         return !flagVersions.isEmpty() || !armsVersions.isEmpty() || !shapeVersions.isEmpty();
+    }
+
+    /** Any curatable content at all — an image, a group membership, or a scalar
+     *  fact. A state with none is a stray key and is dropped on load; a flagless
+     *  state that still carries groups/capitals/currencies/languages is KEPT and
+     *  marked {@link FlagStatus#MISSING} so it can be curated in the transform app. */
+    public boolean hasContent() {
+        return hasImagePane()
+                || !groups.isEmpty()
+                || !currencies.isEmpty()
+                || !capitals.isEmpty()
+                || !languages.isEmpty();
+    }
+
+    public FlagStatus getFlagStatus() {
+        return flagStatus;
     }
 
     public List<ImagePane> getFlagVersions() {
@@ -60,6 +95,9 @@ public class State extends QuizableAdapter {
 
     public void addFlag(String key, ImagePane flag) {
         addImagePane("FLAGS", flagVersions, key, flag);
+        if (!flagVersions.isEmpty()) {
+            flagStatus = FlagStatus.AVAILABLE;
+        }
     }
 
     public void addArms(String key, ImagePane arms) {

@@ -80,20 +80,9 @@ public class FlagCachedImage extends CachedImage {
         }
 
         // 2. Curated local SVG/resource for filename-only flag data.
-        if (title != null && !title.isBlank()) {
-            String filename = title;
-
-            if (svg && !filename.endsWith(".svg")) {
-                filename += ".svg";
-            }
-
-            if (!filename.startsWith("file:/")) {
-                filename = String.valueOf(
-                        ResourceFinder.toURL(
-                                Constants.getSvgDirectory() + filename));
-            }
-
-            readToImageBuf(filename);
+        String curated = curatedSvgUrl();
+        if (curated != null) {
+            readToImageBuf(curated);
             return;
         }
 
@@ -107,6 +96,26 @@ public class FlagCachedImage extends CachedImage {
                 "FlagCachedImage: no title/resource/url");
     }
 
+    /** The curated local SVG URL for this flag key, or {@code null} if no such
+     *  resource exists (a flagless territory) — never the string {@code "null"}.
+     *  {@code ResourceFinder.toURL} returns null for a missing resource; stringifying
+     *  that with {@code String.valueOf} used to yield {@code "null"}, which then blew
+     *  up as "URI is not absolute" on both render and snapshot save. */
+    private String curatedSvgUrl() {
+        if (title == null || title.isBlank()) {
+            return null;
+        }
+        String filename = title;
+        if (svg && !filename.endsWith(".svg")) {
+            filename += ".svg";
+        }
+        if (filename.startsWith("file:/")) {
+            return filename;
+        }
+        java.net.URL u = ResourceFinder.toURL(Constants.getSvgDirectory() + filename);
+        return u == null ? null : u.toString();
+    }
+
     public static boolean hasImageFile(String title) {
         return jpegFiles.get(title) != null;
     }
@@ -116,16 +125,9 @@ public class FlagCachedImage extends CachedImage {
      *  reachable source, not a bare key. */
     @Override
     public String sourceUrl() {
-        if (title != null && !title.isBlank()) {
-            String filename = title;
-            if (svg && !filename.endsWith(".svg")) {
-                filename += ".svg";
-            }
-            if (!filename.startsWith("file:/")) {
-                filename = String.valueOf(
-                        ResourceFinder.toURL(Constants.getSvgDirectory() + filename));
-            }
-            return filename;
+        String curated = curatedSvgUrl();
+        if (curated != null) {
+            return curated;
         }
         if (explicitUrl != null && !explicitUrl.isBlank()) {
             return explicitUrl;

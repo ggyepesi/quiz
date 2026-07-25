@@ -257,17 +257,19 @@ public class States implements DomainViews {
             }
             n += c;
         }
-        // Remove states with no image.
+        // Drop only states with no data at all (stray keys). A flagless territory
+        // that still carries groups/capitals/etc. is KEPT — marked flagStatus=MISSING
+        // (State's default) so it is a curatable fact in the snapshot, not a silent gap.
         List<String> toRemove = new ArrayList<>();
         for (String key : states.keySet()) {
             State state = states.get(key);
-            if (!state.hasImagePane()) {
+            if (!state.hasContent()) {
                 toRemove.add(key);
             }
         }
         for (String key : toRemove) {
             states.remove(key);
-            System.out.println("No image, remove " + key);
+            System.out.println("No content, remove " + key);
         }
         System.out.println("Read images done " + filename);
         reader.close();
