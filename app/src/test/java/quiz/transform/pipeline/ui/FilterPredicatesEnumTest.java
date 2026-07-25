@@ -9,9 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FilterPredicatesEnumTest {
 
-    /** Mirrors State.FlagStatus: a label-bearing enum whose toString is the value. */
+    /** A label-bearing domain enum (like NobelPrize.Domain) whose toString is the value
+     *  the value picker offers and the snapshot flattens to. */
     enum Flag {
-        AVAILABLE(""), MISSING("no flag");
+        PHYSICS("physics"), PEACE("peace");
         private final String label;
         Flag(String label) { this.label = label; }
         @Override public String toString() { return label; }
@@ -19,23 +20,23 @@ class FilterPredicatesEnumTest {
 
     @SuppressWarnings("unused")
     static class Row extends QuizableAdapter {
-        private final Flag flagStatus;
-        Row(Flag f) { this.flagStatus = f; }
+        private final Flag domain;
+        Row(Flag f) { this.domain = f; }
         @Override public String getIdentifier() { return "r"; }
         @Override public String getDisplayName() { return "r"; }
     }
 
-    private static boolean matchesNoFlag(Flag value) {
-        DomainField f = new DomainField("Row", "flagStatus", false, false);
-        FilterCondition c = new FilterCondition(f, FilterOperator.EQUALS, "no flag", null);
+    private static boolean matchesPhysics(Flag value) {
+        DomainField f = new DomainField("Row", "domain", false, false);
+        FilterCondition c = new FilterCondition(f, FilterOperator.EQUALS, "physics", null);
         return FilterPredicates.matches(new Row(value), c);
     }
 
     @Test
     void liveEnumFieldMatchesItsDisplayString() {
-        // A live enum value compares by toString, so EQUALS "no flag" — what the value
-        // picker offers — selects the flagless rows and rejects the flagged ones.
-        assertTrue(matchesNoFlag(Flag.MISSING));
-        assertFalse(matchesNoFlag(Flag.AVAILABLE));
+        // A live enum value compares by toString, so EQUALS "physics" — what the value
+        // picker offers — selects the matching rows and rejects the others.
+        assertTrue(matchesPhysics(Flag.PHYSICS));
+        assertFalse(matchesPhysics(Flag.PEACE));
     }
 }

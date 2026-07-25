@@ -79,8 +79,8 @@ public final class TransformController {
      *  a (live) enum, {@code true/false} for a boolean, else its distinct observed
      *  values when low-cardinality. Empty for a high-cardinality or non-scalar field
      *  (numbers, dates, references) so the filter falls back to free-text entry. Lets
-     *  the value input offer a picker for enum/categorical fields — e.g. flagStatus's
-     *  "no flag" — instead of a blank text box. */
+     *  the value input offer a picker for enum/categorical fields — e.g. a domain enum
+     *  like NobelPrize.Domain or a low-cardinality vocabulary — instead of a blank box. */
     public List<String> candidateValues(String type, String path) {
         if (type == null || path == null) {
             return List.of();

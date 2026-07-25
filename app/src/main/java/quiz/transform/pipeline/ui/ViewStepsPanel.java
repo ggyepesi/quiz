@@ -45,7 +45,7 @@ public final class ViewStepsPanel extends JPanel {
             new JComboBox<>();
     // Editable so it doubles as a free-text box; its dropdown is repopulated per
     // selected field with that field's candidate values (enum constants / distinct
-    // categorical values — e.g. flagStatus's "no flag"), empty for free-text fields.
+    // low-cardinality categorical values), empty for free-text fields.
     private final JComboBox<String> filterValue = editableCombo();
     private final JTextField filterValue2 = new JTextField(10);
 

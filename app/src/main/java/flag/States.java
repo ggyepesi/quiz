@@ -258,8 +258,9 @@ public class States implements DomainViews {
             n += c;
         }
         // Drop only states with no data at all (stray keys). A flagless territory
-        // that still carries groups/capitals/etc. is KEPT — marked flagStatus=MISSING
-        // (State's default) so it is a curatable fact in the snapshot, not a silent gap.
+        // that still carries groups/capitals/etc. is KEPT, so it survives into the
+        // snapshot as a curatable fact — its empty flagVersions is the filterable
+        // "no flag" signal (flagVersions IS_EMPTY), not a silent gap.
         List<String> toRemove = new ArrayList<>();
         for (String key : states.keySet()) {
             State state = states.get(key);
