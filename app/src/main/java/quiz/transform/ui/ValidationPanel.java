@@ -16,11 +16,13 @@ import quiz.enrichment.CompositeEnrichmentProvider;
 import quiz.enrichment.EnrichmentDecisionApplier;
 import quiz.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
+import quiz.enrichment.EnrichmentSources;
 import quiz.enrichment.SourcePageImageEnrichmentProvider;
 import quiz.enrichment.ui.EnrichmentReviewPanel;
-import quiz.source.Source;
+import quiz.curation.ui.SourceManagerDialog;
 
 import wikidata.WikidataSparqlClient;
+import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.swing.SwingQueryRunner;
 
@@ -65,6 +67,7 @@ public final class ValidationPanel extends JPanel {
     // One persistent enrichment button, registered with the runner ONCE and reconfigured
     // + re-parented per drill — so drilling many fields doesn't leak run-button registrations.
     private final JButton checkButton = new JButton();
+    private final JButton sourcesButton = new JButton("Sources…");
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     // Horizontal, NOT vertical: the coverage table's preferred HEIGHT grows with the
@@ -96,7 +99,8 @@ public final class ValidationPanel extends JPanel {
                 ? new SwingQueryRunner(
                         new QueryContext(new WikidataSparqlClient(
                                 "QuizProject/1.0 (ggyepesi@gmail.com)", 2,
-                                WikidataSparqlClient.DBPEDIA_ENDPOINT), null),
+                                WikidataSparqlClient.DBPEDIA_ENDPOINT),
+                                new WikidataApiClient("QuizProject/1.0")),
                         null)
                 : queryRunner;
 
@@ -111,6 +115,8 @@ public final class ValidationPanel extends JPanel {
 
         checkButton.addActionListener(e -> onCheck());
         queryRunner.registerRunButton(checkButton);
+        sourcesButton.addActionListener(e -> manageSources());
+        sourcesButton.setEnabled(false);
 
         for (String t : domain.types()) {
             if (!byType.getOrDefault(t, List.of()).isEmpty()) {
@@ -273,6 +279,8 @@ public final class ValidationPanel extends JPanel {
                     : "Look up the SELECTED member's \"" + leaf(path) + "\" on DBpedia")
                     + " (select a card first)");
             h.add(checkButton);   // re-parents the persistent, already-registered button
+            updateSourcesButton();
+            h.add(sourcesButton);
         }
         return h;
     }
@@ -338,7 +346,7 @@ public final class ValidationPanel extends JPanel {
                 .orElse(false);
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject(type, qid, label),
-                path, collection, sourceRefs(m));
+                path, collection, EnrichmentSources.collect(m, type, curationStore()));
         CompositeEnrichmentProvider provider = new CompositeEnrichmentProvider(List.of(
                 new SourcePageImageEnrichmentProvider(),
                 new DBpediaImageEnrichmentProvider()));
@@ -384,20 +392,25 @@ public final class ValidationPanel extends JPanel {
         }
     }
 
-    private static List<EnrichmentProposal.SourceRef> sourceRefs(Quizable member) {
-        Object value = FieldAccess.getPath(member, "source");
-        List<Source> sources = new ArrayList<>();
-        if (value instanceof Source source) {
-            sources.add(source);
-        } else if (value instanceof Collection<?> collection) {
-            for (Object item : collection) {
-                if (item instanceof Source source) sources.add(source);
-            }
+    private void manageSources() {
+        if (selected == null) {
+            JOptionPane.showMessageDialog(this, "Select a member card first.");
+            return;
         }
-        return sources.stream()
-                .map(source -> new EnrichmentProposal.SourceRef(
-                        source.kind(), source.sourceId(), source.url()))
-                .toList();
+        SourceManagerDialog.show(this, curationStore(), type, selected.getIdentifier(),
+                selected.getDisplayName(), queryRunner, this::updateSourcesButton);
+    }
+
+    private void updateSourcesButton() {
+        quiz.curation.ManualCuration curation = curationStore();
+        boolean enabled = selected != null && curation != null;
+        sourcesButton.setEnabled(enabled);
+        int count = enabled
+                ? EnrichmentSources.collect(selected, type, curation).size() : 0;
+        sourcesButton.setText(count == 0 ? "Sources…" : "Sources (" + count + ")…");
+        sourcesButton.setToolTipText(enabled
+                ? "Review or add exact source records for the selected member"
+                : "Select a member card first");
     }
 
     // PROPOSE-only enrichment: look up the selected member's field on DBpedia and show
@@ -440,7 +453,10 @@ public final class ValidationPanel extends JPanel {
         RenderContext ctx = new RenderContext();
         ctx.setCollapsibleCards(true);
         ctx.setSelectionEnabled(true);
-        ctx.addSelectionListener(o -> selected = o instanceof Quizable q ? q : null);
+        ctx.addSelectionListener(o -> {
+            selected = o instanceof Quizable q ? q : null;
+            updateSourcesButton();
+        });
         v.setRenderContext(ctx);
         for (Quizable m : missing) {
             v.addViewable(m);
