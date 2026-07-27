@@ -51,6 +51,53 @@ final class DBpediaLookup {
         return new ArrayList<>(out);
     }
 
+    /**
+     * Image URL candidate(s) for a person/entity — reads {@code foaf:depiction} /
+     * {@code dbo:thumbnail} (direct Commons image URLs). Joined by {@code owl:sameAs}
+     * when we have a Wikidata QID, else by an exact English {@code rdfs:label} — manual
+     * domains like Nobel keep NAMES, not QIDs, so the label path is what reaches them.
+     */
+    static List<String> imageCandidates(WikidataSparqlClient dbpedia, String qid, String label) {
+        if (dbpedia == null) {
+            return List.of();
+        }
+        String subject;
+        if (qid != null && qid.matches("Q\\d+")) {
+            subject = "?dbr owl:sameAs <http://www.wikidata.org/entity/" + qid + "> .";
+        } else if (label != null && !label.isBlank()) {
+            subject = "?dbr rdfs:label " + sparqlString(label) + "@en .";
+        } else {
+            return List.of();
+        }
+        String sparql = ("""
+                PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+                PREFIX dbo: <http://dbpedia.org/ontology/>
+                PREFIX owl: <http://www.w3.org/2002/07/owl#>
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                SELECT DISTINCT ?img WHERE {
+                  %1$s
+                  { ?dbr foaf:depiction ?img } UNION { ?dbr dbo:thumbnail ?img }
+                } LIMIT 10
+                """).formatted(subject);
+
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        try {
+            for (WikidataBinding b : dbpedia.query(sparql)) {
+                String img = b.value("img");
+                if (img != null && !img.isBlank()) {
+                    out.add(img.trim());
+                }
+            }
+        } catch (Exception ignore) {
+            // best-effort; empty candidates on failure
+        }
+        return new ArrayList<>(out);
+    }
+
+    private static String sparqlString(String s) {
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
     /** A dbpedia resource URI → its readable last segment; a literal → itself. */
     private static String readable(String v) {
         if (v == null) {

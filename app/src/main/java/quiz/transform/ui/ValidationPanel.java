@@ -1,7 +1,10 @@
 package quiz.transform.ui;
 
 import objectview.Viewable;
+import objectview.field.FieldAccess;
+import objectview.field.FieldKind;
 import objectview.field.FieldSet;
+import objectview.media.ImagePane;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
@@ -19,10 +22,12 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -230,13 +235,100 @@ public final class ValidationPanel extends JPanel {
                 ? type + "." + path + " — fully covered."
                 : gap + " member(s) missing " + type + "." + path));
         if (gap > 0) {
-            JButton check = new JButton("Check DBpedia ↗");
-            check.setToolTipText("Look up the SELECTED member's \"" + leaf(path)
-                    + "\" on DBpedia (select a card first)");
-            check.addActionListener(e -> checkDbpedia(leaf(path)));
+            boolean media = isMediaField(path);
+            JButton check = new JButton(media ? "Find image ↗" : "Check DBpedia ↗");
+            check.setToolTipText((media
+                    ? "Find an image for the SELECTED member on DBpedia"
+                    : "Look up the SELECTED member's \"" + leaf(path) + "\" on DBpedia")
+                    + " (select a card first)");
+            check.addActionListener(e -> {
+                if (media) {
+                    findDbpediaImage();
+                } else {
+                    checkDbpedia(leaf(path));
+                }
+            });
             h.add(check);
         }
         return h;
+    }
+
+    /** Whether {@code path} on the current type is a media field — so the drill offers
+     *  an image lookup + thumbnail preview instead of the text-property lookup. */
+    private boolean isMediaField(String path) {
+        for (DomainField f : domain.fields(type)) {
+            if (f.field().equals(path)) {
+                if (f.kind() == FieldKind.MEDIA) {
+                    return true;
+                }
+                break;
+            }
+        }
+        // Fallback: sniff a member that HAS the field (the drill list is all-missing).
+        for (Quizable q : byType.getOrDefault(type, List.of())) {
+            Object v = FieldAccess.getPath(q, path);
+            if (v != null) {
+                return FieldKind.ofValue(v) == FieldKind.MEDIA;
+            }
+        }
+        return false;
+    }
+
+    // PROPOSE-only: find image candidate(s) for the selected member on DBpedia (by QID
+    // via owl:sameAs, else by name via rdfs:label) and show them as thumbnails. Next
+    // step: accept one → a media Correction (origin "dbpedia") into the overlay.
+    private void findDbpediaImage() {
+        Quizable m = selected;
+        if (m == null) {
+            JOptionPane.showMessageDialog(this, "Select a member card first.");
+            return;
+        }
+        String qid = m.getIdentifier();
+        String label = m.getDisplayName();
+        new SwingWorker<List<String>, Void>() {
+            @Override protected List<String> doInBackground() {
+                return DBpediaLookup.imageCandidates(dbpedia(), qid, label);
+            }
+            @Override protected void done() {
+                try {
+                    List<String> urls = get();
+                    if (urls.isEmpty()) {
+                        JOptionPane.showMessageDialog(ValidationPanel.this,
+                                "DBpedia has no image for " + label + ".");
+                        return;
+                    }
+                    showImagePreview(label, urls);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(ValidationPanel.this,
+                            "DBpedia image lookup failed: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private void showImagePreview(String name, List<String> urls) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        for (String url : urls) {
+            try {
+                boolean svg = url.toLowerCase().endsWith(".svg");
+                ImagePane pane = new ImagePane(fileName(url), url, null, true, svg);
+                pane.setPreferredSize(new Dimension(200, 220));
+                row.add(pane);
+            } catch (Exception ex) {
+                row.add(new JLabel(url));
+            }
+        }
+        JScrollPane scroll = new JScrollPane(row);
+        scroll.setPreferredSize(new Dimension(Math.min(900, 60 + urls.size() * 216), 300));
+        JOptionPane.showMessageDialog(this, scroll,
+                "DBpedia images for " + name + "  (preview)", JOptionPane.PLAIN_MESSAGE);
+    }
+
+    private static String fileName(String url) {
+        int slash = url.lastIndexOf('/');
+        String s = slash >= 0 && slash + 1 < url.length() ? url.substring(slash + 1) : url;
+        int q = s.indexOf('?');
+        return q >= 0 ? s.substring(0, q) : s;
     }
 
     // PROPOSE-only enrichment: look up the selected member's field on DBpedia and show
