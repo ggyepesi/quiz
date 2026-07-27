@@ -4,7 +4,6 @@ import objectview.Viewable;
 import objectview.field.FieldAccess;
 import objectview.field.FieldKind;
 import objectview.field.FieldSet;
-import objectview.media.ImagePane;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
@@ -13,6 +12,13 @@ import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
 import quiz.Quizable;
+import quiz.enrichment.CompositeEnrichmentProvider;
+import quiz.enrichment.EnrichmentDecisionApplier;
+import quiz.enrichment.EnrichmentProposal;
+import quiz.enrichment.EnrichmentRequest;
+import quiz.enrichment.SourcePageImageEnrichmentProvider;
+import quiz.enrichment.ui.EnrichmentReviewPanel;
+import quiz.source.Source;
 
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.query.core.QueryContext;
@@ -29,7 +35,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -325,86 +330,74 @@ public final class ValidationPanel extends JPanel {
                     "This member has no Wikidata QID or name to look up on DBpedia.");
             return;
         }
+        String path = coverage.selectedPath();
+        boolean collection = domain.fields(type).stream()
+                .filter(f -> path != null && path.equals(f.field()))
+                .findFirst()
+                .map(DomainField::collection)
+                .orElse(false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject(type, qid, label),
+                path, collection, sourceRefs(m));
+        CompositeEnrichmentProvider provider = new CompositeEnrichmentProvider(List.of(
+                new SourcePageImageEnrichmentProvider(),
+                new DBpediaImageEnrichmentProvider()));
         queryRunner.run(
-                DBpediaLookup.images(qid, label),
-                urls -> SwingUtilities.invokeLater(() -> {
-                    if (urls.isEmpty()) {
+                provider.discover(request),
+                proposal -> SwingUtilities.invokeLater(() -> {
+                    if (proposal.media().isEmpty()) {
                         JOptionPane.showMessageDialog(ValidationPanel.this,
-                                "DBpedia has no image for " + label + ".");
+                                "No configured source returned an image for " + label + ".");
                     } else {
-                        showImagePreview(label, urls);
+                        reviewProposal(proposal);
                     }
                 }),
                 ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
                         "DBpedia image lookup failed: " + ex.getMessage()));
     }
 
-    private void showImagePreview(String name, List<String> urls) {
-        String path = coverage.selectedPath();
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
-                "DBpedia images for " + name + " — Accept one",
-                java.awt.Dialog.ModalityType.APPLICATION_MODAL);
-
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
-        for (String url : urls) {
-            JPanel cell = new JPanel(new BorderLayout(4, 4));
-            try {
-                boolean svg = url.toLowerCase().endsWith(".svg");
-                ImagePane pane = new ImagePane(fileName(url), url, null, true, svg);
-                pane.setPreferredSize(new Dimension(200, 200));
-                cell.add(pane, BorderLayout.CENTER);
-            } catch (Exception ex) {
-                cell.add(new JLabel("<html><body style='width:180px'>" + url
-                        + "</body></html>"), BorderLayout.CENTER);
-            }
-            JButton accept = new JButton("Accept");
-            accept.setEnabled(path != null && selected != null && curationStore() != null);
-            accept.addActionListener(e -> {
-                acceptImage(path, url);
-                dialog.dispose();
-            });
-            cell.add(accept, BorderLayout.SOUTH);
-            row.add(cell);
-        }
-
-        JScrollPane scroll = new JScrollPane(row);
-        scroll.setPreferredSize(new Dimension(Math.min(920, 60 + urls.size() * 224), 300));
-        dialog.add(scroll);
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-    }
-
     private quiz.curation.ManualCuration curationStore() {
         return domain instanceof quiz.curation.Curatable c ? c.curation() : null;
     }
 
-    /** Accept a candidate image for the selected member's {@code path}: write a media
-     *  Correction (origin "dbpedia", fill-only so it never clobbers real data) — the URL
-     *  is stored plainly and {@code Corrections.coerce} builds the MediaValue on apply —
-     *  persist, apply to the live pool, and refresh (the member drops from the gap). */
-    private void acceptImage(String path, String url) {
-        Quizable m = selected;
+    private void reviewProposal(EnrichmentProposal proposal) {
         quiz.curation.ManualCuration curation = curationStore();
-        if (m == null || path == null || curation == null) {
+        if (curation == null) {
             return;
         }
-        curation.put(m.getIdentifier(), path, url, "dbpedia");
+        EnrichmentReviewPanel.showDialog(
+                this,
+                "Review enrichment — " + proposal.subject().displayName(),
+                proposal,
+                decision -> applyDecision(curation, decision));
+    }
+
+    private void applyDecision(
+            quiz.curation.ManualCuration curation,
+            quiz.enrichment.EnrichmentDecision decision) {
         try {
-            curation.save();
+            EnrichmentDecisionApplier.apply(domain, curation, decision);
+            onCurated.run();
+            onFieldSelected();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
         }
-        quiz.curation.Corrections.apply(domain.instances(), List.of(curation));
-        onCurated.run();       // re-render the owning view with the filled image
-        onFieldSelected();     // the member now has the image → drops from this drill
     }
 
-    private static String fileName(String url) {
-        int slash = url.lastIndexOf('/');
-        String s = slash >= 0 && slash + 1 < url.length() ? url.substring(slash + 1) : url;
-        int q = s.indexOf('?');
-        return q >= 0 ? s.substring(0, q) : s;
+    private static List<EnrichmentProposal.SourceRef> sourceRefs(Quizable member) {
+        Object value = FieldAccess.getPath(member, "source");
+        List<Source> sources = new ArrayList<>();
+        if (value instanceof Source source) {
+            sources.add(source);
+        } else if (value instanceof Collection<?> collection) {
+            for (Object item : collection) {
+                if (item instanceof Source source) sources.add(source);
+            }
+        }
+        return sources.stream()
+                .map(source -> new EnrichmentProposal.SourceRef(
+                        source.kind(), source.sourceId(), source.url()))
+                .toList();
     }
 
     // PROPOSE-only enrichment: look up the selected member's field on DBpedia and show

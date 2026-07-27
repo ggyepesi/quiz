@@ -3,6 +3,8 @@ package quiz.curation;
 import objectview.media.MediaValue;
 import org.junit.jupiter.api.Test;
 import quiz.QuizableAdapter;
+import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.extract.WikidataMediaValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -85,5 +87,34 @@ class MediaCorrectionTest {
         assertEquals(1, missing.flags.size());                          // empty list filled
         assertEquals("Flag of B.svg", missing.flags.get(0).mediaLabel());
         assertEquals(1, withFlag.flags.size());                         // sample untouched
+    }
+
+    @Test
+    void explicitMediaShapeFillsACollectionWhenNoInstanceProvidesASample() {
+        Country missing = new Country("B");
+        CorrectionSource dbpedia = () -> List.of(new Correction(
+                missing.typeName(), "B", "flags",
+                "https://example.test/Flag_of_B.svg?width=400",
+                "dbpedia", Correction.MEDIA_COLLECTION));
+
+        assertEquals(1, Corrections.apply(List.of(missing), List.of(dbpedia)));
+        assertEquals(1, missing.flags.size());
+        assertInstanceOf(TestMedia.class, missing.flags.get(0));
+        assertTrue(missing.flags.get(0).mediaSvg());
+    }
+
+    @Test
+    void explicitMediaShapeUsesTheSnapshotMediaTypeForAnEmptyDynamicField() {
+        WikidataDynamicObject missing = new WikidataDynamicObject("Q1", "Missing");
+        missing.type("Person");
+        CorrectionSource dbpedia = () -> List.of(new Correction(
+                "Person", "Q1", "image",
+                "https://example.test/Portrait.svg?width=400",
+                "dbpedia", Correction.MEDIA));
+
+        assertEquals(1, Corrections.apply(List.of(missing), List.of(dbpedia)));
+        WikidataMediaValue media =
+                assertInstanceOf(WikidataMediaValue.class, missing.get("image"));
+        assertTrue(media.mediaSvg());
     }
 }

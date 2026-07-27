@@ -27,10 +27,12 @@ public final class Corrections {
         if (pool == null || sources == null) {
             return 0;
         }
-        Map<String, Quizable> byQid = new HashMap<>();
+        Map<TargetKey, Quizable> byKey = new HashMap<>();
+        Map<String, Quizable> legacyByQid = new HashMap<>();
         for (Quizable q : pool) {
             if (q != null && q.getIdentifier() != null) {
-                byQid.putIfAbsent(q.getIdentifier(), q);
+                byKey.putIfAbsent(new TargetKey(q.typeName(), q.getIdentifier()), q);
+                legacyByQid.putIfAbsent(q.getIdentifier(), q);
             }
         }
 
@@ -41,7 +43,7 @@ public final class Corrections {
             }
         }
 
-        Map<String, Object> sampleByField = sampleValues(pool, all);
+        Map<SampleKey, Object> sampleByField = sampleValues(pool, all);
         int applied = 0;
         Set<String> manualKeys = new HashSet<>();
 
@@ -50,11 +52,12 @@ public final class Corrections {
             if (!c.isManual()) {
                 continue;
             }
-            Quizable target = byQid.get(c.qid());
+            Quizable target = target(c, byKey, legacyByQid);
             if (target == null) {
                 continue;
             }
-            FieldAccess.setPath(target, c.field(), coerce(c.value(), sampleByField.get(c.field())));
+            FieldAccess.setPath(target, c.field(), coerceCorrection(
+                    c, target, sampleByField.get(sampleKey(c))));
             manualKeys.add(key(c));
             applied++;
         }
@@ -67,13 +70,14 @@ public final class Corrections {
             if (c.isManual() || manualKeys.contains(key(c))) {
                 continue;
             }
-            Quizable target = byQid.get(c.qid());
+            Quizable target = target(c, byKey, legacyByQid);
             if (target == null
                     || objectview.ViewableAdapter.isValidQuizValue(
                             FieldAccess.getPath(target, c.field()))) {
                 continue;
             }
-            FieldAccess.setPath(target, c.field(), coerce(c.value(), sampleByField.get(c.field())));
+            FieldAccess.setPath(target, c.field(), coerceCorrection(
+                    c, target, sampleByField.get(sampleKey(c))));
             applied++;
         }
 
@@ -82,20 +86,21 @@ public final class Corrections {
 
     /** A representative existing value per corrected field, so {@link #coerce} can
      *  match its runtime type (the curation stores plain JSON/text values). */
-    private static Map<String, Object> sampleValues(Collection<? extends Quizable> pool,
-                                                     List<Correction> corrections) {
-        Set<String> fields = new HashSet<>();
+    private static Map<SampleKey, Object> sampleValues(Collection<? extends Quizable> pool,
+                                                       List<Correction> corrections) {
+        Set<SampleKey> fields = new HashSet<>();
         for (Correction c : corrections) {
-            fields.add(c.field());
+            fields.add(sampleKey(c));
         }
-        Map<String, Object> out = new HashMap<>();
+        Map<SampleKey, Object> out = new HashMap<>();
         for (Quizable q : pool) {
             if (out.size() == fields.size()) {
                 break;
             }
-            for (String f : fields) {
-                if (!out.containsKey(f)) {
-                    Object v = FieldAccess.getPath(q, f);
+            for (SampleKey f : fields) {
+                if ((f.type() == null || f.type().equals(q.typeName()))
+                        && !out.containsKey(f)) {
+                    Object v = FieldAccess.getPath(q, f.field());
                     // A VALID (non-empty) representative — so coerce sees a non-empty
                     // collection and can read its element type (an empty flagVersions
                     // would give coerce nothing to shape a media value from).
@@ -154,6 +159,23 @@ public final class Corrections {
         }
     }
 
+    private static Object coerceCorrection(Correction correction, Quizable target, Object sample) {
+        if (sample == null && correction.value() instanceof String url
+                && (Correction.MEDIA.equals(correction.valueKind())
+                    || Correction.MEDIA_COLLECTION.equals(correction.valueKind()))) {
+            boolean collection = Correction.MEDIA_COLLECTION.equals(correction.valueKind());
+            Object declared = declaredMedia(target, correction.field(), url, collection);
+            if (declared != null) {
+                return declared;
+            }
+            Object dynamicMedia = dynamicMedia(target, url);
+            objectview.media.MediaValue media = dynamicMedia instanceof objectview.media.MediaValue m
+                    ? m : new CuratedMediaValue(mediaLabel(url), url, isSvg(url));
+            return collection ? List.of(media) : media;
+        }
+        return coerce(correction.value(), sample);
+    }
+
     /** A URL → a MediaValue matching {@code sample}'s shape: a single value when the
      *  field holds one, or a one-element collection when it holds a list of them; null
      *  when {@code sample} isn't media (so coerce falls through to scalar handling). */
@@ -178,7 +200,7 @@ public final class Corrections {
      *  by the pool's MediaValue types (e.g. WikidataMediaValue). */
     private static Object buildMediaValue(Class<?> mediaClass, String url) {
         try {
-            boolean svg = url.toLowerCase().endsWith(".svg");
+            boolean svg = isSvg(url);
             return mediaClass.getConstructor(String.class, String.class, boolean.class)
                     .newInstance(mediaLabel(url), url, svg);
         } catch (ReflectiveOperationException e) {
@@ -202,7 +224,74 @@ public final class Corrections {
         return name.replace('_', ' ');
     }
 
-    private static String key(Correction c) {
-        return c.qid() + " " + c.field();
+    private static boolean isSvg(String url) {
+        int end = url.length();
+        int query = url.indexOf('?');
+        int fragment = url.indexOf('#');
+        if (query >= 0) end = Math.min(end, query);
+        if (fragment >= 0) end = Math.min(end, fragment);
+        return url.substring(0, end).toLowerCase(java.util.Locale.ROOT).endsWith(".svg");
     }
+
+    private static Object declaredMedia(Quizable target, String path, String url,
+                                        boolean collection) {
+        try {
+            String[] parts = path.split("\\.");
+            Object owner = target;
+            for (int i = 0; i < parts.length - 1; i++) {
+                owner = FieldAccess.getPath(owner, parts[i]);
+                if (owner == null) return null;
+            }
+            java.lang.reflect.Field field =
+                    objectview.ViewableAdapter.getField(owner.getClass(), parts[parts.length - 1]);
+            if (field == null) return null;
+            Class<?> mediaClass = field.getType();
+            if (collection && field.getGenericType() instanceof java.lang.reflect.ParameterizedType p
+                    && p.getActualTypeArguments()[0] instanceof Class<?> elementClass) {
+                mediaClass = elementClass;
+            }
+            Object media = buildMediaValue(mediaClass, url);
+            return media == null ? null : collection ? List.of(media) : media;
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    /** Dynamic snapshot fields have no declared Java field to inspect. Use their
+     *  backing media value when it is present, without coupling curation to that class. */
+    private static Object dynamicMedia(Quizable target, String url) {
+        if (!"wikidata.explore.extract.WikidataDynamicObject"
+                .equals(target.getClass().getName())) {
+            return null;
+        }
+        try {
+            Class<?> mediaClass =
+                    Class.forName("wikidata.explore.extract.WikidataMediaValue");
+            return buildMediaValue(mediaClass, url);
+        } catch (ClassNotFoundException ignored) {
+            return null;
+        }
+    }
+
+    private static Quizable target(Correction correction,
+                                   Map<TargetKey, Quizable> byKey,
+                                   Map<String, Quizable> legacyByQid) {
+        return correction.type() == null
+                ? legacyByQid.get(correction.qid())
+                : byKey.get(new TargetKey(correction.type(), correction.qid()));
+    }
+
+    private static SampleKey sampleKey(Correction correction) {
+        return new SampleKey(correction.type(), correction.field());
+    }
+
+    private static String key(Correction c) {
+        return String.valueOf(c.type()) + "\u0000" + c.qid() + "\u0000" + c.field();
+    }
+
+    private record TargetKey(String type, String qid) { }
+    private record SampleKey(String type, String field) { }
+
+    private record CuratedMediaValue(String mediaLabel, String mediaUrl, boolean mediaSvg)
+            implements objectview.media.MediaValue { }
 }

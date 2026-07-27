@@ -34,7 +34,8 @@ public final class CorrectionsSidecar {
                 Doc doc = MAPPER.readValue(file, Doc.class);
                 if (doc.corrections != null) {
                     for (Entry e : doc.corrections) {
-                        out.add(new Correction(e.qid, e.field, e.value, e.origin));
+                        out.add(new Correction(
+                                e.type, e.qid, e.field, e.value, e.origin, e.valueKind));
                     }
                 }
             } catch (IOException ignored) {
@@ -67,18 +68,22 @@ public final class CorrectionsSidecar {
     }
 
     static final class Entry {
+        public String type;
         public String qid;
         public String field;
         public Object value;
         public String origin;
+        public String valueKind;
 
         Entry() { }
 
         Entry(Correction c) {
+            this.type = c.type();
             this.qid = c.qid();
             this.field = c.field();
             this.value = c.value();
             this.origin = c.origin();
+            this.valueKind = c.valueKind();
         }
     }
 }

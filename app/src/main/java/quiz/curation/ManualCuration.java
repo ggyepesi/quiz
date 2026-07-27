@@ -20,6 +20,7 @@ public final class ManualCuration implements CorrectionSource {
     private final File file;
     private final List<Correction> entries = new ArrayList<>();
     private final List<Merge> merges = new ArrayList<>();
+    private final List<IdentityLink> identityLinks = new ArrayList<>();
 
     public ManualCuration(File file) {
         this.file = file;
@@ -39,12 +40,14 @@ public final class ManualCuration implements CorrectionSource {
     public ManualCuration load() {
         entries.clear();
         merges.clear();
+        identityLinks.clear();
         if (file != null && file.isFile()) {
             try {
                 Doc doc = MAPPER.readValue(file, Doc.class);
                 if (doc.corrections != null) {
                     for (Entry e : doc.corrections) {
-                        entries.add(new Correction(e.qid, e.field, e.value, e.origin));
+                        entries.add(new Correction(
+                                e.type, e.qid, e.field, e.value, e.origin, e.valueKind));
                     }
                 }
                 if (doc.merges != null) {
@@ -52,6 +55,13 @@ public final class ManualCuration implements CorrectionSource {
                         merges.add(new Merge(e.type, e.primary, e.duplicate,
                                 e.fieldSource == null ? java.util.Map.of() : e.fieldSource,
                                 e.origin));
+                    }
+                }
+                if (doc.identityLinks != null) {
+                    for (IdentityEntry e : doc.identityLinks) {
+                        identityLinks.add(new IdentityLink(
+                                e.type, e.targetId, e.sourceKind, e.sourceId,
+                                e.recordUrl, e.canonicalName, e.origin));
                     }
                 }
             } catch (IOException ignored) {
@@ -73,6 +83,9 @@ public final class ManualCuration implements CorrectionSource {
         for (Merge m : merges) {
             doc.merges.add(new MergeEntry(m));
         }
+        for (IdentityLink link : identityLinks) {
+            doc.identityLinks.add(new IdentityEntry(link));
+        }
         MAPPER.writerWithDefaultPrettyPrinter().writeValue(file, doc);
     }
 
@@ -89,8 +102,27 @@ public final class ManualCuration implements CorrectionSource {
         entries.add(new Correction(qid, field, value, origin));
     }
 
+    /** Store a correction qualified by its owning domain type and declared value shape. */
+    public void put(String type, String qid, String field, Object value,
+                    String origin, String valueKind) {
+        entries.removeIf(c -> (c.type() == null || java.util.Objects.equals(c.type(), type))
+                && c.qid().equals(qid) && c.field().equals(field));
+        entries.add(new Correction(type, qid, field, value, origin, valueKind));
+    }
+
     public void remove(String qid, String field) {
         entries.removeIf(c -> c.qid().equals(qid) && c.field().equals(field));
+    }
+
+    public void remove(String type, String qid, String field) {
+        entries.removeIf(c -> java.util.Objects.equals(c.type(), type)
+                && c.qid().equals(qid) && c.field().equals(field));
+    }
+
+    /** Restore an exact entry, used to roll back a failed sidecar save. */
+    public void restore(Correction correction) {
+        remove(correction.type(), correction.qid(), correction.field());
+        entries.add(correction);
     }
 
     /** Record (or replace) a manual merge of {@code duplicate} into {@code primary} with
@@ -111,6 +143,22 @@ public final class ManualCuration implements CorrectionSource {
         return List.copyOf(merges);
     }
 
+    /** Record the approved identity for one source, replacing an earlier choice. */
+    public void putIdentityLink(IdentityLink link) {
+        removeIdentityLink(link.type(), link.targetId(), link.sourceKind());
+        identityLinks.add(link);
+    }
+
+    public void removeIdentityLink(String type, String targetId, String sourceKind) {
+        identityLinks.removeIf(link -> java.util.Objects.equals(link.type(), type)
+                && link.targetId().equals(targetId)
+                && java.util.Objects.equals(link.sourceKind(), sourceKind));
+    }
+
+    public List<IdentityLink> identityLinks() {
+        return List.copyOf(identityLinks);
+    }
+
     @Override
     public List<Correction> corrections() {
         return List.copyOf(entries);
@@ -125,21 +173,26 @@ public final class ManualCuration implements CorrectionSource {
     static final class Doc {
         public List<Entry> corrections = new ArrayList<>();
         public List<MergeEntry> merges = new ArrayList<>();
+        public List<IdentityEntry> identityLinks = new ArrayList<>();
     }
 
     static final class Entry {
+        public String type;
         public String qid;
         public String field;
         public Object value;
         public String origin;
+        public String valueKind;
 
         Entry() {}
 
         Entry(Correction c) {
+            this.type = c.type();
             this.qid = c.qid();
             this.field = c.field();
             this.value = c.value();
             this.origin = c.origin();
+            this.valueKind = c.valueKind();
         }
     }
 
@@ -158,6 +211,28 @@ public final class ManualCuration implements CorrectionSource {
             this.duplicate = m.duplicate();
             this.fieldSource = m.fieldSource();
             this.origin = m.origin();
+        }
+    }
+
+    static final class IdentityEntry {
+        public String type;
+        public String targetId;
+        public String sourceKind;
+        public String sourceId;
+        public String recordUrl;
+        public String canonicalName;
+        public String origin;
+
+        IdentityEntry() { }
+
+        IdentityEntry(IdentityLink link) {
+            this.type = link.type();
+            this.targetId = link.targetId();
+            this.sourceKind = link.sourceKind();
+            this.sourceId = link.sourceId();
+            this.recordUrl = link.recordUrl();
+            this.canonicalName = link.canonicalName();
+            this.origin = link.origin();
         }
     }
 }

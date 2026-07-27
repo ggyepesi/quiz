@@ -15,6 +15,8 @@ final class DBpediaLookup {
 
     private DBpediaLookup() {}
 
+    record ImageHit(String resourceUrl, String imageUrl) { }
+
     static Query<List<String>> values(String qid, String property) {
         if (qid == null || !qid.matches("Q\\d+")
                 || property == null || property.isBlank()) {
@@ -51,14 +53,14 @@ final class DBpediaLookup {
                 });
     }
 
-    static Query<List<String>> images(String qid, String label) {
+    static Query<List<ImageHit>> images(String qid, String label) {
         String subject;
         Map<String, String> parameters = new LinkedHashMap<>();
         if (qid != null && qid.matches("Q\\d+")) {
-            subject = "?dbr owl:sameAs <http://www.wikidata.org/entity/" + qid + "> .";
+            subject = "?candidate owl:sameAs <http://www.wikidata.org/entity/" + qid + "> .";
             parameters.put("qid", qid);
         } else if (label != null && !label.isBlank()) {
-            subject = "?dbr rdfs:label " + sparqlString(label) + "@en .";
+            subject = "?candidate rdfs:label " + sparqlString(label) + "@en .";
             parameters.put("label", label);
         } else {
             throw new IllegalArgumentException("A Wikidata QID or display label is required");
@@ -68,9 +70,11 @@ final class DBpediaLookup {
                 PREFIX dbo: <http://dbpedia.org/ontology/>
                 PREFIX owl: <http://www.w3.org/2002/07/owl#>
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-                SELECT DISTINCT ?img WHERE {
+                SELECT DISTINCT ?dbr ?img WHERE {
                   %1$s
-                  { ?dbr foaf:depiction ?img } UNION { ?dbr dbo:thumbnail ?img }
+                  OPTIONAL { ?candidate dbo:wikiPageRedirects ?redirect }
+                  BIND(COALESCE(?redirect, ?candidate) AS ?dbr)
+                  ?dbr (foaf:depiction|dbo:thumbnail) ?img
                 } LIMIT 10
                 """).formatted(subject);
 
@@ -80,23 +84,26 @@ final class DBpediaLookup {
                 parameters,
                 sparql,
                 rows -> {
-                    LinkedHashSet<String> out = new LinkedHashSet<>();
+                    LinkedHashMap<String, ImageHit> out = new LinkedHashMap<>();
                     for (WikidataBinding binding : rows) {
                         String image = binding.value("img");
                         if (image != null && !image.isBlank()) {
-                            out.add(image.trim());
+                            String resource = binding.value("dbr");
+                            ImageHit hit = new ImageHit(
+                                    resource == null ? "" : resource.trim(), image.trim());
+                            out.putIfAbsent(hit.imageUrl(), hit);
                         }
                     }
-                    return new ArrayList<>(out);
+                    return new ArrayList<>(out.values());
                 });
     }
 
-    private static Query<List<String>> query(
+    private static <T> Query<List<T>> query(
             String purpose,
             String description,
             Map<String, String> parameters,
             String sparql,
-            java.util.function.Function<List<WikidataBinding>, List<String>> mapper) {
+            java.util.function.Function<List<WikidataBinding>, List<T>> mapper) {
 
         return new Query<>() {
             @Override public String purpose() {
@@ -119,7 +126,7 @@ final class DBpediaLookup {
                 return parameters;
             }
 
-            @Override public List<String> execute(QueryContext context) throws Exception {
+            @Override public List<T> execute(QueryContext context) throws Exception {
                 if (context.sparql() == null) {
                     throw new IllegalStateException("No DBpedia SPARQL client configured");
                 }
@@ -130,17 +137,17 @@ final class DBpediaLookup {
                         parameters,
                         step -> {
                             step.request(sparql);
-                            List<String> result = mapper.apply(context.sparql().query(sparql));
+                            List<T> result = mapper.apply(context.sparql().query(sparql));
                             step.summary(result.size() + " candidate(s)");
                             return result;
                         });
             }
 
-            @Override public int rowCount(List<String> result) {
+            @Override public int rowCount(List<T> result) {
                 return result == null ? 0 : result.size();
             }
 
-            @Override public String summary(List<String> result) {
+            @Override public String summary(List<T> result) {
                 return rowCount(result) + " candidate(s)";
             }
         };

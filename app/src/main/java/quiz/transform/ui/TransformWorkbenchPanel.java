@@ -30,7 +30,7 @@ import java.util.List;
  * owns only the widgets, forwards user actions to the controller, and turns the
  * controller's {@link QuizableGroup} result into cards.
  */
-public final class TransformWorkbenchPanel extends JPanel {
+public final class TransformWorkbenchPanel extends JPanel implements AutoCloseable {
 
     private final TransformController controller;
 
@@ -52,6 +52,7 @@ public final class TransformWorkbenchPanel extends JPanel {
     // only if it's still the latest — so a slow earlier render can't overwrite a
     // newer one that finished first.
     private int renderGeneration;
+    private boolean closed;
 
     public TransformWorkbenchPanel(DomainModel domain) {
         this(domain, null, null);
@@ -313,10 +314,26 @@ public final class TransformWorkbenchPanel extends JPanel {
     public static JFrame openFrame(DomainModel domain, String title, DomainWriter writer) {
         JFrame f = new JFrame("Transform Workbench — " + title);
         f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        f.add(new TransformWorkbenchPanel(domain, writer, title));
+        TransformWorkbenchPanel panel = new TransformWorkbenchPanel(domain, writer, title);
+        f.add(panel);
+        f.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosed(java.awt.event.WindowEvent e) {
+                panel.close();
+            }
+        });
         f.setSize(1400, 900);
         f.setLocationRelativeTo(null);
         f.setVisible(true);
         return f;
+    }
+
+    @Override
+    public void close() {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        queries.runner().cancel();
+        requestClient.close();
     }
 }

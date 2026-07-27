@@ -154,11 +154,23 @@ public final class CurationPanel extends JPanel {
             return;
         }
 
+        String type = (String) typeCombo.getSelectedItem();
+        if (type == null) {
+            return;
+        }
+        List<quiz.curation.Correction> previous = curation.corrections().stream()
+                .filter(c -> (c.type() == null || type.equals(c.type()))
+                        && selected.getIdentifier().equals(c.qid())
+                        && fi.field.field().equals(c.field()))
+                .toList();
         // Store the plain value; Corrections coerces it to the field's type on apply.
-        curation.put(selected.getIdentifier(), fi.field.field(), value);
+        curation.put(type, selected.getIdentifier(), fi.field.field(), value,
+                quiz.curation.Correction.MANUAL, null);
         try {
             curation.save();
         } catch (Exception ex) {
+            curation.remove(type, selected.getIdentifier(), fi.field.field());
+            previous.forEach(curation::restore);
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
             return;
         }

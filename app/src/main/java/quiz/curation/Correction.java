@@ -7,9 +7,17 @@ package quiz.curation;
  * {@link #MANUAL}, a rule name, or an external source like {@code "wikipedia"} —
  * so a value can be presented as a reviewable suggestion, not a silent overwrite.
  */
-public record Correction(String qid, String field, Object value, String origin) {
+public record Correction(String type, String qid, String field, Object value,
+                         String origin, String valueKind) {
 
     public static final String MANUAL = "manual";
+    public static final String MEDIA = "media";
+    public static final String MEDIA_COLLECTION = "media[]";
+
+    /** Backward-compatible shape used by generated and legacy sidecars. */
+    public Correction(String qid, String field, Object value, String origin) {
+        this(null, qid, field, value, origin, null);
+    }
 
     public boolean isManual() {
         return MANUAL.equals(origin);

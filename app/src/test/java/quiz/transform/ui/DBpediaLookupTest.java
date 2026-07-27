@@ -52,13 +52,18 @@ class DBpediaLookupTest {
     @Test
     void imageLookupSupportsLabelBasedSubjects() throws Exception {
         try (FakeClient client = new FakeClient(List.of(
-                new WikidataBinding(Map.of("img", "https://example.test/image.jpg"))))) {
+                new WikidataBinding(Map.of(
+                        "dbr", "http://dbpedia.org/resource/Ada_Lovelace",
+                        "img", "https://example.test/image.jpg"))))) {
 
-            List<String> result = DBpediaLookup.images(null, "Ada Lovelace")
+            List<DBpediaLookup.ImageHit> result = DBpediaLookup.images(null, "Ada Lovelace")
                     .execute(new QueryContext(client, null));
 
-            assertEquals(List.of("https://example.test/image.jpg"), result);
+            assertEquals(List.of(new DBpediaLookup.ImageHit(
+                    "http://dbpedia.org/resource/Ada_Lovelace",
+                    "https://example.test/image.jpg")), result);
             assertTrue(client.lastQuery.contains("\"Ada Lovelace\"@en"));
+            assertTrue(client.lastQuery.contains("dbo:wikiPageRedirects"));
         }
     }
 
