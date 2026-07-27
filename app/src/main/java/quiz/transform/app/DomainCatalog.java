@@ -57,6 +57,9 @@ public final class DomainCatalog {
         var autofix = quiz.curation.CorrectionsSidecar.source(
                 quiz.curation.CorrectionsSidecar.beside(snap, ".autofix.json"));
         quiz.curation.Corrections.apply(pool, List.of(curation, autofix));
+        // Fold curated duplicates into their primaries (Tanzania ≈ "Tanzania, United
+        // Republic of") on the same overlay basis — re-applied every load, no snapshot edit.
+        quiz.curation.Merges.apply(pool, curation.merges());
 
         quiz.transform.ui.DomainModel base = compile(model, pool);
         // Carry the curation store so the workbench can offer a "Curate…" action.

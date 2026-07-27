@@ -70,6 +70,7 @@ public final class TransformWorkbenchPanel extends JPanel {
         top.add(button("Validate…", this::showValidation));
         if (controller.domain() instanceof quiz.curation.Curatable c && c.curation() != null) {
             top.add(button("Curate…", () -> openCuration(c.curation())));
+            top.add(button("Merge…", () -> openMerge(c.curation())));
         }
         if (top.getComponentCount() > 0) {
             left.add(top, BorderLayout.NORTH);
@@ -105,6 +106,18 @@ public final class TransformWorkbenchPanel extends JPanel {
                 "Curate — fill missing field values", Dialog.ModalityType.MODELESS);
         dialog.setLayout(new BorderLayout());
         dialog.add(new quiz.curation.ui.CurationPanel(controller.domain(), curation, this::render),
+                BorderLayout.CENTER);
+        dialog.setSize(1000, 720);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    /** Open the merge panel: fold a duplicate instance into a primary. Re-render after. */
+    private void openMerge(quiz.curation.ManualCuration curation) {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Merge — fold a duplicate instance into a primary", Dialog.ModalityType.MODELESS);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(new quiz.curation.ui.MergePanel(controller.domain(), curation, this::render),
                 BorderLayout.CENTER);
         dialog.setSize(1000, 720);
         dialog.setLocationRelativeTo(this);

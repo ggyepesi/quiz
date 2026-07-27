@@ -19,6 +19,7 @@ public final class ManualCuration implements CorrectionSource {
 
     private final File file;
     private final List<Correction> entries = new ArrayList<>();
+    private final List<Merge> merges = new ArrayList<>();
 
     public ManualCuration(File file) {
         this.file = file;
@@ -37,12 +38,18 @@ public final class ManualCuration implements CorrectionSource {
 
     public ManualCuration load() {
         entries.clear();
+        merges.clear();
         if (file != null && file.isFile()) {
             try {
                 Doc doc = MAPPER.readValue(file, Doc.class);
                 if (doc.corrections != null) {
                     for (Entry e : doc.corrections) {
                         entries.add(new Correction(e.qid, e.field, e.value, e.origin));
+                    }
+                }
+                if (doc.merges != null) {
+                    for (MergeEntry e : doc.merges) {
+                        merges.add(new Merge(e.primary, e.duplicate, e.origin));
                     }
                 }
             } catch (IOException ignored) {
@@ -61,6 +68,9 @@ public final class ManualCuration implements CorrectionSource {
         for (Correction c : entries) {
             doc.corrections.add(new Entry(c));
         }
+        for (Merge m : merges) {
+            doc.merges.add(new MergeEntry(m));
+        }
         MAPPER.writerWithDefaultPrettyPrinter().writeValue(file, doc);
     }
 
@@ -72,6 +82,17 @@ public final class ManualCuration implements CorrectionSource {
 
     public void remove(String qid, String field) {
         entries.removeIf(c -> c.qid().equals(qid) && c.field().equals(field));
+    }
+
+    /** Record (or replace) a manual merge of {@code duplicate} into {@code primary};
+     *  one merge per duplicate (re-merging a duplicate replaces the prior target). */
+    public void putMerge(String primary, String duplicate) {
+        merges.removeIf(m -> m.duplicate().equals(duplicate));
+        merges.add(new Merge(primary, duplicate, Merge.MANUAL));
+    }
+
+    public List<Merge> merges() {
+        return List.copyOf(merges);
     }
 
     @Override
@@ -87,6 +108,7 @@ public final class ManualCuration implements CorrectionSource {
      *  record-serialization support in the Jackson version. */
     static final class Doc {
         public List<Entry> corrections = new ArrayList<>();
+        public List<MergeEntry> merges = new ArrayList<>();
     }
 
     static final class Entry {
@@ -102,6 +124,20 @@ public final class ManualCuration implements CorrectionSource {
             this.field = c.field();
             this.value = c.value();
             this.origin = c.origin();
+        }
+    }
+
+    static final class MergeEntry {
+        public String primary;
+        public String duplicate;
+        public String origin;
+
+        MergeEntry() {}
+
+        MergeEntry(Merge m) {
+            this.primary = m.primary();
+            this.duplicate = m.duplicate();
+            this.origin = m.origin();
         }
     }
 }
