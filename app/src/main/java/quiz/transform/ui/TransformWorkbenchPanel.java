@@ -31,6 +31,10 @@ public final class TransformWorkbenchPanel extends JPanel {
 
     private final TransformController controller;
 
+    // The domain this workbench was opened for (e.g. "countries"), offered as the
+    // default when re-saving, so an edit-and-save round-trips over the original.
+    private final String domainName;
+
     private final JPanel renderHolder = new JPanel(new BorderLayout());
 
     private ViewStepsPanel viewStepsPanel;
@@ -41,11 +45,16 @@ public final class TransformWorkbenchPanel extends JPanel {
     private int renderGeneration;
 
     public TransformWorkbenchPanel(DomainModel domain) {
-        this(domain, null);
+        this(domain, null, null);
     }
 
     public TransformWorkbenchPanel(DomainModel domain, DomainWriter writer) {
+        this(domain, writer, null);
+    }
+
+    public TransformWorkbenchPanel(DomainModel domain, DomainWriter writer, String domainName) {
         this.controller = new TransformController(domain, writer);
+        this.domainName = domainName;
         setLayout(new BorderLayout(8, 8));
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildLeft(), renderHolder);
@@ -243,7 +252,11 @@ public final class TransformWorkbenchPanel extends JPanel {
                     "No domain writer configured for this session.");
             return;
         }
-        String suggested = type + (controller.pipeline().isEmpty() ? "" : " view");
+        // Default to the original domain name so an edit-and-save round-trips over it
+        // (e.g. curate countries → Save → "countries"); fall back to the type otherwise.
+        String suggested = domainName != null && !domainName.isBlank()
+                ? domainName
+                : type + (controller.pipeline().isEmpty() ? "" : " view");
         String name = JOptionPane.showInputDialog(this,
                 "Save the current result as a domain named:", suggested);
         if (name == null || name.isBlank()) {
@@ -286,7 +299,7 @@ public final class TransformWorkbenchPanel extends JPanel {
     public static JFrame openFrame(DomainModel domain, String title, DomainWriter writer) {
         JFrame f = new JFrame("Transform Workbench — " + title);
         f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        f.add(new TransformWorkbenchPanel(domain, writer));
+        f.add(new TransformWorkbenchPanel(domain, writer, title));
         f.setSize(1400, 900);
         f.setLocationRelativeTo(null);
         f.setVisible(true);

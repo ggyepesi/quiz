@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Merge curation: pick a member type, find two instances that are the same real entity
@@ -42,6 +43,7 @@ public final class MergePanel extends JPanel {
     private final JLabel duplicateLabel = new JLabel("none");
     private final JLabel status = new JLabel(" ");
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
+    private final JButton mergeButton = new JButton("Preview & merge ▶");
 
     // The card currently clicked; "Set primary"/"Set duplicate" capture it into a slot.
     private Quizable selected;
@@ -58,10 +60,20 @@ public final class MergePanel extends JPanel {
         add(instancesHolder, BorderLayout.CENTER);
         add(bottom(), BorderLayout.SOUTH);
 
+        Collection<? extends Quizable> candidates = mergeableInstances();
         for (String t : domain.types()) {
-            typeCombo.addItem(t);
+            boolean present = candidates.stream().anyMatch(q -> q != null && t.equals(q.typeName()));
+            if (present) {
+                typeCombo.addItem(t);
+            }
         }
-        typeCombo.addActionListener(e -> refresh());
+        typeCombo.addActionListener(e -> {
+            selected = null;
+            primary = null;
+            duplicate = null;
+            refreshSlots();
+            refresh();
+        });
         if (typeCombo.getItemCount() > 0) {
             typeCombo.setSelectedIndex(0);
         }
@@ -96,16 +108,30 @@ public final class MergePanel extends JPanel {
         duplicateLabel.setForeground(new Color(150, 60, 0));
         p.add(duplicateLabel);
 
-        JButton merge = new JButton("Preview & merge ▶");
-        merge.addActionListener(e -> previewAndApply());
+        mergeButton.addActionListener(e -> previewAndApply());
+        mergeButton.setEnabled(false);   // only two distinct instances enable it
+        mergeButton.setToolTipText("Set a primary and a DIFFERENT duplicate to enable");
         p.add(new JLabel("      "));
-        p.add(merge);
+        p.add(mergeButton);
         return p;
     }
 
     private void refreshSlots() {
         primaryLabel.setText(primary == null ? "none" : primary.getDisplayName());
         duplicateLabel.setText(duplicate == null ? "none" : duplicate.getDisplayName());
+        mergeButton.setEnabled(mergeable());
+    }
+
+    /** Two distinct instances of the same type — the only state in which a merge is
+     *  valid, so the button stays disabled until then (no silent same-instance merge). */
+    private boolean mergeable() {
+        if (primary == null || duplicate == null) {
+            return false;
+        }
+        String pid = primary.getIdentifier();
+        String did = duplicate.getIdentifier();
+        return pid != null && did != null && !pid.equals(did)
+                && java.util.Objects.equals(primary.typeName(), duplicate.typeName());
     }
 
     // ------------------------------------------------------------------
@@ -121,6 +147,10 @@ public final class MergePanel extends JPanel {
         String did = duplicate.getIdentifier();
         if (pid == null || did == null || pid.equals(did)) {
             status.setText("   Primary and duplicate must be different instances");
+            return;
+        }
+        if (!primary.typeName().equals(duplicate.typeName())) {
+            status.setText("   Primary and duplicate must have the same type");
             return;
         }
 
@@ -153,28 +183,37 @@ public final class MergePanel extends JPanel {
         for (FieldChoice fc : rows) {
             fieldSource.put(fc.field(), (String) choosers.get(fc.field()).getSelectedItem());
         }
-        applyMerge(pid, did, fieldSource);
+        applyMerge(primary.typeName(), pid, did, fieldSource);
     }
 
-    private void applyMerge(String pid, String did, Map<String, String> fieldSource) {
+    private void applyMerge(
+            String type, String pid, String did, Map<String, String> fieldSource) {
         String pName = primary.getDisplayName();
         String dName = duplicate.getDisplayName();
 
-        curation.putMerge(pid, did, fieldSource);
+        Merge merge = new Merge(type, pid, did, fieldSource, Merge.MANUAL);
+        int n;
         try {
-            curation.save();
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
+            n = domain instanceof Mergeable mg
+                    ? mg.applyMerge(merge)
+                    : Merges.apply(domain.instances(), List.of(merge));
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, "Merge failed: " + ex.getMessage());
             return;
         }
-
-        Merge merge = new Merge(pid, did, fieldSource, Merge.MANUAL);
-        int n = domain instanceof Mergeable mg
-                ? mg.applyMerge(merge)
-                : Merges.apply(domain.instances(), List.of(merge));
         if (n == 0) {
             status.setText("   Merge had no effect (instances not found in the pool)");
             return;
+        }
+
+        curation.putMerge(type, pid, did, fieldSource);
+        try {
+            curation.save();
+        } catch (Exception ex) {
+            curation.removeMerge(type, did);
+            JOptionPane.showMessageDialog(this,
+                    "The merge is active in this session but could not be saved.\n"
+                            + "Reloading restores the original data.\n\n" + ex.getMessage());
         }
 
         status.setText("   Merged \"" + dName + "\" into \"" + pName + "\"");
@@ -246,16 +285,40 @@ public final class MergePanel extends JPanel {
             return "—";
         }
         if (v instanceof Collection<?> c) {
-            return c.isEmpty() ? "—" : c.size() + " item(s)";
+            if (c.isEmpty()) {
+                return "—";
+            }
+            String values = c.stream().limit(5)
+                    .map(MergePanel::label)
+                    .collect(Collectors.joining(", "));
+            return values + (c.size() > 5 ? " … (" + c.size() + ")" : "");
         }
         if (v instanceof Map<?, ?> m) {
-            return m.isEmpty() ? "—" : m.size() + " entry(ies)";
+            if (m.isEmpty()) {
+                return "—";
+            }
+            String values = m.entrySet().stream().limit(5)
+                    .map(e -> label(e.getKey()) + " → " + label(e.getValue()))
+                    .collect(Collectors.joining(", "));
+            return values + (m.size() > 5 ? " … (" + m.size() + ")" : "");
         }
-        String s = String.valueOf(v).trim();
+        String s = label(v);
         if (s.isEmpty()) {
             return "—";
         }
         return s.length() > 44 ? s.substring(0, 44) + "…" : s;
+    }
+
+    private static String label(Object value) {
+        if (value == null) {
+            return "—";
+        }
+        if (value instanceof Quizable q) {
+            String name = q.getDisplayName();
+            return name == null || name.isBlank() ? q.typeName() : name;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? "—" : text;
     }
 
     private void addHeader(JPanel grid) {
@@ -298,7 +361,7 @@ public final class MergePanel extends JPanel {
         String type = (String) typeCombo.getSelectedItem();
         List<Quizable> items = new ArrayList<>();
         if (type != null) {
-            for (Quizable q : domain.instances()) {
+            for (Quizable q : mergeableInstances()) {
                 if (q != null && type.equals(q.typeName())) {
                     items.add(q);
                 }
@@ -343,5 +406,11 @@ public final class MergePanel extends JPanel {
         }
         panel.add(v.getCardsScrollPane(), BorderLayout.CENTER);
         return panel;
+    }
+
+    private Collection<? extends Quizable> mergeableInstances() {
+        return domain instanceof Mergeable mergeable
+                ? mergeable.mergeableInstances()
+                : domain.instances();
     }
 }

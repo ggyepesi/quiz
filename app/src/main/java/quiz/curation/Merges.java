@@ -6,111 +6,340 @@ import objectview.field.FieldRef;
 import objectview.field.FieldSet;
 import quiz.Quizable;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-/**
- * Applies {@link Merge} directives to a loaded pool: folds each duplicate's field values
- * into its primary (per the merge's approved per-field resolution) and removes the
- * duplicate. An overlay (not a snapshot mutation), so it re-applies safely after a
- * regeneration — the same spirit as {@link Corrections}. Reference redirection (other
- * entities still pointing at the removed duplicate) is a follow-up.
- */
+/** Applies durable, type-qualified entity merges to a loaded object graph. */
 public final class Merges {
 
     private Merges() {}
 
-    /** Overlay {@code merges} onto {@code pool}; returns how many merges were applied. */
+    private record Key(String type, String id) {}
+    private record Resolved(Merge merge, Key primary, Key duplicate,
+                            Quizable primaryObject, Quizable duplicateObject, int depth) {}
+
+    /**
+     * Applies all valid directives as one graph operation. Children in a merge chain are
+     * folded first, all references are redirected to the final survivor, and only then
+     * are duplicate roots removed. Cycles and ambiguous legacy identifiers are rejected.
+     */
     public static int apply(Collection<? extends Quizable> pool, List<Merge> merges) {
         if (pool == null || merges == null || merges.isEmpty()) {
             return 0;
         }
-        Map<String, Quizable> byId = new HashMap<>();
+
+        Map<Key, Quizable> typed = new LinkedHashMap<>();
+        Map<String, List<Quizable>> byId = new LinkedHashMap<>();
         for (Quizable q : pool) {
-            if (q != null && q.getIdentifier() != null) {
-                byId.putIfAbsent(q.getIdentifier(), q);
+            if (q == null || blank(q.getIdentifier())) {
+                continue;
+            }
+            typed.putIfAbsent(new Key(q.typeName(), q.getIdentifier()), q);
+            byId.computeIfAbsent(q.getIdentifier(), ignored -> new ArrayList<>()).add(q);
+        }
+
+        Map<Key, Key> direct = new LinkedHashMap<>();
+        Map<Key, Merge> mergeByDuplicate = new LinkedHashMap<>();
+        for (Merge merge : merges) {
+            if (merge == null || blank(merge.primary()) || blank(merge.duplicate())
+                    || merge.primary().equals(merge.duplicate())) {
+                continue;
+            }
+            Key primary = resolveKey(merge.type(), merge.primary(), typed, byId);
+            Key duplicate = resolveKey(merge.type(), merge.duplicate(), typed, byId);
+            if (primary == null || duplicate == null || primary.equals(duplicate)) {
+                continue;
+            }
+            Key previous = direct.putIfAbsent(duplicate, primary);
+            if (previous != null && !previous.equals(primary)) {
+                throw new IllegalArgumentException(
+                        "Multiple merge targets for " + duplicate + ": "
+                                + previous + " and " + primary);
+            }
+            mergeByDuplicate.put(duplicate, merge);
+        }
+
+        // Resolve first: this detects cycles before any object is mutated.
+        Map<Key, Key> finalTarget = new LinkedHashMap<>();
+        for (Key duplicate : direct.keySet()) {
+            finalTarget.put(duplicate, finalTarget(
+                    duplicate, direct, new LinkedHashSet<>(), finalTarget));
+        }
+
+        List<Resolved> work = new ArrayList<>();
+        for (Map.Entry<Key, Key> edge : direct.entrySet()) {
+            Key duplicate = edge.getKey();
+            Key immediatePrimary = edge.getValue();
+            Quizable duplicateObject = typed.get(duplicate);
+            Quizable primaryObject = typed.get(immediatePrimary);
+            if (duplicateObject != null && primaryObject != null) {
+                work.add(new Resolved(
+                        mergeByDuplicate.get(duplicate),
+                        immediatePrimary,
+                        duplicate,
+                        primaryObject,
+                        duplicateObject,
+                        depth(duplicate, direct)));
             }
         }
 
-        int merged = 0;
-        for (Merge m : merges) {
-            if (m == null || m.primary() == null || m.duplicate() == null
-                    || m.primary().equals(m.duplicate())) {
+        // C -> B must happen before B -> A.
+        work.sort(Comparator.comparingInt(Resolved::depth).reversed());
+
+        Map<Quizable, Quizable> replacements = new IdentityHashMap<>();
+        int applied = 0;
+        for (Resolved resolved : work) {
+            Quizable primary = replacementOf(resolved.primaryObject(), replacements);
+            Quizable duplicate = replacementOf(resolved.duplicateObject(), replacements);
+            if (primary == duplicate) {
                 continue;
             }
-            Quizable primary = byId.get(m.primary());
-            Quizable duplicate = byId.get(m.duplicate());
-            if (primary == null || duplicate == null || primary == duplicate) {
-                continue;
-            }
-            union(primary, duplicate, m);
-            pool.remove(duplicate);
-            merged++;
+            union(primary, duplicate, resolved.merge());
+            replacements.put(duplicate, primary);
+            applied++;
         }
-        return merged;
+
+        if (applied == 0) {
+            return 0;
+        }
+
+        Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Quizable root : new ArrayList<>(pool)) {
+            rewriteFields(replacementOf(root, replacements), replacements, visited);
+        }
+        pool.removeIf(q -> q != null && replacements.containsKey(q));
+        return applied;
     }
 
-    /** Fold the duplicate's field values into the primary, honoring the merge's per-field
-     *  source (PRIMARY/DUPLICATE/BOTH); a field with no explicit source uses the default
-     *  (fill an empty primary, union collections/maps, else keep the primary's scalar). */
+    private static Key resolveKey(
+            String type, String id, Map<Key, Quizable> typed,
+            Map<String, List<Quizable>> byId) {
+        if (!blank(type)) {
+            Key key = new Key(type, id);
+            return typed.containsKey(key) ? key : null;
+        }
+        // Backward compatibility for old sidecars: accept an untyped id only when it
+        // resolves uniquely. Ambiguity is unsafe, so leave the directive unapplied.
+        List<Quizable> matches = byId.getOrDefault(id, List.of());
+        if (matches.size() != 1) {
+            return null;
+        }
+        Quizable q = matches.get(0);
+        return new Key(q.typeName(), q.getIdentifier());
+    }
+
+    private static Key finalTarget(
+            Key key, Map<Key, Key> direct, Set<Key> path, Map<Key, Key> memo) {
+        Key cached = memo.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        Key next = direct.get(key);
+        if (next == null) {
+            return key;
+        }
+        if (!path.add(key)) {
+            throw new IllegalArgumentException("Merge cycle involving " + key);
+        }
+        Key result = finalTarget(next, direct, path, memo);
+        path.remove(key);
+        memo.put(key, result);
+        return result;
+    }
+
+    private static int depth(Key key, Map<Key, Key> direct) {
+        int depth = 0;
+        Set<Key> seen = new LinkedHashSet<>();
+        while (direct.containsKey(key) && seen.add(key)) {
+            key = direct.get(key);
+            depth++;
+        }
+        return depth;
+    }
+
+    private static Quizable replacementOf(
+            Quizable value, Map<Quizable, Quizable> replacements) {
+        Quizable current = value;
+        Set<Quizable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        while (current != null && replacements.containsKey(current) && seen.add(current)) {
+            current = replacements.get(current);
+        }
+        return current;
+    }
+
     private static void union(Quizable primary, Quizable duplicate, Merge merge) {
         for (FieldRef ref : FieldSet.of(duplicate).fields()) {
             String name = ref.name();
-            Object dv = FieldAccess.getPath(duplicate, name);
-            Object pv = FieldAccess.getPath(primary, name);
-            String src = merge.sourceFor(name);
+            Object duplicateValue = FieldAccess.getPath(duplicate, name);
+            Object primaryValue = FieldAccess.getPath(primary, name);
+            String source = merge.sourceFor(name);
 
-            if (Merge.PRIMARY.equals(src)) {
-                continue;                                    // keep the primary as-is
+            if (Merge.PRIMARY.equals(source)) {
+                continue;
             }
-            if (Merge.DUPLICATE.equals(src)) {
-                if (ViewableAdapter.isValidQuizValue(dv)) {
-                    FieldAccess.setPath(primary, name, dv);
+            if (Merge.DUPLICATE.equals(source)) {
+                if (ViewableAdapter.isValidQuizValue(duplicateValue)) {
+                    FieldAccess.setPath(primary, name,
+                            copyLike(primaryValue, duplicateValue));
                 }
                 continue;
             }
-            if (Merge.BOTH.equals(src)) {
-                FieldAccess.setPath(primary, name, unionValue(pv, dv));
+            if (Merge.BOTH.equals(source)) {
+                FieldAccess.setPath(primary, name, unionValue(primaryValue, duplicateValue));
                 continue;
             }
 
-            // Default resolution.
-            if (!ViewableAdapter.isValidQuizValue(dv)) {
-                continue;                                    // nothing to contribute
+            if (!ViewableAdapter.isValidQuizValue(duplicateValue)) {
+                continue;
             }
-            if (!ViewableAdapter.isValidQuizValue(pv)) {
-                FieldAccess.setPath(primary, name, dv);      // primary was empty
-            } else if ((pv instanceof Collection<?> && dv instanceof Collection<?>)
-                    || (pv instanceof Map<?, ?> && dv instanceof Map<?, ?>)) {
-                FieldAccess.setPath(primary, name, unionValue(pv, dv));
+            if (!ViewableAdapter.isValidQuizValue(primaryValue)) {
+                FieldAccess.setPath(primary, name,
+                        copyLike(primaryValue, duplicateValue));
+            } else if (bothCollections(primaryValue, duplicateValue)
+                    || bothMaps(primaryValue, duplicateValue)) {
+                FieldAccess.setPath(primary, name, unionValue(primaryValue, duplicateValue));
             }
-            // else: primary already holds a scalar — the primary wins.
         }
     }
 
-    /** The union of two values: concatenated distinct list, merged map (primary keys
-     *  win), or — for scalars — the primary if present, else the duplicate. */
-    public static Object unionValue(Object pv, Object dv) {
-        if (pv instanceof Collection<?> pc && dv instanceof Collection<?> dc) {
-            List<Object> union = new ArrayList<>(pc);
-            for (Object item : dc) {
-                if (!union.contains(item)) {
-                    union.add(item);
+    public static Object unionValue(Object primary, Object duplicate) {
+        if (primary instanceof Collection<?> pc && duplicate instanceof Collection<?> dc) {
+            Collection<Object> result = newCollectionLike(primary, duplicate);
+            addDistinct(result, pc);
+            addDistinct(result, dc);
+            return result;
+        }
+        if (primary instanceof Map<?, ?> pm && duplicate instanceof Map<?, ?> dm) {
+            Map<Object, Object> result = newMapLike(primary, duplicate);
+            pm.forEach(result::put);
+            dm.forEach(result::putIfAbsent);
+            return result;
+        }
+        return ViewableAdapter.isValidQuizValue(primary) ? primary : duplicate;
+    }
+
+    private static Object copyLike(Object preferredShape, Object value) {
+        if (value instanceof Collection<?> collection) {
+            Collection<Object> result = newCollectionLike(preferredShape, value);
+            addDistinct(result, collection);
+            return result;
+        }
+        if (value instanceof Map<?, ?> map) {
+            Map<Object, Object> result = newMapLike(preferredShape, value);
+            map.forEach(result::put);
+            return result;
+        }
+        return value;
+    }
+
+    private static void rewriteFields(
+            Quizable object, Map<Quizable, Quizable> replacements, Set<Object> visited) {
+        if (object == null || !visited.add(object)) {
+            return;
+        }
+        FieldSet fields = FieldSet.of(object);
+        for (FieldRef ref : fields.fields()) {
+            Object oldValue = fields.read(ref.name());
+            Object newValue = rewriteValue(oldValue, replacements, visited);
+            if (newValue != oldValue) {
+                fields.write(ref.name(), newValue);
+            }
+        }
+    }
+
+    private static Object rewriteValue(
+            Object value, Map<Quizable, Quizable> replacements, Set<Object> visited) {
+        if (value instanceof Quizable q) {
+            Quizable replacement = replacementOf(q, replacements);
+            rewriteFields(replacement, replacements, visited);
+            return replacement;
+        }
+        if (value instanceof Collection<?> collection) {
+            Collection<Object> result = newCollectionLike(value, value);
+            boolean changed = false;
+            for (Object item : collection) {
+                Object rewritten = rewriteValue(item, replacements, visited);
+                changed |= rewritten != item;
+                if (!result.contains(rewritten)) {
+                    result.add(rewritten);
+                } else {
+                    changed = true;
                 }
             }
-            return union;
+            return changed ? result : value;
         }
-        if (pv instanceof Map<?, ?> pm && dv instanceof Map<?, ?> dm) {
-            Map<Object, Object> union = new LinkedHashMap<>(pm);
-            for (Map.Entry<?, ?> e : dm.entrySet()) {
-                union.putIfAbsent(e.getKey(), e.getValue());
+        if (value instanceof Map<?, ?> map) {
+            Map<Object, Object> result = newMapLike(value, value);
+            boolean changed = false;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                Object key = rewriteValue(entry.getKey(), replacements, visited);
+                Object mapped = rewriteValue(entry.getValue(), replacements, visited);
+                changed |= key != entry.getKey() || mapped != entry.getValue();
+                result.putIfAbsent(key, mapped);
             }
-            return union;
+            return changed ? result : value;
         }
-        return ViewableAdapter.isValidQuizValue(pv) ? pv : dv;
+        return value;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Collection<Object> newCollectionLike(Object preferred, Object fallback) {
+        Object sample = preferred instanceof Collection<?> ? preferred : fallback;
+        Collection<Object> reflected = construct(sample, Collection.class);
+        if (reflected != null) {
+            return reflected;
+        }
+        return sample instanceof Set<?> ? new LinkedHashSet<>() : new ArrayList<>();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Object, Object> newMapLike(Object preferred, Object fallback) {
+        Object sample = preferred instanceof Map<?, ?> ? preferred : fallback;
+        Map<Object, Object> reflected = construct(sample, Map.class);
+        return reflected != null ? reflected : new LinkedHashMap<>();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T construct(Object sample, Class<T> expected) {
+        if (sample == null) {
+            return null;
+        }
+        try {
+            Constructor<?> constructor = sample.getClass().getDeclaredConstructor();
+            constructor.setAccessible(true);
+            Object value = constructor.newInstance();
+            return expected.isInstance(value) ? (T) value : null;
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static void addDistinct(Collection<Object> target, Collection<?> values) {
+        for (Object value : values) {
+            if (!target.contains(value)) {
+                target.add(value);
+            }
+        }
+    }
+
+    private static boolean bothCollections(Object a, Object b) {
+        return a instanceof Collection<?> && b instanceof Collection<?>;
+    }
+
+    private static boolean bothMaps(Object a, Object b) {
+        return a instanceof Map<?, ?> && b instanceof Map<?, ?>;
+    }
+
+    private static boolean blank(String value) {
+        return value == null || value.isBlank();
     }
 }

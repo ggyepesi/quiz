@@ -49,7 +49,7 @@ public final class ManualCuration implements CorrectionSource {
                 }
                 if (doc.merges != null) {
                     for (MergeEntry e : doc.merges) {
-                        merges.add(new Merge(e.primary, e.duplicate,
+                        merges.add(new Merge(e.type, e.primary, e.duplicate,
                                 e.fieldSource == null ? java.util.Map.of() : e.fieldSource,
                                 e.origin));
                     }
@@ -88,9 +88,16 @@ public final class ManualCuration implements CorrectionSource {
 
     /** Record (or replace) a manual merge of {@code duplicate} into {@code primary} with
      *  the approved per-field resolution; one merge per duplicate. */
-    public void putMerge(String primary, String duplicate, java.util.Map<String, String> fieldSource) {
-        merges.removeIf(m -> m.duplicate().equals(duplicate));
-        merges.add(new Merge(primary, duplicate, fieldSource, Merge.MANUAL));
+    public void putMerge(String type, String primary, String duplicate,
+                         java.util.Map<String, String> fieldSource) {
+        merges.removeIf(m -> java.util.Objects.equals(m.type(), type)
+                && m.duplicate().equals(duplicate));
+        merges.add(new Merge(type, primary, duplicate, fieldSource, Merge.MANUAL));
+    }
+
+    public void removeMerge(String type, String duplicate) {
+        merges.removeIf(m -> java.util.Objects.equals(m.type(), type)
+                && m.duplicate().equals(duplicate));
     }
 
     public List<Merge> merges() {
@@ -130,6 +137,7 @@ public final class ManualCuration implements CorrectionSource {
     }
 
     static final class MergeEntry {
+        public String type;
         public String primary;
         public String duplicate;
         public java.util.Map<String, String> fieldSource;
@@ -138,6 +146,7 @@ public final class ManualCuration implements CorrectionSource {
         MergeEntry() {}
 
         MergeEntry(Merge m) {
+            this.type = m.type();
             this.primary = m.primary();
             this.duplicate = m.duplicate();
             this.fieldSource = m.fieldSource();

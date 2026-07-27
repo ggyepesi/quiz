@@ -39,6 +39,10 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return quiz.curation.Merges.apply(base.instances(), List.of(merge));
     }
 
+    @Override public Collection<? extends Quizable> mergeableInstances() {
+        return base.instances();
+    }
+
     public void add(DerivedClass d) {
         if (d != null && d.type() != null && !d.type().isBlank()) {
             derived.put(d.type(), d);

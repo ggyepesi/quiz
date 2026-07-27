@@ -13,7 +13,7 @@ import java.util.Map;
  * duplicate's, {@link #BOTH} union them. A field absent from the map uses the default
  * (fill an empty primary, union collections/maps, else the primary wins).</p>
  */
-public record Merge(String primary, String duplicate,
+public record Merge(String type, String primary, String duplicate,
                     Map<String, String> fieldSource, String origin) {
 
     public static final String MANUAL = "manual";
@@ -27,7 +27,12 @@ public record Merge(String primary, String duplicate,
 
     /** The default (auto) merge — no per-field overrides. */
     public Merge(String primary, String duplicate, String origin) {
-        this(primary, duplicate, Map.of(), origin);
+        this(null, primary, duplicate, Map.of(), origin);
+    }
+
+    public Merge(String primary, String duplicate,
+                 Map<String, String> fieldSource, String origin) {
+        this(null, primary, duplicate, fieldSource, origin);
     }
 
     /** The approved source for {@code field}, or null for the default resolution. */
