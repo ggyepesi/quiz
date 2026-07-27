@@ -35,6 +35,8 @@ final class DBpediaLookup {
                 } LIMIT 25
                 """).formatted(qid, property);
 
+        System.out.println("[DBpedia] " + property + " query for [" + qid + "]:\n" + sparql);
+
         LinkedHashSet<String> out = new LinkedHashSet<>();
         try {
             for (WikidataBinding b : dbpedia.query(sparql)) {
@@ -80,6 +82,9 @@ final class DBpediaLookup {
                 } LIMIT 10
                 """).formatted(subject);
 
+        System.out.println("[DBpedia] image query for ["
+                + (qid != null && qid.matches("Q\\d+") ? qid : label) + "]:\n" + sparql);
+
         LinkedHashSet<String> out = new LinkedHashSet<>();
         try {
             for (WikidataBinding b : dbpedia.query(sparql)) {
@@ -88,9 +93,10 @@ final class DBpediaLookup {
                     out.add(img.trim());
                 }
             }
-        } catch (Exception ignore) {
-            // best-effort; empty candidates on failure
+        } catch (Exception e) {
+            System.out.println("[DBpedia] image query failed: " + e.getMessage());
         }
+        System.out.println("[DBpedia] " + out.size() + " image candidate(s): " + out);
         return new ArrayList<>(out);
     }
 
