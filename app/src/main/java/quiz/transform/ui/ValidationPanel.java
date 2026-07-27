@@ -21,6 +21,7 @@ import wikidata.explore.query.swing.SwingQueryRunner;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -71,14 +72,21 @@ public final class ValidationPanel extends JPanel {
     private List<Quizable> instances = List.of();
     private Quizable selected;
     private final SwingQueryRunner queryRunner;
+    // Re-render the owning view after an accepted enrichment writes a correction.
+    private final Runnable onCurated;
 
     public ValidationPanel(DomainModel domain) {
-        this(domain, null);
+        this(domain, null, null);
     }
 
     public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner) {
+        this(domain, queryRunner, null);
+    }
+
+    public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner, Runnable onCurated) {
         super(new BorderLayout(6, 6));
         this.domain = domain;
+        this.onCurated = onCurated == null ? () -> { } : onCurated;
         this.queryRunner = queryRunner == null
                 ? new SwingQueryRunner(
                         new QueryContext(new WikidataSparqlClient(
@@ -332,21 +340,64 @@ public final class ValidationPanel extends JPanel {
     }
 
     private void showImagePreview(String name, List<String> urls) {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        String path = coverage.selectedPath();
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "DBpedia images for " + name + " — Accept one",
+                java.awt.Dialog.ModalityType.APPLICATION_MODAL);
+
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         for (String url : urls) {
+            JPanel cell = new JPanel(new BorderLayout(4, 4));
             try {
                 boolean svg = url.toLowerCase().endsWith(".svg");
                 ImagePane pane = new ImagePane(fileName(url), url, null, true, svg);
-                pane.setPreferredSize(new Dimension(200, 220));
-                row.add(pane);
+                pane.setPreferredSize(new Dimension(200, 200));
+                cell.add(pane, BorderLayout.CENTER);
             } catch (Exception ex) {
-                row.add(new JLabel(url));
+                cell.add(new JLabel("<html><body style='width:180px'>" + url
+                        + "</body></html>"), BorderLayout.CENTER);
             }
+            JButton accept = new JButton("Accept");
+            accept.setEnabled(path != null && selected != null && curationStore() != null);
+            accept.addActionListener(e -> {
+                acceptImage(path, url);
+                dialog.dispose();
+            });
+            cell.add(accept, BorderLayout.SOUTH);
+            row.add(cell);
         }
+
         JScrollPane scroll = new JScrollPane(row);
-        scroll.setPreferredSize(new Dimension(Math.min(900, 60 + urls.size() * 216), 300));
-        JOptionPane.showMessageDialog(this, scroll,
-                "DBpedia images for " + name + "  (preview)", JOptionPane.PLAIN_MESSAGE);
+        scroll.setPreferredSize(new Dimension(Math.min(920, 60 + urls.size() * 224), 300));
+        dialog.add(scroll);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private quiz.curation.ManualCuration curationStore() {
+        return domain instanceof quiz.curation.Curatable c ? c.curation() : null;
+    }
+
+    /** Accept a candidate image for the selected member's {@code path}: write a media
+     *  Correction (origin "dbpedia", fill-only so it never clobbers real data) — the URL
+     *  is stored plainly and {@code Corrections.coerce} builds the MediaValue on apply —
+     *  persist, apply to the live pool, and refresh (the member drops from the gap). */
+    private void acceptImage(String path, String url) {
+        Quizable m = selected;
+        quiz.curation.ManualCuration curation = curationStore();
+        if (m == null || path == null || curation == null) {
+            return;
+        }
+        curation.put(m.getIdentifier(), path, url, "dbpedia");
+        try {
+            curation.save();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
+        }
+        quiz.curation.Corrections.apply(domain.instances(), List.of(curation));
+        onCurated.run();       // re-render the owning view with the filled image
+        onFieldSelected();     // the member now has the image → drops from this drill
     }
 
     private static String fileName(String url) {

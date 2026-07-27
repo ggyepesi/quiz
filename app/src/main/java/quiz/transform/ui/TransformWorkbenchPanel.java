@@ -116,7 +116,8 @@ public final class TransformWorkbenchPanel extends JPanel {
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 "Validate — consistency / coverage", Dialog.ModalityType.MODELESS);
         dialog.setLayout(new BorderLayout());
-        dialog.add(new ValidationPanel(controller.domain(), queries.runner()), BorderLayout.CENTER);
+        dialog.add(new ValidationPanel(controller.domain(), queries.runner(), this::render),
+                BorderLayout.CENTER);
         dialog.setSize(1080, 620);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);

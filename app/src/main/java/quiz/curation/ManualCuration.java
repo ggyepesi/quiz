@@ -78,8 +78,15 @@ public final class ManualCuration implements CorrectionSource {
 
     /** Set (or replace) a manually curated value for one field of one instance. */
     public void put(String qid, String field, Object value) {
+        put(qid, field, value, Correction.MANUAL);
+    }
+
+    /** As {@link #put(String, String, Object)} but with an explicit provenance — e.g.
+     *  {@code "dbpedia"} for an accepted enrichment (fill-only precedence, so it never
+     *  overrides real base data), vs {@link Correction#MANUAL} which overrides. */
+    public void put(String qid, String field, Object value, String origin) {
         remove(qid, field);
-        entries.add(new Correction(qid, field, value, Correction.MANUAL));
+        entries.add(new Correction(qid, field, value, origin));
     }
 
     public void remove(String qid, String field) {
