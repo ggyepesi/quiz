@@ -43,6 +43,8 @@ class DBpediaLookupTest {
             assertEquals(1, roots.size());
             LogNode step = roots.get(0).steps().iterator().next();
             assertTrue(step.request().contains("dbo:capital"));
+            assertTrue(step.link().startsWith(
+                    "Open in DBpedia query service|https://dbpedia.org/sparql?query="));
             assertEquals("1 candidate(s)", step.summary());
         }
     }

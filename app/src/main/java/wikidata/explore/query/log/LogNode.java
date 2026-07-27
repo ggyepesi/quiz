@@ -162,6 +162,9 @@ public class LogNode extends QuizableAdapter {
             // spaces, which java.net.URI rejects ("Illegal character") so the browser
             // never opens. Percent-encode those so the link works.
             link = url == null ? null : "Open request|" + sanitizeUrl(url);
+        } else if (qt.contains("dbpedia") && qt.contains("sparql")) {
+            link = "Open in DBpedia query service|https://dbpedia.org/sparql?query="
+                    + encodeQueryParameter(req);
         } else if (qt.contains("sparql")) {
             link = "Open in query service|https://query.wikidata.org/#"
                     + encodeFragment(req);
@@ -172,6 +175,10 @@ public class LogNode extends QuizableAdapter {
 
     private static String encodeFragment(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private static String encodeQueryParameter(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 
     // Percent-encode the characters an api.php URL commonly carries unescaped that

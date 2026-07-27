@@ -108,7 +108,7 @@ final class DBpediaLookup {
             }
 
             @Override public String queryType() {
-                return "SPARQL";
+                return "DBpedia SPARQL";
             }
 
             @Override public String description() {
@@ -125,7 +125,7 @@ final class DBpediaLookup {
                 }
                 return context.step(
                         description,
-                        "SPARQL",
+                        "DBpedia SPARQL",
                         description,
                         parameters,
                         step -> {
