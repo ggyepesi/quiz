@@ -6,6 +6,7 @@ import quiz.QuizableAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -45,6 +46,22 @@ class MergesTest {
         assertFalse(pool.contains(duplicate));
         assertEquals(List.of("flag.svg"), primary.flags);   // kept its own flag
         assertEquals(List.of("shape.svg"), primary.shapes); // gained the duplicate's shape
+    }
+
+    @Test
+    void perFieldSourceOverridesTheDefaultUnion() {
+        Country primary = new Country("A");
+        primary.flags.add("A-flag");
+        Country duplicate = new Country("B");
+        duplicate.flags.add("B-flag");                      // both have a flag → conflict
+
+        List<Country> pool = new ArrayList<>(List.of(primary, duplicate));
+
+        // Default for two collections is BOTH (union); ask for the DUPLICATE's instead.
+        Merges.apply(pool, List.of(new Merge("A", "B",
+                Map.of("flags", Merge.DUPLICATE), Merge.MANUAL)));
+
+        assertEquals(List.of("B-flag"), primary.flags);     // duplicate's, not the union
     }
 
     @Test

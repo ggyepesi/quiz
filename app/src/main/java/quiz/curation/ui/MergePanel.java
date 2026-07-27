@@ -1,25 +1,35 @@
 package quiz.curation.ui;
 
+import objectview.ViewableAdapter;
+import objectview.field.FieldAccess;
+import objectview.field.FieldRef;
+import objectview.field.FieldSet;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
 import quiz.Quizable;
 import quiz.curation.ManualCuration;
 import quiz.curation.Merge;
+import quiz.curation.Mergeable;
 import quiz.curation.Merges;
 import quiz.transform.ui.DomainModel;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Merge curation: pick a member type, find two instances that are the same real entity
- * (search / sort help locate them), mark one PRIMARY and the other DUPLICATE, and Merge.
- * The duplicate's field values fold into the primary (union — the primary keeps its
- * identity and scalars, gains fields it lacked) and it leaves the pool. Persisted as a
- * {@link Merge} in the sidecar and re-applied after regeneration (see {@code quiz.curation}).
+ * (search / sort help locate them), mark one PRIMARY and the other DUPLICATE, then
+ * preview the field-by-field result and approve. For each field the curator chooses the
+ * source — primary, duplicate, or both (union of collections/maps) — defaulting to
+ * fill-empty / union / primary-wins. On approve the duplicate's values fold into the
+ * primary and it leaves the pool. Persisted as a {@link Merge} in the sidecar and
+ * re-applied after regeneration (see {@code quiz.curation}).
  */
 public final class MergePanel extends JPanel {
 
@@ -86,8 +96,8 @@ public final class MergePanel extends JPanel {
         duplicateLabel.setForeground(new Color(150, 60, 0));
         p.add(duplicateLabel);
 
-        JButton merge = new JButton("Merge ▶");
-        merge.addActionListener(e -> doMerge());
+        JButton merge = new JButton("Preview & merge ▶");
+        merge.addActionListener(e -> previewAndApply());
         p.add(new JLabel("      "));
         p.add(merge);
         return p;
@@ -98,7 +108,11 @@ public final class MergePanel extends JPanel {
         duplicateLabel.setText(duplicate == null ? "none" : duplicate.getDisplayName());
     }
 
-    private void doMerge() {
+    // ------------------------------------------------------------------
+    // Preview + approve
+    // ------------------------------------------------------------------
+
+    private void previewAndApply() {
         if (primary == null || duplicate == null) {
             status.setText("   Set both a primary and a duplicate (click a card, then the button)");
             return;
@@ -110,23 +124,175 @@ public final class MergePanel extends JPanel {
             return;
         }
 
-        curation.putMerge(pid, did);
+        List<FieldChoice> rows = planRows(primary, duplicate);
+
+        JPanel grid = new JPanel(new GridBagLayout());
+        addHeader(grid);
+        Map<String, JComboBox<String>> choosers = new LinkedHashMap<>();
+        int r = 1;
+        for (FieldChoice fc : rows) {
+            JComboBox<String> combo = new JComboBox<>(fc.options().toArray(new String[0]));
+            combo.setSelectedItem(fc.def());
+            combo.setEnabled(fc.options().size() > 1);
+            choosers.put(fc.field(), combo);
+            addRow(grid, r++, fc, combo);
+        }
+
+        JScrollPane scroll = new JScrollPane(grid);
+        scroll.setPreferredSize(new Dimension(760, Math.min(480, 70 + rows.size() * 28)));
+
+        String title = "Merge preview — fold \"" + duplicate.getDisplayName()
+                + "\" into \"" + primary.getDisplayName() + "\"";
+        int res = JOptionPane.showConfirmDialog(this, scroll, title,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (res != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        Map<String, String> fieldSource = new LinkedHashMap<>();
+        for (FieldChoice fc : rows) {
+            fieldSource.put(fc.field(), (String) choosers.get(fc.field()).getSelectedItem());
+        }
+        applyMerge(pid, did, fieldSource);
+    }
+
+    private void applyMerge(String pid, String did, Map<String, String> fieldSource) {
+        String pName = primary.getDisplayName();
+        String dName = duplicate.getDisplayName();
+
+        curation.putMerge(pid, did, fieldSource);
         try {
             curation.save();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
             return;
         }
-        Merges.apply(domain.instances(), List.of(new Merge(pid, did, Merge.MANUAL)));
 
-        status.setText("   Merged \"" + duplicate.getDisplayName()
-                + "\" into \"" + primary.getDisplayName() + "\"");
+        Merge merge = new Merge(pid, did, fieldSource, Merge.MANUAL);
+        int n = domain instanceof Mergeable mg
+                ? mg.applyMerge(merge)
+                : Merges.apply(domain.instances(), List.of(merge));
+        if (n == 0) {
+            status.setText("   Merge had no effect (instances not found in the pool)");
+            return;
+        }
+
+        status.setText("   Merged \"" + dName + "\" into \"" + pName + "\"");
         primary = null;
         duplicate = null;
         refreshSlots();
         onCurated.run();   // re-render the main view with the merged instance
         refresh();         // the duplicate is gone from the pool
     }
+
+    /** The per-field resolution the preview offers: primary/duplicate values, the
+     *  choices allowed, and the default source. */
+    private record FieldChoice(String field, Object primaryVal, Object dupVal,
+                               List<String> options, String def) { }
+
+    private List<FieldChoice> planRows(Quizable p, Quizable d) {
+        List<String> names = new ArrayList<>();
+        for (FieldRef ref : FieldSet.of(p).fields()) {
+            names.add(ref.name());
+        }
+        for (FieldRef ref : FieldSet.of(d).fields()) {
+            if (!names.contains(ref.name())) {
+                names.add(ref.name());
+            }
+        }
+
+        List<FieldChoice> out = new ArrayList<>();
+        for (String name : names) {
+            Object pv = FieldAccess.getPath(p, name);
+            Object dv = FieldAccess.getPath(d, name);
+            boolean pValid = ViewableAdapter.isValidQuizValue(pv);
+            boolean dValid = ViewableAdapter.isValidQuizValue(dv);
+            if (!pValid && !dValid) {
+                continue;   // nothing to decide
+            }
+
+            boolean multi = pv instanceof Collection || pv instanceof Map
+                    || dv instanceof Collection || dv instanceof Map;
+            List<String> opts = new ArrayList<>();
+            String def;
+            if (pValid && dValid) {
+                if (multi) {
+                    opts.add(Merge.BOTH);
+                    opts.add(Merge.PRIMARY);
+                    opts.add(Merge.DUPLICATE);
+                    def = Merge.BOTH;
+                } else if (String.valueOf(pv).equals(String.valueOf(dv))) {
+                    opts.add(Merge.PRIMARY);
+                    def = Merge.PRIMARY;   // identical — no conflict
+                } else {
+                    opts.add(Merge.PRIMARY);
+                    opts.add(Merge.DUPLICATE);
+                    def = Merge.PRIMARY;   // conflict — primary wins by default
+                }
+            } else if (pValid) {
+                opts.add(Merge.PRIMARY);
+                def = Merge.PRIMARY;
+            } else {
+                opts.add(Merge.DUPLICATE);
+                def = Merge.DUPLICATE;
+            }
+            out.add(new FieldChoice(name, pv, dv, opts, def));
+        }
+        return out;
+    }
+
+    private static String display(Object v) {
+        if (v == null) {
+            return "—";
+        }
+        if (v instanceof Collection<?> c) {
+            return c.isEmpty() ? "—" : c.size() + " item(s)";
+        }
+        if (v instanceof Map<?, ?> m) {
+            return m.isEmpty() ? "—" : m.size() + " entry(ies)";
+        }
+        String s = String.valueOf(v).trim();
+        if (s.isEmpty()) {
+            return "—";
+        }
+        return s.length() > 44 ? s.substring(0, 44) + "…" : s;
+    }
+
+    private void addHeader(JPanel grid) {
+        String[] cols = {"Field", "Primary", "Duplicate", "Take"};
+        for (int c = 0; c < cols.length; c++) {
+            JLabel l = new JLabel(cols[c]);
+            l.setFont(l.getFont().deriveFont(Font.BOLD));
+            grid.add(l, gbc(c, 0));
+        }
+    }
+
+    private void addRow(JPanel grid, int row, FieldChoice fc, JComboBox<String> combo) {
+        grid.add(new JLabel(fc.field()), gbc(0, row));
+        grid.add(dim(new JLabel(display(fc.primaryVal()))), gbc(1, row));
+        grid.add(dim(new JLabel(display(fc.dupVal()))), gbc(2, row));
+        grid.add(combo, gbc(3, row));
+    }
+
+    private static JLabel dim(JLabel l) {
+        l.setForeground(Color.GRAY);
+        return l;
+    }
+
+    private static GridBagConstraints gbc(int x, int y) {
+        GridBagConstraints g = new GridBagConstraints();
+        g.gridx = x;
+        g.gridy = y;
+        g.anchor = GridBagConstraints.WEST;
+        g.insets = new Insets(2, 8, 2, 8);
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.weightx = x == 3 ? 0 : 1;
+        return g;
+    }
+
+    // ------------------------------------------------------------------
+    // Instance browser
+    // ------------------------------------------------------------------
 
     private void refresh() {
         String type = (String) typeCombo.getSelectedItem();

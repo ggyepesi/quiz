@@ -49,7 +49,9 @@ public final class ManualCuration implements CorrectionSource {
                 }
                 if (doc.merges != null) {
                     for (MergeEntry e : doc.merges) {
-                        merges.add(new Merge(e.primary, e.duplicate, e.origin));
+                        merges.add(new Merge(e.primary, e.duplicate,
+                                e.fieldSource == null ? java.util.Map.of() : e.fieldSource,
+                                e.origin));
                     }
                 }
             } catch (IOException ignored) {
@@ -84,11 +86,11 @@ public final class ManualCuration implements CorrectionSource {
         entries.removeIf(c -> c.qid().equals(qid) && c.field().equals(field));
     }
 
-    /** Record (or replace) a manual merge of {@code duplicate} into {@code primary};
-     *  one merge per duplicate (re-merging a duplicate replaces the prior target). */
-    public void putMerge(String primary, String duplicate) {
+    /** Record (or replace) a manual merge of {@code duplicate} into {@code primary} with
+     *  the approved per-field resolution; one merge per duplicate. */
+    public void putMerge(String primary, String duplicate, java.util.Map<String, String> fieldSource) {
         merges.removeIf(m -> m.duplicate().equals(duplicate));
-        merges.add(new Merge(primary, duplicate, Merge.MANUAL));
+        merges.add(new Merge(primary, duplicate, fieldSource, Merge.MANUAL));
     }
 
     public List<Merge> merges() {
@@ -130,6 +132,7 @@ public final class ManualCuration implements CorrectionSource {
     static final class MergeEntry {
         public String primary;
         public String duplicate;
+        public java.util.Map<String, String> fieldSource;
         public String origin;
 
         MergeEntry() {}
@@ -137,6 +140,7 @@ public final class ManualCuration implements CorrectionSource {
         MergeEntry(Merge m) {
             this.primary = m.primary();
             this.duplicate = m.duplicate();
+            this.fieldSource = m.fieldSource();
             this.origin = m.origin();
         }
     }

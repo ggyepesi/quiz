@@ -15,7 +15,8 @@ import java.util.Map;
  * operation can consume a class produced by an earlier PROJECT — the composable
  * transform graph. Derived instances are added to {@link #instances()} for the view.
  */
-public final class WorkingDomain implements DomainModel, SchemaView, quiz.curation.Curatable {
+public final class WorkingDomain implements DomainModel, SchemaView,
+        quiz.curation.Curatable, quiz.curation.Mergeable {
 
     private final DomainModel base;
     private final Map<String, DerivedClass> derived = new LinkedHashMap<>();
@@ -30,6 +31,12 @@ public final class WorkingDomain implements DomainModel, SchemaView, quiz.curati
 
     @Override public quiz.curation.ManualCuration curation() {
         return base instanceof quiz.curation.Curatable c ? c.curation() : null;
+    }
+
+    /** Apply a merge to the REAL base pool — not the throwaway combined copy that
+     *  {@link #instances()} returns — so the duplicate's removal takes effect live. */
+    @Override public int applyMerge(quiz.curation.Merge merge) {
+        return quiz.curation.Merges.apply(base.instances(), List.of(merge));
     }
 
     public void add(DerivedClass d) {
