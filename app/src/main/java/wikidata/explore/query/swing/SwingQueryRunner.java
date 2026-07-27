@@ -134,6 +134,14 @@ public class SwingQueryRunner {
         currentWorker.execute();
     }
 
+    /** Run a query with this runner's shared context and log listener. */
+    public <R> void run(
+            Query<R> query,
+            QueryResultSink<R> sink,
+            java.util.function.Consumer<Exception> onError) {
+        run(new QueryWorkflow<>(context, sink, logListener), query, onError);
+    }
+
     public <R> void runQuiet(
             Query<R> query,
             QueryResultSink<R> sink,

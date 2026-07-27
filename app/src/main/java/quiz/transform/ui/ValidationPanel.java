@@ -15,6 +15,8 @@ import objectview.viewconfig.ViewConfigEditor;
 import quiz.Quizable;
 
 import wikidata.WikidataSparqlClient;
+import wikidata.explore.query.core.QueryContext;
+import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -25,7 +27,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
-import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -55,6 +56,9 @@ public final class ValidationPanel extends JPanel {
     private final JComboBox<String> typeCombo = new JComboBox<>();
     private final ViewConfigEditor coverage;
     private final JLabel status = new JLabel(" ");
+    // One persistent enrichment button, registered with the runner ONCE and reconfigured
+    // + re-parented per drill — so drilling many fields doesn't leak run-button registrations.
+    private final JButton checkButton = new JButton();
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     // Horizontal, NOT vertical: the coverage table's preferred HEIGHT grows with the
@@ -66,11 +70,22 @@ public final class ValidationPanel extends JPanel {
     private String type;
     private List<Quizable> instances = List.of();
     private Quizable selected;
-    private WikidataSparqlClient dbpedia;
+    private final SwingQueryRunner queryRunner;
 
     public ValidationPanel(DomainModel domain) {
+        this(domain, null);
+    }
+
+    public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner) {
         super(new BorderLayout(6, 6));
         this.domain = domain;
+        this.queryRunner = queryRunner == null
+                ? new SwingQueryRunner(
+                        new QueryContext(new WikidataSparqlClient(
+                                "QuizProject/1.0 (ggyepesi@gmail.com)", 2,
+                                WikidataSparqlClient.DBPEDIA_ENDPOINT), null),
+                        null)
+                : queryRunner;
 
         for (Quizable q : domain.instances()) {
             if (q != null && q.typeName() != null) {
@@ -80,6 +95,9 @@ public final class ValidationPanel extends JPanel {
 
         coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null, new CoverageColumns());
         coverage.setChangeListener(this::onFieldSelected);
+
+        checkButton.addActionListener(e -> onCheck());
+        queryRunner.registerRunButton(checkButton);
 
         for (String t : domain.types()) {
             if (!byType.getOrDefault(t, List.of()).isEmpty()) {
@@ -236,21 +254,29 @@ public final class ValidationPanel extends JPanel {
                 : gap + " member(s) missing " + type + "." + path));
         if (gap > 0) {
             boolean media = isMediaField(path);
-            JButton check = new JButton(media ? "Find image ↗" : "Check DBpedia ↗");
-            check.setToolTipText((media
+            checkButton.setText(media ? "Find image ↗" : "Check DBpedia ↗");
+            checkButton.setToolTipText((media
                     ? "Find an image for the SELECTED member on DBpedia"
                     : "Look up the SELECTED member's \"" + leaf(path) + "\" on DBpedia")
                     + " (select a card first)");
-            check.addActionListener(e -> {
-                if (media) {
-                    findDbpediaImage();
-                } else {
-                    checkDbpedia(leaf(path));
-                }
-            });
-            h.add(check);
+            h.add(checkButton);   // re-parents the persistent, already-registered button
         }
         return h;
+    }
+
+    /** Run the enrichment for the currently-drilled field — image lookup for a media
+     *  field, else the text-property lookup. Reads the live selected path, so the single
+     *  persistent button always acts on the current drill. */
+    private void onCheck() {
+        String path = coverage.selectedPath();
+        if (path == null) {
+            return;
+        }
+        if (isMediaField(path)) {
+            findDbpediaImage();
+        } else {
+            checkDbpedia(leaf(path));
+        }
     }
 
     /** Whether {@code path} on the current type is a media field — so the drill offers
@@ -285,25 +311,24 @@ public final class ValidationPanel extends JPanel {
         }
         String qid = m.getIdentifier();
         String label = m.getDisplayName();
-        new SwingWorker<List<String>, Void>() {
-            @Override protected List<String> doInBackground() {
-                return DBpediaLookup.imageCandidates(dbpedia(), qid, label);
-            }
-            @Override protected void done() {
-                try {
-                    List<String> urls = get();
+        boolean hasQid = qid != null && qid.matches("Q\\d+");
+        if (!hasQid && (label == null || label.isBlank())) {
+            JOptionPane.showMessageDialog(this,
+                    "This member has no Wikidata QID or name to look up on DBpedia.");
+            return;
+        }
+        queryRunner.run(
+                DBpediaLookup.images(qid, label),
+                urls -> SwingUtilities.invokeLater(() -> {
                     if (urls.isEmpty()) {
                         JOptionPane.showMessageDialog(ValidationPanel.this,
                                 "DBpedia has no image for " + label + ".");
-                        return;
+                    } else {
+                        showImagePreview(label, urls);
                     }
-                    showImagePreview(label, urls);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(ValidationPanel.this,
-                            "DBpedia image lookup failed: " + ex.getMessage());
-                }
-            }
-        }.execute();
+                }),
+                ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
+                        "DBpedia image lookup failed: " + ex.getMessage()));
     }
 
     private void showImagePreview(String name, List<String> urls) {
@@ -345,34 +370,18 @@ public final class ValidationPanel extends JPanel {
             return;
         }
         String name = m.getDisplayName();
-        new SwingWorker<List<String>, Void>() {
-            @Override protected List<String> doInBackground() {
-                return DBpediaLookup.candidates(dbpedia(), qid, property);
-            }
-            @Override protected void done() {
-                try {
-                    List<String> c = get();
+        queryRunner.run(
+                DBpediaLookup.values(qid, property),
+                c -> SwingUtilities.invokeLater(() -> {
                     String msg = c.isEmpty()
                             ? "DBpedia has no \"" + property + "\" for " + name + "."
                             : "DBpedia \"" + property + "\" for " + name + ":\n  • "
                                     + String.join("\n  • ", c);
                     JOptionPane.showMessageDialog(ValidationPanel.this, msg,
                             "DBpedia candidates", JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(ValidationPanel.this,
-                            "DBpedia lookup failed: " + ex.getMessage());
-                }
-            }
-        }.execute();
-    }
-
-    private WikidataSparqlClient dbpedia() {
-        if (dbpedia == null) {
-            dbpedia = new WikidataSparqlClient(
-                    "QuizProject/1.0 (ggyepesi@gmail.com)", 2,
-                    WikidataSparqlClient.DBPEDIA_ENDPOINT);
-        }
-        return dbpedia;
+                }),
+                ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
+                        "DBpedia lookup failed: " + ex.getMessage()));
     }
 
     private static String leaf(String path) {

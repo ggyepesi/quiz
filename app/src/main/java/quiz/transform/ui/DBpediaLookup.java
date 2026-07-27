@@ -1,27 +1,24 @@
 package quiz.transform.ui;
 
 import wikidata.WikidataBinding;
-import wikidata.WikidataSparqlClient;
+import wikidata.explore.query.core.Query;
+import wikidata.explore.query.core.QueryContext;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
-/**
- * The first enrichment source: for a member's Wikidata QID and a field name, look up
- * candidate value(s) on DBpedia — joined by {@code owl:sameAs} → the QID, reading the
- * ontology ({@code dbo:}) or raw-infobox ({@code dbp:}) property of that name. PROPOSE
- * only: the caller shows the candidates and (next) writes an accepted one as a
- * {@code Correction} (origin "dbpedia") into the curation overlay.
- */
+/** Query definitions for DBpedia-backed curation suggestions. */
 final class DBpediaLookup {
 
     private DBpediaLookup() {}
 
-    static List<String> candidates(WikidataSparqlClient dbpedia, String qid, String property) {
-        if (dbpedia == null || qid == null || !qid.matches("Q\\d+")
+    static Query<List<String>> values(String qid, String property) {
+        if (qid == null || !qid.matches("Q\\d+")
                 || property == null || property.isBlank()) {
-            return List.of();
+            throw new IllegalArgumentException("A Wikidata QID and DBpedia property are required");
         }
         String sparql = ("""
                 PREFIX dbo: <http://dbpedia.org/ontology/>
@@ -35,41 +32,36 @@ final class DBpediaLookup {
                 } LIMIT 25
                 """).formatted(qid, property);
 
-        System.out.println("[DBpedia] " + property + " query for [" + qid + "]:\n" + sparql);
-
-        LinkedHashSet<String> out = new LinkedHashSet<>();
-        try {
-            for (WikidataBinding b : dbpedia.query(sparql)) {
-                String label = b.value("valLabel");
-                String val = label != null && !label.isBlank()
-                        ? label : readable(b.value("val"));
-                if (val != null && !val.isBlank()) {
-                    out.add(val.trim());
-                }
-            }
-        } catch (Exception ignore) {
-            // best-effort; empty candidates on failure
-        }
-        return new ArrayList<>(out);
+        return query(
+                "Check DBpedia " + property,
+                "DBpedia property lookup",
+                Map.of("qid", qid, "property", property),
+                sparql,
+                rows -> {
+                    LinkedHashSet<String> out = new LinkedHashSet<>();
+                    for (WikidataBinding binding : rows) {
+                        String label = binding.value("valLabel");
+                        String value = label != null && !label.isBlank()
+                                ? label : readable(binding.value("val"));
+                        if (value != null && !value.isBlank()) {
+                            out.add(value.trim());
+                        }
+                    }
+                    return new ArrayList<>(out);
+                });
     }
 
-    /**
-     * Image URL candidate(s) for a person/entity — reads {@code foaf:depiction} /
-     * {@code dbo:thumbnail} (direct Commons image URLs). Joined by {@code owl:sameAs}
-     * when we have a Wikidata QID, else by an exact English {@code rdfs:label} — manual
-     * domains like Nobel keep NAMES, not QIDs, so the label path is what reaches them.
-     */
-    static List<String> imageCandidates(WikidataSparqlClient dbpedia, String qid, String label) {
-        if (dbpedia == null) {
-            return List.of();
-        }
+    static Query<List<String>> images(String qid, String label) {
         String subject;
+        Map<String, String> parameters = new LinkedHashMap<>();
         if (qid != null && qid.matches("Q\\d+")) {
             subject = "?dbr owl:sameAs <http://www.wikidata.org/entity/" + qid + "> .";
+            parameters.put("qid", qid);
         } else if (label != null && !label.isBlank()) {
             subject = "?dbr rdfs:label " + sparqlString(label) + "@en .";
+            parameters.put("label", label);
         } else {
-            return List.of();
+            throw new IllegalArgumentException("A Wikidata QID or display label is required");
         }
         String sparql = ("""
                 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
@@ -82,37 +74,90 @@ final class DBpediaLookup {
                 } LIMIT 10
                 """).formatted(subject);
 
-        System.out.println("[DBpedia] image query for ["
-                + (qid != null && qid.matches("Q\\d+") ? qid : label) + "]:\n" + sparql);
+        return query(
+                "Find DBpedia image",
+                "DBpedia image lookup",
+                parameters,
+                sparql,
+                rows -> {
+                    LinkedHashSet<String> out = new LinkedHashSet<>();
+                    for (WikidataBinding binding : rows) {
+                        String image = binding.value("img");
+                        if (image != null && !image.isBlank()) {
+                            out.add(image.trim());
+                        }
+                    }
+                    return new ArrayList<>(out);
+                });
+    }
 
-        LinkedHashSet<String> out = new LinkedHashSet<>();
-        try {
-            for (WikidataBinding b : dbpedia.query(sparql)) {
-                String img = b.value("img");
-                if (img != null && !img.isBlank()) {
-                    out.add(img.trim());
-                }
+    private static Query<List<String>> query(
+            String purpose,
+            String description,
+            Map<String, String> parameters,
+            String sparql,
+            java.util.function.Function<List<WikidataBinding>, List<String>> mapper) {
+
+        return new Query<>() {
+            @Override public String purpose() {
+                return purpose;
             }
-        } catch (Exception e) {
-            System.out.println("[DBpedia] image query failed: " + e.getMessage());
-        }
-        System.out.println("[DBpedia] " + out.size() + " image candidate(s): " + out);
-        return new ArrayList<>(out);
+
+            @Override public String skeleton() {
+                return description;
+            }
+
+            @Override public String queryType() {
+                return "SPARQL";
+            }
+
+            @Override public String description() {
+                return description;
+            }
+
+            @Override public Map<String, String> parameters() {
+                return parameters;
+            }
+
+            @Override public List<String> execute(QueryContext context) throws Exception {
+                if (context.sparql() == null) {
+                    throw new IllegalStateException("No DBpedia SPARQL client configured");
+                }
+                return context.step(
+                        description,
+                        "SPARQL",
+                        description,
+                        parameters,
+                        step -> {
+                            step.request(sparql);
+                            List<String> result = mapper.apply(context.sparql().query(sparql));
+                            step.summary(result.size() + " candidate(s)");
+                            return result;
+                        });
+            }
+
+            @Override public int rowCount(List<String> result) {
+                return result == null ? 0 : result.size();
+            }
+
+            @Override public String summary(List<String> result) {
+                return rowCount(result) + " candidate(s)";
+            }
+        };
     }
 
-    private static String sparqlString(String s) {
-        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    private static String sparqlString(String value) {
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
-    /** A dbpedia resource URI → its readable last segment; a literal → itself. */
-    private static String readable(String v) {
-        if (v == null) {
+    private static String readable(String value) {
+        if (value == null) {
             return null;
         }
-        if (v.startsWith("http")) {
-            int slash = v.lastIndexOf('/');
-            return (slash >= 0 ? v.substring(slash + 1) : v).replace('_', ' ');
+        if (value.startsWith("http")) {
+            int slash = value.lastIndexOf('/');
+            return (slash >= 0 ? value.substring(slash + 1) : value).replace('_', ' ');
         }
-        return v;
+        return value;
     }
 }

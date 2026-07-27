@@ -7,6 +7,9 @@ import objectview.search.SearchPanel;
 import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
+import wikidata.WikidataSparqlClient;
+import wikidata.explore.query.core.QueryContext;
+import wikidata.explore.query.swing.SwingQuerySession;
 
 import javax.swing.*;
 import java.awt.*;
@@ -36,6 +39,12 @@ public final class TransformWorkbenchPanel extends JPanel {
     private final String domainName;
 
     private final JPanel renderHolder = new JPanel(new BorderLayout());
+    private final WikidataSparqlClient requestClient = new WikidataSparqlClient(
+            "QuizProject/1.0 (ggyepesi@gmail.com)", 2,
+            WikidataSparqlClient.DBPEDIA_ENDPOINT);
+    private final SwingQuerySession queries =
+            new SwingQuerySession(new QueryContext(requestClient, null));
+    private final JButton cancelQueryButton = new JButton("Cancel request");
 
     private ViewStepsPanel viewStepsPanel;
 
@@ -77,6 +86,10 @@ public final class TransformWorkbenchPanel extends JPanel {
             top.add(button("Save as domain…", this::saveAsDomain));
         }
         top.add(button("Validate…", this::showValidation));
+        top.add(button("Query logs…", () -> queries.showLogs(this)));
+        queries.runner().registerCancelButton(cancelQueryButton);
+        queries.runner().cancelAction(requestClient::cancelCurrentQuery);
+        top.add(cancelQueryButton);
         if (controller.domain() instanceof quiz.curation.Curatable c && c.curation() != null) {
             top.add(button("Curate…", () -> openCuration(c.curation())));
             top.add(button("Merge…", () -> openMerge(c.curation())));
@@ -103,7 +116,7 @@ public final class TransformWorkbenchPanel extends JPanel {
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 "Validate — consistency / coverage", Dialog.ModalityType.MODELESS);
         dialog.setLayout(new BorderLayout());
-        dialog.add(new ValidationPanel(controller.domain()), BorderLayout.CENTER);
+        dialog.add(new ValidationPanel(controller.domain(), queries.runner()), BorderLayout.CENTER);
         dialog.setSize(1080, 620);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);

@@ -24,6 +24,7 @@ import wikidata.explore.query.logical.GenerateDomainQuery;
 import wikidata.explore.query.logical.RemapInstancesQuery;
 import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.query.swing.SwingQueryRunner;
+import wikidata.explore.query.swing.SwingQuerySession;
 import wikidata.explore.query.swing.WorkflowLogWindow;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.rule.RuleTreeCompiler;
@@ -157,13 +158,16 @@ public class ModelBuilderFrame extends JFrame {
     // listener doesn't write the value straight back).
     private boolean syncingDepth = false;
 
-    private final WorkflowLogWindow logWindow =
-            new WorkflowLogWindow();
+    private final SwingQuerySession querySession;
+    private final WorkflowLogWindow logWindow;
 
     public ModelBuilderFrame(WikidataSparqlClient client) {
         super("Wikidata Quizable Model Builder");
 
         this.client = client;
+        this.querySession =
+                new SwingQuerySession(new QueryContext(client, apiClient));
+        this.logWindow = querySession.logs();
 
         // Continue from the saved model (so edits like sharesBorderWith / the
         // Star class persist across restarts) instead of the hard-coded demo.
@@ -482,13 +486,7 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void wireActions() {
-        QueryContext queryContext =
-                new QueryContext(client, apiClient);
-
-        SwingQueryRunner queryRunner =
-                new SwingQueryRunner(
-                        queryContext,
-                        logWindow);
+        SwingQueryRunner queryRunner = querySession.runner();
 
         queryRunner.registerCancelButton(cancelButton);
         queryRunner.registerRunButton(showGeneratedSourceButton);
@@ -653,8 +651,7 @@ public class ModelBuilderFrame extends JFrame {
         showRuleTreeButton.addActionListener(e -> showRuleTree());
         showGuideButton.addActionListener(e -> showGuide());
 
-        showQueryLogsButton.addActionListener(e ->
-                                                      logWindow.show(this));
+        showQueryLogsButton.addActionListener(e -> querySession.showLogs(this));
 
         sourceWorkbench.edit(projectModel.rootClass());
     }
