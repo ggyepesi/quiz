@@ -8,6 +8,7 @@ import quiz.Quizable;
 import quiz.QuizableGroup;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
 import wikidata.WikidataSparqlClient;
+import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.swing.SwingQuerySession;
 
@@ -42,8 +43,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final WikidataSparqlClient requestClient = new WikidataSparqlClient(
             "QuizProject/1.0 (ggyepesi@gmail.com)", 2,
             WikidataSparqlClient.DBPEDIA_ENDPOINT);
-    private final SwingQuerySession queries =
-            new SwingQuerySession(new QueryContext(requestClient, null));
+    // SPARQL points at DBpedia (enrichment); the API client is Wikidata's (the identity
+    // search runs in API mode via context.api()) — different transports, both needed.
+    private final SwingQuerySession queries = new SwingQuerySession(new QueryContext(
+            requestClient, new WikidataApiClient("QuizProject/1.0 (ggyepesi@gmail.com)")));
     private final JButton cancelQueryButton = new JButton("Cancel request");
 
     private ViewStepsPanel viewStepsPanel;
