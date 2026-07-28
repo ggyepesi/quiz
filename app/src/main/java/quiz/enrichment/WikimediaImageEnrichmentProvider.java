@@ -91,21 +91,28 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
                 identities.add(identity(wikidataIdentity, request, wikidataSource,
                         "Approved Wikidata entity"));
 
-                addClaims(entity, "P18", "Wikidata P18 image", 0.98,
-                        wikidataIdentity, wikidataSource, request, media, seenUrls);
-                addClaims(entity, "P154", "Wikidata P154 logo image", 0.94,
-                        wikidataIdentity, wikidataSource, request, media, seenUrls);
+                ImageQuery imageQuery = imageQueryFor(request.targetField());
+                for (PropertyImage property : imageQuery.properties()) {
+                    addClaims(entity, property.property(),
+                            "Wikidata " + property.property() + " " + property.label(),
+                            property.confidence(),
+                            wikidataIdentity, wikidataSource, request, media, seenUrls);
+                }
 
-                String articleTitle =
-                        entity.sitelink("enwiki");
-                if (!articleTitle.isBlank()) {
-                    try {
-                        addWikipediaImage(context, request, articleTitle,
-                                identities, media, seenUrls);
-                    } catch (Exception ex) {
-                        // A local Wikipedia failure must not hide valid P18/P154 results.
-                        context.message("English Wikipedia image lookup failed: "
-                                + ex.getMessage());
+                // The article's lead image is a general photo of the subject — helpful for
+                // a portrait, but not for a specific emblem (a flag/coat of arms field
+                // wants P41/P94, not the country's page image), so it's off for those.
+                if (imageQuery.includeWikipediaImage()) {
+                    String articleTitle = entity.sitelink("enwiki");
+                    if (!articleTitle.isBlank()) {
+                        try {
+                            addWikipediaImage(context, request, articleTitle,
+                                    identities, media, seenUrls);
+                        } catch (Exception ex) {
+                            // A local Wikipedia failure must not hide valid claim results.
+                            context.message("English Wikipedia image lookup failed: "
+                                    + ex.getMessage());
+                        }
                     }
                 }
                 return new EnrichmentProposal(
@@ -210,6 +217,43 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
                     request.collection()));
         }
     }
+
+    /** The Wikidata image properties that fit a target field: a flag field pulls P41,
+     *  coat of arms P94, seal P158, logo P154, and anything else the general image set
+     *  (P18 + P154). Matched on the field name (or dotted path leaf) by keyword, so
+     *  {@code flagVersions}/{@code armsVersions}/{@code portrait} all route correctly. */
+    static ImageQuery imageQueryFor(String field) {
+        String f = field == null ? "" : field.toLowerCase(java.util.Locale.ROOT);
+        if (mentions(f, "flag")) {
+            return new ImageQuery(List.of(new PropertyImage("P41", "flag image", 0.98)), false);
+        }
+        if (mentions(f, "coat", "arms", "armorial", "escutcheon", "crest")) {
+            return new ImageQuery(
+                    List.of(new PropertyImage("P94", "coat of arms image", 0.98)), false);
+        }
+        if (mentions(f, "seal")) {
+            return new ImageQuery(List.of(new PropertyImage("P158", "seal image", 0.96)), false);
+        }
+        if (mentions(f, "logo")) {
+            return new ImageQuery(List.of(new PropertyImage("P154", "logo image", 0.96)), false);
+        }
+        return new ImageQuery(List.of(
+                new PropertyImage("P18", "image", 0.98),
+                new PropertyImage("P154", "logo image", 0.9)), true);
+    }
+
+    private static boolean mentions(String field, String... keywords) {
+        for (String keyword : keywords) {
+            if (field.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    record PropertyImage(String property, String label, double confidence) { }
+
+    record ImageQuery(List<PropertyImage> properties, boolean includeWikipediaImage) { }
 
     private static EnrichmentProposal.IdentityCandidate identity(
             String id,
