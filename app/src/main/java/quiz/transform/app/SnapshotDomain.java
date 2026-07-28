@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +23,11 @@ public final class SnapshotDomain implements DomainModel {
 
     private final List<WikidataDynamicObject> pool;
     private final DomainSchema schema;
+    // Includes nested inline VALUE objects as well as root pool members. A recursive
+    // union cannot find VALUE fields by scanning the root pool because those objects
+    // are deliberately serialized in their owner rather than pooled.
+    private final Map<String, List<WikidataDynamicObject>> objectsByType =
+            new java.util.LinkedHashMap<>();
     // Statement-reification classes (from the domain's model): their "source"
     // field is the auto-created reify back-reference — provenance, not an
     // argument — so the field pickers skip it.
@@ -37,6 +44,11 @@ public final class SnapshotDomain implements DomainModel {
         wikidata.explore.transform.BareReferenceCollapse.apply(pool);
         this.pool = pool;
         this.schema = new DomainSchema(pool);
+        Set<WikidataDynamicObject> seen =
+                java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        for (WikidataDynamicObject object : pool) {
+            indexReachable(object, seen);
+        }
         this.statementTypes = statementTypes == null
                 ? java.util.Set.of() : statementTypes;
     }
@@ -108,44 +120,91 @@ public final class SnapshotDomain implements DomainModel {
         if (!visiting.add(type)) {
             return merged;   // cycle guard: a self-referential type stops here
         }
-        for (String field : schema.fields(type)) {
-            Object value = firstNonNull(type, field);
+        for (String field : fieldsOf(type)) {
+            Object value = representativeValue(type, field, visiting);
             if (value != null) {
-                merged.put(field, representative(value, visiting));
+                merged.put(field, value);
             }
         }
         visiting.remove(type);
         return merged;
     }
 
-    private Object firstNonNull(String type, String field) {
-        for (WikidataDynamicObject o : pool) {
-            if (o != null && type.equals(o.typeName())) {
-                Object v = o.get(field);
-                if (v != null) {
-                    return v;
-                }
-            }
+    private Set<String> fieldsOf(String type) {
+        Set<String> fields = new LinkedHashSet<>(schema.fields(type));
+        for (WikidataDynamicObject object
+                : objectsByType.getOrDefault(type, List.of())) {
+            fields.addAll(object.dynamicFieldValues().keySet());
         }
-        return null;
+        return fields;
     }
 
-    /** Replace a reference value with a union sample of its type so nested fields are
-     *  complete too; leave scalars and non-reference collections as the representative. */
-    private Object representative(Object value, Set<String> visiting) {
-        if (value instanceof WikidataDynamicObject ref && ref.typeName() != null) {
-            return buildUnion(ref.typeName(), visiting);
-        }
-        if (value instanceof Collection<?> c) {
-            for (Object item : c) {
-                if (item instanceof WikidataDynamicObject ref && ref.typeName() != null) {
-                    List<Object> out = new ArrayList<>();
-                    out.add(buildUnion(ref.typeName(), visiting));
-                    return out;
-                }
+    /** Pick a shape-bearing representative across every occurrence of the field.
+     *  Empty collections do not mask a populated collection on a later object. */
+    private Object representativeValue(String type, String field, Set<String> visiting) {
+        List<Object> values = new ArrayList<>();
+        for (WikidataDynamicObject object
+                : objectsByType.getOrDefault(type, List.of())) {
+            Object value = object.get(field);
+            if (value != null) {
+                values.add(value);
             }
         }
-        return value;
+        if (values.isEmpty()) {
+            return null;
+        }
+
+        boolean collection = values.stream().anyMatch(Collection.class::isInstance);
+        List<Object> candidates = new ArrayList<>();
+        for (Object value : values) {
+            if (value instanceof Collection<?> items) {
+                candidates.addAll(items);
+            } else {
+                candidates.add(value);
+            }
+        }
+
+        Object representative = representative(candidates, visiting);
+        if (collection) {
+            return representative == null ? List.of() : List.of(representative);
+        }
+        return representative;
+    }
+
+    /** Replace a reference value with the recursively indexed union sample of its type;
+     *  otherwise retain the first real scalar as the representative shape. */
+    private Object representative(List<Object> candidates, Set<String> visiting) {
+        for (Object candidate : candidates) {
+            if (candidate instanceof WikidataDynamicObject ref
+                    && ref.hasTypeStamp() && ref.typeName() != null) {
+                return buildUnion(ref.typeName(), visiting);
+            }
+        }
+        return candidates.isEmpty() ? null : candidates.get(0);
+    }
+
+    private void indexReachable(
+            Object value, Set<WikidataDynamicObject> seen) {
+        if (value instanceof WikidataDynamicObject object) {
+            if (!seen.add(object)) {
+                return;
+            }
+            if (object.hasTypeStamp() && object.typeName() != null) {
+                objectsByType.computeIfAbsent(object.typeName(), ignored -> new ArrayList<>())
+                        .add(object);
+            }
+            for (Object nested : object.dynamicFieldValues().values()) {
+                indexReachable(nested, seen);
+            }
+        } else if (value instanceof Collection<?> collection) {
+            for (Object item : collection) {
+                indexReachable(item, seen);
+            }
+        } else if (value instanceof Map<?, ?> map) {
+            for (Object item : map.values()) {
+                indexReachable(item, seen);
+            }
+        }
     }
 
     @Override public Collection<? extends Quizable> instances() { return pool; }

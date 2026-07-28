@@ -63,4 +63,40 @@ class SnapshotDomainUnionTest {
 
         assertEquals("p.jpg", sample.get("portrait"));
     }
+
+    @Test
+    void nestedValueObjectFieldsAreUnionedRecursively() {
+        WikidataDynamicObject firstMotivation = wdo("Motivation", "");
+        firstMotivation.valueObject(true);
+        firstMotivation.put("text", "for discovery");
+        WikidataDynamicObject secondMotivation = wdo("Motivation", "");
+        secondMotivation.valueObject(true);
+        secondMotivation.put("topics", List.of("physics"));
+
+        WikidataDynamicObject first = wdo("Laureate", "A");
+        first.put("motivation", firstMotivation);
+        WikidataDynamicObject second = wdo("Laureate", "B");
+        second.put("motivation", secondMotivation);
+        SnapshotDomain domain = new SnapshotDomain(new ArrayList<>(List.of(first, second)));
+
+        List<String> fields = domain.fields("Laureate").stream()
+                .map(DomainField::field).toList();
+
+        assertTrue(fields.contains("motivation.text"), fields.toString());
+        assertTrue(fields.contains("motivation.topics"), fields.toString());
+    }
+
+    @Test
+    void emptyFirstCollectionDoesNotHideLaterCollectionShape() {
+        WikidataDynamicObject first = wdo("Laureate", "A");
+        first.put("topics", List.of());
+        WikidataDynamicObject second = wdo("Laureate", "B");
+        second.put("topics", List.of("physics"));
+        SnapshotDomain domain = new SnapshotDomain(new ArrayList<>(List.of(first, second)));
+
+        WikidataDynamicObject sample =
+                (WikidataDynamicObject) domain.representativeSample("Laureate");
+
+        assertEquals(List.of("physics"), sample.get("topics"));
+    }
 }
