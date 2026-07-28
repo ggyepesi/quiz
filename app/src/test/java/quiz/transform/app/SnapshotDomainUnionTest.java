@@ -46,4 +46,21 @@ class SnapshotDomainUnionTest {
 
         assertEquals("p.jpg", sample.get("portrait"));
     }
+
+    @Test
+    void representativeSampleDelegatesThroughTheCuratableWrapper() {
+        // The live chain is WorkingDomain -> CuratableDomain -> SnapshotDomain; a wrapper
+        // that forgets to delegate falls to the interface default (first instance) and
+        // loses the union — the actual "no fields for Laureate" regression.
+        WikidataDynamicObject first = wdo("Laureate", "A");
+        WikidataDynamicObject second = wdo("Laureate", "B", "portrait", "p.jpg");
+        SnapshotDomain base = new SnapshotDomain(new ArrayList<>(List.of(first, second)));
+        CuratableDomain domain = new CuratableDomain(base,
+                new quiz.curation.ManualCuration(new java.io.File("target/no-such.curation.json")));
+
+        WikidataDynamicObject sample =
+                (WikidataDynamicObject) domain.representativeSample("Laureate");
+
+        assertEquals("p.jpg", sample.get("portrait"));
+    }
 }
