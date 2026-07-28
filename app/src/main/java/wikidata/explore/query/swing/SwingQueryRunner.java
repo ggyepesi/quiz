@@ -192,6 +192,14 @@ public class SwingQueryRunner {
         return currentWorker != null && !currentWorker.isDone();
     }
 
+    public QueryContext context() {
+        return context;
+    }
+
+    public LogListener logListener() {
+        return logListener;
+    }
+
     private void setRunning(boolean running) {
         SwingUtilities.invokeLater(() -> {
             for (AbstractButton b : runButtons) {

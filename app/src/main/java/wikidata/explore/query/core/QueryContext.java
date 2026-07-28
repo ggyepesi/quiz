@@ -3,6 +3,7 @@ package wikidata.explore.query.core;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.log.LogStep;
+import wikidata.explore.query.log.LogNode;
 import wikidata.explore.query.log.LogStepBody;
 import wikidata.explore.query.log.WorkflowRecorder;
 
@@ -12,29 +13,38 @@ public class QueryContext {
     private final WikidataSparqlClient sparqlClient;
     private final WikidataApiClient apiClient;
     private final WorkflowRecorder recorder;
+    private final LogNode processParent;
 
     public QueryContext(
             WikidataSparqlClient sparqlClient,
             WikidataApiClient apiClient) {
 
-        this(sparqlClient, apiClient, null);
+        this(sparqlClient, apiClient, null, null);
     }
 
     private QueryContext(
             WikidataSparqlClient sparqlClient,
             WikidataApiClient apiClient,
-            WorkflowRecorder recorder) {
+            WorkflowRecorder recorder,
+            LogNode processParent) {
 
         this.sparqlClient = sparqlClient;
         this.apiClient = apiClient;
         this.recorder = recorder;
+        this.processParent = processParent;
     }
 
     public QueryContext withRecorder(WorkflowRecorder recorder) {
         return new QueryContext(
                 sparqlClient,
                 apiClient,
-                recorder);
+                recorder,
+                null);
+    }
+
+    /** Binds adapted-query steps beneath their owning Process subprocess. */
+    public QueryContext withRecorder(WorkflowRecorder recorder, LogNode processParent) {
+        return new QueryContext(sparqlClient, apiClient, recorder, processParent);
     }
 
     public WikidataSparqlClient sparql() {
@@ -62,12 +72,13 @@ public class QueryContext {
             return body.run(LogStep.disabled());
         }
 
-        return recorder.step(title, queryType, skeleton, parameters, body);
+        return recorder.stepUnder(
+                processParent, title, queryType, skeleton, parameters, body);
     }
 
     public void message(String text) {
         if (recorder != null) {
-            recorder.message(text);
+            recorder.messageUnder(processParent, text);
         }
     }
 }

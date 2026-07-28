@@ -13,6 +13,10 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.GenerationRun;
+import wikidata.explore.generation.GenerateDomainProcess;
+import process.ProcessStatus;
+import process.swing.SwingProcessInputHandler;
+import process.swing.SwingProcessRunner;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
@@ -20,7 +24,6 @@ import wikidata.explore.model.Selection;
 import wikidata.explore.model.VocabularySelection;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
-import wikidata.explore.query.logical.GenerateDomainQuery;
 import wikidata.explore.query.logical.RemapInstancesQuery;
 import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.query.swing.SwingQueryRunner;
@@ -160,14 +163,17 @@ public class ModelBuilderFrame extends JFrame {
 
     private final SwingQuerySession querySession;
     private final WorkflowLogWindow logWindow;
+    private final SwingProcessRunner processRunner;
 
     public ModelBuilderFrame(WikidataSparqlClient client) {
         super("Wikidata Quizable Model Builder");
 
         this.client = client;
-        this.querySession =
-                new SwingQuerySession(new QueryContext(client, apiClient));
+        QueryContext queryContext = new QueryContext(client, apiClient);
+        this.querySession = new SwingQuerySession(queryContext);
         this.logWindow = querySession.logs();
+        this.processRunner = new SwingProcessRunner(
+                queryContext, logWindow, new SwingProcessInputHandler(this));
 
         // Continue from the saved model (so edits like sharesBorderWith / the
         // Star class persist across restarts) instead of the hard-coded demo.
@@ -489,6 +495,8 @@ public class ModelBuilderFrame extends JFrame {
         SwingQueryRunner queryRunner = querySession.runner();
 
         queryRunner.registerCancelButton(cancelButton);
+        processRunner.registerCancelButton(cancelButton);
+        processRunner.registerRunButton(generateDomainButton);
         queryRunner.registerRunButton(showGeneratedSourceButton);
         queryRunner.cancelAction(client::cancelCurrentQuery);
 
@@ -557,10 +565,11 @@ public class ModelBuilderFrame extends JFrame {
                 },
                 this::reportGenerationError);
 
-        queryRunner.wireButton(
-                generateDomainButton,
-                this::acceptGenerationRun,
-                () -> {
+        generateDomainButton.addActionListener(e -> {
+            if (processRunner.isRunning() || queryRunner.isRunning()) {
+                return;
+            }
+            try {
                     sourceWorkbench.applyEdits();
                     // Per-class depth (saved on each class) is used; sync the
                     // active class's spinner value first.
@@ -576,11 +585,26 @@ public class ModelBuilderFrame extends JFrame {
                     if (!anyGeneratable) {
                         warnNothingToGenerate(membershipProblem(
                                 projectModel.rootClass()));
-                        return null;
+                        return;
                     }
-                    return new GenerateDomainQuery(projectModel.copy());
-                },
-                this::reportGenerationError);
+                    processRunner.run(
+                            new GenerateDomainProcess(projectModel.copy()),
+                            outcome -> {
+                                if (outcome.usefulResult().isPresent()) {
+                                    acceptGenerationRun(outcome.usefulResult().get());
+                                }
+                                if (outcome.status() == ProcessStatus.FAILED
+                                        && outcome.error() instanceof Exception ex) {
+                                    reportGenerationError(ex);
+                                }
+                            },
+                            error -> reportGenerationError(
+                                    error instanceof Exception ex
+                                            ? ex : new RuntimeException(error)));
+            } catch (Exception ex) {
+                reportGenerationError(ex);
+            }
+        });
 
         queryRunner.wireButton(
                 remapButton,

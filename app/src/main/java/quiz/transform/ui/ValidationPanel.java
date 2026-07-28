@@ -10,11 +10,13 @@ import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
 import quiz.Quizable;
-import quiz.enrichment.CompositeEnrichmentProvider;
 import quiz.enrichment.EnrichmentDecisionApplier;
 import quiz.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
 import quiz.enrichment.EnrichmentSources;
+import quiz.enrichment.EnrichmentReviewRequest;
+import quiz.enrichment.FindDataProcess;
+import quiz.enrichment.FindDataResult;
 import quiz.enrichment.SourcePageImageEnrichmentProvider;
 import quiz.enrichment.WikimediaImageEnrichmentProvider;
 import quiz.enrichment.ui.EnrichmentReviewPanel;
@@ -24,6 +26,11 @@ import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.swing.SwingQueryRunner;
+import process.CancellationToken;
+import process.ProcessInputHandler;
+import process.ProcessInputRequest;
+import process.ProcessStatus;
+import process.swing.SwingProcessRunner;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -79,6 +86,7 @@ public final class ValidationPanel extends JPanel {
     private List<Quizable> instances = List.of();
     private Quizable selected;
     private final SwingQueryRunner queryRunner;
+    private final SwingProcessRunner findDataRunner;
     // Re-render the owning view after an accepted enrichment writes a correction.
     private final Runnable onCurated;
 
@@ -111,6 +119,10 @@ public final class ValidationPanel extends JPanel {
                                 new WikidataApiClient("QuizProject/1.0")),
                         null)
                 : queryRunner;
+        this.findDataRunner = new SwingProcessRunner(
+                this.queryRunner.context(),
+                this.queryRunner.logListener(),
+                this::handleProcessInput);
 
         Collection<? extends Quizable> source = instances != null ? instances : domain.instances();
         for (Quizable q : source) {
@@ -124,6 +136,7 @@ public final class ValidationPanel extends JPanel {
 
         checkButton.addActionListener(e -> onCheck());
         queryRunner.registerRunButton(checkButton);
+        findDataRunner.registerRunButton(checkButton);
         sourcesButton.addActionListener(e -> manageSources());
         sourcesButton.setEnabled(false);
 
@@ -344,35 +357,46 @@ public final class ValidationPanel extends JPanel {
         if (qid == null) {
             providers.add(new DBpediaImageEnrichmentProvider());
         }
-        CompositeEnrichmentProvider provider = new CompositeEnrichmentProvider(providers);
-        queryRunner.run(
-                provider.discover(request),
-                proposal -> SwingUtilities.invokeLater(() -> {
-                    if (proposal.media().isEmpty()) {
+        findDataRunner.run(
+                new FindDataProcess(request, providers, true),
+                outcome -> SwingUtilities.invokeLater(() -> {
+                    FindDataResult result = outcome.result();
+                    if (result != null && result.acceptedDecision() != null) {
+                        quiz.curation.ManualCuration store = curationStore();
+                        if (store != null) applyDecision(store, result.acceptedDecision());
+                    } else if (result != null && result.proposal().media().isEmpty()
+                            && outcome.status() != ProcessStatus.CANCELLED) {
                         JOptionPane.showMessageDialog(ValidationPanel.this,
                                 "No configured source returned an image for " + label + ".");
-                    } else {
-                        reviewProposal(proposal);
+                    }
+                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
+                        JOptionPane.showMessageDialog(ValidationPanel.this,
+                                "Image lookup failed: " + outcome.error().getMessage());
                     }
                 }),
                 ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
                         "Image lookup failed: " + ex.getMessage()));
     }
 
-    private quiz.curation.ManualCuration curationStore() {
-        return domain instanceof quiz.curation.Curatable c ? c.curation() : null;
+    /** Rich input remains rendered by Swing, but the pause/request belongs to Find Data. */
+    private <T> T handleProcessInput(
+            ProcessInputRequest<T> request, CancellationToken cancellation)
+            throws Exception {
+        if (!(request instanceof EnrichmentReviewRequest review)) {
+            return ProcessInputHandler.unsupported().request(request, cancellation);
+        }
+        java.util.concurrent.atomic.AtomicReference<quiz.enrichment.EnrichmentDecision> answer =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        Runnable show = () -> EnrichmentReviewPanel.showDialog(
+                this, review.title(), review.proposal(), answer::set);
+        if (SwingUtilities.isEventDispatchThread()) show.run();
+        else SwingUtilities.invokeAndWait(show);
+        cancellation.throwIfCancelled();
+        return request.responseType().cast(answer.get());
     }
 
-    private void reviewProposal(EnrichmentProposal proposal) {
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation == null) {
-            return;
-        }
-        EnrichmentReviewPanel.showDialog(
-                this,
-                "Review enrichment — " + proposal.subject().displayName(),
-                proposal,
-                decision -> applyDecision(curation, decision));
+    private quiz.curation.ManualCuration curationStore() {
+        return domain instanceof quiz.curation.Curatable c ? c.curation() : null;
     }
 
     private void applyDecision(

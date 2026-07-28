@@ -50,6 +50,12 @@ public class WorkflowRecorder {
         return root;
     }
 
+    /** Supplies immutable root-plan metadata before execution starts. */
+    public void describeRoot(String description, Map<String, String> parameters) {
+        root.description(description);
+        root.parameters(LogNode.formatParameters(parameters));
+    }
+
     public void setListener(LogListener listener) {
         this.listener = listener;
     }
@@ -97,8 +103,20 @@ public class WorkflowRecorder {
             Map<String, String> parameters,
             LogStepBody<T> body) throws Exception {
 
-        LogNode node =
-                beginQuery(title, queryType, skeleton, parameters);
+        return stepUnder(null, title, queryType, skeleton, parameters, body);
+    }
+
+    /** Like {@link #step}, but the first query step belongs to an explicit Process node. */
+    public <T> T stepUnder(
+            LogNode processParent,
+            String title,
+            String queryType,
+            String skeleton,
+            Map<String, String> parameters,
+            LogStepBody<T> body) throws Exception {
+
+        LogNode node = beginQueryUnder(
+                processParent, title, queryType, skeleton, parameters);
 
         LogStep step = new LogStep(this, node);
 
@@ -110,6 +128,25 @@ public class WorkflowRecorder {
             complete(node, statusFor(e), null, e);
             throw e;
         }
+    }
+
+    private LogNode beginQueryUnder(
+            LogNode processParent,
+            String title,
+            String queryType,
+            String skeleton,
+            Map<String, String> parameters) {
+        LogNode node = new LogNode(LogKind.QUERY, title)
+                .queryType(queryType)
+                .skeleton(skeleton)
+                .parameters(LogNode.formatParameters(parameters));
+        LogNode stacked = stack.peek();
+        LogNode parent = stacked == null ? processParent : stacked;
+        (parent == null ? root : parent).addStep(node);
+        node.start();
+        stack.push(node);
+        fire(false);
+        return node;
     }
 
     public void append(LogNode node, String text) {
@@ -130,6 +167,60 @@ public class WorkflowRecorder {
         LogNode target = stack.peek();
         (target == null ? root : target).appendMessage(text);
         fire(false);
+    }
+
+    /** Records a message against an explicit process node (safe for sibling subprocesses). */
+    public void message(LogNode target, String text) {
+        if (target == null || text == null || text.isBlank()) {
+            return;
+        }
+        target.appendMessage(text);
+        fire(false);
+    }
+
+    /** Uses the current query step when one is open, otherwise the owning Process node. */
+    public void messageUnder(LogNode processParent, String text) {
+        LogNode current = stack.peek();
+        message(current == null ? processParent : current, text);
+    }
+
+    /** Opens a process/subprocess node without touching the legacy query-step stack. */
+    public LogNode beginProcess(
+            LogNode parent,
+            String title,
+            String description,
+            Map<String, String> parameters) {
+        LogNode child = new LogNode(LogKind.WORKFLOW, title)
+                .description(description)
+                .parameters(LogNode.formatParameters(parameters));
+        child.start();
+        (parent == null ? root : parent).addStep(child);
+        fire(true);
+        return child;
+    }
+
+    public void completeProcess(
+            LogNode node, LogStatus status, String summary, Throwable error) {
+        if (node == null) return;
+        node.complete(status, summary, describeError(error));
+        fire(false);
+    }
+
+    /** Terminally closes all descendants, including entries abandoned by third-party code. */
+    public void finishProcess(
+            LogStatus status, String summary, Throwable error) {
+        finishTree(root, status, describeError(error));
+        root.complete(status, summary, describeError(error));
+        fire(false);
+    }
+
+    private void finishTree(LogNode parent, LogStatus status, String error) {
+        for (LogNode child : parent.steps()) {
+            finishTree(child, status, error);
+            if (!child.status().isTerminal()) {
+                child.complete(status, null, error);
+            }
+        }
     }
 
     public void complete(
