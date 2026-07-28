@@ -43,12 +43,14 @@ public final class DomainCatalog {
     /**
      * Opens a generated dataset: when the model.json is readable, compile it +
      * the pool into a typed {@link ProductDomain} (model-authoritative schema);
-     * otherwise fall back to {@link SnapshotDomain}'s instance-derived schema
-     * (saved/derived domains have no model).
+     * otherwise fall back to the snapshot's persisted field graph. Pre-v3 snapshots
+     * derive that graph once as a compatibility fallback.
      */
     private static quiz.transform.ui.DomainModel open(File snap, File model)
             throws Exception {
-        var pool = new WikidataDynamicObjectJsonStore().loadAll(snap);
+        var loaded = new WikidataDynamicObjectJsonStore()
+                .loadAllWithFieldGraph(snap);
+        var pool = loaded.objects();
         // Overlay curated / auto-fixed values onto the freshly loaded base data,
         // before compiling — so the sidecar survives regeneration. See quiz.curation.
         // Manual values override; generated fills (e.g. <name>.autofix.json from a
@@ -61,13 +63,16 @@ public final class DomainCatalog {
         // Republic of") on the same overlay basis — re-applied every load, no snapshot edit.
         quiz.curation.Merges.apply(pool, curation.merges());
 
-        quiz.transform.ui.DomainModel base = compile(model, pool);
+        quiz.transform.ui.DomainModel base =
+                compile(model, pool, loaded.fieldGraph());
         // Carry the curation store so the workbench can offer a "Curate…" action.
         return new CuratableDomain(base, curation);
     }
 
     private static quiz.transform.ui.DomainModel compile(
-            File model, java.util.List<wikidata.explore.extract.WikidataDynamicObject> pool) {
+            File model,
+            java.util.List<wikidata.explore.extract.WikidataDynamicObject> pool,
+            wikidata.explore.extract.SnapshotFieldGraph fieldGraph) {
         if (model != null && model.isFile()) {
             try {
                 var project = new wikidata.explore.model.GeneratedProjectModelStore()
@@ -77,6 +82,6 @@ public final class DomainCatalog {
                 // Fall through to the instance-derived schema.
             }
         }
-        return new SnapshotDomain(pool);
+        return new SnapshotDomain(pool, fieldGraph);
     }
 }

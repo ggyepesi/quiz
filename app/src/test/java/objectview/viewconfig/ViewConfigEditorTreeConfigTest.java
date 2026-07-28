@@ -3,6 +3,7 @@ package objectview.viewconfig;
 import org.junit.jupiter.api.Test;
 import quiz.transform.DynamicQuizable;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -149,5 +150,39 @@ class ViewConfigEditorTreeConfigTest {
         // not a stale flat table.
         assertNotNull(editor.getConfig().getFieldConfig("category"),
                 "the checked reference must serialize after the row-source switch");
+    }
+
+    @Test void distinctDynamicTypesRecursePastOneNestedLevel() {
+        DynamicQuizable motivation = new DynamicQuizable("M1", "Motivation");
+        motivation.type("Motivation");
+        motivation.put("action", "for discovering...");
+
+        DynamicQuizable laureate = new DynamicQuizable("L1", "Laureate");
+        laureate.type("Laureate");
+        laureate.put("portrait", "portrait.jpg");
+
+        DynamicQuizable wrapper =
+                new DynamicQuizable("W1", "Laureates with motivation");
+        wrapper.type("LaureatesWithMotivation");
+        wrapper.put("laureates", List.of(laureate));
+        wrapper.put("motivation", motivation);
+
+        DynamicQuizable prize = new DynamicQuizable("P1", "Nobel Prize");
+        prize.type("NobelPrize");
+        prize.put("laureatesWithMotivation", List.of(wrapper));
+
+        ViewConfigEditor editor = new ViewConfigEditor(topConfig(), prize);
+
+        String motivationPath =
+                "laureatesWithMotivation.motivation.action";
+        editor.setSelectedPath(motivationPath);
+        assertEquals(motivationPath, editor.selectedPath(),
+                "Motivation fields must be discovered recursively");
+
+        String laureatePath =
+                "laureatesWithMotivation.laureates.portrait";
+        editor.setSelectedPath(laureatePath);
+        assertEquals(laureatePath, editor.selectedPath(),
+                "Laureate fields must be discovered recursively");
     }
 }

@@ -28,15 +28,8 @@ public final class DomainSaver implements DomainWriter {
         File file = new File(aux.Constants.wikidataDataDirectory
                 + "transform/" + key + ".snapshot.json");
         WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
-        store.save(pool, file);
-
-        Set<String> types = new LinkedHashSet<>();
-        for (WikidataDynamicObject o : store.loadAll(file)) {
-            if (o.typeName() != null && !o.typeName().isBlank()
-                    && !"WikidataDynamicObject".equals(o.typeName())) {
-                types.add(o.typeName());
-            }
-        }
+        var fieldGraph = store.saveWithFieldGraph(pool, file);
+        Set<String> types = new LinkedHashSet<>(fieldGraph.memberTypes());
 
         DatasetRegistry.Dataset d = new DatasetRegistry.Dataset();
         d.name(name);

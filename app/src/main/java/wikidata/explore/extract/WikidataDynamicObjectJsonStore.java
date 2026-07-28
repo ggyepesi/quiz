@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public class WikidataDynamicObjectJsonStore {
 
-    private static final int FORMAT_VERSION = 2;
+    private static final int FORMAT_VERSION = 3;
 
     private final ObjectMapper mapper;
 
@@ -60,6 +60,13 @@ public class WikidataDynamicObjectJsonStore {
 
     public void save(List<WikidataDynamicObject> objects, File file)
             throws IOException {
+        saveWithFieldGraph(objects, file);
+    }
+
+    /** Saves the snapshot and returns the graph accumulated by the same walk. */
+    public SnapshotFieldGraph saveWithFieldGraph(
+            List<WikidataDynamicObject> objects, File file)
+            throws IOException {
 
         if (objects == null) objects = List.of();
 
@@ -75,14 +82,16 @@ public class WikidataDynamicObjectJsonStore {
         // copy reached first would overwrite the carrier, dropping e.g. its `type`.
         LinkedHashMap<String, List<WikidataDynamicObject>> byQid =
                 new LinkedHashMap<>();
+        SnapshotFieldGraph.Builder fieldGraph = SnapshotFieldGraph.builder();
         java.util.Set<WikidataDynamicObject> visited =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         for (WikidataDynamicObject o : objects) {
-            collect(o, byQid, visited);
+            collect(o, byQid, visited, fieldGraph);
         }
 
         FlatSnapshot snapshot = new FlatSnapshot();
         snapshot.version = FORMAT_VERSION;
+        snapshot.fieldGraph = fieldGraph.build();
         for (WikidataDynamicObject o : objects) {
             String k = keyOf(o);
             // Roots are MEMBERS — entities stamped with a modeled class. An unstamped
@@ -97,13 +106,16 @@ public class WikidataDynamicObjectJsonStore {
         }
 
         mapper.writeValue(file, snapshot);
+        return snapshot.fieldGraph;
     }
 
     private void collect(
             WikidataDynamicObject o,
             Map<String, List<WikidataDynamicObject>> byQid,
-            java.util.Set<WikidataDynamicObject> visited) {
+            java.util.Set<WikidataDynamicObject> visited,
+            SnapshotFieldGraph.Builder fieldGraph) {
         if (o == null || !visited.add(o)) return;
+        fieldGraph.observe(o);
         String key = keyOf(o);
         // A value object is inlined by encode(), NOT pooled — but still recurse its
         // fields so nested ENTITIES (e.g. a Laureate under an inlined wrapper) are pooled.
@@ -111,17 +123,18 @@ public class WikidataDynamicObjectJsonStore {
             byQid.computeIfAbsent(key, k -> new ArrayList<>()).add(o);
         }
         for (Object v : o.dynamicFields().values()) {
-            collectValue(v, byQid, visited);
+            collectValue(v, byQid, visited, fieldGraph);
         }
     }
 
     private void collectValue(Object v,
             Map<String, List<WikidataDynamicObject>> byQid,
-            java.util.Set<WikidataDynamicObject> visited) {
+            java.util.Set<WikidataDynamicObject> visited,
+            SnapshotFieldGraph.Builder fieldGraph) {
         if (v instanceof WikidataDynamicObject w) {
-            collect(w, byQid, visited);
+            collect(w, byQid, visited, fieldGraph);
         } else if (v instanceof java.util.Collection<?> col) {
-            for (Object e : col) collectValue(e, byQid, visited);
+            for (Object e : col) collectValue(e, byQid, visited, fieldGraph);
         }
     }
 
@@ -233,20 +246,35 @@ public class WikidataDynamicObjectJsonStore {
     /** Every entity in the snapshot (the whole pool — roots AND referenced
      *  children, e.g. constellations and their stars), re-linked. */
     public List<WikidataDynamicObject> loadAll(File file) throws IOException {
+        return loadAllWithFieldGraph(file).objects();
+    }
+
+    /**
+     * Loads instances and their persisted schema from one parse of the snapshot.
+     * Pre-v3 snapshots derive the graph once as a compatibility fallback.
+     */
+    public LoadedSnapshot loadAllWithFieldGraph(File file) throws IOException {
         JsonNode tree = mapper.readTree(file);
         if (tree == null) {
-            return new ArrayList<>();
+            return new LoadedSnapshot(new ArrayList<>(), new SnapshotFieldGraph());
         }
         if (tree.has("entities")) {
             FlatSnapshot snapshot = mapper.treeToValue(tree, FlatSnapshot.class);
-            return snapshot == null
+            List<WikidataDynamicObject> objects = snapshot == null
                     ? new ArrayList<>()
                     : new ArrayList<>(buildEntities(snapshot).values());
+            SnapshotFieldGraph graph = snapshot == null
+                    ? null : snapshot.fieldGraph;
+            if (graph == null || graph.version != SnapshotFieldGraph.FORMAT_VERSION) {
+                graph = SnapshotFieldGraph.derive(objects);
+            }
+            return new LoadedSnapshot(objects, graph);
         }
         Snapshot legacy = mapper.treeToValue(tree, Snapshot.class);
-        return legacy == null || legacy.objects == null
+        List<WikidataDynamicObject> objects = legacy == null || legacy.objects == null
                 ? new ArrayList<>()
                 : new ArrayList<>(legacy.objects);
+        return new LoadedSnapshot(objects, SnapshotFieldGraph.derive(objects));
     }
 
     private Map<String, WikidataDynamicObject> buildEntities(FlatSnapshot snapshot) {
@@ -393,7 +421,12 @@ public class WikidataDynamicObjectJsonStore {
         public int version = FORMAT_VERSION;
         public List<String> roots = new ArrayList<>();
         public List<Entity> entities = new ArrayList<>();
+        public SnapshotFieldGraph fieldGraph;
     }
+
+    public record LoadedSnapshot(
+            List<WikidataDynamicObject> objects,
+            SnapshotFieldGraph fieldGraph) {}
 
     /**
      * Legacy format: objects with their references inlined recursively. Kept

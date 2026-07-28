@@ -36,7 +36,7 @@ class SnapshotDomainUnionTest {
     }
 
     @Test
-    void representativeSampleCarriesTheUnionFields() {
+    void representativeShapeSampleCarriesTheUnionFields() {
         WikidataDynamicObject first = wdo("Laureate", "A");
         WikidataDynamicObject second = wdo("Laureate", "B", "portrait", "p.jpg");
         SnapshotDomain domain = new SnapshotDomain(new ArrayList<>(List.of(first, second)));
@@ -44,7 +44,7 @@ class SnapshotDomainUnionTest {
         WikidataDynamicObject sample =
                 (WikidataDynamicObject) domain.representativeSample("Laureate");
 
-        assertEquals("p.jpg", sample.get("portrait"));
+        assertTrue(sample.dynamicFieldValues().containsKey("portrait"));
     }
 
     @Test
@@ -61,7 +61,7 @@ class SnapshotDomainUnionTest {
         WikidataDynamicObject sample =
                 (WikidataDynamicObject) domain.representativeSample("Laureate");
 
-        assertEquals("p.jpg", sample.get("portrait"));
+        assertTrue(sample.dynamicFieldValues().containsKey("portrait"));
     }
 
     @Test
@@ -97,6 +97,39 @@ class SnapshotDomainUnionTest {
         WikidataDynamicObject sample =
                 (WikidataDynamicObject) domain.representativeSample("Laureate");
 
-        assertEquals(List.of("physics"), sample.get("topics"));
+        assertTrue(sample.get("topics") instanceof List<?> topics
+                && topics.size() == 1,
+                "the graph sample must preserve populated collection shape");
     }
+
+    @Test
+    void nobelWrapperExposesMotivationAndLaureateChildren() {
+        WikidataDynamicObject laureate = wdo("Laureate", "Louis Renault");
+        laureate.put("portrait", "portrait.jpg");
+
+        WikidataDynamicObject motivation = wdo("Motivation", "Motivation");
+        motivation.valueObject(true);
+        motivation.put("action", "promotion");
+        motivation.put("topics", List.of("international law"));
+
+        WikidataDynamicObject entry =
+                wdo("LaureatesWithMotivation", "Louis Renault");
+        entry.valueObject(true);
+        entry.put("laureates", List.of(laureate));
+        entry.put("motivation", motivation);
+
+        WikidataDynamicObject prize = wdo("NobelPrize", "1907 PEACE");
+        prize.put("laureatesWithMotivation", List.of(entry));
+        SnapshotDomain domain =
+                new SnapshotDomain(new ArrayList<>(List.of(prize, laureate)));
+
+        List<String> fields = domain.fields("NobelPrize").stream()
+                .map(DomainField::field).toList();
+
+        assertTrue(fields.contains(
+                "laureatesWithMotivation.motivation.action"), fields.toString());
+        assertTrue(fields.contains(
+                "laureatesWithMotivation.laureates.portrait"), fields.toString());
+    }
+
 }
