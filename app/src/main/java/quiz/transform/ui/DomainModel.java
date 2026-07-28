@@ -43,6 +43,18 @@ public interface DomainModel {
         return null;
     }
 
+    /** A representative instance for enumerating {@code type}'s fields. The default is
+     *  the first matching instance; a snapshot returns a UNION sample so every field
+     *  shows regardless of which single instance is picked. */
+    default Quizable representativeSample(String type) {
+        for (Quizable q : instances()) {
+            if (q != null && type != null && type.equals(q.typeName())) {
+                return q;
+            }
+        }
+        return null;
+    }
+
     /** The instances to run the view over. */
     Collection<? extends Quizable> instances();
 

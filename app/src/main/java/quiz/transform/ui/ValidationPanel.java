@@ -168,8 +168,10 @@ public final class ValidationPanel extends JPanel {
 
         // Enumerate via the SHARED config source (same fields / order / types as the
         // search/sort/view editors), rendered as an inline collapsible tree. Rebuilding
-        // clears the selection, which fires onFieldSelected and resets the drill.
-        Quizable sample = instances.isEmpty() ? null : instances.get(0);
+        // clears the selection, which fires onFieldSelected and resets the drill. The
+        // UNION sample shows every field of the type, not just those the first instance
+        // happens to carry (a laureate with no portrait would otherwise hide the field).
+        Quizable sample = type == null ? null : domain.representativeSample(type);
         coverage.setConfigRows(
                 sample == null ? new ViewConfig() : ViewConfig.all(sampleClass(sample)),
                 sample,

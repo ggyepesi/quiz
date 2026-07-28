@@ -10,7 +10,11 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** A {@link DomainModel} over a loaded Wikidata snapshot pool (the wikidata bridge). */
 public final class SnapshotDomain implements DomainModel {
@@ -47,17 +51,11 @@ public final class SnapshotDomain implements DomainModel {
     }
 
     @Override public List<DomainField> fields(String type) {
-        // Enumerate from a sample instance so NESTED paths (nominee.name,
-        // category.edition) appear for the dynamic snapshot too — same nested/typed
-        // field model as the reflection domains. Shape is read from the sample value.
-        WikidataDynamicObject sample = null;
-        for (WikidataDynamicObject o : pool) {
-            if (o != null && type.equals(o.typeName())) {
-                sample = o;
-                break;
-            }
-        }
-        if (sample == null) {
+        // Enumerate from a UNION sample so NESTED paths (nominee.name, category.edition)
+        // appear AND no field is missed because an arbitrary first instance lacked it
+        // (e.g. a laureate with no portrait). Shape is read from the union sample.
+        WikidataDynamicObject sample = unionSample(type);
+        if (sample == null || sample.dynamicFieldValues().isEmpty()) {
             return List.of();
         }
         java.util.Set<String> structural = structuralFields(type);
@@ -86,6 +84,68 @@ public final class SnapshotDomain implements DomainModel {
             if (o instanceof Quizable) return true;
         }
         return false;
+    }
+
+    private final Map<String, WikidataDynamicObject> unionSamples = new HashMap<>();
+
+    /** A UNION sample stands in for the type when enumerating fields, so every field
+     *  shows regardless of which single instance is inspected. */
+    @Override public Quizable representativeSample(String type) {
+        return unionSample(type);
+    }
+
+    /** A synthetic instance whose fields are the UNION across every instance of {@code
+     *  type} — the first non-null value per field (references replaced by a union sample
+     *  of their own type, so nested enumeration is complete too). Not pooled; used only
+     *  to enumerate the complete field set. Cached. */
+    private WikidataDynamicObject unionSample(String type) {
+        return unionSamples.computeIfAbsent(type, t -> buildUnion(t, new HashSet<>()));
+    }
+
+    private WikidataDynamicObject buildUnion(String type, Set<String> visiting) {
+        WikidataDynamicObject merged = new WikidataDynamicObject(type, type);
+        merged.type(type);
+        if (!visiting.add(type)) {
+            return merged;   // cycle guard: a self-referential type stops here
+        }
+        for (String field : schema.fields(type)) {
+            Object value = firstNonNull(type, field);
+            if (value != null) {
+                merged.put(field, representative(value, visiting));
+            }
+        }
+        visiting.remove(type);
+        return merged;
+    }
+
+    private Object firstNonNull(String type, String field) {
+        for (WikidataDynamicObject o : pool) {
+            if (o != null && type.equals(o.typeName())) {
+                Object v = o.get(field);
+                if (v != null) {
+                    return v;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Replace a reference value with a union sample of its type so nested fields are
+     *  complete too; leave scalars and non-reference collections as the representative. */
+    private Object representative(Object value, Set<String> visiting) {
+        if (value instanceof WikidataDynamicObject ref && ref.typeName() != null) {
+            return buildUnion(ref.typeName(), visiting);
+        }
+        if (value instanceof Collection<?> c) {
+            for (Object item : c) {
+                if (item instanceof WikidataDynamicObject ref && ref.typeName() != null) {
+                    List<Object> out = new ArrayList<>();
+                    out.add(buildUnion(ref.typeName(), visiting));
+                    return out;
+                }
+            }
+        }
+        return value;
     }
 
     @Override public Collection<? extends Quizable> instances() { return pool; }

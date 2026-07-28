@@ -70,7 +70,15 @@ public final class TransformController {
         return n;
     }
 
+    /** The representative for enumerating {@code type}'s fields — a UNION sample for a
+     *  snapshot, so the field pickers (tree / search / sort / group) show EVERY field of
+     *  the type, not just those the first instance carries. All callers use it for field
+     *  metadata, not to display data. */
     public Quizable sampleOf(String type) {
+        Quizable union = domain.representativeSample(type);
+        if (union != null) {
+            return union;
+        }
         for (Quizable q : domain.instances()) {
             if (q != null && type.equals(q.typeName())) {
                 return q;

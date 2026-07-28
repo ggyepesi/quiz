@@ -74,6 +74,14 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return derived.containsKey(type) ? null : base.fieldTypes(type);
     }
 
+    @Override public Quizable representativeSample(String type) {
+        // Base types get the base's (union) sample; a PROJECT-derived type falls back to
+        // the interface default over the combined instances.
+        return derived.containsKey(type)
+                ? DomainModel.super.representativeSample(type)
+                : base.representativeSample(type);
+    }
+
     @Override public Collection<? extends Quizable> instances() {
         List<Quizable> all = new ArrayList<>(base.instances());
         for (DerivedClass d : derived.values()) {
