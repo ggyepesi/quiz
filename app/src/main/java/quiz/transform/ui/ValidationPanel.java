@@ -342,6 +342,12 @@ public final class ValidationPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Select a member card first.");
             return;
         }
+        quiz.curation.ManualCuration curation = curationStore();
+        if (EnrichmentSources.needsSelection(m, type, curation)) {
+            SourceManagerDialog.show(this, curation, type, m.getIdentifier(),
+                    m.getDisplayName(), queryRunner, this::updateSourcesButton);
+            return;
+        }
         String qid = m.getIdentifier();
         String label = m.getDisplayName();
         boolean hasQid = qid != null && qid.matches("Q\\d+");
@@ -373,7 +379,7 @@ public final class ValidationPanel extends JPanel {
                     }
                 }),
                 ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
-                        "DBpedia image lookup failed: " + ex.getMessage()));
+                        "Image lookup failed: " + ex.getMessage()));
     }
 
     private quiz.curation.ManualCuration curationStore() {

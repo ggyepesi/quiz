@@ -43,6 +43,16 @@ public final class EnrichmentSources {
         return new ArrayList<>(result.values());
     }
 
+    /**
+     * Whether enrichment should pause for explicit identity/source approval instead
+     * of silently falling through to a name-based provider such as DBpedia.
+     */
+    public static boolean needsSelection(
+            Quizable member, String type, ManualCuration curation) {
+        return member != null && curation != null
+                && collect(member, type, curation).isEmpty();
+    }
+
     private static void add(Map<String, EnrichmentProposal.SourceRef> result,
                             String kind, String sourceId, String url) {
         EnrichmentProposal.SourceRef source =
