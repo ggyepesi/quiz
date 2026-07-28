@@ -326,9 +326,13 @@ public final class ValidationPanel extends JPanel {
         }
         quiz.curation.ManualCuration curation = curationStore();
         if (EnrichmentSources.needsSelection(m, type, curation)) {
+            // Resolve the source first (this dialog is modal), then CONTINUE straight into
+            // discovery if one was added — no need to press Find image a second time.
             SourceManagerDialog.show(this, curation, type, m.getIdentifier(),
                     m.getDisplayName(), queryRunner, this::updateSourcesButton);
-            return;
+            if (curation == null || EnrichmentSources.needsSelection(m, type, curation)) {
+                return;   // dialog closed without adding a source
+            }
         }
         String label = m.getDisplayName();
         List<EnrichmentProposal.SourceRef> sources =

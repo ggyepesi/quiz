@@ -175,10 +175,20 @@ public final class WikimediaEntityLookup {
         return uri -> {
             HttpRequest request = HttpRequest.newBuilder(uri)
                     .timeout(Duration.ofSeconds(30))
-                    .header("User-Agent", "QuizProject/1.0")
+                    // Wikimedia throttles/blocks generic agents — identify with contact.
+                    .header("User-Agent", "QuizProject/1.0 (ggyepesi@gmail.com)")
                     .header("Accept", "application/json")
                     .GET().build();
-            return client.send(request, HttpResponse.BodyHandlers.ofString()).body();
+            HttpResponse<String> response =
+                    client.send(request, HttpResponse.BodyHandlers.ofString());
+            // Fail LOUDLY on an error — otherwise a 429/HTML body parses to an empty
+            // entity and silently reports "no media" (the flag looks missing though P41
+            // is present). The process then marks this provider failed, not empty.
+            if (response.statusCode() >= 400) {
+                throw new java.io.IOException("HTTP " + response.statusCode()
+                        + " from " + uri);
+            }
+            return response.body();
         };
     }
 
