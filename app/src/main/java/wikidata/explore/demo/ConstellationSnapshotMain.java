@@ -6,11 +6,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -31,7 +27,6 @@ import java.util.Map;
 public final class ConstellationSnapshotMain {
 
     private static final String ENDPOINT = "https://query.wikidata.org/sparql";
-    private static final String UA = "QuizProject/1.0 (ggyepesi@gmail.com)";
 
     private static final String QUERY = """
             SELECT ?c ?cLabel ?abbr ?area ?fam ?famLabel ?after ?afterLabel ?img WHERE {
@@ -78,17 +73,11 @@ public final class ConstellationSnapshotMain {
     private static JsonNode runQuery() throws Exception {
         String url = ENDPOINT + "?format=json&query="
                 + URLEncoder.encode(QUERY, StandardCharsets.UTF_8);
-        HttpResponse<String> resp = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(URI.create(url))
-                        .header("User-Agent", UA)
-                        .header("Accept", "application/sparql-results+json")
-                        .build(),
-                HttpResponse.BodyHandlers.ofString());
-        if (resp.statusCode() != 200) {
-            throw new IllegalStateException("SPARQL " + resp.statusCode() + ": "
-                    + resp.body().substring(0, Math.min(300, resp.body().length())));
+        // One polite HTTP path (UrlOpener: contact UA, 429/5xx retry, redirects).
+        try (java.io.InputStream in = objectview.utils.UrlOpener.open(url)) {
+            String body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return new ObjectMapper().readTree(body).path("results").path("bindings");
         }
-        return new ObjectMapper().readTree(resp.body()).path("results").path("bindings");
     }
 
     private static void putScalar(WikidataDynamicObject o, String field, String value) {

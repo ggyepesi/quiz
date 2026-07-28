@@ -4,11 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import wikidata.explore.extract.WikidataDynamicObject;
 
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +15,6 @@ public class OscarWikidataReader {
     private static final String ENDPOINT = "https://query.wikidata.org/sparql";
     private static final int PAGE_SIZE = 50;
     private static final int REQUEST_SLEEP_MS = 1000;
-
-    private final HttpClient client = HttpClient.newHttpClient();
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -116,42 +110,16 @@ public class OscarWikidataReader {
     }
 
     private String executeSparql(String sparql) throws Exception {
-        int maxAttempts = 4;
+        String url = ENDPOINT
+                + "?format=json&query="
+                + URLEncoder.encode(sparql, StandardCharsets.UTF_8);
 
-        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            String url = ENDPOINT
-                    + "?format=json&query="
-                    + URLEncoder.encode(sparql, StandardCharsets.UTF_8);
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("Accept", "application/sparql-results+json")
-                    .header("User-Agent", "QuizOscarReader/1.0 (contact@example.com)")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response =
-                    client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            int status = response.statusCode();
-
-            if (status == 200) {
-                return response.body();
-            }
-
-            if (status == 429 || status == 502 || status == 503 || status == 504) {
-                System.out.println("Wikidata temporary HTTP " + status
-                        + ", attempt " + attempt + "/" + maxAttempts);
-
-                Thread.sleep(2000L * attempt);
-                continue;
-            }
-
-            throw new RuntimeException(
-                    "Wikidata HTTP " + status + "\n" + response.body());
+        // UrlOpener is the one polite HTTP path: it retries 429 and transient 5xx,
+        // self-throttles and sends a contact User-Agent, so this reader no longer
+        // carries its own retry loop or HttpClient.
+        try (java.io.InputStream in = objectview.utils.UrlOpener.open(url)) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
-
-        throw new RuntimeException("Wikidata failed after retries");
     }
 
     private List<OscarNomination> parseNominations(String json) throws Exception {

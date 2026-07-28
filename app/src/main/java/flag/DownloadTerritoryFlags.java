@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URL;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -43,7 +42,7 @@ public class DownloadTerritoryFlags {
      */
     // | [[File:Coat of arms of the Commonwealth of Puerto Rico.svg|120x120px]]<br/>[[Coat of arms of Puerto Rico|Details]]
     public static void readFlagsOfDependentTerritories(String url, Pattern flagPattern, Pattern groupPattern) throws Exception {
-        InputStream stream = new URL(url).openStream();
+        InputStream stream = objectview.utils.UrlOpener.open(url);
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
         String line;
         int n = 0;

@@ -5,11 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.*;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.*;
 
 /**
@@ -141,32 +138,14 @@ public class BacklinksIncomingPropertyDemo {
                         + "&bllimit=" + Math.max(1, Math.min(limit, 500))
                         + "&format=json";
 
-        HttpClient http =
-                HttpClient.newBuilder()
-                          .connectTimeout(Duration.ofSeconds(20))
-                          .build();
-
-        HttpRequest req =
-                HttpRequest.newBuilder()
-                           .uri(URI.create(url))
-                           .header("User-Agent", USER_AGENT)
-                           .timeout(Duration.ofSeconds(30))
-                           .GET()
-                           .build();
-
-        HttpResponse<String> res =
-                http.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (res.statusCode() != 200) {
-            throw new RuntimeException(
-                    "MediaWiki API HTTP "
-                            + res.statusCode()
-                            + "\n"
-                            + res.body());
+        // One polite HTTP path (UrlOpener: contact UA, 429/5xx retry, throttle, redirects).
+        String body;
+        try (java.io.InputStream in = objectview.utils.UrlOpener.open(url)) {
+            body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
 
         JsonNode backlinks =
-                MAPPER.readTree(res.body())
+                MAPPER.readTree(body)
                       .path("query")
                       .path("backlinks");
 

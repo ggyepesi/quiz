@@ -279,7 +279,7 @@ public class States implements DomainViews {
     public static void downloadSvg(String url, String filename) throws Exception {
         filename = Constants.getSvgDirectory() + filename + ".svg";
         System.out.println("Downloading " + url + " to " + filename);
-        InputStream in = new URI(url).toURL().openStream();
+        InputStream in = objectview.utils.UrlOpener.open(new URI(url).toURL());
         byte[] bytes = new byte[4096];
         int n;
         File f = new File(filename);

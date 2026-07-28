@@ -8,8 +8,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,18 +39,16 @@ public class SvgDimensionFetcher {
 
         InputStream inputStream = null;
         try {
-            // Create a URL object
-            URL url = new URL(svgUrl);
-
-            // Open a connection to the URL
-            URLConnection connection = url.openConnection();
-            // Set a user-agent to avoid 403 Forbidden errors on some servers
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-            // Connect to the URL
-            connection.connect();
-
-            // Get the input stream to read the SVG content
-            inputStream = connection.getInputStream();
+            // One polite HTTP path: UrlOpener supplies the contact User-Agent, 429/5xx
+            // retry and redirect following (and falls back to openStream for file: URLs,
+            // which the local-SVG test relies on).
+            try {
+                inputStream = objectview.utils.UrlOpener.open(svgUrl);
+            } catch (IOException | RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IOException("Failed to fetch SVG: " + svgUrl, e);
+            }
 
             // Create a DocumentBuilderFactory
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();

@@ -110,7 +110,7 @@ public class ImageAndDescription implements Serializable, MediaValue {
             ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
             image = ImageIO.read(in);
         } else {
-            image = ImageIO.read(imageUrl.openStream());
+            image = ImageIO.read(objectview.utils.UrlOpener.open(imageUrl));
         }
         return image;
     }

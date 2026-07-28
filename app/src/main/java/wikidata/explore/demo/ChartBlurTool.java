@@ -5,10 +5,6 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.util.List;
 
@@ -46,10 +42,6 @@ public final class ChartBlurTool {
         ChartTextBlurrer blurrer = new ChartTextBlurrer(
                 System.getProperty("tessdata.path", "/usr/local/share/tessdata"));
 
-        HttpClient http = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
-
         int total = 0;
         int blurred = 0;
         for (WikidataDynamicObject o : objects) {
@@ -60,7 +52,7 @@ public final class ChartBlurTool {
             String url = s.startsWith("http://") ? "https://" + s.substring(7) : s;
             total++;
 
-            byte[] raw = download(http, url);
+            byte[] raw = download(url);
             if (raw == null) {
                 System.out.println("  download failed: " + o.getName());
                 continue;
@@ -96,14 +88,10 @@ public final class ChartBlurTool {
                 + "mask the name, Save mask).");
     }
 
-    private static byte[] download(HttpClient http, String url) {
-        try {
-            HttpResponse<byte[]> r = http.send(
-                    HttpRequest.newBuilder(URI.create(url))
-                            .header("User-Agent", "QuizProject/1.0 (ggyepesi@gmail.com)")
-                            .build(),
-                    HttpResponse.BodyHandlers.ofByteArray());
-            return r.statusCode() == 200 ? r.body() : null;
+    private static byte[] download(String url) {
+        // One polite HTTP path (UrlOpener: contact UA, 429/5xx retry, cross-protocol redirects).
+        try (java.io.InputStream in = objectview.utils.UrlOpener.open(url)) {
+            return in.readAllBytes();
         } catch (Exception e) {
             return null;
         }
