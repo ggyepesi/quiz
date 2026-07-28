@@ -84,14 +84,23 @@ public final class ValidationPanel extends JPanel {
     private final Runnable onCurated;
 
     public ValidationPanel(DomainModel domain) {
-        this(domain, null, null);
+        this(domain, null, null, null);
     }
 
     public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner) {
-        this(domain, queryRunner, null);
+        this(domain, null, queryRunner, null);
     }
 
     public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner, Runnable onCurated) {
+        this(domain, null, queryRunner, onCurated);
+    }
+
+    /** Validate {@code instances} — the SHOWN view (filtered + grouped members of the
+     *  selected class); null falls back to the whole domain pool. The domain is still
+     *  used for schema, field union, and curation. */
+    public ValidationPanel(DomainModel domain,
+                           Collection<? extends Quizable> instances,
+                           SwingQueryRunner queryRunner, Runnable onCurated) {
         super(new BorderLayout(6, 6));
         this.domain = domain;
         this.onCurated = onCurated == null ? () -> { } : onCurated;
@@ -104,7 +113,8 @@ public final class ValidationPanel extends JPanel {
                         null)
                 : queryRunner;
 
-        for (Quizable q : domain.instances()) {
+        Collection<? extends Quizable> source = instances != null ? instances : domain.instances();
+        for (Quizable q : source) {
             if (q != null && q.typeName() != null) {
                 byType.computeIfAbsent(q.typeName(), k -> new ArrayList<>()).add(q);
             }

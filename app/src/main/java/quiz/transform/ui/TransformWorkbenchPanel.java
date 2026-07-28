@@ -117,8 +117,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 "Validate — consistency / coverage", Dialog.ModalityType.MODELESS);
         dialog.setLayout(new BorderLayout());
-        dialog.add(new ValidationPanel(controller.domain(), queries.runner(), this::render),
-                BorderLayout.CENTER);
+        // Validate the SHOWN view — the filtered + grouped members of the selected class —
+        // not the whole pool.
+        dialog.add(new ValidationPanel(controller.domain(), controller.viewMembers(),
+                queries.runner(), this::render), BorderLayout.CENTER);
         dialog.setSize(1080, 620);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);

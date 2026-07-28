@@ -368,6 +368,32 @@ public final class TransformController {
         return view.render(domain.instances());
     }
 
+    /** The instances currently SHOWN — the compiled view (filters + grouping) for the
+     *  selected type, flattened to distinct leaf members. What Validate should check,
+     *  rather than the whole pool. */
+    public List<Quizable> viewMembers() {
+        if (selectedType == null) {
+            return List.of();
+        }
+        java.util.LinkedHashSet<Quizable> out = new java.util.LinkedHashSet<>();
+        collectMembers(compileResult(selectedType, List.copyOf(pipeline)), out);
+        return new ArrayList<>(out);
+    }
+
+    private static void collectMembers(QuizableGroup group, java.util.Set<Quizable> out) {
+        if (group == null) {
+            return;
+        }
+        for (Quizable m : group.getMembers()) {
+            if (m != null) {
+                out.add(m);
+            }
+        }
+        for (QuizableGroup child : group.getChildren()) {
+            collectMembers(child, out);
+        }
+    }
+
     // --- save -----------------------------------------------------------------
 
     public boolean canSave() { return writer != null; }
