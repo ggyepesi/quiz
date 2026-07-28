@@ -77,6 +77,7 @@ public final class SourceManagerDialog extends JDialog {
         add(footer(), BorderLayout.SOUTH);
         loadLinks();
         clearForm();
+        prefillWikidataIdentity();
         setMinimumSize(new Dimension(760, 610));
         pack();
         setLocationRelativeTo(parent);
@@ -313,6 +314,24 @@ public final class SourceManagerDialog extends JDialog {
         canonicalName.setText(displayName);
         loadPrefix();
         validation.setText("Enter a source ID and exact record URL.");
+        validation.setForeground(new java.awt.Color(80, 80, 80));
+    }
+
+    /** A domain QID is already an exact Wikidata identity; make the approval a
+     *  one-click save while retaining "Find Wikidata QID…" for local/non-QID IDs. */
+    private void prefillWikidataIdentity() {
+        if (targetId == null || !targetId.matches("Q\\d+")
+                || links.stream().anyMatch(link ->
+                "Wikidata".equalsIgnoreCase(link.sourceKind()))) {
+            return;
+        }
+        kind.setSelectedItem("Wikidata");
+        sourceId.setText(targetId);
+        prefix.setText(prefixes.prefix("Wikidata"));
+        recordUrl.setText(SourcePrefixStore.build(prefix.getText(), targetId));
+        canonicalName.setText(displayName);
+        validation.setText(
+                "The object's Wikidata QID is pre-filled. Save source to approve it.");
         validation.setForeground(new java.awt.Color(80, 80, 80));
     }
 

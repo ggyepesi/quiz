@@ -9,6 +9,8 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EnrichmentSourcesTest {
 
@@ -31,5 +33,26 @@ class EnrichmentSourcesTest {
         assertEquals(1, sources.size());
         assertEquals("NobelPrize.org", sources.get(0).kind());
         assertEquals("314", sources.get(0).sourceId());
+    }
+
+    @Test
+    void requiresExplicitSelectionUntilTheTargetHasAnApprovedSource(
+            @TempDir Path dir) {
+        WikidataDynamicObject organization =
+                new WikidataDynamicObject("Q42970", "Amnesty International");
+        organization.type("Organization");
+        ManualCuration curation =
+                new ManualCuration(dir.resolve("organizations.curation.json").toFile());
+
+        assertTrue(EnrichmentSources.needsSelection(
+                organization, "Organization", curation));
+
+        curation.putIdentityLink(new IdentityLink(
+                "Organization", "Q42970", "Wikidata", "Q42970",
+                "https://www.wikidata.org/wiki/Q42970",
+                "Amnesty International", "manual"));
+
+        assertFalse(EnrichmentSources.needsSelection(
+                organization, "Organization", curation));
     }
 }

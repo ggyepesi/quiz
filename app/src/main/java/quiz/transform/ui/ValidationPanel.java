@@ -18,6 +18,7 @@ import quiz.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
 import quiz.enrichment.EnrichmentSources;
 import quiz.enrichment.SourcePageImageEnrichmentProvider;
+import quiz.enrichment.WikimediaImageEnrichmentProvider;
 import quiz.enrichment.ui.EnrichmentReviewPanel;
 import quiz.curation.ui.SourceManagerDialog;
 
@@ -366,6 +367,7 @@ public final class ValidationPanel extends JPanel {
                 new EnrichmentProposal.Subject(type, qid, label),
                 path, collection, EnrichmentSources.collect(m, type, curationStore()));
         CompositeEnrichmentProvider provider = new CompositeEnrichmentProvider(List.of(
+                new WikimediaImageEnrichmentProvider(),
                 new SourcePageImageEnrichmentProvider(),
                 new DBpediaImageEnrichmentProvider()));
         queryRunner.run(
