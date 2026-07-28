@@ -6,10 +6,6 @@ import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -168,27 +164,15 @@ public final class WikimediaEntityLookup {
     }
 
     static JsonFetcher defaultFetcher() {
-        HttpClient client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .connectTimeout(Duration.ofSeconds(20))
-                .build();
+        // Route through UrlOpener so we inherit its Wikimedia handling: RETRY on 429
+        // (Retry-After + backoff), a contact User-Agent, cross-protocol redirects and
+        // self-throttling. The raw client had none, so a throttle silently emptied the
+        // entity and the flag looked missing (though P41 was present). UrlOpener still
+        // throws on a persistent 4xx/5xx, so a real error surfaces.
         return uri -> {
-            HttpRequest request = HttpRequest.newBuilder(uri)
-                    .timeout(Duration.ofSeconds(30))
-                    // Wikimedia throttles/blocks generic agents — identify with contact.
-                    .header("User-Agent", "QuizProject/1.0 (ggyepesi@gmail.com)")
-                    .header("Accept", "application/json")
-                    .GET().build();
-            HttpResponse<String> response =
-                    client.send(request, HttpResponse.BodyHandlers.ofString());
-            // Fail LOUDLY on an error — otherwise a 429/HTML body parses to an empty
-            // entity and silently reports "no media" (the flag looks missing though P41
-            // is present). The process then marks this provider failed, not empty.
-            if (response.statusCode() >= 400) {
-                throw new java.io.IOException("HTTP " + response.statusCode()
-                        + " from " + uri);
+            try (java.io.InputStream in = objectview.utils.UrlOpener.open(uri.toURL())) {
+                return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
             }
-            return response.body();
         };
     }
 
