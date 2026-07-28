@@ -4,10 +4,6 @@ import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,18 +27,13 @@ public final class SourcePageImageEnrichmentProvider implements EnrichmentProvid
     private final PageFetcher fetcher;
 
     public SourcePageImageEnrichmentProvider() {
-        HttpClient client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .connectTimeout(Duration.ofSeconds(20))
-                .build();
-        this.fetcher = uri -> {
-            HttpRequest request = HttpRequest.newBuilder(uri)
-                    .timeout(Duration.ofSeconds(30))
-                    .header("User-Agent", "QuizProject/1.0")
-                    .header("Accept", "text/html,application/xhtml+xml")
-                    .GET().build();
-            return client.send(request, HttpResponse.BodyHandlers.ofString()).body();
-        };
+        // One polite HTTP path: UrlOpener (retry on 429, cross-protocol redirects,
+        // contact User-Agent, self-throttle) instead of a private client per provider.
+        this(uri -> {
+            try (java.io.InputStream in = objectview.utils.UrlOpener.open(uri.toURL())) {
+                return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            }
+        });
     }
 
     SourcePageImageEnrichmentProvider(PageFetcher fetcher) {
