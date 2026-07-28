@@ -1,0 +1,145 @@
+package quiz.enrichment;
+
+import org.junit.jupiter.api.Test;
+import wikidata.explore.query.core.QueryContext;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class WikimediaFieldEnrichmentProviderTest {
+
+    @Test
+    void fieldNameSelectsThePopulationProperty() {
+        assertEquals("P1082",
+                WikimediaFieldEnrichmentProvider.propertyFor("population").property());
+        // the dotted-path leaf is matched, not the whole path
+        assertEquals("P1082",
+                WikimediaFieldEnrichmentProvider.propertyFor("demographics.population").property());
+        assertNull(WikimediaFieldEnrichmentProvider.propertyFor("capital"));
+    }
+
+    @Test
+    void readsPopulationQuantityAsANumber() throws Exception {
+        String entity = """
+                {"entities": {"Q1039": {
+                  "claims": {"P1082": [{"rank": "normal",
+                    "mainsnak": {"datatype": "quantity",
+                      "datavalue": {"value": {"amount": "+59308690", "unit": "1"}}}}]}
+                }}}
+                """;
+        WikimediaFieldEnrichmentProvider provider =
+                new WikimediaFieldEnrichmentProvider(uri -> entity);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1039", "Tanzania"),
+                "population", false, List.of());
+
+        EnrichmentProposal result =
+                provider.discover(request).execute(new QueryContext(null, null));
+
+        assertEquals(1, result.fields().size());
+        EnrichmentProposal.FieldCandidate field = result.fields().get(0);
+        assertEquals("population", field.field());
+        assertEquals(59308690L, field.proposedValue());
+        assertEquals(EnrichmentProposal.ReviewAction.FILL_IF_EMPTY, field.suggestedAction());
+        // an identity is emitted so the decision applies as a Wikidata-origin Correction
+        assertEquals(1, result.identities().size());
+        assertEquals("Wikidata", result.identities().get(0).source().kind());
+    }
+
+    @Test
+    void prefersPreferredRankAndSkipsDeprecated() throws Exception {
+        String entity = """
+                {"entities": {"Q1039": {
+                  "claims": {"P1082": [
+                    {"rank": "deprecated", "mainsnak": {"datavalue": {"value": {"amount": "+1"}}}},
+                    {"rank": "normal", "mainsnak": {"datavalue": {"value": {"amount": "+100"}}}},
+                    {"rank": "preferred", "mainsnak": {"datavalue": {"value": {"amount": "+200"}}}}
+                  ]}
+                }}}
+                """;
+        WikimediaFieldEnrichmentProvider provider =
+                new WikimediaFieldEnrichmentProvider(uri -> entity);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1039", "X"),
+                "population", false, List.of());
+
+        EnrichmentProposal result =
+                provider.discover(request).execute(new QueryContext(null, null));
+
+        assertEquals(200L, result.fields().get(0).proposedValue());
+    }
+
+    @Test
+    void choosesLatestPointInTimeBeforeClaimOrder() throws Exception {
+        String entity = """
+                {"entities": {"Q1039": {
+                  "claims": {"P1082": [
+                    {"rank": "normal", "mainsnak": {"datavalue":
+                      {"value": {"amount": "+100", "unit": "1"}}},
+                     "qualifiers": {"P585": [{"datatype": "time", "datavalue":
+                       {"value": {"time": "+2010-01-01T00:00:00Z", "precision": 11}}}]}},
+                    {"rank": "normal", "mainsnak": {"datavalue":
+                      {"value": {"amount": "+300", "unit": "1"}}},
+                     "qualifiers": {"P585": [{"datatype": "time", "datavalue":
+                       {"value": {"time": "+2024-01-01T00:00:00Z", "precision": 11}}}]}},
+                    {"rank": "preferred", "mainsnak": {"datavalue":
+                      {"value": {"amount": "+200", "unit": "1"}}},
+                     "qualifiers": {"P585": [{"datatype": "time", "datavalue":
+                       {"value": {"time": "+2020-01-01T00:00:00Z", "precision": 11}}}]}}
+                  ]}
+                }}}
+                """;
+        WikimediaFieldEnrichmentProvider provider =
+                new WikimediaFieldEnrichmentProvider(uri -> entity);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1039", "X"),
+                "population", false, List.of());
+
+        EnrichmentProposal result =
+                provider.discover(request).execute(new QueryContext(null, null));
+
+        assertEquals(300L, result.fields().get(0).proposedValue());
+    }
+
+    @Test
+    void unsupportedWithoutQidOrMappableField() {
+        WikimediaFieldEnrichmentProvider provider =
+                new WikimediaFieldEnrichmentProvider(uri -> "{}");
+        assertFalse(provider.supports(new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", null, "X"),
+                "population", false, List.of())));            // no QID
+        assertFalse(provider.supports(new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1039", "X"),
+                "capital", false, List.of())));               // unmapped field
+        assertTrue(provider.supports(new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1039", "X"),
+                "population", false, List.of())));            // mappable + QID
+    }
+
+    @Test
+    void readsAnEXPLICITLYchosenPropertyEvenWhenTheNameMapsToNothing() throws Exception {
+        String entity = """
+                {"entities": {"Q782": {"claims": {"P571": [{"rank": "normal",
+                  "mainsnak": {"datavalue": {"value": {"time": "+1959-08-21T00:00:00Z"}}}}]}
+                }}}
+                """;
+        // "admissionDate" maps to no default property; the property is CHOSEN (P571).
+        WikimediaFieldEnrichmentProvider provider =
+                new WikimediaFieldEnrichmentProvider("P571", uri -> entity);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("State", "hawaii", "Q782", "Hawaii"),
+                "admissionDate", false, List.of());
+
+        assertTrue(provider.supports(request));
+        EnrichmentProposal result =
+                provider.discover(request).execute(new QueryContext(null, null));
+
+        assertEquals(1, result.fields().size());
+        // formatted by shape: a non-Jan-1 time → the full ISO date
+        assertEquals("1959-08-21", result.fields().get(0).proposedValue());
+    }
+}

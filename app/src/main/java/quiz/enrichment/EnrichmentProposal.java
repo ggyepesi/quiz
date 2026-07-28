@@ -18,7 +18,17 @@ public record EnrichmentProposal(
         media = media == null ? List.of() : List.copyOf(media);
     }
 
-    public record Subject(String type, String id, String displayName) { }
+    /**
+     * The domain object and the external lookup identity are deliberately separate:
+     * {@code targetId} is where accepted corrections are written; {@code id} is the
+     * provider identifier (usually a resolved Wikidata QID).
+     */
+    public record Subject(String type, String targetId, String id, String displayName) {
+        /** Backwards-compatible form for sources whose domain ID is also their lookup ID. */
+        public Subject(String type, String id, String displayName) {
+            this(type, id, id, displayName);
+        }
+    }
 
     /** A record in one external source which may represent {@link #subject}. */
     public record IdentityCandidate(

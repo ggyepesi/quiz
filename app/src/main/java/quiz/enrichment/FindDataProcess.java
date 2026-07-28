@@ -34,7 +34,7 @@ public final class FindDataProcess implements Process<FindDataResult> {
             throw new IllegalArgumentException("No enrichment provider supports this subject");
         }
         this.plan = new ProcessPlan(
-                "Find data",
+                "Find data — " + request.subject().displayName(),
                 "Discover, combine and review data without losing completed provider results",
                 Map.of("subject", request.subject().displayName(),
                         "field", request.targetField()),

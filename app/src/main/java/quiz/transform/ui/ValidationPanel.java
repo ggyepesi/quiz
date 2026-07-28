@@ -16,8 +16,10 @@ import quiz.enrichment.EnrichmentRequest;
 import quiz.enrichment.EnrichmentSources;
 import quiz.enrichment.EnrichmentReviewRequest;
 import quiz.enrichment.FindDataProcess;
-import quiz.enrichment.FindDataResult;
+import quiz.enrichment.FindDataBatchProcess;
+import quiz.enrichment.FindDataBatchResult;
 import quiz.enrichment.SourcePageImageEnrichmentProvider;
+import quiz.enrichment.WikimediaFieldEnrichmentProvider;
 import quiz.enrichment.WikimediaImageEnrichmentProvider;
 import quiz.enrichment.ui.EnrichmentReviewPanel;
 import quiz.curation.ui.SourceManagerDialog;
@@ -85,6 +87,9 @@ public final class ValidationPanel extends JPanel {
     private String type;
     private List<Quizable> instances = List.of();
     private Quizable selected;
+    // Field path → the Wikidata property CHOSEN to source it (via the property finder).
+    // Session-scoped: picked once per field, re-asked after a restart (persistence TBD).
+    private final java.util.Map<String, String> fieldProperty = new java.util.HashMap<>();
     private final SwingQueryRunner queryRunner;
     private final SwingProcessRunner findDataRunner;
     // Re-render the owning view after an accepted enrichment writes a correction.
@@ -296,9 +301,9 @@ public final class ValidationPanel extends JPanel {
                 ? type + "." + path + " — fully covered."
                 : gap + " member(s) missing " + type + "." + path));
         if (gap > 0) {
-            checkButton.setText("Find image ↗");
+            checkButton.setText("Find data ↗");
             checkButton.setToolTipText(
-                    "Find an image for the SELECTED member from its sources (select a card first)");
+                    "Find and review values for all members missing this field");
             h.add(checkButton);   // re-parents the persistent, already-registered button
             updateSourcesButton();
             h.add(sourcesButton);
@@ -306,97 +311,189 @@ public final class ValidationPanel extends JPanel {
         return h;
     }
 
-    /** The SAME enrichment process for every drilled field — resolve the source, then
-     *  discover + review. Only the PROPERTY differs, and the provider derives that from
-     *  the field (portrait→P18, flag→P41, coat of arms→P94, …). No media/text branch. */
+    /** Batch the same reusable Find Data process over every missing member. */
     private void onCheck() {
         if (coverage.selectedPath() != null) {
-            findImage();
+            findData();
         }
     }
 
-    // The unified enrichment flow for ANY drilled field: resolve the source (its Wikidata
-    // QID) if needed, then run the composite providers (Wikimedia — field-mapped to
-    // P18/P41/P94/… — plus source-page and DBpedia) and review the candidates.
-    private void findImage() {
-        Quizable m = selected;
-        if (m == null) {
-            JOptionPane.showMessageDialog(this, "Select a member card first.");
-            return;
-        }
+    // One immutable batch plan; one independently logged/cancellable child per member.
+    private void findData() {
+        String path = coverage.selectedPath();
+        if (path == null) return;
         quiz.curation.ManualCuration curation = curationStore();
-        if (EnrichmentSources.needsSelection(m, type, curation)) {
+        // Let a manually identified selected member establish its source before the
+        // batch. Other unresolved manual members are skipped, not met with a dialog storm.
+        if (selected != null && EnrichmentSources.needsSelection(selected, type, curation)
+                && !isQid(selected.getIdentifier())) {
             // Resolve the source first (this dialog is modal), then CONTINUE straight into
-            // discovery if one was added — no need to press Find image a second time.
-            SourceManagerDialog.show(this, curation, type, m.getIdentifier(),
-                    m.getDisplayName(), queryRunner, this::updateSourcesButton);
-            if (curation == null || EnrichmentSources.needsSelection(m, type, curation)) {
-                return;   // dialog closed without adding a source
+            // the batch if one was added.
+            SourceManagerDialog.show(this, curation, type, selected.getIdentifier(),
+                    selected.getDisplayName(), queryRunner, this::updateSourcesButton);
+        }
+        DomainField drilled = domain.fields(type).stream()
+                .filter(f -> path.equals(f.field()))
+                .findFirst().orElse(null);
+        boolean media = drilled == null || drilled.kind() == objectview.field.FieldKind.MEDIA;
+
+        // For a scalar field with no property chosen yet, pick it ONCE from a sample
+        // member's REAL claims (not a hardcoded name→property map), then fill the batch.
+        if (!media && !fieldProperty.containsKey(path)) {
+            String sampleQid = sampleQidFor(path, curation);
+            if (sampleQid != null) {
+                findDataRunner.run(
+                        new quiz.enrichment.ChooseFieldPropertyProcess(sampleQid, path,
+                                WikimediaFieldEnrichmentProvider.suggestedPropertyPid(path)),
+                        outcome -> SwingUtilities.invokeLater(() -> {
+                            quiz.enrichment.ChosenProperty chosen = outcome.result();
+                            if (chosen != null && chosen.isPresent()) {
+                                fieldProperty.put(path, chosen.pid());
+                                runFillBatch(path);
+                            } else if (outcome.status() == ProcessStatus.FAILED
+                                    && outcome.error() != null) {
+                                JOptionPane.showMessageDialog(ValidationPanel.this,
+                                        "Could not list properties: "
+                                                + outcome.error().getMessage());
+                            }
+                        }),
+                        ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
+                                "Could not list properties: " + ex.getMessage()));
+                return;
             }
         }
-        String label = m.getDisplayName();
-        List<EnrichmentProposal.SourceRef> sources =
-                EnrichmentSources.collect(m, type, curation);
-        String qid = resolvedQid(m, sources);   // the member's own QID, or one an approved source carries
-        if (qid == null && (label == null || label.isBlank())) {
+        runFillBatch(path);
+    }
+
+    /** The first missing member that carries (or resolves to) a QID — the sample entity
+     *  whose properties the picker lists. */
+    private String sampleQidFor(String path, quiz.curation.ManualCuration curation) {
+        for (Quizable member : instances) {
+            if (has(member, path)) continue;
+            String qid = resolvedQid(member,
+                    EnrichmentSources.collect(member, type, curation));
+            if (qid != null) return qid;
+        }
+        return null;
+    }
+
+    // One immutable batch plan; one independently logged/cancellable child per member.
+    private void runFillBatch(String path) {
+        quiz.curation.ManualCuration curation = curationStore();
+        DomainField drilled = domain.fields(type).stream()
+                .filter(f -> path.equals(f.field()))
+                .findFirst().orElse(null);
+        boolean collection = drilled != null && drilled.collection();
+        boolean media = drilled == null || drilled.kind() == objectview.field.FieldKind.MEDIA;
+
+        List<FindDataProcess> jobs = new ArrayList<>();
+        int skipped = 0;
+        for (Quizable member : instances) {
+            if (has(member, path)) continue;
+            List<EnrichmentProposal.SourceRef> sources =
+                    EnrichmentSources.collect(member, type, curation);
+            String qid = resolvedQid(member, sources);
+            String label = member.getDisplayName();
+            if (qid == null && EnrichmentSources.needsSelection(member, type, curation)) {
+                skipped++;
+                continue;
+            }
+            EnrichmentRequest request = new EnrichmentRequest(
+                    new EnrichmentProposal.Subject(
+                            type, member.getIdentifier(), qid, label),
+                    path, collection, sources);
+            List<quiz.enrichment.EnrichmentProvider> providers =
+                    providersFor(media, qid, path);
+            if (providers.stream().noneMatch(provider -> provider.supports(request))) {
+                skipped++;
+                continue;
+            }
+            // Discovery only (false): the batch runs ONE review over all members below,
+            // not a modal per member.
+            jobs.add(new FindDataProcess(request, providers, false));
+        }
+        if (jobs.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "This member has no Wikidata QID or name to enrich from.");
+                    "No missing member is currently eligible for Find Data. "
+                            + "Add an exact source for a selected member, or use a "
+                            + "field whose name maps to a Wikidata property.");
             return;
         }
-        String path = coverage.selectedPath();
-        boolean collection = domain.fields(type).stream()
-                .filter(f -> path != null && path.equals(f.field()))
-                .findFirst()
-                .map(DomainField::collection)
-                .orElse(false);
-        EnrichmentRequest request = new EnrichmentRequest(
-                new EnrichmentProposal.Subject(type, qid, label),
-                path, collection, sources);
-        // With a confirmed QID, Wikimedia (P18/P41/P94 → Commons) is authoritative and
-        // DBpedia's sameAs images are redundant + slow — so DBpedia is only the NO-QID
-        // name-based fallback (Wikimedia self-skips without a QID anyway).
-        List<quiz.enrichment.EnrichmentProvider> providers = new ArrayList<>(List.of(
-                new WikimediaImageEnrichmentProvider(),
-                new SourcePageImageEnrichmentProvider()));
-        if (qid == null) {
-            providers.add(new DBpediaImageEnrichmentProvider());
-        }
+
         findDataRunner.run(
-                new FindDataProcess(request, providers, true),
+                new FindDataBatchProcess(jobs, skipped, path),
                 outcome -> SwingUtilities.invokeLater(() -> {
-                    FindDataResult result = outcome.result();
-                    if (result != null && result.acceptedDecision() != null) {
-                        quiz.curation.ManualCuration store = curationStore();
-                        if (store != null) applyDecision(store, result.acceptedDecision());
-                    } else if (result != null && result.proposal().media().isEmpty()
-                            && outcome.status() != ProcessStatus.CANCELLED) {
-                        JOptionPane.showMessageDialog(ValidationPanel.this,
-                                "No configured source returned an image for " + label + ".");
+                    FindDataBatchResult result = outcome.result();
+                    quiz.curation.ManualCuration store = curationStore();
+                    if (result != null && store != null) {
+                        for (quiz.enrichment.EnrichmentDecision decision
+                                : result.acceptedDecisions()) {
+                            applyDecision(store, decision);
+                        }
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
                         JOptionPane.showMessageDialog(ValidationPanel.this,
-                                "Image lookup failed: " + outcome.error().getMessage());
+                                "Lookup failed: " + outcome.error().getMessage());
                     }
                 }),
                 ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
-                        "Image lookup failed: " + ex.getMessage()));
+                        "Lookup failed: " + ex.getMessage()));
+    }
+
+    private List<quiz.enrichment.EnrichmentProvider> providersFor(
+            boolean media, String qid, String path) {
+        if (!media) {
+            // The chosen property (null → the provider auto-derives from the field name).
+            return List.of(new WikimediaFieldEnrichmentProvider(fieldProperty.get(path)));
+        }
+        List<quiz.enrichment.EnrichmentProvider> providers = new ArrayList<>();
+        providers.add(new WikimediaImageEnrichmentProvider());
+        providers.add(new SourcePageImageEnrichmentProvider());
+        if (qid == null) providers.add(new DBpediaImageEnrichmentProvider());
+        return providers;
+    }
+
+    private static boolean isQid(String id) {
+        return id != null && id.matches("Q\\d+");
     }
 
     /** Rich input remains rendered by Swing, but the pause/request belongs to Find Data. */
     private <T> T handleProcessInput(
             ProcessInputRequest<T> request, CancellationToken cancellation)
             throws Exception {
-        if (!(request instanceof EnrichmentReviewRequest review)) {
-            return ProcessInputHandler.unsupported().request(request, cancellation);
+        if (request instanceof EnrichmentReviewRequest review) {
+            java.util.concurrent.atomic.AtomicReference<quiz.enrichment.EnrichmentDecision> answer =
+                    new java.util.concurrent.atomic.AtomicReference<>();
+            onEdt(() -> EnrichmentReviewPanel.showDialog(
+                    this, review.title(), review.proposal(), answer::set));
+            cancellation.throwIfCancelled();
+            return request.responseType().cast(answer.get());
         }
-        java.util.concurrent.atomic.AtomicReference<quiz.enrichment.EnrichmentDecision> answer =
-                new java.util.concurrent.atomic.AtomicReference<>();
-        Runnable show = () -> EnrichmentReviewPanel.showDialog(
-                this, review.title(), review.proposal(), answer::set);
+        if (request instanceof quiz.enrichment.FindDataBatchReviewRequest batch) {
+            java.util.concurrent.atomic.AtomicReference<quiz.enrichment.BatchReviewDecision> answer =
+                    new java.util.concurrent.atomic.AtomicReference<>(
+                            new quiz.enrichment.BatchReviewDecision(java.util.List.of()));
+            onEdt(() -> quiz.enrichment.ui.FindDataBatchReviewPanel.showDialog(
+                    this, batch.title(), batch.prompt(), batch.proposals(), answer::set));
+            cancellation.throwIfCancelled();
+            return request.responseType().cast(answer.get());
+        }
+        if (request instanceof quiz.enrichment.PropertySelectionRequest pick) {
+            java.util.concurrent.atomic.AtomicReference<quiz.enrichment.ChosenProperty> answer =
+                    new java.util.concurrent.atomic.AtomicReference<>(
+                            new quiz.enrichment.ChosenProperty("", ""));
+            onEdt(() -> quiz.enrichment.ui.FieldPropertyPickerPanel.showDialog(
+                    this, pick.title(), pick.prompt(), pick.field(), pick.options(),
+                    pick.suggestedPid(), answer::set));
+            cancellation.throwIfCancelled();
+            return request.responseType().cast(answer.get());
+        }
+        return ProcessInputHandler.unsupported().request(request, cancellation);
+    }
+
+    private static void onEdt(Runnable show) throws Exception {
         if (SwingUtilities.isEventDispatchThread()) show.run();
         else SwingUtilities.invokeAndWait(show);
-        cancellation.throwIfCancelled();
-        return request.responseType().cast(answer.get());
     }
 
     private quiz.curation.ManualCuration curationStore() {

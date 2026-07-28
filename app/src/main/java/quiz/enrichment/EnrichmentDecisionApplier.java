@@ -30,7 +30,7 @@ public final class EnrichmentDecisionApplier {
         }
 
         String type = decision.subject().type();
-        String targetId = decision.subject().id();
+        String targetId = decision.subject().targetId();
         String sourceKind = decision.identity().source().kind();
         String origin = origin(sourceKind);
 

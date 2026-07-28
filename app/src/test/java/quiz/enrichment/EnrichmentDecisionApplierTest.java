@@ -22,7 +22,7 @@ class EnrichmentDecisionApplierTest {
 
     @Test
     void approvedIdentityAndMediaPersistAndApplyTogether(@TempDir Path dir) throws Exception {
-        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "George D. Snell");
+        WikidataDynamicObject person = new WikidataDynamicObject("local-person-1", "George D. Snell");
         person.type("Person");
         DomainModel domain = domain(person);
         ManualCuration curation =
@@ -42,7 +42,8 @@ class EnrichmentDecisionApplierTest {
                 "", source, "og:image", 0.95,
                 "Nobel Foundation archive", "", false);
         EnrichmentDecision decision = new EnrichmentDecision(
-                new EnrichmentProposal.Subject("Person", "Q1", "George D. Snell"),
+                new EnrichmentProposal.Subject(
+                        "Person", "local-person-1", "Q1", "George D. Snell"),
                 identity, List.of(), media);
 
         assertEquals(1, EnrichmentDecisionApplier.apply(domain, curation, decision));
@@ -54,6 +55,7 @@ class EnrichmentDecisionApplierTest {
                 new ManualCuration(curation.file()).load();
         assertEquals(1, reloaded.identityLinks().size());
         assertEquals("421", reloaded.identityLinks().get(0).sourceId());
+        assertEquals("local-person-1", reloaded.identityLinks().get(0).targetId());
         assertEquals("nobelprize.org", reloaded.corrections().get(0).origin());
     }
 

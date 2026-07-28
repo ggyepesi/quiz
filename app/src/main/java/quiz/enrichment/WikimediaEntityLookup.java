@@ -82,6 +82,66 @@ public final class WikimediaEntityLookup {
         };
     }
 
+    /** Resolve the English labels of properties/entities (P- or Q-ids) in one
+     *  {@code wbgetentities} call — the API path, so it works regardless of which SPARQL
+     *  endpoint the shared context points at. Ids beyond the API's 50-per-call limit are
+     *  dropped (an entity rarely has that many distinct properties). */
+    public Query<Map<String, String>> labels(java.util.Collection<String> ids) {
+        List<String> clean = ids == null ? List.of() : ids.stream()
+                .filter(id -> id != null && id.matches("[PQ]\\d+"))
+                .distinct().limit(50).toList();
+        URI uri = labelsUri(clean);
+        return new Query<>() {
+            @Override public String purpose() { return "Resolve entity labels"; }
+            @Override public String skeleton() { return "wbgetentities labels"; }
+            @Override public String queryType() { return "Wikidata API"; }
+            @Override public String description() { return "Wikidata label lookup"; }
+            @Override public Map<String, String> parameters() {
+                return Map.of("ids", Integer.toString(clean.size()));
+            }
+
+            @Override public Map<String, String> execute(QueryContext context)
+                    throws Exception {
+                if (clean.isEmpty()) {
+                    return Map.of();
+                }
+                return context.step("Resolve labels", "Wikidata API", skeleton(),
+                        parameters(), step -> {
+                            step.request(uri.toString());
+                            Map<String, String> out = parseLabels(
+                                    MAPPER.readTree(fetcher.fetch(uri)));
+                            step.summary(out.size() + " label(s)");
+                            return out;
+                        });
+            }
+
+            @Override public int rowCount(Map<String, String> result) {
+                return result == null ? 0 : result.size();
+            }
+        };
+    }
+
+    static Map<String, String> parseLabels(JsonNode root) {
+        Map<String, String> out = new LinkedHashMap<>();
+        JsonNode entities = root == null ? null : root.path("entities");
+        if (entities != null && entities.isObject()) {
+            entities.fields().forEachRemaining(entry -> {
+                String label = entry.getValue().path("labels").path("en")
+                        .path("value").asText("");
+                if (!label.isBlank()) {
+                    out.put(entry.getKey(), label);
+                }
+            });
+        }
+        return out;
+    }
+
+    private static URI labelsUri(List<String> ids) {
+        return URI.create("https://www.wikidata.org/w/api.php"
+                + "?action=wbgetentities&ids=" + String.join("%7C", ids)
+                + "&props=labels&languages=en&format=json");
+    }
+
     static EntityRecord parse(String qid, JsonNode root) {
         JsonNode entity = root == null
                 ? MAPPER.createObjectNode()
