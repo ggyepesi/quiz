@@ -1,8 +1,6 @@
 package quiz.transform.ui;
 
 import objectview.Viewable;
-import objectview.field.FieldAccess;
-import objectview.field.FieldKind;
 import objectview.field.FieldSet;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
@@ -285,12 +283,9 @@ public final class ValidationPanel extends JPanel {
                 ? type + "." + path + " — fully covered."
                 : gap + " member(s) missing " + type + "." + path));
         if (gap > 0) {
-            boolean media = isMediaField(path);
-            checkButton.setText(media ? "Find image ↗" : "Check DBpedia ↗");
-            checkButton.setToolTipText((media
-                    ? "Find an image for the SELECTED member on DBpedia"
-                    : "Look up the SELECTED member's \"" + leaf(path) + "\" on DBpedia")
-                    + " (select a card first)");
+            checkButton.setText("Find image ↗");
+            checkButton.setToolTipText(
+                    "Find an image for the SELECTED member from its sources (select a card first)");
             h.add(checkButton);   // re-parents the persistent, already-registered button
             updateSourcesButton();
             h.add(sourcesButton);
@@ -298,46 +293,19 @@ public final class ValidationPanel extends JPanel {
         return h;
     }
 
-    /** Run the enrichment for the currently-drilled field — image lookup for a media
-     *  field, else the text-property lookup. Reads the live selected path, so the single
-     *  persistent button always acts on the current drill. */
+    /** The SAME enrichment process for every drilled field — resolve the source, then
+     *  discover + review. Only the PROPERTY differs, and the provider derives that from
+     *  the field (portrait→P18, flag→P41, coat of arms→P94, …). No media/text branch. */
     private void onCheck() {
-        String path = coverage.selectedPath();
-        if (path == null) {
-            return;
-        }
-        if (isMediaField(path)) {
-            findDbpediaImage();
-        } else {
-            checkDbpedia(leaf(path));
+        if (coverage.selectedPath() != null) {
+            findImage();
         }
     }
 
-    /** Whether {@code path} on the current type is a media field — so the drill offers
-     *  an image lookup + thumbnail preview instead of the text-property lookup. */
-    private boolean isMediaField(String path) {
-        for (DomainField f : domain.fields(type)) {
-            if (f.field().equals(path)) {
-                if (f.kind() == FieldKind.MEDIA) {
-                    return true;
-                }
-                break;
-            }
-        }
-        // Fallback: sniff a member that HAS the field (the drill list is all-missing).
-        for (Quizable q : byType.getOrDefault(type, List.of())) {
-            Object v = FieldAccess.getPath(q, path);
-            if (v != null) {
-                return FieldKind.ofValue(v) == FieldKind.MEDIA;
-            }
-        }
-        return false;
-    }
-
-    // PROPOSE-only: find image candidate(s) for the selected member on DBpedia (by QID
-    // via owl:sameAs, else by name via rdfs:label) and show them as thumbnails. Next
-    // step: accept one → a media Correction (origin "dbpedia") into the overlay.
-    private void findDbpediaImage() {
+    // The unified enrichment flow for ANY drilled field: resolve the source (its Wikidata
+    // QID) if needed, then run the composite providers (Wikimedia — field-mapped to
+    // P18/P41/P94/… — plus source-page and DBpedia) and review the candidates.
+    private void findImage() {
         Quizable m = selected;
         if (m == null) {
             JOptionPane.showMessageDialog(this, "Select a member card first.");
@@ -349,12 +317,13 @@ public final class ValidationPanel extends JPanel {
                     m.getDisplayName(), queryRunner, this::updateSourcesButton);
             return;
         }
-        String qid = m.getIdentifier();
         String label = m.getDisplayName();
-        boolean hasQid = qid != null && qid.matches("Q\\d+");
-        if (!hasQid && (label == null || label.isBlank())) {
+        List<EnrichmentProposal.SourceRef> sources =
+                EnrichmentSources.collect(m, type, curation);
+        String qid = resolvedQid(m, sources);   // the member's own QID, or one an approved source carries
+        if (qid == null && (label == null || label.isBlank())) {
             JOptionPane.showMessageDialog(this,
-                    "This member has no Wikidata QID or name to look up on DBpedia.");
+                    "This member has no Wikidata QID or name to enrich from.");
             return;
         }
         String path = coverage.selectedPath();
@@ -365,7 +334,7 @@ public final class ValidationPanel extends JPanel {
                 .orElse(false);
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject(type, qid, label),
-                path, collection, EnrichmentSources.collect(m, type, curationStore()));
+                path, collection, sources);
         CompositeEnrichmentProvider provider = new CompositeEnrichmentProvider(List.of(
                 new WikimediaImageEnrichmentProvider(),
                 new SourcePageImageEnrichmentProvider(),
@@ -433,37 +402,22 @@ public final class ValidationPanel extends JPanel {
                 : "Select a member card first");
     }
 
-    // PROPOSE-only enrichment: look up the selected member's field on DBpedia and show
-    // the candidate(s). Next step: accept one → a Correction (origin "dbpedia") overlay.
-    private void checkDbpedia(String property) {
-        Quizable m = selected;
-        if (m == null) {
-            JOptionPane.showMessageDialog(this, "Select a member card first.");
-            return;
+    /** The Wikidata QID to enrich from: the member's own identifier if it IS a QID, else
+     *  one carried by an approved Wikidata source (the QID confirmed in the source dialog).
+     *  Null when there's none — QID-only providers skip, name-based ones still run. */
+    private static String resolvedQid(Quizable member,
+                                      List<EnrichmentProposal.SourceRef> sources) {
+        String id = member.getIdentifier();
+        if (id != null && id.matches("Q\\d+")) {
+            return id;
         }
-        String qid = m.getIdentifier();
-        if (qid == null || !qid.matches("Q\\d+")) {
-            JOptionPane.showMessageDialog(this, "This member has no Wikidata QID to join on.");
-            return;
+        for (EnrichmentProposal.SourceRef source : sources) {
+            if ("Wikidata".equalsIgnoreCase(source.kind())
+                    && source.sourceId() != null && source.sourceId().matches("Q\\d+")) {
+                return source.sourceId();
+            }
         }
-        String name = m.getDisplayName();
-        queryRunner.run(
-                DBpediaLookup.values(qid, property),
-                c -> SwingUtilities.invokeLater(() -> {
-                    String msg = c.isEmpty()
-                            ? "DBpedia has no \"" + property + "\" for " + name + "."
-                            : "DBpedia \"" + property + "\" for " + name + ":\n  • "
-                                    + String.join("\n  • ", c);
-                    JOptionPane.showMessageDialog(ValidationPanel.this, msg,
-                            "DBpedia candidates", JOptionPane.INFORMATION_MESSAGE);
-                }),
-                ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
-                        "DBpedia lookup failed: " + ex.getMessage()));
-    }
-
-    private static String leaf(String path) {
-        int dot = path.lastIndexOf('.');
-        return dot >= 0 ? path.substring(dot + 1) : path;
+        return null;
     }
 
     // The shared instance rendering: selectable, searchable cards (same components the
