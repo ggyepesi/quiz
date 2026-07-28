@@ -335,10 +335,16 @@ public final class ValidationPanel extends JPanel {
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject(type, qid, label),
                 path, collection, sources);
-        CompositeEnrichmentProvider provider = new CompositeEnrichmentProvider(List.of(
+        // With a confirmed QID, Wikimedia (P18/P41/P94 → Commons) is authoritative and
+        // DBpedia's sameAs images are redundant + slow — so DBpedia is only the NO-QID
+        // name-based fallback (Wikimedia self-skips without a QID anyway).
+        List<quiz.enrichment.EnrichmentProvider> providers = new ArrayList<>(List.of(
                 new WikimediaImageEnrichmentProvider(),
-                new SourcePageImageEnrichmentProvider(),
-                new DBpediaImageEnrichmentProvider()));
+                new SourcePageImageEnrichmentProvider()));
+        if (qid == null) {
+            providers.add(new DBpediaImageEnrichmentProvider());
+        }
+        CompositeEnrichmentProvider provider = new CompositeEnrichmentProvider(providers);
         queryRunner.run(
                 provider.discover(request),
                 proposal -> SwingUtilities.invokeLater(() -> {
