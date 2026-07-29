@@ -89,6 +89,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (controller.canSave()) {
             top.add(button("Save as domain…", this::saveAsDomain));
         }
+        top.add(button("New field…", this::addNewField));
         top.add(button("Validate…", this::showValidation));
         top.add(button("Query logs…", () -> queries.showLogs(this)));
         queries.runner().registerCancelButton(cancelQueryButton);
@@ -112,6 +113,48 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         JButton b = new JButton(text);
         b.addActionListener(e -> action.run());
         return b;
+    }
+
+    /** Declare a new empty field on the selected class (a schema act). It appears in the
+     *  field pool + at 0% coverage; open Validate to fill it (e.g. via Find Data). */
+    private void addNewField() {
+        String type = controller.selectedType();
+        if (type == null) {
+            JOptionPane.showMessageDialog(this, "Pick a member type first.");
+            return;
+        }
+        JTextField nameField = new JTextField(16);
+        JComboBox<String> kindCombo =
+                new JComboBox<>(new String[] {"Number", "Text", "Date", "Media"});
+        JPanel form = new JPanel(new GridLayout(0, 2, 4, 4));
+        form.add(new JLabel("Field name:"));
+        form.add(nameField);
+        form.add(new JLabel("Kind:"));
+        form.add(kindCombo);
+        int ok = JOptionPane.showConfirmDialog(this, form, "New field on " + type,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (ok != JOptionPane.OK_OPTION) {
+            return;
+        }
+        String name = nameField.getText();
+        if (name == null || name.isBlank()) {
+            return;
+        }
+        objectview.field.FieldKind kind = switch ((String) kindCombo.getSelectedItem()) {
+            case "Text" -> objectview.field.FieldKind.TEXT;
+            case "Date" -> objectview.field.FieldKind.ORDERED;
+            case "Media" -> objectview.field.FieldKind.MEDIA;
+            default -> objectview.field.FieldKind.ORDERED;   // Number
+        };
+        if (controller.addField(type, name.trim(), kind)) {
+            viewStepsPanel.refreshFields();
+            render();
+            JOptionPane.showMessageDialog(this, "Added field \"" + name.trim() + "\" to "
+                    + type + ". Open Validate to fill it (Find Data).");
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "New field is only supported for snapshot-backed domains.");
+        }
     }
 
     /** Consistency validation over the full working schema (base + derived + facets):

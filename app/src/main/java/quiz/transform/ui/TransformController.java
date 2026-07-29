@@ -52,6 +52,18 @@ public final class TransformController {
 
     public List<String> types() { return domain.types(); }
     public List<DomainField> fields(String type) { return domain.fields(type); }
+
+    /** Declare a new empty scalar/media field on {@code type} — a schema act that surfaces
+     *  it in the field pool + at 0% coverage, to be filled later (e.g. via Find Data).
+     *  Returns false if the domain can't carry a declared field (non-dynamic sample). */
+    public boolean addField(String type, String name, objectview.field.FieldKind kind) {
+        if (type == null || name == null || name.isBlank()) {
+            return false;
+        }
+        DomainField field = new DomainField(type, name.trim(), false, false,
+                kind == null ? objectview.field.FieldKind.UNKNOWN : kind);
+        return domain.addField(type, field);
+    }
     public Set<String> structuralFields(String type) { return domain.structuralFields(type); }
     public FieldTypeSource fieldTypes(String type) { return domain.fieldTypes(type); }
 

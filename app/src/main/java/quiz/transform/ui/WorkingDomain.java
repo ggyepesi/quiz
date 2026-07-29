@@ -2,9 +2,11 @@ package quiz.transform.ui;
 
 import objectview.viewconfig.FieldTypeSource;
 import quiz.Quizable;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +22,29 @@ public final class WorkingDomain implements DomainModel, SchemaView,
 
     private final DomainModel base;
     private final Map<String, DerivedClass> derived = new LinkedHashMap<>();
+    // Empty fields DECLARED on a base class (the "New field" op) — a schema act, distinct
+    // from PROJECT-derived classes. They join the field pool and the shape sample so they
+    // show at 0% coverage, ready to be filled (e.g. via Find Data).
+    private final Map<String, List<DomainField>> declaredFields = new LinkedHashMap<>();
+    private final Map<String, Quizable> augmentedSample = new HashMap<>();
 
     public WorkingDomain(DomainModel base) {
         this.base = base;
+    }
+
+    /** Declare a new empty field on a base class so it appears in the field pool and at
+     *  0% coverage — independent of how it is later filled. Supported only for dynamic
+     *  (snapshot-backed) samples whose shape can carry it; returns false otherwise. */
+    public boolean addField(String type, DomainField field) {
+        if (type == null || field == null || derived.containsKey(type)) {
+            return false;
+        }
+        if (!(base.representativeSample(type) instanceof WikidataDynamicObject)) {
+            return false;
+        }
+        declaredFields.computeIfAbsent(type, t -> new ArrayList<>()).add(field);
+        augmentedSample.remove(type);
+        return true;
     }
 
     @Override public javax.swing.JComponent schemaView() {
@@ -61,7 +83,16 @@ public final class WorkingDomain implements DomainModel, SchemaView,
 
     @Override public List<DomainField> fields(String type) {
         DerivedClass d = derived.get(type);
-        return d != null ? d.fields() : base.fields(type);
+        if (d != null) {
+            return d.fields();
+        }
+        List<DomainField> extra = declaredFields.get(type);
+        if (extra == null || extra.isEmpty()) {
+            return base.fields(type);
+        }
+        List<DomainField> all = new ArrayList<>(base.fields(type));
+        all.addAll(extra);
+        return all;
     }
 
     @Override public java.util.Set<String> structuralFields(String type) {
@@ -77,9 +108,27 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     @Override public Quizable representativeSample(String type) {
         // Base types get the base's authoritative shape sample; a PROJECT-derived type
         // falls back to the interface default over the combined instances.
-        return derived.containsKey(type)
-                ? DomainModel.super.representativeSample(type)
-                : base.representativeSample(type);
+        if (derived.containsKey(type)) {
+            return DomainModel.super.representativeSample(type);
+        }
+        List<DomainField> extra = declaredFields.get(type);
+        if (extra == null || extra.isEmpty()) {
+            return base.representativeSample(type);
+        }
+        // Add each declared field to the SHAPE sample as an empty placeholder so the
+        // sample-driven field/coverage UIs enumerate it. Real instances still lack it, so
+        // it reads as 0% coverage (a gap to fill) — the placeholder is shape-only.
+        return augmentedSample.computeIfAbsent(type, t -> {
+            Quizable sample = base.representativeSample(t);
+            if (sample instanceof WikidataDynamicObject wdo) {
+                for (DomainField field : extra) {
+                    if (wdo.get(field.field()) == null) {
+                        wdo.put(field.field(), "");
+                    }
+                }
+            }
+            return sample;
+        });
     }
 
     @Override public Collection<? extends Quizable> instances() {

@@ -242,6 +242,11 @@ public final class ViewStepsPanel extends JPanel {
         }
     }
 
+    /** Rebuild the field tree from the current schema — e.g. after a field is declared. */
+    public void refreshFields() {
+        rebuildFieldTree();
+    }
+
     private void rebuildFieldTree() {
         String type = controller.selectedType();
         if (type == null) {
