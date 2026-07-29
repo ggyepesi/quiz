@@ -152,9 +152,17 @@ public final class ValidationPanel extends JPanel {
         }
         typeCombo.addActionListener(e -> onType());
 
+        JButton resolveButton = new JButton("Resolve identities…");
+        resolveButton.setToolTipText(
+                "Search Wikidata for a qid for every shown instance, then confirm in one review");
+        resolveButton.addActionListener(e -> runResolveIdentities());
+        queryRunner.registerRunButton(resolveButton);
+        findDataRunner.registerRunButton(resolveButton);
+
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         bar.add(new JLabel("Type:"));
         bar.add(typeCombo);
+        bar.add(resolveButton);
         bar.add(status);
 
         JPanel top = new JPanel(new BorderLayout());
@@ -365,6 +373,65 @@ public final class ValidationPanel extends JPanel {
         runFillBatch(path);
     }
 
+    // Resolve the Wikidata identity (qid) of EVERY shown instance — the foundational,
+    // field-independent step. One label search per instance, then a single review assigns
+    // qids, written as IdentityLinks the rest of enrichment reads from.
+    private void runResolveIdentities() {
+        if (type == null || instances.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Select a type with instances first.");
+            return;
+        }
+        quiz.curation.ManualCuration curation = curationStore();
+        if (curation == null) {
+            JOptionPane.showMessageDialog(this,
+                    "This domain has no curation store to record identities.");
+            return;
+        }
+        List<quiz.enrichment.ResolveIdentitiesProcess.Subject> subjects = new ArrayList<>();
+        for (Quizable member : instances) {
+            String current = resolvedQid(member,
+                    EnrichmentSources.collect(member, type, curation));
+            subjects.add(new quiz.enrichment.ResolveIdentitiesProcess.Subject(
+                    member.getIdentifier(), member.getDisplayName(), current));
+        }
+        findDataRunner.run(
+                new quiz.enrichment.ResolveIdentitiesProcess(subjects, 12),
+                outcome -> SwingUtilities.invokeLater(() -> {
+                    quiz.enrichment.ResolveIdentitiesDecision decision = outcome.result();
+                    if (decision != null) {
+                        applyResolvedIdentities(decision);
+                    }
+                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
+                        JOptionPane.showMessageDialog(ValidationPanel.this,
+                                "Resolve failed: " + outcome.error().getMessage());
+                    }
+                }),
+                ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
+                        "Resolve failed: " + ex.getMessage()));
+    }
+
+    private void applyResolvedIdentities(
+            quiz.enrichment.ResolveIdentitiesDecision decision) {
+        quiz.curation.ManualCuration curation = curationStore();
+        if (curation == null || decision.resolved().isEmpty()) {
+            return;
+        }
+        try {
+            for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : decision.resolved()) {
+                curation.putIdentityLink(new quiz.curation.IdentityLink(
+                        type, r.targetId(), "Wikidata", r.qid(),
+                        "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata"));
+            }
+            curation.save();
+            onCurated.run();
+            onFieldSelected();
+            JOptionPane.showMessageDialog(this,
+                    decision.resolved().size() + " identity(ies) set.");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
+        }
+    }
+
     /** The first missing member that carries (or resolves to) a QID — the sample entity
      *  whose properties the picker lists. */
     private String sampleQidFor(String path, quiz.curation.ManualCuration curation) {
@@ -475,6 +542,15 @@ public final class ValidationPanel extends JPanel {
                             new quiz.enrichment.BatchReviewDecision(java.util.List.of()));
             onEdt(() -> quiz.enrichment.ui.FindDataBatchReviewPanel.showDialog(
                     this, batch.title(), batch.prompt(), batch.proposals(), answer::set));
+            cancellation.throwIfCancelled();
+            return request.responseType().cast(answer.get());
+        }
+        if (request instanceof quiz.enrichment.ResolveIdentitiesReviewRequest resolve) {
+            java.util.concurrent.atomic.AtomicReference<quiz.enrichment.ResolveIdentitiesDecision> answer =
+                    new java.util.concurrent.atomic.AtomicReference<>(
+                            new quiz.enrichment.ResolveIdentitiesDecision(java.util.List.of()));
+            onEdt(() -> quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showDialog(
+                    this, resolve.title(), resolve.prompt(), resolve.instances(), answer::set));
             cancellation.throwIfCancelled();
             return request.responseType().cast(answer.get());
         }
