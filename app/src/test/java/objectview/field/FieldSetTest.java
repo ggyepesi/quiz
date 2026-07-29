@@ -106,6 +106,31 @@ class FieldSetTest {
         assertNull(set.read("year"));
     }
 
+    @Test void schemaOverlaysBothBackingsAndRetainsObservedExtras() {
+        FieldSchema schema = () -> List.of(
+                FieldRef.described("cast", FieldKind.COLLECTION,
+                        FieldKind.REFERENCE, "List<Person>", true, true,
+                        "Person", false, false,
+                        false, false, "", false, false));
+
+        Film film = new Film();
+        FieldSet reflected = FieldSet.of(film, schema);
+        assertEquals(List.of("cast", "title", "year", "won", "director"),
+                reflected.fields().stream().map(FieldRef::name).toList(),
+                "schema metadata wins, but reflected data fields are not dropped");
+        assertEquals("Person", reflected.field("cast").targetType());
+
+        WikidataDynamicObject dynamic =
+                new WikidataDynamicObject("Q1", "Casino");
+        dynamic.put("cast", new WikidataDynamicObject("Q2", "Actor"));
+        dynamic.put("unexpected", "kept");
+        FieldSet dynamicSet = FieldSet.of(dynamic, schema);
+        assertEquals(List.of("cast", "unexpected"),
+                dynamicSet.fields().stream().map(FieldRef::name).toList());
+        assertTrue(dynamicSet.has("cast"));
+        assertEquals("kept", dynamicSet.read("unexpected"));
+    }
+
     @Test void productClassSuppliesTheSchema() {
         ProductClass pc = new ProductClass("Nomination", "Nomination", List.of(
                 new ProductField("year", "Integer", false, false, null, false),
@@ -115,11 +140,14 @@ class FieldSetTest {
         WikidataDynamicObject wdo = new WikidataDynamicObject("Q1", "N");
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, pc.asFieldSchema()));
 
-        assertEquals(2, f.size(), "structural markers are omitted");
+        assertEquals(3, f.size(), "the complete schema retains structural fields");
         assertEquals(FieldKind.ORDERED, f.get("year").kind());
         assertTrue(f.get("category").collection());
         assertTrue(f.get("category").reference());
+        assertEquals("Category", f.get("category").targetType());
+        assertEquals(FieldKind.REFERENCE, f.get("category").valueKind());
         assertEquals(FieldKind.COLLECTION, f.get("category").kind()); // collection wins over reference
+        assertTrue(f.get("source").structural());
     }
 
     @Test void bothReadValuesTheSameWay() {

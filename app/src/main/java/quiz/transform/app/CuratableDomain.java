@@ -6,6 +6,7 @@ import quiz.curation.ManualCuration;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import quiz.transform.ui.SchemaView;
+import objectview.field.FieldSchema;
 import objectview.viewconfig.FieldTypeSource;
 
 import javax.swing.JComponent;
@@ -37,6 +38,7 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
 
     @Override public List<String> types() { return base.types(); }
     @Override public List<DomainField> fields(String type) { return base.fields(type); }
+    @Override public FieldSchema fieldSchema(String type) { return base.fieldSchema(type); }
     @Override public Set<String> structuralFields(String type) { return base.structuralFields(type); }
     @Override public FieldTypeSource fieldTypes(String type) { return base.fieldTypes(type); }
     @Override public Viewable representativeSample(String type) { return base.representativeSample(type); }

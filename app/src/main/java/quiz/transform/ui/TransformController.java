@@ -4,6 +4,7 @@ import objectview.Viewable;
 import quiz.ViewableGroup;
 import quiz.transform.View;
 import objectview.viewconfig.FieldTypeSource;
+import objectview.field.FieldSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,6 +67,7 @@ public final class TransformController {
     }
     public Set<String> structuralFields(String type) { return domain.structuralFields(type); }
     public FieldTypeSource fieldTypes(String type) { return domain.fieldTypes(type); }
+    public FieldSchema fieldSchema(String type) { return domain.fieldSchema(type); }
 
     /** How many loaded instances are of {@code type} — shown next to the member-type
      *  selector so the domain's size is visible. */
@@ -415,6 +417,6 @@ public final class TransformController {
      *  a nested type can't silently drop the roots. (Saving a derived/transformed subset
      *  will be a separate action.) Returns the writer's status; throws on failure. */
     public String saveAsDomain(String name) throws Exception {
-        return writer.save(name, domain.instances());
+        return writer.save(name, domain.instances(), domain);
     }
 }

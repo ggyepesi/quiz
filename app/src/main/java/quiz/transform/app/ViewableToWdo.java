@@ -5,6 +5,7 @@ import objectview.group.ViewableGroup;
 import objectview.media.ImagePane;
 import objectview.utils.swing.CachedImage;
 import objectview.Viewable;
+import quiz.transform.ui.DomainModel;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataMediaValue;
 
@@ -28,10 +29,20 @@ public final class ViewableToWdo {
     private ViewableToWdo() {}
 
     public static List<WikidataDynamicObject> pool(Collection<? extends Viewable> members) {
+        return pool(members, null);
+    }
+
+    /**
+     * Converts with the producing domain's canonical schema. The same declared
+     * fields are therefore enumerated for typed and dynamic instances; observed
+     * extra fields are retained by {@code SchemaFieldSet}.
+     */
+    public static List<WikidataDynamicObject> pool(
+            Collection<? extends Viewable> members, DomainModel schema) {
         Map<Object, WikidataDynamicObject> seen = new IdentityHashMap<>();
         List<WikidataDynamicObject> roots = new ArrayList<>();
         for (Viewable m : members) {
-            Object c = convert(m, seen);
+            Object c = convert(m, seen, schema);
             if (c instanceof WikidataDynamicObject w) {
                 roots.add(w);
             }
@@ -130,7 +141,9 @@ public final class ViewableToWdo {
         }
     }
 
-    private static Object convert(Object v, Map<Object, WikidataDynamicObject> seen) {
+    private static Object convert(
+            Object v, Map<Object, WikidataDynamicObject> seen,
+            DomainModel schema) {
         if (v == null) {
             return null;
         }
@@ -138,11 +151,31 @@ public final class ViewableToWdo {
             return w;
         }
         if (v instanceof ViewableGroup<?> group) {
-            // A group is view/facet structure, not a domain entity. Preserve a
-            // membership as path SEGMENTS instead of serializing the cyclic
-            // group -> members -> groups graph. Do not split getIdentifier(): a
-            // legitimate label such as "St. George's" can itself contain dots.
-            return groupPath(group);
+            WikidataDynamicObject cached = seen.get(group);
+            if (cached != null) {
+                return cached;
+            }
+            // A group is a shared STRUCTURAL entity: pool it by its full,
+            // ancestry-qualified identity so member cards can open the actual
+            // ViewableGroup (parent / children / members) without promoting it to
+            // a selectable domain class. Cache before recursing: the graph is
+            // intentionally cyclic in both directions.
+            WikidataDynamicObject value =
+                    new WikidataDynamicObject(
+                            group.getIdentifier(), group.getDisplayName());
+            value.type("ViewableGroup");
+            value.typeKey("ViewableGroup");
+            value.structuralObject(true);
+            value.structuralPath(groupPath(group));
+            seen.put(group, value);
+
+            Object parent = convert(group.getParent(), seen, schema);
+            if (parent != null) {
+                value.put("parent", parent);
+            }
+            value.put("children", convert(group.getChildren(), seen, schema));
+            value.put("members", convert(group.getMembers(), seen, schema));
+            return value;
         }
         if (v instanceof Viewable q) {
             WikidataDynamicObject cached = seen.get(q);
@@ -165,9 +198,10 @@ public final class ViewableToWdo {
             o.valueObject(value);
             seen.put(q, o);
             // Copy every field, whichever representation — no instanceof branch.
-            objectview.field.FieldSet set = objectview.field.FieldSet.of(q);
+            objectview.field.FieldSet set = objectview.field.FieldSet.of(
+                    q, schema == null ? null : schema.fieldSchema(q.typeName()));
             for (objectview.field.FieldRef ref : set.fields()) {
-                Object cv = convert(set.read(ref.name()), seen);
+                Object cv = convert(set.read(ref.name()), seen, schema);
                 // Skip null AND blank scalars — a blank value carries no information and
                 // would otherwise render as an empty field row.
                 if (cv != null && !(cv instanceof String s && s.isBlank())) {
@@ -179,7 +213,7 @@ public final class ViewableToWdo {
         if (v instanceof Collection<?> c) {
             List<Object> out = new ArrayList<>();
             for (Object item : c) {
-                Object cv = convert(item, seen);
+                Object cv = convert(item, seen, schema);
                 if (cv != null) out.add(cv);
             }
             return out;
@@ -187,7 +221,7 @@ public final class ViewableToWdo {
         if (v instanceof Map<?, ?> m) {
             List<Object> out = new ArrayList<>();
             for (Object item : m.values()) {
-                Object cv = convert(item, seen);
+                Object cv = convert(item, seen, schema);
                 if (cv != null) out.add(cv);
             }
             return out;

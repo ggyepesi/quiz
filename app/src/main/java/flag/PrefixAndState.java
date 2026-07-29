@@ -98,6 +98,7 @@ public final class PrefixAndState {
     private String fullState;
     private final String imageKey;
     private final String originalImageKey;
+    private final String versionIdentityKey;
 
     public PrefixAndState(String prefix, String state, String fullState) {
         this.prefix = normalizePrefix(prefix);
@@ -109,6 +110,11 @@ public final class PrefixAndState {
 
         this.imageKey = this.prefix + this.fullState;
         this.originalImageKey = this.prefix + rawFullState;
+        // Normalize equivalent prefix spellings ("Flag of the" / "Flag of")
+        // while retaining the raw version suffix. The old prefix-only identity
+        // incorrectly collapsed every historical/variant image of one state.
+        this.versionIdentityKey =
+                getCanonicalPrefixForDuplicateCheck() + '\0' + rawFullState;
 
         String forcedState = SPECIAL_IMAGE_TO_STATE.get(this.originalImageKey);
         if (forcedState != null) {
@@ -210,6 +216,10 @@ public final class PrefixAndState {
 
     public String getOriginalImageKey() {
         return originalImageKey;
+    }
+
+    public String getVersionIdentityKey() {
+        return versionIdentityKey;
     }
 
     private static String normalizePrefix(String prefix) {

@@ -2,6 +2,7 @@ package quiz.transform.ui;
 
 import objectview.viewconfig.FieldTypeSource;
 import objectview.Viewable;
+import objectview.field.FieldSchema;
 
 import java.util.Collection;
 import java.util.List;
@@ -20,6 +21,24 @@ public interface DomainModel {
     /** The fields of a type — possibly NESTED paths (e.g. {@code nominee.name}) —
      *  each carrying its dotted path and leaf shape (reference/collection). */
     List<DomainField> fields(String type);
+
+    /**
+     * The canonical immutable top-level schema for {@code type} — the single source of
+     * truth for field structure (names, shapes, reference targets, structural roles).
+     *
+     * <p>A native source OVERRIDES this; {@link #structuralFields}, {@link #fieldTypes} and
+     * {@link DomainSchemas#fields} then PROJECT from it. A small/legacy source instead keeps
+     * this default and implements {@link #fields}/{@link #fieldTypes} directly, which
+     * {@link DomainSchemas#fromLegacy} adapts into a schema.
+     *
+     * <p>CONTRACT — implement exactly ONE side. Do NOT leave this default while ALSO
+     * projecting {@code fieldTypes()}/{@code structuralFields()} from {@code fieldSchema()}:
+     * fromLegacy would read a projection of itself and recurse. (It fails loud with a clear
+     * cause rather than overflowing the stack — see {@link DomainSchemas#fromLegacy}.)
+     */
+    default FieldSchema fieldSchema(String type) {
+        return DomainSchemas.fromLegacy(this, type);
+    }
 
     /**
      * Top-level field names of {@code type} that are STRUCTURAL — plumbing or

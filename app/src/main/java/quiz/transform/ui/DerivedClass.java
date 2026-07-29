@@ -1,6 +1,7 @@
 package quiz.transform.ui;
 
 import objectview.Viewable;
+import objectview.field.FieldSchema;
 
 import java.util.List;
 
@@ -11,4 +12,18 @@ import java.util.List;
  * later operations can consume it — the composable transform graph.
  */
 public record DerivedClass(String type, List<DomainField> fields,
-                           List<? extends Viewable> instances) {}
+                           List<? extends Viewable> instances,
+                           FieldSchema fieldSchema) {
+
+    public DerivedClass {
+        fields = fields == null ? List.of() : List.copyOf(fields);
+        instances = instances == null ? List.of() : List.copyOf(instances);
+        fieldSchema = fieldSchema == null
+                ? DomainSchemas.flatSchema(fields) : fieldSchema;
+    }
+
+    public DerivedClass(String type, List<DomainField> fields,
+                        List<? extends Viewable> instances) {
+        this(type, fields, instances, DomainSchemas.flatSchema(fields));
+    }
+}

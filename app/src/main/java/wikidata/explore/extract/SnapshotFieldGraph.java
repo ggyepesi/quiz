@@ -1,9 +1,10 @@
 package wikidata.explore.extract;
 
 import objectview.field.FieldKind;
-import objectview.viewconfig.FieldTypeSource;
+import objectview.field.FieldRef;
+import objectview.field.FieldSchema;
 import objectview.Viewable;
-import quiz.transform.ui.DomainField;
+import quiz.transform.ui.DomainModel;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -89,53 +90,38 @@ public final class SnapshotFieldGraph {
                 && type.fields.containsKey("wikidata"));
     }
 
-    public List<DomainField> fields(String topType,
-                                    Set<String> structuralTopFields) {
-        List<DomainField> result = new ArrayList<>();
-        collectFields(topType, topType, "", new LinkedHashSet<>(), 0,
-                structuralTopFields == null ? Set.of() : structuralTopFields,
-                result);
-        return result;
-    }
-
-    private void collectFields(String topType, String currentType, String prefix,
-                               Set<String> chain, int depth,
-                               Set<String> structuralTopFields,
-                               List<DomainField> result) {
-        TypeShape type = types.get(currentType);
-        if (type == null || depth > MAX_PATH_DEPTH || !chain.add(currentType)) {
-            return;
+    /**
+     * Canonical top-level schema reconstructed directly from the persisted field
+     * graph. No instance sampling or type-label parsing is needed on load.
+     */
+    public FieldSchema fieldSchema(
+            String typeName, Set<String> extraStructuralFields) {
+        TypeShape type = types.get(typeName);
+        if (type == null) {
+            return null;
         }
+        Set<String> extra = extraStructuralFields == null
+                ? Set.of() : extraStructuralFields;
+        List<FieldRef> refs = new ArrayList<>();
         for (FieldShape field : type.fields.values()) {
-            if ((depth == 0 && structuralTopFields.contains(field.name))
-                    || field.structural) {
-                continue;
-            }
-            String path = prefix.isEmpty()
-                    ? field.name : prefix + "." + field.name;
-            result.add(new DomainField(topType, path, field.reference,
-                    field.collection, field.domainKind()));
-
-            String target = field.primaryTargetType();
-            if (field.reference && target != null) {
-                result.add(new DomainField(topType, path + ".name",
-                        false, false, FieldKind.TEXT));
-                collectFields(topType, target, path,
-                        new LinkedHashSet<>(chain), depth + 1,
-                        Set.of(), result);
-            }
+            FieldKind valueKind = field.reference
+                    ? FieldKind.REFERENCE : field.scalarKind();
+            refs.add(FieldRef.described(
+                    field.name, field.domainKind(), valueKind,
+                    field.typeLabel(), field.reference, field.collection,
+                    field.primaryTargetType(),
+                    field.structural || extra.contains(field.name),
+                    field.minor, field.inline, field.link, field.linkText,
+                    field.provenance, field.annotatedReference));
         }
-        chain.remove(currentType);
-    }
-
-    public FieldTypeSource fieldTypes(String typeName) {
-        return new GraphFieldTypeSource(this, typeName);
+        List<FieldRef> immutable = List.copyOf(refs);
+        return () -> immutable;
     }
 
     /**
      * Small shape-bearing object tree for the existing dynamic field editor API.
      * Values are placeholders; all authoritative labels and nesting come from
-     * {@link #fieldTypes(String)}.
+     * {@link #fieldSchema(String, Set)}.
      */
     public WikidataDynamicObject shapeSample(String typeName) {
         return shapeSample(typeName, new LinkedHashSet<>(), 0);
@@ -189,13 +175,62 @@ public final class SnapshotFieldGraph {
             }
             TypeShape type = graph.types.computeIfAbsent(
                     object.typeName(), TypeShape::new);
-            type.member |= !object.isValueObject();
+            type.member |= !object.isValueObject()
+                    && !object.isStructuralObject();
             type.valueObject |= object.isValueObject();
             for (Map.Entry<String, Object> entry
                     : object.dynamicFieldValues().entrySet()) {
                 type.fields.computeIfAbsent(entry.getKey(), FieldShape::new)
                         .observe(entry.getValue());
             }
+        }
+
+        /**
+         * Add the producing domain's declared shape after observing its values.
+         * Observation remains authoritative for actual cardinality/targets; the
+         * declaration fills gaps left by null fields and empty collections.
+         */
+        public void declare(DomainModel domain) {
+            if (domain == null) {
+                return;
+            }
+            for (String typeName : domain.types()) {
+                if (typeName == null || typeName.isBlank()) {
+                    continue;
+                }
+                TypeShape type = graph.types.computeIfAbsent(
+                        typeName, TypeShape::new);
+                type.member = true;
+                declareType(typeName, domain, new LinkedHashSet<>());
+            }
+        }
+
+        private void declareType(String typeName, DomainModel domain,
+                                 Set<String> chain) {
+            FieldSchema schema = domain.fieldSchema(typeName);
+            if (schema == null || !chain.add(typeName)) {
+                return;
+            }
+            TypeShape type = graph.types.computeIfAbsent(
+                    typeName, TypeShape::new);
+            for (FieldRef declared : schema.fields()) {
+                if (declared == null || declared.name() == null
+                        || declared.name().isBlank()) {
+                    continue;
+                }
+                FieldShape field = type.fields.computeIfAbsent(
+                        declared.name(), FieldShape::new);
+                field.declare(declared);
+                String target = declared.targetType();
+                if (!declared.structural() && target != null
+                        && !target.isBlank()) {
+                    graph.types.computeIfAbsent(
+                            target, TypeShape::new);
+                    declareType(target, domain,
+                            new LinkedHashSet<>(chain));
+                }
+            }
+            chain.remove(typeName);
         }
 
         public SnapshotFieldGraph build() {
@@ -222,6 +257,12 @@ public final class SnapshotFieldGraph {
         public boolean collection;
         public boolean reference;
         public boolean structural;
+        public boolean minor;
+        public boolean inline;
+        public boolean link;
+        public String linkText = "";
+        public boolean provenance;
+        public boolean annotatedReference;
         public String scalarKind = FieldKind.UNKNOWN.name();
         public String scalarTypeLabel = "";
         public List<String> targetTypes = new ArrayList<>();
@@ -232,10 +273,79 @@ public final class SnapshotFieldGraph {
             this.name = name;
         }
 
+        void declare(FieldRef field) {
+            if (field == null) {
+                return;
+            }
+            collection |= field.collection();
+            reference |= field.reference();
+            structural |= field.structural();
+            minor |= field.minor();
+            inline |= field.inline();
+            link |= field.link();
+            if (field.linkText() != null && !field.linkText().isBlank()) {
+                linkText = field.linkText();
+            }
+            provenance |= field.provenance();
+            annotatedReference |= field.annotatedReference();
+            String target = field.targetType();
+            if (target != null && !target.isBlank()
+                    && !targetTypes.contains(target)) {
+                targetTypes.add(target);
+            }
+            if (!field.reference()) {
+                declareKind(field.valueKind());
+                String label = elementTypeLabel(field.typeLabel() == null
+                        ? "" : field.typeLabel().trim());
+                if (!label.isBlank()) {
+                    // The declared label is more precise than the kind fallback
+                    // ("FlexibleDate", not merely "Ordered").
+                    scalarTypeLabel = label;
+                }
+            }
+        }
+
+        void declareKind(FieldKind kind) {
+            if (kind == null || kind == FieldKind.UNKNOWN
+                    || kind == FieldKind.COLLECTION
+                    || kind == FieldKind.REFERENCE) {
+                return;
+            }
+            if (scalarKind() == FieldKind.UNKNOWN) {
+                scalarKind = kind.name();
+            }
+            if (scalarTypeLabel == null || scalarTypeLabel.isBlank()) {
+                scalarTypeLabel = switch (kind) {
+                    case BOOLEAN -> "Boolean";
+                    case ORDERED -> "Ordered";
+                    case TEXT -> "String";
+                    case MEDIA -> "MediaValue";
+                    default -> "";
+                };
+            }
+        }
+
+        private static String elementTypeLabel(String label) {
+            int open = label.indexOf('<');
+            int close = label.lastIndexOf('>');
+            if (open < 0 || close <= open) {
+                return label;
+            }
+            String inside = label.substring(open + 1, close).trim();
+            // For Map<K,V>, the value is the field's element type.
+            int comma = inside.lastIndexOf(',');
+            return comma < 0 ? inside : inside.substring(comma + 1).trim();
+        }
+
         void observe(Object value) {
             if (value instanceof Collection<?> collectionValue) {
                 collection = true;
                 for (Object item : collectionValue) {
+                    observeAtom(item);
+                }
+            } else if (value instanceof Map<?, ?> mapValue) {
+                collection = true;
+                for (Object item : mapValue.values()) {
                     observeAtom(item);
                 }
             } else {
@@ -312,28 +422,4 @@ public final class SnapshotFieldGraph {
         }
     }
 
-    private record GraphFieldTypeSource(
-            SnapshotFieldGraph graph, String typeName) implements FieldTypeSource {
-
-        @Override public FieldTypeInfo field(String name) {
-            TypeShape type = graph.types.get(typeName);
-            FieldShape field = type == null ? null : type.fields.get(name);
-            if (field == null) {
-                return null;
-            }
-            String target = field.primaryTargetType();
-            FieldTypeSource nested = target != null
-                    && graph.types.containsKey(target)
-                    && !graph.types.get(target).fields.isEmpty()
-                    ? new GraphFieldTypeSource(graph, target) : null;
-            return new FieldTypeInfo(field.typeLabel(), field.structural,
-                    nested == null ? null : target, nested);
-        }
-
-        @Override public List<String> fieldNames() {
-            TypeShape type = graph.types.get(typeName);
-            return type == null ? List.of()
-                    : List.copyOf(type.fields.keySet());
-        }
-    }
 }

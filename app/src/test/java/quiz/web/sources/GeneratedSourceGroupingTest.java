@@ -45,17 +45,32 @@ class GeneratedSourceGroupingTest {
             throws Exception {
         WikidataDynamicObject unitedStates = state("United States", 1, "dollar");
         unitedStates.put("groups", List.of(
-                List.of("All", "Currencies", "DO", "dollar", "United States"),
-                List.of("All", "Territories", "North America", "United States"),
-                List.of("All", "Capitals", "ST", "St. George's")));
+                group("United States",
+                        "All", "Currencies", "DO", "dollar", "United States"),
+                group("United States",
+                        "All", "Territories", "North America", "United States"),
+                group("St. George's",
+                        "All", "Capitals", "ST", "St. George's")));
         WikidataDynamicObject zimbabwe = state("Zimbabwe", 1, "dollar");
         zimbabwe.put("groups",
-                List.of(List.of(
+                List.of(legacyGroup("United States",
                         "All", "Currencies", "DO", "dollar", "United States")));
 
         File snapshot = dir.resolve("states.snapshot.json").toFile();
-        new WikidataDynamicObjectJsonStore()
-                .save(List.of(unitedStates, zimbabwe), snapshot);
+        WikidataDynamicObjectJsonStore store =
+                new WikidataDynamicObjectJsonStore();
+        store.save(List.of(unitedStates, zimbabwe), snapshot);
+
+        WikidataDynamicObject reloadedUnitedStates = store.loadAll(snapshot).stream()
+                .filter(object -> "United States".equals(object.qid()))
+                .findFirst().orElseThrow();
+        @SuppressWarnings("unchecked")
+        List<WikidataDynamicObject> reloadedGroups =
+                (List<WikidataDynamicObject>) reloadedUnitedStates.get("groups");
+        assertTrue(reloadedGroups.stream().allMatch(
+                        group -> group.get("path") == null
+                                && !group.structuralPath().isEmpty()),
+                "new and legacy group paths become hidden structural metadata");
 
         GeneratedSource source = new GeneratedSource("State", snapshot);
         quiz.ViewableGroup root = source.rootGroup();
@@ -97,5 +112,25 @@ class GeneratedSourceGroupingTest {
         state.put("version", version);
         state.put("currency", currency);
         return state;
+    }
+
+    private static WikidataDynamicObject group(
+            String name, String... path) {
+        WikidataDynamicObject group =
+                new WikidataDynamicObject(null, name);
+        group.type("ViewableGroup");
+        group.valueObject(true);
+        group.structuralPath(List.of(path));
+        return group;
+    }
+
+    private static WikidataDynamicObject legacyGroup(
+            String name, String... path) {
+        WikidataDynamicObject group =
+                new WikidataDynamicObject(null, name);
+        group.type("ViewableGroup");
+        group.valueObject(true);
+        group.put("path", List.of(path));
+        return group;
     }
 }

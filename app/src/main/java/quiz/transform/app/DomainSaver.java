@@ -2,6 +2,7 @@ package quiz.transform.app;
 
 import quiz.DatasetRegistry;
 import objectview.Viewable;
+import quiz.transform.ui.DomainModel;
 import quiz.transform.ui.DomainWriter;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
@@ -22,13 +23,19 @@ public final class DomainSaver implements DomainWriter {
 
     @Override
     public String save(String name, Collection<? extends Viewable> members) throws Exception {
+        return save(name, members, null);
+    }
+
+    @Override
+    public String save(String name, Collection<? extends Viewable> members,
+                       DomainModel schema) throws Exception {
         String key = sanitize(name);
-        List<WikidataDynamicObject> pool = ViewableToWdo.pool(members);
+        List<WikidataDynamicObject> pool = ViewableToWdo.pool(members, schema);
 
         File file = new File(aux.Constants.wikidataDataDirectory
                 + "transform/" + key + ".snapshot.json");
         WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
-        var fieldGraph = store.saveWithFieldGraph(pool, file);
+        var fieldGraph = store.saveWithFieldGraph(pool, file, schema);
         Set<String> types = new LinkedHashSet<>(fieldGraph.memberTypes());
 
         DatasetRegistry.Dataset d = new DatasetRegistry.Dataset();

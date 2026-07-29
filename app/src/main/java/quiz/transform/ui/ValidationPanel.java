@@ -574,6 +574,7 @@ public final class ValidationPanel extends JPanel {
     private JComponent instancesView(List<Viewable> missing, String type) {
         return InstanceBrowser.create(
                 missing, missing.get(0), domain.structuralFields(type), domain.fieldTypes(type),
+                q -> domain.fieldSchema(q.typeName()),
                 o -> {
             selected = o instanceof Viewable q ? q : null;
             updateSourcesButton();

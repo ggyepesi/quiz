@@ -10,6 +10,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -104,5 +105,18 @@ class WikidataDynamicObjectJsonStoreMergeTest {
         assertTrue(root.get("items") instanceof java.util.Collection<?>);
         assertEquals(2, ((java.util.Collection<?>) root.get("items")).size(),
                 "typed values sharing an id must not be deduplicated");
+    }
+
+    @Test void objectEqualityUsesTheSameTypedIdentityAsSnapshots() {
+        WikidataDynamicObject state =
+                new WikidataDynamicObject("France", "France");
+        state.type("State");
+        WikidataDynamicObject group =
+                new WikidataDynamicObject("France", "France");
+        group.type("ViewableGroup");
+
+        assertNotEquals(state, group);
+        assertEquals(2, new java.util.LinkedHashSet<>(
+                List.of(state, group)).size());
     }
 }

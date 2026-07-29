@@ -5,6 +5,7 @@ import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
 import objectview.viewconfig.FieldTypeSource;
+import objectview.field.FieldSchema;
 import objectview.Viewable;
 
 import javax.swing.JComponent;
@@ -24,10 +25,12 @@ final class InstanceBrowser {
             Viewable sample,
             Set<String> hiddenFields,
             FieldTypeSource fieldTypes,
+            java.util.function.Function<Viewable, FieldSchema> fieldSchemas,
             Consumer<Object> selectionListener) {
         CardListView view = new CardListView();
         RenderContext context = new RenderContext();
         context.setCollapsibleCards(true);
+        context.setFieldSchemaResolver(fieldSchemas);
         if (selectionListener != null) {
             context.setSelectionEnabled(true);
             context.addSelectionListener(selectionListener);

@@ -275,25 +275,56 @@ public final class ViewStepsPanel extends JPanel {
         return f;
     }
 
-    /** The selected field as a {@link DomainField}, rebuilt from the chosen row's
-     *  {@link FieldRow} (its leaf {@code Field} / nested source), so it no longer
-     *  depends on a path lookup that might not match the tree's paths. */
+    /** The selected field as a {@link DomainField}. Prefer the domain's authoritative
+     *  shape: a dynamic snapshot row has no reflected {@link Field}, so reconstructing
+     *  it from the row alone misclassifies e.g. {@code Collection<MediaValue>} as one
+     *  MEDIA value and loses the collection-size operators. */
     private DomainField currentField() {
-        FieldRow row = fieldPicker.selectedRow();
+        return domainFieldForRow(
+                controller, controller.selectedType(), fieldPicker.selectedRow());
+    }
+
+    static DomainField domainFieldForRow(
+            TransformController controller, String type, FieldRow row) {
         if (row == null) {
             return null;
         }
-        String type = controller.selectedType();
+
+        if (controller != null && type != null) {
+            for (DomainField field : controller.fields(type)) {
+                if (field.field().equals(row.path())) {
+                    return field;
+                }
+            }
+        }
+
+        // Fallback for a UI-contributed row not present in the DomainModel.
         boolean reference = row.nested() != null;
         java.lang.reflect.Field leaf = row.field();
         boolean collection = leaf != null
                 && (java.util.Collection.class.isAssignableFrom(leaf.getType())
-                        || java.util.Map.class.isAssignableFrom(leaf.getType()));
+                        || java.util.Map.class.isAssignableFrom(leaf.getType()))
+                || isContainerTypeLabel(row.typeLabel());
         FieldKind kind = collection ? FieldKind.COLLECTION
                 : reference ? FieldKind.REFERENCE
                 : leaf != null ? FieldKind.ofClass(leaf.getType())
                 : FieldKind.ofTypeLabel(row.typeLabel());
         return new DomainField(type, row.path(), reference, collection, kind);
+    }
+
+    private static boolean isContainerTypeLabel(String label) {
+        if (label == null) {
+            return false;
+        }
+        String normalized = label.trim();
+        return normalized.equals("Collection")
+                || normalized.startsWith("Collection<")
+                || normalized.equals("List")
+                || normalized.startsWith("List<")
+                || normalized.equals("Set")
+                || normalized.startsWith("Set<")
+                || normalized.equals("Map")
+                || normalized.startsWith("Map<");
     }
 
     /** Re-offer only the operators that fit the checked field's shape, and repopulate

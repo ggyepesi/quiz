@@ -1,11 +1,13 @@
 package quiz.transform.ui;
 
 import objectview.viewconfig.DomainViews;
-import objectview.field.ViewableFieldPaths;
+import objectview.viewconfig.FieldTypeSource;
 import objectview.Viewable;
 import objectview.ViewableAdapter;
-import objectview.field.FieldKind;
-import objectview.viewconfig.ViewConfig;
+import objectview.field.FieldRef;
+import objectview.field.FieldSchema;
+import objectview.field.ReflectionFieldSet;
+import objectview.field.ViewableFieldPaths;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -30,8 +32,9 @@ import java.util.Set;
 public final class ReflectionDomain implements DomainModel {
 
     private final List<Viewable> instances;
-    private final Map<String, List<DomainField>> fieldsByType = new LinkedHashMap<>();
-    private final Map<String, Set<String>> structuralByType = new LinkedHashMap<>();
+    private final List<String> memberTypes = new ArrayList<>();
+    private final Map<String, FieldSchema> schemasByType =
+            new LinkedHashMap<>();
 
     public ReflectionDomain(Collection<? extends Viewable> roots) {
         // Walk the whole reachable DATA graph so every Viewable class — the main
@@ -55,6 +58,7 @@ public final class ReflectionDomain implements DomainModel {
         }
         this.instances = closure;
         for (Class<?> cls : classes) {
+            memberTypes.add(cls.getSimpleName());
             index(cls);
         }
     }
@@ -101,37 +105,28 @@ public final class ReflectionDomain implements DomainModel {
     @SuppressWarnings("unchecked")
     private void index(Class<?> cls) {
         String type = cls.getSimpleName();
-        if (fieldsByType.containsKey(type) || !Viewable.class.isAssignableFrom(cls)) {
+        if (schemasByType.containsKey(type) || !Viewable.class.isAssignableFrom(cls)) {
             return;
         }
-        List<DomainField> fields = new ArrayList<>();
-        // ViewableFieldPaths gives the NESTED field paths (e.g. nominee.name) the
-        // config editor renders — so nested/cross-class arguments appear for free.
-        // ALL_FIELDS: this feeds the transform pipeline picker and the coverage /
-        // validation view, which WANT media (a MEDIA field is presence-filterable and
-        // the missing-portrait / missing-flag worklist is the point). Search / sort /
-        // config editors exclude media by kind separately (NOT_MEDIA_FIELDS).
-        ViewConfig config =
-                ViewConfig.all((Class<? extends Viewable>) cls);
-        for (ViewableFieldPaths.FieldPath fp
-                : ViewableFieldPaths.collect(config, ViewableFieldPaths.ALL_FIELDS)) {
-            Field leaf = fp.leafField();
-            boolean ref = leaf != null && isReferenceField(leaf);
-            boolean col = leaf != null && isCollectionField(leaf);
-            FieldKind kind = col ? FieldKind.COLLECTION
-                    : ref ? FieldKind.REFERENCE
-                    : leaf != null ? FieldKind.ofClass(leaf.getType()) : FieldKind.UNKNOWN;
-            fields.add(new DomainField(type, fp, ref, col, kind));
-        }
-        fieldsByType.put(type, fields);
-
-        Set<String> structural = new LinkedHashSet<>();
+        List<FieldRef> fields = new ArrayList<>();
+        List<Class<? extends Viewable>> nestedClasses = new ArrayList<>();
         for (Field field : ViewableAdapter.getAllFields(cls)) {
-            if (isGroupField(field)) {
-                structural.add(field.getName());
+            FieldRef described = ReflectionFieldSet.describe(field, cls);
+            if (isGroupField(field) || described.provenance()) {
+                described = FieldRef.withStructural(described, true);
+            }
+            fields.add(described);
+            Class<? extends Viewable> nested =
+                    ViewableFieldPaths.nestedViewableClass(field);
+            if (nested != null && !described.structural()) {
+                nestedClasses.add(nested);
             }
         }
-        structuralByType.put(type, Set.copyOf(structural));
+        List<FieldRef> immutable = List.copyOf(fields);
+        schemasByType.put(type, () -> immutable);
+        for (Class<? extends Viewable> nested : nestedClasses) {
+            index(nested);
+        }
     }
 
     private static boolean isGroupField(Field field) {
@@ -152,35 +147,18 @@ public final class ReflectionDomain implements DomainModel {
         return false;
     }
 
-    static boolean isReferenceField(Field f) {
-        if (ViewableAdapter.isReference(f)) {
-            return true;
-        }
-        if (Viewable.class.isAssignableFrom(f.getType())) {
-            return true;
-        }
-        // A collection/map of Viewables (via the generic element/value type).
-        if (f.getGenericType() instanceof ParameterizedType p) {
-            for (Type arg : p.getActualTypeArguments()) {
-                if (arg instanceof Class<?> c && Viewable.class.isAssignableFrom(c)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    static boolean isCollectionField(Field f) {
-        Class<?> t = f.getType();
-        return Collection.class.isAssignableFrom(t) || Map.class.isAssignableFrom(t);
-    }
-
-    @Override public List<String> types() { return new ArrayList<>(fieldsByType.keySet()); }
+    @Override public List<String> types() { return List.copyOf(memberTypes); }
     @Override public List<DomainField> fields(String type) {
-        return new ArrayList<>(fieldsByType.getOrDefault(type, List.of()));
+        return DomainSchemas.fields(this, type);
+    }
+    @Override public FieldSchema fieldSchema(String type) {
+        return schemasByType.get(type);
     }
     @Override public Set<String> structuralFields(String type) {
-        return structuralByType.getOrDefault(type, Set.of());
+        return DomainSchemas.structuralFields(fieldSchema(type));
+    }
+    @Override public FieldTypeSource fieldTypes(String type) {
+        return DomainSchemas.fieldTypes(this, type);
     }
     @Override public Collection<? extends Viewable> instances() { return instances; }
     @Override public Class<? extends Viewable> universe() { return Viewable.class; }

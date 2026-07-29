@@ -1,7 +1,6 @@
 package quiz.web.sources;
 
 import flag.States;
-import flag.StateAdmissionDates;
 import objectview.Viewable;
 import quiz.ViewableGroup;
 import objectview.facet.FacetGrouper;
@@ -30,7 +29,6 @@ public class StateSource implements ViewableSource {
         if (states == null) {
             States s = new States();
             s.buildViews();
-            StateAdmissionDates.apply(s.getStates());
             states = s;
         }
         return states;

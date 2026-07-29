@@ -84,6 +84,7 @@ public class States implements DomainViews {
 
         DownloadFlagGroups.downloadColorFlagroups(root, states);
         DownloadFlagGroups.downloadDesignFlagroups(root, states);
+        StateAdmissionDates.apply(states);
 
         System.out.println(root.getChildren().size() + " groups, " +
                                    root.getMembers().size() + " vs. " + states.size());
@@ -113,19 +114,20 @@ public class States implements DomainViews {
                 state.addGroup(group);
             }
         }
-        String imageKey = prefixAndState.getOriginalImageKey();
-        String canonicalKey = prefixAndState.getCanonicalPrefixForDuplicateCheck();
         if (prefixAndState.isFlag()) {
-            if (containsImageKey(canonicalKey, state.getFlagVersions())) {
-                System.out.println("SKIP DUPLICATE FLAG " + imageKey);
+            if (containsImage(prefixAndState, state.getFlagVersions())) {
+                System.out.println("SKIP DUPLICATE FLAG "
+                        + prefixAndState.getOriginalImageKey());
                 return true;
             }
         } else {
-            if (containsImageKey(canonicalKey, state.getArmsVersions())) {
-                System.out.println("SKIP DUPLICATE ARMS " + imageKey);
+            if (containsImage(prefixAndState, state.getArmsVersions())) {
+                System.out.println("SKIP DUPLICATE ARMS "
+                        + prefixAndState.getOriginalImageKey());
                 return true;
             }
         }
+        String imageKey = prefixAndState.getOriginalImageKey();
 
         if (FlagCachedImage.hasImageFile(imageKey)) {
             try {
@@ -172,9 +174,19 @@ public class States implements DomainViews {
         }
     }
 
-    private boolean containsImageKey(String key, List<ImagePane> imagePanes) {
+    private boolean containsImage(
+            PrefixAndState candidate, List<ImagePane> imagePanes) {
         for (ImagePane imagePane : imagePanes) {
-            if (key.equals(imagePane.getKey())) return true;
+            PrefixAndState existing =
+                    PrefixAndState.findPrefix(imagePane.getKey());
+            if (existing != null
+                    && candidate.getVersionIdentityKey().equals(
+                            existing.getVersionIdentityKey())) {
+                return true;
+            }
+            if (candidate.getOriginalImageKey().equals(imagePane.getKey())) {
+                return true;
+            }
         }
         return false;
     }
@@ -297,12 +309,13 @@ public class States implements DomainViews {
 
     private synchronized void addImage(PrefixAndState prefixAndState, State state, ImagePane imagePane) {
         String prefix = prefixAndState.getPrefix();
-        String imageKey = prefixAndState.getCanonicalPrefixForDuplicateCheck();
+        String imageKey = prefixAndState.getOriginalImageKey();
         root.getOrCreateChild("ByPrefix").getOrCreateChild(prefix).addMember(state);
 
         if (PrefixAndState.isFlagPrefix(prefix)) {
             if (loadFlags) {
-                flagOfs.computeIfAbsent(state.getName(), s -> new TreeMap<>()).put(prefix, imageKey);
+                flagOfs.computeIfAbsent(state.getName(), s -> new TreeMap<>())
+                        .put(prefix, prefixAndState.getCanonicalPrefixForDuplicateCheck());
                 //old = state.addFlag(imageKey, imagePane);
                 state.addFlag(imageKey, imagePane);
             }
@@ -330,4 +343,3 @@ public class States implements DomainViews {
         flagOfs.clear();
     }
 }
-

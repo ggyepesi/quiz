@@ -276,10 +276,19 @@ public class GeneratedSource implements ViewableSource {
 
     private static void collectOneGroupPath(
             Object value, List<List<String>> paths) {
-        if (value instanceof String path) {
+        if (value instanceof wikidata.explore.extract.WikidataDynamicObject group
+                && "ViewableGroup".equals(group.typeName())) {
+            if (!group.structuralPath().isEmpty()) {
+                paths.add(group.structuralPath());
+            } else {
+                // Compatibility for snapshots saved before group ancestry moved
+                // out of visible dynamic fields.
+                collectOneGroupPath(group.get("path"), paths);
+            }
+        } else if (value instanceof String path) {
             if (!path.isBlank()) {
                 // Old snapshots stored a dotted identifier. New saves use segment
-                // lists so labels containing dots remain lossless.
+                // paths so labels containing dots remain lossless.
                 paths.add(groupSegments(path));
             }
         } else if (value instanceof Collection<?> collection) {

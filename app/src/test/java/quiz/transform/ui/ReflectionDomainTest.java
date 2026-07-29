@@ -2,6 +2,8 @@ package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
 import objectview.annotations.Reference;
+import objectview.field.FieldKind;
+import objectview.media.ImagePane;
 import quiz.ViewableGroup;
 import objectview.ViewableAdapter;
 
@@ -34,6 +36,13 @@ class ReflectionDomainTest {
         @Override public String getDisplayName() { return countryName; }
     }
 
+    static class EmptyCountry extends ViewableAdapter {
+        private final List<Lang> languages = new java.util.ArrayList<>();
+        private final List<ImagePane> flags = new java.util.ArrayList<>();
+        @Override public String getIdentifier() { return "empty"; }
+        @Override public String getDisplayName() { return "Empty"; }
+    }
+
     @Test void exposesReferencedClassesAndTheirInstances() {
         Country c = new Country("Wonderland");
         c.language = new Lang("English");
@@ -59,5 +68,23 @@ class ReflectionDomainTest {
         assertFalse(domain.types().contains("ViewableGroup"));
         assertEquals(java.util.Set.of("group"),
                 domain.structuralFields("Country"));
+    }
+
+    @Test void emptyCollectionsKeepTheirDeclaredElementSchema() {
+        ReflectionDomain domain =
+                new ReflectionDomain(List.of(new EmptyCountry()));
+
+        var languages = domain.fieldSchema("EmptyCountry").field("languages");
+        assertTrue(languages.collection());
+        assertTrue(languages.reference());
+        assertEquals("Lang", languages.targetType());
+        assertEquals(FieldKind.REFERENCE, languages.valueKind());
+        assertTrue(domain.fields("EmptyCountry").stream()
+                .anyMatch(field -> "languages.langName".equals(field.field())));
+
+        var flags = domain.fieldSchema("EmptyCountry").field("flags");
+        assertTrue(flags.collection());
+        assertEquals(FieldKind.MEDIA, flags.valueKind());
+        assertEquals("Collection<ImagePane>", flags.typeLabel());
     }
 }

@@ -1,9 +1,13 @@
 package quiz.transform.ui;
 
+import aux.FlexibleDate;
+import objectview.media.ImagePane;
+import objectview.annotations.Link;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.ViewableGroup;
 import objectview.ViewableAdapter;
+import quiz.transform.app.SnapshotDomain;
 import quiz.transform.app.ViewableToWdo;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
@@ -13,6 +17,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,6 +66,26 @@ class ViewableToWdoTest {
         @Override public String getDisplayName() { return id; }
     }
 
+    static class EmptyChild extends ViewableAdapter {
+        private final String label = "";
+
+        @Override public String getIdentifier() { return "child"; }
+        @Override public String getDisplayName() { return "Child"; }
+    }
+
+    static class DeclaredEntity extends ViewableAdapter {
+        private final String name;
+        private FlexibleDate admissionDate;
+        @Link(text = "website")
+        private final String website = "https://example.test";
+        private final List<EmptyChild> children = new java.util.ArrayList<>();
+        private final List<ImagePane> images = new java.util.ArrayList<>();
+
+        DeclaredEntity(String name) { this.name = name; }
+        @Override public String getIdentifier() { return name; }
+        @Override public String getDisplayName() { return name; }
+    }
+
     @Test void convertsAndRoundTripsAReferenceGraph(@TempDir Path dir) throws Exception {
         Person bob = new Person("Bob");
         Person alice = new Person("Alice");
@@ -103,7 +128,8 @@ class ViewableToWdoTest {
         assertTrue(error.getMessage().contains("conflicting typed identifiers"));
     }
 
-    @Test void qualifiesSameNamedGroupsByTheirParentPath() {
+    @Test void qualifiesSameNamedGroupsByTheirParentPath(
+            @TempDir Path dir) throws Exception {
         ViewableGroup b = new ViewableGroup("B");
         ViewableGroup bA = b.getOrCreateChild("A");
         ViewableGroup c = new ViewableGroup("C");
@@ -115,10 +141,90 @@ class ViewableToWdoTest {
         GroupedEntity grouped = new GroupedEntity("grouped");
         grouped.groups.put(bA.getIdentifier(), bA);
         grouped.groups.put(cA.getIdentifier(), cA);
+        bA.addMember(grouped);
+        cA.addMember(grouped);
 
         List<WikidataDynamicObject> roots = ViewableToWdo.pool(List.of(grouped));
+        @SuppressWarnings("unchecked")
+        List<WikidataDynamicObject> groups =
+                (List<WikidataDynamicObject>) roots.get(0).get("groups");
+        assertEquals(2, groups.size());
+        assertEquals(List.of("A", "A"), groups.stream()
+                .map(WikidataDynamicObject::getDisplayName).toList());
+        assertEquals(List.of("B.A", "C.A"), groups.stream()
+                .map(WikidataDynamicObject::qid).toList());
+        assertTrue(groups.stream().noneMatch(WikidataDynamicObject::isValueObject));
+        assertTrue(groups.stream().allMatch(
+                WikidataDynamicObject::isStructuralObject));
+        assertTrue(groups.stream().allMatch(
+                group -> "ViewableGroup".equals(group.typeName())));
         assertEquals(List.of(
                 List.of("B", "A"),
-                List.of("C", "A")), roots.get(0).get("groups"));
+                List.of("C", "A")), groups.stream()
+                .map(WikidataDynamicObject::structuralPath).toList());
+        for (WikidataDynamicObject group : groups) {
+            assertTrue(group.get("parent") instanceof WikidataDynamicObject);
+            assertTrue(group.get("children") instanceof List<?>);
+            assertTrue(group.get("members") instanceof List<?>);
+        }
+
+        File file = dir.resolve("groups.snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store =
+                new WikidataDynamicObjectJsonStore();
+        store.save(roots, file);
+        var loaded = store.loadAllWithFieldGraph(file);
+        assertFalse(loaded.fieldGraph().memberTypes().contains("ViewableGroup"),
+                "structural groups must not become selectable domain instances");
+
+        WikidataDynamicObject loadedBA = loaded.objects().stream()
+                .filter(object -> "ViewableGroup".equals(object.typeName())
+                        && "B.A".equals(object.qid()))
+                .findFirst().orElseThrow(() -> new AssertionError(
+                        loaded.objects().stream()
+                                .map(object -> object.typeName() + ":" + object.qid())
+                                .toList().toString()));
+        assertEquals("B", ((WikidataDynamicObject)
+                loadedBA.get("parent")).qid());
+        assertEquals("grouped", ((List<?>) loadedBA.get("members")).stream()
+                .map(WikidataDynamicObject.class::cast)
+                .findFirst().orElseThrow().qid());
+    }
+
+    @Test
+    void declaredNullAndEmptyFieldShapesSurviveSnapshotRoundTrip(
+            @TempDir Path dir) throws Exception {
+        DeclaredEntity entity = new DeclaredEntity("one");
+        ReflectionDomain live = new ReflectionDomain(List.of(entity));
+        File file = dir.resolve("declared-shape.snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store =
+                new WikidataDynamicObjectJsonStore();
+
+        store.saveWithFieldGraph(
+                ViewableToWdo.pool(List.of(entity)), file, live);
+        var loaded = store.loadAllWithFieldGraph(file);
+        SnapshotDomain roundTripped =
+                new SnapshotDomain(loaded.objects(), loaded.fieldGraph());
+
+        var fields = roundTripped.fields("DeclaredEntity").stream()
+                .map(DomainField::field).toList();
+        assertTrue(fields.contains("admissionDate"), fields.toString());
+        assertTrue(fields.contains("children"), fields.toString());
+        assertTrue(fields.contains("children.label"), fields.toString());
+        assertTrue(fields.contains("images"), fields.toString());
+
+        var types = roundTripped.fieldTypes("DeclaredEntity");
+        assertEquals("FlexibleDate",
+                types.field("admissionDate").typeLabel());
+        assertNotNull(types.field("children").nested(),
+                "empty Viewable collections remain expandable");
+        assertEquals("Collection<EmptyChild>",
+                types.field("children").typeLabel());
+        assertEquals("Collection<ImagePane>",
+                types.field("images").typeLabel());
+        assertTrue(roundTripped.fieldSchema("DeclaredEntity")
+                .field("website").link(),
+                "render hints must survive the typed-to-dynamic round trip");
+        assertEquals("website", roundTripped.fieldSchema("DeclaredEntity")
+                .field("website").linkText());
     }
 }

@@ -45,6 +45,9 @@ class ProjectorTest {
         // Fed back: the new type + its fields are in the working domain.
         assertTrue(domain.types().contains("Nom"));
         assertTrue(domain.fields("Nom").stream().anyMatch(f -> f.field().equals("category")));
+        assertEquals("Category",
+                domain.fieldSchema("Nom").field("category").targetType(),
+                "projection must retain the source reference target");
 
         // A later operation groups the DERIVED class by a projected field.
         View view = ViewCompiler.compile("by cat", "Nom", List.of(

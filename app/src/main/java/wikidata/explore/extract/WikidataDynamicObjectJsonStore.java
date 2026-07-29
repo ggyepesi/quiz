@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import quiz.transform.ui.DomainModel;
 
 import java.io.File;
 import java.io.IOException;
@@ -102,6 +103,17 @@ public class WikidataDynamicObjectJsonStore {
     public SnapshotFieldGraph saveWithFieldGraph(
             List<WikidataDynamicObject> objects, File file)
             throws IOException {
+        return saveWithFieldGraph(objects, file, null);
+    }
+
+    /**
+     * Saves values and enriches the observed field graph with the producing
+     * domain's declared schema. This preserves null fields and empty typed
+     * collections without writing placeholder values into the instances.
+     */
+    public SnapshotFieldGraph saveWithFieldGraph(
+            List<WikidataDynamicObject> objects, File file, DomainModel schema)
+            throws IOException {
 
         if (objects == null) objects = List.of();
 
@@ -123,6 +135,7 @@ public class WikidataDynamicObjectJsonStore {
         for (WikidataDynamicObject o : objects) {
             collect(o, byQid, visited, fieldGraph);
         }
+        fieldGraph.declare(schema);
 
         FlatSnapshot snapshot = new FlatSnapshot();
         snapshot.version = FORMAT_VERSION;
@@ -214,6 +227,12 @@ public class WikidataDynamicObjectJsonStore {
         Entity e = new Entity();
         e.qid = first.qid();
         e.typeKey = typeKey;
+        for (WikidataDynamicObject o : instances) {
+            e.structuralObject |= o.isStructuralObject();
+            if (!o.structuralPath().isEmpty()) {
+                e.structuralPath = new ArrayList<>(o.structuralPath());
+            }
+        }
 
         e.name = first.getDisplayName();
         for (WikidataDynamicObject o : instances) {
@@ -360,6 +379,8 @@ public class WikidataDynamicObjectJsonStore {
             if (e.typeKey != null && !e.typeKey.isBlank()) {
                 o.typeKey(e.typeKey);
             }
+            o.structuralObject(e.structuralObject);
+            o.structuralPath(e.structuralPath);
             byKey.put(compositeKey(e.typeKey, e.qid), o);
         }
         Map<String, WikidataDynamicObject> byQidSingle = uniqueByQid(byKey);
@@ -369,6 +390,7 @@ public class WikidataDynamicObjectJsonStore {
                 o.dynamicFields().put(entry.getKey(),
                         decode(entry.getValue(), byKey, byQidSingle));
             }
+            migrateLegacyGroupPath(o);
         }
         return byKey;
     }
@@ -452,6 +474,10 @@ public class WikidataDynamicObjectJsonStore {
         e.qid = null;                       // a value has no identity
         e.name = w.getDisplayName();
         e.type = w.typeName();              // still carried, for rendering
+        e.structuralObject = w.isStructuralObject();
+        if (!w.structuralPath().isEmpty()) {
+            e.structuralPath = new ArrayList<>(w.structuralPath());
+        }
         for (Map.Entry<String, Object> f : w.dynamicFields().entrySet()) {
             e.fields.put(f.getKey(), encode(f.getValue()));
         }
@@ -468,10 +494,27 @@ public class WikidataDynamicObjectJsonStore {
             o.type(e.type);
         }
         o.valueObject(true);
+        o.structuralObject(e.structuralObject);
+        o.structuralPath(e.structuralPath);
         for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
             o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey, byQidSingle));
         }
+        migrateLegacyGroupPath(o);
         return o;
+    }
+
+    /** Upgrades the first group-value format in memory: ancestry remains available
+     *  to rebuild the tree but is no longer a visible dynamic card field. */
+    private static void migrateLegacyGroupPath(WikidataDynamicObject object) {
+        if (object == null || !"ViewableGroup".equals(object.typeName())) {
+            return;
+        }
+        Object legacy = object.get("path");
+        if (object.structuralPath().isEmpty()
+                && legacy instanceof java.util.Collection<?> path) {
+            object.structuralPath(path);
+        }
+        object.remove("path");
     }
 
     private static String keyOf(WikidataDynamicObject o) {
@@ -524,6 +567,10 @@ public class WikidataDynamicObjectJsonStore {
         // The OBJECT-identity type key ⟨typeKey, qid⟩ (stable logical class name).
         // Null for pre-v4 snapshots and untyped leaves.
         public String typeKey;
+        public boolean structuralObject;
+        // Hidden authored hierarchy metadata for structural ViewableGroup
+        // entities; never exposed as a dynamic card field.
+        public List<String> structuralPath;
         public Map<String, Object> fields = new LinkedHashMap<>();
     }
 

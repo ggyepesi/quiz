@@ -2,6 +2,8 @@ package quiz.transform.ui;
 
 import objectview.viewconfig.FieldTypeSource;
 import objectview.Viewable;
+import objectview.field.FieldRef;
+import objectview.field.FieldSchema;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
@@ -82,27 +84,38 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     }
 
     @Override public List<DomainField> fields(String type) {
+        return DomainSchemas.fields(this, type);
+    }
+
+    @Override public FieldSchema fieldSchema(String type) {
         DerivedClass d = derived.get(type);
         if (d != null) {
-            return d.fields();
+            return d.fieldSchema();
         }
+        FieldSchema baseSchema = base.fieldSchema(type);
         List<DomainField> extra = declaredFields.get(type);
         if (extra == null || extra.isEmpty()) {
-            return base.fields(type);
+            return baseSchema;
         }
-        List<DomainField> all = new ArrayList<>(base.fields(type));
-        all.addAll(extra);
-        return all;
+        Map<String, FieldRef> combined = new LinkedHashMap<>();
+        if (baseSchema != null) {
+            for (FieldRef field : baseSchema.fields()) {
+                combined.put(field.name(), field);
+            }
+        }
+        for (FieldRef field : DomainSchemas.flatSchema(extra).fields()) {
+            combined.put(field.name(), field);
+        }
+        List<FieldRef> immutable = List.copyOf(combined.values());
+        return () -> immutable;
     }
 
     @Override public java.util.Set<String> structuralFields(String type) {
-        // A derived (PROJECT/JOIN) class has no structural plumbing of its own.
-        return derived.containsKey(type) ? java.util.Set.of() : base.structuralFields(type);
+        return DomainSchemas.structuralFields(fieldSchema(type));
     }
 
     @Override public FieldTypeSource fieldTypes(String type) {
-        // Derived classes reflect their sample; base types use the compiled model.
-        return derived.containsKey(type) ? null : base.fieldTypes(type);
+        return DomainSchemas.fieldTypes(this, type);
     }
 
     @Override public Viewable representativeSample(String type) {

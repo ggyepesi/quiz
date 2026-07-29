@@ -3,6 +3,9 @@ package quiz.transform.ui;
 import objectview.Viewable;
 import quiz.transform.DynamicViewable;
 import objectview.field.FieldAccess;
+import objectview.field.FieldKind;
+import objectview.field.FieldRef;
+import objectview.field.FieldSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -62,7 +65,17 @@ public final class Joiner {
         List<DomainField> fields = new ArrayList<>();
         fields.add(new DomainField(newType, leftField, true, false));
         fields.add(new DomainField(newType, rightField, true, false));
-        return new DerivedClass(newType, fields, out);
+        List<FieldRef> refs = List.of(
+                FieldRef.described(leftField, FieldKind.REFERENCE,
+                        FieldKind.REFERENCE, leftType, true, false,
+                        leftType, false, false,
+                        false, false, "", false, false),
+                FieldRef.described(rightField, FieldKind.REFERENCE,
+                        FieldKind.REFERENCE, rightType, true, false,
+                        rightType, false, false,
+                        false, false, "", false, false));
+        FieldSchema fieldSchema = () -> refs;
+        return new DerivedClass(newType, fields, out, fieldSchema);
     }
 
     /** Match key: a referenced entity by identity, else the string value. */

@@ -485,11 +485,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             Viewable sample = controller.sampleOf(renderedType);
             return InstanceBrowser.create(
                     members, sample, controller.structuralFields(renderedType),
-                    controller.fieldTypes(renderedType), null);
+                    controller.fieldTypes(renderedType),
+                    q -> controller.fieldSchema(q.typeName()), null);
         }
 
         MultiView mv = new MultiView();
         mv.context().setCollapsibleCards(true);
+        mv.context().setFieldSchemaResolver(
+                q -> controller.fieldSchema(q.typeName()));
         for (java.util.Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
             String t = e.getKey();
             List<Viewable> objs = e.getValue();
@@ -507,7 +510,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         Viewable sample = controller.sampleOf(type);
         Class<? extends Viewable> cls = sample != null ? sampleClass(sample) : Viewable.class;
         return new GroupTreeBrowser(root, cls, sample,
-                                    controller.structuralFields(type), controller.fieldTypes(type));
+                controller.structuralFields(type), controller.fieldTypes(type),
+                q -> controller.fieldSchema(q.typeName()));
     }
 
     /** Persist the current view's members (the filtered / projected result) as a

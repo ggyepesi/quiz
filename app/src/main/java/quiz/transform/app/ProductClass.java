@@ -28,21 +28,23 @@ public record ProductClass(String className,
         return null;
     }
 
-    /** This class as a {@link FieldSchema} — the authoritative type source for a
-     *  dynamic ({@code DynamicFieldSet}) instance of it. Structural markers are
-     *  omitted (they're plumbing the pickers skip). */
+    /** This class as a complete {@link FieldSchema}. Structural fields remain in
+     *  the schema with an explicit role: persistence retains them while ordinary
+     *  field pickers consistently omit them. */
     public FieldSchema asFieldSchema() {
         List<FieldRef> refs = new ArrayList<>();
         for (ProductField f : fields) {
-            if (f.structural()) {
-                continue;
-            }
             FieldKind kind = f.collection() ? FieldKind.COLLECTION
                     : f.reference() ? FieldKind.REFERENCE
                     : FieldKind.ofTypeLabel(f.typeLabel());
-            refs.add(FieldRef.of(f.name(), kind, f.typeLabel(),
-                    f.reference(), f.collection(), false));
+            FieldKind valueKind = f.reference() ? FieldKind.REFERENCE
+                    : FieldKind.ofTypeLabel(f.typeLabel());
+            refs.add(FieldRef.described(f.name(), kind, valueKind,
+                    f.typeLabel(), f.reference(), f.collection(),
+                    f.nestedClassName(), f.structural(), false,
+                    false, false, "", false, false));
         }
-        return () -> refs;
+        List<FieldRef> immutable = List.copyOf(refs);
+        return () -> immutable;
     }
 }

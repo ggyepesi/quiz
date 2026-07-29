@@ -3,6 +3,8 @@ package quiz.transform.app;
 import objectview.Viewable;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
+import quiz.transform.ui.DomainSchemas;
+import objectview.field.FieldSchema;
 import objectview.viewconfig.FieldTypeSource;
 import wikidata.explore.extract.SnapshotFieldGraph;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -53,23 +55,36 @@ public final class SnapshotDomain implements DomainModel {
     @Override public List<String> types() { return fieldGraph.memberTypes(); }
 
     @Override public java.util.Set<String> structuralFields(String type) {
-        // Saved manual groups are ancestry-qualified view structure, not a data field
-        // to offer as a new GROUP_BY facet. The wikidata "source" field is likewise
-        // structural provenance for statement classes.
-        java.util.Set<String> structural = new java.util.LinkedHashSet<>();
-        structural.add("groups");
-        if (statementTypes.contains(type)) {
-            structural.add("source");
-        }
-        return java.util.Set.copyOf(structural);
+        return DomainSchemas.structuralFields(fieldSchema(type));
     }
 
     @Override public List<DomainField> fields(String type) {
-        return fieldGraph.fields(type, structuralFields(type));
+        return DomainSchemas.fields(this, type);
+    }
+
+    // The snapshot is immutable, so each type's schema is stable — cache it, since the
+    // dotted-field / structural / fieldTypes projections call fieldSchema repeatedly (once
+    // per type on every recursive path build).
+    private final java.util.Map<String, FieldSchema> schemaCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    @Override public FieldSchema fieldSchema(String type) {
+        return type == null ? null : schemaCache.computeIfAbsent(type, this::buildFieldSchema);
+    }
+
+    private FieldSchema buildFieldSchema(String type) {
+        // Saved manual groups are ancestry-qualified view structure, not a data
+        // field to offer as a grouping facet. A statement's source is provenance.
+        java.util.Set<String> extraStructural = new java.util.LinkedHashSet<>();
+        extraStructural.add("groups");
+        if (statementTypes.contains(type)) {
+            extraStructural.add("source");
+        }
+        return fieldGraph.fieldSchema(type, extraStructural);
     }
 
     @Override public FieldTypeSource fieldTypes(String type) {
-        return fieldGraph.fieldTypes(type);
+        return DomainSchemas.fieldTypes(this, type);
     }
 
     /** A small graph-derived shape sample; no instance-pool scan is required. */

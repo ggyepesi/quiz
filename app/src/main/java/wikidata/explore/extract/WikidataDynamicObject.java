@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Dynamic Wikidata-backed object.
  *
  * Core semantic rule:
- *   one QID -> one WikidataDynamicObject
+ *   one ⟨logical type, identifier⟩ -> one WikidataDynamicObject
  *
  * Repeated field values are merged:
  *   0 values  -> absent
@@ -78,6 +78,21 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @Hidden
     @com.fasterxml.jackson.annotation.JsonIgnore
     private boolean valueObject;
+
+    // A pooled structural object (currently an authored ViewableGroup): references
+    // can point to it and its fields can render, but it is not a selectable domain
+    // member type merely because it is reachable from a member.
+    @Hidden
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private boolean structuralObject;
+
+    // Hidden ancestry metadata for an authored group. It is persisted by
+    // WikidataDynamicObjectJsonStore outside dynamicFields so cards show the
+    // structural parent/children/members fields, not a `path (n)` implementation
+    // detail.
+    @Hidden
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private List<String> structuralPath = List.of();
 
     // Provenance grouped as one nested Viewable: renders as a collapsed
     // "source: Wikidata" chip that expands to the QID + link. Declared LAST so
@@ -167,12 +182,16 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
         if (!(o instanceof WikidataDynamicObject w)) {
             return false;
         }
-        return qid != null && !qid.isBlank() && qid.equals(w.qid);
+        return qid != null && !qid.isBlank()
+                && qid.equals(w.qid)
+                && java.util.Objects.equals(typeKey(), w.typeKey());
     }
 
     @Override
     public int hashCode() {
-        return qid == null || qid.isBlank() ? System.identityHashCode(this) : qid.hashCode();
+        return qid == null || qid.isBlank()
+                ? System.identityHashCode(this)
+                : java.util.Objects.hash(typeKey(), qid);
     }
 
     @Override
@@ -233,6 +252,32 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
 
     public void valueObject(boolean valueObject) {
         this.valueObject = valueObject;
+    }
+
+    public boolean isStructuralObject() {
+        return structuralObject;
+    }
+
+    public void structuralObject(boolean structuralObject) {
+        this.structuralObject = structuralObject;
+    }
+
+    public List<String> structuralPath() {
+        return structuralPath;
+    }
+
+    public void structuralPath(java.util.Collection<?> path) {
+        if (path == null || path.isEmpty()) {
+            structuralPath = List.of();
+            return;
+        }
+        List<String> copy = new ArrayList<>();
+        for (Object segment : path) {
+            if (segment != null && !segment.toString().isBlank()) {
+                copy.add(segment.toString());
+            }
+        }
+        structuralPath = List.copyOf(copy);
     }
 
     /** True when a domain class was stamped ({@link #typeName()} would otherwise
