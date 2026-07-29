@@ -37,7 +37,7 @@ issue "Antlia returns only ~2 stars (constellation has ~42)" \
 
 issue "Abbreviation field renders with an empty value" \
   "bug,webclient" \
-  "The abbreviation (P1813) field shows up with no value in the client. Check QuizableJson rendering / the snapshot value for abbreviation."
+  "The abbreviation (P1813) field shows up with no value in the client. Check ViewableJson rendering / the snapshot value for abbreviation."
 
 issue "Discover: 'properties between class A and class B' query" \
   "enhancement,modelbuilder" \

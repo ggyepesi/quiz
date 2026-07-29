@@ -316,13 +316,13 @@ Limitation: single sourceQid, not additionalTypeQids (multi-QID follow-up).
 Every card painted its raw `qid` row + `wikidataUrl` link at the top — noise.
 Introduced a small provenance abstraction instead of just hiding them:
 
-- `quiz.source.Source extends Quizable` (`sourceId()`/`url()`/`kind()`) +
+- `quiz.source.Source extends Viewable` (`sourceId()`/`url()`/`kind()`) +
   `quiz.source.WikidataSource` (QID + wiki URL, displayName "Wikidata",
   typeName "Source"). Different backends → different `Source` impls with
   different internals (future DBpedia/SerpApi), same interface.
-- `WikidataDynamicObject`: `qid` + `wikidataUrl` marked `@NotQuizableField`
+- `WikidataDynamicObject`: `qid` + `wikidataUrl` marked `@NotViewableField`
   (hidden from the panel only — Jackson/identity untouched); a new
-  `@QuizableReference @JsonIgnore transient Source source`, built from the QID
+  `@ViewableReference @JsonIgnore transient Source source`, built from the QID
   in the constructor / `qid()` setter. Renders as a collapsed
   **`source: Wikidata ▶`** chip that expands to the QID + clickable link.
 
@@ -335,11 +335,11 @@ rebuilds objects through the constructor. Verified: visible fields go from
 = "Wikidata (Q34201)". Swing only for now; web (DynamicFields→JSON) unchanged.
 Follow-up: mirror onto the generated typed-class codegen + the web client.
 
-**Fix (same session):** the new `source` reference made `QueryObjectResultPanel.groupByType` (which walks reference fields and sections by `typeName()`) give `Source` its own third panel next to Constellation/Star. Fixed with a field-level annotation rather than a runtime `instanceof`: new `@quiz.annotations.Provenance` marks the `source` field; `QuizableAdapter.isProvenanceField` + the grouping's reference walk skips provenance fields, so a `Source` is never queued, never sectioned, never descended into. Annotation (not type check) so any future `Source` impl is covered and the owner declares the relationship. (Also stops a spurious 2-panel split on single-class domains.)
+**Fix (same session):** the new `source` reference made `QueryObjectResultPanel.groupByType` (which walks reference fields and sections by `typeName()`) give `Source` its own third panel next to Constellation/Star. Fixed with a field-level annotation rather than a runtime `instanceof`: new `@quiz.annotations.Provenance` marks the `source` field; `ViewableAdapter.isProvenanceField` + the grouping's reference walk skips provenance fields, so a `Source` is never queued, never sectioned, never descended into. Annotation (not type check) so any future `Source` impl is covered and the owner declares the relationship. (Also stops a spurious 2-panel split on single-class domains.)
 
 `@Provenance` now drives **both** behaviours from the one annotation: (1)
-`QuizablePanel` renders an `@Provenance` field as a collapsed chip (like
-`@QuizableReference`, which is dropped from the `source` field — one annotation
+`ViewablePanel` renders an `@Provenance` field as a collapsed chip (like
+`@ViewableReference`, which is dropped from the `source` field — one annotation
 instead of two), and (2) the instances-panel grouping excludes/doesn't descend.
 So the `source` field is just `@Provenance @JsonIgnore`. NB: a `mvn`-verified
 load of the real constellation snapshot gives `source()=Wikidata (Q9256)` and
@@ -353,9 +353,9 @@ instances for any type with a generated class (mapper maps roots → `Character`
 `WikidataDynamicObject`. So Source only reached the dynamic ones at first —
 symptom: top-level Achilles (typed) showed qid/url + no chip, but Achilles
 reached as a reference from Episode (dynamic) showed the Source chip.
-Fixed `GeneratedQuizableSourceGenerator` to emit `@NotQuizableField` on
+Fixed `GeneratedViewableSourceGenerator` to emit `@NotViewableField` on
 qid/wikidataUrl + a trailing `@Provenance @JsonIgnore Source source`, and
-`GeneratedQuizableMapper` to populate it (`new WikidataSource(qid, url)`). Now
+`GeneratedViewableMapper` to populate it (`new WikidataSource(qid, url)`). Now
 typed + dynamic render alike. Requires **regenerate** (the typed class is
 recompiled from the new template).
 
@@ -377,14 +377,14 @@ entry** (`GenerationLog.subqueryFailed` → `LogStep.subqueryFailed` →
 with partial data. So the failing step is visible/expandable, and one timeout
 no longer aborts the domain or spawns orphans.
 
-## Collapsible collections/maps in QuizablePanel (DONE, #54)
+## Collapsible collections/maps in ViewablePanel (DONE, #54)
 
 Complex collection/map fields now render under a clickable `field (N) ▶/▼`
-header (`QuizableCollectionHeader`); the body is built only when expanded.
+header (`ViewableCollectionHeader`); the body is built only when expanded.
 Default changed to **collapsed for all** (threshold 0) at the user's request.
-Per-collection toggle remembered in `QuizableRenderContext`
+Per-collection toggle remembered in `ViewableRenderContext`
 (`isCollectionExpanded`/`toggleCollectionExpanded`/`setCollectionExpanded`,
-keyed by the collection's identity). NB **`@QuizableInline` collections are NOT
+keyed by the collection's identity). NB **`@ViewableInline` collections are NOT
 collapsed** — that annotation means "always expanded" (e.g. the query-log step
 tree); collapsing it hid the SPARQL/child steps behind a `steps (N)` header, so
 the inline branch renders fully expanded as before.
@@ -404,13 +404,13 @@ re-pinned `maven-compiler-plugin` 3.11.0, which had been declared only inside
 that block). Deleted `quiz.build.FormViewGeneratorMojo`,
 `org.formstamper.core.engine.PathDrivenFormCompiler`,
 `benchmark.generated.OscarNominationFormView`, `benchmark.CompiledEmulatorView`.
-`BenchmarkRunner`/`VisualComparisonApp` now exercise **QuizablePanel only**.
+`BenchmarkRunner`/`VisualComparisonApp` now exercise **ViewablePanel only**.
 
 ## Search: reveal matches inside collapsed collections (REVERTED — needs redesign, #53)
 
 Attempt 1 (reverted): a pre-pass in `addFieldHighlights` force-expanded
-collapsed collections on matching paths (`QuizablePanel.expandCollectionsOnPath`
-+ `QuizableRenderContext.setCollectionExpanded`) and `refresh()`ed those cards
+collapsed collections on matching paths (`ViewablePanel.expandCollectionsOnPath`
++ `ViewableRenderContext.setCollectionExpanded`) and `refresh()`ed those cards
 mid-search, plus a deferred `scrollTo`. This **corrupted the card grid**: it
 inserted apparent duplicate cards ("another one for each hit"), broke the
 alphabetical order (e.g. Heracles after Odysseus), and showed a normally-collapsed
@@ -428,7 +428,7 @@ matches aren't revealed, and the count shows per-field-group sums.
 Diagnosed with the mythology snapshot: pool = `Character=500, Episode=15,
 WikidataDynamicObject=1541`. The 1541 are unstamped references (mother/child/
 father/episode targets) whose `typeName` has no generated class, so
-`GeneratedQuizableMapper` keeps them raw (`forType(typeName)==null`). They were
+`GeneratedViewableMapper` keeps them raw (`forType(typeName)==null`). They were
 leaking into the instances grid as out-of-order raw cards showing
 `dynamicFields`/`type`/`source`. `QueryObjectResultPanel.groupByType` only
 excluded them by the exact string `"WikidataDynamicObject"` — fragile (a ref
@@ -444,24 +444,24 @@ chips/cards, not raw) — an extractor/`entityClassName` follow-up.
 
 ## Typed cross-references — compile domain together (DONE, #57)
 
-The blocker for nested search/config: generated entity refs were `List<quiz.Quizable>`
-(each class compiled standalone), so `QuizableFieldPaths` couldn't recurse into a
+The blocker for nested search/config: generated entity refs were `List<quiz.Viewable>`
+(each class compiled standalone), so `ViewableFieldPaths` couldn't recurse into a
 referenced class's fields, and cross-refs mapped to raw `WikidataDynamicObject`.
 Option A, implemented:
 - `RuntimeJavaCompiler.compileAll(qcn→source)` compiles several classes in one
   pass under one loader.
-- `GeneratedQuizableRuntimeBuilder.build(project)` generates every class into ONE
+- `GeneratedViewableRuntimeBuilder.build(project)` generates every class into ONE
   package and compiles them together → typed cross-refs resolve (Character ↔
   Episode).
-- `GeneratedQuizableSourceGenerator.objectType` emits the referenced in-project
-  class name (e.g. `List<Character>`), not `quiz.Quizable`, when the field's
+- `GeneratedViewableSourceGenerator.objectType` emits the referenced in-project
+  class name (e.g. `List<Character>`), not `quiz.Viewable`, when the field's
   "Of class" matches a project class.
-- `GeneratedQuizableMapper.mapObject(source, preferredType)` maps an ENTITY field
+- `GeneratedViewableMapper.mapObject(source, preferredType)` maps an ENTITY field
   by the field's `entityClassName` (falls back to the object's typeName), so an
   unstamped reference still maps to the typed class the field declares.
 - `GenerateDomainQuery`: ONE whole-domain runtime + ONE shared mapper over all
   roots → each QID = one typed instance, cross-refs shared.
-- `@Provenance` excluded from `QuizableFieldPaths` (no `…source.name` paths).
+- `@Provenance` excluded from `ViewableFieldPaths` (no `…source.name` paths).
 
 Verified on real mythology data: compiled together; mapped `{Character=500,
 Episode=15}` with **zero raw** (was 1541 raw); fields `father/mother/child:
@@ -475,7 +475,7 @@ problems are fixed at the root.
 Name collisions (names mapping to >1 entity, e.g. 5 Agenors) were query-log only.
 Added a **"Name collisions (N)"** button in the generated-instances window
 toolbar that opens a panel of `NameCollision` cards — each a `name` plus a
-clickable `List<Quizable> entities`: the actual generated instance per colliding
+clickable `List<Viewable> entities`: the actual generated instance per colliding
 QID (looked up from `run.instances()` by id), falling back to a `WikidataSource`
 (QID + wiki link) for QIDs not materialized. The collision view **shares the
 instances panel's render context** (`QueryObjectResultPanel.activeRenderContext()`
@@ -491,14 +491,14 @@ belonging to another panel (an Episode's character) never surfaced from where yo
 typed. The match's true home is the entity's own card in its panel — so instead
 of merging hits, share only the **input** and the **config**, and let each panel
 search independently:
-- `QuizableSearchPanel.setCoordinated(true)` hides its own input + config toolbar
+- `ViewableSearchPanel.setCoordinated(true)` hides its own input + config toolbar
   but keeps its **own per-field results panel + per-panel ◀/▶ navigation** and
   highlighting — the field path on each row identifies the owning panel.
 - `MultiSearchBar` = one shared **input** + Highlight-fields + **Search/Sort/View
   Config** as single dialogs with **one tab per class** (classes as roots, one
   click to that class's fields). Typing fans the query to every engine
   (`runCoordinatedSearch`); Apply re-applies + re-runs for all.
-- `MultiQuizableView`: shared bar on top; each section shows its own engine
+- `MultiViewableView`: shared bar on top; each section shows its own engine
   (results only).
 
 So a character hit highlights on its Character card in the Character panel and an
@@ -519,10 +519,10 @@ Periodic-table refinements (general):
   symbol over the class's members, sets `field.unit()` (called from
   GenerateDomainQuery + fullRun). Verified: melting point → °C, density → g/cm³.
 - **`@quiz.annotations.Numeric`** drives numeric sort, decoupled from the value
-  type: codegen marks `NUMBER` fields; `QuizablePanelSearchAndSort.sortKey` uses
+  type: codegen marks `NUMBER` fields; `ViewablePanelSearchAndSort.sortKey` uses
   the leaf field's annotation → sorts by the leading number ("1538 K" → 1538),
   no `Quantity`-specific code.
-- Dates: `GeneratedQuizableMapper.formatWikidataDate` collapses the truthy ISO
+- Dates: `GeneratedViewableMapper.formatWikidataDate` collapses the truthy ISO
   time to a year ("1875", "5000 BC"), dropping `T00:00:00Z`.
 
 Caveat: units-per-field assumes a uniform unit per property (the user's call);
@@ -545,7 +545,7 @@ position held); apply writes the configured PID. A concrete instance of the
 Three layers agreed: **Load** (acquisition — source-shaped classes, effective
 queries), **Transform** (constructs that restructure loaded data into new view
 classes; n-ary `{classes}→{classes}`, a DAG), **ViewConfig** (display config per
-class; the `quiz.ui.viewconfig` package — `QuizablePanelConfig` + editor frame +
+class; the `quiz.ui.viewconfig` package — `ViewablePanelConfig` + editor frame +
 JSON IO). Principle: don't bend the load to the desired output; load expressively,
 then **project** to view structures via constructs, then **present** via viewconfig.
 
@@ -559,8 +559,8 @@ plumbing). Verified: constellations → 9 `Hemisphere{constellations:[…]}` (No
 23, Southern 45, …).
 
 ### ViewConfig reaches the web (DONE, #64)
-`QuizableJson` now applies the per-type view config: loads
-`data/viewconfig/<typeName>.json` (new `QuizablePanelConfigJsonIO.fileForType` +
+`ViewableJson` now applies the per-type view config: loads
+`data/viewconfig/<typeName>.json` (new `ViewablePanelConfigJsonIO.fileForType` +
 `loadJson`), emits configured fields first in config order; the rest only when
 `allFields`, else hidden. **Keyed by `typeName()`** so ONE config drives both the
 desktop typed instances and the web's dynamic objects of that type. Verified:
@@ -580,7 +580,7 @@ object per (source, element) pair — `qid = src__el`, name `"src — el"`, hold
 `apply(pool, config)` runs inverts (in place) then reifies. A **"Transform…"**
 button in the Generated-instances toolbar opens a dialog: edit the transform JSON,
 **Run** against `lastRun.dynamicObjects()` (created objects shown in a
-`QuizablePanelView`, per-type pool counts in the status line + log), **Save** next
+`ViewablePanelView`, per-type pool counts in the status line + log), **Save** next
 to the model. Verified: invert → 9 Hemisphere (constellations); reify → 2
 `Nomination{film, award}` from a `Film.awards` list.
 
@@ -766,10 +766,10 @@ displayName) but can't read them back, and the class wasn't lenient. Fix:
 `@JsonIgnoreProperties(ignoreUnknown = true)` — only name/qid round-trip.
 
 ## Large-result rendering — bucket experiment REVERTED (#79)
-**Reverted.** The lazy alphabetical-bucket `QuizableGroupView` for a single large
+**Reverted.** The lazy alphabetical-bucket `ViewableGroupView` for a single large
 class was a UX catastrophe (tree + separate windows), while the multi-class path
-(MultiQuizableView, e.g. constellations) rendered fine. Clarified with the user:
-the Oscars cards render the SAME as constellation cards (proper QuizablePanel) —
+(MultiViewableView, e.g. constellations) rendered fine. Clarified with the user:
+the Oscars cards render the SAME as constellation cards (proper ViewablePanel) —
 the issue is **purely speed at ~11k materialised cards**, not the renderer. So the
 real fix is performance done right (data-driven search + a non-disruptive lazy/
 virtualized approach), NOT imposing a different layout. Original flat rendering
@@ -778,17 +778,17 @@ restored. (Earlier #79 notes below describe the reverted approach.)
 ### (reverted) lazy bucketed group view notes
 11k single-type instances rendered flat (one materialised card each) → slow layout
 + scroll. Diagnosis (with the user, who built the renderer): the per-card paint is
-already optimized — `QuizablePanel` draws fields via painted `QuizableTextBlock`
+already optimized — `ViewablePanel` draws fields via painted `ViewableTextBlock`
 rows, the benchmark win that took it ~20s→<2s vs Swing labels. So the remaining
 cost is laying out/scroll-painting ~11k components AT ONCE, not the per-card tech.
 Fix
-(step 1): single type > 800 → lazy `QuizableGroupView` (reused, like hand-built
+(step 1): single type > 800 → lazy `ViewableGroupView` (reused, like hand-built
 `OscarNominations`), bucketed alphabetically; only the OPEN bucket's cards build
 (`computeIfAbsent`). Caveats: buckets open in a separate window; no shared render
 context across buckets; no search yet. Step 2 (next): **data-driven search** over
 each instance's `Row(fieldPath, value)` — count + highlight without materialising
-cards (the component-driven `QuizableSearchPanel`/`MultiSearchBar` need rendered
-cards, which laziness avoids). `MultiQuizableView` builds all sections eagerly so
+cards (the component-driven `ViewableSearchPanel`/`MultiSearchBar` need rendered
+cards, which laziness avoids). `MultiViewableView` builds all sections eagerly so
 it can't carry the lazy case.
 
 ## Discover/Sample empty for multi-target membership (#81)
@@ -909,7 +909,7 @@ copy, ROOT_TO_ITEM, COLLECTION):
 Why this beats the earlier approaches: P31 is mixed PER CATEGORY but unambiguous
 PER INSTANCE, so grouping the generated pool by `type` gives the clean Person
 (Q5) / Film (Q11424) split with zero extra SPARQL; grouping by `category` gives
-per-category samples for free (subclasses OR QuizableGroups, decided from the
+per-category samples for free (subclasses OR ViewableGroups, decided from the
 observed distribution). Snapshot is now stale vs model → user must Generate to
 populate; model-signature guard will warn (expected). Backup at
 /tmp/oscarnominations.model.json.bak.
@@ -1049,7 +1049,7 @@ The gap: `extends` is inherit-OR-replace membership; a subclass couldn't express
   label), next to "Extends:". So a subclass is configured on the UI: Add class →
   name → Extends=base → Subtype=Qx → Apply.
 - Tests: SubclassDiscriminatorTest (3) — intersection in the node + SPARQL.
-  Also: QuizableFieldPaths now exposes name+qid for entity objects in
+  Also: ViewableFieldPaths now exposes name+qid for entity objects in
   search/sort/viewconfig (2 tests). Suite 52 green.
 - NOT yet: the "Create subclass from type" bulk action (turn the generated Type
   values into subclasses in one click) — convenience on top; manual path works now.
@@ -1057,8 +1057,8 @@ The gap: `extends` is inherit-OR-replace membership; a subclass couldn't express
 ## Web: group classes by domain
 Flat class list doesn't scale across domains. The domain→types mapping already
 lives in datasets.json (each Dataset has name + types).
-- Server: `QuizableHttpServer.domains(LinkedHashMap<name,types>)` + `/api/domains`
-  → `[{name, types:[…]}]`. Built in QuizableServerMain from the registry (each
+- Server: `ViewableHttpServer.domains(LinkedHashMap<name,types>)` + `/api/domains`
+  → `[{name, types:[…]}]`. Built in ViewableServerMain from the registry (each
   dataset's served types) + an "Other" bucket for the hand-built sources
   (SportTeam/State/Mythology/Oscar) not claimed by a dataset.
 - Client: `api.getDomains()` (falls back to a single "All" group on an old
@@ -1218,19 +1218,19 @@ not a Transform file:
   FieldValueRestrictionsTest. (Proper query-layer VALUES restriction is a deeper
   follow-up.)
 - Desktop instances cap disabled (MAX_CARDS=Integer.MAX_VALUE) — experiment whether
-  the now-lightweight rows (link+reference rows on QuizableTextRow) render the full
+  the now-lightweight rows (link+reference rows on ViewableTextRow) render the full
   ~22k set acceptably. Reversible.
 - Suite 65 green.
 
 ## Instances panel: GridBag → CardStackLayout (the relayout-on-expand cost)
-- After caching QuizablePanel's preferred size (kills the re-MEASURE on relayout),
+- After caching ViewablePanel's preferred size (kills the re-MEASURE on relayout),
   the residual ~10s on expanding a chip in the uncapped (~22k card) panel was
   GridBagLayout.layoutContainer itself — it rebuilds grid-info + runs a
   constraint/weight solve over every child each pass.
 - New CardStackLayout (quiz.ui): lays children out in component order, column i%cols
-  / row i/cols, O(n) arithmetic, no grid solve. QuizablePanelView.createCardsPanel +
+  / row i/cols, O(n) arithmetic, no grid solve. ViewablePanelView.createCardsPanel +
   addCardToGrid use it; the trailing Box glue is gone (preferred height = content
-  height, scroll pane top-aligns). QuizableSearchPanel.applyTargetOrder now reorders
+  height, scroll pane top-aligns). ViewableSearchPanel.applyTargetOrder now reorders
   by re-adding components in order (the layout follows component order) instead of
   setting GridBag constraints; detectColumnCount/setTarget read columns from the
   layout. Suite green.
@@ -1239,16 +1239,16 @@ not a Transform file:
   uncapped as the configure→generate→test browser.
 
 ## Instances panel: virtualized rendering + data-centric sort
-- QuizablePanelView now renders via VirtualizedCardList: holds the full ordered
-  Quizable list, builds QuizablePanels only for the viewport (+buffer), per-card
+- ViewablePanelView now renders via VirtualizedCardList: holds the full ordered
+  Viewable list, builds ViewablePanels only for the viewport (+buffer), per-card
   measured-height cache + cumulative tops[]. Single- AND multi-section views
-  (MultiQuizableView) go through it. All quizables registered top-level up front
-  (isTopLevel is data-based); QuizableRenderContext.topLevelResolver +
+  (MultiViewableView) go through it. All viewables registered top-level up front
+  (isTopLevel is data-based); ViewableRenderContext.topLevelResolver +
   VirtualizedCardList.buildIfNeeded make reference-chip navigation work to
   off-screen cards (build on demand, then scroll).
-- Sort is now DATA-CENTRIC: QuizablePanelSearchAndSort.sortQuizables sorts the
-  quizables by all fields -> virtualList.setItems(ordered) (recompute tops + visible).
-  No component shuffle. QuizableSearchPanel.setTarget takes JComponent; targetPanel
+- Sort is now DATA-CENTRIC: ViewablePanelSearchAndSort.sortViewables sorts the
+  viewables by all fields -> virtualList.setItems(ordered) (recompute tops + visible).
+  No component shuffle. ViewableSearchPanel.setTarget takes JComponent; targetPanel
   detects the VirtualizedCardList.
 - KNOWN LIMITATION (next step): search still indexes/highlights only the live
   (visible) cards. Data-centric one-at-a-time search (match on data -> navigate hits

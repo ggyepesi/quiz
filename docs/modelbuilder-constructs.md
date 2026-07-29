@@ -26,7 +26,7 @@ A class is a named kind of thing plus the fields you load on it. Its membership
 
 An entity class **is** a set of Wikidata entities, so its identity is the **QID**:
 one instance per QID, and every reference to the same entity resolves to that one
-object (`GeneratedQuizableMapper` unifies by QID — see
+object (`GeneratedViewableMapper` unifies by QID — see
 [[canonicalization-model.md]]). This unification is the whole point: the same film
 appearing in five nominations is **one** node you can pivot on.
 
@@ -233,7 +233,7 @@ The explorer tabs in the modelbuilder (`ModelSourceWorkbenchPanel`) do this:
   as Seed QIDs or use as the membership type.
 - **Sample** (`NodeSamplePanel`) — sample a field to detect its cardinality
   (Single vs Collection).
-- **Properties** (`CachedPropertyQuizablePanel`) — the cached property catalogue;
+- **Properties** (`CachedPropertyViewablePanel`) — the cached property catalogue;
   select one to configure a field.
 - **Example-first statement view** (`StatementSummaryPanel`, GitHub #91) — push in
   a few sample QIDs and see the merged coverage of *property → qualifiers*

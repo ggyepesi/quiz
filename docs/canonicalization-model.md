@@ -1,12 +1,12 @@
 # Canonicalization model (agreed spec)
 
-Every Quizable class is **canonicalized**: it declares how to derive a stable
+Every Viewable class is **canonicalized**: it declares how to derive a stable
 **identity** and a human **displayName**. These are *rules on the class*, not
 stored `name`/`qid` data fields — which is what removes the class of bug where a
 loaded field named `name` competed with the identity and poisoned sort/search
 (see the Oscars "alphabetical start, confused end" incident).
 
-## 1. Quizable contract
+## 1. Viewable contract
 
 - `getIdentifier()` — stable unique key, **never blank**; basis for dedup, map
   keys, equality.
@@ -52,7 +52,7 @@ reject.
 
 ## 6. Sort / search / config
 
-`QuizableFieldPaths` surfaces the displayName **once** and identity **once**
+`ViewableFieldPaths` surfaces the displayName **once** and identity **once**
 (deduped). No model field can double or compete with them.
 
 - **Surface title** stays `name` (back-compat with existing field paths like
