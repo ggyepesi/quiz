@@ -10,17 +10,17 @@ public class GroupReader {
     // Pattern for groupname (=+groupname=+)
     private static final Pattern groupPattern = Pattern.compile("(?<prefix>\\={2,})(?<group>[^\\=]+)(?<suffix>\\={2,})(?<leftover>[^=]*)");
 
-    private final QuizableGroup root;
-    private QuizableGroup group = null;
+    private final ViewableGroup root;
+    private ViewableGroup group = null;
     // Current path of groups from root to group. The depth (number of = signs - 2) is the index in this list.
-    private List<QuizableGroup> ancestors = new ArrayList<>();
+    private List<ViewableGroup> ancestors = new ArrayList<>();
 
-    public GroupReader(QuizableGroup root) {
+    public GroupReader(ViewableGroup root) {
         this.root = root;
         ancestors.add(root);
     }
 
-    public GroupReader(QuizableGroup parent, String name) {
+    public GroupReader(ViewableGroup parent, String name) {
         this(parent.getOrCreateChild(name));
     }
 
@@ -57,7 +57,7 @@ public class GroupReader {
     public boolean addGroup(String name) {
         int i = ancestors.size() - 1;
         for (; i >= 0; --i) {
-            QuizableGroup child = ancestors.get(i).getChild(name);
+            ViewableGroup child = ancestors.get(i).getChild(name);
             if (child != null) {
                 group = child;
                 ancestors = ancestors.subList(0, i + 1);
@@ -68,11 +68,11 @@ public class GroupReader {
         return false;
     }
 
-    public QuizableGroup getRoot() {
+    public ViewableGroup getRoot() {
         return root;
     }
 
-    public QuizableGroup getGroup() {
+    public ViewableGroup getGroup() {
         return group;
     }
 }

@@ -1,13 +1,13 @@
 package language;
 
 import objectview.annotations.Minor;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import objectview.annotations.Reference;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class Language extends QuizableAdapter {
+public class Language extends ViewableAdapter {
     private final String name;
 
     private String nativeName;
@@ -119,8 +119,4 @@ public class Language extends QuizableAdapter {
     @Override
     public String getDisplayName() { return name; }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new Language("");
-    }
 }

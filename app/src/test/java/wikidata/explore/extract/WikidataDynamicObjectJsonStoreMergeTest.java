@@ -70,8 +70,8 @@ class WikidataDynamicObjectJsonStoreMergeTest {
         state.put("capital", "Paris");
 
         WikidataDynamicObject group = new WikidataDynamicObject("France", "France");
-        group.type("QuizableGroup");
-        group.typeKey("QuizableGroup");
+        group.type("ViewableGroup");
+        group.typeKey("ViewableGroup");
         group.put("members", List.of("Metropolitan France"));
 
         // Two copies of one carrier force unionValues to compare the referenced values.
@@ -95,7 +95,7 @@ class WikidataDynamicObjectJsonStoreMergeTest {
         assertEquals(2, france.size());
         assertTrue(france.stream().anyMatch(o -> "State".equals(o.typeKey())
                 && "Paris".equals(o.get("capital"))));
-        assertTrue(france.stream().anyMatch(o -> "QuizableGroup".equals(o.typeKey())
+        assertTrue(france.stream().anyMatch(o -> "ViewableGroup".equals(o.typeKey())
                 && o.get("members") != null));
 
         WikidataDynamicObject root = loaded.stream()

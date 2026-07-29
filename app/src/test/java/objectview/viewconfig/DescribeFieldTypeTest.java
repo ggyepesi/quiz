@@ -43,16 +43,16 @@ class DescribeFieldTypeTest {
     }
 
     @Test void mapShowsKeyAndValueTypes() {
-        assertEquals("Map<String, QuizableGroup>", label("groups"));
+        assertEquals("Map<String, ViewableGroup>", label("groups"));
     }
 
-    // QuizableGroup extends DefaultViewableGroup<Quizable, QuizableGroup>; its inherited
+    // ViewableGroup extends DefaultViewableGroup<Viewable, ViewableGroup>; its inherited
     // children=Map<String,G> / members=Map<String,T> must resolve the type variables to
     // the real bound types, not show bare G / T.
     @Test void inheritedGenericFieldsResolveTypeVariables() {
-        assertEquals("Map<String, QuizableGroup>",
-                labelOn(quiz.QuizableGroup.class, "children"));
-        assertEquals("Map<String, Quizable>",
-                labelOn(quiz.QuizableGroup.class, "members"));
+        assertEquals("Map<String, ViewableGroup>",
+                labelOn(quiz.ViewableGroup.class, "children"));
+        assertEquals("Map<String, Viewable>",
+                labelOn(quiz.ViewableGroup.class, "members"));
     }
 }

@@ -2,7 +2,7 @@ package wikidata.explore.codegen;
 
 import wikidata.explore.extract.WikidataObjectRegistry;
 import wikidata.explore.extract.WikidataDynamicObject;
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.viewconfig.ViewConfig;
 import objectview.demo.CardFrame;
 import wikidata.explore.model.FieldCardinality;
@@ -42,17 +42,17 @@ public class GeneratedCanonicalCycleTestMain {
         System.out.println("  b.n[0] == a ? "
                                    + (((List<?>) b.get("n")).getFirst() == a));
 
-        GeneratedQuizableRuntime runtime =
-                new GeneratedQuizableRuntimeBuilder().build(model);
+        GeneratedViewableRuntime runtime =
+                new GeneratedViewableRuntimeBuilder().build(model);
 
-        GeneratedQuizableMapper mapper =
-                new GeneratedQuizableMapper(runtime);
+        GeneratedViewableMapper mapper =
+                new GeneratedViewableMapper(runtime);
 
-        List<Quizable> generated =
+        List<Viewable> generated =
                 mapper.mapRoots(List.of(a, b));
 
-        Quizable ga = generated.get(0);
-        Quizable gb = generated.get(1);
+        Viewable ga = generated.get(0);
+        Viewable gb = generated.get(1);
 
         Field nField = ga.getClass().getDeclaredField("n");
         nField.setAccessible(true);

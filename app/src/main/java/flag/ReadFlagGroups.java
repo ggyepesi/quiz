@@ -9,7 +9,7 @@ import java.util.TreeMap;
 import aux.Constants;
 import aux.UploadURLParser;
 import aux.UrlReader;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 import quiz.GroupReader;
 
 public class ReadFlagGroups {
@@ -24,17 +24,17 @@ public class ReadFlagGroups {
         String filename = groupFiles.get(2);
         String groupName = Character.toUpperCase(filename.charAt(0)) + filename.substring(1);
         filename += ".txt";
-        new ReadFlagGroups().curateAndRead(filename, groupName, new QuizableGroup(""), new States());
+        new ReadFlagGroups().curateAndRead(filename, groupName, new ViewableGroup(""), new States());
     }
 
-    public static void curateAndRead(int index, QuizableGroup parent, States download) throws Exception {
+    public static void curateAndRead(int index, ViewableGroup parent, States download) throws Exception {
         String filename = groupFiles.get(index);
         String groupName = Character.toUpperCase(filename.charAt(0)) + filename.substring(1);
         filename += ".txt";
         new ReadFlagGroups().curateAndRead(filename, groupName, parent, download);
     }
 
-    public static void curateAndReadAll(QuizableGroup parent, States download) throws Exception {
+    public static void curateAndReadAll(ViewableGroup parent, States download) throws Exception {
         ReadFlagGroups readGroup = new ReadFlagGroups();
         for (String filename : groupFiles) {
             String groupName = Character.toUpperCase(filename.charAt(0)) + filename.substring(1);
@@ -47,7 +47,7 @@ public class ReadFlagGroups {
         if (debug) System.out.println("ReadFlagGroups: " + msg);
     }
 
-    public void curateAndRead(String filename, String groupName, QuizableGroup parent, States downloadedStates) throws Exception {
+    public void curateAndRead(String filename, String groupName, ViewableGroup parent, States downloadedStates) throws Exception {
         GroupReader groupReader = new GroupReader(parent, groupName);
         System.out.println("ReadFlagGroups: reading file " + filename + " to group " +
                             parent.getFullName() + ", " + groupReader.getRoot().getFullName());
@@ -99,7 +99,7 @@ public class ReadFlagGroups {
                     stateName = PrefixAndState.canonicalStateName(line);
                 }
                 State state = downloadedStates.getStates().get(stateName);
-                QuizableGroup group = groupReader.getGroup();
+                ViewableGroup group = groupReader.getGroup();
                 if (state != null) {
                     if (!group.getName().equals("NOGROUP")) {
                         group.addMember(state);

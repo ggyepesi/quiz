@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
-import quiz.Quizable;
-import quiz.transform.DynamicQuizable;
+import objectview.Viewable;
+import quiz.transform.DynamicViewable;
 import objectview.field.FieldAccess;
 
 import java.util.ArrayList;
@@ -17,7 +17,7 @@ import java.util.Map;
  * {@code customer.name}). This is the multi-argument, cross-class operation — its
  * arguments come from two different classes.
  *
- * <p>Keys match on identity for a referenced Quizable, else on string value — so a
+ * <p>Keys match on identity for a referenced Viewable, else on string value — so a
  * value join and a reference join both work.
  */
 public final class Joiner {
@@ -30,8 +30,8 @@ public final class Joiner {
         String leftField = leftType.toLowerCase();
         String rightField = rightType.toLowerCase();
 
-        Map<String, Quizable> rightByKey = new HashMap<>();
-        for (Quizable r : domain.instances()) {
+        Map<String, Viewable> rightByKey = new HashMap<>();
+        for (Viewable r : domain.instances()) {
             if (r != null && rightType.equals(r.typeName())) {
                 String k = keyOf(FieldAccess.getPath(r, rightKey));
                 if (k != null) {
@@ -40,15 +40,15 @@ public final class Joiner {
             }
         }
 
-        List<Quizable> out = new ArrayList<>();
-        for (Quizable l : domain.instances()) {
+        List<Viewable> out = new ArrayList<>();
+        for (Viewable l : domain.instances()) {
             if (l == null || !leftType.equals(l.typeName())) {
                 continue;
             }
             String k = keyOf(FieldAccess.getPath(l, leftKey));
-            Quizable match = k == null ? null : rightByKey.get(k);
+            Viewable match = k == null ? null : rightByKey.get(k);
 
-            DynamicQuizable o = new DynamicQuizable(
+            DynamicViewable o = new DynamicViewable(
                     l.getIdentifier() + (match == null ? "" : "+" + match.getIdentifier()),
                     l.getDisplayName() + (match == null ? "" : "  ×  " + match.getDisplayName()));
             o.type(newType);
@@ -70,7 +70,7 @@ public final class Joiner {
         if (v == null) {
             return null;
         }
-        if (v instanceof Quizable q) {
+        if (v instanceof Viewable q) {
             return q.getIdentifier();
         }
         return String.valueOf(v);

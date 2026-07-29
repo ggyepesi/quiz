@@ -1,8 +1,8 @@
 package wikidata.explore.workbench;
 
 import objectview.annotations.Reference;
-import quiz.Quizable;
-import quiz.QuizableAdapter;
+import objectview.Viewable;
+import objectview.ViewableAdapter;
 
 import java.util.List;
 
@@ -16,17 +16,17 @@ import java.util.List;
  * {@code Character}/{@code Episode} you can click through to), otherwise a
  * {@link quiz.source.Source} carrying just the QID + wiki link.
  */
-public class NameCollision extends QuizableAdapter {
+public class NameCollision extends ViewableAdapter {
 
     public String name = "";
 
     @Reference
-    public List<Quizable> entities = List.of();
+    public List<Viewable> entities = List.of();
 
     public NameCollision() {
     }
 
-    public NameCollision(String name, List<Quizable> entities) {
+    public NameCollision(String name, List<Viewable> entities) {
         this.name = name == null ? "" : name;
         this.entities = entities == null ? List.of() : entities;
     }

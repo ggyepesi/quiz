@@ -1,7 +1,7 @@
 package quiz.enrichment;
 
 import objectview.field.FieldAccess;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.curation.IdentityLink;
 import quiz.curation.ManualCuration;
 import quiz.source.Source;
@@ -18,7 +18,7 @@ public final class EnrichmentSources {
     private EnrichmentSources() { }
 
     public static List<EnrichmentProposal.SourceRef> collect(
-            Quizable member, String type, ManualCuration curation) {
+            Viewable member, String type, ManualCuration curation) {
         Map<String, EnrichmentProposal.SourceRef> result = new LinkedHashMap<>();
         Object value = FieldAccess.getPath(member, "source");
         if (value instanceof Source source) {
@@ -48,7 +48,7 @@ public final class EnrichmentSources {
      * of silently falling through to a name-based provider such as DBpedia.
      */
     public static boolean needsSelection(
-            Quizable member, String type, ManualCuration curation) {
+            Viewable member, String type, ManualCuration curation) {
         return member != null && curation != null
                 && collect(member, type, curation).isEmpty();
     }

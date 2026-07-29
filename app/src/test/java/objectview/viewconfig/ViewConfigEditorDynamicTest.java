@@ -1,27 +1,27 @@
 package objectview.viewconfig;
 
 import org.junit.jupiter.api.Test;
-import quiz.transform.DynamicQuizable;
+import quiz.transform.DynamicViewable;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The config editor enumerates a DYNAMIC sample's map-held fields (WDO /
- * DynamicQuizable) — the field panel now works over dynamic domains, not just
+ * DynamicViewable) — the field panel now works over dynamic domains, not just
  * reflected ones.
  */
 class ViewConfigEditorDynamicTest {
 
     @Test void enumeratesDynamicSampleFields() {
-        DynamicQuizable category = new DynamicQuizable("Q1", "Best Picture");
+        DynamicViewable category = new DynamicViewable("Q1", "Best Picture");
         category.type("Category");
 
-        DynamicQuizable nomination = new DynamicQuizable("N1", "A Nomination");
+        DynamicViewable nomination = new DynamicViewable("N1", "A Nomination");
         nomination.type("Nomination");
         nomination.put("year", 2000);
         nomination.put("category", category);
 
-        ViewConfig config = ViewConfig.all(DynamicQuizable.class);
+        ViewConfig config = ViewConfig.all(DynamicViewable.class);
         ViewConfigEditor editor = new ViewConfigEditor(config, nomination);
 
         ViewConfig result = editor.getConfig();

@@ -74,7 +74,7 @@
       const first = domains.find((d) => d.types?.length);
       if (first) await selectType(first.types[0]);
     } catch (e) {
-      error = 'Cannot reach the API. Is QuizableServerMain running?';
+      error = 'Cannot reach the API. Is ViewableServerMain running?';
     }
   });
 

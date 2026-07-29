@@ -6,7 +6,7 @@ import objectview.viewconfig.FieldRow;
 import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.transform.ui.DomainField;
 import objectview.field.FieldKind;
 import quiz.transform.ui.OperationKind;
@@ -252,7 +252,7 @@ public final class ViewStepsPanel extends JPanel {
         if (type == null) {
             fieldPicker.setConfigRows(new ViewConfig(), null, null, java.util.Set.of());
         } else {
-            Quizable sample = controller.sampleOf(type);
+            Viewable sample = controller.sampleOf(type);
             fieldPicker.setConfigRows(
                     sample == null ? new ViewConfig() : ViewConfig.all(sampleClass(sample)),
                     sample,
@@ -263,7 +263,7 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     @SuppressWarnings("unchecked")
-    private static Class<? extends Viewable> sampleClass(Quizable q) {
+    private static Class<? extends Viewable> sampleClass(Viewable q) {
         return (Class<? extends Viewable>) q.getClass();
     }
 

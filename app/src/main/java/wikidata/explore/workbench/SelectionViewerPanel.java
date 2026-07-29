@@ -4,7 +4,7 @@ import objectview.render.Card;
 import objectview.render.RenderContext;
 import objectview.utils.swing.GridBagUtils;
 import objectview.viewconfig.ViewConfig;
-import quiz.Quizable;
+import objectview.Viewable;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.SelectionContentResolver;
@@ -257,8 +257,8 @@ public class SelectionViewerPanel extends JPanel {
     private void render(Selection selection, List<WikidataDynamicObject> content) {
         cards.removeAll();
 
-        List<Quizable> quizables = new ArrayList<>(content);
-        RenderContext context = new RenderContext(quizables);
+        List<Viewable> viewables = new ArrayList<>(content);
+        RenderContext context = new RenderContext(viewables);
 
         ViewConfig config = ViewConfig.of(WikidataDynamicObject.class);
         // Render all (non-hidden) fields so the @Provenance "selection: Wikidata" chip —

@@ -1,11 +1,11 @@
 package wikidata.explore.query.result;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.List;
 
 public record ObjectQueryResult(
-        List<Quizable> objects,
+        List<Viewable> objects,
         Class<?> primaryClass,
         String generatedSource) {
 

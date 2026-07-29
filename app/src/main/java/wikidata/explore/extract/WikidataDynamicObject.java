@@ -5,7 +5,7 @@ import objectview.annotations.Hidden;
 import objectview.annotations.Link;
 import objectview.annotations.Provenance;
 import objectview.field.DynamicFields;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import quiz.source.Source;
 import quiz.source.WikidataSource;
 
@@ -31,12 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
 // JSON (e.g. a saved OscarNomination cache) carries "url" that we must skip
 // rather than fail on. Only "name"/"qid" round-trip.
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-public class WikidataDynamicObject extends QuizableAdapter implements DynamicFields {
+public class WikidataDynamicObject extends ViewableAdapter implements DynamicFields {
     // Identity + provenance. Hidden from the card (@Hidden) because
     // they're surfaced together as one collapsed "source" chip below — the raw
     // QID and wiki URL no longer clutter every card's top level. The QID is
     // still the canonical key (equals/hashCode, snapshots, web serving); these
-    // annotations only affect Quizable rendering, not Jackson persistence.
+    // annotations only affect Viewable rendering, not Jackson persistence.
     @Hidden
     private String qid;
     // Identity/display name — the card TITLE, not a field row. Like qid it is
@@ -67,7 +67,7 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
 
     // The OBJECT-identity type key ⟨typeKey, qid⟩ — the stable logical class name. It
     // distinguishes objects that merely share a name across types (a State "France" vs a
-    // QuizableGroup "France"); the QID stays an entity LINK, not the object identity.
+    // ViewableGroup "France"); the QID stays an entity LINK, not the object identity.
     // Falls back to typeName() when unset.
     @Hidden
     @com.fasterxml.jackson.annotation.JsonIgnore
@@ -79,7 +79,7 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     @com.fasterxml.jackson.annotation.JsonIgnore
     private boolean valueObject;
 
-    // Provenance grouped as one nested Quizable: renders as a collapsed
+    // Provenance grouped as one nested Viewable: renders as a collapsed
     // "source: Wikidata" chip that expands to the QID + link. Declared LAST so
     // it renders as an unobtrusive footer below the real fields (reflection
     // preserves declaration order). Derived from the QID, so it is rebuilt by

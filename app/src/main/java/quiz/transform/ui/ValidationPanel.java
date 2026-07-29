@@ -2,14 +2,12 @@ package quiz.transform.ui;
 
 import objectview.Viewable;
 import objectview.field.FieldSet;
-import objectview.render.CardListView;
-import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
 import objectview.viewconfig.FieldRow;
 import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.enrichment.EnrichmentDecisionApplier;
 import quiz.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
@@ -32,6 +30,7 @@ import process.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessInputRequest;
 import process.ProcessStatus;
+import process.swing.SwingProcessInput;
 import process.swing.SwingProcessRunner;
 
 import javax.swing.JButton;
@@ -67,7 +66,7 @@ import java.util.function.Function;
 public final class ValidationPanel extends JPanel {
 
     private final DomainModel domain;
-    private final Map<String, List<Quizable>> byType = new LinkedHashMap<>();
+    private final Map<String, List<Viewable>> byType = new LinkedHashMap<>();
 
     private final JComboBox<String> typeCombo = new JComboBox<>();
     private final ViewConfigEditor coverage;
@@ -76,6 +75,8 @@ public final class ValidationPanel extends JPanel {
     // + re-parented per drill — so drilling many fields doesn't leak run-button registrations.
     private final JButton checkButton = new JButton();
     private final JButton sourcesButton = new JButton("Sources…");
+    private final JButton cancelProcessButton = new JButton("Cancel Find Data");
+    private final JButton resolveMissingButton = new JButton("Resolve identities…");
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     // Horizontal, NOT vertical: the coverage table's preferred HEIGHT grows with the
@@ -85,8 +86,8 @@ public final class ValidationPanel extends JPanel {
     private final JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
     private String type;
-    private List<Quizable> instances = List.of();
-    private Quizable selected;
+    private List<Viewable> instances = List.of();
+    private Viewable selected;
     // Field path → the Wikidata property CHOSEN to source it (via the property finder).
     // Session-scoped: picked once per field, re-asked after a restart (persistence TBD).
     private final java.util.Map<String, String> fieldProperty = new java.util.HashMap<>();
@@ -94,28 +95,40 @@ public final class ValidationPanel extends JPanel {
     private final SwingProcessRunner findDataRunner;
     // Re-render the owning view after an accepted enrichment writes a correction.
     private final Runnable onCurated;
+    private final IdentityResolutionLauncher identityResolver;
+    private List<Viewable> drilledInstances = List.of();
 
     public ValidationPanel(DomainModel domain) {
-        this(domain, null, null, null);
+        this(domain, null, null, null, null);
     }
 
     public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner) {
-        this(domain, null, queryRunner, null);
+        this(domain, null, queryRunner, null, null);
     }
 
     public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner, Runnable onCurated) {
-        this(domain, null, queryRunner, onCurated);
+        this(domain, null, queryRunner, onCurated, null);
     }
 
     /** Validate {@code instances} — the SHOWN view (filtered + grouped members of the
      *  selected class); null falls back to the whole domain pool. The domain is still
      *  used for schema, field union, and curation. */
     public ValidationPanel(DomainModel domain,
-                           Collection<? extends Quizable> instances,
+                           Collection<? extends Viewable> instances,
                            SwingQueryRunner queryRunner, Runnable onCurated) {
+        this(domain, instances, queryRunner, onCurated, null);
+    }
+
+    public ValidationPanel(
+            DomainModel domain,
+            Collection<? extends Viewable> instances,
+            SwingQueryRunner queryRunner,
+            Runnable onCurated,
+            IdentityResolutionLauncher identityResolver) {
         super(new BorderLayout(6, 6));
         this.domain = domain;
         this.onCurated = onCurated == null ? () -> { } : onCurated;
+        this.identityResolver = identityResolver;
         this.queryRunner = queryRunner == null
                 ? new SwingQueryRunner(
                         new QueryContext(new WikidataSparqlClient(
@@ -128,9 +141,10 @@ public final class ValidationPanel extends JPanel {
                 this.queryRunner.context(),
                 this.queryRunner.logListener(),
                 this::handleProcessInput);
+        findDataRunner.registerCancelButton(cancelProcessButton);
 
-        Collection<? extends Quizable> source = instances != null ? instances : domain.instances();
-        for (Quizable q : source) {
+        Collection<? extends Viewable> source = instances != null ? instances : domain.instances();
+        for (Viewable q : source) {
             if (q != null && q.typeName() != null) {
                 byType.computeIfAbsent(q.typeName(), k -> new ArrayList<>()).add(q);
             }
@@ -144,6 +158,13 @@ public final class ValidationPanel extends JPanel {
         findDataRunner.registerRunButton(checkButton);
         sourcesButton.addActionListener(e -> manageSources());
         sourcesButton.setEnabled(false);
+        resolveMissingButton.addActionListener(e -> {
+            if (this.identityResolver != null && !drilledInstances.isEmpty()) {
+                this.identityResolver.resolve(
+                        List.copyOf(drilledInstances),
+                        "Validate: members missing " + type + "." + coverage.selectedPath());
+            }
+        });
 
         for (String t : domain.types()) {
             if (!byType.getOrDefault(t, List.of()).isEmpty()) {
@@ -152,18 +173,11 @@ public final class ValidationPanel extends JPanel {
         }
         typeCombo.addActionListener(e -> onType());
 
-        JButton resolveButton = new JButton("Resolve identities…");
-        resolveButton.setToolTipText(
-                "Search Wikidata for a qid for every shown instance, then confirm in one review");
-        resolveButton.addActionListener(e -> runResolveIdentities());
-        queryRunner.registerRunButton(resolveButton);
-        findDataRunner.registerRunButton(resolveButton);
-
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         bar.add(new JLabel("Type:"));
         bar.add(typeCombo);
-        bar.add(resolveButton);
         bar.add(status);
+        bar.add(cancelProcessButton);
 
         JPanel top = new JPanel(new BorderLayout());
         top.add(bar, BorderLayout.NORTH);
@@ -192,7 +206,7 @@ public final class ValidationPanel extends JPanel {
     }
 
     /** The last selected missing member — the target a curation/enrichment action fills. */
-    public Quizable selected() {
+    public Viewable selected() {
         return selected;
     }
 
@@ -200,13 +214,14 @@ public final class ValidationPanel extends JPanel {
         type = (String) typeCombo.getSelectedItem();
         instances = type == null ? List.of() : byType.getOrDefault(type, List.of());
         selected = null;
+        drilledInstances = List.of();
 
         // Enumerate via the SHARED config source (same fields / order / types as the
         // search/sort/view editors), rendered as an inline collapsible tree. Rebuilding
         // clears the selection, which fires onFieldSelected and resets the drill. The
         // UNION sample shows every field of the type, not just those the first instance
         // happens to carry (a laureate with no portrait would otherwise hide the field).
-        Quizable sample = type == null ? null : domain.representativeSample(type);
+        Viewable sample = type == null ? null : domain.representativeSample(type);
         coverage.setConfigRows(
                 sample == null ? new ViewConfig() : ViewConfig.all(sampleClass(sample)),
                 sample,
@@ -228,12 +243,13 @@ public final class ValidationPanel extends JPanel {
             instancesHolder.repaint();
             return;
         }
-        List<Quizable> missing = new ArrayList<>();
-        for (Quizable q : instances) {
+        List<Viewable> missing = new ArrayList<>();
+        for (Viewable q : instances) {
             if (!has(q, path)) {
                 missing.add(q);
             }
         }
+        drilledInstances = List.copyOf(missing);
         instancesHolder.add(header(path, missing.size()), BorderLayout.NORTH);
         if (!missing.isEmpty()) {
             instancesHolder.add(instancesView(missing, type), BorderLayout.CENTER);
@@ -267,7 +283,7 @@ public final class ValidationPanel extends JPanel {
 
     private int present(String path) {
         int n = 0;
-        for (Quizable q : instances) {
+        for (Viewable q : instances) {
             if (has(q, path)) {
                 n++;
             }
@@ -276,7 +292,7 @@ public final class ValidationPanel extends JPanel {
     }
 
     @SuppressWarnings("unchecked")
-    private static Class<? extends Viewable> sampleClass(Quizable q) {
+    private static Class<? extends Viewable> sampleClass(Viewable q) {
         return (Class<? extends Viewable>) q.getClass();
     }
 
@@ -315,6 +331,10 @@ public final class ValidationPanel extends JPanel {
             h.add(checkButton);   // re-parents the persistent, already-registered button
             updateSourcesButton();
             h.add(sourcesButton);
+            if (identityResolver != null) {
+                resolveMissingButton.setText("Resolve identities for " + gap + " missing…");
+                h.add(resolveMissingButton);
+            }
         }
         return h;
     }
@@ -373,69 +393,10 @@ public final class ValidationPanel extends JPanel {
         runFillBatch(path);
     }
 
-    // Resolve the Wikidata identity (qid) of EVERY shown instance — the foundational,
-    // field-independent step. One label search per instance, then a single review assigns
-    // qids, written as IdentityLinks the rest of enrichment reads from.
-    private void runResolveIdentities() {
-        if (type == null || instances.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Select a type with instances first.");
-            return;
-        }
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation == null) {
-            JOptionPane.showMessageDialog(this,
-                    "This domain has no curation store to record identities.");
-            return;
-        }
-        List<quiz.enrichment.ResolveIdentitiesProcess.Subject> subjects = new ArrayList<>();
-        for (Quizable member : instances) {
-            String current = resolvedQid(member,
-                    EnrichmentSources.collect(member, type, curation));
-            subjects.add(new quiz.enrichment.ResolveIdentitiesProcess.Subject(
-                    member.getIdentifier(), member.getDisplayName(), current));
-        }
-        findDataRunner.run(
-                new quiz.enrichment.ResolveIdentitiesProcess(subjects, 12),
-                outcome -> SwingUtilities.invokeLater(() -> {
-                    quiz.enrichment.ResolveIdentitiesDecision decision = outcome.result();
-                    if (decision != null) {
-                        applyResolvedIdentities(decision);
-                    }
-                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
-                        JOptionPane.showMessageDialog(ValidationPanel.this,
-                                "Resolve failed: " + outcome.error().getMessage());
-                    }
-                }),
-                ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
-                        "Resolve failed: " + ex.getMessage()));
-    }
-
-    private void applyResolvedIdentities(
-            quiz.enrichment.ResolveIdentitiesDecision decision) {
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation == null || decision.resolved().isEmpty()) {
-            return;
-        }
-        try {
-            for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : decision.resolved()) {
-                curation.putIdentityLink(new quiz.curation.IdentityLink(
-                        type, r.targetId(), "Wikidata", r.qid(),
-                        "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata"));
-            }
-            curation.save();
-            onCurated.run();
-            onFieldSelected();
-            JOptionPane.showMessageDialog(this,
-                    decision.resolved().size() + " identity(ies) set.");
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
-        }
-    }
-
     /** The first missing member that carries (or resolves to) a QID — the sample entity
      *  whose properties the picker lists. */
     private String sampleQidFor(String path, quiz.curation.ManualCuration curation) {
-        for (Quizable member : instances) {
+        for (Viewable member : instances) {
             if (has(member, path)) continue;
             String qid = resolvedQid(member,
                     EnrichmentSources.collect(member, type, curation));
@@ -455,7 +416,7 @@ public final class ValidationPanel extends JPanel {
 
         List<FindDataProcess> jobs = new ArrayList<>();
         int skipped = 0;
-        for (Quizable member : instances) {
+        for (Viewable member : instances) {
             if (has(member, path)) continue;
             List<EnrichmentProposal.SourceRef> sources =
                     EnrichmentSources.collect(member, type, curation);
@@ -529,47 +490,28 @@ public final class ValidationPanel extends JPanel {
             ProcessInputRequest<T> request, CancellationToken cancellation)
             throws Exception {
         if (request instanceof EnrichmentReviewRequest review) {
-            java.util.concurrent.atomic.AtomicReference<quiz.enrichment.EnrichmentDecision> answer =
-                    new java.util.concurrent.atomic.AtomicReference<>();
-            onEdt(() -> EnrichmentReviewPanel.showDialog(
-                    this, review.title(), review.proposal(), answer::set));
-            cancellation.throwIfCancelled();
-            return request.responseType().cast(answer.get());
+            quiz.enrichment.EnrichmentDecision answer =
+                    SwingProcessInput.await(cancellation, completed ->
+                    EnrichmentReviewPanel.showModeless(
+                            this, review.title(), review.proposal(), completed));
+            return request.responseType().cast(answer);
         }
         if (request instanceof quiz.enrichment.FindDataBatchReviewRequest batch) {
-            java.util.concurrent.atomic.AtomicReference<quiz.enrichment.BatchReviewDecision> answer =
-                    new java.util.concurrent.atomic.AtomicReference<>(
-                            new quiz.enrichment.BatchReviewDecision(java.util.List.of()));
-            onEdt(() -> quiz.enrichment.ui.FindDataBatchReviewPanel.showDialog(
-                    this, batch.title(), batch.prompt(), batch.proposals(), answer::set));
-            cancellation.throwIfCancelled();
-            return request.responseType().cast(answer.get());
-        }
-        if (request instanceof quiz.enrichment.ResolveIdentitiesReviewRequest resolve) {
-            java.util.concurrent.atomic.AtomicReference<quiz.enrichment.ResolveIdentitiesDecision> answer =
-                    new java.util.concurrent.atomic.AtomicReference<>(
-                            new quiz.enrichment.ResolveIdentitiesDecision(java.util.List.of()));
-            onEdt(() -> quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showDialog(
-                    this, resolve.title(), resolve.prompt(), resolve.instances(), answer::set));
-            cancellation.throwIfCancelled();
-            return request.responseType().cast(answer.get());
+            quiz.enrichment.BatchReviewDecision answer =
+                    SwingProcessInput.await(cancellation, completed ->
+                    quiz.enrichment.ui.FindDataBatchReviewPanel.showModeless(
+                            this, batch.title(), batch.prompt(), batch.proposals(), completed));
+            return request.responseType().cast(answer);
         }
         if (request instanceof quiz.enrichment.PropertySelectionRequest pick) {
-            java.util.concurrent.atomic.AtomicReference<quiz.enrichment.ChosenProperty> answer =
-                    new java.util.concurrent.atomic.AtomicReference<>(
-                            new quiz.enrichment.ChosenProperty("", ""));
-            onEdt(() -> quiz.enrichment.ui.FieldPropertyPickerPanel.showDialog(
-                    this, pick.title(), pick.prompt(), pick.field(), pick.options(),
-                    pick.suggestedPid(), answer::set));
-            cancellation.throwIfCancelled();
-            return request.responseType().cast(answer.get());
+            quiz.enrichment.ChosenProperty answer =
+                    SwingProcessInput.await(cancellation, completed ->
+                    quiz.enrichment.ui.FieldPropertyPickerPanel.showModeless(
+                            this, pick.title(), pick.prompt(), pick.field(), pick.options(),
+                            pick.suggestedPid(), completed));
+            return request.responseType().cast(answer);
         }
         return ProcessInputHandler.unsupported().request(request, cancellation);
-    }
-
-    private static void onEdt(Runnable show) throws Exception {
-        if (SwingUtilities.isEventDispatchThread()) show.run();
-        else SwingUtilities.invokeAndWait(show);
     }
 
     private quiz.curation.ManualCuration curationStore() {
@@ -612,7 +554,7 @@ public final class ValidationPanel extends JPanel {
     /** The Wikidata QID to enrich from: the member's own identifier if it IS a QID, else
      *  one carried by an approved Wikidata source (the QID confirmed in the source dialog).
      *  Null when there's none — QID-only providers skip, name-based ones still run. */
-    private static String resolvedQid(Quizable member,
+    private static String resolvedQid(Viewable member,
                                       List<EnrichmentProposal.SourceRef> sources) {
         String id = member.getIdentifier();
         if (id != null && id.matches("Q\\d+")) {
@@ -629,46 +571,16 @@ public final class ValidationPanel extends JPanel {
 
     // The shared instance rendering: selectable, searchable cards (same components the
     // curation panel uses), so a missing member is the object — click to select it.
-    private JComponent instancesView(List<Quizable> missing, String type) {
-        CardListView v = new CardListView();
-        RenderContext ctx = new RenderContext();
-        ctx.setCollapsibleCards(true);
-        ctx.setSelectionEnabled(true);
-        ctx.addSelectionListener(o -> {
-            selected = o instanceof Quizable q ? q : null;
+    private JComponent instancesView(List<Viewable> missing, String type) {
+        return InstanceBrowser.create(
+                missing, missing.get(0), domain.structuralFields(type), domain.fieldTypes(type),
+                o -> {
+            selected = o instanceof Viewable q ? q : null;
             updateSourcesButton();
         });
-        v.setRenderContext(ctx);
-        for (Quizable m : missing) {
-            v.addViewable(m);
-        }
-        v.createCardsPanel(1);
-
-        JPanel panel = new JPanel(new BorderLayout());
-        Quizable sample = missing.get(0);
-        @SuppressWarnings("unchecked")
-        Class<? extends Quizable> cls = (Class<? extends Quizable>) sample.getClass();
-        SearchPanel engine = new SearchPanel(cls, sample);
-        engine.setHiddenFields(domain.structuralFields(type));
-        engine.setFieldTypes(domain.fieldTypes(type));
-        engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
-        v.addTargetListener(engine);
-        panel.add(engine, BorderLayout.NORTH);
-        panel.add(v.getCardsScrollPane(), BorderLayout.CENTER);
-
-        // The virtualized card list materializes cards off its viewport size. On the
-        // FIRST drill in a freshly shown dialog that size isn't settled yet and the
-        // build can miss; once the panel is laid out, force one rebuild so the cards
-        // always appear (not just after a warm-up dialog).
-        SwingUtilities.invokeLater(() -> {
-            if (v.getVirtualList() != null) {
-                v.getVirtualList().rebuild();
-            }
-        });
-        return panel;
     }
 
-    private static boolean has(Quizable q, String path) {
+    private static boolean has(Viewable q, String path) {
         List<Object> current = new ArrayList<>();
         current.add(q);
         for (String seg : path.split("\\.")) {

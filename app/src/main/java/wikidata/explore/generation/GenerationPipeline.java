@@ -1,8 +1,8 @@
 package wikidata.explore.generation;
 
-import wikidata.explore.codegen.GeneratedQuizableRuntimeBuilder;
-import wikidata.explore.codegen.GeneratedQuizableRuntime;
-import wikidata.explore.codegen.GeneratedQuizableMapper;
+import wikidata.explore.codegen.GeneratedViewableRuntimeBuilder;
+import wikidata.explore.codegen.GeneratedViewableRuntime;
+import wikidata.explore.codegen.GeneratedViewableMapper;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.RuleTreeExtractor;
 import wikidata.explore.extract.DBpediaEnrichment;
@@ -16,7 +16,7 @@ import wikidata.WikidataBinding;
 import wikidata.explore.rule.RuleTreeSerializer;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
-import quiz.Quizable;
+import objectview.Viewable;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.model.GeneratedProjectModel;
 
@@ -29,7 +29,7 @@ import java.util.function.Consumer;
  *   plan          model snapshot  -> RuleNode query plan
  *   extract       plan + depth    -> downloaded dynamic objects  (slow, network)
  *   buildRuntime  model snapshot  -> compiled generated class    (fast, local)
- *   materialize   runtime + data  -> mapped Quizable instances   (fast, local)
+ *   materialize   runtime + data  -> mapped Viewable instances   (fast, local)
  *
  * fullRun() chains all four. remap() reuses a previous run's download
  * and re-runs only the local stages; callers must check
@@ -111,20 +111,20 @@ public class GenerationPipeline {
         }
     }
 
-    public GeneratedQuizableRuntime buildRuntime(
+    public GeneratedViewableRuntime buildRuntime(
             GeneratedProjectModel snapshot) throws Exception {
 
         // Compile every class in the project (root + e.g. Star), so a
         // multi-class run maps each object to its own type.
-        return new GeneratedQuizableRuntimeBuilder()
+        return new GeneratedViewableRuntimeBuilder()
                 .build(snapshot);
     }
 
-    public List<Quizable> materialize(
-            GeneratedQuizableRuntime runtime,
+    public List<Viewable> materialize(
+            GeneratedViewableRuntime runtime,
             List<WikidataDynamicObject> dynamicObjects) throws Exception {
 
-        return new GeneratedQuizableMapper(runtime)
+        return new GeneratedViewableMapper(runtime)
                 .mapRoots(dynamicObjects);
     }
 
@@ -220,9 +220,9 @@ public class GenerationPipeline {
         // field-model references — but resolving first keeps this correct even if
         // buildRuntime ever snapshots the model, expressing "resolve, then build".
         resolveUnits(snapshot, client, log);
-        GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
+        GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
-        List<Quizable> instances =
+        List<Viewable> instances =
                 materialize(runtime, dynamicObjects);
 
         return new GenerationRun(
@@ -241,7 +241,7 @@ public class GenerationPipeline {
             GenerationLog log) throws Exception {
 
         RuleNode plan = plan(snapshot);
-        GeneratedQuizableRuntime runtime = buildRuntime(snapshot);
+        GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
         GenerationRun.RemapState rs = previous.remapState();
         if (rs != null && rs.enrichedPool() != null && !rs.enrichedPool().isEmpty()) {
@@ -267,7 +267,7 @@ public class GenerationPipeline {
                     + restricted + " dropped (required-field).\n");
         }
 
-        List<Quizable> instances =
+        List<Viewable> instances =
                 materialize(runtime, previous.dynamicObjects());
 
         return new GenerationRun(
@@ -284,7 +284,7 @@ public class GenerationPipeline {
      */
     private GenerationRun retransform(
             GenerationRun previous, GeneratedProjectModel snapshot,
-            RuleNode plan, GeneratedQuizableRuntime runtime,
+            RuleNode plan, GeneratedViewableRuntime runtime,
             GenerationRun.RemapState rs, GenerationLog log) throws Exception {
 
         List<WikidataDynamicObject> pool =
@@ -326,7 +326,7 @@ public class GenerationPipeline {
                     + restricted + " dropped (required-field).\n");
         }
 
-        List<Quizable> instances = materialize(runtime, pool);
+        List<Viewable> instances = materialize(runtime, pool);
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, rs);

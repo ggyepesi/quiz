@@ -1,11 +1,11 @@
 package quiz.web.sources;
 
 import mythology.MythologyEntities;
-import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.Viewable;
+import quiz.ViewableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
-import quiz.web.QuizableSource;
+import quiz.web.ViewableSource;
 
 import java.util.Collection;
 import java.util.List;
@@ -19,7 +19,7 @@ import java.util.List;
  * "Affiliation" facet; on top we graft <i>reference</i> facets by parent, whose
  * buckets carry the parent {@code Creature} so the UI can show its card.
  */
-public class MythologySource implements QuizableSource {
+public class MythologySource implements ViewableSource {
 
     private MythologyEntities entities;
 
@@ -38,13 +38,13 @@ public class MythologySource implements QuizableSource {
     }
 
     @Override
-    public Collection<? extends Quizable> load() throws Exception {
+    public Collection<? extends Viewable> load() throws Exception {
         return entities().getViewables().values();
     }
 
     @Override
-    public QuizableGroup rootGroup() throws Exception {
-        QuizableGroup root = (QuizableGroup) entities().getGroupView().getRootGroup();
+    public ViewableGroup rootGroup() throws Exception {
+        ViewableGroup root = (ViewableGroup) entities().getGroupView().getRootGroup();
         FacetGrouper.wrapChildrenAsFacet(root, "Affiliation");
         FacetGrouper.addFacets(root, load(),
                 List.of(Facet.reference("father", "Father"),

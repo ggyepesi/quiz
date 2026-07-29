@@ -1,4 +1,4 @@
-// Base URL of the Java QuizableHttpServer.
+// Base URL of the Java ViewableHttpServer.
 // Default: same origin ('') — calls go to /api/... and the Vite dev server
 // proxies them to localhost:7070 (see vite.config.js). This way the API and
 // images travel through whatever serves the page (localhost, LAN IP, or a
@@ -50,7 +50,7 @@ export async function getDomains() {
 export function getList(type, group = '') {
   const p = new URLSearchParams({ type });
   if (group) p.set('group', group);
-  return json(`${apiBase()}/api/quizables?${p}`);
+  return json(`${apiBase()}/api/viewables?${p}`);
 }
 
 /** The declared groupable dimensions for a type: [{ label, path, kind }]. */
@@ -64,9 +64,9 @@ export function getCoverage(type) {
   return json(`${apiBase()}/api/coverage?type=${encodeURIComponent(type)}`);
 }
 
-/** @returns {Promise<object|null>} full QuizableView */
-export function getQuizable(type, id) {
-  return json(`${apiBase()}/api/quizable/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);
+/** @returns {Promise<object|null>} full ViewableView */
+export function getViewable(type, id) {
+  return json(`${apiBase()}/api/viewable/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);
 }
 
 /** Fields of a type, or — with a dotted `path` — the fields available under a
@@ -88,6 +88,28 @@ export function getQuiz(type, { prompt = 'logo', ask = 'name', n = 10, group = '
   const p = new URLSearchParams({ type, prompt, ask, n: String(n) });
   if (group) p.set('group', group);
   return json(`${apiBase()}/api/quiz?${p}`);
+}
+
+/** A stateless ordered-card deck. `order` is the comparable field path;
+ *  prompt and answer are independent ViewConfig field selections. */
+export function getOrderingQuiz(
+  type,
+  {
+    prompt = 'name',
+    answer = '',
+    order,
+    valueType = 'DATE',
+    direction = 'ASCENDING',
+    equalValues = 'EQUIVALENT',
+    n = 10,
+    group = ''
+  }
+) {
+  const p = new URLSearchParams({
+    type, prompt, answer, order, valueType, direction, equalValues, n: String(n)
+  });
+  if (group) p.set('group', group);
+  return json(`${apiBase()}/api/ordering?${p}`);
 }
 
 /** @returns {Promise<object|null>} a matching game (prompts vs answers) */

@@ -35,7 +35,7 @@ public class WikidataDynamicObjectJsonStore {
     private static final int FORMAT_VERSION = 4;
 
     // Object identity is ⟨typeKey, qid⟩, not the bare qid — so two entities that merely
-    // share a name across types (a State "France" vs a QuizableGroup "France") never
+    // share a name across types (a State "France" vs a ViewableGroup "France") never
     // merge. Pool key + Ref markers carry both parts. Keep the separator escaped: a raw
     // NUL byte makes this Java source look binary to Git and invalid to javac.
     private static final char SEP = '\0';
@@ -137,7 +137,7 @@ public class WikidataDynamicObjectJsonStore {
             if (k != null && o.hasTypeStamp()) snapshot.roots.add(k);
         }
         // One qid can now yield SEVERAL entities — one per distinct real type — so a State
-        // "France" and a QuizableGroup "France" stay separate ⟨type, qid⟩ objects instead
+        // "France" and a ViewableGroup "France" stay separate ⟨type, qid⟩ objects instead
         // of merging. An untyped reference copy is absorbed into the single stamped entity.
         for (List<WikidataDynamicObject> instances : byQid.values()) {
             snapshot.entities.addAll(toEntities(instances));

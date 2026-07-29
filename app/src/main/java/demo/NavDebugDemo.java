@@ -1,7 +1,7 @@
 package demo;
 
 import objectview.demo.MultiView;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import javax.swing.*;
 import java.awt.*;
@@ -41,8 +41,8 @@ import java.util.List;
  */
 public final class NavDebugDemo {
 
-    /** A leaf Quizable used only as an EXPANDABLE chip (never top-level). */
-    public static final class Note extends QuizableAdapter {
+    /** A leaf Viewable used only as an EXPANDABLE chip (never top-level). */
+    public static final class Note extends ViewableAdapter {
         public String text = "";
 
         public Note() {}
@@ -56,7 +56,7 @@ public final class NavDebugDemo {
         @Override public String toString() { return text; }
     }
 
-    public static final class Alpha extends QuizableAdapter {
+    public static final class Alpha extends ViewableAdapter {
         public String name = "";
         public Beta partner;          // referring (top-level) -> navigate
         public Note note;             // expandable (not top-level) -> expand in place
@@ -71,7 +71,7 @@ public final class NavDebugDemo {
         @Override public String toString() { return name; }
     }
 
-    public static final class Beta extends QuizableAdapter {
+    public static final class Beta extends ViewableAdapter {
         public String name = "";
         public Alpha partner;         // referring (top-level) -> navigate
         public Note note;             // expandable (not top-level) -> expand in place

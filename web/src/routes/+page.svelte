@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
-  import { getDomains, getList, getQuizable, getDimensions, getGroups } from '$lib/api.js';
-  import QuizableCard from '$lib/QuizableCard.svelte';
+  import { getDomains, getList, getViewable, getDimensions, getGroups } from '$lib/api.js';
+  import ViewableCard from '$lib/ViewableCard.svelte';
 
   let domains = $state([]);
   let type = $state(null);
@@ -36,7 +36,7 @@
       const first = domains.find((d) => d.types?.length);
       if (first) await selectType(first.types[0]);
     } catch (e) {
-      error = 'Cannot reach the API. Is QuizableServerMain running on :7070?';
+      error = 'Cannot reach the API. Is ViewableServerMain running on :7070?';
     }
   });
 
@@ -80,7 +80,7 @@
   async function open(item) {
     selectedId = item.id;
     loadingCard = true;
-    selected = await getQuizable(item.type, item.id);
+    selected = await getViewable(item.type, item.id);
     loadingCard = false;
   }
 </script>
@@ -175,7 +175,7 @@
       {:else if selected}
         <div class="content-inner">
           <button class="back-mobile" onclick={() => { selected = null; selectedId = null; }}>← List</button>
-          <QuizableCard view={selected} heading={true} />
+          <ViewableCard view={selected} heading={true} />
         </div>
       {:else}
         <div class="empty">

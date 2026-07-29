@@ -1,14 +1,15 @@
 package quiz;
 
-import objectview.render.Card;
-import objectview.render.RenderContext;
 import objectview.Viewable;
+import objectview.render.Card;
 
 import objectview.viewconfig.ViewConfig;
+import quiz.data.ViewableKeyExtractor;
+import quiz.ui.QuizCardFactory;
+import quiz.ui.QuizCardRole;
 
 import java.awt.*;
 import java.awt.event.MouseListener;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
@@ -19,12 +20,14 @@ import javax.swing.*;
 public abstract class Quiz extends Thread {
     protected final ViewConfig queryConfig;
     protected final ViewConfig answerConfig;
-    protected final QuizableGroup group;
-    protected final Map<String, ? extends Quizable> quizables;
+    protected final ViewableGroup group;
+    protected final Map<String, ? extends Viewable> viewables;
 
     protected final Map<List<Object>, List<List<Object>>> answersToQuery = new LinkedHashMap<>();
-    protected final Map<List<Object>, Quizable> queryQuizables = new LinkedHashMap<>();
-    protected final Map<List<Object>, Quizable> answerQuizables = new LinkedHashMap<>();
+    protected final Map<List<Object>, Viewable> queryViewables = new LinkedHashMap<>();
+    protected final Map<List<Object>, Viewable> answerViewables = new LinkedHashMap<>();
+    protected final ViewableKeyExtractor keyExtractor = new ViewableKeyExtractor();
+    protected final QuizCardFactory cardFactory;
 
     protected final Random random = new Random();
     protected volatile boolean stopped = false;
@@ -46,8 +49,8 @@ public abstract class Quiz extends Thread {
 
     public Quiz(ViewConfig queryConfig,
                 ViewConfig answerConfig,
-                QuizableGroup group,
-                Map<String, ? extends Quizable> quizables) {
+                ViewableGroup group,
+                Map<String, ? extends Viewable> viewables) {
         this.queryConfig = queryConfig == null ? new ViewConfig() : queryConfig;
         this.answerConfig = answerConfig == null ? new ViewConfig() : answerConfig;
 
@@ -57,19 +60,20 @@ public abstract class Quiz extends Thread {
         this.answerConfig.setBlurImages(true);
 
         this.group = group;
-        this.quizables = quizables == null ? Collections.emptyMap() : quizables;
+        this.viewables = viewables == null ? Collections.emptyMap() : viewables;
+        this.cardFactory = new QuizCardFactory(this.viewables.values());
 
         this.frame = new JFrame(getClass().getSimpleName());
         this.frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         this.frame.setSize(1400, 900);
         this.frame.setLocationRelativeTo(null);
 
-        indexQuizables();
+        indexViewables();
     }
 
     public String prepareQuiz() {
         if (group.getMembers().size() < 2) {
-            return "Quiz needs at least 2 Quizable items.";
+            return "Quiz needs at least 2 Viewable items.";
         }
         return null;
     }
@@ -123,23 +127,20 @@ public abstract class Quiz extends Thread {
     // Indexing and exhaustion count setup
     // -------------------------------------------------------------------------
 
-    protected void indexQuizables() {
-        List<List<String>> queryPaths = getFillPaths(queryConfig);
-        List<List<String>> answerPaths = getShowPaths(answerConfig);
+    protected void indexViewables() {
+        for (Viewable viewable : viewables.values()) {
+            if (viewable == null) continue;
+            if (!isInSelectedGroup(viewable)) continue;
 
-        for (Quizable quizable : quizables.values()) {
-            if (quizable == null) continue;
-            if (!isInSelectedGroup(quizable)) continue;
-
-            List<List<Object>> queryKeys = extractKeyCombinations(quizable, queryPaths);
-            List<List<Object>> answerKeys = extractKeyCombinations(quizable, answerPaths);
+            List<List<Object>> queryKeys = keyExtractor.combinations(viewable, queryConfig);
+            List<List<Object>> answerKeys = keyExtractor.combinations(viewable, answerConfig);
             if (queryKeys.isEmpty() || answerKeys.isEmpty()) continue;
 
             for (List<Object> qk : queryKeys) {
                 for (List<Object> ak : answerKeys) {
                     answersToQuery.computeIfAbsent(qk, k -> new ArrayList<>()).add(ak);
-                    queryQuizables.putIfAbsent(qk, quizable);
-                    answerQuizables.putIfAbsent(ak, quizable);
+                    queryViewables.putIfAbsent(qk, viewable);
+                    answerViewables.putIfAbsent(ak, viewable);
                     // count occurrences of correct usage
                     correctAnswerUseCount.merge(ak, 1, Integer::sum);
                 }
@@ -147,314 +148,23 @@ public abstract class Quiz extends Thread {
         }
     }
 
-    private boolean isInSelectedGroup(Quizable quizable) {
+    private boolean isInSelectedGroup(Viewable viewable) {
         if (group == null) return true;
-        try { return group.contains(quizable.getIdentifier()); }
+        try { return group.contains(viewable.getIdentifier()); }
         catch (Exception ignored) { return true; }
     }
 
-    // -------------------------------------------------------------------------
-    // Reflection helpers (same as your original)
-    // -------------------------------------------------------------------------
-    protected static List<List<String>> getFillPaths(ViewConfig config) {
-        List<List<String>> paths = new ArrayList<>();
-        collectPaths(config, new ArrayList<>(), paths);
-        return paths;
-    }
-
-    protected static List<List<String>> getShowPaths(ViewConfig config) {
-        return getFillPaths(config);
-    }
-
-    private static void collectPaths(ViewConfig config,
-                                     List<String> prefix, List<List<String>> out) {
-        if (config == null) return;
-        if (config.isAllFields()) {
-            collectAllFieldPaths(config.getCls(), prefix, out);
-            return;
-        }
-
-        for (Map.Entry<String, ViewConfig> e : config.getFields().entrySet()) {
-            List<String> path = new ArrayList<>(prefix);
-            path.add(e.getKey());
-            ViewConfig child = e.getValue();
-            if (child == null || child.isAllFields() || child.getFields().isEmpty())
-                out.add(path);
-            else collectPaths(child, path, out);
-        }
-    }
-
-    private static void collectAllFieldPaths(Class<? extends Viewable> cls,
-                                             List<String> prefix,
-                                             List<List<String>> out) {
-        if (cls == null) return;
-        for (Field f : QuizableAdapter.getAllFields(cls)) {
-            if ("name".equals(f.getName())) continue;
-            List<String> path = new ArrayList<>(prefix);
-            path.add(f.getName());
-            out.add(path);
-        }
-    }
-
-    private List<List<Object>> extractKeyCombinations(Quizable quizable,
-                                                      List<List<String>> paths) {
-        if (paths == null || paths.isEmpty()) {
-            return List.of();
-        }
-
-        List<List<Object>> alternativesPerPath = new ArrayList<>();
-
-        for (List<String> path : paths) {
-            List<Object> alternatives = extractPathAlternatives(
-                    quizable,
-                    path,
-                    Collections.newSetFromMap(new IdentityHashMap<>()));
-
-            alternatives.removeIf(this::isEmptyValue);
-
-            if (alternatives.isEmpty()) {
-                return List.of();
-            }
-
-            alternativesPerPath.add(alternatives);
-        }
-
-        List<List<Object>> out = new ArrayList<>();
-        buildCartesianKeys(alternativesPerPath, 0, new ArrayList<>(), out);
-        return out;
-    }
-
-    private List<Object> extractPathAlternatives(Object current,
-                                                 List<String> path,
-                                                 Set<Object> visited) {
-        Object raw = extractPathValueRecursive(current, path, 0, visited);
-
-        List<Object> out = new ArrayList<>();
-        flattenAlternatives(raw, out);
-
-        return out;
-    }
-
-    private Object extractPathValueRecursive(Object current,
-                                             List<String> path,
-                                             int index,
-                                             Set<Object> visited) {
-        if (current == null) {
-            return null;
-        }
-
-        if (index >= path.size()) {
-            return current;
-        }
-
-        switch (current) {
-            case Collection<?> collection -> {
-                List<Object> out = new ArrayList<>();
-
-                for (Object item : collection) {
-                    Object v = extractPathValueRecursive(item, path, index, visited);
-                    Object summarized = summarizeExtracted(v);
-
-                    if (!isEmptyValue(summarized)) {
-                        out.add(summarized);
-                    }
-                }
-
-                return out;
-            }
-            case Map<?, ?> map -> {
-                Map<Object, Object> out = new LinkedHashMap<>();
-
-                for (Map.Entry<?, ?> e : map.entrySet()) {
-                    Object v = extractPathValueRecursive(e.getValue(), path, index, visited);
-                    Object summarized = summarizeExtracted(v);
-
-                    if (!isEmptyValue(summarized)) {
-                        out.put(summarizeSimple(e.getKey()), summarized);
-                    }
-                }
-
-                return out;
-            }
-            case Quizable q -> {
-                if (visited.contains(q)) {
-                    return safeName(q);
-                }
-
-                visited.add(q);
-
-                try {
-                    String part = path.get(index);
-
-                    if ("name".equals(part)) {
-                        return q.getName();
-                    }
-
-                    Field field = QuizableAdapter.getField(q.getClass(), part);
-                    if (field == null) {
-                        return null;
-                    }
-
-                    field.setAccessible(true);
-                    Object next = field.get(q);
-
-                    return extractPathValueRecursive(next, path, index + 1, visited);
-                } catch (Exception e) {
-                    return null;
-                } finally {
-                    visited.remove(q);
-                }
-            }
-            default -> {
-            }
-        }
-
-        return null;
-    }
-
-    private void flattenAlternatives(Object value, List<Object> out) {
-        Object summarized = summarizeExtracted(value);
-
-        if (isEmptyValue(summarized)) {
-            return;
-        }
-
-        if (summarized instanceof Collection<?> collection) {
-            for (Object item : collection) {
-                flattenAlternatives(item, out);
-            }
-            return;
-        }
-
-        if (summarized instanceof Map<?, ?> map) {
-            for (Map.Entry<?, ?> e : map.entrySet()) {
-                Object key = summarizeSimple(e.getKey());
-                Object val = summarizeExtracted(e.getValue());
-
-                if (!isEmptyValue(val)) {
-                    out.add(key + " -> " + val);
-                }
-            }
-            return;
-        }
-
-        out.add(summarized);
-    }
-
-    private Object summarizeExtracted(Object value) {
-        switch (value) {
-            case null -> {
-                return null;
-            }
-            case Quizable q -> {
-                return safeName(q);
-            }
-            case Collection<?> collection -> {
-                List<Object> out = new ArrayList<>();
-
-                for (Object item : collection) {
-                    Object summarized = summarizeExtracted(item);
-                    if (!isEmptyValue(summarized)) {
-                        out.add(summarized);
-                    }
-                }
-
-                return out;
-            }
-            case Map<?, ?> map -> {
-                Map<Object, Object> out = new LinkedHashMap<>();
-
-                for (Map.Entry<?, ?> e : map.entrySet()) {
-                    Object summarized = summarizeExtracted(e.getValue());
-
-                    if (!isEmptyValue(summarized)) {
-                        out.put(summarizeSimple(e.getKey()), summarized);
-                    }
-                }
-
-                return out;
-            }
-            default -> {
-            }
-        }
-
-        return value;
-    }
-
-    private Object summarizeSimple(Object value) {
-        if (value == null) {
-            return null;
-        }
-
-        if (value instanceof Quizable q) {
-            return safeName(q);
-        }
-
-        return value;
-    }
-
-    private boolean isEmptyValue(Object value) {
-        switch (value) {
-            case null -> {
-                return true;
-            }
-            case CharSequence cs -> {
-                return cs.toString().trim().isEmpty();
-            }
-            case Collection<?> collection -> {
-                if (collection.isEmpty()) {
-                    return true;
-                }
-
-                for (Object item : collection) {
-                    if (!isEmptyValue(item)) {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-            case Map<?, ?> map -> {
-                if (map.isEmpty()) {
-                    return true;
-                }
-
-                for (Object item : map.values()) {
-                    if (!isEmptyValue(item)) {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-            default -> {
-            }
-        }
-
-        return false;
-    }
-
-    private void buildCartesianKeys(List<List<Object>> lists, int index,
-                                    List<Object> current, List<List<Object>> out) {
-        if (index == lists.size()) { out.add(new ArrayList<>(current)); return; }
-        for (Object v : lists.get(index)) {
-            current.add(v);
-            buildCartesianKeys(lists, index + 1, current, out);
-            current.removeLast();
-        }
-    }
-
-    protected String safeName(Quizable q) {
-        String n = (q == null ? null : q.getName());
-        return n == null ? "" : n;
+    protected String safeName(Viewable q) {
+        String name = q == null ? null : q.getName();
+        return name == null ? "" : name;
     }
 
     // -------------------------------------------------------------------------
     // Exhaustion helpers
     // -------------------------------------------------------------------------
 
-    protected void markAnswerAsUsed(Quizable choice) {
-        for (Map.Entry<List<Object>, Quizable> e : answerQuizables.entrySet()) {
+    protected void markAnswerAsUsed(Viewable choice) {
+        for (Map.Entry<List<Object>, Viewable> e : answerViewables.entrySet()) {
             if (e.getValue().equals(choice)) {
                 List<Object> key = e.getKey();
                 int used = exhaustionUsage.getOrDefault(key, 0) + 1;
@@ -494,16 +204,16 @@ public abstract class Quiz extends Thread {
     }
 
     /**
-     * Ensures the configuration has the correct root class for the given Quizable.
+     * Ensures the configuration has the correct root class for the given Viewable.
      */
-    protected ViewConfig withRootClass(ViewConfig cfg, Quizable q) {
+    protected ViewConfig withRootClass(ViewConfig cfg, Viewable q) {
         if (cfg == null) {
             return (q == null)
                     ? new ViewConfig()
                     : ViewConfig.of(q.getClass());
         }
         if (q == null || cfg.getCls() != null) {
-            // config already defines a root class or quizable is null
+            // config already defines a root class or viewable is null
             return cfg;
         }
         // clone config so changes don't leak elsewhere
@@ -514,49 +224,7 @@ public abstract class Quiz extends Thread {
      * Builds a Card for the current question (query side).
      * Uses the queryConfig and forces full‑size images.
      */
-    protected Card createQueryPanel(Quizable quizable) {
-        ViewConfig cfg = withRootClass(queryConfig, quizable).copy();
-        cfg = fullSizeImagesRecursively(cfg);
-        cfg.setAddListener(false);
-
-        Set<Object> visited = Card.identitySetOf();
-        Set<Object> ancestors = Card.identitySetOf();
-
-        RenderContext context =
-                new RenderContext(quizables.values());
-
-        if (quizable != null) {
-            context.putClassConfig(quizable.getClass(), cfg);
-        }
-
-        return new Card(
-                visited,
-                ancestors,
-                context,
-                true,
-                quizable,
-                cfg,
-                true,
-                new ArrayList<>());
-    }
-
-    /**
-     * Creates a deep copy of the config with thumbnails disabled (full‑size images).
-     */
-    protected ViewConfig fullSizeImagesRecursively(ViewConfig cfg) {
-        if (cfg == null) {
-            return null;
-        }
-        ViewConfig copy = cfg.copy();
-        setThumbRecursively(copy, false);
-        return copy;
-    }
-
-    private void setThumbRecursively(ViewConfig cfg, boolean thumb) {
-        if (cfg == null) return;
-        cfg.setThumb(thumb);
-        for (ViewConfig child : cfg.getFields().values()) {
-            setThumbRecursively(child, thumb);
-        }
+    protected Card createQueryPanel(Viewable viewable) {
+        return cardFactory.create(viewable, queryConfig, QuizCardRole.PROMPT);
     }
 }

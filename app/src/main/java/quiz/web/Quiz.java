@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * A generated multiple-choice quiz, ready to play in the web client.
  *
- * <p>Each question's {@code prompt} reuses {@link QuizableView.Field}, so a
+ * <p>Each question's {@code prompt} reuses {@link ViewableView.Field}, so a
  * prompt can be an image (e.g. a logo), text, or any rendered field — the
  * frontend already knows how to draw it. {@code options} are values of the
  * answer field (the correct one plus distractors), and {@code answer} is the
@@ -21,7 +21,7 @@ public record Quiz(
         List<Question> questions) {
 
     public record Question(
-            List<QuizableView.Field> prompts,
+            List<ViewableView.Field> prompts,
             List<String> options,
             String answer,
             // When the answer field is image-valued, the image URLs for each
@@ -32,7 +32,7 @@ public record Quiz(
             List<List<String>> optionImages) {
 
         public Question(
-                List<QuizableView.Field> prompts,
+                List<ViewableView.Field> prompts,
                 List<String> options,
                 String answer) {
             this(prompts, options, answer, null);

@@ -1,6 +1,7 @@
 package quiz.transform.ui;
 
-import quiz.Quizable;
+import objectview.Viewable;
+import objectview.Viewable;
 import objectview.facet.Facet;
 import objectview.facet.FacetTree;
 import quiz.transform.ClassTransformPlan;
@@ -25,13 +26,13 @@ public final class ViewCompiler {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static View compile(String name, String memberType, List<OperationSpec> ops,
-                               Class<? extends Quizable> universe) {
+                               Class<? extends Viewable> universe) {
         ClassTransformPlan plan = ClassTransformPlan.keeping((Class) universe);
 
         if (memberType != null && !memberType.isBlank()) {
             String type = memberType;
             plan.where((Predicate) o ->
-                    o instanceof Quizable q && type.equals(q.typeName()));
+                    o instanceof Viewable q && type.equals(q.typeName()));
         }
         // FILTER: AND each condition into the plan, operator-aware (equals,
         // contains, <, between, is-empty, …), evaluated by FilterPredicates.
@@ -78,7 +79,7 @@ public final class ViewCompiler {
             }
             path.add(node);
         }
-        List<FacetTree<Quizable>> dims = new ArrayList<>();
+        List<FacetTree<Viewable>> dims = new ArrayList<>();
         for (FacetNodeBuilder n : dimNodes) {
             dims.add(n.build());
         }
@@ -91,15 +92,15 @@ public final class ViewCompiler {
     // (adding children as deeper GROUP_BY ops arrive), then freezes it into the immutable
     // FacetTree records via build().
     private static final class FacetNodeBuilder {
-        final Facet<Quizable> facet;
+        final Facet<Viewable> facet;
         final List<FacetNodeBuilder> children = new ArrayList<>();
 
-        FacetNodeBuilder(Facet<Quizable> facet) {
+        FacetNodeBuilder(Facet<Viewable> facet) {
             this.facet = facet;
         }
 
-        FacetTree<Quizable> build() {
-            List<FacetTree<Quizable>> kids = new ArrayList<>();
+        FacetTree<Viewable> build() {
+            List<FacetTree<Viewable>> kids = new ArrayList<>();
             for (FacetNodeBuilder c : children) {
                 kids.add(c.build());
             }

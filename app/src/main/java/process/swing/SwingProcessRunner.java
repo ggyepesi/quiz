@@ -25,6 +25,7 @@ public final class SwingProcessRunner {
     private final List<AbstractButton> runButtons = new CopyOnWriteArrayList<>();
     private final List<AbstractButton> cancelButtons = new CopyOnWriteArrayList<>();
     private volatile SwingWorker<?, ?> worker;
+    private volatile Thread workerThread;
     private volatile CancellationToken cancellation;
 
     public SwingProcessRunner(
@@ -60,9 +61,14 @@ public final class SwingProcessRunner {
         AtomicReference<ProcessOutcome<R>> terminal = new AtomicReference<>();
         worker = new SwingWorker<ProcessOutcome<R>, Void>() {
             @Override protected ProcessOutcome<R> doInBackground() {
-                ProcessOutcome<R> outcome = runner.run(process, cancellation);
-                terminal.set(outcome);
-                return outcome;
+                workerThread = Thread.currentThread();
+                try {
+                    ProcessOutcome<R> outcome = runner.run(process, cancellation);
+                    terminal.set(outcome);
+                    return outcome;
+                } finally {
+                    workerThread = null;
+                }
             }
 
             @Override protected void done() {
@@ -90,8 +96,11 @@ public final class SwingProcessRunner {
     public void cancel() {
         CancellationToken token = cancellation;
         if (token != null) token.cancel();
-        SwingWorker<?, ?> active = worker;
-        if (active != null && !active.isDone()) active.cancel(true);
+        // Interrupt the work without marking SwingWorker itself cancelled. A cancelled
+        // SwingWorker discards doInBackground's return value, including accepted partial
+        // results; the Process must be allowed to return its explicit CANCELLED outcome.
+        Thread active = workerThread;
+        if (active != null) active.interrupt();
     }
 
     public boolean isRunning() {

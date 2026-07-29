@@ -1,13 +1,14 @@
 package quiz;
 
+import objectview.Viewable;
 import objectview.utils.swing.GridBagUtils;
 import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.BFSShortestPath;
-import quiz.graph.QuizableEdge;
-import quiz.graph.QuizableGraphBuilder;
+import quiz.graph.ViewableEdge;
+import quiz.graph.ViewableGraphBuilder;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,12 +21,12 @@ public class QuizSixDegrees extends Quiz {
     private static final int MIN_PATH_LENGTH = 1;
     private static final int MAX_PATH_LENGTH = 6;
 
-    private Graph<Quizable, QuizableEdge> graph;
-    private List<Quizable> nodes;
+    private Graph<Viewable, ViewableEdge> graph;
+    private List<Viewable> nodes;
 
-    private Quizable source;
-    private Quizable target;
-    private GraphPath<Quizable, QuizableEdge> currentPath;
+    private Viewable source;
+    private Viewable target;
+    private GraphPath<Viewable, ViewableEdge> currentPath;
 
     private JPanel pathPanel;
     private JButton revealNextButton;
@@ -35,14 +36,14 @@ public class QuizSixDegrees extends Quiz {
     private int revealedEdges = 0;
 
     public QuizSixDegrees(ViewConfig viewConfig,
-                          QuizableGroup group,
-                          Map<String, ? extends Quizable> quizables) {
-        super(viewConfig, viewConfig, group, quizables);
+                          ViewableGroup group,
+                          Map<String, ? extends Viewable> viewables) {
+        super(viewConfig, viewConfig, group, viewables);
     }
 
     @Override
     public void run() {
-        graph = new QuizableGraphBuilder().build(quizables.values());
+        graph = new ViewableGraphBuilder().build(viewables.values());
 
         System.out.println("Graph: "
                                    + graph.vertexSet().size()
@@ -52,7 +53,7 @@ public class QuizSixDegrees extends Quiz {
         int isolated = 0;
         int degreeOne = 0;
 
-        for (Quizable q : graph.vertexSet()) {
+        for (Viewable q : graph.vertexSet()) {
             int d = graph.degreeOf(q);
             if (d == 0) isolated++;
             if (d == 1) degreeOne++;
@@ -95,13 +96,13 @@ public class QuizSixDegrees extends Quiz {
         Card left = new Card(
                 source,
                 withRootClass(queryConfig, source),
-                quizables.values(),
+                viewables.values(),
                 false);
 
         Card right = new Card(
                 target,
                 withRootClass(queryConfig, target),
-                quizables.values(),
+                viewables.values(),
                 false);
 
         main.add(left, GridBagUtils.gbc(
@@ -163,16 +164,16 @@ public class QuizSixDegrees extends Quiz {
     private boolean findPair() {
         if (nodes == null || nodes.size() < 2) return false;
 
-        BFSShortestPath<Quizable, QuizableEdge> bfs =
+        BFSShortestPath<Viewable, ViewableEdge> bfs =
                 new BFSShortestPath<>(graph);
 
         for (int i = 0; i < MAX_TRIES_TO_FIND_PAIR; i++) {
-            Quizable a = nodes.get(random.nextInt(nodes.size()));
-            Quizable b = nodes.get(random.nextInt(nodes.size()));
+            Viewable a = nodes.get(random.nextInt(nodes.size()));
+            Viewable b = nodes.get(random.nextInt(nodes.size()));
 
             if (a == b) continue;
 
-            GraphPath<Quizable, QuizableEdge> path = bfs.getPath(a, b);
+            GraphPath<Viewable, ViewableEdge> path = bfs.getPath(a, b);
             if (path == null) continue;
 
             int len = path.getLength();
@@ -213,7 +214,7 @@ public class QuizSixDegrees extends Quiz {
             return;
         }
 
-        QuizableEdge edge = currentPath.getEdgeList().get(revealedEdges);
+        ViewableEdge edge = currentPath.getEdgeList().get(revealedEdges);
         revealedEdges++;
 
         addEdgeRow(edge, revealedEdges);
@@ -231,7 +232,7 @@ public class QuizSixDegrees extends Quiz {
         }
     }
 
-    private void addEdgeRow(QuizableEdge edge, int step) {
+    private void addEdgeRow(ViewableEdge edge, int step) {
         if (revealedEdges == 1) {
             pathPanel.removeAll();
         }

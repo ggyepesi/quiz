@@ -34,7 +34,7 @@ public class GenerateInstancesQuery
 
     @Override
     public String skeleton() {
-        return "compile project model -> RuleTreeExtractor -> dynamic objects -> generated Quizable objects";
+        return "compile project model -> RuleTreeExtractor -> dynamic objects -> generated Viewable objects";
     }
 
     @Override

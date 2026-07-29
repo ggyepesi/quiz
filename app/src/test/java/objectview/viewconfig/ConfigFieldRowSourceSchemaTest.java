@@ -1,7 +1,7 @@
 package objectview.viewconfig;
 
 import org.junit.jupiter.api.Test;
-import quiz.transform.DynamicQuizable;
+import quiz.transform.DynamicViewable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,12 +50,12 @@ class ConfigFieldRowSourceSchemaTest {
     }
 
     @Test void emptyReferenceIsExpandableFromSchema() {
-        DynamicQuizable nomination = new DynamicQuizable("N1", "A Nomination");
+        DynamicViewable nomination = new DynamicViewable("N1", "A Nomination");
         nomination.type("Nomination");
         nomination.put("category", new ArrayList<>());   // present but EMPTY -> no child value
 
         FieldRowContext ctx = new FieldRowContext(
-                ViewConfig.all(DynamicQuizable.class), nomination,
+                ViewConfig.all(DynamicViewable.class), nomination,
                 false, false, Set.of(), schema());
 
         FieldRow category = row(ConfigFieldRowSource.INSTANCE.rows(ctx), "category");

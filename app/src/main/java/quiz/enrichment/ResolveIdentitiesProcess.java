@@ -25,7 +25,7 @@ public final class ResolveIdentitiesProcess
 
     /** One instance to resolve: its domain id (where the identity link is written), its
      *  name (the search term), and its current qid (blank if not yet resolved). */
-    public record Subject(String targetId, String name, String currentQid) { }
+    public record Subject(String type, String targetId, String name, String currentQid) { }
 
     private final List<Subject> subjects;
     private final int searchLimit;
@@ -80,7 +80,7 @@ public final class ResolveIdentitiesProcess
                 }
             }
             forReview.add(new ResolveIdentitiesReviewRequest.InstanceIdentity(
-                    subject.targetId(), subject.name(), "", candidates));
+                    subject.type(), subject.targetId(), subject.name(), "", candidates));
         }
 
         if (context.cancellation().isCancelled()) {

@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 import quiz.transform.View;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -51,7 +51,7 @@ class ViewCompilerTest {
         assertEquals(2, view.members(pool).size());
 
         // Grouped: the tree contains a "Best Picture" bucket and year buckets.
-        QuizableGroup root = view.render(pool);
+        ViewableGroup root = view.render(pool);
         assertFalse(root.getChildren().isEmpty());
         java.util.Set<String> labels = new java.util.HashSet<>();
         collectLabels(root, labels);
@@ -72,13 +72,13 @@ class ViewCompilerTest {
                 new DomainField("Nomination", "year", false, false), null);
         year.depth = 0;   // top-level → a parallel dimension off the root
 
-        QuizableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year),
+        ViewableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year),
                 WikidataDynamicObject.class).render(pool);
 
         // Two FACET dimensions off the root (category | year), not one nested chain.
         assertEquals(2, root.getChildren().size());
-        for (QuizableGroup facet : root.getChildren()) {
-            for (QuizableGroup bucket : facet.getChildren()) {
+        for (ViewableGroup facet : root.getChildren()) {
+            for (ViewableGroup bucket : facet.getChildren()) {
                 assertTrue(bucket.getChildren().isEmpty(), "independent bucket is a leaf");
             }
         }
@@ -95,12 +95,12 @@ class ViewCompilerTest {
                 new DomainField("Nomination", "year", false, false), null);
         year.depth = 1;   // nested under category: one chain, category → year.
 
-        QuizableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year),
+        ViewableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year),
                 WikidataDynamicObject.class).render(pool);
 
         assertEquals(1, root.getChildren().size(), "one nested dimension chain");
-        for (QuizableGroup facet : root.getChildren()) {          // "by category"
-            for (QuizableGroup bucket : facet.getChildren()) {     // Best Picture
+        for (ViewableGroup facet : root.getChildren()) {          // "by category"
+            for (ViewableGroup bucket : facet.getChildren()) {     // Best Picture
                 assertFalse(bucket.getChildren().isEmpty(), "nested bucket drills further");
             }
         }
@@ -125,22 +125,22 @@ class ViewCompilerTest {
                 new DomainField("Nomination", "won", false, false), null);
         won.depth = 1;   // sibling of year, NOT nested under it
 
-        QuizableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year, won),
+        ViewableGroup root = ViewCompiler.compile("v", "Nomination", List.of(cat, year, won),
                 WikidataDynamicObject.class).render(pool);
 
         // root -> "by category" -> "Best Picture" -> two parallel FACET dimensions.
-        QuizableGroup byCategory = root.getChildren().iterator().next();
-        QuizableGroup bucket = byCategory.getChildren().iterator().next();   // Best Picture
+        ViewableGroup byCategory = root.getChildren().iterator().next();
+        ViewableGroup bucket = byCategory.getChildren().iterator().next();   // Best Picture
         java.util.Set<String> dims = new java.util.LinkedHashSet<>();
-        for (QuizableGroup facet : bucket.getChildren()) {
+        for (ViewableGroup facet : bucket.getChildren()) {
             dims.add(facet.getDisplayName());
         }
         assertEquals(2, bucket.getChildren().size(),
                 "the category bucket fans out into two parallel sub-dimensions: " + dims);
     }
 
-    private static void collectLabels(QuizableGroup g, java.util.Set<String> out) {
-        for (QuizableGroup c : g.getChildren()) {
+    private static void collectLabels(ViewableGroup g, java.util.Set<String> out) {
+        for (ViewableGroup c : g.getChildren()) {
             out.add(c.getDisplayName());
             collectLabels(c, out);
         }
@@ -163,7 +163,7 @@ class ViewCompilerTest {
                         new DomainField("State", "languages.iso", false, false), null)),
                 WikidataDynamicObject.class);
 
-        QuizableGroup root = view.render(List.of(state, en, fr));
+        ViewableGroup root = view.render(List.of(state, en, fr));
         java.util.Set<String> labels = new java.util.HashSet<>();
         collectLabels(root, labels);
         assertTrue(labels.contains("en") && labels.contains("fr"), labels.toString());

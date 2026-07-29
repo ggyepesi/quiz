@@ -1,8 +1,13 @@
 package quiz;
 
+import objectview.Viewable;
 import objectview.utils.swing.GridBagUtils;
 import objectview.render.Card;
+import quiz.round.RoundProgress;
 import quiz.ui.PairingManager;
+import quiz.ui.QuizCardRole;
+import quiz.ui.RoundShell;
+import quiz.ui.SelectableCard;
 import objectview.viewconfig.ViewConfig;
 
 import javax.swing.*;
@@ -12,64 +17,72 @@ import java.util.List;
 
 /** Side‑by‑side pairing quiz with exhaustion awareness. */
 public class QuizPairs extends Quiz {
+    private static final int PAIRS_PER_ROUND = 4;
 
     private PairingManager pairingManager;
+    private RoundProgress roundProgress;
+    private final RoundShell roundShell = new RoundShell();
 
     public QuizPairs(ViewConfig queryConfig,
                      ViewConfig answerConfig,
-                     QuizableGroup group,
-                     Map<String, ? extends Quizable> quizables) {
-        super(queryConfig, answerConfig, group, quizables);
+                     ViewableGroup group,
+                     Map<String, ? extends Viewable> viewables) {
+        super(queryConfig, answerConfig, group, viewables);
     }
 
     @Override
     public void run() {
         List<List<Object>> queries = new ArrayList<>(answersToQuery.keySet());
         Collections.shuffle(queries);
+        int totalRounds =
+                (queries.size() + PAIRS_PER_ROUND - 1) / PAIRS_PER_ROUND;
+        roundProgress = new RoundProgress(totalRounds);
+        startTiming();
 
         SwingUtilities.invokeLater(() -> {
-            frame.getContentPane().removeAll();
-            frame.setLayout(new GridBagLayout());
+            frame.setContentPane(roundShell);
             drawRound(queries);
             frame.setVisible(true);
         });
     }
 
     private void drawRound(List<List<Object>> remaining) {
-        if (remaining.isEmpty()) { showDone(); return; }
+        if (remaining.isEmpty() || roundProgress.isComplete()) {
+            roundProgress.complete();
+            showDone();
+            return;
+        }
 
         List<PairItem> pairs = createRoundData(remaining);
-        if (pairs.isEmpty()) { showDone(); return; }
+        if (pairs.isEmpty()) {
+            roundProgress.complete();
+            showDone();
+            return;
+        }
 
-        pairingManager = new PairingManager();
-        pairingManager.setExpectedPairs(pairs.size());
+        pairingManager = new PairingManager(pairs.size());
 
         JPanel pairPanel = buildPairsPanel(pairs);
         JScrollPane scroll = new JScrollPane(pairPanel);
         scroll.setBorder(BorderFactory.createEmptyBorder());
 
-        JButton next = pairingManager.getNextButton();
-        next.addActionListener(e -> {
-            for (PairItem p : pairs) markAnswerAsUsed(answerQuizables.get(p.answerKey));
-            drawRound(remaining);
-        });
-
-        frame.getContentPane().removeAll();
-        GridBagConstraints gbc = createGridBagConstraints();
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.weightx = 1.0; gbc.weighty = 1.0;
-        frame.add(scroll, gbc);
-        gbc.gridy++;
-        gbc.weighty = 0.0;
-        frame.add(next, GridBagUtils.gbc(0, gbc.gridy, 1.0, 0.0,
-                GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
-                new Insets(16,20,16,20)));
-        frame.revalidate(); frame.repaint();
+        roundShell.showRound(
+                roundProgress.snapshot(),
+                scroll,
+                remaining.isEmpty() ? "Finish" : "Next",
+                () -> {
+                    for (PairItem p : pairs) {
+                        markAnswerAsUsed(answerViewables.get(p.answerKey));
+                    }
+                    roundProgress.advance();
+                    drawRound(remaining);
+                });
+        pairingManager.onSolvedChanged(roundShell::setAdvanceEnabled);
     }
 
     private List<PairItem> createRoundData(List<List<Object>> queryKeys) {
         List<PairItem> pairs = new ArrayList<>();
-        int limit = Math.min(4, queryKeys.size());
+        int limit = Math.min(PAIRS_PER_ROUND, queryKeys.size());
 
         while (!queryKeys.isEmpty() && pairs.size() < limit) {
             List<Object> qKey = queryKeys.remove(random.nextInt(queryKeys.size()));
@@ -83,8 +96,8 @@ public class QuizPairs extends Quiz {
             if (available.isEmpty()) continue;
 
             List<Object> aKey = available.get(random.nextInt(available.size()));
-            Quizable q = queryQuizables.get(qKey);
-            Quizable a = answerQuizables.get(aKey);
+            Viewable q = queryViewables.get(qKey);
+            Viewable a = answerViewables.get(aKey);
             if (q == null || a == null) continue;
 
             pairs.add(new PairItem(qKey, aKey, q, a));
@@ -96,32 +109,34 @@ public class QuizPairs extends Quiz {
         JPanel p = new JPanel(new GridBagLayout());
         int row = 0;
         for (PairItem item : data) {
-            Card left = new Card(item.query, withRootClass(queryConfig, item.query), (Collection<? extends Quizable>) null, true);
-            Card right = new Card(item.answer, withRootClass(answerConfig, item.answer), (Collection<? extends Quizable>) null, false);
-            pairingManager.registerPanel(left, true);
-            pairingManager.registerPanel(right, false);
+            Card left = cardFactory.create(
+                    item.query, queryConfig, QuizCardRole.PAIR_PROMPT);
+            Card right = cardFactory.create(
+                    item.answer, answerConfig, QuizCardRole.PAIR_ANSWER);
+            SelectableCard leftChoice =
+                    new SelectableCard(item.query, left, false);
+            SelectableCard rightChoice =
+                    new SelectableCard(item.answer, right, false);
+            pairingManager.registerPanel(leftChoice, true);
+            pairingManager.registerPanel(rightChoice, false);
 
-            p.add(left, GridBagUtils.gbc(0, row, 0.5, 0.0,
+            p.add(leftChoice, GridBagUtils.gbc(0, row, 0.5, 0.0,
                     GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(8,8,8,8)));
-            p.add(right, GridBagUtils.gbc(1, row++, 0.5, 0.0,
+            p.add(rightChoice, GridBagUtils.gbc(1, row++, 0.5, 0.0,
                     GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(8,8,8,8)));
         }
         return p;
     }
 
     private void showDone() {
-        frame.getContentPane().removeAll();
-        JLabel label = new JLabel("✅ All rounds completed!", SwingConstants.CENTER);
-        label.setFont(new Font("Arial", Font.BOLD, 28));
-        frame.add(label, GridBagUtils.gbc(0, 0, 1.0, 1.0,
-                GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(20,20,20,20)));
-        frame.revalidate(); frame.repaint();
+        stopTiming();
+        roundShell.showCompletion("✅ All rounds completed!");
     }
 
     private static class PairItem {
         final List<Object> queryKey, answerKey;
-        final Quizable query, answer;
-        PairItem(List<Object> qk, List<Object> ak, Quizable q, Quizable a) {
+        final Viewable query, answer;
+        PairItem(List<Object> qk, List<Object> ak, Viewable q, Viewable a) {
             this.queryKey = qk; this.answerKey = ak; this.query = q; this.answer = a;
         }
     }

@@ -7,9 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JPanel;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
-public  class NamedEntity extends QuizableAdapter implements MythologyEntity {
+public  class NamedEntity extends ViewableAdapter implements MythologyEntity {
     private String name;
 
     protected NamedEntity() {}
@@ -63,9 +63,4 @@ public  class NamedEntity extends QuizableAdapter implements MythologyEntity {
         return panel;
     }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new NamedEntity("");
-    }
 }
-

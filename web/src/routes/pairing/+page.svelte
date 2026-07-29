@@ -58,7 +58,7 @@
       types = (await getTypes()) ?? [];
       if (types.length) await selectType(types[0]);
     } catch (e) {
-      error = 'Cannot reach the API. Is QuizableServerMain running?';
+      error = 'Cannot reach the API. Is ViewableServerMain running?';
     }
   });
 

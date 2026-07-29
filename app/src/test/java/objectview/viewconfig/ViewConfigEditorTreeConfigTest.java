@@ -1,7 +1,7 @@
 package objectview.viewconfig;
 
 import org.junit.jupiter.api.Test;
-import quiz.transform.DynamicQuizable;
+import quiz.transform.DynamicViewable;
 
 import java.util.List;
 import java.util.Set;
@@ -22,13 +22,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class ViewConfigEditorTreeConfigTest {
 
     /** nomination → category(reference) with year + winner child fields. */
-    private static DynamicQuizable nominationSample() {
-        DynamicQuizable category = new DynamicQuizable("Q1", "Best Picture");
+    private static DynamicViewable nominationSample() {
+        DynamicViewable category = new DynamicViewable("Q1", "Best Picture");
         category.type("Category");
         category.put("year", 1995);
         category.put("winner", true);
 
-        DynamicQuizable nomination = new DynamicQuizable("N1", "A Nomination");
+        DynamicViewable nomination = new DynamicViewable("N1", "A Nomination");
         nomination.type("Nomination");
         nomination.put("category", category);
         return nomination;
@@ -36,14 +36,14 @@ class ViewConfigEditorTreeConfigTest {
 
     private static ViewConfig topConfig() {
         ViewConfig config = new ViewConfig();
-        config.setCls(DynamicQuizable.class);
+        config.setCls(DynamicViewable.class);
         config.setAllFields(false);
         return config;
     }
 
     private static ViewConfig nestedConfig() {
         ViewConfig cfg = new ViewConfig();
-        cfg.setCls(DynamicQuizable.class);
+        cfg.setCls(DynamicViewable.class);
         cfg.setAllFields(false);
         return cfg;
     }
@@ -153,21 +153,21 @@ class ViewConfigEditorTreeConfigTest {
     }
 
     @Test void distinctDynamicTypesRecursePastOneNestedLevel() {
-        DynamicQuizable motivation = new DynamicQuizable("M1", "Motivation");
+        DynamicViewable motivation = new DynamicViewable("M1", "Motivation");
         motivation.type("Motivation");
         motivation.put("action", "for discovering...");
 
-        DynamicQuizable laureate = new DynamicQuizable("L1", "Laureate");
+        DynamicViewable laureate = new DynamicViewable("L1", "Laureate");
         laureate.type("Laureate");
         laureate.put("portrait", "portrait.jpg");
 
-        DynamicQuizable wrapper =
-                new DynamicQuizable("W1", "Laureates with motivation");
+        DynamicViewable wrapper =
+                new DynamicViewable("W1", "Laureates with motivation");
         wrapper.type("LaureatesWithMotivation");
         wrapper.put("laureates", List.of(laureate));
         wrapper.put("motivation", motivation);
 
-        DynamicQuizable prize = new DynamicQuizable("P1", "Nobel Prize");
+        DynamicViewable prize = new DynamicViewable("P1", "Nobel Prize");
         prize.type("NobelPrize");
         prize.put("laureatesWithMotivation", List.of(wrapper));
 

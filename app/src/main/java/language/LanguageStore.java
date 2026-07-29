@@ -1,6 +1,6 @@
 package language;
 
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -231,9 +231,9 @@ public class LanguageStore {
     private static LanguagesData buildData(Map<String, Language> languages, Map<String, List<String>> familyPaths,
                                            Map<String, List<String>> languageLeafFamilyNames) {
         Map<String, LanguageFamily> families = new TreeMap<>();
-        Map<String, QuizableGroup> familyGroups = new TreeMap<>();
+        Map<String, ViewableGroup> familyGroups = new TreeMap<>();
 
-        QuizableGroup root = new QuizableGroup("All languages");
+        ViewableGroup root = new ViewableGroup("All languages");
 
         buildFamilyTrees(familyPaths, families, familyGroups, root);
         attachLanguages(languages, languageLeafFamilyNames, families, familyGroups, root);
@@ -242,10 +242,10 @@ public class LanguageStore {
     }
 
     private static void buildFamilyTrees(Map<String, List<String>> familyPaths, Map<String, LanguageFamily> families,
-                                         Map<String, QuizableGroup> familyGroups, QuizableGroup root) {
+                                         Map<String, ViewableGroup> familyGroups, ViewableGroup root) {
         for (List<String> path : familyPaths.values()) {
             LanguageFamily previousFamily = null;
-            QuizableGroup group = root;
+            ViewableGroup group = root;
 
             for (String familyName : path) {
                 if (familyName == null || familyName.isBlank()) {
@@ -269,7 +269,7 @@ public class LanguageStore {
 
     private static void attachLanguages(
             Map<String, Language> languages, Map<String, List<String>> languageLeafFamilyNames,
-            Map<String, LanguageFamily> families, Map<String, QuizableGroup> familyGroups, QuizableGroup root) {
+            Map<String, LanguageFamily> families, Map<String, ViewableGroup> familyGroups, ViewableGroup root) {
         for (Language language : languages.values()) {
             List<String> leafNames = languageLeafFamilyNames.get(language.getName());
 
@@ -286,7 +286,7 @@ public class LanguageStore {
                     family.addLanguage(language);
                 }
 
-                QuizableGroup group = familyGroups.get(leafName);
+                ViewableGroup group = familyGroups.get(leafName);
 
                 if (group != null) {
                     group.addMember(language);

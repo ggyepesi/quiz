@@ -3,7 +3,7 @@ package quiz.facet;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 import org.junit.jupiter.api.Test;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;
@@ -31,34 +31,34 @@ class FacetGrouperNestedTest {
         Facet byYear = Facet.derived("by year",
                 q -> List.of(String.valueOf(((WikidataDynamicObject) q).get("year"))));
 
-        QuizableGroup root = FacetGrouper.groupNested(QuizableGroup::new, 
+        ViewableGroup root = FacetGrouper.groupNested(ViewableGroup::new,
                 "All Nomination", all, List.of(byCategory, byYear));
 
         // Universe holds everything.
-        assertEquals(QuizableGroup.Role.UNIVERSE, root.getRole());
+        assertEquals(ViewableGroup.Role.UNIVERSE, root.getRole());
         assertEquals(3, root.getMembers().size());
 
         // First level: by category (a FACET dimension), category buckets below it.
-        QuizableGroup byCat = root.getChild("by category");
+        ViewableGroup byCat = root.getChild("by category");
         assertNotNull(byCat, "top dimension is the FIRST declared facet");
-        assertEquals(QuizableGroup.Role.FACET, byCat.getRole());
+        assertEquals(ViewableGroup.Role.FACET, byCat.getRole());
 
-        QuizableGroup bestActress = byCat.getChild("Best Actress");
+        ViewableGroup bestActress = byCat.getChild("Best Actress");
         assertNotNull(bestActress);
-        assertEquals(QuizableGroup.Role.BUCKET, bestActress.getRole());
+        assertEquals(ViewableGroup.Role.BUCKET, bestActress.getRole());
         assertEquals(2, bestActress.getMembers().size(), "both Best Actress noms");
 
         // Second level nests UNDER the category bucket: by year → year buckets.
-        QuizableGroup byYearUnderActress = bestActress.getChild("by year");
+        ViewableGroup byYearUnderActress = bestActress.getChild("by year");
         assertNotNull(byYearUnderActress, "year drills down inside the category");
-        assertEquals(QuizableGroup.Role.FACET, byYearUnderActress.getRole());
+        assertEquals(ViewableGroup.Role.FACET, byYearUnderActress.getRole());
 
-        QuizableGroup y1985 = byYearUnderActress.getChild("1985");
+        ViewableGroup y1985 = byYearUnderActress.getChild("1985");
         assertNotNull(y1985);
         assertEquals(1, y1985.getMembers().size(), "only n1 is Best Actress 1985");
 
         // The other category partitions independently and only sees its own member.
-        QuizableGroup bestPicture = byCat.getChild("Best Picture");
+        ViewableGroup bestPicture = byCat.getChild("Best Picture");
         assertEquals(1, bestPicture.getMembers().size());
         assertEquals(1, bestPicture.getChild("by year").getChild("1985")
                 .getMembers().size());

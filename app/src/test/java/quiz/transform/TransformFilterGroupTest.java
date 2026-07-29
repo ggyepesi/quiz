@@ -1,9 +1,9 @@
 package quiz.transform;
 
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
-import quiz.QuizableAdapter;
-import quiz.QuizableGroup;
+import objectview.Viewable;
+import objectview.ViewableAdapter;
+import quiz.ViewableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 
@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TransformFilterGroupTest {
 
     // A generated Nomination-shape: a won flag + category / year / nominee.
-    public static class Nomination extends QuizableAdapter {
+    public static class Nomination extends ViewableAdapter {
         public boolean won;
         public String category;
         public int year;
@@ -35,7 +35,7 @@ class TransformFilterGroupTest {
     }
 
     // The projected view class.
-    public static class Winner extends QuizableAdapter {
+    public static class Winner extends ViewableAdapter {
         public String category;
         public int year;
         public String nominee;
@@ -65,19 +65,19 @@ class TransformFilterGroupTest {
         assertEquals(3, winners.size(), "only the 3 won=true nominations survive the filter");
 
         // GROUP per category, then per year (nested drill-down).
-        QuizableGroup root = FacetGrouper.groupNested(QuizableGroup::new, "Winners", winners,
+        ViewableGroup root = FacetGrouper.groupNested(ViewableGroup::new, "Winners", winners,
                 List.of(Facet.field("category"), Facet.field("year")));
 
         assertEquals(3, root.getMembers().size(), "all winners at the root");
 
-        QuizableGroup bestActor = root.getChild("category").getChild("Best Actor");
+        ViewableGroup bestActor = root.getChild("category").getChild("Best Actor");
         assertEquals(2, bestActor.getMembers().size(), "Pacino '93 + Hanks '94");
         assertEquals("Al Pacino", bestActor.getChild("year").getChild("1993")
                 .getMembers().iterator().next().getDisplayName());
         assertEquals("Tom Hanks", bestActor.getChild("year").getChild("1994")
                 .getMembers().iterator().next().getDisplayName());
 
-        QuizableGroup bestActress = root.getChild("category").getChild("Best Actress");
+        ViewableGroup bestActress = root.getChild("category").getChild("Best Actress");
         assertEquals(1, bestActress.getMembers().size(), "only the winner, not the loser");
 
         // Denzel / Angela (won=false) never became Winners, so no bucket for them.
@@ -97,12 +97,12 @@ class TransformFilterGroupTest {
                 .groupBy(Facet.field("category"), Facet.field("year"));
 
         // Members are the SAME source instances (identity) — display name intact.
-        List<? extends Quizable> members = view.members(noms);
+        List<? extends Viewable> members = view.members(noms);
         assertEquals(2, members.size());
         assertTrue(members.contains(noms.get(0)) && members.contains(noms.get(2)),
                 "kept the winner source instances, not projections");
 
-        QuizableGroup root = view.render(noms);
+        ViewableGroup root = view.render(noms);
         assertEquals("Al Pacino", root.getChild("category").getChild("Best Actor")
                 .getChild("year").getChild("1993").getMembers().iterator().next()
                 .getDisplayName());

@@ -1,7 +1,7 @@
 <script>
   import Self from './GroupTree.svelte';
-  import { getQuizable } from './api.js';
-  import QuizableCard from './QuizableCard.svelte';
+  import { getViewable } from './api.js';
+  import ViewableCard from './ViewableCard.svelte';
 
   let { node, selected, onSelect, depth = 0 } = $props();
 
@@ -21,7 +21,7 @@
     showCard = !showCard;
     if (showCard && !card && node.ref) {
       cardLoading = true;
-      card = await getQuizable(node.ref.type, node.ref.id);
+      card = await getViewable(node.ref.type, node.ref.id);
       cardLoading = false;
     }
   }
@@ -54,7 +54,7 @@
     {#if cardLoading}
       <span class="hint">Loading…</span>
     {:else if card}
-      <QuizableCard view={card} />
+      <ViewableCard view={card} />
     {:else}
       <span class="hint">no detail available</span>
     {/if}

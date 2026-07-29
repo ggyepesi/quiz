@@ -2,7 +2,7 @@ package quiz.curation;
 
 import objectview.media.MediaValue;
 import org.junit.jupiter.api.Test;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataMediaValue;
 
@@ -62,7 +62,7 @@ class MediaCorrectionTest {
     }
 
     @SuppressWarnings("unused")
-    static final class Country extends QuizableAdapter {
+    static final class Country extends ViewableAdapter {
         private final String name;
         private final List<TestMedia> flags = new ArrayList<>();
 

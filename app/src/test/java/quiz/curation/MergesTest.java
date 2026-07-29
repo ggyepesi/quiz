@@ -2,7 +2,7 @@ package quiz.curation;
 
 import objectview.annotations.Reference;
 import org.junit.jupiter.api.Test;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ class MergesTest {
     /** A State-shaped fixture: identity name + two image lists, one populated on each
      *  of the primary/duplicate so the merge must union them (the Tanzania case). */
     @SuppressWarnings("unused")
-    static class Country extends QuizableAdapter {
+    static class Country extends ViewableAdapter {
         private final String name;
         @Reference private final List<String> flags = new ArrayList<>();
         @Reference private final List<String> shapes = new ArrayList<>();
@@ -31,7 +31,7 @@ class MergesTest {
         @Override public String getDisplayName() { return name; }
     }
 
-    static class Holder extends QuizableAdapter {
+    static class Holder extends ViewableAdapter {
         private final String name;
         private Country country;
 
@@ -44,7 +44,7 @@ class MergesTest {
         @Override public String getDisplayName() { return name; }
     }
 
-    static class Tagged extends QuizableAdapter {
+    static class Tagged extends ViewableAdapter {
         private final String name;
         private final Set<String> tags = new TreeSet<>();
 
@@ -106,7 +106,7 @@ class MergesTest {
         Country primary = new Country("A");
         Country duplicate = new Country("B");
         Holder holder = new Holder("holder", duplicate);
-        List<QuizableAdapter> pool = new ArrayList<>(List.of(primary, duplicate, holder));
+        List<ViewableAdapter> pool = new ArrayList<>(List.of(primary, duplicate, holder));
 
         Merges.apply(pool, List.of(
                 new Merge("Country", "A", "B", Map.of(), Merge.MANUAL)));

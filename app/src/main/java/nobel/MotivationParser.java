@@ -3,11 +3,11 @@ package nobel;
 import java.util.*;
 import java.util.regex.*;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 public class MotivationParser {
 
-    public static class Motivation extends QuizableAdapter implements quiz.ValueObject {
+    public static class Motivation extends ViewableAdapter implements quiz.ValueObject {
         public String action;
         public List<String> topics = new ArrayList<>();
         public String method;

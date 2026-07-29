@@ -2,9 +2,9 @@ package nobel;
 import java.util.ArrayList;
 import java.util.List;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
-public class NobelPrize extends QuizableAdapter {
+public class NobelPrize extends ViewableAdapter {
     public static enum Domain {
          PHYSICS,
          CHEMISTRY,

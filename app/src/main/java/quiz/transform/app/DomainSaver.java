@@ -1,7 +1,7 @@
 package quiz.transform.app;
 
 import quiz.DatasetRegistry;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.transform.ui.DomainWriter;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
@@ -21,9 +21,9 @@ import java.util.Set;
 public final class DomainSaver implements DomainWriter {
 
     @Override
-    public String save(String name, Collection<? extends Quizable> members) throws Exception {
+    public String save(String name, Collection<? extends Viewable> members) throws Exception {
         String key = sanitize(name);
-        List<WikidataDynamicObject> pool = QuizableToWdo.pool(members);
+        List<WikidataDynamicObject> pool = ViewableToWdo.pool(members);
 
         File file = new File(aux.Constants.wikidataDataDirectory
                 + "transform/" + key + ".snapshot.json");

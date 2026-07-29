@@ -4,7 +4,7 @@ import objectview.field.ViewableFieldPaths;
 import objectview.search.SearchAndSort;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
-import quiz.transform.DynamicQuizable;
+import quiz.transform.DynamicViewable;
 
 import java.util.List;
 import java.util.Map;
@@ -19,15 +19,15 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class DynamicSearchConfigTest {
 
-    private static DynamicQuizable nomination(String qid, String name, boolean won) {
-        DynamicQuizable q = new DynamicQuizable(qid, name);
+    private static DynamicViewable nomination(String qid, String name, boolean won) {
+        DynamicViewable q = new DynamicViewable(qid, name);
         q.type("Nomination");
         q.put("won", won);
         return q;
     }
 
     private static ViewConfig explicit(String... fieldNames) {
-        ViewConfig cfg = ViewConfig.of(DynamicQuizable.class);
+        ViewConfig cfg = ViewConfig.of(DynamicViewable.class);
         cfg.setAllFields(false);
         for (String f : fieldNames) {
             cfg.addField(f, ViewConfig.leaf());
@@ -69,8 +69,8 @@ class DynamicSearchConfigTest {
     }
 
     @Test void sortsByADynamicField() {
-        DynamicQuizable a = nomination("N1", "A", false);
-        DynamicQuizable b = nomination("N2", "B", false);
+        DynamicViewable a = nomination("N1", "A", false);
+        DynamicViewable b = nomination("N2", "B", false);
         a.put("year", 2001);
         b.put("year", 1999);
 

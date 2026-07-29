@@ -1,6 +1,6 @@
 package quiz.transform.app;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import objectview.field.FieldKind;
@@ -31,14 +31,14 @@ public final class ProductDomain implements DomainModel, SchemaView {
     private static final int MAX_DEPTH = 4;
 
     private final ProductSchema schema;
-    private final Collection<? extends Quizable> pool;
-    private final Class<? extends Quizable> universe;
+    private final Collection<? extends Viewable> pool;
+    private final Class<? extends Viewable> universe;
     // Lazily builds the ModelClass↔ProductClass inspector; supplied by the compiler
     // (which holds the declared model). Null = no schema view.
     private final SchemaView schemaView;
 
-    public ProductDomain(ProductSchema schema, Collection<? extends Quizable> pool,
-                         Class<? extends Quizable> universe, SchemaView schemaView) {
+    public ProductDomain(ProductSchema schema, Collection<? extends Viewable> pool,
+                         Class<? extends Viewable> universe, SchemaView schemaView) {
         this.schema = schema;
         this.pool = pool;
         this.universe = universe;
@@ -130,6 +130,6 @@ public final class ProductDomain implements DomainModel, SchemaView {
         return c != null ? c.displayName() : className;
     }
 
-    @Override public Collection<? extends Quizable> instances() { return pool; }
-    @Override public Class<? extends Quizable> universe() { return universe; }
+    @Override public Collection<? extends Viewable> instances() { return pool; }
+    @Override public Class<? extends Viewable> universe() { return universe; }
 }

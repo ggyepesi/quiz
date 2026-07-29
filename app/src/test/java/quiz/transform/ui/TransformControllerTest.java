@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.Collection;
 import java.util.List;
@@ -29,8 +29,8 @@ class TransformControllerTest {
                         new DomainField("Nomination", "category", true, false),
                         new DomainField("Nomination", "year", false, false));
             }
-            @Override public Collection<? extends Quizable> instances() { return List.of(); }
-            @Override public Class<? extends Quizable> universe() { return Quizable.class; }
+            @Override public Collection<? extends Viewable> instances() { return List.of(); }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
         };
     }
 

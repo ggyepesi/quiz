@@ -17,10 +17,10 @@ import org.jsoup.select.Elements;
 
 import objectview.utils.swing.CachedImage;
 import aux.FlexibleDate;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 import objectview.render.GroupView;
 import objectview.media.ImagePane;
-import quiz.Quizable;
+import objectview.Viewable;
 
 public class USPresidents implements DomainViews {
     private static final String url = Constants.wiki  + "List_of_presidents_of_the_United_States";
@@ -30,7 +30,7 @@ public class USPresidents implements DomainViews {
     );
 
     private final Map<String, President> presidentsByName = new TreeMap<>();
-    private final QuizableGroup root = new QuizableGroup("all");
+    private final ViewableGroup root = new ViewableGroup("all");
     private final HashMap<List<Integer>, List<ImagePane>> imagePanesBySize = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
@@ -156,10 +156,10 @@ public class USPresidents implements DomainViews {
         }
     }
 
-    private ImagePane getProtraitImagePane(Quizable quizable, String imageUrl) throws Exception {
+    private ImagePane getProtraitImagePane(Viewable viewable, String imageUrl) throws Exception {
         CachedImage cachedImage = new CachedImage(null, imageUrl, false);
         ImagePane imagePane =
-                new ImagePane(quizable.getName(), quizable, cachedImage, false, false);
+                new ImagePane(viewable.getName(), viewable, cachedImage, false, false);
 
         return imagePane;
     }
@@ -220,7 +220,7 @@ public class USPresidents implements DomainViews {
     }
 
     @Override
-    public Map<String, ? extends Quizable> getViewables() {
+    public Map<String, ? extends Viewable> getViewables() {
         return presidentsByName;
     }
 }

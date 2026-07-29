@@ -4,8 +4,8 @@ import aux.Constants;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import objectview.viewconfig.DomainViews;
-import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.Viewable;
+import quiz.ViewableGroup;
 import objectview.render.GroupView;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -21,7 +21,7 @@ public class OscarNominations implements DomainViews {
 
     private final Map<String, OscarNomination> nominations = new LinkedHashMap<>();
 
-    private QuizableGroup root = new QuizableGroup("All");
+    private ViewableGroup root = new ViewableGroup("All");
 
     private GroupView groupView;
 
@@ -69,7 +69,7 @@ public class OscarNominations implements DomainViews {
 
     public void readWinners() throws Exception {
         nominations.clear();
-        root = new QuizableGroup("All");
+        root = new ViewableGroup("All");
 
         OscarWikidataReader reader = new OscarWikidataReader();
         List<OscarNomination> read = reader.readAllWinners();
@@ -153,7 +153,7 @@ public class OscarNominations implements DomainViews {
     }
 
     private void rebuildGroups() {
-        root = new QuizableGroup("All");
+        root = new ViewableGroup("All");
 
         for (Map.Entry<String, OscarNomination> e : nominations.entrySet()) {
 
@@ -213,7 +213,7 @@ public class OscarNominations implements DomainViews {
     }
 
     @Override
-    public Map<String, ? extends Quizable> getViewables() {
+    public Map<String, ? extends Viewable> getViewables() {
         return nominations;
     }
 

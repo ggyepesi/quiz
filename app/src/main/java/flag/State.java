@@ -1,5 +1,6 @@
 package flag;
 
+import aux.FlexibleDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -9,11 +10,11 @@ import java.util.TreeSet;
 
 import language.Language;
 import objectview.annotations.Reference;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 import objectview.media.ImagePane;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
-public class State extends QuizableAdapter {
+public class State extends ViewableAdapter {
 
     private final String name;
     private final List<ImagePane> flagVersions = new ArrayList<>();
@@ -21,10 +22,11 @@ public class State extends QuizableAdapter {
     private final List<ImagePane> shapeVersions = new ArrayList<>();
 
     @Reference
-    private final Map<String, QuizableGroup> groups = new TreeMap<>();
+    private final Map<String, ViewableGroup> groups = new TreeMap<>();
 
     private final Set<String> currencies = new TreeSet<>();
     private final Set<String> capitals = new TreeSet<>();
+    private FlexibleDate admissionDate;
     @Reference
     private final List<Language> languages = new ArrayList<>();
 
@@ -67,11 +69,6 @@ public class State extends QuizableAdapter {
     @Override
     public String getDisplayName() { return name; }
 
-    @Override
-    public State createNew() {
-        return new State("");
-    }
-
     public void addFlag(String key, ImagePane flag) {
         addImagePane("FLAGS", flagVersions, key, flag);
     }
@@ -101,12 +98,14 @@ public class State extends QuizableAdapter {
         shapeVersions.add(shape);
     }
 
-    public Map<String, QuizableGroup> getGroups() {
+    public Map<String, ViewableGroup> getGroups() {
         return groups;
     }
 
-    public void addGroup(QuizableGroup group) {
-        groups.put(group.getName(), group);
+    public void addGroup(ViewableGroup group) {
+        // A local label is not an identity: "United States" can occur below
+        // Territories and below Currencies. Keep both memberships.
+        groups.put(group.getIdentifier(), group);
     }
 
     public Set<String> getCurrencies() {
@@ -115,6 +114,14 @@ public class State extends QuizableAdapter {
 
     public Set<String> getCapitals() {
         return capitals;
+    }
+
+    public FlexibleDate getAdmissionDate() {
+        return admissionDate;
+    }
+
+    public void setAdmissionDate(FlexibleDate admissionDate) {
+        this.admissionDate = admissionDate;
     }
 
     public List<Language> getLanguages() {

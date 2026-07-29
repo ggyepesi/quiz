@@ -1,13 +1,13 @@
 package nobel;
 
 import objectview.media.ImagePane;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public
-class LaureatesWithMotivation extends QuizableAdapter implements quiz.ValueObject {
+class LaureatesWithMotivation extends ViewableAdapter implements quiz.ValueObject {
     private final List<Laureate> laureates = new ArrayList<>();
     private MotivationParser.Motivation motivation;
 

@@ -13,10 +13,10 @@ import aux.UrlLineProcessor;
 import aux.UrlReader;
 import objectview.viewconfig.DomainViews;
 import objectview.facet.Facet;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 import objectview.render.GroupView;
 import objectview.media.ImagePane;
-import quiz.Quizable;
+import objectview.Viewable;
 
 public class SportTeams implements DomainViews {
     static final char[] ends = new char[] {'*', '†'};
@@ -26,7 +26,7 @@ public class SportTeams implements DomainViews {
     /** The domain's configured grouping (League/Country/State/City/Stadium),
      *  declared WITH the domain — served generically (DomainModelSource), no
      *  bespoke source. Parallel dimensions, so use the FLAT group mode. */
-    public static List<Facet<Quizable>> webFacets() {
+    public static List<Facet<objectview.Viewable>> webFacets() {
         return List.of(
                 Facet.field("league", "League"),
                 Facet.mapped("Country", "state",
@@ -39,8 +39,8 @@ public class SportTeams implements DomainViews {
     static final boolean downloadSvgs = false;
 
     private GroupView groupView;
-    private Map<String, Quizable> quizables;
-    private QuizableGroup rootGroup;
+    private Map<String, Viewable> viewables;
+    private ViewableGroup rootGroup;
 
     // add city and arena
     // strip '_(x)' from end of name, it stands for disambiguation for wiki (like in Athlethics_(baseball))
@@ -51,8 +51,8 @@ public class SportTeams implements DomainViews {
     }
 
     @Override
-    public Map<String, Quizable> getViewables() {
-        return quizables;
+    public Map<String, Viewable> getViewables() {
+        return viewables;
     }
     
     @Override
@@ -62,8 +62,8 @@ public class SportTeams implements DomainViews {
 
     @Override
     public void buildViews() throws Exception {
-        quizables = new TreeMap<>();
-        rootGroup = new QuizableGroup("All");
+        viewables = new TreeMap<>();
+        rootGroup = new ViewableGroup("All");
         List<String> files = List.of("nba", "nfl", "nhl", "mlb");
         for (String file : files) {
             readLogos(file);
@@ -73,12 +73,12 @@ public class SportTeams implements DomainViews {
     }
 
     public void readLogos(String filename) throws Exception {
-        QuizableGroup group = rootGroup.getOrCreateChild(filename);
+        ViewableGroup group = rootGroup.getOrCreateChild(filename);
         // stadiums will remain empty, it is added to teams as group
-        QuizableGroup countryGroup = rootGroup.getOrCreateChild("Country");
-        QuizableGroup quizableGroup = rootGroup.getOrCreateChild("State");
-        QuizableGroup cityGroup = rootGroup.getOrCreateChild("Cities");
-        QuizableGroup stadiums = new QuizableGroup("Stadium");
+        ViewableGroup countryGroup = rootGroup.getOrCreateChild("Country");
+        ViewableGroup viewableGroup = rootGroup.getOrCreateChild("State");
+        ViewableGroup cityGroup = rootGroup.getOrCreateChild("Cities");
+        ViewableGroup stadiums = new ViewableGroup("Stadium");
         Constants.setSvgDirectory(Constants.logoSvgDirectory);
         System.out.println("Reading file " + filename);
         BufferedReader reader = Constants.getBufferedReaderForResource(Constants.logoDirectory + filename + ".txt");
@@ -105,10 +105,10 @@ public class SportTeams implements DomainViews {
             String[] cityAndState = tags[1].split(",");
             String city = cityAndState[0].trim();
             String state = cityAndState[1].trim();
-            String quizable = cityAndState[1].trim();
-            String country = canada.contains(quizable) ? "Canada" : "USA";
+            String viewable = cityAndState[1].trim();
+            String country = canada.contains(viewable) ? "Canada" : "USA";
             String stadium = tags[2];
-            System.out.println(city + ", " + country + ", " + quizable + ", " + stadium);
+            System.out.println(city + ", " + country + ", " + viewable + ", " + stadium);
 
             SportTeam team = new SportTeam(name);
             // Point the logo at the SVG resource on the classpath (the svg
@@ -120,12 +120,12 @@ public class SportTeams implements DomainViews {
             ImagePane imagePane = new ImagePane(name, svgUrl, team, true);
             team.setLogo(imagePane);
 
-            if (quizables.put(name, team) != null) {
+            if (viewables.put(name, team) != null) {
                 System.out.println("DUPLICATE " + name);
             }
             group.addMember(team);
             countryGroup.getOrCreateChild(country).addMember(team);
-            quizableGroup.getOrCreateChild(quizable).addMember(team);
+            viewableGroup.getOrCreateChild(viewable).addMember(team);
             cityGroup.getOrCreateChild(city).addMember(team);
             stadiums.getOrCreateChild(stadium).addMember(team);
             team.setCapital(city);
@@ -135,7 +135,7 @@ public class SportTeams implements DomainViews {
             //team.setCountry(country);
         }
         reader.close();
-        System.out.println("Read done file " +  filename + ", " + quizables.size() + " teams, " +
+        System.out.println("Read done file " +  filename + ", " + viewables.size() + " teams, " +
                             rootGroup.getChildren().size() + " groups, " + rootGroup + ", " + group.getMembers().size() + " group members");
     }
 

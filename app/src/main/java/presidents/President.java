@@ -5,11 +5,11 @@ import java.util.List;
 
 import aux.FlexibleDate;
 import objectview.media.ImagePane;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 // private fields are seemengly unused - they are used via reflection!
 @SuppressWarnings("unused")
-public class President extends QuizableAdapter {
+public class President extends ViewableAdapter {
     private Person person;
     private List<Term> terms = new ArrayList<>();
     
@@ -32,7 +32,7 @@ public class President extends QuizableAdapter {
 }
 
 @SuppressWarnings("unused")
-class Term extends QuizableAdapter {
+class Term extends ViewableAdapter {
     private int number = 0;
     private String party;
 
@@ -69,10 +69,6 @@ class Term extends QuizableAdapter {
         return from + "–" + to;
     }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new Term();
-    }
 }
 
 enum CauseOfDeath {
@@ -81,7 +77,7 @@ enum CauseOfDeath {
 }
 
 @SuppressWarnings("unused")
-class Person extends QuizableAdapter {
+class Person extends ViewableAdapter {
     private String name;
 
     private ImagePane portrait;
@@ -114,17 +110,12 @@ class Person extends QuizableAdapter {
     @Override
     public String getDisplayName() { return name; }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new Person();
-    }
-
     public String toString() {
         return name + ", born " + born + ", died " + died;
     }
 }
 
-class Party extends QuizableAdapter {
+class Party extends ViewableAdapter {
     @SuppressWarnings("unused")
     private String name;
 
@@ -138,8 +129,4 @@ class Party extends QuizableAdapter {
     @Override
     public String getDisplayName() { return name; }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new Party("");
-    }
 }

@@ -1,9 +1,9 @@
 package wikidata.explore.model;
 
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
+import objectview.Viewable;
+import objectview.field.FieldSet;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,17 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class CanonicalizerTest {
 
-    /** A minimal Quizable used as a field value (a reference). */
-    private record Ref(String id, String label) implements Quizable {
+    /** A minimal Viewable used as a field value (a reference). */
+    private record Ref(String id, String label) implements Viewable {
         @Override public String getIdentifier() { return id; }
         @Override public String getDisplayName() { return label; }
-        @Override public boolean hasField(String f) { return false; }
-        @Override public boolean hasAnyField() { return false; }
-        @Override public boolean hasFields(Collection<String> f) { return false; }
-        @Override public HashMap<List<Object>, Quizable> generateUniqueCombinations(List<String> f) {
-            return new HashMap<>();
-        }
-        @Override public Quizable project(List<String> f, List<Object> v) { return this; }
+        @Override public FieldSet fields() { return FieldSet.of(this); }
     }
 
     private static Canonicalizer.FieldReader reader(Map<String, Object> values) {

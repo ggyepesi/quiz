@@ -2,7 +2,7 @@ package language;
 
 import aux.Constants;
 import objectview.viewconfig.DomainViews;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 
 import objectview.render.GroupView;
 
@@ -17,7 +17,7 @@ public class Languages implements DomainViews {
     private final Map<String, Language> languages = new TreeMap<>();
     private final Map<String, LanguageFamily> families = new TreeMap<>();
 
-    private QuizableGroup rootGroup;
+    private ViewableGroup rootGroup;
     private GroupView groupView;
     private boolean built = false;
 
@@ -80,7 +80,7 @@ public class Languages implements DomainViews {
         return families;
     }
 
-    public QuizableGroup getRootGroup() {
+    public ViewableGroup getRootGroup() {
         return rootGroup;
     }
 

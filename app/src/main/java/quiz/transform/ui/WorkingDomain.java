@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
 import objectview.viewconfig.FieldTypeSource;
-import quiz.Quizable;
+import objectview.Viewable;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
@@ -26,7 +26,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     // from PROJECT-derived classes. They join the field pool and the shape sample so they
     // show at 0% coverage, ready to be filled (e.g. via Find Data).
     private final Map<String, List<DomainField>> declaredFields = new LinkedHashMap<>();
-    private final Map<String, Quizable> augmentedSample = new HashMap<>();
+    private final Map<String, Viewable> augmentedSample = new HashMap<>();
 
     public WorkingDomain(DomainModel base) {
         this.base = base;
@@ -61,7 +61,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return quiz.curation.Merges.apply(base.instances(), List.of(merge));
     }
 
-    @Override public Collection<? extends Quizable> mergeableInstances() {
+    @Override public Collection<? extends Viewable> mergeableInstances() {
         return base.instances();
     }
 
@@ -105,7 +105,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return derived.containsKey(type) ? null : base.fieldTypes(type);
     }
 
-    @Override public Quizable representativeSample(String type) {
+    @Override public Viewable representativeSample(String type) {
         // Base types get the base's authoritative shape sample; a PROJECT-derived type
         // falls back to the interface default over the combined instances.
         if (derived.containsKey(type)) {
@@ -119,7 +119,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         // sample-driven field/coverage UIs enumerate it. Real instances still lack it, so
         // it reads as 0% coverage (a gap to fill) — the placeholder is shape-only.
         return augmentedSample.computeIfAbsent(type, t -> {
-            Quizable sample = base.representativeSample(t);
+            Viewable sample = base.representativeSample(t);
             if (sample instanceof WikidataDynamicObject wdo) {
                 for (DomainField field : extra) {
                     if (wdo.get(field.field()) == null) {
@@ -131,17 +131,17 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         });
     }
 
-    @Override public Collection<? extends Quizable> instances() {
-        List<Quizable> all = new ArrayList<>(base.instances());
+    @Override public Collection<? extends Viewable> instances() {
+        List<Viewable> all = new ArrayList<>(base.instances());
         for (DerivedClass d : derived.values()) {
             all.addAll(d.instances());
         }
         return all;
     }
 
-    @Override public Class<? extends Quizable> universe() {
+    @Override public Class<? extends Viewable> universe() {
         // Broad enough to keep BOTH base instances and PROJECT-derived
-        // DynamicQuizables (which the base universe, e.g. a snapshot's WDO, excludes).
-        return Quizable.class;
+        // DynamicViewables (which the base universe, e.g. a snapshot's WDO, excludes).
+        return Viewable.class;
     }
 }

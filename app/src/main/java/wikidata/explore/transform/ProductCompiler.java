@@ -1,6 +1,6 @@
 package wikidata.explore.transform;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.transform.app.ProductClass;
 import quiz.transform.app.ProductDomain;
 import quiz.transform.app.ProductField;
@@ -417,12 +417,12 @@ public final class ProductCompiler {
     }
 
     private static boolean isReferenceValue(Object v) {
-        if (v instanceof Quizable) {
+        if (v instanceof Viewable) {
             return true;
         }
         if (v instanceof Collection<?> c) {
             for (Object i : c) {
-                if (i instanceof Quizable) {
+                if (i instanceof Viewable) {
                     return true;
                 }
             }

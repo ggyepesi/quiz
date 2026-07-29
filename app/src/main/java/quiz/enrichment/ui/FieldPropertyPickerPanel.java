@@ -43,19 +43,47 @@ public final class FieldPropertyPickerPanel extends JPanel {
             List<PropertyOption> options,
             String suggestedPid,
             Consumer<ChosenProperty> onChosen) {
+        createDialog(owner, title, prompt, options, suggestedPid, onChosen,
+                Dialog.ModalityType.APPLICATION_MODAL).setVisible(true);
+    }
+
+    public static JDialog showModeless(
+            Component owner, String title, String prompt, String field,
+            List<PropertyOption> options, String suggestedPid,
+            Consumer<ChosenProperty> onChosen) {
+        JDialog dialog = createDialog(owner, title, prompt, options, suggestedPid, onChosen,
+                Dialog.ModalityType.MODELESS);
+        dialog.setVisible(true);
+        return dialog;
+    }
+
+    private static JDialog createDialog(
+            Component owner, String title, String prompt,
+            List<PropertyOption> options, String suggestedPid,
+            Consumer<ChosenProperty> onChosen, Dialog.ModalityType modality) {
         Window window = SwingUtilities.getWindowAncestor(owner);
-        JDialog dialog =
-                new JDialog(window, title, Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog dialog = new JDialog(window, title, modality);
         Consumer<ChosenProperty> handler = onChosen == null ? ignored -> { } : onChosen;
+        java.util.concurrent.atomic.AtomicBoolean completed =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        Consumer<ChosenProperty> finish = chosen -> {
+            if (completed.compareAndSet(false, true)) {
+                handler.accept(chosen);
+                dialog.dispose();
+            }
+        };
         FieldPropertyPickerPanel panel =
-                new FieldPropertyPickerPanel(prompt, options, suggestedPid, chosen -> {
-                    handler.accept(chosen);
-                    dialog.dispose();
-                });
+                new FieldPropertyPickerPanel(prompt, options, suggestedPid, finish);
+        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                finish.accept(new ChosenProperty("", ""));
+            }
+        });
         dialog.add(panel);
         dialog.setSize(560, 560);
         dialog.setLocationRelativeTo(owner);
-        dialog.setVisible(true);
+        return dialog;
     }
 
     private final List<PropertyOption> options;

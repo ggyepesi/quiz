@@ -1,6 +1,6 @@
 package quiz.transform.app;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
@@ -77,12 +77,12 @@ public final class DomainSchema {
     }
 
     private static boolean isReference(Object v) {
-        if (v instanceof Quizable) {
+        if (v instanceof Viewable) {
             return true;
         }
         if (v instanceof Collection<?> c) {
             for (Object i : c) {
-                if (i instanceof Quizable) {
+                if (i instanceof Viewable) {
                     return true;
                 }
             }

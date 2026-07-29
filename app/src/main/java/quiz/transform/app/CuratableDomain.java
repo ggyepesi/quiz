@@ -1,6 +1,6 @@
 package quiz.transform.app;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.curation.Curatable;
 import quiz.curation.ManualCuration;
 import quiz.transform.ui.DomainField;
@@ -39,7 +39,7 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
     @Override public List<DomainField> fields(String type) { return base.fields(type); }
     @Override public Set<String> structuralFields(String type) { return base.structuralFields(type); }
     @Override public FieldTypeSource fieldTypes(String type) { return base.fieldTypes(type); }
-    @Override public Quizable representativeSample(String type) { return base.representativeSample(type); }
-    @Override public Collection<? extends Quizable> instances() { return base.instances(); }
-    @Override public Class<? extends Quizable> universe() { return base.universe(); }
+    @Override public Viewable representativeSample(String type) { return base.representativeSample(type); }
+    @Override public Collection<? extends Viewable> instances() { return base.instances(); }
+    @Override public Class<? extends Viewable> universe() { return base.universe(); }
 }

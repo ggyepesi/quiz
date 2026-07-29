@@ -1,12 +1,12 @@
 package quiz.source;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 /**
- * Provenance of a {@link Quizable}: where its data came from and how to open
+ * Provenance of a {@link Viewable}: where its data came from and how to open
  * the original record.
  *
- * <p>Modelled as a {@link Quizable} so it renders like any other nested object
+ * <p>Modelled as a {@link Viewable} so it renders like any other nested object
  * — a collapsed reference chip on the owning card (see {@code Card}),
  * expandable to its source-specific internals. Different sources carry
  * different internals ({@link WikidataSource} holds a QID + a wiki URL; a
@@ -17,7 +17,7 @@ import quiz.Quizable;
  * owner's identity — it does not replace the canonical id (the QID stays the
  * key for canonicalization, snapshots, navigation, and web serving).
  */
-public interface Source extends Quizable {
+public interface Source extends Viewable {
 
     /** Canonical id of the record within this source (e.g. a Wikidata QID). */
     String sourceId();

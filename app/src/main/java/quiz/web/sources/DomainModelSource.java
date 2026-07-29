@@ -1,22 +1,23 @@
 package quiz.web.sources;
 
-import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.Viewable;
+import objectview.Viewable;
+import quiz.ViewableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 import quiz.transform.ui.DomainModel;
-import quiz.web.QuizableSource;
-import quiz.web.QuizableStore;
+import quiz.web.ViewableSource;
+import quiz.web.ViewableStore;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 /**
- * A generic {@link QuizableSource} over a {@link DomainModel} — serves the domain's
+ * A generic {@link ViewableSource} over a {@link DomainModel} — serves the domain's
  * instances of one type. The unified seam: the SAME abstraction that powers the
  * transform workbench serves the web, so any domain (a Wikidata snapshot, a
- * built-in Quizable domain, an in-memory transform result) is servable without a
+ * built-in Viewable domain, an in-memory transform result) is servable without a
  * bespoke source or a generated model. Loads lazily and shares one loaded domain
  * across its per-type sources.
  *
@@ -24,7 +25,7 @@ import java.util.List;
  * view / declared facets) and {@link #rootGroup()} groups the members by them —
  * the path to retiring the domain-specific wired groupings in the bespoke sources.
  */
-public final class DomainModelSource implements QuizableSource {
+public final class DomainModelSource implements ViewableSource {
 
     /** Loads the domain on first access (may be slow / throw). */
     public interface Loader {
@@ -37,7 +38,7 @@ public final class DomainModelSource implements QuizableSource {
 
     private final String type;
     private final Loader loader;
-    private final List<Facet<Quizable>> facets;
+    private final List<Facet<Viewable>> facets;
     private final GroupMode mode;
     private final String rootName;
     private DomainModel cached;
@@ -47,11 +48,11 @@ public final class DomainModelSource implements QuizableSource {
     }
 
     /** @param facets configured grouping for {@link #rootGroup()} (empty = no groups). */
-    public DomainModelSource(String type, Loader loader, List<Facet<Quizable>> facets) {
+    public DomainModelSource(String type, Loader loader, List<Facet<Viewable>> facets) {
         this(type, loader, facets, GroupMode.NESTED, null);
     }
 
-    public DomainModelSource(String type, Loader loader, List<Facet<Quizable>> facets,
+    public DomainModelSource(String type, Loader loader, List<Facet<Viewable>> facets,
                              GroupMode mode, String rootName) {
         this.type = type;
         this.loader = loader;
@@ -62,9 +63,9 @@ public final class DomainModelSource implements QuizableSource {
 
     @Override public String type() { return type; }
 
-    @Override public Collection<? extends Quizable> load() throws Exception {
-        List<Quizable> out = new ArrayList<>();
-        for (Quizable q : domain().instances()) {
+    @Override public Collection<? extends Viewable> load() throws Exception {
+        List<Viewable> out = new ArrayList<>();
+        for (Viewable q : domain().instances()) {
             if (q != null && type.equals(q.typeName())) {
                 out.add(q);
             }
@@ -72,13 +73,13 @@ public final class DomainModelSource implements QuizableSource {
         return out;
     }
 
-    @Override public QuizableGroup rootGroup() throws Exception {
+    @Override public ViewableGroup rootGroup() throws Exception {
         if (facets.isEmpty()) {
             return null;
         }
         return mode == GroupMode.FLAT
-                ? FacetGrouper.group(QuizableGroup::new, rootName, load(), facets)
-                : FacetGrouper.groupNested(QuizableGroup::new, rootName, load(), facets);
+                ? FacetGrouper.group(ViewableGroup::new, rootName, load(), facets)
+                : FacetGrouper.groupNested(ViewableGroup::new, rootName, load(), facets);
     }
 
     private synchronized DomainModel domain() throws Exception {
@@ -89,7 +90,7 @@ public final class DomainModelSource implements QuizableSource {
     }
 
     /** Register one source per type of an ALREADY-LOADED domain (shared instance). */
-    public static void register(QuizableStore store, DomainModel domain) {
+    public static void register(ViewableStore store, DomainModel domain) {
         for (String t : domain.types()) {
             store.register(new DomainModelSource(t, () -> domain));
         }

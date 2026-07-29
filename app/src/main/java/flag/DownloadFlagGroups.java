@@ -4,7 +4,7 @@ import aux.Constants;
 import aux.UrlLineProcessor;
 import aux.UrlReader;
 import quiz.GroupReader;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 
 import java.io.BufferedReader;
 import java.net.URL;
@@ -13,15 +13,17 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
+public class DownloadFlagGroups implements UrlLineProcessor<ViewableGroup> {
     private static final String COLOR_GROUP_URL =
             "https://en.wikipedia.org/wiki/List_of_flags_by_color_combination?action=raw";
+    private static final Pattern CURRENCY_CITATION =
+            Pattern.compile("\\[[^]]+]");
 
     private final GroupReader groupReader;
     private final Map<String, State> states;
 
     public static void downloadColorFlagroups(
-            QuizableGroup parent,
+            ViewableGroup parent,
             Map<String, State> states
     ) throws Exception {
         new DownloadFlagGroups(parent, "Colors", states)
@@ -29,14 +31,14 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
     }
 
     public static void downloadDesignFlagroups(
-            QuizableGroup parent,
+            ViewableGroup parent,
             Map<String, State> states
     ) throws Exception {
         DesignGroupReader.readDesignGroups(parent, states);
     }
 
     public DownloadFlagGroups(
-            QuizableGroup parent,
+            ViewableGroup parent,
             String groupName,
             Map<String, State> states
     ) {
@@ -73,20 +75,29 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
     }
 
     @Override
-    public QuizableGroup done() {
+    public ViewableGroup done() {
         return groupReader.getRoot();
     }
 
     public static void readCurrencyGroup(
             String filename,
             String separator,
-            QuizableGroup parent,
+            ViewableGroup parent,
             Map<String, State> states
     ) throws Exception {
-        BufferedReader reader =
-                Constants.getBufferedReaderForResource(
-                        Constants.flagDataDirectory + filename);
+        try (BufferedReader reader =
+                     Constants.getBufferedReaderForResource(
+                             Constants.flagDataDirectory + filename)) {
+            readCurrencyGroup(reader, separator, parent, states);
+        }
+    }
 
+    static void readCurrencyGroup(
+            BufferedReader reader,
+            String separator,
+            ViewableGroup parent,
+            Map<String, State> states
+    ) throws Exception {
         String line;
 
         Map<String, Map<String, Set<String>>> countriesPerCurrencyVersion =
@@ -106,8 +117,19 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
             String country =
                     PrefixAndState.canonicalStateName(tags[0].strip());
 
-            String currencyVersion = tags[1].strip();
+            // The source's trailing [A]/[F]/[5] markers are citations, not part
+            // of a currency's identity. Without this normalization they create
+            // parallel branches such as dollar and dollar[F].
+            String currencyVersion = CURRENCY_CITATION
+                    .matcher(tags[1].strip())
+                    .replaceAll("")
+                    .strip();
+            if (currencyVersion.isEmpty()) {
+                continue;
+            }
 
+            // This is an intentional denomination -> variant taxonomy:
+            // "United States dollar" becomes dollar -> United States.
             int split = currencyVersion.lastIndexOf(" ");
 
             String currency;
@@ -138,7 +160,7 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
                     .add(country);
         }
 
-        QuizableGroup currenciesGroup =
+        ViewableGroup currenciesGroup =
                 parent.getOrCreateChild("Currencies");
 
         for (Entry<String, Map<String, Set<String>>> e
@@ -146,7 +168,7 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
 
             String currency = e.getKey();
 
-            QuizableGroup currencyGroup =
+            ViewableGroup currencyGroup =
                     getABCDGroup(currenciesGroup, currency)
                             .getOrCreateChild(currency);
 
@@ -172,15 +194,13 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
 
         System.out.println(
                 countriesPerCurrencyVersion.size() + " currencies");
-
-        reader.close();
     }
 
     public static void readCapitalsAndContinents(
             String filename,
             String separator,
             boolean parseContinent,
-            QuizableGroup parent,
+            ViewableGroup parent,
             Map<String, State> states
     ) throws Exception {
         System.out.println("Reading capitals from " + filename);
@@ -189,10 +209,10 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
                 Constants.getBufferedReaderForResource(
                         Constants.flagDataDirectory + filename);
 
-        QuizableGroup continentsGroup =
+        ViewableGroup continentsGroup =
                 parent.getOrCreateChild("Continents");
 
-        QuizableGroup capitalsGroup =
+        ViewableGroup capitalsGroup =
                 parent.getOrCreateChild("Capitals");
 
         int n = 0;
@@ -232,7 +252,7 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
             }
 
             if (parseContinent) {
-                QuizableGroup continentGroup =
+                ViewableGroup continentGroup =
                         continentsGroup.getOrCreateChild(continent);
 
                 continentGroup.addMember(state);
@@ -240,7 +260,7 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
             }
 
             if (state.getCapitals().add(capital)) {
-                QuizableGroup capitalGroup =
+                ViewableGroup capitalGroup =
                         getABCDGroup(capitalsGroup, capital)
                                 .getOrCreateChild(capital);
 
@@ -258,8 +278,8 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
         reader.close();
     }
 
-    private static QuizableGroup getABCDGroup(
-            QuizableGroup parent,
+    private static ViewableGroup getABCDGroup(
+            ViewableGroup parent,
             String s
     ) {
         if (s == null || s.length() < 2) {
@@ -271,7 +291,7 @@ public class DownloadFlagGroups implements UrlLineProcessor<QuizableGroup> {
     }
 
     private static void addStatesToGroup(
-            QuizableGroup group,
+            ViewableGroup group,
             Collection<String> stateNames,
             Map<String, State> states
     ) {
@@ -286,7 +306,7 @@ final class StateGroupAdder {
     }
 
     static void addStateToGroup(
-            QuizableGroup group,
+            ViewableGroup group,
             String rawStateName,
             Map<String, State> states
     ) {
@@ -376,7 +396,7 @@ final class FlagOfLineParser {
     }
 }
 
-class DesignGroupReader implements UrlLineProcessor<QuizableGroup> {
+class DesignGroupReader implements UrlLineProcessor<ViewableGroup> {
     private static final String DESIGN_GROUP_URL =
             Constants.wiki + "List_of_national_flags_by_design?action=raw";
 
@@ -390,7 +410,7 @@ class DesignGroupReader implements UrlLineProcessor<QuizableGroup> {
     private final Map<String, State> states;
 
     static void readDesignGroups(
-            QuizableGroup parent,
+            ViewableGroup parent,
             Map<String, State> states
     ) throws Exception {
         boolean debug = false;
@@ -423,7 +443,7 @@ class DesignGroupReader implements UrlLineProcessor<QuizableGroup> {
     }
 
     public DesignGroupReader(
-            QuizableGroup parent,
+            ViewableGroup parent,
             Map<String, State> states
     ) {
         this.groupReader = new GroupReader(parent, "Design");
@@ -472,7 +492,7 @@ class DesignGroupReader implements UrlLineProcessor<QuizableGroup> {
             String designInfo = infoMatcher.group("info");
 
             // Currently not stored, but this is the clean extension point
-            // if later State or QuizableGroup should remember design tags.
+            // if later State or ViewableGroup should remember design tags.
             // System.out.println("INFO " + country + ": " + designInfo);
         }
     }
@@ -483,7 +503,7 @@ class DesignGroupReader implements UrlLineProcessor<QuizableGroup> {
     }
 
     @Override
-    public QuizableGroup done() {
+    public ViewableGroup done() {
         return groupReader.getRoot();
     }
 }

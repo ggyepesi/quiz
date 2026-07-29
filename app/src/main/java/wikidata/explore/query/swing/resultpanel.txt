@@ -1,8 +1,8 @@
 package wikidata.explore.query.swing;
 
 import objectview.field.DynamicFields;
-import quiz.Quizable;
-import quiz.QuizableAdapter;
+import quiz.Viewable;
+import quiz.ViewableAdapter;
 import objectview.demo.MultiView;
 import objectview.render.CardListView;
 import objectview.search.SearchPanel;
@@ -32,7 +32,7 @@ public class QueryObjectResultPanel
         TYPE_PANEL_DEMO
     }
 
-    // Uncapped while we make the panel a real full browser: QuizablePanel now caches
+    // Uncapped while we make the panel a real full browser: ViewablePanel now caches
     // its preferred size, so a re-layout (e.g. one card expanding) no longer
     // re-measures all cards — only the changed one. Drop back to e.g. 500 to
     // re-enable the spot-check cap.
@@ -85,18 +85,18 @@ public class QueryObjectResultPanel
     }
 
     // When the run produced more than one class (e.g. Constellation + its
-    // child Stars), show a section per class via MultiQuizableView so each
+    // child Stars), show a section per class via MultiViewableView so each
     // renders as its own searchable panel and cross-references between them
     // navigate (click a constellation's star -> its Star card, and back).
     // A single-class run keeps the simple search view.
     private JComponent buildView(ObjectQueryResult result) {
-        Map<String, List<Quizable>> byType = groupByType(result.objects());
+        Map<String, List<Viewable>> byType = groupByType(result.objects());
         if (byType.size() <= 1) {
             return searchPanelView(result);
         }
-        MultiQuizableView multi = new MultiQuizableView();
-        for (Map.Entry<String, List<Quizable>> e : byType.entrySet()) {
-            List<Quizable> full = e.getValue();
+        MultiViewableView multi = new MultiViewableView();
+        for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
+            List<Viewable> full = e.getValue();
             multi.addSection(sectionTitle(e.getKey(), full.size()),
                     full.get(0).getClass(), capped(full));
         }
@@ -109,13 +109,13 @@ public class QueryObjectResultPanel
     // typeName(), preserving discovery order. Bare leaf references (untyped
     // WikidataDynamicObjects, e.g. a constellation's hemisphere) are kept out
     // of their own section — they're navigation targets, not generated classes.
-    private Map<String, List<Quizable>> groupByType(List<Quizable> roots) {
-        Map<String, List<Quizable>> byType = new LinkedHashMap<>();
-        Set<Quizable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        Deque<Quizable> queue = new ArrayDeque<>(roots == null ? List.of() : roots);
+    private Map<String, List<Viewable>> groupByType(List<Viewable> roots) {
+        Map<String, List<Viewable>> byType = new LinkedHashMap<>();
+        Set<Viewable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<Viewable> queue = new ArrayDeque<>(roots == null ? List.of() : roots);
 
         while (!queue.isEmpty()) {
-            Quizable q = queue.poll();
+            Viewable q = queue.poll();
             if (q == null || !seen.add(q)) {
                 continue;
             }
@@ -137,17 +137,17 @@ public class QueryObjectResultPanel
         return byType;
     }
 
-    private void collectReferences(Quizable q, Deque<Quizable> queue) {
+    private void collectReferences(Viewable q, Deque<Viewable> queue) {
         if (q instanceof DynamicFields dyn) {
             for (Object v : dyn.dynamicFieldValues().values()) {
                 addReferences(v, queue);
             }
         }
-        for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
+        for (Field f : ViewableAdapter.getAllFields(q.getClass())) {
             // Provenance (@Provenance Source) is an inline chip on its owner's
             // card, not a domain entity — don't descend into it, so it never
             // gets its own type section.
-            if (QuizableAdapter.isProvenanceField(f)) {
+            if (ViewableAdapter.isProvenanceField(f)) {
                 continue;
             }
             try {
@@ -158,8 +158,8 @@ public class QueryObjectResultPanel
         }
     }
 
-    private void addReferences(Object v, Deque<Quizable> queue) {
-        if (v instanceof Quizable q) {
+    private void addReferences(Object v, Deque<Viewable> queue) {
+        if (v instanceof Viewable q) {
             queue.add(q);
         } else if (v instanceof Collection<?> c) {
             for (Object o : c) addReferences(o, queue);
@@ -169,32 +169,32 @@ public class QueryObjectResultPanel
     }
 
     private JComponent searchPanelView(ObjectQueryResult result) {
-        QuizablePanelView view = new QuizablePanelView();
+        ViewablePanelView view = new ViewablePanelView();
 
         // Show typed instances only; raw WikidataDynamicObjects are unmapped
         // references, not domain cards. Fall back to the raw objects only if
         // mapping produced nothing typed (so the panel isn't blank).
-        List<Quizable> typed = new ArrayList<>();
-        for (Quizable q : result.objects()) {
+        List<Viewable> typed = new ArrayList<>();
+        for (Viewable q : result.objects()) {
             if (!(q instanceof wikidata.explore.extract.WikidataDynamicObject)) {
                 typed.add(q);
             }
         }
-        List<Quizable> full = typed.isEmpty() ? result.objects() : typed;
-        List<Quizable> shown = capped(full);
+        List<Viewable> full = typed.isEmpty() ? result.objects() : typed;
+        List<Viewable> shown = capped(full);
 
-        for (Quizable q : shown) {
-            view.addQuizable(q);
+        for (Viewable q : shown) {
+            view.addViewable(q);
         }
 
         view.createCardsPanel(1);
 
         JPanel wrapped = new JPanel(new BorderLayout());
 
-        Quizable first = shown.getFirst();
+        Viewable first = shown.getFirst();
 
-        QuizableSearchPanel searchPanel =
-                new QuizableSearchPanel(first.getClass());
+        ViewableSearchPanel searchPanel =
+                new ViewableSearchPanel(first.getClass());
 
         searchPanel.setTarget(
                 view.getCardsPanel(),
@@ -218,7 +218,7 @@ public class QueryObjectResultPanel
 
     // Render at most MAX_CARDS cards; the rest are still generated/served, just not
     // painted in this preview.
-    private static List<Quizable> capped(List<Quizable> objects) {
+    private static List<Viewable> capped(List<Viewable> objects) {
         return objects.size() <= MAX_CARDS
                 ? objects
                 : new ArrayList<>(objects.subList(0, MAX_CARDS));

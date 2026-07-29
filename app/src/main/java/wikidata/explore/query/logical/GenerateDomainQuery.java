@@ -1,7 +1,7 @@
 package wikidata.explore.query.logical;
 
-import quiz.Quizable;
-import wikidata.explore.codegen.GeneratedQuizableRuntime;
+import objectview.Viewable;
+import wikidata.explore.codegen.GeneratedViewableRuntime;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataObjectRegistry;
@@ -119,7 +119,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // the runtime, so it holds fully-resolved field models.
                     pipeline.resolveUnits(project, context.sparql(), genLog);
 
-                    GeneratedQuizableRuntime runtime = pipeline.buildRuntime(project);
+                    GeneratedViewableRuntime runtime = pipeline.buildRuntime(project);
 
                     RuleNode rootPlan = null;
                     int classesRun = 0;
@@ -375,7 +375,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // generation preview identical to load/serve — otherwise a qid
                     // stamped as a class root but stored untyped in the pool would
                     // show at generation yet vanish on reload.
-                    List<Quizable> allInstances =
+                    List<Viewable> allInstances =
                             pipeline.materialize(runtime, pool);
 
                     // Parent summary = a copy-pasteable per-class breakdown of the

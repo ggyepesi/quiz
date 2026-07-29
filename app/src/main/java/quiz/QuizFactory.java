@@ -11,6 +11,8 @@ import mythology.Creature;
 import mythology.MythologyEntities;
 import nobel.NobelPrize;
 import nobel.NobelPrizes;
+import objectview.Viewable;
+import objectview.ViewableAdapter;
 import objectview.viewconfig.DomainViews;
 import objectview.viewconfig.ViewConfig;
 import oscar.OscarNomination;
@@ -54,7 +56,7 @@ public class QuizFactory {
             String icon,
             String name,
             DomainViews views,
-            Class<? extends QuizableAdapter> cls
+            Class<? extends ViewableAdapter> cls
     ) {}
 
     private static final List<QuizOption> quizOptions = List.of(
@@ -67,7 +69,7 @@ public class QuizFactory {
             new QuizOption("🗣️", "Oscars", new OscarNominations(), OscarNomination.class)
     );
 
-    /** A built-in Quizable domain (icon, name, builder) — exposed so the transform
+    /** A built-in Viewable domain (icon, name, builder) — exposed so the transform
      *  domain navigator (and later the web server) can offer the same domains as
      *  the quiz, alongside the generated Wikidata datasets. */
     public record BuiltInDomain(String icon, String name, DomainViews views) {}
@@ -84,10 +86,10 @@ public class QuizFactory {
     private static final Preferences PREFS =
             Preferences.userNodeForPackage(QuizFactory.class);
 
-    private static Class<? extends QuizableAdapter> cls;
+    private static Class<? extends ViewableAdapter> cls;
     private static JFrame quizFrame;
 
-    private final Map<String, ? extends Quizable> quizables;
+    private final Map<String, ? extends Viewable> viewables;
     private final GroupView rootView;
     private final DomainViews qvs;
 
@@ -224,14 +226,14 @@ public class QuizFactory {
         qvs.buildViews();
         rootView = qvs.getGroupView();
         // getViewables() is typed Viewable (objectview SPI); every element is in fact a
-        // Quizable here, so narrow it for the quiz-side generation code.
+        // Viewable here, so narrow it for the quiz-side generation code.
         @SuppressWarnings("unchecked")
-        Map<String, ? extends Quizable> qz =
-                (Map<String, ? extends Quizable>) (Map<String, ?>) qvs.getViewables();
-        quizables = qz;
+        Map<String, ? extends Viewable> qz =
+                (Map<String, ? extends Viewable>) (Map<String, ?>) qvs.getViewables();
+        viewables = qz;
 
-        //System.out.println("Create QuizableFilterCollectionFrame");
-        //new QuizableFilterCollectionFrame(quizables.values(), cls);
+        //System.out.println("Create ViewableFilterCollectionFrame");
+        //new ViewableFilterCollectionFrame(viewables.values(), cls);
     }
 
     public JFrame showQuizzes() {
@@ -315,7 +317,7 @@ public class QuizFactory {
                 JOptionPane.showMessageDialog(quizFrame, "Quiz type is not selected.");
                 return;
             }
-            QuizableGroup selectedGroup = node == null ? null : (QuizableGroup) rootView.getViewableGroup(node);
+            ViewableGroup selectedGroup = node == null ? null : (ViewableGroup) rootView.getViewableGroup(node);
 
             ViewConfig queryConfig = queryEditor.getConfig().copy();
             ViewConfig answerConfig = answerEditor.getConfig().copy();
@@ -327,7 +329,7 @@ public class QuizFactory {
 
             SwingUtilities.invokeLater(() ->
                     showQuiz(queryConfig, answerConfig, answerType,
-                          selectedGroup, quizables)
+                          selectedGroup, viewables)
             );
         });
         return createQuizButton;
@@ -336,10 +338,10 @@ public class QuizFactory {
     private void showQuiz(ViewConfig queryConfig,
                           ViewConfig answerConfig,
                           QuizAnswerType answerType,
-                          QuizableGroup selectedGroup,
-                          Map<String, ? extends Quizable> quizables) {
+                          ViewableGroup selectedGroup,
+                          Map<String, ? extends Viewable> viewables) {
         Quiz quiz = createQuiz(queryConfig, answerConfig, answerType,
-                               selectedGroup, quizables);
+                               selectedGroup, viewables);
         String message = quiz.prepareQuiz();
         System.out.println("PREPARE " + message);
         if (message == null) {
@@ -352,19 +354,19 @@ public class QuizFactory {
     private Quiz createQuiz(ViewConfig queryConfig,
                             ViewConfig answerConfig,
                             QuizAnswerType answerType,
-                            QuizableGroup selectedGroup,
-                            Map<String, ? extends Quizable> quizables) {
+                            ViewableGroup selectedGroup,
+                            Map<String, ? extends Viewable> viewables) {
         return switch (answerType) {
             case ABCD, LIST ->
                     new QuizListABCD(queryConfig, answerConfig, answerType,
-                                     selectedGroup, quizables);
+                                     selectedGroup, viewables);
             case PAIRING ->
                     new QuizPairs(queryConfig, answerConfig, selectedGroup,
-                                  quizables);
+                                  viewables);
             case CATEGORIZE -> new QuizCategorize(queryConfig, selectedGroup,
-                                                  quizables);
+                                                  viewables);
             case SIXDEGREES -> new QuizSixDegrees(queryConfig, selectedGroup,
-                                                  quizables);
+                                                  viewables);
             default -> throw new IllegalArgumentException();
         };
     }

@@ -2,7 +2,7 @@ package quiz.transform;
 
 import org.junit.jupiter.api.Test;
 import objectview.field.DynamicFields;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DynamicFieldsTransformTest {
 
     /** A snapshot-shaped object: fields live in a map, like WikidataDynamicObject. */
-    public static class DynObj extends QuizableAdapter implements DynamicFields {
+    public static class DynObj extends ViewableAdapter implements DynamicFields {
         public final Map<String, Object> map = new LinkedHashMap<>();
         public DynObj() {}
         DynObj(Object... kv) {

@@ -1,6 +1,6 @@
 package quiz.web;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -12,7 +12,7 @@ import java.util.Set;
 
 /**
  * Builds a multiple-choice {@link Quiz} from a dataset: each question shows
- * the {@code promptFields} of one Quizable (e.g. its logo, or name + group)
+ * the {@code promptFields} of one Viewable (e.g. its logo, or name + group)
  * and asks for the combination of its {@code answerFields}, with distractors
  * drawn from other items.
  */
@@ -25,7 +25,7 @@ public final class QuizGenerator {
     private QuizGenerator() {}
 
     public static Quiz generate(
-            QuizableStore store,
+            ViewableStore store,
             String type,
             String group,
             List<String> promptFields,
@@ -41,7 +41,7 @@ public final class QuizGenerator {
         promptFields = withoutCoveredParents(promptFields);
         answerFields = withoutCoveredParents(answerFields);
 
-        Collection<Quizable> all = store.members(type, group);
+        Collection<Viewable> all = store.members(type, group);
         if (all == null || promptFields.isEmpty() || answerFields.isEmpty()) {
             return new Quiz(type, join(promptFields), join(answerFields), List.of());
         }
@@ -50,7 +50,7 @@ public final class QuizGenerator {
         // one of them. For a collection answer field (e.g. sharesBorderWith) the
         // question asks about ONE member, and the other members are excluded
         // from the distractor pool so they aren't offered as wrong answers.
-        record Entry(List<QuizableView.Field> prompts, String answer, Set<String> exclude) {}
+        record Entry(List<ViewableView.Field> prompts, String answer, Set<String> exclude) {}
 
         // A single answer field can be image-valued -> render options as
         // pictures; and if it's a collection, we quiz one member at a time.
@@ -68,10 +68,10 @@ public final class QuizGenerator {
         Set<String> selected = new java.util.HashSet<>(promptFields);
         selected.addAll(answerFields);
 
-        for (Quizable q : all) {
-            List<QuizableView.Field> prompts = new ArrayList<>();
+        for (Viewable q : all) {
+            List<ViewableView.Field> prompts = new ArrayList<>();
             for (String pf : promptFields) {
-                QuizableView.Field fv = imageField(type, q, pf, selected);
+                ViewableView.Field fv = imageField(type, q, pf, selected);
                 if (fv != null) {
                     prompts.add(fv);
                 }
@@ -90,7 +90,7 @@ public final class QuizGenerator {
                     : List.of();
 
             if (singleAnswer && !imgs.isEmpty()) {
-                answer = QuizableJson.stringValue(q, soleField); // hidden identity
+                answer = ViewableJson.stringValue(q, soleField); // hidden identity
                 if (answer == null || answer.isBlank()) {
                     continue;
                 }
@@ -101,7 +101,7 @@ public final class QuizGenerator {
                 // A (text) collection: quiz ONE member, excluding the rest from
                 // the distractor pool.
                 LinkedHashSet<String> members =
-                        new LinkedHashSet<>(QuizableJson.stringValues(q, soleField));
+                        new LinkedHashSet<>(ViewableJson.stringValues(q, soleField));
                 if (members.isEmpty()) {
                     continue;
                 }
@@ -112,7 +112,7 @@ public final class QuizGenerator {
             } else {
                 List<String> answerParts = new ArrayList<>();
                 for (String af : answerFields) {
-                    String s = QuizableJson.stringValue(q, af);
+                    String s = ViewableJson.stringValue(q, af);
                     if (s != null) {
                         answerParts.add(s);
                     }
@@ -156,9 +156,9 @@ public final class QuizGenerator {
     // field for a non-image. A nested collection image strip is blurred per
     // member unless the sibling .name is also selected (so it doesn't reveal
     // the answer); a top-level image uses the name-blur endpoint as before.
-    static QuizableView.Field imageField(
-            String type, Quizable q, String field, Set<String> selected) {
-        QuizableView.Field fv = QuizableJson.fieldOf(q, field);
+    static ViewableView.Field imageField(
+            String type, Viewable q, String field, Set<String> selected) {
+        ViewableView.Field fv = ViewableJson.fieldOf(q, field);
         if (fv == null) {
             return null;
         }
@@ -168,7 +168,7 @@ public final class QuizGenerator {
         }
         if (field.indexOf('.') > 0) {
             if (!selected.contains(siblingNamePath(field))) {
-                QuizableView.Field blurred = QuizableJson.blurredImageStrip(q, field);
+                ViewableView.Field blurred = ViewableJson.blurredImageStrip(q, field);
                 if (blurred != null) {
                     return blurred;
                 }
@@ -180,7 +180,7 @@ public final class QuizGenerator {
 
     // The image URLs of an image field: [url] for a single, all values for a
     // strip, empty for a non-image.
-    private static List<String> imageUrls(QuizableView.Field fv) {
+    private static List<String> imageUrls(ViewableView.Field fv) {
         if (fv == null) {
             return List.of();
         }
@@ -252,8 +252,8 @@ public final class QuizGenerator {
 
     // For datasets whose image embeds the answer (e.g. a constellation chart
     // labelled with its name), point the prompt at the name-blurring endpoint.
-    static QuizableView.Field blurredIfNeeded(
-            String type, Quizable q, String field, QuizableView.Field fv) {
+    static ViewableView.Field blurredIfNeeded(
+            String type, Viewable q, String field, ViewableView.Field fv) {
         // Route through the blur endpoint when this entity actually has
         // something to hide: a hand mask, or it's a runtime-OCR type. Only for
         // a top-level image of this entity — the blur OCRs *this* entity's name,
@@ -262,7 +262,7 @@ public final class QuizGenerator {
         if ("image".equals(fv.kind())
                 && field.indexOf('.') < 0
                 && quiz.ocr.QuizImageBlurrer.blurs(type, q.getDisplayName())) {
-            return QuizableView.Field.image(
+            return ViewableView.Field.image(
                     fv.name(), BlurredImageService.blurUrl(type, q.getIdentifier(), field));
         }
         return fv;

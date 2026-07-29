@@ -2,7 +2,7 @@ package objectview.field;
 
 import org.junit.jupiter.api.Test;
 import objectview.Viewable;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import quiz.transform.app.ProductClass;
 import quiz.transform.app.ProductField;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FieldSetTest {
 
     /** A hand-written (reflection) domain object. */
-    static final class Film extends QuizableAdapter {
+    static final class Film extends ViewableAdapter {
         String title = "Casino";
         int year = 1995;
         boolean won = true;

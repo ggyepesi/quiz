@@ -1,6 +1,6 @@
 package language;
 
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 
 import java.util.List;
 import java.util.Map;
@@ -9,15 +9,15 @@ public class LanguagesData {
     private final Map<String, Language> languages;
     private final Map<String, List<String>> familyPaths;
     private final Map<String, LanguageFamily> families;
-    private final Map<String, QuizableGroup> familyGroups;
-    private final QuizableGroup rootGroup;
+    private final Map<String, ViewableGroup> familyGroups;
+    private final ViewableGroup rootGroup;
 
     public LanguagesData(
             Map<String, Language> languages,
             Map<String, List<String>> familyPaths,
             Map<String, LanguageFamily> families,
-            Map<String, QuizableGroup> familyGroups,
-            QuizableGroup rootGroup
+            Map<String, ViewableGroup> familyGroups,
+            ViewableGroup rootGroup
     ) {
         this.languages = languages;
         this.familyPaths = familyPaths;
@@ -38,11 +38,11 @@ public class LanguagesData {
         return families;
     }
 
-    public Map<String, QuizableGroup> getFamilyGroups() {
+    public Map<String, ViewableGroup> getFamilyGroups() {
         return familyGroups;
     }
 
-    public QuizableGroup getRootGroup() {
+    public ViewableGroup getRootGroup() {
         return rootGroup;
     }
 }

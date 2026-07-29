@@ -22,7 +22,7 @@ import java.util.List;
  *
  * <p>These endpoints only read/derive from the in-memory model (no mutation, no
  * network, no code-gen), so they are safe to expose — behind the authenticator
- * wired in {@link QuizableHttpServer}. Editing and generation come in later
+ * wired in {@link ViewableHttpServer}. Editing and generation come in later
  * slices.
  */
 public class ModelBuilderApi {

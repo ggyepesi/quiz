@@ -1,6 +1,6 @@
 package quiz.transform.ui;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.List;
 
@@ -11,4 +11,4 @@ import java.util.List;
  * later operations can consume it — the composable transform graph.
  */
 public record DerivedClass(String type, List<DomainField> fields,
-                           List<? extends Quizable> instances) {}
+                           List<? extends Viewable> instances) {}

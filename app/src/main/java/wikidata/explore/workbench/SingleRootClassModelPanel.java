@@ -1,6 +1,6 @@
 package wikidata.explore.workbench;
 
-import wikidata.explore.codegen.GeneratedQuizableSourceGenerator;
+import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.model.*;
 
 import javax.swing.*;
@@ -233,7 +233,7 @@ public class SingleRootClassModelPanel extends JPanel {
         }
 
         cls.className(
-                GeneratedQuizableSourceGenerator.sanitizeClassName(s));
+                GeneratedViewableSourceGenerator.sanitizeClassName(s));
 
         refresh();
         selectClass(cls);
@@ -252,7 +252,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
         GeneratedClassModel cls =
                 projectModel.getOrCreateClass(
-                        GeneratedQuizableSourceGenerator
+                        GeneratedViewableSourceGenerator
                                 .sanitizeClassName(s));
 
         refresh();

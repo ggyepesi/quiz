@@ -1,8 +1,8 @@
 package wikidata.explore.extract;
 
 import objectview.viewconfig.DomainViews;
-import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.Viewable;
+import quiz.ViewableGroup;
 import objectview.render.GroupView;
 
 import java.io.File;
@@ -15,7 +15,7 @@ public class GeneratedKnowledgeSet implements DomainViews {
     private final String name;
     private final File file;
 
-    private final Map<String, WikidataDynamicObject> quizables =
+    private final Map<String, WikidataDynamicObject> viewables =
             new LinkedHashMap<>();
 
     private GroupView groupView;
@@ -30,7 +30,7 @@ public class GeneratedKnowledgeSet implements DomainViews {
         List<WikidataDynamicObject> objects =
                 new WikidataDynamicObjectJsonStore().load(file);
 
-        quizables.clear();
+        viewables.clear();
 
         for (WikidataDynamicObject object : objects) {
             String key =
@@ -38,12 +38,12 @@ public class GeneratedKnowledgeSet implements DomainViews {
                             ? object.getName()
                             : object.qid();
 
-            quizables.put(key, object);
+            viewables.put(key, object);
         }
 
-        QuizableGroup root = new QuizableGroup(name);
+        ViewableGroup root = new ViewableGroup(name);
 
-        for (WikidataDynamicObject object : quizables.values()) {
+        for (WikidataDynamicObject object : viewables.values()) {
             root.addMember(object);
         }
 
@@ -57,12 +57,12 @@ public class GeneratedKnowledgeSet implements DomainViews {
     }
 
     @Override
-    public Map<String, ? extends Quizable> getViewables() {
-        return quizables;
+    public Map<String, ? extends Viewable> getViewables() {
+        return viewables;
     }
 
     @Override
     public String toString() {
-        return name + " (" + quizables.size() + ")";
+        return name + " (" + viewables.size() + ")";
     }
 }

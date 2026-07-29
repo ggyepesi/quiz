@@ -4,8 +4,8 @@ import java.io.BufferedReader;
 import java.util.*;
 
 import aux.Constants;
-import quiz.QuizableGroup;
-import quiz.Quizable;
+import quiz.ViewableGroup;
+import objectview.Viewable;
 import objectview.render.GroupView;
 import objectview.viewconfig.DomainViews;
 
@@ -14,7 +14,7 @@ import static aux.Constants.mythologyDir;
 public class MythologyEntities implements DomainViews {
     private final Mythology mythology = new Mythology();
 
-    private final QuizableGroup rootGroup = new QuizableGroup("All");
+    private final ViewableGroup rootGroup = new ViewableGroup("All");
     private GroupView groupView;
 
     public static void main(String[] args) throws Exception {
@@ -75,7 +75,7 @@ public class MythologyEntities implements DomainViews {
     }
 
     @Override
-    public Map<String, ? extends Quizable> getViewables() {
+    public Map<String, ? extends Viewable> getViewables() {
         return mythology.getCreatures();
     }
 }
@@ -127,9 +127,9 @@ class TypeProcessor extends MythologyLineProcessor {
         CREATURE, GROUP, DEED
     }
 
-    private QuizableGroup rootGroup;
+    private ViewableGroup rootGroup;
 
-    public TypeProcessor(Mythology mythology, QuizableGroup rootGroup) {
+    public TypeProcessor(Mythology mythology, ViewableGroup rootGroup) {
         super(mythology);
         this.rootGroup = rootGroup;
     }
@@ -225,9 +225,9 @@ class GroupLineProcessor extends MythologyLineProcessor {
     }
 
     private EntityGroup entityGroup;
-    private QuizableGroup group;
+    private ViewableGroup group;
 
-    public GroupLineProcessor(Mythology mythology, String name, QuizableGroup rootGroup) {
+    public GroupLineProcessor(Mythology mythology, String name, ViewableGroup rootGroup) {
         super(mythology);
         this.entityGroup = mythology.getGroup(name);
         this.group = rootGroup.getOrCreateChild(name);

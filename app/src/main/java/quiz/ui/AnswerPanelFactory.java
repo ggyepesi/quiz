@@ -3,14 +3,11 @@ package quiz.ui;
 import objectview.utils.swing.GridBagUtils;
 import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
-import quiz.Quiz;
-import quiz.Quizable;
+import objectview.Viewable;
 
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.List;
@@ -22,48 +19,33 @@ import java.util.function.Consumer;
 public class AnswerPanelFactory {
 
     private final ViewConfig answerConfig;
+    private final QuizCardFactory cardFactory;
 
     public AnswerPanelFactory(ViewConfig answerConfig) {
+        this(answerConfig, new QuizCardFactory(List.of()));
+    }
+
+    public AnswerPanelFactory(
+            ViewConfig answerConfig,
+            QuizCardFactory cardFactory) {
         this.answerConfig = answerConfig;
+        this.cardFactory = cardFactory;
     }
 
     /**
-     * Creates a grid of answer panels for the provided Quizable options.
+     * Creates a grid of answer panels for the provided Viewable options.
      *
-     * @param options list of Quizable answers to render
+     * @param options list of Viewable answers to render
      * @param onSelect callback triggered when a user clicks an answer
      * @return JPanel with all answer options laid out
      */
-    public JPanel createAnswerPanels(List<? extends Quizable> options,
-                                     Consumer<Quizable> onSelect) {
-
-        JPanel panel = new JPanel(new GridBagLayout());
-        int col = 0, row = 0;
-
-        for (Quizable q : options) {
-            ViewConfig cfg = answerConfig == null
-                    ? new ViewConfig()
-                    : answerConfig.copy();
-            cfg.setThumb(true); // common for answer panels
-
-            Card qp = new Card(q, cfg, options, false);
-            Quiz.addMouseListenerRecursively(qp, new MouseAdapter() {
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    onSelect.accept(q);
-                }
-            });
-
-            panel.add(qp, GridBagUtils.gbc(col, row,
-                    1.0, 1.0,
-                    GridBagConstraints.CENTER,
-                    GridBagConstraints.BOTH,
-                    new Insets(6, 6, 6, 6)));
-
-            if (++col == 2) { col = 0; row++; }
-        }
-
-        return panel;
+    public JPanel createAnswerPanels(List<? extends Viewable> options,
+                                     Consumer<Viewable> onSelect) {
+        ChoiceBoard board = new ChoiceBoard(
+                options, answerConfig, cardFactory,
+                ChoiceBoardPolicy.answers(2), options);
+        board.onSelected(onSelect);
+        return board;
     }
 
     public static final class ScrollUtils {

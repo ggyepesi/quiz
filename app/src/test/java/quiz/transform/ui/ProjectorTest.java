@@ -1,9 +1,9 @@
 package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
-import quiz.QuizableGroup;
-import quiz.transform.DynamicQuizable;
+import objectview.Viewable;
+import quiz.ViewableGroup;
+import quiz.transform.DynamicViewable;
 import quiz.transform.View;
 import quiz.transform.app.SnapshotDomain;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -38,9 +38,9 @@ class ProjectorTest {
 
         // Materialized: one per nomination, stamped Nom, carrying the fields.
         assertEquals(2, nom.instances().size());
-        Quizable first = nom.instances().get(0);
+        Viewable first = nom.instances().get(0);
         assertEquals("Nom", first.typeName());
-        assertEquals(2000, ((DynamicQuizable) first).get("year"));
+        assertEquals(2000, ((DynamicViewable) first).get("year"));
 
         // Fed back: the new type + its fields are in the working domain.
         assertTrue(domain.types().contains("Nom"));
@@ -51,7 +51,7 @@ class ProjectorTest {
                 new OperationSpec(OperationKind.GROUP_BY,
                         new DomainField("Nom", "category", true, false), null)),
                 domain.universe());
-        QuizableGroup root = view.render(domain.instances());
+        ViewableGroup root = view.render(domain.instances());
         java.util.Set<String> labels = new java.util.HashSet<>();
         collect(root, labels);
         assertTrue(labels.contains("Best Picture"), labels.toString());
@@ -65,8 +65,8 @@ class ProjectorTest {
         return n;
     }
 
-    private static void collect(QuizableGroup g, java.util.Set<String> out) {
-        for (QuizableGroup c : g.getChildren()) {
+    private static void collect(ViewableGroup g, java.util.Set<String> out) {
+        for (ViewableGroup c : g.getChildren()) {
             out.add(c.getDisplayName());
             collect(c, out);
         }

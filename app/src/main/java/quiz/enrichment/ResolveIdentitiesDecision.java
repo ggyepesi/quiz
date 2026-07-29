@@ -10,5 +10,5 @@ public record ResolveIdentitiesDecision(List<Resolved> resolved) {
         resolved = resolved == null ? List.of() : List.copyOf(resolved);
     }
 
-    public record Resolved(String targetId, String qid, String label) { }
+    public record Resolved(String type, String targetId, String qid, String label) { }
 }

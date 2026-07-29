@@ -1,6 +1,6 @@
 package quiz.transform;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.lang.reflect.Constructor;
 import java.util.*;
@@ -45,13 +45,13 @@ public class TransformContext {
 
     private static <T> T newTargetInstance(Class<T> cls) {
         try {
-            if (QuizableAdapter.class.isAssignableFrom(cls)) {
+            if (ViewableAdapter.class.isAssignableFrom(cls)) {
                 @SuppressWarnings("unchecked")
-                Class<? extends QuizableAdapter> qaClass =
-                        (Class<? extends QuizableAdapter>) cls;
+                Class<? extends ViewableAdapter> viewableClass =
+                        (Class<? extends ViewableAdapter>) cls;
 
-                Constructor<? extends QuizableAdapter> ctor =
-                        qaClass.getDeclaredConstructor();
+                Constructor<? extends ViewableAdapter> ctor =
+                        viewableClass.getDeclaredConstructor();
                 ctor.setAccessible(true);
                 return cls.cast(ctor.newInstance());
             }

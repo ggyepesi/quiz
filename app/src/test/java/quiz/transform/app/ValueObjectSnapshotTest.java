@@ -1,7 +1,7 @@
 package quiz.transform.app;
 
 import org.junit.jupiter.api.Test;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import quiz.ValueObject;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
@@ -22,14 +22,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class ValueObjectSnapshotTest {
 
     /** A value with a deliberately COLLIDING constant id — the failure mode we fix. */
-    static final class Note extends QuizableAdapter implements ValueObject {
+    static final class Note extends ViewableAdapter implements ValueObject {
         private final String text;
         Note(String text) { this.text = text; }
         @Override public String getIdentifier() { return "note"; }   // same for all!
         @Override public String getDisplayName() { return text; }
     }
 
-    static final class Item extends QuizableAdapter {
+    static final class Item extends ViewableAdapter {
         private final String key;
         private final Note note;
         Item(String key, Note note) { this.key = key; this.note = note; }
@@ -38,7 +38,7 @@ class ValueObjectSnapshotTest {
     }
 
     @Test void valueObjectsInlineAndDoNotMerge() throws Exception {
-        List<WikidataDynamicObject> pool = QuizableToWdo.pool(List.of(
+        List<WikidataDynamicObject> pool = ViewableToWdo.pool(List.of(
                 new Item("A", new Note("first note")),
                 new Item("B", new Note("second note"))));
 

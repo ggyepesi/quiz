@@ -4,7 +4,7 @@
  * <p>{@code GenerationPipeline} exposes each step — {@code plan} (model → rule
  * tree), {@code extract} (rule tree → dynamic objects), {@code buildRuntime}
  * (model → compiled classes) and {@code materialize} (runtime + data → mapped
- * Quizables) — and chains them in {@code fullRun}. The DBpedia enrichment runs
+ * Viewables) — and chains them in {@code fullRun}. The DBpedia enrichment runs
  * between extract and buildRuntime; {@code remap} re-maps a previous download
  * without re-fetching.
  *

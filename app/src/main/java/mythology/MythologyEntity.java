@@ -4,9 +4,9 @@ import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
-public interface MythologyEntity extends Quizable {
+public interface MythologyEntity extends Viewable {
     public Component getComponent() throws Exception;
 }
 

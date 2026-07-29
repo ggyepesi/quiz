@@ -1,8 +1,8 @@
 package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
-import quiz.transform.DynamicQuizable;
+import objectview.Viewable;
+import quiz.transform.DynamicViewable;
 import objectview.field.FieldAccess;
 
 import java.util.Collection;
@@ -19,17 +19,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class JoinerTest {
 
     @Test void joinsTwoClassesOnAValueKey() {
-        DynamicQuizable c1 = new DynamicQuizable("C1", "Alice");
+        DynamicViewable c1 = new DynamicViewable("C1", "Alice");
         c1.type("Customer");
         c1.put("customerKey", "C1");
         c1.put("cname", "Alice");
 
-        DynamicQuizable order = new DynamicQuizable("O1", "Order 1");
+        DynamicViewable order = new DynamicViewable("O1", "Order 1");
         order.type("Order");
         order.put("customerId", "C1");
         order.put("total", 42);
 
-        DynamicQuizable orphan = new DynamicQuizable("O2", "Order 2");
+        DynamicViewable orphan = new DynamicViewable("O2", "Order 2");
         orphan.type("Order");
         orphan.put("customerId", "C9");   // no matching customer
 
@@ -40,8 +40,8 @@ class JoinerTest {
 
         assertEquals(2, joined.instances().size());   // both orders (matched or not)
 
-        DynamicQuizable row = joined.instances().stream()
-                .map(DynamicQuizable.class::cast)
+        DynamicViewable row = joined.instances().stream()
+                .map(DynamicViewable.class::cast)
                 .filter(o -> o.getIdentifier().startsWith("O1")).findFirst().orElseThrow();
         assertNotNull(row.get("order"));
         assertNotNull(row.get("customer"));
@@ -49,19 +49,19 @@ class JoinerTest {
         assertEquals(42, FieldAccess.getPath(row, "order.total"));
         assertEquals("Alice", FieldAccess.getPath(row, "customer.cname"));
 
-        DynamicQuizable orphanRow = joined.instances().stream()
-                .map(DynamicQuizable.class::cast)
+        DynamicViewable orphanRow = joined.instances().stream()
+                .map(DynamicViewable.class::cast)
                 .filter(o -> o.getIdentifier().startsWith("O2")).findFirst().orElseThrow();
         assertNotNull(orphanRow.get("order"));
         assertNull(orphanRow.get("customer"));   // no match
     }
 
-    private record InMemory(List<? extends Quizable> items) implements DomainModel {
+    private record InMemory(List<? extends Viewable> items) implements DomainModel {
         @Override public List<String> types() {
-            return items.stream().map(Quizable::typeName).distinct().toList();
+            return items.stream().map(Viewable::typeName).distinct().toList();
         }
         @Override public List<DomainField> fields(String type) { return List.of(); }
-        @Override public Collection<? extends Quizable> instances() { return items; }
-        @Override public Class<? extends Quizable> universe() { return Quizable.class; }
+        @Override public Collection<? extends Viewable> instances() { return items; }
+        @Override public Class<? extends Viewable> universe() { return Viewable.class; }
     }
 }

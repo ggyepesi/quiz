@@ -1,5 +1,7 @@
 package quiz;
 
+import objectview.Viewable;
+import objectview.ViewableAdapter;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 
@@ -58,9 +60,9 @@ class QuizGenerationTest {
     private static class TestQuiz extends Quiz {
         TestQuiz(ViewConfig queryConfig,
                  ViewConfig answerConfig,
-                 QuizableGroup group,
-                 Map<String, ? extends Quizable> quizables) {
-            super(queryConfig, answerConfig, group, quizables);
+                 ViewableGroup group,
+                 Map<String, ? extends Viewable> viewables) {
+            super(queryConfig, answerConfig, group, viewables);
         }
 
         @Override
@@ -95,7 +97,7 @@ class QuizGenerationTest {
     }
 
     @SuppressWarnings("unused")
-    private static class TestCard extends QuizableAdapter {
+    private static class TestCard extends ViewableAdapter {
         private final String name;
         private final List<String> queries;
         private final List<String> answers;
@@ -109,9 +111,5 @@ class QuizGenerationTest {
         @Override public String getIdentifier() { return name; }
         @Override public String getDisplayName() { return name; }
 
-        @Override
-        public QuizableAdapter createNew() {
-            return new TestCard("", List.of(), List.of());
-        }
     }
 }

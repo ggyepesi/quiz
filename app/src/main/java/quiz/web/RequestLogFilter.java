@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 /**
  * Logs every HTTP request the server handles — which client, what they asked
  * for, the response status and how long it took. Attached to each context in
- * {@link QuizableHttpServer}. Useful for seeing phone vs laptop traffic, slow
+ * {@link ViewableHttpServer}. Useful for seeing phone vs laptop traffic, slow
  * image/chart builds, and 401s on the gated builder routes.
  */
 public class RequestLogFilter extends Filter {

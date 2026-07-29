@@ -30,12 +30,12 @@
 │   ├── WikidataPropertyScore.java
 │   ├── WikidataPropertyStore.java
 │   ├── codegen
-│   │   ├── DynamicQuizable.java
+│   │   ├── DynamicViewable.java
 │   │   ├── GeneratedCanonicalCycleTestMain.java
-│   │   ├── GeneratedQuizableMapper.java
-│   │   ├── GeneratedQuizableRuntime.java
-│   │   ├── GeneratedQuizableRuntimeBuilder.java
-│   │   ├── GeneratedQuizableSourceGenerator.java
+│   │   ├── GeneratedViewableMapper.java
+│   │   ├── GeneratedViewableRuntime.java
+│   │   ├── GeneratedViewableRuntimeBuilder.java
+│   │   ├── GeneratedViewableSourceGenerator.java
 │   │   └── RuntimeJavaCompiler.java
 │   ├── demo
 │   │   └── BacklinksIncomingPropertyDemo.java
@@ -76,7 +76,7 @@
 │   │   ├── WikidataRuleTreeMain.java
 │   │   ├── WorkbenchState.java
 │   │   ├── qid
-│   │   │   ├── SearchableQuizableResultPanel.java
+│   │   │   ├── SearchableViewableResultPanel.java
 │   │   │   ├── SparqlLogPanel.java
 │   │   │   ├── TopQidDetailsDialog.java
 │   │   │   ├── TopQidDetailsFrame.java
@@ -172,7 +172,7 @@
 │   │   ├── WikiProjectMediaWikiClient.java
 │   │   └── WikiProjectQidResolver.java
 │   └── workbench
-│       ├── CachedPropertyQuizablePanel.java
+│       ├── CachedPropertyViewablePanel.java
 │       ├── ClassSourcePanel.java
 │       ├── FieldSourcePanel.java
 │       ├── ModelBuilderFrame.java
@@ -182,7 +182,7 @@
 │       ├── PropertyDiscoveryPanel.java
 │       ├── SingleRootClassModelPanel.java
 │       ├── WikiProjectSeedPanel.java
-│       └── WikidataPropertyQuizable.java
+│       └── WikidataPropertyViewable.java
 ├── query
 │   ├── WikidataExplorerQueries.java
 │   ├── WikidataQueryBuilder.java

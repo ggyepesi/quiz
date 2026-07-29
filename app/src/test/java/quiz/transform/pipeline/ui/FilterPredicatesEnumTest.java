@@ -1,7 +1,7 @@
 package quiz.transform.pipeline.ui;
 
 import org.junit.jupiter.api.Test;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import quiz.transform.ui.DomainField;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,7 +19,7 @@ class FilterPredicatesEnumTest {
     }
 
     @SuppressWarnings("unused")
-    static class Row extends QuizableAdapter {
+    static class Row extends ViewableAdapter {
         private final Flag domain;
         Row(Flag f) { this.domain = f; }
         @Override public String getIdentifier() { return "r"; }

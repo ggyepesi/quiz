@@ -15,5 +15,5 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Pairing(String type, String prompt, String ask, List<Pair> pairs) {
 
-    public record Pair(List<QuizableView.Field> prompts, String answer) {}
+    public record Pair(List<ViewableView.Field> prompts, String answer) {}
 }

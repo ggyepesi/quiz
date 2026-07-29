@@ -14,8 +14,8 @@ import java.util.Map.Entry;
 import aux.*;
 import objectview.viewconfig.DomainViews;
 import quiz.GroupReader;
-import quiz.QuizableGroup;
-import quiz.Quizable;
+import quiz.ViewableGroup;
+import objectview.Viewable;
 
 import objectview.media.ImagePane;
 import objectview.render.GroupView;
@@ -27,7 +27,7 @@ public class States implements DomainViews {
 
     // state -> {(flag, seal, etc.)->image}
     private final Map<String, State> states = new TreeMap<>();
-    private final QuizableGroup root = new QuizableGroup("All");
+    private final ViewableGroup root = new ViewableGroup("All");
     private GroupView groupView;
     private boolean built;
 
@@ -49,7 +49,7 @@ public class States implements DomainViews {
     }
 
     @Override
-    public Map<String, ? extends Quizable> getViewables() {
+    public Map<String, ? extends Viewable> getViewables() {
         return states;
     }
 
@@ -101,7 +101,7 @@ public class States implements DomainViews {
     }
 
     // Returns fals if downloaded from uploadUrl
-    public boolean readImage(QuizableGroup group, PrefixAndState prefixAndState, String url) throws Exception {
+    public boolean readImage(ViewableGroup group, PrefixAndState prefixAndState, String url) throws Exception {
         State state;
         synchronized (states) {
             state = states.computeIfAbsent(prefixAndState.getState(),
@@ -183,9 +183,9 @@ public class States implements DomainViews {
         private final PrefixAndState prefixAndState;
         private final String url;
         private final String line;
-        private final QuizableGroup group;
+        private final ViewableGroup group;
 
-        public ImageReader(PrefixAndState prefixAndState, String url, String line, QuizableGroup group) {
+        public ImageReader(PrefixAndState prefixAndState, String url, String line, ViewableGroup group) {
             this.prefixAndState = prefixAndState;
             this.url = url;
             this.line = line;

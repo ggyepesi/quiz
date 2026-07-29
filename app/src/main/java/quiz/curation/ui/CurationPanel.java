@@ -3,7 +3,7 @@ package quiz.curation.ui;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.curation.Corrections;
 import quiz.curation.ManualCuration;
 import quiz.transform.pipeline.ui.FilterCondition;
@@ -39,7 +39,7 @@ public final class CurationPanel extends JPanel {
 
     // The instance to fill — chosen by clicking its card in the view above
     // (search / sort help find it), not from a combo.
-    private Quizable selected;
+    private Viewable selected;
 
     public CurationPanel(DomainModel domain, ManualCuration curation, Runnable onCurated) {
         this.domain = domain;
@@ -86,7 +86,7 @@ public final class CurationPanel extends JPanel {
         return p;
     }
 
-    private void onSelected(Quizable q) {
+    private void onSelected(Viewable q) {
         selected = q;
         if (q == null) {
             selectedLabel.setText("no instance selected");
@@ -118,11 +118,11 @@ public final class CurationPanel extends JPanel {
         String type = (String) typeCombo.getSelectedItem();
         FieldItem fi = (FieldItem) fieldCombo.getSelectedItem();
 
-        List<Quizable> missing = new ArrayList<>();
+        List<Viewable> missing = new ArrayList<>();
         if (type != null && fi != null) {
             FilterCondition empty =
                     new FilterCondition(fi.field, FilterOperator.IS_EMPTY, null, null);
-            for (Quizable q : domain.instances()) {
+            for (Viewable q : domain.instances()) {
                 if (q != null && type.equals(q.typeName()) && FilterPredicates.matches(q, empty)) {
                     missing.add(q);
                 }
@@ -181,7 +181,7 @@ public final class CurationPanel extends JPanel {
         refresh();         // the instance now has a value → drops from the missing list
     }
 
-    private JComponent instancesView(List<Quizable> missing, String type) {
+    private JComponent instancesView(List<Viewable> missing, String type) {
         CardListView v = new CardListView();
 
         // Enable click-to-select on the cards: clicking an instance's name
@@ -190,19 +190,19 @@ public final class CurationPanel extends JPanel {
         RenderContext ctx = new RenderContext();
         ctx.setCollapsibleCards(true);   // birdseye: cards start collapsed, drill in at will
         ctx.setSelectionEnabled(true);
-        ctx.addSelectionListener(o -> onSelected(o instanceof Quizable q ? q : null));
+        ctx.addSelectionListener(o -> onSelected(o instanceof Viewable q ? q : null));
         v.setRenderContext(ctx);
 
-        for (Quizable m : missing) {
+        for (Viewable m : missing) {
             v.addViewable(m);
         }
         v.createCardsPanel(1);
 
         JPanel panel = new JPanel(new BorderLayout());
-        Quizable sample = missing.isEmpty() ? null : missing.get(0);
+        Viewable sample = missing.isEmpty() ? null : missing.get(0);
         if (sample != null) {
             @SuppressWarnings("unchecked")
-            Class<? extends Quizable> cls = (Class<? extends Quizable>) sample.getClass();
+            Class<? extends Viewable> cls = (Class<? extends Viewable>) sample.getClass();
             SearchPanel engine = new SearchPanel(cls, sample);
             engine.setHiddenFields(domain.structuralFields(type));
             engine.setFieldTypes(domain.fieldTypes(type));

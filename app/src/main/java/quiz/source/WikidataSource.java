@@ -1,6 +1,6 @@
 package quiz.source;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 import objectview.annotations.Link;
 
 /**
@@ -11,7 +11,7 @@ import objectview.annotations.Link;
  * owner's canonical identity — this object just groups the provenance fields
  * so they stop cluttering the card's top level.
  */
-public class WikidataSource extends QuizableAdapter implements Source {
+public class WikidataSource extends ViewableAdapter implements Source {
 
     private String qid;
 

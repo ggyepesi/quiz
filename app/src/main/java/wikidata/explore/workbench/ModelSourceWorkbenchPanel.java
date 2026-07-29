@@ -65,8 +65,8 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             new ExploreByExamplePanel();
     private final CategorySeedPanel categoryPanel =
             new CategorySeedPanel();
-    private final CachedPropertyQuizablePanel propertyPanel =
-            new CachedPropertyQuizablePanel();
+    private final CachedPropertyViewablePanel propertyPanel =
+            new CachedPropertyViewablePanel();
 
     private Object selected;
 
@@ -197,7 +197,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         return helperTabs;
     }
 
-    public CachedPropertyQuizablePanel propertyPanel() {
+    public CachedPropertyViewablePanel propertyPanel() {
         return propertyPanel;
     }
 

@@ -3,7 +3,7 @@ package quiz.enrichment;
 import objectview.field.FieldKind;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.curation.ManualCuration;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
@@ -66,10 +66,10 @@ class EnrichmentDecisionApplierTest {
                 return List.of(new DomainField(
                         "Person", "image", false, false, FieldKind.MEDIA));
             }
-            @Override public Collection<? extends Quizable> instances() {
+            @Override public Collection<? extends Viewable> instances() {
                 return List.of(person);
             }
-            @Override public Class<? extends Quizable> universe() {
+            @Override public Class<? extends Viewable> universe() {
                 return WikidataDynamicObject.class;
             }
         };

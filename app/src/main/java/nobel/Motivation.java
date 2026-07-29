@@ -1,11 +1,11 @@
 package nobel;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class Motivation extends QuizableAdapter {
+public class Motivation extends ViewableAdapter {
     private String originalText;
 
     private String awardReason;     // short natural-language summary

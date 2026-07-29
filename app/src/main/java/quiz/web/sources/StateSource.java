@@ -1,10 +1,11 @@
 package quiz.web.sources;
 
 import flag.States;
-import quiz.Quizable;
-import quiz.QuizableGroup;
+import flag.StateAdmissionDates;
+import objectview.Viewable;
+import quiz.ViewableGroup;
 import objectview.facet.FacetGrouper;
-import quiz.web.QuizableSource;
+import quiz.web.ViewableSource;
 
 import java.util.Collection;
 
@@ -21,7 +22,7 @@ import java.util.Collection;
  * roles}: dimension nodes become non-selectable headers, leaves stay
  * selectable buckets.
  */
-public class StateSource implements QuizableSource {
+public class StateSource implements ViewableSource {
 
     private States states;
 
@@ -29,6 +30,7 @@ public class StateSource implements QuizableSource {
         if (states == null) {
             States s = new States();
             s.buildViews();
+            StateAdmissionDates.apply(s.getStates());
             states = s;
         }
         return states;
@@ -40,12 +42,12 @@ public class StateSource implements QuizableSource {
     }
 
     @Override
-    public Collection<? extends Quizable> load() throws Exception {
+    public Collection<? extends Viewable> load() throws Exception {
         return states().getViewables().values();
     }
 
     @Override
-    public QuizableGroup rootGroup() throws Exception {
-        return FacetGrouper.assignRoles((QuizableGroup) states().getGroupView().getRootGroup());
+    public ViewableGroup rootGroup() throws Exception {
+        return FacetGrouper.assignRoles((ViewableGroup) states().getGroupView().getRootGroup());
     }
 }

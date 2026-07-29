@@ -27,6 +27,7 @@ public record ResolveIdentitiesReviewRequest(
     /** One instance to identify: its domain id + name, current qid (blank if none), and the
      *  ranked candidate matches from the label search. */
     public record InstanceIdentity(
+            String type,
             String targetId,
             String name,
             String currentQid,

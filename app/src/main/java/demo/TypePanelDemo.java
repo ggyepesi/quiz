@@ -1,6 +1,6 @@
 package demo;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -28,8 +28,8 @@ public class TypePanelDemo extends JFrame {
     // Domain model
     // ------------------------------------------------------------------
 
-    /** Hard-wired Quizable constellation. */
-    static class Constellation extends QuizableAdapter {
+    /** Hard-wired Viewable constellation. */
+    static class Constellation extends ViewableAdapter {
         public String name = "";
         public String abbreviation = "";
         public List<Constellation> neighbours = new ArrayList<>();
@@ -42,12 +42,11 @@ public class TypePanelDemo extends JFrame {
 
         @Override public String getIdentifier() { return name; }
         @Override public String getDisplayName() { return name; }
-        @Override public QuizableAdapter createNew() { return new Constellation("", ""); }
         @Override public String toString() { return name; }
     }
 
-    /** Hard-wired Quizable star. */
-    static class Star extends QuizableAdapter {
+    /** Hard-wired Viewable star. */
+    static class Star extends ViewableAdapter {
         public String name = "";
         public double magnitude = 0.0;
         public Constellation constellation;
@@ -59,7 +58,6 @@ public class TypePanelDemo extends JFrame {
 
         @Override public String getIdentifier() { return name; }
         @Override public String getDisplayName() { return name; }
-        @Override public QuizableAdapter createNew() { return new Star("", 0); }
         @Override public String toString() { return name; }
     }
 
@@ -141,8 +139,8 @@ public class TypePanelDemo extends JFrame {
 
         private void buildFields(Object obj, RenderContext ctx) {
             // Title row
-            String title = obj instanceof QuizableAdapter qa
-                    ? qa.getName() : obj.toString();
+            String title = obj instanceof ViewableAdapter viewable
+                    ? viewable.getName() : obj.toString();
             JLabel titleLabel = new JLabel(title);
             titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 13f));
             titleLabel.setAlignmentX(LEFT_ALIGNMENT);
@@ -205,8 +203,8 @@ public class TypePanelDemo extends JFrame {
         }
 
         private JComponent referenceChip(Object target, RenderContext ctx) {
-            String label = target instanceof QuizableAdapter qa
-                    ? qa.getName() : target.toString();
+            String label = target instanceof ViewableAdapter viewable
+                    ? viewable.getName() : target.toString();
 
             JButton chip = new JButton(label);
             chip.setFont(chip.getFont().deriveFont(11f));

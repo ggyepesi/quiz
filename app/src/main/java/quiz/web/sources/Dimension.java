@@ -1,10 +1,9 @@
 package quiz.web.sources;
 
 /**
- * A DECLARED groupable dimension for LIVE re-faceting: the user flips among a served
- * type's dimensions and the view groups on demand. Grouping-as-capability is declared
- * here (model-derived candidates, later transform-curatable); grouping-as-execution is
- * the view building a {@link objectview.facet.Facet} from this at serve time.
+ * An explicitly configured groupable dimension for LIVE re-faceting: the user flips
+ * among a served type's dimensions and the view groups on demand. Merely having a field
+ * never creates one; Transform must declare the grouping operation.
  *
  * @param label display name of the dimension (e.g. "type", "genre", "category")
  * @param path  the dotted field path the value is read from (e.g. "nominee.type")

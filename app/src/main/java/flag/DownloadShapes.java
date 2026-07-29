@@ -9,7 +9,7 @@ import java.util.Map.Entry;
 import objectview.utils.swing.CachedImage;
 import aux.Constants;
 import aux.ResourceFinder;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 import objectview.media.ImagePane;
 
 import java.util.TreeMap;
@@ -21,16 +21,16 @@ public class DownloadShapes {
     // instead of shape of the Bahamas one of its small islands, Cat Island is shown
     public static void main(String[] args) throws Exception {
         Map<String, State> states = new TreeMap<>();
-        readShapes(states, new QuizableGroup("All"));
+        readShapes(states, new ViewableGroup("All"));
     }
 
-    public static void readShapes(Map<String, State> states, QuizableGroup all) throws Exception {
+    public static void readShapes(Map<String, State> states, ViewableGroup all) throws Exception {
         // Read shapes add them to stateImages
         Map<String, String> isoCodes = readIsoCodes();
         Map<String, String> shapeImageUrls = DownloadShapes.readImageFilenames(isoCodes);
         System.out.println("Reading shapes ");
-        QuizableGroup shapeGroup = all.getOrCreateChild("Shape");
-        QuizableGroup shapeOnlyGroup = all.getOrCreateChild("ShapeOnly");
+        ViewableGroup shapeGroup = all.getOrCreateChild("Shape");
+        ViewableGroup shapeOnlyGroup = all.getOrCreateChild("ShapeOnly");
         List<Reader> readers = new ArrayList<>();
         for (Entry<String, String> e : shapeImageUrls.entrySet()) {
             Reader reader =

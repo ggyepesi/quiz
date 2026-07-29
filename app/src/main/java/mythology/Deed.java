@@ -1,6 +1,6 @@
 package mythology;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 public class Deed extends NamedEntity  {
     private NamedEntity subject;
@@ -22,8 +22,4 @@ public class Deed extends NamedEntity  {
         return subject;
     }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new Deed();
-    }
 }

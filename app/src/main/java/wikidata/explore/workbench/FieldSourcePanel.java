@@ -2,7 +2,7 @@ package wikidata.explore.workbench;
 
 import objectview.utils.swing.GridBagUtils;
 
-import wikidata.explore.codegen.GeneratedQuizableSourceGenerator;
+import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.WikidataProperty;
 import wikidata.explore.WikidataPropertyScore;
@@ -541,7 +541,7 @@ public class FieldSourcePanel extends JPanel {
                         this, "New class name:", "Add class",
                         JOptionPane.PLAIN_MESSAGE);
                 if (name != null && !name.isBlank()) {
-                    name = GeneratedQuizableSourceGenerator.sanitizeClassName(name.trim());
+                    name = GeneratedViewableSourceGenerator.sanitizeClassName(name.trim());
                     if (projectModel != null) {
                         projectModel.addClass(new GeneratedClassModel(name));
                     }
@@ -558,7 +558,7 @@ public class FieldSourcePanel extends JPanel {
                         this, "New vocabulary name:", "Add vocabulary",
                         JOptionPane.PLAIN_MESSAGE);
                 if (name != null && !name.isBlank()) {
-                    name = GeneratedQuizableSourceGenerator.sanitizeClassName(name.trim());
+                    name = GeneratedViewableSourceGenerator.sanitizeClassName(name.trim());
                     if (projectModel != null && projectModel.findSelection(name) == null
                             && projectModel.findClass(name) == null) {
                         projectModel.addSelection(new VocabularySelection(name));
@@ -1138,11 +1138,11 @@ public class FieldSourcePanel extends JPanel {
                 lower.contains("border")
                         || lower.contains("neighbour")
                         || lower.contains("neighbor"))) {
-            return GeneratedQuizableSourceGenerator.sanitizeClassName(
+            return GeneratedViewableSourceGenerator.sanitizeClassName(
                     projectModel.rootClass().className());
         }
         if (field != null && !field.name().isBlank()) {
-            return GeneratedQuizableSourceGenerator.sanitizeClassName(singularOf(field.name()));
+            return GeneratedViewableSourceGenerator.sanitizeClassName(singularOf(field.name()));
         }
         return "";
     }

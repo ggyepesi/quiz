@@ -6,9 +6,9 @@ import objectview.render.RenderContext;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import aux.Constants;
-import quiz.Quizable;
-import wikidata.explore.codegen.GeneratedQuizableRuntime;
-import wikidata.explore.codegen.GeneratedQuizableSourceGenerator;
+import objectview.Viewable;
+import wikidata.explore.codegen.GeneratedViewableRuntime;
+import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 import wikidata.explore.generation.GenerationPipeline;
@@ -166,7 +166,7 @@ public class ModelBuilderFrame extends JFrame {
     private final SwingProcessRunner processRunner;
 
     public ModelBuilderFrame(WikidataSparqlClient client) {
-        super("Wikidata Quizable Model Builder");
+        super("Wikidata Viewable Model Builder");
 
         this.client = client;
         QueryContext queryContext = new QueryContext(client, apiClient);
@@ -835,9 +835,9 @@ public class ModelBuilderFrame extends JFrame {
         // Map each generated instance by its QID, so a colliding entry links to
         // the actual entity used in the instances (click through), falling back
         // to a Source (QID + wiki link) for QIDs that weren't materialized.
-        java.util.Map<String, quiz.Quizable> byQid = new java.util.HashMap<>();
+        java.util.Map<String, objectview.Viewable> byQid = new java.util.HashMap<>();
         if (run.instances() != null) {
-            for (quiz.Quizable q : run.instances()) {
+            for (objectview.Viewable q : run.instances()) {
                 if (q != null && q.getIdentifier() != null) {
                     byQid.putIfAbsent(q.getIdentifier(), q);
                 }
@@ -846,9 +846,9 @@ public class ModelBuilderFrame extends JFrame {
 
         java.util.List<NameCollision> cards = new java.util.ArrayList<>();
         for (var e : collisions) {
-            java.util.List<quiz.Quizable> entities = new java.util.ArrayList<>();
+            java.util.List<objectview.Viewable> entities = new java.util.ArrayList<>();
             for (String qid : e.getValue()) {
-                quiz.Quizable used = byQid.get(qid);
+                objectview.Viewable used = byQid.get(qid);
                 entities.add(used != null ? used : new quiz.source.WikidataSource(qid));
             }
             cards.add(new NameCollision(e.getKey(), entities));
@@ -993,7 +993,7 @@ public class ModelBuilderFrame extends JFrame {
                 || m.contains("compile")) {
             return "Hint: the generated class did not compile. Use "
                     + "'Show generated source' to inspect it; an entity field "
-                    + "usually needs a valid object type (or none -> Quizable).";
+                    + "usually needs a valid object type (or none -> Viewable).";
         }
         if (m.contains("timeout") || m.contains("timed out")) {
             return "Hint: the SPARQL endpoint timed out. Lower the depth/limit, "
@@ -1141,7 +1141,7 @@ public class ModelBuilderFrame extends JFrame {
         fresh.name(name);
         // Start with one neutrally-named root class the user then configures.
         fresh.rootClass().className(
-                GeneratedQuizableSourceGenerator.sanitizeClassName(name));
+                GeneratedViewableSourceGenerator.sanitizeClassName(name));
         projectModel.copyContentsFrom(fresh);
         lastRun = null;
         instancesPanel.clear();
@@ -1414,8 +1414,8 @@ public class ModelBuilderFrame extends JFrame {
 
             GenerationPipeline pipeline = new GenerationPipeline();
             RuleNode plan = pipeline.plan(snapshot);
-            GeneratedQuizableRuntime runtime = pipeline.buildRuntime(snapshot);
-            List<Quizable> instances =
+            GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot);
+            List<Viewable> instances =
                     pipeline.materialize(runtime, objects);
 
             acceptGenerationRun(new GenerationRun(
@@ -1859,9 +1859,9 @@ public class ModelBuilderFrame extends JFrame {
             source = lastRun.runtime().source();
             title = lastRun.runtime().qualifiedClassName();
         } else {
-            GeneratedQuizableSourceGenerator gen =
-                    new GeneratedQuizableSourceGenerator(
-                            GeneratedQuizableSourceGenerator.GENERATED_PACKAGE);
+            GeneratedViewableSourceGenerator gen =
+                    new GeneratedViewableSourceGenerator(
+                            GeneratedViewableSourceGenerator.GENERATED_PACKAGE);
             source = gen.sourceFor(cls, projectModel);
             title = gen.qualifiedClassName(cls)
                     + (runMatchesClass

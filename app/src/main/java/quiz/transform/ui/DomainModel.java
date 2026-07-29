@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
 import objectview.viewconfig.FieldTypeSource;
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.Collection;
 import java.util.List;
@@ -10,7 +10,7 @@ import java.util.List;
  * A domain the transform workbench operates over: its instances plus the schema
  * (types and, per type, field names and shapes) the operation slots filter on.
  * Decoupled from any particular backing so the SAME workbench runs over a Wikidata
- * snapshot ({@link SnapshotDomain}) or the hand-written {@code Quizable} domains —
+ * snapshot ({@link SnapshotDomain}) or the hand-written {@code Viewable} domains —
  * Nobel, State, SportTeam — via reflection ({@link ReflectionDomain}).
  */
 public interface DomainModel {
@@ -46,8 +46,8 @@ public interface DomainModel {
     /** A representative instance for enumerating {@code type}'s fields. The default is
      *  the first matching instance; a persisted snapshot may return a small shape sample
      *  built from its saved field graph instead of scanning its instance pool. */
-    default Quizable representativeSample(String type) {
-        for (Quizable q : instances()) {
+    default Viewable representativeSample(String type) {
+        for (Viewable q : instances()) {
             if (q != null && type != null && type.equals(q.typeName())) {
                 return q;
             }
@@ -56,8 +56,8 @@ public interface DomainModel {
     }
 
     /** The instances to run the view over. */
-    Collection<? extends Quizable> instances();
+    Collection<? extends Viewable> instances();
 
     /** The universe class for the {@code ClassTransformPlan} (kept-instances plan). */
-    Class<? extends Quizable> universe();
+    Class<? extends Viewable> universe();
 }

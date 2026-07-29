@@ -2,7 +2,7 @@ package quiz.web.sources;
 
 import objectview.Viewable;
 import objectview.field.FieldSet;
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,13 +39,13 @@ public final class Coverage {
     /** Coverage + verdict for each declared dimension's path (ceremony, forWork.genre,
      *  …), given each path's declared expectation (NONE / EXPECTED / REQUIRED). */
     public static List<FieldCoverage> of(
-            Collection<? extends Quizable> pool, List<Dimension> dimensions,
+            Collection<? extends Viewable> pool, List<Dimension> dimensions,
             Map<String, String> expectationByPath) {
         int total = pool.size();
         List<FieldCoverage> out = new ArrayList<>();
         for (Dimension d : dimensions) {
             int present = 0;
-            for (Quizable q : pool) {
+            for (Viewable q : pool) {
                 if (hasValue(q, d.path())) {
                     present++;
                 }
@@ -73,7 +73,7 @@ public final class Coverage {
     }
 
     /** Resolves a dotted path over one member and reports whether any value survives. */
-    public static boolean hasValue(Quizable q, String path) {
+    public static boolean hasValue(Viewable q, String path) {
         List<Object> current = new ArrayList<>();
         current.add(q);
         for (String seg : path.split("\\.")) {

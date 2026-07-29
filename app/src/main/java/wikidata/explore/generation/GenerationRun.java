@@ -1,9 +1,9 @@
 package wikidata.explore.generation;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.result.ObjectQueryResult;
-import wikidata.explore.codegen.GeneratedQuizableRuntime;
+import wikidata.explore.codegen.GeneratedViewableRuntime;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -23,14 +23,14 @@ public record GenerationRun(
         int depth,
         RuleNode plan,
         List<WikidataDynamicObject> dynamicObjects,
-        GeneratedQuizableRuntime runtime,
-        List<Quizable> instances,
+        GeneratedViewableRuntime runtime,
+        List<Viewable> instances,
         RemapState remapState) {
 
     /** Back-compat: a run with no cached transform inputs (remap = display-only). */
     public GenerationRun(GeneratedProjectModel modelSnapshot, int depth, RuleNode plan,
                          List<WikidataDynamicObject> dynamicObjects,
-                         GeneratedQuizableRuntime runtime, List<Quizable> instances) {
+                         GeneratedViewableRuntime runtime, List<Viewable> instances) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, null);
     }
 

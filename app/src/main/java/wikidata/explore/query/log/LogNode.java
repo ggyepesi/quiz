@@ -3,7 +3,7 @@ package wikidata.explore.query.log;
 import objectview.annotations.Hidden;
 import objectview.annotations.Inline;
 import objectview.annotations.Link;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -19,12 +19,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * <p>Nodes are dumb data. They are created and mutated only by a {@link
  * WorkflowRecorder} on the worker thread, and read on the EDT while the
- * tree is rendered via {@link quiz.QuizableAdapter} reflection. The
+ * tree is rendered via {@link objectview.ViewableAdapter} reflection. The
  * mutating methods are therefore package-private (only the recorder calls
  * them) and {@link #children} is copy-on-write so the renderer iterates a
  * stable snapshot without locking.
  */
-public class LogNode extends QuizableAdapter {
+public class LogNode extends ViewableAdapter {
 
     @Hidden
     private LogKind kind;
@@ -223,7 +223,7 @@ public class LogNode extends QuizableAdapter {
         return this;
     }
 
-    // --- Quizable ---
+    // --- Viewable ---
 
     @Override
     public String getIdentifier() {

@@ -1,9 +1,9 @@
 package nobel;
 
 import objectview.media.ImagePane;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
-class Laureate extends QuizableAdapter {
+class Laureate extends ViewableAdapter {
     private String name;
     private ImagePane portrait;
 
@@ -25,11 +25,5 @@ class Laureate extends QuizableAdapter {
     @Override
     public String getDisplayName() { return name; }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new Laureate();
-    }
-
     private Laureate() {}
 }
-

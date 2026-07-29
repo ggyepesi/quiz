@@ -23,7 +23,7 @@ class ResolveIdentitiesProcessTest {
                 new QueryContext(null, null), null, ProcessInputHandler.unsupported())
                 .run(new ResolveIdentitiesProcess(List.of(
                                 new ResolveIdentitiesProcess.Subject(
-                                        "local-france", "France", "Q142")),
+                                        "State", "local-france", "France", "Q142")),
                                 12),
                         new CancellationToken());
 
@@ -38,7 +38,7 @@ class ResolveIdentitiesProcessTest {
                 new QueryContext(null, null), null, ProcessInputHandler.unsupported())
                 .run(new ResolveIdentitiesProcess(List.of(
                                 new ResolveIdentitiesProcess.Subject(
-                                        "local-france", "France", "")),
+                                        "State", "local-france", "France", "")),
                                 12),
                         new CancellationToken());
 

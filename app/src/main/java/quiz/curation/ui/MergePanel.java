@@ -7,7 +7,7 @@ import objectview.field.FieldSet;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.curation.ManualCuration;
 import quiz.curation.Merge;
 import quiz.curation.Mergeable;
@@ -46,9 +46,9 @@ public final class MergePanel extends JPanel {
     private final JButton mergeButton = new JButton("Preview & merge ▶");
 
     // The card currently clicked; "Set primary"/"Set duplicate" capture it into a slot.
-    private Quizable selected;
-    private Quizable primary;
-    private Quizable duplicate;
+    private Viewable selected;
+    private Viewable primary;
+    private Viewable duplicate;
 
     public MergePanel(DomainModel domain, ManualCuration curation, Runnable onCurated) {
         this.domain = domain;
@@ -60,7 +60,7 @@ public final class MergePanel extends JPanel {
         add(instancesHolder, BorderLayout.CENTER);
         add(bottom(), BorderLayout.SOUTH);
 
-        Collection<? extends Quizable> candidates = mergeableInstances();
+        Collection<? extends Viewable> candidates = mergeableInstances();
         for (String t : domain.types()) {
             boolean present = candidates.stream().anyMatch(q -> q != null && t.equals(q.typeName()));
             if (present) {
@@ -229,7 +229,7 @@ public final class MergePanel extends JPanel {
     private record FieldChoice(String field, Object primaryVal, Object dupVal,
                                List<String> options, String def) { }
 
-    private List<FieldChoice> planRows(Quizable p, Quizable d) {
+    private List<FieldChoice> planRows(Viewable p, Viewable d) {
         List<String> names = new ArrayList<>();
         for (FieldRef ref : FieldSet.of(p).fields()) {
             names.add(ref.name());
@@ -313,7 +313,7 @@ public final class MergePanel extends JPanel {
         if (value == null) {
             return "—";
         }
-        if (value instanceof Quizable q) {
+        if (value instanceof Viewable q) {
             String name = q.getDisplayName();
             return name == null || name.isBlank() ? q.typeName() : name;
         }
@@ -359,9 +359,9 @@ public final class MergePanel extends JPanel {
 
     private void refresh() {
         String type = (String) typeCombo.getSelectedItem();
-        List<Quizable> items = new ArrayList<>();
+        List<Viewable> items = new ArrayList<>();
         if (type != null) {
-            for (Quizable q : mergeableInstances()) {
+            for (Viewable q : mergeableInstances()) {
                 if (q != null && type.equals(q.typeName())) {
                     items.add(q);
                 }
@@ -376,25 +376,25 @@ public final class MergePanel extends JPanel {
         instancesHolder.repaint();
     }
 
-    private JComponent instancesView(List<Quizable> items, String type) {
+    private JComponent instancesView(List<Viewable> items, String type) {
         CardListView v = new CardListView();
 
         RenderContext ctx = new RenderContext();
         ctx.setCollapsibleCards(true);
         ctx.setSelectionEnabled(true);
-        ctx.addSelectionListener(o -> selected = o instanceof Quizable q ? q : null);
+        ctx.addSelectionListener(o -> selected = o instanceof Viewable q ? q : null);
         v.setRenderContext(ctx);
 
-        for (Quizable m : items) {
+        for (Viewable m : items) {
             v.addViewable(m);
         }
         v.createCardsPanel(1);
 
         JPanel panel = new JPanel(new BorderLayout());
-        Quizable sample = items.isEmpty() ? null : items.get(0);
+        Viewable sample = items.isEmpty() ? null : items.get(0);
         if (sample != null) {
             @SuppressWarnings("unchecked")
-            Class<? extends Quizable> cls = (Class<? extends Quizable>) sample.getClass();
+            Class<? extends Viewable> cls = (Class<? extends Viewable>) sample.getClass();
             SearchPanel engine = new SearchPanel(cls, sample);
             engine.setHiddenFields(domain.structuralFields(type));
             engine.setFieldTypes(domain.fieldTypes(type));
@@ -408,7 +408,7 @@ public final class MergePanel extends JPanel {
         return panel;
     }
 
-    private Collection<? extends Quizable> mergeableInstances() {
+    private Collection<? extends Viewable> mergeableInstances() {
         return domain instanceof Mergeable mergeable
                 ? mergeable.mergeableInstances()
                 : domain.instances();

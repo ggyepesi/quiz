@@ -2,14 +2,14 @@
  * Wikidata-driven quiz generation.
  *
  * <p>Turns an editable <em>project model</em> (classes + fields + where each
- * comes from) into compiled, queryable {@code Quizable} objects, with no
+ * comes from) into compiled, queryable {@code Viewable} objects, with no
  * per-domain code. The flow:
  *
  * <pre>
  *   model      → an editable schema of classes/fields           ({@code model})
  *   rule       → compiled SPARQL query plan (RuleNode tree)      ({@code rule})
  *   extract    → run the plan → WikidataDynamicObject graphs     ({@code extract})
- *   codegen    → compile a Java Quizable class per model class   ({@code codegen})
+ *   codegen    → compile a Java Viewable class per model class   ({@code codegen})
  *   generation → chain the stages + run provenance              ({@code generation})
  * </pre>
  *

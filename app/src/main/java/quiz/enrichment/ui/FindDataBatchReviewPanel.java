@@ -42,19 +42,46 @@ public final class FindDataBatchReviewPanel extends JPanel {
             String prompt,
             List<EnrichmentProposal> proposals,
             Consumer<BatchReviewDecision> onDone) {
+        createDialog(owner, title, prompt, proposals, onDone,
+                Dialog.ModalityType.APPLICATION_MODAL).setVisible(true);
+    }
+
+    public static JDialog showModeless(
+            Component owner, String title, String prompt,
+            List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone) {
+        JDialog dialog = createDialog(owner, title, prompt, proposals, onDone,
+                Dialog.ModalityType.MODELESS);
+        dialog.setVisible(true);
+        return dialog;
+    }
+
+    private static JDialog createDialog(
+            Component owner, String title, String prompt,
+            List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone,
+            Dialog.ModalityType modality) {
         Window window = SwingUtilities.getWindowAncestor(owner);
-        JDialog dialog =
-                new JDialog(window, title, Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog dialog = new JDialog(window, title, modality);
         Consumer<BatchReviewDecision> handler = onDone == null ? ignored -> { } : onDone;
+        java.util.concurrent.atomic.AtomicBoolean completed =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        Consumer<BatchReviewDecision> finish = decision -> {
+            if (completed.compareAndSet(false, true)) {
+                handler.accept(decision);
+                dialog.dispose();
+            }
+        };
         FindDataBatchReviewPanel panel =
-                new FindDataBatchReviewPanel(prompt, proposals, decision -> {
-                    handler.accept(decision);
-                    dialog.dispose();
-                });
+                new FindDataBatchReviewPanel(prompt, proposals, finish);
+        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                finish.accept(new BatchReviewDecision(List.of()));
+            }
+        });
         dialog.add(panel);
         dialog.setSize(720, 560);
         dialog.setLocationRelativeTo(owner);
-        dialog.setVisible(true);
+        return dialog;
     }
 
     private final Map<EnrichmentProposal, JCheckBox> rows = new LinkedHashMap<>();

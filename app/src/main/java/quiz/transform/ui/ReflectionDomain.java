@@ -2,8 +2,8 @@ package quiz.transform.ui;
 
 import objectview.viewconfig.DomainViews;
 import objectview.field.ViewableFieldPaths;
-import quiz.Quizable;
-import quiz.QuizableAdapter;
+import objectview.Viewable;
+import objectview.ViewableAdapter;
 import objectview.field.FieldKind;
 import objectview.viewconfig.ViewConfig;
 
@@ -19,36 +19,39 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A {@link DomainModel} over hand-written {@code Quizable} domain objects (Nobel,
+ * A {@link DomainModel} over hand-written {@code Viewable} domain objects (Nobel,
  * State, SportTeam, …) — the schema is derived by REFLECTION from the instance
- * classes ({@link QuizableAdapter#getAllFields}), a reference being a
- * {@code @Reference} field or a {@code Quizable}-typed field/element, a
+ * classes ({@link ViewableAdapter#getAllFields}), a reference being a
+ * {@code @Reference} field or a {@code Viewable}-typed field/element, a
  * collection being a {@code Collection}/{@code Map}. The transform engine reads
  * these declared fields directly (FieldAccess falls back to reflection), so the
  * same view pipeline runs over them.
  */
 public final class ReflectionDomain implements DomainModel {
 
-    private final List<Quizable> instances;
+    private final List<Viewable> instances;
     private final Map<String, List<DomainField>> fieldsByType = new LinkedHashMap<>();
+    private final Map<String, Set<String>> structuralByType = new LinkedHashMap<>();
 
-    public ReflectionDomain(Collection<? extends Quizable> roots) {
-        // Walk the whole reachable graph so EVERY class in the old data — the main
-        // class AND its referenced ones (Person, Terms, Language, …) — becomes a
-        // selectable type with its own instances, not just the top-level roots.
+    public ReflectionDomain(Collection<? extends Viewable> roots) {
+        // Walk the whole reachable DATA graph so every Viewable class — the main
+        // class AND referenced ones (Person, Terms, Language, …) — becomes selectable.
+        // ViewableGroup implementations are structural. Some concrete implementations
+        // inherit ViewableAdapter for reflection/rendering convenience, so exclude them
+        // explicitly rather than promoting them to domain member types.
         java.util.Set<Object> seen =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-        java.util.Deque<Quizable> queue = new java.util.ArrayDeque<>(roots);
-        List<Quizable> closure = new ArrayList<>();
+        java.util.Deque<Viewable> queue = new java.util.ArrayDeque<>(roots);
+        List<Viewable> closure = new ArrayList<>();
         Set<Class<?>> classes = new LinkedHashSet<>();
         while (!queue.isEmpty()) {
-            Quizable q = queue.poll();
+            Viewable q = queue.poll();
             if (q == null || !seen.add(q)) {
                 continue;
             }
             closure.add(q);
             classes.add(q.getClass());
-            queue.addAll(referencedQuizables(q));
+            queue.addAll(referencedViewables(q));
         }
         this.instances = closure;
         for (Class<?> cls : classes) {
@@ -56,28 +59,31 @@ public final class ReflectionDomain implements DomainModel {
         }
     }
 
-    /** Quizables reachable through {@code q}'s fields, read through the ONE FieldSet
+    /** Viewables reachable through {@code q}'s fields, read through the ONE FieldSet
      *  bridge (#87) — a dynamic object's property map or a typed object's declared
      *  fields, with no `instanceof DynamicFields` fork. */
-    private static List<Quizable> referencedQuizables(Quizable q) {
-        List<Quizable> out = new ArrayList<>();
+    private static List<Viewable> referencedViewables(Viewable q) {
+        List<Viewable> out = new ArrayList<>();
         objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
         for (objectview.field.FieldRef fr : fs.fields()) {
-            addQuizables(fs.read(fr.name()), out);
+            addViewables(fs.read(fr.name()), out);
         }
         return out;
     }
 
-    private static void addQuizables(Object v, List<Quizable> out) {
-        if (v instanceof Quizable c) {
+    private static void addViewables(Object v, List<Viewable> out) {
+        if (v instanceof objectview.group.ViewableGroup<?>) {
+            return;
+        }
+        if (v instanceof Viewable c) {
             out.add(c);
         } else if (v instanceof Collection<?> col) {
             for (Object i : col) {
-                if (i instanceof Quizable c) out.add(c);
+                addViewables(i, out);
             }
         } else if (v instanceof Map<?, ?> m) {
             for (Object i : m.values()) {
-                if (i instanceof Quizable c) out.add(c);
+                addViewables(i, out);
             }
         }
     }
@@ -85,17 +91,17 @@ public final class ReflectionDomain implements DomainModel {
     /** Build a domain from a {@link DomainViews} builder (e.g. {@code new SportTeams()}). */
     public static ReflectionDomain of(DomainViews views) throws Exception {
         views.buildViews();
-        // getViewables() is typed Viewable (objectview SPI); the elements are Quizables.
+        // getViewables() is typed Viewable (objectview SPI); the elements are Viewables.
         @SuppressWarnings("unchecked")
-        Collection<? extends Quizable> roots =
-                (Collection<? extends Quizable>) (Collection<?>) views.getViewables().values();
+        Collection<? extends Viewable> roots =
+                (Collection<? extends Viewable>) (Collection<?>) views.getViewables().values();
         return new ReflectionDomain(roots);
     }
 
     @SuppressWarnings("unchecked")
     private void index(Class<?> cls) {
         String type = cls.getSimpleName();
-        if (fieldsByType.containsKey(type) || !Quizable.class.isAssignableFrom(cls)) {
+        if (fieldsByType.containsKey(type) || !Viewable.class.isAssignableFrom(cls)) {
             return;
         }
         List<DomainField> fields = new ArrayList<>();
@@ -106,7 +112,7 @@ public final class ReflectionDomain implements DomainModel {
         // the missing-portrait / missing-flag worklist is the point). Search / sort /
         // config editors exclude media by kind separately (NOT_MEDIA_FIELDS).
         ViewConfig config =
-                ViewConfig.all((Class<? extends Quizable>) cls);
+                ViewConfig.all((Class<? extends Viewable>) cls);
         for (ViewableFieldPaths.FieldPath fp
                 : ViewableFieldPaths.collect(config, ViewableFieldPaths.ALL_FIELDS)) {
             Field leaf = fp.leafField();
@@ -118,19 +124,45 @@ public final class ReflectionDomain implements DomainModel {
             fields.add(new DomainField(type, fp, ref, col, kind));
         }
         fieldsByType.put(type, fields);
+
+        Set<String> structural = new LinkedHashSet<>();
+        for (Field field : ViewableAdapter.getAllFields(cls)) {
+            if (isGroupField(field)) {
+                structural.add(field.getName());
+            }
+        }
+        structuralByType.put(type, Set.copyOf(structural));
+    }
+
+    private static boolean isGroupField(Field field) {
+        if (field == null) {
+            return false;
+        }
+        if (objectview.group.ViewableGroup.class.isAssignableFrom(field.getType())) {
+            return true;
+        }
+        if (field.getGenericType() instanceof ParameterizedType parameterized) {
+            for (Type argument : parameterized.getActualTypeArguments()) {
+                if (argument instanceof Class<?> cls
+                        && objectview.group.ViewableGroup.class.isAssignableFrom(cls)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     static boolean isReferenceField(Field f) {
-        if (QuizableAdapter.isReference(f)) {
+        if (ViewableAdapter.isReference(f)) {
             return true;
         }
-        if (Quizable.class.isAssignableFrom(f.getType())) {
+        if (Viewable.class.isAssignableFrom(f.getType())) {
             return true;
         }
-        // A collection/map of Quizables (via the generic element/value type).
+        // A collection/map of Viewables (via the generic element/value type).
         if (f.getGenericType() instanceof ParameterizedType p) {
             for (Type arg : p.getActualTypeArguments()) {
-                if (arg instanceof Class<?> c && Quizable.class.isAssignableFrom(c)) {
+                if (arg instanceof Class<?> c && Viewable.class.isAssignableFrom(c)) {
                     return true;
                 }
             }
@@ -147,6 +179,9 @@ public final class ReflectionDomain implements DomainModel {
     @Override public List<DomainField> fields(String type) {
         return new ArrayList<>(fieldsByType.getOrDefault(type, List.of()));
     }
-    @Override public Collection<? extends Quizable> instances() { return instances; }
-    @Override public Class<? extends Quizable> universe() { return Quizable.class; }
+    @Override public Set<String> structuralFields(String type) {
+        return structuralByType.getOrDefault(type, Set.of());
+    }
+    @Override public Collection<? extends Viewable> instances() { return instances; }
+    @Override public Class<? extends Viewable> universe() { return Viewable.class; }
 }

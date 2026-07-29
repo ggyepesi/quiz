@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
-import quiz.Quizable;
-import quiz.QuizableGroup;
+import objectview.Viewable;
+import quiz.ViewableGroup;
 import quiz.transform.View;
 import objectview.viewconfig.FieldTypeSource;
 
@@ -74,7 +74,7 @@ public final class TransformController {
             return 0;
         }
         int n = 0;
-        for (Quizable q : domain.instances()) {
+        for (Viewable q : domain.instances()) {
             if (q != null && type.equals(q.typeName())) {
                 n++;
             }
@@ -86,12 +86,12 @@ public final class TransformController {
      *  snapshot, so the field pickers (tree / search / sort / group) show EVERY field of
      *  the type, not just those the first instance carries. All callers use it for field
      *  metadata, not to display data. */
-    public Quizable sampleOf(String type) {
-        Quizable union = domain.representativeSample(type);
+    public Viewable sampleOf(String type) {
+        Viewable union = domain.representativeSample(type);
         if (union != null) {
             return union;
         }
-        for (Quizable q : domain.instances()) {
+        for (Viewable q : domain.instances()) {
             if (q != null && type.equals(q.typeName())) {
                 return q;
             }
@@ -139,7 +139,7 @@ public final class TransformController {
         }
         final int cap = 25;
         java.util.TreeSet<String> distinct = new java.util.TreeSet<>();
-        for (Quizable q : domain.instances()) {
+        for (Viewable q : domain.instances()) {
             if (q == null || !type.equals(q.typeName())) {
                 continue;
             }
@@ -171,7 +171,7 @@ public final class TransformController {
             }
             Map<String, Object> values = new HashMap<>();
             int scanned = 0;
-            for (Quizable q : domain.instances()) {
+            for (Viewable q : domain.instances()) {
                 if (q == null || !t.equals(q.typeName())) {
                     continue;
                 }
@@ -315,7 +315,7 @@ public final class TransformController {
                     memberType, checked.get(0).field(), rightType, rightKey);
             domain.add(derived);
             long matched = derived.instances().stream()
-                    .filter(o -> o instanceof quiz.transform.DynamicQuizable d
+                    .filter(o -> o instanceof quiz.transform.DynamicViewable d
                             && d.get(rightType.toLowerCase()) != null).count();
             return OpOutcome.created(newType, "Joined \"" + newType + "\"  ("
                     + derived.instances().size() + " rows, " + matched + " matched) — "
@@ -374,7 +374,7 @@ public final class TransformController {
      *  returns the grouped result the view turns into cards. The caller passes the
      *  snapshot (captured on the EDT) so a background render reads immutable inputs
      *  and its result matches the state at launch. */
-    public QuizableGroup compileResult(String type, List<OperationSpec> ops) {
+    public ViewableGroup compileResult(String type, List<OperationSpec> ops) {
         View view = ViewCompiler.compile(
                 viewName(type, ops), type, new ArrayList<>(ops), domain.universe());
         return view.render(domain.instances());
@@ -383,25 +383,25 @@ public final class TransformController {
     /** The instances currently SHOWN — the compiled view (filters + grouping) for the
      *  selected type, flattened to distinct leaf members. What Validate should check,
      *  rather than the whole pool. */
-    public List<Quizable> viewMembers() {
+    public List<Viewable> viewMembers() {
         if (selectedType == null) {
             return List.of();
         }
-        java.util.LinkedHashSet<Quizable> out = new java.util.LinkedHashSet<>();
+        java.util.LinkedHashSet<Viewable> out = new java.util.LinkedHashSet<>();
         collectMembers(compileResult(selectedType, List.copyOf(pipeline)), out);
         return new ArrayList<>(out);
     }
 
-    private static void collectMembers(QuizableGroup group, java.util.Set<Quizable> out) {
+    private static void collectMembers(ViewableGroup group, java.util.Set<Viewable> out) {
         if (group == null) {
             return;
         }
-        for (Quizable m : group.getMembers()) {
-            if (m != null) {
+        for (objectview.Viewable member : group.getMembers()) {
+            if (member instanceof Viewable m) {
                 out.add(m);
             }
         }
-        for (QuizableGroup child : group.getChildren()) {
+        for (ViewableGroup child : group.getChildren()) {
             collectMembers(child, out);
         }
     }

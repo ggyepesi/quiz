@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Assembles the {@link DomainEntry} catalog for the navigator — the wikidata bridge
  * that knows both sources: the generated Wikidata datasets ({@link DatasetRegistry})
- * and the built-in hand-written Quizable domains ({@link QuizFactory#builtInDomains()}).
+ * and the built-in hand-written Viewable domains ({@link QuizFactory#builtInDomains()}).
  * The UI stays independent of these; this class wires them together.
  */
 public final class DomainCatalog {

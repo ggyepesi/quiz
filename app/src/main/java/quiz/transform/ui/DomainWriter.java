@@ -1,6 +1,6 @@
 package quiz.transform.ui;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.Collection;
 
@@ -8,5 +8,5 @@ import java.util.Collection;
  *  domain, returning a human-readable confirmation. Implemented outside this
  *  package (e.g. to a Wikidata snapshot + dataset registry). */
 public interface DomainWriter {
-    String save(String name, Collection<? extends Quizable> members) throws Exception;
+    String save(String name, Collection<? extends Viewable> members) throws Exception;
 }

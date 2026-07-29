@@ -15,10 +15,10 @@ import java.util.TreeSet;
 
 import aux.ResourceFinder;
 import objectview.viewconfig.DomainViews;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 import objectview.render.GroupView;
 import objectview.media.ImagePane;
-import quiz.Quizable;
+import objectview.Viewable;
 
 public class NobelPrizes implements DomainViews {
     public final static Map<String, NobelPrize.Domain> domainAndYearStarts = Map.of(
@@ -30,7 +30,7 @@ public class NobelPrizes implements DomainViews {
             "The Sveriges Riksbank Prize in Economic Sciences in Memory of Alfred Nobel", NobelPrize.Domain.ECONOMICS,
             "“No Nobel Prize was awarded this year.", NobelPrize.Domain.NONE);
     
-    private final QuizableGroup rootGroup = new QuizableGroup("All");
+    private final ViewableGroup rootGroup = new ViewableGroup("All");
     private GroupView groupView;
     private final Map<String, NobelPrize> nobelPrizes = new TreeMap<>();
     private final Map<String, Laureate> laureatesByName = new TreeMap<>();
@@ -206,7 +206,7 @@ public class NobelPrizes implements DomainViews {
     private void store(NobelPrize prize) {
         if (prize == null) return;
         nobelPrizes.put(prize.getName(), prize);
-        QuizableGroup domainGroup = rootGroup.getOrCreateChild(prize.getDomain().name());
+        ViewableGroup domainGroup = rootGroup.getOrCreateChild(prize.getDomain().name());
         domainGroup.addMember(prize);
     }
 
@@ -216,7 +216,7 @@ public class NobelPrizes implements DomainViews {
     }
 
     @Override
-    public Map<String, ? extends Quizable> getViewables() {
+    public Map<String, ? extends Viewable> getViewables() {
         return nobelPrizes;
     }
 }

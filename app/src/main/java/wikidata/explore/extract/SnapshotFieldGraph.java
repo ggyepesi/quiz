@@ -2,7 +2,7 @@ package wikidata.explore.extract;
 
 import objectview.field.FieldKind;
 import objectview.viewconfig.FieldTypeSource;
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.transform.ui.DomainField;
 
 import java.util.ArrayList;
@@ -256,9 +256,9 @@ public final class SnapshotFieldGraph {
                 observeAtom(dynamic.getDisplayName());
                 return;
             }
-            if (value instanceof Quizable quizable) {
+            if (value instanceof Viewable viewable) {
                 reference = true;
-                String target = quizable.typeName();
+                String target = viewable.typeName();
                 if (target != null && !target.isBlank()
                         && !"WikidataDynamicObject".equals(target)
                         && !targetTypes.contains(target)) {

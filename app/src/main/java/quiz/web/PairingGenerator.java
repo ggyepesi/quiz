@@ -1,6 +1,6 @@
 package quiz.web;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,7 +22,7 @@ public final class PairingGenerator {
     private PairingGenerator() {}
 
     public static Pairing generate(
-            QuizableStore store,
+            ViewableStore store,
             String type,
             String group,
             List<String> promptFields,
@@ -34,16 +34,16 @@ public final class PairingGenerator {
         promptFields = QuizGenerator.withoutCoveredParents(promptFields);
         answerFields = QuizGenerator.withoutCoveredParents(answerFields);
 
-        Collection<Quizable> all = store.members(type, group);
+        Collection<Viewable> all = store.members(type, group);
         if (all == null || promptFields.isEmpty() || answerFields.isEmpty()) {
             return new Pairing(type, join(promptFields), join(answerFields), List.of());
         }
 
         List<Pairing.Pair> pairs = new ArrayList<>();
-        for (Quizable q : all) {
-            List<QuizableView.Field> prompts = new ArrayList<>();
+        for (Viewable q : all) {
+            List<ViewableView.Field> prompts = new ArrayList<>();
             for (String pf : promptFields) {
-                QuizableView.Field fv = QuizableJson.fieldOf(q, pf);
+                ViewableView.Field fv = ViewableJson.fieldOf(q, pf);
                 if (fv != null) {
                     prompts.add(QuizGenerator.blurredIfNeeded(type, q, pf, fv));
                 }
@@ -54,7 +54,7 @@ public final class PairingGenerator {
 
             List<String> answerParts = new ArrayList<>();
             for (String af : answerFields) {
-                String s = QuizableJson.stringValue(q, af);
+                String s = ViewableJson.stringValue(q, af);
                 if (s != null) {
                     answerParts.add(s);
                 }

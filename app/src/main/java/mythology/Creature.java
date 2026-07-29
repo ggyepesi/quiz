@@ -3,7 +3,7 @@ package mythology;
 import java.util.ArrayList;
 import java.util.List;
 
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 // Creature is living
 public class Creature extends NamedEntity {
@@ -62,8 +62,4 @@ public class Creature extends NamedEntity {
         this.mother = mother;
     }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new Creature();
-    }
 }

@@ -13,7 +13,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** Model-derived structural fields + nested vocab dimensions the web serve declares. */
+/** Model-derived structural fields + nested vocabulary paths used by validation. */
 class GeneratedSourceModelTest {
 
     private static GeneratedProjectModel oscarsLikeModel() {
@@ -46,20 +46,21 @@ class GeneratedSourceModelTest {
         return m;
     }
 
-    @Test void structuralSourceOnlyForReifyClasses() {
+    @Test void manualGroupsAreStructuralAndSourceOnlyJoinsReifyClasses() {
         GeneratedProjectModel m = oscarsLikeModel();
-        assertEquals(Set.of("source"), GeneratedSource.structuralFor("Nomination", m));
-        assertEquals(Set.of(), GeneratedSource.structuralFor("Nominee", m));
-        assertEquals(Set.of(), GeneratedSource.structuralFor("ForWork", m));
+        assertEquals(Set.of("groups", "source"),
+                GeneratedSource.structuralFor("Nomination", m));
+        assertEquals(Set.of("groups"), GeneratedSource.structuralFor("Nominee", m));
+        assertEquals(Set.of("groups"), GeneratedSource.structuralFor("ForWork", m));
     }
 
-    @Test void nestedVocabDimensionsFromReferencedClassFields() {
+    @Test void nestedVocabularyCoveragePathsFromReferencedClassFields() {
         GeneratedProjectModel m = oscarsLikeModel();
-        List<String[]> paths = GeneratedSource.vocabFacetPaths("Nomination", m);
+        List<String[]> paths = GeneratedSource.nestedVocabularyPaths("Nomination", m);
         List<List<String>> asList = paths.stream()
                 .map(p -> List.of(p[0], p[1])).toList();
         // nominee.type and forWork.genre (in Nomination's field order); category is a
-        // DIRECT vocab field, so it is not a nested dimension here.
+        // direct field, so normal top-level coverage already includes it.
         assertEquals(List.of(
                 List.of("nominee.type", "type"),
                 List.of("forWork.genre", "genre")), asList);

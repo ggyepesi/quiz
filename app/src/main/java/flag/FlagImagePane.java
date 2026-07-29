@@ -1,7 +1,7 @@
 package flag;
 
 import objectview.utils.swing.CachedImage;
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.media.ImagePane;
 
 /**
@@ -11,22 +11,22 @@ import objectview.media.ImagePane;
  */
 public class FlagImagePane extends ImagePane {
 
-    public FlagImagePane(String title, String url, Quizable quizable, boolean addTitle) throws Exception {
-        super(title, url, quizable, addTitle);
+    public FlagImagePane(String title, String url, Viewable viewable, boolean addTitle) throws Exception {
+        super(title, url, viewable, addTitle);
     }
 
-    public FlagImagePane(String title, String url, Quizable quizable, boolean addTitle, boolean isSvg) throws Exception {
-        super(title, url, quizable, addTitle, isSvg);
+    public FlagImagePane(String title, String url, Viewable viewable, boolean addTitle, boolean isSvg) throws Exception {
+        super(title, url, viewable, addTitle, isSvg);
     }
 
-    public FlagImagePane(String title, Quizable quizable, CachedImage cachedImage,
+    public FlagImagePane(String title, Viewable viewable, CachedImage cachedImage,
                          boolean addListeners, boolean addTitle) throws Exception {
-        super(title, quizable, cachedImage, addListeners, addTitle);
+        super(title, viewable, cachedImage, addListeners, addTitle);
     }
 
-    public FlagImagePane(String title, Quizable quizable, CachedImage cachedImage,
+    public FlagImagePane(String title, Viewable viewable, CachedImage cachedImage,
                          boolean addListeners) throws Exception {
-        super(title, quizable, cachedImage, addListeners);
+        super(title, viewable, cachedImage, addListeners);
     }
 
     @Override

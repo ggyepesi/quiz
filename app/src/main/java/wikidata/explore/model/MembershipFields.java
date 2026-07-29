@@ -20,7 +20,7 @@ import java.util.Set;
  *       unambiguous per entity → the clean subclass key.</li>
  * </ul>
  *
- * Group by target → per-target QuizableGroups; group by type → subclasses, with
+ * Group by target → per-target ViewableGroups; group by type → subclasses, with
  * no extra discovery. Only the relational (non-P31) multi-target case earns these
  * — a plain {@code P31 = Qx} membership has one type and no target set.
  */

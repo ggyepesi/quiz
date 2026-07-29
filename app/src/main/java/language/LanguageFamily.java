@@ -1,12 +1,12 @@
 package language;
 
 import objectview.annotations.Reference;
-import quiz.QuizableAdapter;
+import objectview.ViewableAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class LanguageFamily extends QuizableAdapter {
+public class LanguageFamily extends ViewableAdapter {
     private final String name;
     @Reference
     private LanguageFamily parent;
@@ -53,8 +53,4 @@ public class LanguageFamily extends QuizableAdapter {
     @Override
     public String getDisplayName() { return name; }
 
-    @Override
-    public QuizableAdapter createNew() {
-        return new LanguageFamily("");
-    }
 }

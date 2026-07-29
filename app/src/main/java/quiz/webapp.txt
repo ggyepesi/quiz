@@ -6,14 +6,14 @@ Current state
 Quiz extends Thread and builds Swing panels directly in run(), so the quiz game
 logic, state machine (indexing, exhaustion tracking, next-round), and rendering
 are all tangled together. The domain layer beneath is clean: answersToQuery,
-queryQuizables, exhaustion counters, and field extraction via QuizablePanelConfig
+queryViewables, exhaustion counters, and field extraction via ViewablePanelConfig
 all operate on plain Java objects and can be extracted intact.
 
 
 Recommended approach: REST API + lightweight frontend
 -----------------------------------------------------
 Extract a QuizSession class (no Swing, no Thread) from the Quiz hierarchy,
-keeping the indexQuizables() logic, exhaustion tracking, and answer verification.
+keeping the indexViewables() logic, exhaustion tracking, and answer verification.
 Expose three endpoints:
 
   POST /api/quiz/start   { topic, answerType, queryFields, answerFields }
@@ -23,23 +23,23 @@ Expose three endpoints:
   GET  /api/quiz/next    { sessionId }
                          -> { question }
 
-"question" is a JSON tree mirroring what QuizablePanel renders from
-QuizablePanelConfig. The field-path extraction already produces List<Object>
+"question" is a JSON tree mirroring what ViewablePanel renders from
+ViewablePanelConfig. The field-path extraction already produces List<Object>
 keys, so serialization to JSON is a small step. The frontend (React or vanilla
 JS) renders question cards and answer choices from that JSON.
 
 
 Main tradeoff
 -------------
-The hardest part is replacing QuizablePanel's reflection-based field rendering.
-That panel walks field paths and renders text, images, and nested Quizable
+The hardest part is replacing ViewablePanel's reflection-based field rendering.
+That panel walks field paths and renders text, images, and nested Viewable
 references recursively. A server-side serializer must produce a typed tree:
 
   { type: "text",   value: "..." }
   { type: "image",  url:   "..." }
   { type: "nested", fields: [...] }
 
-This essentially reimplements QuizablePanel's render logic as a JSON mapper.
+This essentially reimplements ViewablePanel's render logic as a JSON mapper.
 Once it exists the frontend stays thin, but it is non-trivial work.
 
 An HTMX/Thymeleaf approach (server-rendered HTML fragments) avoids that problem
@@ -51,6 +51,6 @@ hit, so the JSON API route is the better long-term investment.
 Next steps
 ----------
 1. Extract QuizSession from the Quiz hierarchy (domain logic, no Swing)
-2. Build the Quizable field-tree JSON serializer
+2. Build the Viewable field-tree JSON serializer
 3. REST endpoints (Spring Boot / Javalin / Micronaut)
 4. Minimal frontend for question rendering and answer clicks

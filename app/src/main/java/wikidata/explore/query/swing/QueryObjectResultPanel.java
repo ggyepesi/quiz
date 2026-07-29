@@ -5,8 +5,8 @@ import objectview.field.DynamicFields;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
-import quiz.Quizable;
-import quiz.QuizableAdapter;
+import objectview.Viewable;
+import objectview.ViewableAdapter;
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -86,7 +86,7 @@ public class QueryObjectResultPanel
     }
 
     private JComponent buildView(ObjectQueryResult result) {
-        Map<String, List<Quizable>> byType =
+        Map<String, List<Viewable>> byType =
                 groupByType(result.objects());
 
         if (byType.size() <= 1) {
@@ -96,8 +96,8 @@ public class QueryObjectResultPanel
         MultiView multi =
                 new MultiView();
 
-        for (Map.Entry<String, List<Quizable>> e : byType.entrySet()) {
-            List<Quizable> full = e.getValue();
+        for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
+            List<Viewable> full = e.getValue();
 
             if (full.isEmpty()) {
                 continue;
@@ -115,18 +115,18 @@ public class QueryObjectResultPanel
         return multi;
     }
 
-    private Map<String, List<Quizable>> groupByType(List<Quizable> roots) {
-        Map<String, List<Quizable>> byType =
+    private Map<String, List<Viewable>> groupByType(List<Viewable> roots) {
+        Map<String, List<Viewable>> byType =
                 new LinkedHashMap<>();
 
-        Set<Quizable> seen =
+        Set<Viewable> seen =
                 Collections.newSetFromMap(new IdentityHashMap<>());
 
-        Deque<Quizable> queue =
+        Deque<Viewable> queue =
                 new ArrayDeque<>(roots == null ? List.of() : roots);
 
         while (!queue.isEmpty()) {
-            Quizable q = queue.poll();
+            Viewable q = queue.poll();
 
             if (q == null || !seen.add(q)) {
                 continue;
@@ -151,8 +151,8 @@ public class QueryObjectResultPanel
     }
 
     private void collectReferences(
-            Quizable q,
-            Deque<Quizable> queue) {
+            Viewable q,
+            Deque<Viewable> queue) {
 
         if (q instanceof DynamicFields dyn) {
             for (Object v : dyn.dynamicFieldValues().values()) {
@@ -160,8 +160,8 @@ public class QueryObjectResultPanel
             }
         }
 
-        for (Field f : QuizableAdapter.getAllFields(q.getClass())) {
-            if (QuizableAdapter.isProvenanceField(f)) {
+        for (Field f : ViewableAdapter.getAllFields(q.getClass())) {
+            if (ViewableAdapter.isProvenanceField(f)) {
                 continue;
             }
 
@@ -175,9 +175,9 @@ public class QueryObjectResultPanel
 
     private void addReferences(
             Object v,
-            Deque<Quizable> queue) {
+            Deque<Viewable> queue) {
 
-        if (v instanceof Quizable q) {
+        if (v instanceof Viewable q) {
             queue.add(q);
         } else if (v instanceof Collection<?> c) {
             for (Object o : c) {
@@ -194,19 +194,19 @@ public class QueryObjectResultPanel
         CardListView view =
                 new CardListView();
 
-        List<Quizable> typed =
+        List<Viewable> typed =
                 new ArrayList<>();
 
-        for (Quizable q : result.objects()) {
+        for (Viewable q : result.objects()) {
             if (!(q instanceof wikidata.explore.extract.WikidataDynamicObject)) {
                 typed.add(q);
             }
         }
 
-        List<Quizable> full =
+        List<Viewable> full =
                 typed.isEmpty() ? result.objects() : typed;
 
-        List<Quizable> shown =
+        List<Viewable> shown =
                 capped(full);
 
         if (shown.isEmpty()) {
@@ -214,7 +214,7 @@ public class QueryObjectResultPanel
             return new JLabel("No typed objects.");
         }
 
-        for (Quizable q : shown) {
+        for (Viewable q : shown) {
             view.addViewable(q);
         }
 
@@ -223,7 +223,7 @@ public class QueryObjectResultPanel
         JPanel wrapped =
                 new JPanel(new BorderLayout());
 
-        Quizable first =
+        Viewable first =
                 shown.getFirst();
 
         SearchPanel searchPanel =
@@ -265,7 +265,7 @@ public class QueryObjectResultPanel
         return wrapped;
     }
 
-    private static List<Quizable> capped(List<Quizable> objects) {
+    private static List<Viewable> capped(List<Viewable> objects) {
         return objects.size() <= MAX_CARDS
                 ? objects
                 : new ArrayList<>(objects.subList(0, MAX_CARDS));

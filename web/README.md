@@ -1,16 +1,16 @@
 # quiz web
 
-SvelteKit frontend for the Quizable JSON API. It renders any `Quizable` as a
-card from `/api/quizable/...`, with references shown as chips that expand in
+SvelteKit frontend for the Viewable JSON API. It renders any `Viewable` as a
+card from `/api/viewable/...`, with references shown as chips that expand in
 place (fetching the child on demand) — the web counterpart of the desktop
-`QuizablePanel`.
+`ViewablePanel`.
 
 ## Run
 
 1. Start the Java API (from the repo root):
 
    ```
-   mvn -o exec:java -Dexec.mainClass=quiz.web.QuizableServerMain
+   mvn -o exec:java -Dexec.mainClass=quiz.web.ViewableServerMain
    ```
 
    It serves on `http://localhost:7070` with CORS enabled. The first request
@@ -40,13 +40,13 @@ VITE_API=http://localhost:7070
 | `list`       | comma-joined scalars                          |
 | `link`       | anchor (`@Link`, opens in a new tab)          |
 | `ref`/`refs` | collapsible chip(s); expand fetches the child |
-| `inline`     | nested card(s) shown expanded (`@QuizableInline`) |
+| `inline`     | nested card(s) shown expanded (`@ViewableInline`) |
 
 ## Structure
 
 ```
 src/lib/api.js            fetch helpers
-src/lib/QuizableCard.svelte  renders a QuizableView (recursive for inline)
-src/lib/QuizableChip.svelte  a reference chip with lazy expand/collapse
+src/lib/ViewableCard.svelte  renders a ViewableView (recursive for inline)
+src/lib/ViewableChip.svelte  a reference chip with lazy expand/collapse
 src/routes/+page.svelte   type tabs + searchable list + selected card
 ```

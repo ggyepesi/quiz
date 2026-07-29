@@ -1,5 +1,6 @@
 package quiz;
 
+import objectview.Viewable;
 import objectview.utils.swing.GridBagUtils;
 import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
@@ -16,7 +17,7 @@ public class QuizCategorize extends Quiz {
 
     private static final int ITEMS_PER_ROUND = 8;
 
-    private final QuizableGroup categoryRoot;
+    private final ViewableGroup categoryRoot;
 
     private final List<CategoryItem> remainingItems = new ArrayList<>();
     private final Map<Card, CategoryItem> itemByPanel =
@@ -28,9 +29,9 @@ public class QuizCategorize extends Quiz {
     private int roundSize = 0;
 
     public QuizCategorize(ViewConfig queryConfig,
-                          QuizableGroup categoryRoot,
-                          Map<String, ? extends Quizable> quizables) {
-        super(queryConfig, new ViewConfig(), categoryRoot, quizables);
+                          ViewableGroup categoryRoot,
+                          Map<String, ? extends Viewable> viewables) {
+        super(queryConfig, new ViewConfig(), categoryRoot, viewables);
         this.categoryRoot = categoryRoot;
     }
 
@@ -48,12 +49,12 @@ public class QuizCategorize extends Quiz {
     @Override
     public String prepareQuiz() {
         remainingItems.clear();
-        System.out.println("QUIZABLES " + quizables.size() + ", " + categoryRoot.getName());
-        for (QuizableGroup category : categoryRoot.getChildren()) {
+        System.out.println("VIEWABLES " + viewables.size() + ", " + categoryRoot.getName());
+        for (ViewableGroup category : categoryRoot.getChildren()) {
             System.out.println("  " + category.getName() + ", " + category.getMembers().size());
-            if (category.getMembers().size() == quizables.size()) continue;
-            for (Quizable q  : category.getMembers()) {
-                if (q != null) {
+            if (category.getMembers().size() == viewables.size()) continue;
+            for (objectview.Viewable member : category.getMembers()) {
+                if (member instanceof Viewable q) {
                     remainingItems.add(new CategoryItem(q.getName(), q, category));
                 }
             }
@@ -62,10 +63,10 @@ public class QuizCategorize extends Quiz {
         if (remainingItems.isEmpty()) {
             return "Quiz needs a group more than one subgroup not " +
                     "containing " +
-                    "all the quizable items.";
+                    "all the viewable items.";
         }
         if (remainingItems.size() < 2) {
-            return "Quiz needs at least Quizable items";
+            return "Quiz needs at least Viewable items";
         }
         Collections.shuffle(remainingItems, random);
         return null;
@@ -146,7 +147,7 @@ public class QuizCategorize extends Quiz {
         int col = 0;
 
         for (CategoryItem item : round) {
-            Card card = createQueryPanel(item.quizable);
+            Card card = createQueryPanel(item.viewable);
 
             itemByPanel.put(card, item);
 
@@ -187,8 +188,8 @@ public class QuizCategorize extends Quiz {
 
     private JPanel buildCategoriesPanel(List<CategoryItem> round) {
         JPanel panel = new JPanel(new GridBagLayout());
-        Set<QuizableGroup> categories = new TreeSet<>(
-                Comparator.comparing(QuizableGroup::getName));
+        Set<ViewableGroup> categories = new TreeSet<>(
+                Comparator.comparing(ViewableGroup::getName));
 
         for (CategoryItem item : round) {
             categories.add(item.category);
@@ -206,7 +207,7 @@ public class QuizCategorize extends Quiz {
                         GridBagConstraints.HORIZONTAL,
                         new Insets(8, 8, 16, 8)));
 
-        for (QuizableGroup category : categories) {
+        for (ViewableGroup category : categories) {
             JButton button = new JButton(category.getName());
             button.setFont(button.getFont().deriveFont(Font.BOLD, 18f));
             button.setHorizontalAlignment(SwingConstants.LEFT);
@@ -246,7 +247,7 @@ public class QuizCategorize extends Quiz {
         card.repaint();
     }
 
-    private void chooseCategory(QuizableGroup chosen) {
+    private void chooseCategory(ViewableGroup chosen) {
         if (selectedPanel == null) {
             return;
         }
@@ -272,7 +273,7 @@ public class QuizCategorize extends Quiz {
         }
     }
 
-    private void markCorrect(Card panel, QuizableGroup category) {
+    private void markCorrect(Card panel, ViewableGroup category) {
         markCorrectTrial();
         panel.setOpaque(true);
         panel.setBackground(new Color(170, 255, 170));
@@ -348,6 +349,6 @@ public class QuizCategorize extends Quiz {
         frame.repaint();
     }
 
-    private record CategoryItem(String key, Quizable quizable, QuizableGroup category) {
+    private record CategoryItem(String key, Viewable viewable, ViewableGroup category) {
     }
 }

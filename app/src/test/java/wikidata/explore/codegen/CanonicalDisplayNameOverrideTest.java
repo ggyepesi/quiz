@@ -1,14 +1,13 @@
 package wikidata.explore.codegen;
 
 import org.junit.jupiter.api.Test;
-import quiz.Quizable;
+import objectview.Viewable;
+import objectview.field.FieldSet;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.Canonicalizer;
 import wikidata.explore.model.GeneratedClassModel;
 
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,16 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  */
 class CanonicalDisplayNameOverrideTest {
 
-    private record Ref(String id, String label) implements Quizable {
+    private record Ref(String id, String label) implements Viewable {
         @Override public String getIdentifier() { return id; }
         @Override public String getDisplayName() { return label; }
-        @Override public boolean hasField(String f) { return false; }
-        @Override public boolean hasAnyField() { return false; }
-        @Override public boolean hasFields(Collection<String> f) { return false; }
-        @Override public HashMap<List<Object>, Quizable> generateUniqueCombinations(List<String> f) {
-            return new HashMap<>();
-        }
-        @Override public Quizable project(List<String> f, List<Object> v) { return this; }
+        @Override public FieldSet fields() { return FieldSet.of(this); }
     }
 
     private static Canonicalizer.FieldReader reader(Map<String, Object> values) {
@@ -48,7 +41,7 @@ class CanonicalDisplayNameOverrideTest {
 
         Map<String, Object> fields = Map.of("nominee", new Ref("Q1", "Al Pacino"));
 
-        String dn = GeneratedQuizableMapper.canonicalDisplayNameOverride(
+        String dn = GeneratedViewableMapper.canonicalDisplayNameOverride(
                 model, reader(fields), "Q123-GUID");
 
         assertEquals("Al Pacino", dn);
@@ -61,7 +54,7 @@ class CanonicalDisplayNameOverrideTest {
         GeneratedClassModel model = new GeneratedClassModel("Nomination");
         model.statementSourceClass("OscarNominations");
 
-        assertNull(GeneratedQuizableMapper.canonicalDisplayNameOverride(
+        assertNull(GeneratedViewableMapper.canonicalDisplayNameOverride(
                 model, reader(Map.of("nominee", new Ref("Q1", "Al Pacino"))), "label"));
     }
 
@@ -72,7 +65,7 @@ class CanonicalDisplayNameOverrideTest {
                 .kind(CanonicalSpec.Kind.WIKIDATA_ENTITY)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.LABEL));
 
-        assertNull(GeneratedQuizableMapper.canonicalDisplayNameOverride(
+        assertNull(GeneratedViewableMapper.canonicalDisplayNameOverride(
                 model, reader(Map.of()), "Al Pacino"));
     }
 
@@ -87,7 +80,7 @@ class CanonicalDisplayNameOverrideTest {
         // Field absent -> Canonicalizer returns the fallback -> override equals the
         // fallback, which is a no-op signal (non-null but == default is fine); here
         // we assert it doesn't invent something and simply yields the fallback.
-        assertEquals("label", GeneratedQuizableMapper.canonicalDisplayNameOverride(
+        assertEquals("label", GeneratedViewableMapper.canonicalDisplayNameOverride(
                 model, reader(new HashMap<>()), "label"));
     }
 }

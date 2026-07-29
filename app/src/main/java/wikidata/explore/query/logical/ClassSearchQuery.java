@@ -93,10 +93,10 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
             throws Exception {
 
         return context.step(
-                "Search via API",
+                "Search: " + text,
                 "API",
                 null,
-                Map.of("limit", String.valueOf(limit)),
+                Map.of("text", text, "limit", String.valueOf(limit)),
                 step -> {
                     // Capture only the HTTP URL the API client requests;
                     // drop the "[API n] GET/OK timeMs=..." log decoration

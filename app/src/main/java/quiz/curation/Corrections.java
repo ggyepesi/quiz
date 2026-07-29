@@ -1,6 +1,6 @@
 package quiz.curation;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import objectview.field.FieldAccess;
 
 import java.util.ArrayList;
@@ -23,13 +23,13 @@ public final class Corrections {
     private Corrections() {}
 
     /** Overlay {@code sources} onto {@code pool}; returns how many values were set. */
-    public static int apply(Collection<? extends Quizable> pool, List<CorrectionSource> sources) {
+    public static int apply(Collection<? extends Viewable> pool, List<CorrectionSource> sources) {
         if (pool == null || sources == null) {
             return 0;
         }
-        Map<TargetKey, Quizable> byKey = new HashMap<>();
-        Map<String, Quizable> legacyByQid = new HashMap<>();
-        for (Quizable q : pool) {
+        Map<TargetKey, Viewable> byKey = new HashMap<>();
+        Map<String, Viewable> legacyByQid = new HashMap<>();
+        for (Viewable q : pool) {
             if (q != null && q.getIdentifier() != null) {
                 byKey.putIfAbsent(new TargetKey(q.typeName(), q.getIdentifier()), q);
                 legacyByQid.putIfAbsent(q.getIdentifier(), q);
@@ -52,7 +52,7 @@ public final class Corrections {
             if (!c.isManual()) {
                 continue;
             }
-            Quizable target = target(c, byKey, legacyByQid);
+            Viewable target = target(c, byKey, legacyByQid);
             if (target == null) {
                 continue;
             }
@@ -70,7 +70,7 @@ public final class Corrections {
             if (c.isManual() || manualKeys.contains(key(c))) {
                 continue;
             }
-            Quizable target = target(c, byKey, legacyByQid);
+            Viewable target = target(c, byKey, legacyByQid);
             if (target == null
                     || objectview.ViewableAdapter.isValidQuizValue(
                             FieldAccess.getPath(target, c.field()))) {
@@ -86,14 +86,14 @@ public final class Corrections {
 
     /** A representative existing value per corrected field, so {@link #coerce} can
      *  match its runtime type (the curation stores plain JSON/text values). */
-    private static Map<SampleKey, Object> sampleValues(Collection<? extends Quizable> pool,
+    private static Map<SampleKey, Object> sampleValues(Collection<? extends Viewable> pool,
                                                        List<Correction> corrections) {
         Set<SampleKey> fields = new HashSet<>();
         for (Correction c : corrections) {
             fields.add(sampleKey(c));
         }
         Map<SampleKey, Object> out = new HashMap<>();
-        for (Quizable q : pool) {
+        for (Viewable q : pool) {
             if (out.size() == fields.size()) {
                 break;
             }
@@ -159,7 +159,7 @@ public final class Corrections {
         }
     }
 
-    private static Object coerceCorrection(Correction correction, Quizable target, Object sample) {
+    private static Object coerceCorrection(Correction correction, Viewable target, Object sample) {
         if (sample == null && correction.value() instanceof String url
                 && (Correction.MEDIA.equals(correction.valueKind())
                     || Correction.MEDIA_COLLECTION.equals(correction.valueKind()))) {
@@ -233,7 +233,7 @@ public final class Corrections {
         return url.substring(0, end).toLowerCase(java.util.Locale.ROOT).endsWith(".svg");
     }
 
-    private static Object declaredMedia(Quizable target, String path, String url,
+    private static Object declaredMedia(Viewable target, String path, String url,
                                         boolean collection) {
         try {
             String[] parts = path.split("\\.");
@@ -259,7 +259,7 @@ public final class Corrections {
 
     /** Dynamic snapshot fields have no declared Java field to inspect. Use their
      *  backing media value when it is present, without coupling curation to that class. */
-    private static Object dynamicMedia(Quizable target, String url) {
+    private static Object dynamicMedia(Viewable target, String url) {
         if (!"wikidata.explore.extract.WikidataDynamicObject"
                 .equals(target.getClass().getName())) {
             return null;
@@ -273,9 +273,9 @@ public final class Corrections {
         }
     }
 
-    private static Quizable target(Correction correction,
-                                   Map<TargetKey, Quizable> byKey,
-                                   Map<String, Quizable> legacyByQid) {
+    private static Viewable target(Correction correction,
+                                   Map<TargetKey, Viewable> byKey,
+                                   Map<String, Viewable> legacyByQid) {
         return correction.type() == null
                 ? legacyByQid.get(correction.qid())
                 : byKey.get(new TargetKey(correction.type(), correction.qid()));

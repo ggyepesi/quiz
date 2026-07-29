@@ -72,18 +72,45 @@ public final class EnrichmentReviewPanel extends JPanel {
             String title,
             EnrichmentProposal proposal,
             Consumer<EnrichmentDecision> onApprove) {
+        createDialog(owner, title, proposal, onApprove,
+                Dialog.ModalityType.APPLICATION_MODAL).setVisible(true);
+    }
+
+    public static JDialog showModeless(
+            Component owner, String title, EnrichmentProposal proposal,
+            Consumer<EnrichmentDecision> onApprove) {
+        JDialog dialog = createDialog(owner, title, proposal, onApprove,
+                Dialog.ModalityType.MODELESS);
+        dialog.setVisible(true);
+        return dialog;
+    }
+
+    private static JDialog createDialog(
+            Component owner, String title, EnrichmentProposal proposal,
+            Consumer<EnrichmentDecision> onApprove, Dialog.ModalityType modality) {
         Window window = SwingUtilities.getWindowAncestor(owner);
-        JDialog dialog = new JDialog(window, title, Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog dialog = new JDialog(window, title, modality);
         Consumer<EnrichmentDecision> handler =
                 onApprove == null ? ignored -> { } : onApprove;
-        EnrichmentReviewPanel panel = new EnrichmentReviewPanel(proposal, decision -> {
-            handler.accept(decision);
-            dialog.dispose();
+        java.util.concurrent.atomic.AtomicBoolean completed =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        Consumer<EnrichmentDecision> finish = decision -> {
+            if (completed.compareAndSet(false, true)) {
+                handler.accept(decision);
+                dialog.dispose();
+            }
+        };
+        EnrichmentReviewPanel panel = new EnrichmentReviewPanel(proposal, finish);
+        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                finish.accept(null);
+            }
         });
         dialog.add(panel);
         dialog.setSize(960, 650);
         dialog.setLocationRelativeTo(owner);
-        dialog.setVisible(true);
+        return dialog;
     }
 
     private JComponent header() {

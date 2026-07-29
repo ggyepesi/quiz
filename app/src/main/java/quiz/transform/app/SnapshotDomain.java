@@ -1,6 +1,6 @@
 package quiz.transform.app;
 
-import quiz.Quizable;
+import objectview.Viewable;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import objectview.viewconfig.FieldTypeSource;
@@ -53,10 +53,15 @@ public final class SnapshotDomain implements DomainModel {
     @Override public List<String> types() { return fieldGraph.memberTypes(); }
 
     @Override public java.util.Set<String> structuralFields(String type) {
-        // The wikidata convention, translated to the generic seam: a statement
-        // class's "source" field is the reify back-reference (provenance).
-        return statementTypes.contains(type)
-                ? java.util.Set.of("source") : java.util.Set.of();
+        // Saved manual groups are ancestry-qualified view structure, not a data field
+        // to offer as a new GROUP_BY facet. The wikidata "source" field is likewise
+        // structural provenance for statement classes.
+        java.util.Set<String> structural = new java.util.LinkedHashSet<>();
+        structural.add("groups");
+        if (statementTypes.contains(type)) {
+            structural.add("source");
+        }
+        return java.util.Set.copyOf(structural);
     }
 
     @Override public List<DomainField> fields(String type) {
@@ -68,10 +73,10 @@ public final class SnapshotDomain implements DomainModel {
     }
 
     /** A small graph-derived shape sample; no instance-pool scan is required. */
-    @Override public Quizable representativeSample(String type) {
+    @Override public Viewable representativeSample(String type) {
         return fieldGraph.shapeSample(type);
     }
 
-    @Override public Collection<? extends Quizable> instances() { return pool; }
-    @Override public Class<? extends Quizable> universe() { return WikidataDynamicObject.class; }
+    @Override public Collection<? extends Viewable> instances() { return pool; }
+    @Override public Class<? extends Viewable> universe() { return WikidataDynamicObject.class; }
 }

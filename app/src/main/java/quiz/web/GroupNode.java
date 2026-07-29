@@ -3,8 +3,7 @@ package quiz.web;
 import objectview.Viewable;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import quiz.Quizable;
-import quiz.QuizableGroup;
+import quiz.ViewableGroup;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,11 +18,11 @@ import java.util.Set;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GroupNode(
         String name, String fullName, String role, int count,
-        QuizableView.Ref ref, List<GroupNode> children) {
+        ViewableView.Ref ref, List<GroupNode> children) {
 
-    public static GroupNode of(QuizableGroup g) {
+    public static GroupNode of(ViewableGroup g) {
         List<GroupNode> kids = new ArrayList<>();
-        for (QuizableGroup c : g.getChildren()) {
+        for (ViewableGroup c : g.getChildren()) {
             kids.add(of(c));
         }
 
@@ -31,9 +30,9 @@ public record GroupNode(
         collectIds(g, ids);
 
         Viewable k = g.getKeyRef();
-        QuizableView.Ref ref = k == null
+        ViewableView.Ref ref = k == null
                 ? null
-                : new QuizableView.Ref(
+                : new ViewableView.Ref(
                         k.getIdentifier(), k.getDisplayName(), k.typeName(), null, null);
 
         return new GroupNode(
@@ -41,13 +40,13 @@ public record GroupNode(
                 ids.size(), ref, kids.isEmpty() ? null : kids);
     }
 
-    private static void collectIds(QuizableGroup g, Set<String> ids) {
-        for (Quizable m : g.getMembers()) {
+    private static void collectIds(ViewableGroup g, Set<String> ids) {
+        for (Viewable m : g.getMembers()) {
             if (m != null) {
                 ids.add(m.getIdentifier());
             }
         }
-        for (QuizableGroup c : g.getChildren()) {
+        for (ViewableGroup c : g.getChildren()) {
             collectIds(c, ids);
         }
     }

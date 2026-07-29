@@ -1,5 +1,6 @@
 package quiz;
 
+import objectview.Viewable;
 import quiz.model.QuizState;
 import quiz.model.QuizMode;
 import java.util.*;
@@ -9,14 +10,14 @@ import java.util.function.Consumer;
 public class QuizController {
 
     private final QuizMode mode;
-    private final Map<String, ? extends Quizable> quizables;
+    private final Map<String, ? extends Viewable> viewables;
     private final Consumer<QuizState> onRoundReady;
 
     public QuizController(QuizMode mode,
-                          Map<String, ? extends Quizable> quizables,
+                          Map<String, ? extends Viewable> viewables,
                           Consumer<QuizState> onRoundReady) {
         this.mode = mode;
-        this.quizables = quizables;
+        this.viewables = viewables;
         this.onRoundReady = onRoundReady;
     }
 

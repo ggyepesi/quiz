@@ -1,7 +1,7 @@
 package objectview.field;
 
 import org.junit.jupiter.api.Test;
-import quiz.transform.DynamicQuizable;
+import quiz.transform.DynamicViewable;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,11 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ViewableFieldPathsSampleTest {
 
     @Test void enumeratesDynamicFieldsAndNestedReferencePaths() {
-        DynamicQuizable category = new DynamicQuizable("Q1", "Best Picture");
+        DynamicViewable category = new DynamicViewable("Q1", "Best Picture");
         category.type("Category");
         category.put("edition", "1st");
 
-        DynamicQuizable nomination = new DynamicQuizable("N1", "A Nomination");
+        DynamicViewable nomination = new DynamicViewable("N1", "A Nomination");
         nomination.type("Nomination");
         nomination.put("year", 2000);
         nomination.put("category", category);   // a reference held in the map

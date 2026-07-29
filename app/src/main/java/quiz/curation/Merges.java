@@ -4,7 +4,7 @@ import objectview.ViewableAdapter;
 import objectview.field.FieldAccess;
 import objectview.field.FieldRef;
 import objectview.field.FieldSet;
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -25,21 +25,21 @@ public final class Merges {
 
     private record Key(String type, String id) {}
     private record Resolved(Merge merge, Key primary, Key duplicate,
-                            Quizable primaryObject, Quizable duplicateObject, int depth) {}
+                            Viewable primaryObject, Viewable duplicateObject, int depth) {}
 
     /**
      * Applies all valid directives as one graph operation. Children in a merge chain are
      * folded first, all references are redirected to the final survivor, and only then
      * are duplicate roots removed. Cycles and ambiguous legacy identifiers are rejected.
      */
-    public static int apply(Collection<? extends Quizable> pool, List<Merge> merges) {
+    public static int apply(Collection<? extends Viewable> pool, List<Merge> merges) {
         if (pool == null || merges == null || merges.isEmpty()) {
             return 0;
         }
 
-        Map<Key, Quizable> typed = new LinkedHashMap<>();
-        Map<String, List<Quizable>> byId = new LinkedHashMap<>();
-        for (Quizable q : pool) {
+        Map<Key, Viewable> typed = new LinkedHashMap<>();
+        Map<String, List<Viewable>> byId = new LinkedHashMap<>();
+        for (Viewable q : pool) {
             if (q == null || blank(q.getIdentifier())) {
                 continue;
             }
@@ -79,8 +79,8 @@ public final class Merges {
         for (Map.Entry<Key, Key> edge : direct.entrySet()) {
             Key duplicate = edge.getKey();
             Key immediatePrimary = edge.getValue();
-            Quizable duplicateObject = typed.get(duplicate);
-            Quizable primaryObject = typed.get(immediatePrimary);
+            Viewable duplicateObject = typed.get(duplicate);
+            Viewable primaryObject = typed.get(immediatePrimary);
             if (duplicateObject != null && primaryObject != null) {
                 work.add(new Resolved(
                         mergeByDuplicate.get(duplicate),
@@ -95,11 +95,11 @@ public final class Merges {
         // C -> B must happen before B -> A.
         work.sort(Comparator.comparingInt(Resolved::depth).reversed());
 
-        Map<Quizable, Quizable> replacements = new IdentityHashMap<>();
+        Map<Viewable, Viewable> replacements = new IdentityHashMap<>();
         int applied = 0;
         for (Resolved resolved : work) {
-            Quizable primary = replacementOf(resolved.primaryObject(), replacements);
-            Quizable duplicate = replacementOf(resolved.duplicateObject(), replacements);
+            Viewable primary = replacementOf(resolved.primaryObject(), replacements);
+            Viewable duplicate = replacementOf(resolved.duplicateObject(), replacements);
             if (primary == duplicate) {
                 continue;
             }
@@ -113,7 +113,7 @@ public final class Merges {
         }
 
         Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (Quizable root : new ArrayList<>(pool)) {
+        for (Viewable root : new ArrayList<>(pool)) {
             rewriteFields(replacementOf(root, replacements), replacements, visited);
         }
         pool.removeIf(q -> q != null && replacements.containsKey(q));
@@ -121,19 +121,19 @@ public final class Merges {
     }
 
     private static Key resolveKey(
-            String type, String id, Map<Key, Quizable> typed,
-            Map<String, List<Quizable>> byId) {
+            String type, String id, Map<Key, Viewable> typed,
+            Map<String, List<Viewable>> byId) {
         if (!blank(type)) {
             Key key = new Key(type, id);
             return typed.containsKey(key) ? key : null;
         }
         // Backward compatibility for old sidecars: accept an untyped id only when it
         // resolves uniquely. Ambiguity is unsafe, so leave the directive unapplied.
-        List<Quizable> matches = byId.getOrDefault(id, List.of());
+        List<Viewable> matches = byId.getOrDefault(id, List.of());
         if (matches.size() != 1) {
             return null;
         }
-        Quizable q = matches.get(0);
+        Viewable q = matches.get(0);
         return new Key(q.typeName(), q.getIdentifier());
     }
 
@@ -166,17 +166,17 @@ public final class Merges {
         return depth;
     }
 
-    private static Quizable replacementOf(
-            Quizable value, Map<Quizable, Quizable> replacements) {
-        Quizable current = value;
-        Set<Quizable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+    private static Viewable replacementOf(
+            Viewable value, Map<Viewable, Viewable> replacements) {
+        Viewable current = value;
+        Set<Viewable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         while (current != null && replacements.containsKey(current) && seen.add(current)) {
             current = replacements.get(current);
         }
         return current;
     }
 
-    private static void union(Quizable primary, Quizable duplicate, Merge merge) {
+    private static void union(Viewable primary, Viewable duplicate, Merge merge) {
         for (FieldRef ref : FieldSet.of(duplicate).fields()) {
             String name = ref.name();
             Object duplicateValue = FieldAccess.getPath(duplicate, name);
@@ -242,7 +242,7 @@ public final class Merges {
     }
 
     private static void rewriteFields(
-            Quizable object, Map<Quizable, Quizable> replacements, Set<Object> visited) {
+            Viewable object, Map<Viewable, Viewable> replacements, Set<Object> visited) {
         if (object == null || !visited.add(object)) {
             return;
         }
@@ -257,9 +257,9 @@ public final class Merges {
     }
 
     private static Object rewriteValue(
-            Object value, Map<Quizable, Quizable> replacements, Set<Object> visited) {
-        if (value instanceof Quizable q) {
-            Quizable replacement = replacementOf(q, replacements);
+            Object value, Map<Viewable, Viewable> replacements, Set<Object> visited) {
+        if (value instanceof Viewable q) {
+            Viewable replacement = replacementOf(q, replacements);
             rewriteFields(replacement, replacements, visited);
             return replacement;
         }

@@ -3,7 +3,7 @@
 ================================================================================
 
 The Model Builder (ModelBuilderFrame) is a desktop workbench for turning a
-Wikidata domain into a quizable dataset WITHOUT writing code. You describe a
+Wikidata domain into a viewable dataset WITHOUT writing code. You describe a
 domain as a small "model" (classes + fields); the workbench compiles it to a
 SPARQL extraction plan, downloads instances, and saves a snapshot the web
 client serves.

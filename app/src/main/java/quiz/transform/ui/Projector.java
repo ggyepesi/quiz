@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
-import quiz.Quizable;
-import quiz.transform.DynamicQuizable;
+import objectview.Viewable;
+import quiz.transform.DynamicViewable;
 import objectview.field.FieldAccess;
 
 import java.util.ArrayList;
@@ -17,7 +17,7 @@ import java.util.Set;
  * nested/cross-class fields flatten in). The new instances are plain
  * {@link WikidataDynamicObject}s stamped with the new type — a first-class derived
  * class the {@link WorkingDomain} feeds back into the field pool. The new instances
- * are backing-agnostic {@link DynamicQuizable}s (no Wikidata dependency).
+ * are backing-agnostic {@link DynamicViewable}s (no Wikidata dependency).
  */
 public final class Projector {
 
@@ -37,13 +37,13 @@ public final class Projector {
             names.put(f, name);
         }
 
-        List<Quizable> instances = new ArrayList<>();
-        for (Quizable q : domain.instances()) {
+        List<Viewable> instances = new ArrayList<>();
+        for (Viewable q : domain.instances()) {
             if (q == null || !memberType.equals(q.typeName())) {
                 continue;
             }
-            DynamicQuizable o =
-                    new DynamicQuizable(q.getIdentifier(), q.getDisplayName());
+            DynamicViewable o =
+                    new DynamicViewable(q.getIdentifier(), q.getDisplayName());
             o.type(newType);
             for (Map.Entry<DomainField, String> e : names.entrySet()) {
                 Object v = FieldAccess.getPath(q, e.getKey().field());

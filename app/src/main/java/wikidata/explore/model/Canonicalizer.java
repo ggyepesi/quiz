@@ -1,6 +1,6 @@
 package wikidata.explore.model;
 
-import quiz.Quizable;
+import objectview.Viewable;
 
 import java.util.Collection;
 
@@ -95,7 +95,7 @@ public final class Canonicalizer {
         if (v == null) {
             return "";
         }
-        if (v instanceof Quizable q) {
+        if (v instanceof Viewable q) {
             return safe(q.getDisplayName());
         }
         if (v instanceof Collection<?> c) {
@@ -108,7 +108,7 @@ public final class Canonicalizer {
         if (v == null) {
             return "";
         }
-        if (v instanceof Quizable q) {
+        if (v instanceof Viewable q) {
             return safe(q.getIdentifier());
         }
         if (v instanceof Collection<?> c) {
