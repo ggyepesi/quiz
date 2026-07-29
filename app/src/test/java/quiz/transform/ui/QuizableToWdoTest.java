@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -54,5 +55,11 @@ class QuizableToWdoTest {
         WikidataDynamicObject friend = (WikidataDynamicObject) reloaded.get("friend");
         assertNotNull(friend);
         assertEquals("Bob", friend.get("personName"));
+    }
+
+    @Test void rejectsDistinctObjectsWithTheSameLogicalTypeAndId() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> QuizableToWdo.pool(List.of(new Person("Same"), new Person("Same"))));
+        assertTrue(error.getMessage().contains("ambiguous same-type identifiers"));
     }
 }

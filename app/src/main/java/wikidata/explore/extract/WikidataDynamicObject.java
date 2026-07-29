@@ -65,6 +65,14 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String type;
 
+    // The OBJECT-identity type key ⟨typeKey, qid⟩ — the stable logical class name. It
+    // distinguishes objects that merely share a name across types (a State "France" vs a
+    // QuizableGroup "France"); the QID stays an entity LINK, not the object identity.
+    // Falls back to typeName() when unset.
+    @Hidden
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String typeKey;
+
     // Runtime marker (not a persisted field — implied by the inline representation):
     // this object is a VALUE inlined in its parent, not a pooled, qid-keyed entity.
     @Hidden
@@ -206,6 +214,16 @@ public class WikidataDynamicObject extends QuizableAdapter implements DynamicFie
 
     public void type(String type) {
         this.type = type;
+    }
+
+    /** The object-identity type key: the explicit key if set, else the logical type name
+     *  (a generated class's name is already unique within its model). */
+    public String typeKey() {
+        return typeKey != null && !typeKey.isBlank() ? typeKey : typeName();
+    }
+
+    public void typeKey(String typeKey) {
+        this.typeKey = typeKey;
     }
 
     /** A VALUE object: inlined in its parent, not pooled/keyed by qid. */

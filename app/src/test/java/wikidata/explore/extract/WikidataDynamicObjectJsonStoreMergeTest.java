@@ -61,4 +61,48 @@ class WikidataDynamicObjectJsonStoreMergeTest {
         assertEquals("Q7366", typeQid);
         assertTrue(byQid.containsKey("Q7366"), "type value entity present");
     }
+
+    @Test
+    void sameIdDifferentTypesAndReferencesRemainDistinct(@TempDir Path dir) throws Exception {
+        WikidataDynamicObject state = new WikidataDynamicObject("France", "France");
+        state.type("State");
+        state.typeKey("State");
+        state.put("capital", "Paris");
+
+        WikidataDynamicObject group = new WikidataDynamicObject("France", "France");
+        group.type("QuizableGroup");
+        group.typeKey("QuizableGroup");
+        group.put("members", List.of("Metropolitan France"));
+
+        // Two copies of one carrier force unionValues to compare the referenced values.
+        WikidataDynamicObject first = new WikidataDynamicObject("root", "Root");
+        first.type("Container");
+        first.typeKey("Container");
+        first.put("items", List.of(state));
+        WikidataDynamicObject second = new WikidataDynamicObject("root", "Root");
+        second.type("Container");
+        second.typeKey("Container");
+        second.put("items", List.of(group));
+
+        File file = dir.resolve("typed.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(List.of(first, second), file);
+
+        List<WikidataDynamicObject> loaded = store.loadAll(file);
+        List<WikidataDynamicObject> france = loaded.stream()
+                .filter(o -> "France".equals(o.qid()))
+                .toList();
+        assertEquals(2, france.size());
+        assertTrue(france.stream().anyMatch(o -> "State".equals(o.typeKey())
+                && "Paris".equals(o.get("capital"))));
+        assertTrue(france.stream().anyMatch(o -> "QuizableGroup".equals(o.typeKey())
+                && o.get("members") != null));
+
+        WikidataDynamicObject root = loaded.stream()
+                .filter(o -> "root".equals(o.qid()))
+                .findFirst().orElseThrow();
+        assertTrue(root.get("items") instanceof java.util.Collection<?>);
+        assertEquals(2, ((java.util.Collection<?>) root.get("items")).size(),
+                "typed values sharing an id must not be deduplicated");
+    }
 }

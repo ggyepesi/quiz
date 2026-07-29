@@ -36,7 +36,65 @@ public final class QuizableToWdo {
             }
         }
         requireIdentities(seen.values());
+        reportIdentifierCollisions(seen.values());
         return roots;
+    }
+
+    /** Report explicitly when distinct instances share one identifier — the trap that
+     *  merged State fields with a same-named QuizableGroup. Cross-type shares are kept
+     *  apart by ⟨typeKey, id⟩ and only warned; a same-type share is genuinely ambiguous,
+     *  so fail before the snapshot store can merge distinct source objects. */
+    private static void reportIdentifierCollisions(
+            Collection<WikidataDynamicObject> entities) {
+        // Each entity here is a distinct SOURCE object (seen is an identity map), so two
+        // entries under one id are two different objects claiming the same identifier.
+        Map<String, List<WikidataDynamicObject>> byId = new LinkedHashMap<>();
+        for (WikidataDynamicObject w : entities) {
+            if (w.isValueObject() || w.qid() == null || w.qid().isBlank()) {
+                continue;
+            }
+            byId.computeIfAbsent(w.qid(), k -> new ArrayList<>()).add(w);
+        }
+
+        StringBuilder report = new StringBuilder();
+        StringBuilder ambiguous = new StringBuilder();
+        for (Map.Entry<String, List<WikidataDynamicObject>> e : byId.entrySet()) {
+            List<WikidataDynamicObject> instances = e.getValue();
+            if (instances.size() < 2) {
+                continue;
+            }
+            // A repeated typeKey means two objects of the SAME type claim one id — the
+            // store MERGES them (union), so confirm they are the same entity. Different
+            // types are kept apart by ⟨type, id⟩ (this is the State-vs-group fix).
+            boolean sameType = instances.stream().map(WikidataDynamicObject::typeKey)
+                    .distinct().count() < instances.size();
+            report.append("  \"").append(e.getKey()).append("\"  ")
+                    .append(sameType
+                            ? "— MERGED (same ⟨type, id⟩ — verify it is one entity)"
+                            : "— kept separate by ⟨type, id⟩")
+                    .append('\n');
+            for (WikidataDynamicObject w : instances) {
+                report.append("      · ⟨").append(w.typeKey()).append(", ")
+                        .append(w.qid()).append("⟩  name=\"").append(w.getDisplayName())
+                        .append("\"  fields=").append(w.dynamicFields().keySet()).append('\n');
+            }
+            if (sameType) {
+                ambiguous.append("  \"").append(e.getKey())
+                        .append("\" is claimed more than once by type(s) ")
+                        .append(instances.stream().map(WikidataDynamicObject::typeKey)
+                                .toList())
+                        .append('\n');
+            }
+        }
+        if (ambiguous.length() > 0) {
+            throw new IllegalArgumentException(
+                    "Snapshot has ambiguous same-type identifiers:\n" + ambiguous);
+        }
+        if (report.length() > 0) {
+            System.err.println("Snapshot: identifier(s) shared by distinct instances "
+                    + "(⟨type, id⟩ keeps different types apart; same type is merged):\n"
+                    + report);
+        }
     }
 
     /** Fail loud if any converted entity has a BLANK identity. The snapshot store keys
@@ -86,6 +144,10 @@ public final class QuizableToWdo {
             }
             WikidataDynamicObject o = new WikidataDynamicObject(id, q.getDisplayName());
             o.type(q.typeName());
+            // Use the stable LOGICAL class name, shared by the editable model, DomainModel,
+            // curation links and manual buildView classes. A Java package/class refactor
+            // must not change persisted object identity.
+            o.typeKey(q.typeName());
             o.valueObject(value);
             seen.put(q, o);
             // Copy every field, whichever representation — no instanceof branch.

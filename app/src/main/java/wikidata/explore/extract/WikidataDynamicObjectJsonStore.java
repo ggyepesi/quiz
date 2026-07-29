@@ -32,7 +32,42 @@ import java.util.Map;
  */
 public class WikidataDynamicObjectJsonStore {
 
-    private static final int FORMAT_VERSION = 3;
+    private static final int FORMAT_VERSION = 4;
+
+    // Object identity is ⟨typeKey, qid⟩, not the bare qid — so two entities that merely
+    // share a name across types (a State "France" vs a QuizableGroup "France") never
+    // merge. Pool key + Ref markers carry both parts. Keep the separator escaped: a raw
+    // NUL byte makes this Java source look binary to Git and invalid to javac.
+    private static final char SEP = '\0';
+
+    private static String compositeKey(String type, String qid) {
+        if (qid == null || qid.isBlank()) {
+            return null;
+        }
+        return (type == null ? "" : type) + SEP + qid;
+    }
+
+    /** The identity type part: the real type key for a stamped entity, else blank — an
+     *  untyped reference copy carries no type of its own and is absorbed into the single
+     *  stamped entity for its qid. */
+    private static String typePart(WikidataDynamicObject o) {
+        return o != null && o.hasTypeStamp() ? o.typeKey() : "";
+    }
+
+    /** Pool/ref key: ⟨typeKey, qid⟩. */
+    private static String poolKey(WikidataDynamicObject o) {
+        return o == null ? null : compositeKey(typePart(o), o.qid());
+    }
+
+    /** The qid part of a composite key — the whole string when it has no separator (e.g.
+     *  a pre-v4 root persisted as a bare qid). */
+    private static String qidPart(String key) {
+        if (key == null) {
+            return null;
+        }
+        int i = key.indexOf(SEP);
+        return i < 0 ? key : key.substring(i + 1);
+    }
 
     private final ObjectMapper mapper;
 
@@ -93,7 +128,7 @@ public class WikidataDynamicObjectJsonStore {
         snapshot.version = FORMAT_VERSION;
         snapshot.fieldGraph = fieldGraph.build();
         for (WikidataDynamicObject o : objects) {
-            String k = keyOf(o);
+            String k = poolKey(o);
             // Roots are MEMBERS — entities stamped with a modeled class. An unstamped
             // pool entity is a reference target only (e.g. an INLINE `type`/P31 field's
             // class values like "film"/"human", pulled into the shared registry): it
@@ -101,8 +136,11 @@ public class WikidataDynamicObjectJsonStore {
             // become a top-level member/root.
             if (k != null && o.hasTypeStamp()) snapshot.roots.add(k);
         }
+        // One qid can now yield SEVERAL entities — one per distinct real type — so a State
+        // "France" and a QuizableGroup "France" stay separate ⟨type, qid⟩ objects instead
+        // of merging. An untyped reference copy is absorbed into the single stamped entity.
         for (List<WikidataDynamicObject> instances : byQid.values()) {
-            snapshot.entities.add(toEntity(instances));
+            snapshot.entities.addAll(toEntities(instances));
         }
 
         mapper.writeValue(file, snapshot);
@@ -138,14 +176,44 @@ public class WikidataDynamicObjectJsonStore {
         }
     }
 
-    // One entity DTO per qid, MERGING all instances of that qid: a resolved label
+    /** Split one qid's instances by their real type key into one entity per type, so
+     *  different types sharing a name stay distinct. Instances with NO real type (bare
+     *  reference copies) are absorbed into the single stamped entity; only when there are
+     *  genuinely 2+ real types do they split, with any untyped remainder kept on its own. */
+    private List<Entity> toEntities(List<WikidataDynamicObject> instances) {
+        LinkedHashMap<String, List<WikidataDynamicObject>> byType = new LinkedHashMap<>();
+        List<WikidataDynamicObject> untyped = new ArrayList<>();
+        for (WikidataDynamicObject o : instances) {
+            if (o.hasTypeStamp()) {
+                byType.computeIfAbsent(o.typeKey(), k -> new ArrayList<>()).add(o);
+            } else {
+                untyped.add(o);
+            }
+        }
+        List<Entity> out = new ArrayList<>();
+        if (byType.size() <= 1) {
+            String type = byType.isEmpty() ? null : byType.keySet().iterator().next();
+            out.add(toEntity(instances, type));   // merge everything (untyped absorbed)
+        } else {
+            for (Map.Entry<String, List<WikidataDynamicObject>> t : byType.entrySet()) {
+                out.add(toEntity(t.getValue(), t.getKey()));
+            }
+            if (!untyped.isEmpty()) {
+                out.add(toEntity(untyped, null));
+            }
+        }
+        return out;
+    }
+
+    // One entity DTO per ⟨typeKey, qid⟩, MERGING its instances: a resolved label
     // over the bare qid, a real class stamp over the untyped sentinel, and the
     // UNION of every field's values (so a rich carrier's `type` isn't lost to a
-    // field-poor reference copy). Object-valued fields become qid refs.
-    private Entity toEntity(List<WikidataDynamicObject> instances) {
+    // field-poor reference copy). Object-valued fields become ⟨type, qid⟩ refs.
+    private Entity toEntity(List<WikidataDynamicObject> instances, String typeKey) {
         WikidataDynamicObject first = instances.get(0);
         Entity e = new Entity();
         e.qid = first.qid();
+        e.typeKey = typeKey;
 
         e.name = first.getDisplayName();
         for (WikidataDynamicObject o : instances) {
@@ -200,7 +268,9 @@ public class WikidataDynamicObjectJsonStore {
         if (a == b) return true;
         if (a instanceof WikidataDynamicObject wa
                 && b instanceof WikidataDynamicObject wb) {
-            return wa.qid() != null && wa.qid().equals(wb.qid());
+            return wa.qid() != null
+                    && wa.qid().equals(wb.qid())
+                    && java.util.Objects.equals(typePart(wa), typePart(wb));
         }
         return a != null && a.equals(b);
     }
@@ -209,7 +279,7 @@ public class WikidataDynamicObjectJsonStore {
         if (v instanceof WikidataDynamicObject w) {
             // A value object is serialized INLINE (a nested Entity) rather than a Ref to
             // a pooled entity — it has no identity and belongs to this parent.
-            return w.isValueObject() ? inlineEntity(w) : new Ref(keyOf(w));
+            return w.isValueObject() ? inlineEntity(w) : new Ref(typePart(w), w.qid());
         }
         if (v instanceof aux.FlexibleDate d) {
             // The compact form carries the precision ("1959" vs "1959-04-06"),
@@ -278,23 +348,48 @@ public class WikidataDynamicObjectJsonStore {
     }
 
     private Map<String, WikidataDynamicObject> buildEntities(FlatSnapshot snapshot) {
-        // Build shells first so refs (including cycles) resolve to one instance
-        // per qid; carry the persisted type so multi-class snapshots round-trip.
+        // Build shells first so refs (including cycles) resolve to one instance per
+        // ⟨type, qid⟩; carry the persisted type + typeKey so multi-class snapshots and the
+        // identity split round-trip.
         Map<String, WikidataDynamicObject> byKey = new LinkedHashMap<>();
         for (Entity e : snapshot.entities) {
             WikidataDynamicObject o = new WikidataDynamicObject(e.qid, e.name);
             if (e.type != null && !e.type.isBlank()) {
                 o.type(e.type);
             }
-            byKey.put(e.qid, o);
+            if (e.typeKey != null && !e.typeKey.isBlank()) {
+                o.typeKey(e.typeKey);
+            }
+            byKey.put(compositeKey(e.typeKey, e.qid), o);
         }
+        Map<String, WikidataDynamicObject> byQidSingle = uniqueByQid(byKey);
         for (Entity e : snapshot.entities) {
-            WikidataDynamicObject o = byKey.get(e.qid);
+            WikidataDynamicObject o = byKey.get(compositeKey(e.typeKey, e.qid));
             for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
-                o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey));
+                o.dynamicFields().put(entry.getKey(),
+                        decode(entry.getValue(), byKey, byQidSingle));
             }
         }
         return byKey;
+    }
+
+    /** Map each qid to its entity ONLY when that qid has a single entity — the safe
+     *  fallback for an untyped or pre-v4 ref/root whose ⟨type, qid⟩ doesn't match. */
+    private static Map<String, WikidataDynamicObject> uniqueByQid(
+            Map<String, WikidataDynamicObject> byKey) {
+        Map<String, WikidataDynamicObject> single = new java.util.HashMap<>();
+        java.util.Set<String> ambiguous = new java.util.HashSet<>();
+        for (Map.Entry<String, WikidataDynamicObject> e : byKey.entrySet()) {
+            String qid = qidPart(e.getKey());
+            if (qid == null) {
+                continue;
+            }
+            if (single.putIfAbsent(qid, e.getValue()) != null) {
+                ambiguous.add(qid);
+            }
+        }
+        ambiguous.forEach(single::remove);
+        return single;
     }
 
     private List<WikidataDynamicObject> loadFlat(FlatSnapshot snapshot) {
@@ -303,6 +398,7 @@ public class WikidataDynamicObjectJsonStore {
         }
 
         Map<String, WikidataDynamicObject> byKey = buildEntities(snapshot);
+        Map<String, WikidataDynamicObject> byQidSingle = uniqueByQid(byKey);
 
         List<WikidataDynamicObject> roots = new ArrayList<>();
         List<String> rootKeys = snapshot.roots == null || snapshot.roots.isEmpty()
@@ -310,24 +406,31 @@ public class WikidataDynamicObjectJsonStore {
                 : snapshot.roots;
         for (String k : rootKeys) {
             WikidataDynamicObject o = byKey.get(k);
+            if (o == null) {
+                o = byQidSingle.get(qidPart(k));   // pre-v4 bare-qid root, or fallback
+            }
             if (o != null) roots.add(o);
         }
         return roots;
     }
 
-    private Object decode(Object v, Map<String, WikidataDynamicObject> byKey) {
+    private Object decode(Object v, Map<String, WikidataDynamicObject> byKey,
+            Map<String, WikidataDynamicObject> byQidSingle) {
         if (v instanceof Ref ref) {
-            return byKey.get(ref.qid);
+            WikidataDynamicObject o = byKey.get(compositeKey(ref.type, ref.qid));
+            // An untyped ref (or a pre-v4 ref with no type) may not match a stamped
+            // entity's ⟨type, qid⟩ key — fall back to the unique entity for that qid.
+            return o != null ? o : byQidSingle.get(ref.qid);
         }
         if (v instanceof Entity e) {
-            return inlineWdo(e, byKey);   // an inlined value object (not a pool ref)
+            return inlineWdo(e, byKey, byQidSingle);   // an inlined value object, not a ref
         }
         if (v instanceof DateVal d) {
             return aux.FlexibleDate.parse(d.date);
         }
         if (v instanceof List<?> list) {
             List<Object> out = new ArrayList<>(list.size());
-            for (Object e : list) out.add(decode(e, byKey));
+            for (Object e : list) out.add(decode(e, byKey, byQidSingle));
             return out;
         }
         // Snapshots saved before typed dates hold the raw time literal as a
@@ -358,14 +461,15 @@ public class WikidataDynamicObjectJsonStore {
     /** Reconstruct an inlined value object (a field-value {@link Entity}, never a pool
      *  member) — a WDO with no qid, marked as a value, fields decoded recursively. */
     private WikidataDynamicObject inlineWdo(
-            Entity e, Map<String, WikidataDynamicObject> byKey) {
+            Entity e, Map<String, WikidataDynamicObject> byKey,
+            Map<String, WikidataDynamicObject> byQidSingle) {
         WikidataDynamicObject o = new WikidataDynamicObject(null, e.name);
         if (e.type != null && !e.type.isBlank()) {
             o.type(e.type);
         }
         o.valueObject(true);
         for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
-            o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey));
+            o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey, byQidSingle));
         }
         return o;
     }
@@ -384,13 +488,17 @@ public class WikidataDynamicObjectJsonStore {
     // On-disk shapes
     // ------------------------------------------------------------------
 
-    /** A reference to another entity in the same snapshot, by qid. */
+    /** A reference to another entity in the same snapshot, by ⟨type, qid⟩. {@code type}
+     *  is the target's typeKey; blank/absent for an untyped target or a pre-v4 snapshot,
+     *  in which case load falls back to the unique entity for the qid. */
     public static class Ref {
+        public String type;
         public String qid;
 
         public Ref() {}
 
-        public Ref(String qid) {
+        public Ref(String type, String qid) {
+            this.type = type;
             this.qid = qid;
         }
     }
@@ -413,6 +521,9 @@ public class WikidataDynamicObjectJsonStore {
         // The stamped domain class (e.g. "Constellation", "Star"); null for an
         // untyped leaf reference. Lets one snapshot carry several classes.
         public String type;
+        // The OBJECT-identity type key ⟨typeKey, qid⟩ (stable logical class name).
+        // Null for pre-v4 snapshots and untyped leaves.
+        public String typeKey;
         public Map<String, Object> fields = new LinkedHashMap<>();
     }
 
