@@ -1,7 +1,7 @@
 package quiz.web;
 
 import objectview.Viewable;
-import quiz.ViewableGroup;
+import objectview.group.ViewableGroup;
 
 import java.util.Collection;
 
@@ -23,7 +23,7 @@ public interface ViewableSource {
      * (e.g. NBA teams, European states). Null when the source has no groups.
      * Should reuse the same load as {@link #load()} (not reload).
      */
-    default ViewableGroup rootGroup() throws Exception {
+    default ViewableGroup<?> rootGroup() throws Exception {
         return null;
     }
 

@@ -1,6 +1,8 @@
 package quiz.web.sources;
 
 import flag.State;
+import objectview.ViewableAdapter;
+import objectview.annotations.Reference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.ViewableGroup;
@@ -23,6 +25,48 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedSourceGroupingTest {
+
+    private static final class GroupedThing extends ViewableAdapter {
+        private final String name;
+        @Reference
+        private final List<ViewableGroup> affiliations =
+                new java.util.ArrayList<>();
+
+        private GroupedThing(String name) {
+            this.name = name;
+        }
+
+        @Override public String getIdentifier() { return name; }
+        @Override public String getDisplayName() { return name; }
+    }
+
+    @Test
+    void discoversGroupsThroughAnyOrdinaryReferenceField(
+            @TempDir Path dir) throws Exception {
+        GroupedThing item = new GroupedThing("One");
+        ViewableGroup root = new ViewableGroup("Root");
+        ViewableGroup leaf = root.getOrCreateChild("Leaf");
+        leaf.addMember(item);
+        item.affiliations.add(leaf);
+
+        ReflectionDomain domain = new ReflectionDomain(List.of(item));
+        List<WikidataDynamicObject> converted =
+                ViewableToWdo.pool(List.of(item), domain);
+        File snapshot = dir.resolve("renamed-group-field.snapshot.json").toFile();
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                converted, snapshot, domain);
+
+        GeneratedSource source = new GeneratedSource("GroupedThing", snapshot);
+        objectview.group.ViewableGroup<?> loadedRoot = source.rootGroup();
+        assertNotNull(loadedRoot);
+        assertEquals("Root", loadedRoot.getDisplayName());
+        objectview.group.ViewableGroup<?> loadedLeaf =
+                loadedRoot.getChild("Leaf");
+        assertNotNull(loadedLeaf);
+        assertSame(source.load().iterator().next(),
+                loadedLeaf.getMembers().iterator().next(),
+                "the group adapter must expose the original loaded member object");
+    }
 
     @Test
     void registerAllDoesNotServeViewableGroupAsItsOwnDataset(
@@ -74,7 +118,7 @@ class GeneratedSourceGroupingTest {
                 converted, snapshot, domain);
 
         GeneratedSource source = new GeneratedSource("State", snapshot);
-        quiz.ViewableGroup loadedRoot = source.rootGroup();
+        objectview.group.ViewableGroup<?> loadedRoot = source.rootGroup();
         assertNotNull(loadedRoot);
         assertNotNull(loadedRoot.getChild("Capitals")
                 .getChild("VI").getChild("Vienna"));
@@ -171,15 +215,16 @@ class GeneratedSourceGroupingTest {
                 "a shared group must contain every owning State");
 
         GeneratedSource source = new GeneratedSource("State", snapshot);
-        quiz.ViewableGroup root = source.rootGroup();
+        objectview.group.ViewableGroup<?> root = source.rootGroup();
 
         assertNotNull(root);
         assertNull(root.getChild("United States"),
                 "a leaf label must not be promoted to the root");
-        quiz.ViewableGroup dollar = root.getChild("Currencies")
+        objectview.group.ViewableGroup<?> dollar = root.getChild("Currencies")
                 .getChild("DO")
                 .getChild("dollar");
-        quiz.ViewableGroup currencyLeaf = dollar.getChild("United States");
+        objectview.group.ViewableGroup<?> currencyLeaf =
+                dollar.getChild("United States");
         assertNotNull(currencyLeaf);
         assertEquals(
                 Set.of("United States", "Zimbabwe"),
@@ -187,7 +232,8 @@ class GeneratedSourceGroupingTest {
                         .map(objectview.Viewable::getIdentifier)
                         .collect(Collectors.toSet()));
 
-        quiz.ViewableGroup territoryLeaf = root.getChild("Territories")
+        objectview.group.ViewableGroup<?> territoryLeaf =
+                root.getChild("Territories")
                 .getChild("North America")
                 .getChild("United States");
         assertNotNull(territoryLeaf,

@@ -409,12 +409,20 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     List<Viewable> visible = renderedMembers(root);
                     renderedScope = new RenderedScope(generation, type, visible);
                     renderHolder.removeAll();
+                    List<? extends objectview.group.ViewableGroup<?>> declaredRoots =
+                            controller.groupRoots(type);
+                    objectview.group.ViewableGroup<?> existingGroups =
+                            GroupHierarchyPresentation.rootOf(
+                                    new ArrayList<>(declaredRoots), type);
                     // A grouped (facet) result keeps its group structure; a flat one
                     // shows its members as per-class instance sections, like the
-                    // modelbuilder — a section per type present in the result.
-                    renderHolder.add(root.getChildren().isEmpty()
-                            ? flatView(visible, type)
-                            : groupView(root, type), BorderLayout.CENTER);
+                    // modelbuilder — except when those members ARE an existing group
+                    // hierarchy, which uses the specialized group-tree renderer.
+                    renderHolder.add(existingGroups != null
+                            ? groupView(existingGroups, memberType(existingGroups, type))
+                            : root.getChildren().isEmpty()
+                                    ? flatView(visible, type)
+                                    : groupView(root, type), BorderLayout.CENTER);
                     updateScopeStatus();
                 } catch (Exception ex) {
                     renderedScope = null;
@@ -506,7 +514,18 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     /** A grouped (facet) result: a role-aware collapsible outline of the buckets —
      *  category ▸ year ▸ members — with a search / sort / fields bar above it (the
      *  data-centric counterpart to the flat view's SearchPanel). */
-    private JComponent groupView(ViewableGroup root, String type) {
+    private static String memberType(
+            objectview.group.ViewableGroup<?> root, String fallback) {
+        for (Viewable member : root.getMembers()) {
+            if (!(member instanceof objectview.group.ViewableGroup<?>)) {
+                return member.typeName();
+            }
+        }
+        return fallback;
+    }
+
+    private JComponent groupView(
+            objectview.group.ViewableGroup<?> root, String type) {
         Viewable sample = controller.sampleOf(type);
         Class<? extends Viewable> cls = sample != null ? sampleClass(sample) : Viewable.class;
         return new GroupTreeBrowser(root, cls, sample,

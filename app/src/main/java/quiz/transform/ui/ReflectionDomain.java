@@ -30,17 +30,26 @@ import java.util.Set;
 public final class ReflectionDomain implements DomainModel {
 
     private final List<Viewable> instances;
+    private final List<? extends objectview.group.ViewableGroup<?>> groupRoots;
     private final List<String> memberTypes = new ArrayList<>();
     private final Map<String, FieldSchema> schemasByType =
             new LinkedHashMap<>();
 
     public ReflectionDomain(Collection<? extends Viewable> roots) {
+        this(roots, List.of());
+    }
+
+    public ReflectionDomain(
+            Collection<? extends Viewable> roots,
+            Collection<? extends objectview.group.ViewableGroup<?>> groupRoots) {
+        this.groupRoots = groupRoots == null ? List.of() : List.copyOf(groupRoots);
         // Walk the whole reachable object graph so every Viewable class — the main
         // class AND referenced ones (Person, Terms, Language, ViewableGroup, …) —
         // uses the same discovery, schema and persistence rules.
         java.util.Set<Object> seen =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         java.util.Deque<Viewable> queue = new java.util.ArrayDeque<>(roots);
+        queue.addAll(this.groupRoots);
         List<Viewable> closure = new ArrayList<>();
         Set<Class<?>> classes = new LinkedHashSet<>();
         while (!queue.isEmpty()) {
@@ -92,7 +101,7 @@ public final class ReflectionDomain implements DomainModel {
         @SuppressWarnings("unchecked")
         Collection<? extends Viewable> roots =
                 (Collection<? extends Viewable>) (Collection<?>) views.getViewables().values();
-        return new ReflectionDomain(roots);
+        return new ReflectionDomain(roots, views.getRootGroups());
     }
 
     @SuppressWarnings("unchecked")
@@ -136,5 +145,8 @@ public final class ReflectionDomain implements DomainModel {
         return DomainSchemas.fieldTypes(this, type);
     }
     @Override public Collection<? extends Viewable> instances() { return instances; }
+    @Override public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
+        return groupRoots;
+    }
     @Override public Class<? extends Viewable> universe() { return Viewable.class; }
 }

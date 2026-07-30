@@ -69,6 +69,16 @@ public final class TransformController {
     public FieldTypeSource fieldTypes(String type) { return domain.fieldTypes(type); }
     public FieldSchema fieldSchema(String type) { return domain.fieldSchema(type); }
 
+    /** Explicit roots for a selected group type, as declared by the source domain. */
+    public List<? extends objectview.group.ViewableGroup<?>> groupRoots(String type) {
+        if (type == null) {
+            return List.of();
+        }
+        return domain.groupRoots().stream()
+                .filter(root -> type.equals(root.typeName()))
+                .toList();
+    }
+
     /** How many loaded instances are of {@code type} — shown next to the member-type
      *  selector so the domain's size is visible. */
     public int instanceCount(String type) {

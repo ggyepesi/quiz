@@ -3,7 +3,7 @@ package quiz.web;
 import objectview.Viewable;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import quiz.ViewableGroup;
+import objectview.group.ViewableGroup;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -20,9 +20,9 @@ public record GroupNode(
         String name, String fullName, String role, int count,
         ViewableView.Ref ref, List<GroupNode> children) {
 
-    public static GroupNode of(ViewableGroup g) {
+    public static GroupNode of(ViewableGroup<?> g) {
         List<GroupNode> kids = new ArrayList<>();
-        for (ViewableGroup c : g.getChildren()) {
+        for (ViewableGroup<?> c : g.getChildren()) {
             kids.add(of(c));
         }
 
@@ -40,13 +40,13 @@ public record GroupNode(
                 ids.size(), ref, kids.isEmpty() ? null : kids);
     }
 
-    private static void collectIds(ViewableGroup g, Set<String> ids) {
+    private static void collectIds(ViewableGroup<?> g, Set<String> ids) {
         for (Viewable m : g.getMembers()) {
             if (m != null) {
                 ids.add(m.getIdentifier());
             }
         }
-        for (ViewableGroup c : g.getChildren()) {
+        for (ViewableGroup<?> c : g.getChildren()) {
             collectIds(c, ids);
         }
     }

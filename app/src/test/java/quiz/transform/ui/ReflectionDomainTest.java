@@ -7,10 +7,12 @@ import objectview.media.ImagePane;
 import objectview.viewconfig.ConfigFieldRowSource;
 import objectview.viewconfig.FieldRowContext;
 import objectview.viewconfig.ViewConfig;
+import objectview.viewconfig.DomainViews;
 import quiz.ViewableGroup;
 import objectview.ViewableAdapter;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,6 +81,31 @@ class ReflectionDomainTest {
                         domain.fieldTypes("Country"))).stream()
                 .anyMatch(row -> "group".equals(row.path())),
                 "group references must appear in field configuration");
+    }
+
+    @Test void domainViewsDeclareTheGroupRootAndReachChildrenThroughReferences()
+            throws Exception {
+        Country c = new Country("Wonderland");
+        ViewableGroup root = new ViewableGroup("All");
+        ViewableGroup child = root.getOrCreateChild("Countries");
+        child.addMember(c);
+        DomainViews views = new DomainViews() {
+            @Override public void buildViews() {}
+            @Override public objectview.render.GroupView getGroupView() { return null; }
+            @Override public List<? extends objectview.group.ViewableGroup<?>>
+                    getRootGroups() {
+                return List.of(root);
+            }
+            @Override public Map<String, ? extends objectview.Viewable> getViewables() {
+                return Map.of(c.getIdentifier(), c);
+            }
+        };
+
+        ReflectionDomain domain = ReflectionDomain.of(views);
+
+        assertEquals(List.of(root), domain.groupRoots());
+        assertTrue(domain.instances().contains(root));
+        assertTrue(domain.instances().contains(child));
     }
 
     @Test void emptyCollectionsKeepTheirDeclaredElementSchema() {

@@ -2,8 +2,7 @@ package quiz.web.sources;
 
 import objectview.field.DynamicFields;
 import objectview.Viewable;
-import objectview.facet.FacetGrouper;
-import quiz.ViewableGroup;
+import objectview.group.ViewableGroup;
 import quiz.web.ViewableSource;
 import quiz.web.ViewableStore;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -38,8 +37,9 @@ public class GeneratedSource implements ViewableSource {
     // {"forWork.genre","genre"} — retained for field coverage, never auto-grouped.
     private final List<String[]> nestedVocabularyPaths;
     private final wikidata.explore.model.GeneratedProjectModel model;   // for field expectations
+    private List<WikidataDynamicObject> allObjects;
     private List<WikidataDynamicObject> members;
-    private ViewableGroup explicitGroups;
+    private ViewableGroup<?> explicitGroups;
     private boolean explicitGroupsBuilt;
 
     public GeneratedSource(String type, File file) {
@@ -141,6 +141,7 @@ public class GeneratedSource implements ViewableSource {
         if (members == null) {
             WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
             List<WikidataDynamicObject> all = store.loadAll(file);
+            allObjects = all;
             // Bare references (unstamped, no substance — e.g. type values) read
             // as display-name strings on the web too, matching the workbench.
             wikidata.explore.transform.BareReferenceCollapse.apply(all);
@@ -171,8 +172,8 @@ public class GeneratedSource implements ViewableSource {
     // A ViewableGroup is now a first-class Viewable (navigable reference, transform-app
     // type, persisted entity), but its hierarchy is facet structure FOR a domain type,
     // not a browsable dataset in its own right — so it is never registered as a top-level
-    // served source. It still reaches the web through each member's `groups` field and
-    // the reconstructed rootGroup() facet tree.
+    // served source. It still reaches the web through ordinary object references and
+    // rootGroup(), which adapts the loaded graph directly without reconstructing it.
     private static boolean servesAsDataset(String t) {
         return isStamped(t) && !"ViewableGroup".equals(t);
     }
@@ -210,145 +211,14 @@ public class GeneratedSource implements ViewableSource {
     }
 
     @Override
-    public synchronized ViewableGroup rootGroup() throws Exception {
+    public synchronized ViewableGroup<?> rootGroup() throws Exception {
         if (!explicitGroupsBuilt) {
-            explicitGroups = explicitGroupTree(members());
+            members();
+            explicitGroups = DynamicViewableGroup.rootOf(allObjects);
             explicitGroupsBuilt = true;
         }
         return explicitGroups;
     }
-
-    /**
-     * Rebuild a hand-authored group tree from ancestry-qualified memberships saved by
-     * {@code ViewableToWdo}. This handles explicit structure only: ordinary fields such
-     * as {@code version} and {@code currencies} still never become groups implicitly.
-     */
-    static ViewableGroup explicitGroupTree(
-            Collection<? extends Viewable> members) {
-        List<GroupMembership> memberships = new ArrayList<>();
-        String commonRoot = null;
-        boolean sameRoot = true;
-
-        for (Viewable member : members) {
-            Object value = objectview.field.FieldSet.of(member).read("groups");
-            List<List<String>> paths = new ArrayList<>();
-            collectGroupPaths(value, paths);
-            for (List<String> segments : paths) {
-                if (segments.isEmpty()) {
-                    continue;
-                }
-                memberships.add(new GroupMembership(member, segments));
-                String pathRoot = segments.get(0);
-                if (commonRoot == null) {
-                    commonRoot = pathRoot;
-                } else if (!commonRoot.equals(pathRoot)) {
-                    sameRoot = false;
-                }
-            }
-        }
-        if (memberships.isEmpty()) {
-            return null;
-        }
-
-        // Manual domains normally share one root ("All"). If independent authored
-        // roots occur, retain each beneath one synthetic universe instead of dropping
-        // either hierarchy.
-        ViewableGroup root = new ViewableGroup(
-                sameRoot && commonRoot != null ? commonRoot : "All");
-        for (GroupMembership membership : memberships) {
-            ViewableGroup leaf = root;
-            int start = sameRoot ? 1 : 0;
-            for (int i = start; i < membership.segments().size(); i++) {
-                leaf = leaf.getOrCreateChild(membership.segments().get(i));
-            }
-            leaf.addMember(membership.member());
-        }
-        return FacetGrouper.assignRoles(root);
-    }
-
-    private static void collectGroupPaths(
-            Object value, List<List<String>> paths) {
-        if (value instanceof Collection<?> collection) {
-            for (Object membership : collection) {
-                collectOneGroupPath(membership, paths);
-            }
-        } else if (value instanceof Map<?, ?> map) {
-            for (Object membership : map.values()) {
-                collectOneGroupPath(membership, paths);
-            }
-        } else {
-            collectOneGroupPath(value, paths);
-        }
-    }
-
-    private static void collectOneGroupPath(
-            Object value, List<List<String>> paths) {
-        if (value instanceof wikidata.explore.extract.WikidataDynamicObject group
-                && "ViewableGroup".equals(group.typeName())) {
-            List<String> genericPath = dynamicGroupPath(group);
-            if (!genericPath.isEmpty()) {
-                paths.add(genericPath);
-            } else if (!group.structuralPath().isEmpty()) {
-                paths.add(group.structuralPath());
-            } else {
-                // Compatibility for snapshots saved before group ancestry moved
-                // out of visible dynamic fields.
-                collectOneGroupPath(group.get("path"), paths);
-            }
-        } else if (value instanceof String path) {
-            if (!path.isBlank()) {
-                // Old snapshots stored a dotted identifier. New saves use segment
-                // paths so labels containing dots remain lossless.
-                paths.add(groupSegments(path));
-            }
-        } else if (value instanceof Collection<?> collection) {
-            List<String> segments = new ArrayList<>();
-            for (Object item : collection) {
-                if (item instanceof String segment && !segment.isBlank()) {
-                    segments.add(segment);
-                }
-            }
-            if (!segments.isEmpty()) {
-                paths.add(segments);
-            }
-        }
-    }
-
-    /** Read an ordinary dynamic ViewableGroup through its normal parent reference.
-     *  Identity-based cycle protection is generic and also tolerates malformed files. */
-    private static List<String> dynamicGroupPath(
-            wikidata.explore.extract.WikidataDynamicObject leaf) {
-        List<String> segments = new ArrayList<>();
-        java.util.Set<wikidata.explore.extract.WikidataDynamicObject> seen =
-                java.util.Collections.newSetFromMap(
-                        new java.util.IdentityHashMap<>());
-        wikidata.explore.extract.WikidataDynamicObject current = leaf;
-        while (current != null
-                && "ViewableGroup".equals(current.typeName())
-                && seen.add(current)) {
-            String label = current.getDisplayName();
-            if (label != null && !label.isBlank()) {
-                segments.add(0, label);
-            }
-            Object parent = current.get("parent");
-            current = parent instanceof
-                    wikidata.explore.extract.WikidataDynamicObject dynamic
-                    ? dynamic : null;
-        }
-        return List.copyOf(segments);
-    }
-
-    private static List<String> groupSegments(String path) {
-        List<String> segments = new ArrayList<>();
-        for (String segment : path.split("\\.")) {
-            if (!segment.isBlank()) {
-                segments.add(segment);
-            }
-        }
-        return segments;
-    }
-
-    private record GroupMembership(Viewable member, List<String> segments) {}
 
     /**
      * A snapshot does not declare grouping merely by containing fields. Grouping is a

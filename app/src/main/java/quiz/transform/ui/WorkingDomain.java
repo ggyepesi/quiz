@@ -152,6 +152,11 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return all;
     }
 
+    @Override
+    public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
+        return base.groupRoots();
+    }
+
     @Override public Class<? extends Viewable> universe() {
         // Broad enough to keep BOTH base instances and PROJECT-derived
         // DynamicViewables (which the base universe, e.g. a snapshot's WDO, excludes).

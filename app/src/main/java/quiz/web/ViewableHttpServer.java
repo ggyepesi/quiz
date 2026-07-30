@@ -390,7 +390,7 @@ public class ViewableHttpServer {
     private void handleGroups(HttpExchange ex) throws IOException {
         String type = queryParam(ex, "type");
         try {
-            ViewableGroup root = store.rootGroup(type);
+            objectview.group.ViewableGroup<?> root = store.rootGroup(type);
             writeJson(ex, 200, root == null ? null : GroupNode.of(root));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
