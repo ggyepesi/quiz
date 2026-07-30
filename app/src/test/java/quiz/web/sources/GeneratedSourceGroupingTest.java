@@ -1,7 +1,11 @@
 package quiz.web.sources;
 
+import flag.State;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import quiz.ViewableGroup;
+import quiz.transform.app.ViewableToWdo;
+import quiz.transform.ui.ReflectionDomain;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
@@ -12,12 +16,71 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedSourceGroupingTest {
+
+    @Test
+    void registerAllDoesNotServeViewableGroupAsItsOwnDataset(
+            @TempDir Path dir) throws Exception {
+        State austria = new State("Austria");
+        ViewableGroup vienna = new ViewableGroup("All")
+                .getOrCreateChild("Capitals").getOrCreateChild("Vienna");
+        vienna.addMember(austria);
+        austria.addGroup(vienna);
+
+        ReflectionDomain domain = new ReflectionDomain(List.of(austria));
+        File snapshot = dir.resolve("state-with-groups.snapshot.json").toFile();
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                ViewableToWdo.pool(List.of(austria), domain), snapshot, domain);
+
+        quiz.web.ViewableStore store = new quiz.web.ViewableStore();
+        GeneratedSource.registerAll(store, "State", snapshot);
+
+        assertTrue(store.types().contains("State"),
+                "the domain type is served");
+        assertFalse(store.types().contains("ViewableGroup"),
+                "a group hierarchy is facet structure, not a browsable dataset —"
+                        + " it reaches the web through members' groups field");
+    }
+
+    @Test
+    void ordinaryViewableGroupGraphRebuildsWithoutStructuralMetadata(
+            @TempDir Path dir) throws Exception {
+        State austria = new State("Austria");
+        ViewableGroup root = new ViewableGroup("All");
+        ViewableGroup vienna = root.getOrCreateChild("Capitals")
+                .getOrCreateChild("VI")
+                .getOrCreateChild("Vienna");
+        vienna.addMember(austria);
+        austria.addGroup(vienna);
+
+        ReflectionDomain domain = new ReflectionDomain(List.of(austria));
+        List<WikidataDynamicObject> converted =
+                ViewableToWdo.pool(List.of(austria), domain);
+        WikidataDynamicObject convertedVienna =
+                ((List<?>) converted.get(0).get("groups")).stream()
+                        .map(WikidataDynamicObject.class::cast)
+                        .findFirst().orElseThrow();
+        assertTrue(!convertedVienna.isStructuralObject());
+        assertTrue(convertedVienna.structuralPath().isEmpty());
+
+        File snapshot = dir.resolve("generic-groups.snapshot.json").toFile();
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                converted, snapshot, domain);
+
+        GeneratedSource source = new GeneratedSource("State", snapshot);
+        quiz.ViewableGroup loadedRoot = source.rootGroup();
+        assertNotNull(loadedRoot);
+        assertNotNull(loadedRoot.getChild("Capitals")
+                .getChild("VI").getChild("Vienna"));
+        assertTrue(source.coverage().stream()
+                .anyMatch(field -> "groups".equals(field.path())));
+    }
 
     @Test
     void fieldsDoNotAutomaticallyBecomeGroupingFacets(@TempDir Path dir)
@@ -136,8 +199,8 @@ class GeneratedSourceGroupingTest {
         Set<String> coveredPaths = source.coverage().stream()
                 .map(Coverage.FieldCoverage::path)
                 .collect(Collectors.toSet());
-        assertTrue(!coveredPaths.contains("groups"),
-                "manual hierarchy storage is structural, not domain coverage");
+        assertTrue(coveredPaths.contains("groups"),
+                "group membership is an ordinary configurable reference field");
     }
 
     private static WikidataDynamicObject state(

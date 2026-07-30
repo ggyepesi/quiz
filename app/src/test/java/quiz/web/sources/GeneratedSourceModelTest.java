@@ -46,12 +46,12 @@ class GeneratedSourceModelTest {
         return m;
     }
 
-    @Test void manualGroupsAreStructuralAndSourceOnlyJoinsReifyClasses() {
+    @Test void onlyExplicitReificationSourceIsStructural() {
         GeneratedProjectModel m = oscarsLikeModel();
-        assertEquals(Set.of("groups", "source"),
+        assertEquals(Set.of("source"),
                 GeneratedSource.structuralFor("Nomination", m));
-        assertEquals(Set.of("groups"), GeneratedSource.structuralFor("Nominee", m));
-        assertEquals(Set.of("groups"), GeneratedSource.structuralFor("ForWork", m));
+        assertEquals(Set.of(), GeneratedSource.structuralFor("Nominee", m));
+        assertEquals(Set.of(), GeneratedSource.structuralFor("ForWork", m));
     }
 
     @Test void nestedVocabularyCoveragePathsFromReferencedClassFields() {

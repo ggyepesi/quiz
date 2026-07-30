@@ -113,14 +113,12 @@ public class GeneratedSource implements ViewableSource {
         }
     }
 
-    // Structural (hidden) fields for a type: "groups" stores an explicitly authored
-    // hierarchy as full membership paths; it is view structure, never a facet inferred
-    // from data. A statement-reification class also carries a "source" back-reference
-    // (provenance), not a user attribute. Same rule as SnapshotDomain.structuralFields.
+    // Structural (hidden) fields for a generated type. Only the model's explicit
+    // statement-reification provenance is hidden; a field merely named "groups" is
+    // ordinary data and follows the same rules as every other object reference.
     static Set<String> structuralFor(
             String type, wikidata.explore.model.GeneratedProjectModel model) {
         Set<String> structural = new LinkedHashSet<>();
-        structural.add("groups");
         if (model != null) {
             wikidata.explore.model.GeneratedClassModel c = model.findClass(type);
             if (c != null && c.reifiesStatements()) {
@@ -170,6 +168,15 @@ public class GeneratedSource implements ViewableSource {
         return t != null && !t.isBlank() && !"WikidataDynamicObject".equals(t);
     }
 
+    // A ViewableGroup is now a first-class Viewable (navigable reference, transform-app
+    // type, persisted entity), but its hierarchy is facet structure FOR a domain type,
+    // not a browsable dataset in its own right — so it is never registered as a top-level
+    // served source. It still reaches the web through each member's `groups` field and
+    // the reconstructed rootGroup() facet tree.
+    private static boolean servesAsDataset(String t) {
+        return isStamped(t) && !"ViewableGroup".equals(t);
+    }
+
     /**
      * Registers a {@link GeneratedSource} per distinct stamped class in the
      * snapshot — e.g. Constellation AND Star from one constellations snapshot —
@@ -187,7 +194,7 @@ public class GeneratedSource implements ViewableSource {
         if (file.isFile()) {
             for (WikidataDynamicObject o
                     : new WikidataDynamicObjectJsonStore().loadAll(file)) {
-                if (isStamped(o.typeName())) types.add(o.typeName());
+                if (servesAsDataset(o.typeName())) types.add(o.typeName());
             }
         }
         if (types.isEmpty()) types.add(defaultType);
@@ -278,7 +285,10 @@ public class GeneratedSource implements ViewableSource {
             Object value, List<List<String>> paths) {
         if (value instanceof wikidata.explore.extract.WikidataDynamicObject group
                 && "ViewableGroup".equals(group.typeName())) {
-            if (!group.structuralPath().isEmpty()) {
+            List<String> genericPath = dynamicGroupPath(group);
+            if (!genericPath.isEmpty()) {
+                paths.add(genericPath);
+            } else if (!group.structuralPath().isEmpty()) {
                 paths.add(group.structuralPath());
             } else {
                 // Compatibility for snapshots saved before group ancestry moved
@@ -302,6 +312,30 @@ public class GeneratedSource implements ViewableSource {
                 paths.add(segments);
             }
         }
+    }
+
+    /** Read an ordinary dynamic ViewableGroup through its normal parent reference.
+     *  Identity-based cycle protection is generic and also tolerates malformed files. */
+    private static List<String> dynamicGroupPath(
+            wikidata.explore.extract.WikidataDynamicObject leaf) {
+        List<String> segments = new ArrayList<>();
+        java.util.Set<wikidata.explore.extract.WikidataDynamicObject> seen =
+                java.util.Collections.newSetFromMap(
+                        new java.util.IdentityHashMap<>());
+        wikidata.explore.extract.WikidataDynamicObject current = leaf;
+        while (current != null
+                && "ViewableGroup".equals(current.typeName())
+                && seen.add(current)) {
+            String label = current.getDisplayName();
+            if (label != null && !label.isBlank()) {
+                segments.add(0, label);
+            }
+            Object parent = current.get("parent");
+            current = parent instanceof
+                    wikidata.explore.extract.WikidataDynamicObject dynamic
+                    ? dynamic : null;
+        }
+        return List.copyOf(segments);
     }
 
     private static List<String> groupSegments(String path) {

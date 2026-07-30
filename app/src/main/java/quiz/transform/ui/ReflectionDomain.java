@@ -10,8 +10,6 @@ import objectview.field.ReflectionFieldSet;
 import objectview.field.ViewableFieldPaths;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -37,11 +35,9 @@ public final class ReflectionDomain implements DomainModel {
             new LinkedHashMap<>();
 
     public ReflectionDomain(Collection<? extends Viewable> roots) {
-        // Walk the whole reachable DATA graph so every Viewable class — the main
-        // class AND referenced ones (Person, Terms, Language, …) — becomes selectable.
-        // ViewableGroup implementations are structural. Some concrete implementations
-        // inherit ViewableAdapter for reflection/rendering convenience, so exclude them
-        // explicitly rather than promoting them to domain member types.
+        // Walk the whole reachable object graph so every Viewable class — the main
+        // class AND referenced ones (Person, Terms, Language, ViewableGroup, …) —
+        // uses the same discovery, schema and persistence rules.
         java.util.Set<Object> seen =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         java.util.Deque<Viewable> queue = new java.util.ArrayDeque<>(roots);
@@ -76,9 +72,6 @@ public final class ReflectionDomain implements DomainModel {
     }
 
     private static void addViewables(Object v, List<Viewable> out) {
-        if (v instanceof objectview.group.ViewableGroup<?>) {
-            return;
-        }
         if (v instanceof Viewable c) {
             out.add(c);
         } else if (v instanceof Collection<?> col) {
@@ -112,7 +105,7 @@ public final class ReflectionDomain implements DomainModel {
         List<Class<? extends Viewable>> nestedClasses = new ArrayList<>();
         for (Field field : ViewableAdapter.getAllFields(cls)) {
             FieldRef described = ReflectionFieldSet.describe(field, cls);
-            if (isGroupField(field) || described.provenance()) {
+            if (described.provenance()) {
                 described = FieldRef.withStructural(described, true);
             }
             fields.add(described);
@@ -127,24 +120,6 @@ public final class ReflectionDomain implements DomainModel {
         for (Class<? extends Viewable> nested : nestedClasses) {
             index(nested);
         }
-    }
-
-    private static boolean isGroupField(Field field) {
-        if (field == null) {
-            return false;
-        }
-        if (objectview.group.ViewableGroup.class.isAssignableFrom(field.getType())) {
-            return true;
-        }
-        if (field.getGenericType() instanceof ParameterizedType parameterized) {
-            for (Type argument : parameterized.getActualTypeArguments()) {
-                if (argument instanceof Class<?> cls
-                        && objectview.group.ViewableGroup.class.isAssignableFrom(cls)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     @Override public List<String> types() { return List.copyOf(memberTypes); }

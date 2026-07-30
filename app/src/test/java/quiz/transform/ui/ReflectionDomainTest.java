@@ -4,13 +4,16 @@ import org.junit.jupiter.api.Test;
 import objectview.annotations.Reference;
 import objectview.field.FieldKind;
 import objectview.media.ImagePane;
+import objectview.viewconfig.ConfigFieldRowSource;
+import objectview.viewconfig.FieldRowContext;
+import objectview.viewconfig.ViewConfig;
 import quiz.ViewableGroup;
 import objectview.ViewableAdapter;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -57,17 +60,25 @@ class ReflectionDomainTest {
         assertTrue(domain.instances().stream().anyMatch(q -> "English".equals(q.getDisplayName())));
     }
 
-    @Test void doesNotPromoteViewGroupsToDomainClasses() {
+    @Test void treatsViewGroupsAsOrdinaryReachableViewables() {
         Country c = new Country("Wonderland");
         c.group = new ViewableGroup("All").getOrCreateChild("Countries");
 
         ReflectionDomain domain = new ReflectionDomain(List.of(c));
 
-        assertEquals(List.of("Country"), domain.types());
-        assertEquals(List.of(c), domain.instances());
-        assertFalse(domain.types().contains("ViewableGroup"));
-        assertEquals(java.util.Set.of("group"),
-                domain.structuralFields("Country"));
+        assertEquals(List.of("Country", "ViewableGroup"), domain.types());
+        assertTrue(domain.instances().size() >= 2);
+        assertTrue(domain.instances().contains(c.group));
+        assertTrue(domain.instances().stream()
+                .anyMatch(value -> "All".equals(value.getIdentifier())));
+        assertEquals(java.util.Set.of(), domain.structuralFields("Country"));
+        assertTrue(domain.fields("Country").stream()
+                .anyMatch(field -> "group".equals(field.field())));
+        assertTrue(ConfigFieldRowSource.INSTANCE.rows(new FieldRowContext(
+                        ViewConfig.all(Country.class), c, false, false, Set.of(),
+                        domain.fieldTypes("Country"))).stream()
+                .anyMatch(row -> "group".equals(row.path())),
+                "group references must appear in field configuration");
     }
 
     @Test void emptyCollectionsKeepTheirDeclaredElementSchema() {

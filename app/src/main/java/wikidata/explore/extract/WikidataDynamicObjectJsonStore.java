@@ -240,6 +240,14 @@ public class WikidataDynamicObjectJsonStore {
             String n = o.getDisplayName();
             if (n != null && !n.equals(e.qid)) { e.name = n; break; }
         }
+        for (WikidataDynamicObject o : instances) {
+            String label = o.getReferenceLabel();
+            if (label != null && !label.isBlank()
+                    && !label.equals(o.getDisplayName())) {
+                e.referenceLabel = label;
+                break;
+            }
+        }
 
         e.type = null;
         for (WikidataDynamicObject o : instances) {
@@ -380,6 +388,7 @@ public class WikidataDynamicObjectJsonStore {
             if (e.typeKey != null && !e.typeKey.isBlank()) {
                 o.typeKey(e.typeKey);
             }
+            o.referenceLabel(e.referenceLabel);
             o.structuralObject(e.structuralObject);
             o.structuralPath(e.structuralPath);
             byKey.put(compositeKey(e.typeKey, e.qid), o);
@@ -607,6 +616,11 @@ public class WikidataDynamicObjectJsonStore {
         Entity e = new Entity();
         e.qid = null;                       // a value has no identity
         e.name = w.getDisplayName();
+        String referenceLabel = w.getReferenceLabel();
+        if (referenceLabel != null
+                && !referenceLabel.equals(w.getDisplayName())) {
+            e.referenceLabel = referenceLabel;
+        }
         e.type = w.typeName();              // still carried, for rendering
         e.structuralObject = w.isStructuralObject();
         if (!w.structuralPath().isEmpty()) {
@@ -627,6 +641,7 @@ public class WikidataDynamicObjectJsonStore {
         if (e.type != null && !e.type.isBlank()) {
             o.type(e.type);
         }
+        o.referenceLabel(e.referenceLabel);
         o.valueObject(true);
         o.structuralObject(e.structuralObject);
         o.structuralPath(e.structuralPath);
@@ -699,6 +714,8 @@ public class WikidataDynamicObjectJsonStore {
     public static class Entity {
         public String qid;
         public String name;
+        // Generic Viewable reference label when it differs from the display name.
+        public String referenceLabel;
         // The stamped domain class (e.g. "Constellation", "Star"); null for an
         // untyped leaf reference. Lets one snapshot carry several classes.
         public String type;

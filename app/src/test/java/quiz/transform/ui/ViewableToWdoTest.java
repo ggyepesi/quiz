@@ -168,13 +168,7 @@ class ViewableToWdoTest {
                 .map(WikidataDynamicObject::qid).toList());
         assertTrue(groups.stream().noneMatch(WikidataDynamicObject::isValueObject));
         assertTrue(groups.stream().allMatch(
-                WikidataDynamicObject::isStructuralObject));
-        assertTrue(groups.stream().allMatch(
                 group -> "ViewableGroup".equals(group.typeName())));
-        assertEquals(List.of(
-                List.of("B", "A"),
-                List.of("C", "A")), groups.stream()
-                .map(WikidataDynamicObject::structuralPath).toList());
         assertEquals(List.of("B/A", "C/A"), groups.stream()
                 .map(WikidataDynamicObject::getReferenceLabel).toList());
         for (WikidataDynamicObject group : groups) {
@@ -188,8 +182,8 @@ class ViewableToWdoTest {
                 new WikidataDynamicObjectJsonStore();
         store.save(roots, file);
         var loaded = store.loadAllWithFieldGraph(file);
-        assertFalse(loaded.fieldGraph().memberTypes().contains("ViewableGroup"),
-                "structural groups must not become selectable domain instances");
+        assertTrue(loaded.fieldGraph().memberTypes().contains("ViewableGroup"),
+                "a ViewableGroup uses the same persisted type model as other Viewables");
 
         WikidataDynamicObject loadedBA = loaded.objects().stream()
                 .filter(object -> "ViewableGroup".equals(object.typeName())

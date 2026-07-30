@@ -1,7 +1,6 @@
 package quiz.transform.app;
 
 import objectview.field.DynamicFields;
-import objectview.group.ViewableGroup;
 import objectview.media.ImagePane;
 import objectview.utils.swing.CachedImage;
 import objectview.Viewable;
@@ -150,33 +149,6 @@ public final class ViewableToWdo {
         if (v instanceof WikidataDynamicObject w) {
             return w;
         }
-        if (v instanceof ViewableGroup<?> group) {
-            WikidataDynamicObject cached = seen.get(group);
-            if (cached != null) {
-                return cached;
-            }
-            // A group is a shared STRUCTURAL entity: pool it by its full,
-            // ancestry-qualified identity so member cards can open the actual
-            // ViewableGroup (parent / children / members) without promoting it to
-            // a selectable domain class. Cache before recursing: the graph is
-            // intentionally cyclic in both directions.
-            WikidataDynamicObject value =
-                    new WikidataDynamicObject(
-                            group.getIdentifier(), group.getDisplayName());
-            value.type("ViewableGroup");
-            value.typeKey("ViewableGroup");
-            value.structuralObject(true);
-            value.structuralPath(groupPath(group));
-            seen.put(group, value);
-
-            Object parent = convert(group.getParent(), seen, schema);
-            if (parent != null) {
-                value.put("parent", parent);
-            }
-            value.put("children", convert(group.getChildren(), seen, schema));
-            value.put("members", convert(group.getMembers(), seen, schema));
-            return value;
-        }
         if (v instanceof Viewable q) {
             WikidataDynamicObject cached = seen.get(q);
             if (cached != null) {
@@ -195,6 +167,7 @@ public final class ViewableToWdo {
             // curation links and manual buildView classes. A Java package/class refactor
             // must not change persisted object identity.
             o.typeKey(q.typeName());
+            o.referenceLabel(q.getReferenceLabel());
             o.valueObject(value);
             seen.put(q, o);
             // Copy every field, whichever representation — no instanceof branch.
@@ -239,14 +212,6 @@ public final class ViewableToWdo {
             return e.toString();
         }
         return v;
-    }
-
-    private static List<String> groupPath(ViewableGroup<?> group) {
-        List<String> path = new ArrayList<>();
-        for (ViewableGroup<?> node = group; node != null; node = node.getParent()) {
-            path.add(0, node.getDisplayName());
-        }
-        return List.copyOf(path);
     }
 
     private static Object toMediaValue(ImagePane p) {

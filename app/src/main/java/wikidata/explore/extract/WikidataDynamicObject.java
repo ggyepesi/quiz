@@ -46,6 +46,14 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @Hidden
     private String name;
 
+    // Optional label used when this object is referenced by another object. This is
+    // generic Viewable metadata (not a group field): converters preserve
+    // Viewable.getReferenceLabel() so dynamic objects render references exactly like
+    // their Java-backed source objects.
+    @Hidden
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String referenceLabel;
+
     @Hidden
     @Link
     private String wikidataUrl;
@@ -202,10 +210,17 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
 
     @Override
     public String getReferenceLabel() {
+        if (referenceLabel != null && !referenceLabel.isBlank()) {
+            return referenceLabel;
+        }
         if (structuralObject && !structuralPath.isEmpty()) {
             return String.join("/", structuralPath);
         }
         return getName();
+    }
+
+    public void referenceLabel(String referenceLabel) {
+        this.referenceLabel = referenceLabel == null ? "" : referenceLabel;
     }
 
     public String displayLabel() { return getDisplayName(); }

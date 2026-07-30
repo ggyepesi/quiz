@@ -73,10 +73,9 @@ public final class SnapshotDomain implements DomainModel {
     }
 
     private FieldSchema buildFieldSchema(String type) {
-        // Saved manual groups are ancestry-qualified view structure, not a data
-        // field to offer as a grouping facet. A statement's source is provenance.
+        // Only explicitly declared provenance is hidden from transform operations.
+        // Group-valued fields are ordinary references and remain configurable.
         java.util.Set<String> extraStructural = new java.util.LinkedHashSet<>();
-        extraStructural.add("groups");
         if (statementTypes.contains(type)) {
             extraStructural.add("source");
         }
