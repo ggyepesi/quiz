@@ -5,6 +5,7 @@ import java.awt.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * First-navigation screen for the transform workbench: lists the given
@@ -17,20 +18,37 @@ public final class DomainNavigator {
 
     private DomainNavigator() {}
 
-    public static void show(List<DomainEntry> entries, DomainWriter writer) {
+    public static void show(Supplier<List<DomainEntry>> entries, DomainWriter writer) {
         SwingUtilities.invokeLater(() -> build(entries, writer));
     }
 
-    private static void build(List<DomainEntry> entries, DomainWriter writer) {
+    private static void build(
+            Supplier<List<DomainEntry>> entriesSupplier, DomainWriter writer) {
         DefaultListModel<DomainEntry> model = new DefaultListModel<>();
-        entries.forEach(model::addElement);
         JList<DomainEntry> list = new JList<>(model);
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        if (!entries.isEmpty()) {
-            list.setSelectedIndex(0);
-        }
 
-        JLabel status = new JLabel(entries.size() + " domain(s)");
+        JLabel status = new JLabel();
+        // Re-read the catalog on demand so a domain saved from a workbench shows up
+        // without a restart; keep the current selection by name across the refresh.
+        Runnable reload = () -> {
+            DomainEntry selected = list.getSelectedValue();
+            String selectedName = selected == null ? null : selected.name();
+            model.clear();
+            entriesSupplier.get().forEach(model::addElement);
+            status.setText(model.size() + " domain(s)");
+            int restore = -1;
+            for (int i = 0; i < model.size(); i++) {
+                if (model.get(i).name().equals(selectedName)) {
+                    restore = i;
+                    break;
+                }
+            }
+            if (model.size() > 0) {
+                list.setSelectedIndex(restore >= 0 ? restore : 0);
+            }
+        };
+        reload.run();
         JButton open = new JButton("Open in Transform Workbench");
 
         // Reuse an already-open workbench instead of reloading the domain (which can be
@@ -64,7 +82,7 @@ public final class DomainNavigator {
                                 openFrames.remove(e.name());
                             }
                         });
-                        status.setText(entries.size() + " domain(s)");
+                        status.setText(model.size() + " domain(s)");
                     } catch (Exception ex) {
                         Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                         status.setText("Failed: " + cause.getMessage());
@@ -97,6 +115,11 @@ public final class DomainNavigator {
         frame.setLayout(new BorderLayout());
         frame.add(new JScrollPane(list), BorderLayout.CENTER);
         frame.add(south, BorderLayout.SOUTH);
+        frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowActivated(java.awt.event.WindowEvent e) {
+                reload.run();   // pick up a domain saved while a workbench had focus
+            }
+        });
         frame.setSize(560, 480);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);

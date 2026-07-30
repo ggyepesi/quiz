@@ -12,6 +12,6 @@ public final class TransformApp {
     private TransformApp() {}
 
     public static void main(String[] args) {
-        DomainNavigator.show(DomainCatalog.all(), new DomainSaver());
+        DomainNavigator.show(DomainCatalog::all, new DomainSaver());
     }
 }
