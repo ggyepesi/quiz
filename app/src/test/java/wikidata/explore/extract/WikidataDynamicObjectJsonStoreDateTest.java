@@ -21,6 +21,7 @@ class WikidataDynamicObjectJsonStoreDateTest {
 
     @Test void flexibleDateRoundTripsAtPrecision() throws Exception {
         WikidataDynamicObject o = new WikidataDynamicObject("Q1", "Casablanca");
+        o.type("Film");   // a member root is a stamped entity (v5 roots are typed)
         o.put("released", new FlexibleDate(1942, 11, 26));
         o.put("year", new FlexibleDate(1943));
 
@@ -37,6 +38,7 @@ class WikidataDynamicObjectJsonStoreDateTest {
     @Test void rawTimeLiteralStringUpgradesOnLoad() throws Exception {
         // An old snapshot: the date was stored as the raw literal string.
         WikidataDynamicObject o = new WikidataDynamicObject("Q1", "Old");
+        o.type("Person");   // a member root is a stamped entity (v5 roots are typed)
         o.put("born", "1875-01-01T00:00:00Z");
         o.put("plain", "not a date");
 

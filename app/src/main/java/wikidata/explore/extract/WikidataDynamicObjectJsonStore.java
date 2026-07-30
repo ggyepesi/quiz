@@ -390,12 +390,9 @@ public class WikidataDynamicObjectJsonStore {
             attachSchemas(objects, graph);
             return new LoadedSnapshot(
                     objects, graph,
-                    snapshot == null
-                            || snapshot.roots == null || snapshot.roots.isEmpty()
-                            // Tolerate a pool with no explicit roots (an untyped or
-                            // pre-roots snapshot): every entity is a member root.
-                            ? new ArrayList<>(objects)
-                            : resolveRoots(snapshot.roots, entities),
+                    snapshot == null ? new ArrayList<>()
+                            : resolveMemberRoots(
+                                    snapshot, tree.has("roots"), objects, entities),
                     snapshot == null ? new ArrayList<>()
                             : resolveGroupRoots(snapshot, objects, entities));
         }
@@ -432,6 +429,24 @@ public class WikidataDynamicObjectJsonStore {
             return discoverLegacyGroupRoots(objects, false);
         }
         return resolveRoots(snapshot.groupRoots, entities);
+    }
+
+    private static List<WikidataDynamicObject> resolveMemberRoots(
+            FlatSnapshot snapshot,
+            boolean rootsPropertyPresent,
+            Collection<WikidataDynamicObject> objects,
+            Map<String, WikidataDynamicObject> entities) {
+        if (snapshot.roots != null && !snapshot.roots.isEmpty()) {
+            return resolveRoots(snapshot.roots, entities);
+        }
+        // Before v5, or when an older/foreign flat pool omitted the property
+        // altogether, the historical interpretation was "every entity is a root".
+        if (snapshot.version < 5 || !rootsPropertyPresent) {
+            return new ArrayList<>(objects);
+        }
+        // In v5 an explicitly present empty list is meaningful: the domain has no
+        // ordinary member roots (it may, for example, contain only group roots).
+        return new ArrayList<>();
     }
 
     /** Compatibility only: formats before v5 did not persist group-root refs. */

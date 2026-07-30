@@ -91,6 +91,22 @@ class ConfigFieldRowSourceSchemaTest {
                 "no per-field minor block: minor dynamic fields are checkbox-governed only");
     }
 
+    @Test void minorOnlyRowsDoNotInjectTheOrdinaryIdentityName() {
+        FieldRowContext live = new FieldRowContext(
+                ViewConfig.all(DynamicViewable.class), stateWithMinor(),
+                true, false, Set.of(), minorSchema());
+        List<FieldRow> liveRows = ConfigFieldRowSource.INSTANCE.rows(live);
+        assertEquals(List.of("isoCode"),
+                liveRows.stream().map(FieldRow::path).toList());
+
+        FieldRowContext schemaOnly = new FieldRowContext(
+                ViewConfig.all(DynamicViewable.class), null,
+                true, false, Set.of(), minorSchema());
+        List<FieldRow> schemaRows = ConfigFieldRowSource.INSTANCE.rows(schemaOnly);
+        assertEquals(List.of("isoCode"),
+                schemaRows.stream().map(FieldRow::path).toList());
+    }
+
     @Test void hasMinorFieldsDetectsDynamicMinor() {
         assertTrue(ConfigFieldRowSource.INSTANCE.hasMinorFields(new FieldRowContext(
                         ViewConfig.all(DynamicViewable.class), stateWithMinor(),

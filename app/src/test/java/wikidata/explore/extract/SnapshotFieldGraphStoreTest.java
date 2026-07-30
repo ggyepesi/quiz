@@ -101,6 +101,22 @@ class SnapshotFieldGraphStoreTest {
         assertEquals("Collection<String>", type.typeLabel());
     }
 
+    @Test void anExplicitlyRootlessV5SnapshotStaysRootless()
+            throws Exception {
+        WikidataDynamicObject group = wdo("All", "ViewableGroup", false);
+        File file = new File(dir, "group-only.snapshot.json");
+        WikidataDynamicObjectJsonStore store =
+                new WikidataDynamicObjectJsonStore();
+
+        store.saveWithFieldGraph(
+                List.of(), List.of(group), file, null);
+
+        var loaded = store.loadAllWithFieldGraph(file);
+        assertTrue(loaded.memberRoots().isEmpty());
+        assertEquals(List.of("All"), loaded.groupRoots().stream()
+                .map(WikidataDynamicObject::getIdentifier).toList());
+    }
+
     private static WikidataDynamicObject wdo(
             String id, String type, boolean valueObject) {
         WikidataDynamicObject object =
