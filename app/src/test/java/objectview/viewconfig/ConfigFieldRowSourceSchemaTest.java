@@ -49,6 +49,63 @@ class ConfigFieldRowSourceSchemaTest {
                 .orElseThrow(() -> new AssertionError("no row for " + path + " in " + rows));
     }
 
+    /** A flat schema over a dynamic sample: "population" ordinary, "isoCode" MINOR. */
+    private static FieldTypeSource minorSchema() {
+        return new FieldTypeSource() {
+            @Override public FieldTypeInfo field(String name) {
+                return switch (name) {
+                    case "population" -> new FieldTypeInfo("Long", false, false, null, null);
+                    case "isoCode" -> new FieldTypeInfo("String", false, true, null, null);
+                    default -> null;
+                };
+            }
+            @Override public List<String> fieldNames() {
+                return List.of("population", "isoCode");
+            }
+        };
+    }
+
+    private static DynamicViewable stateWithMinor() {
+        DynamicViewable state = new DynamicViewable("Q40", "Austria");
+        state.type("State");
+        state.put("population", 9_000_000L);
+        state.put("isoCode", "AT");
+        return state;
+    }
+
+    private static boolean hasPath(List<FieldRow> rows, String path) {
+        return rows.stream().anyMatch(r -> path.equals(r.path()));
+    }
+
+    @Test void schemaMinorDynamicFieldIsHiddenFromTheTable() {
+        FieldRowContext ctx = new FieldRowContext(
+                ViewConfig.all(DynamicViewable.class), stateWithMinor(),
+                false, false, Set.of(), minorSchema());
+
+        List<FieldRow> rows = ConfigFieldRowSource.INSTANCE.rows(ctx);
+        assertTrue(hasPath(rows, "population"), "ordinary field stays in the table");
+        assertFalse(hasPath(rows, "isoCode"),
+                "a schema-declared minor dynamic field must NOT render in the table"
+                        + " — it is governed wholesale by 'All minor fields'");
+        assertFalse(rows.stream().anyMatch(FieldRow::isMinorBlock),
+                "no per-field minor block: minor dynamic fields are checkbox-governed only");
+    }
+
+    @Test void hasMinorFieldsDetectsDynamicMinor() {
+        assertTrue(ConfigFieldRowSource.INSTANCE.hasMinorFields(new FieldRowContext(
+                        ViewConfig.all(DynamicViewable.class), stateWithMinor(),
+                        false, false, Set.of(), minorSchema())),
+                "hasMinorFields must see a schema-declared dynamic minor field");
+
+        DynamicViewable plain = new DynamicViewable("Q1", "Plain");
+        plain.type("State");
+        plain.put("population", 1L);
+        assertFalse(ConfigFieldRowSource.INSTANCE.hasMinorFields(new FieldRowContext(
+                        ViewConfig.all(DynamicViewable.class), plain,
+                        false, false, Set.of(), minorSchema())),
+                "no minor field present -> no bar");
+    }
+
     @Test void emptyReferenceIsExpandableFromSchema() {
         DynamicViewable nomination = new DynamicViewable("N1", "A Nomination");
         nomination.type("Nomination");
