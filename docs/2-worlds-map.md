@@ -1,38 +1,40 @@
+# Two worlds: `Viewable`/`ViewableGroup` ⇄ dynamic snapshot
+
+A living checklist. Each non-Clean status is a work item; flipping it to Clean is the
+definition of done.
+
 | Original Java world | Dynamic world | Status |
 |---|---|---|
-| `Viewable` instance | `WikidataDynamicObject` | Clean |
+| `Viewable` instance | `WikidataDynamicObject` (`FieldSet`-backed) | Clean |
 | `getIdentifier()` | `qid` plus `typeKey` | Clean |
 | `getDisplayName()` | dynamic object `name` | Clean |
-| `getReferenceLabel()` | persisted `referenceLabel` | Clean |
+| `getReferenceLabel()` | persisted `referenceLabel` | Clean (legacy `structuralPath` fallback still present) |
 | Java class | logical `typeName/typeKey` | Clean |
-| Declared Java field | dynamic map entry | Clean |
-| Field annotations | `FieldRef` → `SnapshotFieldGraph` | Clean in TransformApp; incomplete in web |
+| Declared Java field | dynamic field-map entry | Clean |
+| Field annotations | `FieldRef` → `SnapshotFieldGraph` / persisted `FieldSchema` | Clean in TransformApp; not consumed in web render |
 | Null/empty declared field | schema entry without instance value | Clean |
 | Object reference | typed snapshot `Ref` | Clean and cycle-safe |
 | Collection | dynamic collection | Mostly clean |
-| Map | list of map values | Lossy |
-| `ViewableGroup` | dynamic object plus adapter | Semantically correct, unnecessarily indirect |
+| Map | dynamic map, keys preserved | Clean (non-`String` keys coerced via `String.valueOf`) |
+| `ViewableGroup` | shared read-only dynamic adapter | Clean |
 | `parent/children/members` | ordinary dynamic references | Clean |
-| One explicit group root | inferred parentless group | Needs correction |
-| `GroupView`/`GroupTreeBrowser` | same generic `ViewableGroup` renderer | Clean once root is supplied |
-| `@Minor/@Inline/...` | schema flags | Correct model; not consumed everywhere |
-| `ViewConfig` fields | schema/config rows | Still has backing-specific branches |
+| One explicit group root | persisted snapshot `groupRoots` | Clean |
+| `GroupView`/`GroupTreeBrowser` | same generic `ViewableGroup` renderer | Clean |
+| `@Minor/@Inline/...` | schema flags | `@Minor` round-trips (persisted role/keyRef); not consumed in web render |
+| `ViewConfig` fields | schema/config rows via `FieldSet` | Mostly clean; no-instance reflection path + minor-bar dynamic guard remain |
 
+## Follow-ups (remaining tails)
 
-| Java world | Dynamic world |
-|---|---|
-| `Viewable` | dynamic `Viewable` with `FieldSet` |
-| Java fields | dynamic field map |
-| annotations | persisted `FieldSchema` |
-| object references | typed snapshot references |
-| collections | collections |
-| maps | maps with preserved keys |
-| `ViewableGroup` | shared dynamic `ViewableGroup` adapter |
-| group root | explicit snapshot `groupRoots` reference |
-| generic card renderer | same schema-backed `FieldSet` |
-| generic group renderer | same `ViewableGroup` interface |
-
-| Mapping | Status |
-|---|---|
-| Field annotations → persisted `FieldSchema` | Clean for v5; legacy structural metadata remains alongside it |
-| `ViewableGroup` → dynamic group adapter | Clean v5 path; retains legacy `structuralObject`/`structuralPath` and reference-label fallback |
+- **Legacy structural metadata.** `structuralObject`/`structuralPath` (fields, Entity JSON,
+  save/load plumbing) and the `getReferenceLabel()` fallback are retained for
+  legacy-snapshot reads only — fresh v5 data leaves them `false`/empty. Retire after old
+  snapshots are regenerated.
+- **Two synthetic multi-root wrappers.** `DynamicViewableGroup.MultipleRootsGroup` (over
+  `WikidataDynamicObject`) and `GroupHierarchyPresentation.ForestRoot` (over live
+  `Viewable`) duplicate the read interface; they fire only on a genuinely multi-root
+  domain. Consolidate, or drop if a single root is guaranteed.
+- **`ViewConfig` backing branches.** Enumeration is unified through `FieldSet.of()`, but a
+  class-only config table (no instance) still reflects the class directly, and the
+  "All minor fields" bar still branches on `sample instanceof DynamicFields`.
+- **Annotations in web render.** Schema flags (`@Minor`, …) are consumed by the
+  TransformApp/fieldconfig but not yet by the web card renderer.
