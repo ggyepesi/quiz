@@ -46,6 +46,22 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JPanel renderHolder = new JPanel(new BorderLayout());
     private final JLabel scopeStatus = new JLabel("No rendered scope");
     private final JButton resolveButton = new JButton("Resolve identities…");
+    // Applying resolved identities only mutates the in-memory curation; "Save identities"
+    // persists it. So the user can inspect / fetch field data for the newly-identified
+    // instances before committing, and a re-run isn't forced through a disk write.
+    private final JButton saveIdentitiesButton = new JButton("Save identities");
+    private final JButton forgetResultButton = new JButton("Forget result");
+    // Single-result convention: after a resolve, its result is PENDING (applied in memory)
+    // until the user saves or forgets it. While pending, the resolve button re-opens the
+    // retained review instead of starting a new resolve; save persists it, forget reverts.
+    private boolean identitiesDirty;
+    private java.util.List<
+            quiz.enrichment.ResolveIdentitiesReviewRequest.InstanceIdentity>
+            lastReviewItems = List.of();
+    private String lastReviewTitle = "Resolve identities";
+    private String lastReviewPrompt = "";
+    private java.util.List<quiz.enrichment.ResolveIdentitiesDecision.Resolved>
+            lastApplied = List.of();
     private final WikidataSparqlClient requestClient = new WikidataSparqlClient(
             "QuizProject/1.0 (ggyepesi@gmail.com)", 2,
             WikidataSparqlClient.DBPEDIA_ENDPOINT);
@@ -139,6 +155,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 resolveButton.setText("Cancelling identity resolution…");
                 resolveButton.setEnabled(false);
                 resolveRunner.cancel();
+            } else if (identitiesDirty) {
+                recallLastResult();   // a result is pending — show it, don't re-resolve
             } else {
                 resolveRenderedIdentities();
             }
@@ -146,7 +164,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         resolveButton.setToolTipText(
                 "Resolve unresolved Wikidata identities in the exact rendered scope");
         resolveButton.setEnabled(false);
-        scope.add(resolveButton, BorderLayout.EAST);
+        saveIdentitiesButton.setToolTipText(
+                "Persist the pending identities to the curation store");
+        saveIdentitiesButton.setEnabled(false);
+        saveIdentitiesButton.addActionListener(e -> saveIdentities());
+        forgetResultButton.setToolTipText(
+                "Revert the pending identities (remove the links applied in memory)");
+        forgetResultButton.setEnabled(false);
+        forgetResultButton.addActionListener(e -> forgetLastResult());
+        JPanel scopeButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        scopeButtons.add(forgetResultButton);
+        scopeButtons.add(saveIdentitiesButton);
+        scopeButtons.add(resolveButton);
+        scope.add(scopeButtons, BorderLayout.EAST);
         right.add(scope, BorderLayout.NORTH);
         right.add(renderHolder, BorderLayout.CENTER);
         return right;
@@ -223,8 +253,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                             + "rendered-scope header before starting another.");
             return;
         }
-        quiz.curation.ManualCuration curation =
-                controller.domain() instanceof quiz.curation.Curatable c ? c.curation() : null;
+        quiz.curation.ManualCuration curation = curation();
         if (curation == null) {
             JOptionPane.showMessageDialog(this,
                     "This domain has no curation store to record identities.");
@@ -295,25 +324,97 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (decision.resolved().isEmpty()) {
             return;
         }
-        try {
-            for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : decision.resolved()) {
-                curation.putIdentityLink(new quiz.curation.IdentityLink(
-                        r.type(), r.targetId(), "Wikidata", r.qid(),
-                        "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata"));
+        // In-memory only — the user inspects / fetches data for the newly identified
+        // instances and then persists explicitly via "Save identities".
+        for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : decision.resolved()) {
+            curation.putIdentityLink(new quiz.curation.IdentityLink(
+                    r.type(), r.targetId(), "Wikidata", r.qid(),
+                    "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata"));
+        }
+        lastApplied = decision.resolved();
+        identitiesDirty = true;
+        updateScopeStatus();   // pending state on the scope buttons, immediately
+        render();
+        JOptionPane.showMessageDialog(this,
+                decision.resolved().size() + " identity(ies) applied in memory —"
+                        + " inspect them, then \"Save identities\" or \"Forget result\".");
+    }
+
+    /** Re-open the pending result's review so the user can inspect / re-decide it.
+     *  Applying again updates the in-memory identities; it does not persist. */
+    private void recallLastResult() {
+        if (lastReviewItems.isEmpty()) {
+            return;
+        }
+        quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showModeless(
+                this, lastReviewTitle, lastReviewPrompt, lastReviewItems,
+                decision -> {
+                    quiz.curation.ManualCuration curation = curation();
+                    if (curation != null && decision != null
+                            && !decision.resolved().isEmpty()) {
+                        applyResolvedIdentities(curation, decision);
+                    }
+                });
+    }
+
+    /** Forget the pending result: remove the links it applied in memory. Since a pending
+     *  result is by definition unsaved, this restores the pre-resolve state. */
+    private void forgetLastResult() {
+        quiz.curation.ManualCuration curation = curation();
+        if (curation != null) {
+            for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : lastApplied) {
+                curation.removeIdentityLink(r.type(), r.targetId(), "Wikidata");
             }
+        }
+        clearPendingResult();
+        render();
+    }
+
+    private void clearPendingResult() {
+        identitiesDirty = false;
+        lastReviewItems = List.of();
+        lastApplied = List.of();
+        saveIdentitiesButton.setEnabled(false);
+        forgetResultButton.setEnabled(false);
+        updateScopeStatus();
+    }
+
+    /** Persist the in-memory curation (identities applied since the last save).
+     *  Returns false if the write failed, so the close flow can keep the window open. */
+    private boolean saveIdentities() {
+        quiz.curation.ManualCuration curation = curation();
+        if (curation == null) {
+            return true;
+        }
+        try {
             curation.save();
-            render();
-            JOptionPane.showMessageDialog(this,
-                    decision.resolved().size() + " identity(ies) set.");
+            clearPendingResult();
+            JOptionPane.showMessageDialog(this, "Identities saved.");
+            return true;
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
+            return false;
         }
+    }
+
+    private quiz.curation.ManualCuration curation() {
+        return controller.domain() instanceof quiz.curation.Curatable c
+                ? c.curation() : null;
+    }
+
+    /** True while identities have been applied in memory but not yet saved. */
+    public boolean hasUnsavedIdentities() {
+        return identitiesDirty;
     }
 
     /** Renders the identity-resolution review pause; other input requests are unsupported. */
     private <T> T handleProcessInput(
             ProcessInputRequest<T> request, CancellationToken cancellation) throws Exception {
         if (request instanceof quiz.enrichment.ResolveIdentitiesReviewRequest resolve) {
+            // Retain the review so the pending result can be re-opened (recall).
+            lastReviewItems = resolve.instances();
+            lastReviewTitle = resolve.title();
+            lastReviewPrompt = resolve.prompt();
             quiz.enrichment.ResolveIdentitiesDecision answer =
                     SwingProcessInput.await(cancellation, completed ->
                     quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showModeless(
@@ -475,6 +576,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         resolveButton.setText(unresolved == 0
                 ? "All identified" : "Resolve " + unresolved + " identities…");
         resolveButton.setEnabled(curation != null && unresolved > 0 && !resolveRunner.isRunning());
+        // A pending (unsaved) result takes over the button: re-open it, don't re-resolve.
+        if (identitiesDirty) {
+            resolveButton.setText("Show pending result…");
+            resolveButton.setEnabled(true);
+        }
+        saveIdentitiesButton.setEnabled(identitiesDirty);
+        forgetResultButton.setEnabled(identitiesDirty);
     }
 
     /** A flat result: members grouped by type — a single searchable instance view
@@ -592,10 +700,26 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      *  it (e.g. to focus an already-open domain instead of reloading). */
     public static JFrame openFrame(DomainModel domain, String title, DomainWriter writer) {
         JFrame f = new JFrame("Transform Workbench — " + title);
-        f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        f.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         TransformWorkbenchPanel panel = new TransformWorkbenchPanel(domain, writer, title);
         f.add(panel);
         f.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                if (panel.hasUnsavedIdentities()) {
+                    int choice = JOptionPane.showConfirmDialog(f,
+                            "Identities have been applied in memory but not saved.\n"
+                                    + "Save them before closing?",
+                            "Unsaved identities", JOptionPane.YES_NO_CANCEL_OPTION);
+                    if (choice == JOptionPane.CANCEL_OPTION
+                            || choice == JOptionPane.CLOSED_OPTION) {
+                        return;   // keep the window open
+                    }
+                    if (choice == JOptionPane.YES_OPTION && !panel.saveIdentities()) {
+                        return;   // save failed — don't lose the work
+                    }
+                }
+                f.dispose();
+            }
             @Override public void windowClosed(java.awt.event.WindowEvent e) {
                 panel.close();
             }

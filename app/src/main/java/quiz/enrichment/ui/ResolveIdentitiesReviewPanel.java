@@ -103,6 +103,11 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
             InstanceIdentity instance, JCheckBox accept, JComboBox<IdentityMatch> combo) { }
 
     private final List<Row> rows = new ArrayList<>();
+    // Rows per tab component, so "Select all/none" act on the VISIBLE tab only —
+    // a flat select-all across Confident + Ambiguous is exactly the surprise to avoid.
+    private final java.util.Map<Component, List<Row>> rowsByTab =
+            new java.util.LinkedHashMap<>();
+    private JTabbedPane groups;
 
     private ResolveIdentitiesReviewPanel(
             String prompt,
@@ -126,7 +131,7 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
 
         add(new JLabel("<html>" + html(prompt) + "</html>"), BorderLayout.NORTH);
 
-        JTabbedPane groups = new JTabbedPane();
+        groups = new JTabbedPane();
         // A label match is useful ordering, not proof of entity type. Nothing is
         // pre-accepted until class/type constraints become part of candidate discovery.
         groups.addTab("Confident (" + confident.size() + ")",
@@ -158,6 +163,7 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
         headingConstraints.gridwidth = GridBagConstraints.REMAINDER;
         panel.add(heading, headingConstraints);
 
+        int firstRow = rows.size();
         if (items.isEmpty()) {
             JLabel none = new JLabel("(none)");
             none.setForeground(Color.GRAY);
@@ -182,6 +188,8 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
 
         JScrollPane scroll = new JScrollPane(panel);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        rowsByTab.put(scroll,
+                new ArrayList<>(rows.subList(firstRow, rows.size())));
         return scroll;
     }
 
@@ -268,11 +276,12 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
     }
 
     private JComponent buttons(Consumer<ResolveIdentitiesDecision> onApprove) {
-        JButton all = new JButton("Select all");
-        all.addActionListener(e -> rows.forEach(
+        JButton all = new JButton("Select all in tab");
+        all.addActionListener(e -> currentTabRows().forEach(
                 r -> { if (r.accept().isEnabled()) r.accept().setSelected(true); }));
-        JButton none = new JButton("Select none");
-        none.addActionListener(e -> rows.forEach(r -> r.accept().setSelected(false)));
+        JButton none = new JButton("Select none in tab");
+        none.addActionListener(e -> currentTabRows().forEach(
+                r -> r.accept().setSelected(false)));
         JButton cancel = new JButton("Close without applying");
         cancel.addActionListener(
                 e -> onApprove.accept(new ResolveIdentitiesDecision(List.of())));
@@ -286,6 +295,15 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
         panel.add(cancel);
         panel.add(apply);
         return panel;
+    }
+
+    /** The rows of the currently visible tab — the scope of "Select all/none in tab".
+     *  (Apply still collects selected rows across ALL tabs.) */
+    private List<Row> currentTabRows() {
+        if (groups == null) {
+            return rows;
+        }
+        return rowsByTab.getOrDefault(groups.getSelectedComponent(), List.of());
     }
 
     private ResolveIdentitiesDecision collect() {
