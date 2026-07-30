@@ -7,6 +7,7 @@ import quiz.web.ViewableSource;
 import quiz.web.ViewableStore;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import quiz.transform.app.DynamicViewableGroup;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ public class GeneratedSource implements ViewableSource {
     // {"forWork.genre","genre"} — retained for field coverage, never auto-grouped.
     private final List<String[]> nestedVocabularyPaths;
     private final wikidata.explore.model.GeneratedProjectModel model;   // for field expectations
-    private List<WikidataDynamicObject> allObjects;
+    private List<WikidataDynamicObject> groupRoots;
     private List<WikidataDynamicObject> members;
     private ViewableGroup<?> explicitGroups;
     private boolean explicitGroupsBuilt;
@@ -140,8 +141,10 @@ public class GeneratedSource implements ViewableSource {
     private synchronized List<WikidataDynamicObject> members() throws Exception {
         if (members == null) {
             WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
-            List<WikidataDynamicObject> all = store.loadAll(file);
-            allObjects = all;
+            WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
+                    store.loadAllWithFieldGraph(file);
+            List<WikidataDynamicObject> all = loaded.objects();
+            groupRoots = loaded.groupRoots();
             // Bare references (unstamped, no substance — e.g. type values) read
             // as display-name strings on the web too, matching the workbench.
             wikidata.explore.transform.BareReferenceCollapse.apply(all);
@@ -169,15 +172,6 @@ public class GeneratedSource implements ViewableSource {
         return t != null && !t.isBlank() && !"WikidataDynamicObject".equals(t);
     }
 
-    // A ViewableGroup is now a first-class Viewable (navigable reference, transform-app
-    // type, persisted entity), but its hierarchy is facet structure FOR a domain type,
-    // not a browsable dataset in its own right — so it is never registered as a top-level
-    // served source. It still reaches the web through ordinary object references and
-    // rootGroup(), which adapts the loaded graph directly without reconstructing it.
-    private static boolean servesAsDataset(String t) {
-        return isStamped(t) && !"ViewableGroup".equals(t);
-    }
-
     /**
      * Registers a {@link GeneratedSource} per distinct stamped class in the
      * snapshot — e.g. Constellation AND Star from one constellations snapshot —
@@ -193,9 +187,12 @@ public class GeneratedSource implements ViewableSource {
                                    File file, File modelFile) throws Exception {
         Set<String> types = new LinkedHashSet<>();
         if (file.isFile()) {
-            for (WikidataDynamicObject o
-                    : new WikidataDynamicObjectJsonStore().loadAll(file)) {
-                if (servesAsDataset(o.typeName())) types.add(o.typeName());
+            var loaded = new WikidataDynamicObjectJsonStore()
+                    .loadAllWithFieldGraph(file);
+            for (WikidataDynamicObject root : loaded.memberRoots()) {
+                if (isStamped(root.typeName())) {
+                    types.add(root.typeName());
+                }
             }
         }
         if (types.isEmpty()) types.add(defaultType);
@@ -214,7 +211,7 @@ public class GeneratedSource implements ViewableSource {
     public synchronized ViewableGroup<?> rootGroup() throws Exception {
         if (!explicitGroupsBuilt) {
             members();
-            explicitGroups = DynamicViewableGroup.rootOf(allObjects);
+            explicitGroups = DynamicViewableGroup.rootsOf(groupRoots);
             explicitGroupsBuilt = true;
         }
         return explicitGroups;

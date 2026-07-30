@@ -153,6 +153,15 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     }
 
     @Override
+    public Collection<? extends Viewable> memberRoots() {
+        List<Viewable> roots = new ArrayList<>(base.memberRoots());
+        for (DerivedClass derivedClass : derived.values()) {
+            roots.addAll(derivedClass.instances());
+        }
+        return roots;
+    }
+
+    @Override
     public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
         return base.groupRoots();
     }

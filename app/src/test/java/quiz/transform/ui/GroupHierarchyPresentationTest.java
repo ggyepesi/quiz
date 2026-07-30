@@ -26,7 +26,7 @@ class GroupHierarchyPresentationTest {
         leaf.addMember(new Item("member"));
 
         ViewableGroup<?> presented =
-                GroupHierarchyPresentation.rootOf(List.of(root, node, leaf), "groups");
+                GroupHierarchyPresentation.rootOf(List.of(root), "groups");
 
         assertSame(root, presented);
         assertEquals(List.of(node), presented.getChildren().stream().toList());

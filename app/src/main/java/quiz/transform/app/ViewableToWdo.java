@@ -27,6 +27,11 @@ public final class ViewableToWdo {
 
     private ViewableToWdo() {}
 
+    public record ConvertedDomain(
+            List<WikidataDynamicObject> memberRoots,
+            List<WikidataDynamicObject> groupRoots,
+            List<WikidataDynamicObject> allObjects) {}
+
     public static List<WikidataDynamicObject> pool(Collection<? extends Viewable> members) {
         return pool(members, null);
     }
@@ -38,17 +43,36 @@ public final class ViewableToWdo {
      */
     public static List<WikidataDynamicObject> pool(
             Collection<? extends Viewable> members, DomainModel schema) {
+        return convertDomain(members, List.of(), schema).memberRoots();
+    }
+
+    public static ConvertedDomain convertDomain(
+            Collection<? extends Viewable> memberRoots,
+            Collection<? extends objectview.group.ViewableGroup<?>> groupRoots,
+            DomainModel schema) {
         Map<Object, WikidataDynamicObject> seen = new IdentityHashMap<>();
-        List<WikidataDynamicObject> roots = new ArrayList<>();
-        for (Viewable m : members) {
+        List<WikidataDynamicObject> convertedMembers = new ArrayList<>();
+        for (Viewable m : memberRoots == null ? List.<Viewable>of() : memberRoots) {
             Object c = convert(m, seen, schema);
             if (c instanceof WikidataDynamicObject w) {
-                roots.add(w);
+                convertedMembers.add(w);
+            }
+        }
+        List<WikidataDynamicObject> convertedGroups = new ArrayList<>();
+        if (groupRoots != null) {
+            for (objectview.group.ViewableGroup<?> group : groupRoots) {
+                Object c = convert(group, seen, schema);
+                if (c instanceof WikidataDynamicObject w) {
+                    convertedGroups.add(w);
+                }
             }
         }
         requireIdentities(seen.values());
         reportIdentifierCollisions(seen.values());
-        return roots;
+        return new ConvertedDomain(
+                List.copyOf(convertedMembers),
+                List.copyOf(convertedGroups),
+                List.copyOf(seen.values()));
     }
 
     /** Report explicitly when distinct data instances share one identifier. Cross-type
@@ -192,10 +216,12 @@ public final class ViewableToWdo {
             return out;
         }
         if (v instanceof Map<?, ?> m) {
-            List<Object> out = new ArrayList<>();
-            for (Object item : m.values()) {
-                Object cv = convert(item, seen, schema);
-                if (cv != null) out.add(cv);
+            Map<String, Object> out = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : m.entrySet()) {
+                Object cv = convert(entry.getValue(), seen, schema);
+                if (cv != null) {
+                    out.put(String.valueOf(entry.getKey()), cv);
+                }
             }
             return out;
         }

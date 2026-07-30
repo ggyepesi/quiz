@@ -13,8 +13,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Presentation-only recovery of a group forest from the ordinary Viewable instances
- * selected by the transform pipeline.
+ * Presentation-only wrapper for one or more explicitly declared group roots.
  */
 final class GroupHierarchyPresentation {
     private GroupHierarchyPresentation() {}
@@ -24,23 +23,17 @@ final class GroupHierarchyPresentation {
             return null;
         }
 
-        Set<ViewableGroup<?>> selected =
-                Collections.newSetFromMap(new IdentityHashMap<>());
+        List<ViewableGroup<?>> roots = new java.util.ArrayList<>();
         for (Viewable value : values) {
             if (!(value instanceof ViewableGroup<?> group)) {
                 return null;
             }
-            selected.add(group);
+            roots.add(group);
         }
-
-        List<ViewableGroup<?>> roots = selected.stream()
-                .filter(group -> group.getParent() == null
-                        || !selected.contains(group.getParent()))
-                .toList();
         if (roots.size() == 1) {
             return roots.get(0);
         }
-        return roots.isEmpty() ? null : new ForestRoot(label, roots);
+        return new ForestRoot(label, roots);
     }
 
     private static final class ForestRoot extends ViewableAdapter

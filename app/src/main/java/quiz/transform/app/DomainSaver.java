@@ -30,12 +30,16 @@ public final class DomainSaver implements DomainWriter {
     public String save(String name, Collection<? extends Viewable> members,
                        DomainModel schema) throws Exception {
         String key = sanitize(name);
-        List<WikidataDynamicObject> pool = ViewableToWdo.pool(members, schema);
+        var converted = schema == null
+                ? ViewableToWdo.convertDomain(members, List.of(), null)
+                : ViewableToWdo.convertDomain(
+                        schema.memberRoots(), schema.groupRoots(), schema);
 
         File file = new File(aux.Constants.wikidataDataDirectory
                 + "transform/" + key + ".snapshot.json");
         WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
-        var fieldGraph = store.saveWithFieldGraph(pool, file, schema);
+        var fieldGraph = store.saveWithFieldGraph(
+                converted.memberRoots(), converted.groupRoots(), file, schema);
         Set<String> types = new LinkedHashSet<>(fieldGraph.memberTypes());
 
         DatasetRegistry.Dataset d = new DatasetRegistry.Dataset();
@@ -47,7 +51,7 @@ public final class DomainSaver implements DomainWriter {
         // Match the generation-pipeline registry entry (ModelBuilderFrame): count
         // the whole pool (roots + nested), stamp the save time. modelSignature stays
         // blank — a transform-view save is not model-backed.
-        d.instanceCount(pool.size());
+        d.instanceCount(converted.allObjects().size());
         d.savedAt(java.time.LocalDateTime.now().toString());
 
         DatasetRegistry reg = DatasetRegistry.load();

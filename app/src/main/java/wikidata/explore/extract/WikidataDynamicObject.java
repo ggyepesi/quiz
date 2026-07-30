@@ -5,6 +5,7 @@ import objectview.annotations.Hidden;
 import objectview.annotations.Link;
 import objectview.annotations.Provenance;
 import objectview.field.DynamicFields;
+import objectview.field.FieldSchema;
 import objectview.ViewableAdapter;
 import quiz.source.Source;
 import quiz.source.WikidataSource;
@@ -86,6 +87,10 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @Hidden
     @com.fasterxml.jackson.annotation.JsonIgnore
     private boolean valueObject;
+
+    @Hidden
+    @JsonIgnore
+    private transient FieldSchema dynamicFieldSchema;
 
     // A pooled structural object (currently an authored ViewableGroup): references
     // can point to it and its fields can render, but it is not a selectable domain
@@ -252,6 +257,15 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @Override
     public Map<String, Object> dynamicFieldValues() {
         return dynamicFields;
+    }
+
+    @Override
+    public FieldSchema dynamicFieldSchema() {
+        return dynamicFieldSchema;
+    }
+
+    public void dynamicFieldSchema(FieldSchema schema) {
+        this.dynamicFieldSchema = schema;
     }
 
     public void type(String type) {

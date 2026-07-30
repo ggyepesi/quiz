@@ -200,8 +200,27 @@ public final class SnapshotFieldGraph {
                 }
                 TypeShape type = graph.types.computeIfAbsent(
                         typeName, TypeShape::new);
-                type.member = true;
                 declareType(typeName, domain, new LinkedHashSet<>());
+            }
+        }
+
+        /** Root membership is domain topology, not reachability. After the full graph
+         * has been observed/declared, mark only explicitly supplied member-root types. */
+        public void markMembers(
+                Collection<WikidataDynamicObject> memberRoots) {
+            for (TypeShape type : graph.types.values()) {
+                type.member = false;
+            }
+            if (memberRoots == null) {
+                return;
+            }
+            for (WikidataDynamicObject root : memberRoots) {
+                if (root == null || root.isValueObject()
+                        || root.typeName() == null || root.typeName().isBlank()) {
+                    continue;
+                }
+                graph.types.computeIfAbsent(root.typeName(), TypeShape::new)
+                        .member = true;
             }
         }
 

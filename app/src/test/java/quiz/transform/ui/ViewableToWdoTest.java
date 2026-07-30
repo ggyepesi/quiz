@@ -160,7 +160,8 @@ class ViewableToWdoTest {
         List<WikidataDynamicObject> roots = ViewableToWdo.pool(List.of(grouped));
         @SuppressWarnings("unchecked")
         List<WikidataDynamicObject> groups =
-                (List<WikidataDynamicObject>) roots.get(0).get("groups");
+                new java.util.ArrayList<>(((java.util.Map<String,
+                        WikidataDynamicObject>) roots.get(0).get("groups")).values());
         assertEquals(2, groups.size());
         assertEquals(List.of("A", "A"), groups.stream()
                 .map(WikidataDynamicObject::getDisplayName).toList());
@@ -173,8 +174,8 @@ class ViewableToWdoTest {
                 .map(WikidataDynamicObject::getReferenceLabel).toList());
         for (WikidataDynamicObject group : groups) {
             assertTrue(group.get("parent") instanceof WikidataDynamicObject);
-            assertTrue(group.get("children") instanceof List<?>);
-            assertTrue(group.get("members") instanceof List<?>);
+            assertTrue(group.get("children") instanceof java.util.Map<?, ?>);
+            assertTrue(group.get("members") instanceof java.util.Map<?, ?>);
         }
 
         File file = dir.resolve("groups.snapshot.json").toFile();
@@ -182,8 +183,9 @@ class ViewableToWdoTest {
                 new WikidataDynamicObjectJsonStore();
         store.save(roots, file);
         var loaded = store.loadAllWithFieldGraph(file);
-        assertTrue(loaded.fieldGraph().memberTypes().contains("ViewableGroup"),
-                "a ViewableGroup uses the same persisted type model as other Viewables");
+        assertFalse(loaded.fieldGraph().memberTypes().contains("ViewableGroup"),
+                "a reachable ViewableGroup is group structure, not a top-level member"
+                        + " type — member types are the explicit roots only");
 
         WikidataDynamicObject loadedBA = loaded.objects().stream()
                 .filter(object -> "ViewableGroup".equals(object.typeName())
@@ -195,9 +197,22 @@ class ViewableToWdoTest {
         assertEquals("B", ((WikidataDynamicObject)
                 loadedBA.get("parent")).qid());
         assertEquals("B/A", loadedBA.getReferenceLabel());
-        assertEquals("grouped", ((List<?>) loadedBA.get("members")).stream()
+        assertEquals("grouped", ((java.util.Map<?, ?>) loadedBA.get("members"))
+                .values().stream()
                 .map(WikidataDynamicObject.class::cast)
                 .findFirst().orElseThrow().qid());
+    }
+
+    @Test void preservesMapKeys() {
+        GroupedEntity grouped = new GroupedEntity("grouped");
+        grouped.groups.put("meaningful-key", new ViewableGroup("A"));
+
+        WikidataDynamicObject converted =
+                ViewableToWdo.pool(List.of(grouped)).get(0);
+
+        assertTrue(converted.get("groups") instanceof java.util.Map<?, ?>);
+        assertTrue(((java.util.Map<?, ?>) converted.get("groups"))
+                .containsKey("meaningful-key"));
     }
 
     @Test
@@ -212,6 +227,9 @@ class ViewableToWdoTest {
         store.saveWithFieldGraph(
                 ViewableToWdo.pool(List.of(entity)), file, live);
         var loaded = store.loadAllWithFieldGraph(file);
+        assertTrue(objectview.field.FieldSet.of(loaded.objects().get(0))
+                        .field("website").link(),
+                "a loaded dynamic object carries its persisted annotation schema");
         SnapshotDomain roundTripped =
                 new SnapshotDomain(loaded.objects(), loaded.fieldGraph());
 

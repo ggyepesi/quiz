@@ -1,4 +1,4 @@
-package quiz.web.sources;
+package quiz.transform.app;
 
 import objectview.Viewable;
 import objectview.field.FieldSet;
@@ -21,7 +21,7 @@ import java.util.Set;
  * persisted graph. Parent, children and members are read through the same dynamic
  * fields used by every other loaded Viewable.
  */
-final class DynamicViewableGroup implements ViewableGroup<Viewable> {
+public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
 
     private final WikidataDynamicObject object;
     private final Map<WikidataDynamicObject, DynamicViewableGroup> cache;
@@ -33,56 +33,29 @@ final class DynamicViewableGroup implements ViewableGroup<Viewable> {
         this.cache = cache;
     }
 
-    static ViewableGroup<?> rootOf(
-            Collection<WikidataDynamicObject> objects) {
-        if (objects == null || objects.isEmpty()) {
+    /** Adapts explicit persisted group roots. No graph discovery is performed. */
+    public static ViewableGroup<?> adapt(WikidataDynamicObject root) {
+        return root == null || !isGroup(root)
+                ? null : wrap(root, new IdentityHashMap<>());
+    }
+
+    /** Adapts explicit persisted group roots. No graph discovery is performed. */
+    public static ViewableGroup<?> rootsOf(
+            Collection<WikidataDynamicObject> roots) {
+        if (roots == null || roots.isEmpty()) {
             return null;
-        }
-        Set<WikidataDynamicObject> reachable =
-                Collections.newSetFromMap(new IdentityHashMap<>());
-        for (WikidataDynamicObject object : objects) {
-            collectReachable(object, reachable);
         }
         Map<WikidataDynamicObject, DynamicViewableGroup> cache =
                 new IdentityHashMap<>();
-        List<DynamicViewableGroup> roots = new ArrayList<>();
-        for (WikidataDynamicObject object : reachable) {
-            if (!isGroup(object)) {
-                continue;
-            }
-            Object parent = object.get("parent");
-            if (!(parent instanceof WikidataDynamicObject dynamic)
-                    || !isGroup(dynamic)) {
-                roots.add(wrap(object, cache));
-            }
-        }
-        if (roots.isEmpty()) {
+        List<DynamicViewableGroup> adapted = roots.stream()
+                .filter(DynamicViewableGroup::isGroup)
+                .map(root -> wrap(root, cache))
+                .toList();
+        if (adapted.isEmpty()) {
             return null;
         }
-        if (roots.size() == 1) {
-            return roots.get(0);
-        }
-        return new MultipleRootsGroup(roots);
-    }
-
-    private static void collectReachable(
-            Object value, Set<WikidataDynamicObject> reachable) {
-        if (value instanceof WikidataDynamicObject object) {
-            if (!reachable.add(object)) {
-                return;
-            }
-            for (Object fieldValue : object.dynamicFieldValues().values()) {
-                collectReachable(fieldValue, reachable);
-            }
-        } else if (value instanceof Collection<?> collection) {
-            for (Object item : collection) {
-                collectReachable(item, reachable);
-            }
-        } else if (value instanceof Map<?, ?> map) {
-            for (Object item : map.values()) {
-                collectReachable(item, reachable);
-            }
-        }
+        return adapted.size() == 1
+                ? adapted.get(0) : new MultipleRootsGroup(adapted);
     }
 
     private static boolean isGroup(WikidataDynamicObject object) {
@@ -123,6 +96,17 @@ final class DynamicViewableGroup implements ViewableGroup<Viewable> {
 
     @Override
     public Role getRole() {
+        Object persisted = object.get("role");
+        if (persisted instanceof Role role) {
+            return role;
+        }
+        if (persisted instanceof String text) {
+            try {
+                return Role.valueOf(text);
+            } catch (IllegalArgumentException ignored) {
+                // Pre-v5 groups had no persisted role; use their shape below.
+            }
+        }
         if (getParent() == null) {
             return Role.UNIVERSE;
         }

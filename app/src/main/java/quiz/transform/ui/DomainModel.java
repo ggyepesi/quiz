@@ -77,6 +77,12 @@ public interface DomainModel {
     /** The instances to run the view over. */
     Collection<? extends Viewable> instances();
 
+    /** Explicit ordinary roots of the domain graph. Referenced instances remain in
+     * {@link #instances()} but are not promoted to roots merely because they are reachable. */
+    default Collection<? extends Viewable> memberRoots() {
+        return instances();
+    }
+
     /** Explicit group-graph roots to render. Their descendants remain ordinary
      * reachable Viewable references and need not be rediscovered as presentation roots. */
     default List<? extends objectview.group.ViewableGroup<?>> groupRoots() {

@@ -1,18 +1,15 @@
 package wikidata.explore.query.swing;
 
 import objectview.demo.MultiView;
-import objectview.field.DynamicFields;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
 import objectview.Viewable;
-import objectview.ViewableAdapter;
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
 import javax.swing.*;
 import java.awt.*;
-import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -153,23 +150,12 @@ public class QueryObjectResultPanel
     private void collectReferences(
             Viewable q,
             Deque<Viewable> queue) {
-
-        if (q instanceof DynamicFields dyn) {
-            for (Object v : dyn.dynamicFieldValues().values()) {
-                addReferences(v, queue);
-            }
-        }
-
-        for (Field f : ViewableAdapter.getAllFields(q.getClass())) {
-            if (ViewableAdapter.isProvenanceField(f)) {
+        objectview.field.FieldSet fields = objectview.field.FieldSet.of(q);
+        for (objectview.field.FieldRef field : fields.fields()) {
+            if (field.provenance()) {
                 continue;
             }
-
-            try {
-                f.setAccessible(true);
-                addReferences(f.get(q), queue);
-            } catch (Exception ignored) {
-            }
+            addReferences(fields.read(field.name()), queue);
         }
     }
 

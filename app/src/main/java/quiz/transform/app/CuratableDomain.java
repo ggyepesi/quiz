@@ -24,10 +24,22 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
 
     private final DomainModel base;
     private final ManualCuration curation;
+    private final Collection<? extends Viewable> memberRoots;
+    private final List<? extends objectview.group.ViewableGroup<?>> groupRoots;
 
     CuratableDomain(DomainModel base, ManualCuration curation) {
+        this(base, curation, base.memberRoots(), base.groupRoots());
+    }
+
+    CuratableDomain(
+            DomainModel base,
+            ManualCuration curation,
+            Collection<? extends Viewable> memberRoots,
+            List<? extends objectview.group.ViewableGroup<?>> groupRoots) {
         this.base = base;
         this.curation = curation;
+        this.memberRoots = memberRoots == null ? List.of() : List.copyOf(memberRoots);
+        this.groupRoots = groupRoots == null ? List.of() : List.copyOf(groupRoots);
     }
 
     @Override public ManualCuration curation() { return curation; }
@@ -43,5 +55,9 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
     @Override public FieldTypeSource fieldTypes(String type) { return base.fieldTypes(type); }
     @Override public Viewable representativeSample(String type) { return base.representativeSample(type); }
     @Override public Collection<? extends Viewable> instances() { return base.instances(); }
+    @Override public Collection<? extends Viewable> memberRoots() { return memberRoots; }
+    @Override public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
+        return groupRoots;
+    }
     @Override public Class<? extends Viewable> universe() { return base.universe(); }
 }

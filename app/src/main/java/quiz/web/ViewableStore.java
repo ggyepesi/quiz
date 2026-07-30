@@ -1,11 +1,8 @@
 package quiz.web;
 
 import objectview.Viewable;
-import objectview.ViewableAdapter;
-import objectview.field.DynamicFields;
 import objectview.group.ViewableGroup;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -190,27 +187,10 @@ public class ViewableStore {
 
     private static List<Viewable> children(Viewable q) {
         List<Viewable> out = new ArrayList<>();
-
-        // A DynamicFields object (a snapshot WDO, a PROJECT-derived DynamicViewable)
-        // holds its references in the property map, not declared Java fields — so
-        // walk those too, or a generically-served dynamic domain's refs go
-        // unindexed (the client couldn't resolve an expanded reference).
-        if (q instanceof DynamicFields dyn) {
-            for (Object v : dyn.dynamicFieldValues().values()) {
-                addViewables(v, out);
-            }
+        objectview.field.FieldSet fields = objectview.field.FieldSet.of(q);
+        for (objectview.field.FieldRef field : fields.fields()) {
+            addViewables(fields.read(field.name()), out);
         }
-
-        for (Field f : ViewableAdapter.getAllFields(q.getClass())) {
-            Object v;
-            try {
-                v = f.get(q);
-            } catch (Exception e) {
-                continue;
-            }
-            addViewables(v, out);
-        }
-
         return out;
     }
 

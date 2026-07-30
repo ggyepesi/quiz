@@ -41,7 +41,7 @@ class GeneratedSourceGroupingTest {
     }
 
     @Test
-    void discoversGroupsThroughAnyOrdinaryReferenceField(
+    void anOrdinaryGroupReferenceDoesNotDeclareAPresentationRoot(
             @TempDir Path dir) throws Exception {
         GroupedThing item = new GroupedThing("One");
         ViewableGroup root = new ViewableGroup("Root");
@@ -57,15 +57,44 @@ class GeneratedSourceGroupingTest {
                 converted, snapshot, domain);
 
         GeneratedSource source = new GeneratedSource("GroupedThing", snapshot);
+        assertNull(source.rootGroup());
+    }
+
+    @Test
+    void preservesAnExplicitRootWithoutAMemberBackReference(
+            @TempDir Path dir) throws Exception {
+        GroupedThing item = new GroupedThing("One");
+        ViewableGroup root = new ViewableGroup("Root");
+        ViewableGroup leaf = root.getOrCreateChild("Leaf")
+                .role(objectview.group.ViewableGroup.Role.BUCKET)
+                .keyRef(item);
+        leaf.addMember(item);
+        ReflectionDomain domain =
+                new ReflectionDomain(List.of(item), List.of(root));
+        var converted = ViewableToWdo.convertDomain(
+                domain.memberRoots(), domain.groupRoots(), domain);
+        File snapshot = dir.resolve("explicit-group-root.snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store =
+                new WikidataDynamicObjectJsonStore();
+        store.saveWithFieldGraph(
+                converted.memberRoots(), converted.groupRoots(),
+                snapshot, domain);
+
+        var loaded = store.loadAllWithFieldGraph(snapshot);
+        assertEquals(List.of("One"), loaded.memberRoots().stream()
+                .map(WikidataDynamicObject::getIdentifier).toList());
+        assertEquals(List.of("Root"), loaded.groupRoots().stream()
+                .map(WikidataDynamicObject::getIdentifier).toList());
+
+        GeneratedSource source = new GeneratedSource("GroupedThing", snapshot);
         objectview.group.ViewableGroup<?> loadedRoot = source.rootGroup();
-        assertNotNull(loadedRoot);
         assertEquals("Root", loadedRoot.getDisplayName());
-        objectview.group.ViewableGroup<?> loadedLeaf =
-                loadedRoot.getChild("Leaf");
-        assertNotNull(loadedLeaf);
+        assertEquals(objectview.group.ViewableGroup.Role.BUCKET,
+                loadedRoot.getChild("Leaf").getRole());
+        assertEquals("One", loadedRoot.getChild("Leaf")
+                .getKeyRef().getIdentifier());
         assertSame(source.load().iterator().next(),
-                loadedLeaf.getMembers().iterator().next(),
-                "the group adapter must expose the original loaded member object");
+                loadedRoot.getChild("Leaf").getMembers().iterator().next());
     }
 
     @Test
@@ -103,11 +132,13 @@ class GeneratedSourceGroupingTest {
         vienna.addMember(austria);
         austria.addGroup(vienna);
 
-        ReflectionDomain domain = new ReflectionDomain(List.of(austria));
-        List<WikidataDynamicObject> converted =
-                ViewableToWdo.pool(List.of(austria), domain);
+        ReflectionDomain domain =
+                new ReflectionDomain(List.of(austria), List.of(root));
+        var converted = ViewableToWdo.convertDomain(
+                domain.memberRoots(), domain.groupRoots(), domain);
         WikidataDynamicObject convertedVienna =
-                ((List<?>) converted.get(0).get("groups")).stream()
+                ((java.util.Map<?, ?>) converted.memberRoots().get(0)
+                        .get("groups")).values().stream()
                         .map(WikidataDynamicObject.class::cast)
                         .findFirst().orElseThrow();
         assertTrue(!convertedVienna.isStructuralObject());
@@ -115,7 +146,7 @@ class GeneratedSourceGroupingTest {
 
         File snapshot = dir.resolve("generic-groups.snapshot.json").toFile();
         new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
-                converted, snapshot, domain);
+                converted.memberRoots(), converted.groupRoots(), snapshot, domain);
 
         GeneratedSource source = new GeneratedSource("State", snapshot);
         objectview.group.ViewableGroup<?> loadedRoot = source.rootGroup();
