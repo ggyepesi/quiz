@@ -2,6 +2,7 @@ package quiz.transform.app;
 
 import objectview.Viewable;
 import objectview.field.FieldSet;
+import objectview.group.MultiRootGroup;
 import objectview.group.ViewableGroup;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -12,7 +13,6 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Read-only group view over an ordinary dynamic object graph.
@@ -51,11 +51,7 @@ public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
                 .filter(DynamicViewableGroup::isGroup)
                 .map(root -> wrap(root, cache))
                 .toList();
-        if (adapted.isEmpty()) {
-            return null;
-        }
-        return adapted.size() == 1
-                ? adapted.get(0) : new MultipleRootsGroup(adapted);
+        return MultiRootGroup.of(adapted, "All");
     }
 
     private static boolean isGroup(WikidataDynamicObject object) {
@@ -205,72 +201,5 @@ public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
             return map.values();
         }
         return value == null ? List.of() : List.of(value);
-    }
-
-    /** Synthetic universe used only when one snapshot contains independent group roots. */
-    private static final class MultipleRootsGroup
-            implements ViewableGroup<Viewable> {
-        private final List<DynamicViewableGroup> roots;
-
-        private MultipleRootsGroup(List<DynamicViewableGroup> roots) {
-            this.roots = List.copyOf(roots);
-        }
-
-        @Override public String getIdentifier() { return "All"; }
-        @Override public String getDisplayName() { return "All"; }
-        @Override public FieldSet fields() {
-            return new FieldSet() {
-                @Override public Object read(String name) {
-                    return "children".equals(name) ? roots : null;
-                }
-                @Override public boolean has(String name) {
-                    return "children".equals(name);
-                }
-                @Override public void write(String name, Object value) {
-                    throw new UnsupportedOperationException("read-only group");
-                }
-                @Override public List<objectview.field.FieldRef> fields() {
-                    return List.of();
-                }
-            };
-        }
-        @Override public Role getRole() { return Role.UNIVERSE; }
-        @Override public Viewable getKeyRef() { return null; }
-        @Override public ViewableGroup<Viewable> getChild(String name) {
-            return roots.stream()
-                    .filter(root -> name != null
-                            && name.equals(root.getDisplayName()))
-                    .findFirst().orElse(null);
-        }
-        @Override public Collection<DynamicViewableGroup> getChildren() {
-            return roots;
-        }
-        @Override public Map<String, DynamicViewableGroup> getChildrenMap() {
-            Map<String, DynamicViewableGroup> result = new LinkedHashMap<>();
-            for (DynamicViewableGroup root : roots) {
-                result.putIfAbsent(root.getDisplayName(), root);
-            }
-            return Collections.unmodifiableMap(result);
-        }
-        @Override public Collection<Viewable> getMembers() {
-            Set<Viewable> result =
-                    Collections.newSetFromMap(new IdentityHashMap<>());
-            for (DynamicViewableGroup root : roots) {
-                result.addAll(root.getMembers());
-            }
-            return List.copyOf(result);
-        }
-        @Override public Map<String, Viewable> getMemberMap() {
-            Map<String, Viewable> result = new LinkedHashMap<>();
-            for (Viewable member : getMembers()) {
-                result.putIfAbsent(member.getIdentifier(), member);
-            }
-            return Collections.unmodifiableMap(result);
-        }
-        @Override public ViewableGroup<Viewable> getParent() { return null; }
-        @Override public String getFullName() { return getDisplayName(); }
-        @Override public boolean contains(String memberName) {
-            return getMemberMap().containsKey(memberName);
-        }
     }
 }

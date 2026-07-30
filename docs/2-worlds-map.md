@@ -29,10 +29,6 @@ definition of done.
   save/load plumbing) and the `getReferenceLabel()` fallback are retained for
   legacy-snapshot reads only — fresh v5 data leaves them `false`/empty. Retire after old
   snapshots are regenerated.
-- **Two synthetic multi-root wrappers.** `DynamicViewableGroup.MultipleRootsGroup` (over
-  `WikidataDynamicObject`) and `GroupHierarchyPresentation.ForestRoot` (over live
-  `Viewable`) duplicate the read interface; they fire only on a genuinely multi-root
-  domain. Consolidate, or drop if a single root is guaranteed.
 - **`ViewConfig` backing branches.** Enumeration is unified through `FieldSet.of()`, but a
   class-only config table (no instance) still reflects the class directly, and the
   "All minor fields" bar still branches on `sample instanceof DynamicFields`.
