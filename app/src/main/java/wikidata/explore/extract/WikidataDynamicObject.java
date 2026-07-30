@@ -92,21 +92,6 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @JsonIgnore
     private transient FieldSchema dynamicFieldSchema;
 
-    // A pooled structural object (currently an authored ViewableGroup): references
-    // can point to it and its fields can render, but it is not a selectable domain
-    // member type merely because it is reachable from a member.
-    @Hidden
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private boolean structuralObject;
-
-    // Hidden ancestry metadata for an authored group. It is persisted by
-    // WikidataDynamicObjectJsonStore outside dynamicFields so cards show the
-    // structural parent/children/members fields, not a `path (n)` implementation
-    // detail.
-    @Hidden
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private List<String> structuralPath = List.of();
-
     // Provenance grouped as one nested Viewable: renders as a collapsed
     // "source: Wikidata" chip that expands to the QID + link. Declared LAST so
     // it renders as an unobtrusive footer below the real fields (reflection
@@ -218,9 +203,6 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
         if (referenceLabel != null && !referenceLabel.isBlank()) {
             return referenceLabel;
         }
-        if (structuralObject && !structuralPath.isEmpty()) {
-            return String.join("/", structuralPath);
-        }
         return getName();
     }
 
@@ -289,32 +271,6 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
 
     public void valueObject(boolean valueObject) {
         this.valueObject = valueObject;
-    }
-
-    public boolean isStructuralObject() {
-        return structuralObject;
-    }
-
-    public void structuralObject(boolean structuralObject) {
-        this.structuralObject = structuralObject;
-    }
-
-    public List<String> structuralPath() {
-        return structuralPath;
-    }
-
-    public void structuralPath(java.util.Collection<?> path) {
-        if (path == null || path.isEmpty()) {
-            structuralPath = List.of();
-            return;
-        }
-        List<String> copy = new ArrayList<>();
-        for (Object segment : path) {
-            if (segment != null && !segment.toString().isBlank()) {
-                copy.add(segment.toString());
-            }
-        }
-        structuralPath = List.copyOf(copy);
     }
 
     /** True when a domain class was stamped ({@link #typeName()} would otherwise

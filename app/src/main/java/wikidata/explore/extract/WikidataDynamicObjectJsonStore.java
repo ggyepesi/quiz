@@ -251,13 +251,6 @@ public class WikidataDynamicObjectJsonStore {
         Entity e = new Entity();
         e.qid = first.qid();
         e.typeKey = typeKey;
-        for (WikidataDynamicObject o : instances) {
-            e.structuralObject |= o.isStructuralObject();
-            if (!o.structuralPath().isEmpty()) {
-                e.structuralPath = new ArrayList<>(o.structuralPath());
-            }
-        }
-
         e.name = first.getDisplayName();
         for (WikidataDynamicObject o : instances) {
             String n = o.getDisplayName();
@@ -462,7 +455,7 @@ public class WikidataDynamicObjectJsonStore {
         List<WikidataDynamicObject> roots = new ArrayList<>();
         for (WikidataDynamicObject object : reachable) {
             if (!"ViewableGroup".equals(object.typeName())
-                    || !includeOrdinaryGroups && !object.isStructuralObject()) {
+                    || !includeOrdinaryGroups) {
                 continue;
             }
             Object parent = object.get("parent");
@@ -509,8 +502,6 @@ public class WikidataDynamicObjectJsonStore {
                 o.typeKey(e.typeKey);
             }
             o.referenceLabel(e.referenceLabel);
-            o.structuralObject(e.structuralObject);
-            o.structuralPath(e.structuralPath);
             byKey.put(compositeKey(e.typeKey, e.qid), o);
         }
         Map<String, WikidataDynamicObject> byQidSingle = uniqueByQid(byKey);
@@ -520,142 +511,8 @@ public class WikidataDynamicObjectJsonStore {
                 o.dynamicFields().put(entry.getKey(),
                         decode(entry.getValue(), byKey, byQidSingle));
             }
-            migrateLegacyGroupPath(o);
         }
-        restoreLegacyGroupStructure(byKey.values());
         return byKey;
-    }
-
-    /**
-     * Older manual-domain snapshots embedded one path-only ViewableGroup value
-     * in every member's {@code groups} collection. Rebuild the shared structural
-     * graph in memory: one group per full path, parent/children links, and
-     * transitive members (the same semantics as DefaultViewableGroup.addMember).
-     */
-    private static void restoreLegacyGroupStructure(
-            Collection<WikidataDynamicObject> owners) {
-        Map<WikidataDynamicObject, List<WikidataDynamicObject>> refsByOwner =
-                new LinkedHashMap<>();
-        Map<List<String>, WikidataDynamicObject> groupsByPath =
-                new LinkedHashMap<>();
-        boolean hasLegacy = false;
-
-        for (WikidataDynamicObject owner : owners) {
-            List<WikidataDynamicObject> references =
-                    structuralGroupValues(owner.get("groups"));
-            if (references.isEmpty()) {
-                continue;
-            }
-            refsByOwner.put(owner, references);
-            for (WikidataDynamicObject group : references) {
-                List<String> path = group.structuralPath();
-                if (path.isEmpty()) {
-                    continue;
-                }
-                if (isLegacyEmbeddedGroup(group)) {
-                    hasLegacy = true;
-                } else {
-                    groupsByPath.putIfAbsent(path, group);
-                }
-            }
-        }
-        if (!hasLegacy) {
-            return;
-        }
-
-        for (Map.Entry<WikidataDynamicObject,
-                List<WikidataDynamicObject>> entry : refsByOwner.entrySet()) {
-            WikidataDynamicObject owner = entry.getKey();
-            List<WikidataDynamicObject> normalized = new ArrayList<>();
-            for (WikidataDynamicObject reference : entry.getValue()) {
-                List<String> path = reference.structuralPath();
-                WikidataDynamicObject group = isLegacyEmbeddedGroup(reference)
-                        && !path.isEmpty()
-                        ? groupNode(path, groupsByPath) : reference;
-                if (!normalized.contains(group)) {
-                    normalized.add(group);
-                }
-                if (!path.isEmpty()) {
-                    for (int size = 1; size <= path.size(); size++) {
-                        addGroupLink(
-                                groupNode(path.subList(0, size), groupsByPath),
-                                "members", owner);
-                    }
-                }
-            }
-            owner.put("groups", normalized);
-        }
-    }
-
-    private static boolean isLegacyEmbeddedGroup(
-            WikidataDynamicObject group) {
-        return group != null
-                && "ViewableGroup".equals(group.typeName())
-                && (group.isValueObject()
-                || group.qid() == null || group.qid().isBlank());
-    }
-
-    private static List<WikidataDynamicObject> structuralGroupValues(
-            Object value) {
-        List<WikidataDynamicObject> result = new ArrayList<>();
-        if (value instanceof Collection<?> collection) {
-            for (Object item : collection) {
-                if (item instanceof WikidataDynamicObject group
-                        && "ViewableGroup".equals(group.typeName())) {
-                    result.add(group);
-                }
-            }
-        } else if (value instanceof WikidataDynamicObject group
-                && "ViewableGroup".equals(group.typeName())) {
-            result.add(group);
-        }
-        return result;
-    }
-
-    private static WikidataDynamicObject groupNode(
-            List<String> sourcePath,
-            Map<List<String>, WikidataDynamicObject> groupsByPath) {
-        List<String> path = List.copyOf(sourcePath);
-        WikidataDynamicObject existing = groupsByPath.get(path);
-        if (existing != null) {
-            return existing;
-        }
-
-        String label = path.get(path.size() - 1);
-        WikidataDynamicObject group = new WikidataDynamicObject(
-                String.join(".", path), label);
-        group.type("ViewableGroup");
-        group.typeKey("ViewableGroup");
-        group.structuralObject(true);
-        group.structuralPath(path);
-        group.put("children", new ArrayList<WikidataDynamicObject>());
-        group.put("members", new ArrayList<WikidataDynamicObject>());
-        groupsByPath.put(path, group);
-
-        if (path.size() > 1) {
-            WikidataDynamicObject parent = groupNode(
-                    path.subList(0, path.size() - 1), groupsByPath);
-            group.put("parent", parent);
-            addGroupLink(parent, "children", group);
-        }
-        return group;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void addGroupLink(
-            WikidataDynamicObject group, String field,
-            WikidataDynamicObject value) {
-        Object current = group.get(field);
-        List<WikidataDynamicObject> links =
-                current instanceof List<?> list
-                        ? (List<WikidataDynamicObject>) list
-                        : new ArrayList<>();
-        if (current != links) {
-            group.put(field, links);
-        }
-        if (!links.contains(value)) {
-            links.add(value);
-        }
     }
 
     /** Map each qid to its entity ONLY when that qid has a single entity — the safe
@@ -748,10 +605,6 @@ public class WikidataDynamicObjectJsonStore {
             e.referenceLabel = referenceLabel;
         }
         e.type = w.typeName();              // still carried, for rendering
-        e.structuralObject = w.isStructuralObject();
-        if (!w.structuralPath().isEmpty()) {
-            e.structuralPath = new ArrayList<>(w.structuralPath());
-        }
         for (Map.Entry<String, Object> f : w.dynamicFields().entrySet()) {
             e.fields.put(f.getKey(), encode(f.getValue()));
         }
@@ -769,34 +622,10 @@ public class WikidataDynamicObjectJsonStore {
         }
         o.referenceLabel(e.referenceLabel);
         o.valueObject(true);
-        o.structuralObject(e.structuralObject);
-        o.structuralPath(e.structuralPath);
         for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
             o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey, byQidSingle));
         }
-        migrateLegacyGroupPath(o);
         return o;
-    }
-
-    /** Upgrades the first group-value format in memory: ancestry remains available
-     *  to rebuild the tree but is no longer a visible dynamic card field. */
-    private static void migrateLegacyGroupPath(WikidataDynamicObject object) {
-        if (object == null || !"ViewableGroup".equals(object.typeName())) {
-            return;
-        }
-        Object legacy = object.get("path");
-        // Only legacy path-carriers are structural migration objects. A current
-        // ordinary ViewableGroup has no path metadata and stays an ordinary entity.
-        if (!(legacy instanceof java.util.Collection<?>)
-                && object.structuralPath().isEmpty()) {
-            return;
-        }
-        object.structuralObject(true);
-        if (object.structuralPath().isEmpty()
-                && legacy instanceof java.util.Collection<?> path) {
-            object.structuralPath(path);
-        }
-        object.remove("path");
     }
 
     private static String keyOf(WikidataDynamicObject o) {
@@ -851,10 +680,6 @@ public class WikidataDynamicObjectJsonStore {
         // The OBJECT-identity type key ⟨typeKey, qid⟩ (stable logical class name).
         // Null for pre-v4 snapshots and untyped leaves.
         public String typeKey;
-        public boolean structuralObject;
-        // Hidden authored hierarchy metadata for structural ViewableGroup
-        // entities; never exposed as a dynamic card field.
-        public List<String> structuralPath;
         public Map<String, Object> fields = new LinkedHashMap<>();
     }
 

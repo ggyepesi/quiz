@@ -175,8 +175,7 @@ public final class SnapshotFieldGraph {
             }
             TypeShape type = graph.types.computeIfAbsent(
                     object.typeName(), TypeShape::new);
-            type.member |= !object.isValueObject()
-                    && !object.isStructuralObject();
+            type.member |= !object.isValueObject();
             type.valueObject |= object.isValueObject();
             for (Map.Entry<String, Object> entry
                     : object.dynamicFieldValues().entrySet()) {
