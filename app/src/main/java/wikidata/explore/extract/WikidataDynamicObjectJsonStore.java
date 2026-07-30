@@ -2,6 +2,7 @@ package wikidata.explore.extract;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -90,6 +91,10 @@ public class WikidataDynamicObjectJsonStore {
                 "@class");
 
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        // Tolerate fields that no longer exist (e.g. retired structuralObject/
+        // structuralPath) so a snapshot written by an older build still loads —
+        // schema evolution shouldn't require regenerating every snapshot.
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
     // ------------------------------------------------------------------
