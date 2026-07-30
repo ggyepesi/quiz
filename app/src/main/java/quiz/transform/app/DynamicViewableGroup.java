@@ -8,9 +8,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -116,44 +114,13 @@ public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
     }
 
     @Override
-    public DynamicViewableGroup getChild(String name) {
-        if (name == null) {
-            return null;
-        }
-        for (DynamicViewableGroup child : getChildren()) {
-            if (name.equals(child.getDisplayName())) {
-                return child;
-            }
-        }
-        return null;
-    }
-
-    @Override
     public Collection<DynamicViewableGroup> getChildren() {
         return groups(object.get("children"));
     }
 
     @Override
-    public Map<String, DynamicViewableGroup> getChildrenMap() {
-        Map<String, DynamicViewableGroup> result = new LinkedHashMap<>();
-        for (DynamicViewableGroup child : getChildren()) {
-            result.putIfAbsent(child.getDisplayName(), child);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    @Override
     public Collection<Viewable> getMembers() {
         return viewables(object.get("members"));
-    }
-
-    @Override
-    public Map<String, Viewable> getMemberMap() {
-        Map<String, Viewable> result = new LinkedHashMap<>();
-        for (Viewable member : getMembers()) {
-            result.putIfAbsent(member.getIdentifier(), member);
-        }
-        return Collections.unmodifiableMap(result);
     }
 
     @Override
@@ -166,11 +133,6 @@ public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
     @Override
     public String getFullName() {
         return getReferenceLabel();
-    }
-
-    @Override
-    public boolean contains(String memberName) {
-        return getMemberMap().containsKey(memberName);
     }
 
     private Collection<DynamicViewableGroup> groups(Object value) {
