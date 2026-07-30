@@ -22,19 +22,21 @@ import java.util.List;
  */
 public final class FacetGroup extends ViewableGroupAdapter {
 
-    private final Class<? extends Viewable> memberClass;
+    private final String memberType;
     private final String field;
 
-    public FacetGroup(String label, Class<? extends Viewable> memberClass, String field) {
+    public FacetGroup(String label, String memberType, String field) {
         super(label, label);
-        this.memberClass = memberClass;
+        this.memberType = memberType;
         this.field = field;
         role(Role.UNIVERSE);
     }
 
-    /** The class whose instances this group reproduces from (never inferred). */
-    public Class<? extends Viewable> memberClass() {
-        return memberClass;
+    /** The type (typeName) whose instances this group scopes/reproduces from — remembered
+     *  explicitly because a computed group can be empty before the first reproduce, so
+     *  member-inference won't do. (The Java class is the shared universe, not this.) */
+    public String memberType() {
+        return memberType;
     }
 
     /** The rule: the field this group buckets its members by. */

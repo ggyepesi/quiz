@@ -386,9 +386,38 @@ public final class TransformController {
      *  returns the grouped result the view turns into cards. The caller passes the
      *  snapshot (captured on the EDT) so a background render reads immutable inputs
      *  and its result matches the state at launch. */
-    public ViewableGroup compileResult(String type, List<OperationSpec> ops) {
-        View view = ViewCompiler.compile(
-                viewName(type, ops), type, new ArrayList<>(ops), domain.universe());
+    public objectview.group.ViewableGroup<?> compileResult(
+            String type, List<OperationSpec> ops) {
+        List<OperationSpec> opList = new ArrayList<>(ops);
+        String name = viewName(type, opList);
+
+        // A single top-level VALUE group-by becomes a FacetGroup that carries its rule
+        // (self-describing + recomputable): filters compose in front via View.members(),
+        // then the facet partitions. Nested / multiple / reference groupings keep the full
+        // View render.
+        List<OperationSpec> groupBys = new ArrayList<>();
+        for (OperationSpec o : opList) {
+            if (o != null && o.kind == OperationKind.GROUP_BY && o.field != null) {
+                groupBys.add(o);
+            }
+        }
+        if (groupBys.size() == 1 && groupBys.get(0).depth == 0
+                && !groupBys.get(0).field.reference()) {
+            List<OperationSpec> filters = new ArrayList<>();
+            for (OperationSpec o : opList) {
+                if (o == null || o.kind != OperationKind.GROUP_BY) {
+                    filters.add(o);
+                }
+            }
+            View filterView = ViewCompiler.compile(
+                    name, type, filters, domain.universe());
+            quiz.transform.FacetGroup group = new quiz.transform.FacetGroup(
+                    name, type, groupBys.get(0).field.field());
+            group.reproduce(filterView.members(domain.instances()));
+            return group;
+        }
+
+        View view = ViewCompiler.compile(name, type, opList, domain.universe());
         return view.render(domain.instances());
     }
 
@@ -404,16 +433,15 @@ public final class TransformController {
         return new ArrayList<>(out);
     }
 
-    private static void collectMembers(ViewableGroup group, java.util.Set<Viewable> out) {
+    private static void collectMembers(
+            objectview.group.ViewableGroup<?> group, java.util.Set<Viewable> out) {
         if (group == null) {
             return;
         }
-        for (objectview.Viewable member : group.getMembers()) {
-            if (member instanceof Viewable m) {
-                out.add(m);
-            }
+        for (Viewable member : group.getMembers()) {
+            out.add(member);
         }
-        for (ViewableGroup child : group.getChildren()) {
+        for (objectview.group.ViewableGroup<?> child : group.getChildren()) {
             collectMembers(child, out);
         }
     }

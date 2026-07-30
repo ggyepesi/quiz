@@ -25,10 +25,10 @@ class FacetGroupTest {
                 city("Berlin", "Europe"),
                 city("Tokyo", "Asia")));
 
-        FacetGroup fg = new FacetGroup("By region", DynamicViewable.class, "region");
+        FacetGroup fg = new FacetGroup("By region", "City", "region");
         fg.reproduce(members);
 
-        assertEquals(DynamicViewable.class, fg.memberClass());
+        assertEquals("City", fg.memberType());
         assertEquals("region", fg.field());
         assertEquals(3, fg.getMembers().size());
         assertNotNull(fg.getChild("Europe"));

@@ -119,6 +119,40 @@ class TransformControllerTest {
         assertEquals(2, c.pipeline().size());
     }
 
+    @Test void singleTopLevelGroupByCompilesToAFacetGroup() {
+        quiz.transform.DynamicViewable paris = city("Paris", "Europe");
+        quiz.transform.DynamicViewable tokyo = city("Tokyo", "Asia");
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public List<DomainField> fields(String type) {
+                return List.of(new DomainField("City", "region", false, false));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(paris, tokyo);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController c = new TransformController(cities, null);
+        c.selectType("City");
+        c.replaceViewPipeline(List.of(new OperationSpec(
+                OperationKind.GROUP_BY, c.field("City", "region"), null)));
+
+        objectview.group.ViewableGroup<?> result = c.compileResult("City", c.pipeline());
+        assertInstanceOf(quiz.transform.FacetGroup.class, result);
+        quiz.transform.FacetGroup fg = (quiz.transform.FacetGroup) result;
+        assertEquals("City", fg.memberType());
+        assertEquals("region", fg.field());
+        assertNotNull(fg.getChild("Europe"));
+        assertNotNull(fg.getChild("Asia"));
+    }
+
+    private static quiz.transform.DynamicViewable city(String name, String region) {
+        quiz.transform.DynamicViewable c = new quiz.transform.DynamicViewable(name, name);
+        c.type("City");
+        c.put("region", region);
+        return c;
+    }
+
     @Test void removeAndMoveReorderThePipeline() {
         TransformController c = controller();
         nominationView(c);                      // FILTER won, GROUP_BY category, GROUP_BY year

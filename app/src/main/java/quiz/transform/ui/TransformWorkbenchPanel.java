@@ -497,8 +497,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         renderHolder.revalidate();
         renderHolder.repaint();
 
-        new SwingWorker<ViewableGroup, Void>() {
-            @Override protected ViewableGroup doInBackground() {
+        new SwingWorker<objectview.group.ViewableGroup<?>, Void>() {
+            @Override protected objectview.group.ViewableGroup<?> doInBackground() {
                 return controller.compileResult(type, ops);
             }
             @Override protected void done() {
@@ -506,7 +506,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     return;   // a newer render started — don't overwrite it
                 }
                 try {
-                    ViewableGroup root = get();
+                    objectview.group.ViewableGroup<?> root = get();
                     List<Viewable> visible = renderedMembers(root);
                     renderedScope = new RenderedScope(generation, type, visible);
                     renderHolder.removeAll();
@@ -539,21 +539,20 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }.execute();
     }
 
-    private static List<Viewable> renderedMembers(ViewableGroup root) {
+    private static List<Viewable> renderedMembers(
+            objectview.group.ViewableGroup<?> root) {
         java.util.LinkedHashSet<Viewable> members = new java.util.LinkedHashSet<>();
         collectRenderedMembers(root, members);
         return List.copyOf(members);
     }
 
     private static void collectRenderedMembers(
-            ViewableGroup group, java.util.Set<Viewable> members) {
+            objectview.group.ViewableGroup<?> group, java.util.Set<Viewable> members) {
         if (group == null) return;
-        for (objectview.Viewable member : group.getMembers()) {
-            if (member instanceof Viewable viewable) {
-                members.add(viewable);
-            }
+        for (Viewable member : group.getMembers()) {
+            members.add(member);
         }
-        for (ViewableGroup child : group.getChildren()) {
+        for (objectview.group.ViewableGroup<?> child : group.getChildren()) {
             collectRenderedMembers(child, members);
         }
     }
