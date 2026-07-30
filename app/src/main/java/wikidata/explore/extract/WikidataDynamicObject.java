@@ -200,6 +200,14 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @Override
     public String getDisplayName() { return name == null || name.isBlank() ? qid : name; }
 
+    @Override
+    public String getReferenceLabel() {
+        if (structuralObject && !structuralPath.isEmpty()) {
+            return String.join("/", structuralPath);
+        }
+        return getName();
+    }
+
     public String displayLabel() { return getDisplayName(); }
 
     public String qid() {

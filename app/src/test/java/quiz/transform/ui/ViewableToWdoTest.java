@@ -3,6 +3,11 @@ package quiz.transform.ui;
 import aux.FlexibleDate;
 import objectview.media.ImagePane;
 import objectview.annotations.Link;
+import objectview.annotations.Minor;
+import objectview.render.Card;
+import objectview.render.LinkRow;
+import objectview.render.RenderContext;
+import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.ViewableGroup;
@@ -13,6 +18,8 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
+import java.awt.Component;
+import java.awt.Container;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -78,6 +85,10 @@ class ViewableToWdoTest {
         private FlexibleDate admissionDate;
         @Link(text = "website")
         private final String website = "https://example.test";
+        @Minor
+        @Link(text = "minor website")
+        private final String minorWebsite =
+                "https://minor.example.test";
         private final List<EmptyChild> children = new java.util.ArrayList<>();
         private final List<ImagePane> images = new java.util.ArrayList<>();
 
@@ -137,6 +148,8 @@ class ViewableToWdoTest {
 
         assertEquals("B.A", bA.getIdentifier());
         assertEquals("C.A", cA.getIdentifier());
+        assertEquals("B/A", bA.getReferenceLabel());
+        assertEquals("C/A", cA.getReferenceLabel());
 
         GroupedEntity grouped = new GroupedEntity("grouped");
         grouped.groups.put(bA.getIdentifier(), bA);
@@ -162,6 +175,8 @@ class ViewableToWdoTest {
                 List.of("B", "A"),
                 List.of("C", "A")), groups.stream()
                 .map(WikidataDynamicObject::structuralPath).toList());
+        assertEquals(List.of("B/A", "C/A"), groups.stream()
+                .map(WikidataDynamicObject::getReferenceLabel).toList());
         for (WikidataDynamicObject group : groups) {
             assertTrue(group.get("parent") instanceof WikidataDynamicObject);
             assertTrue(group.get("children") instanceof List<?>);
@@ -185,6 +200,7 @@ class ViewableToWdoTest {
                                 .toList().toString()));
         assertEquals("B", ((WikidataDynamicObject)
                 loadedBA.get("parent")).qid());
+        assertEquals("B/A", loadedBA.getReferenceLabel());
         assertEquals("grouped", ((List<?>) loadedBA.get("members")).stream()
                 .map(WikidataDynamicObject.class::cast)
                 .findFirst().orElseThrow().qid());
@@ -226,5 +242,45 @@ class ViewableToWdoTest {
                 "render hints must survive the typed-to-dynamic round trip");
         assertEquals("website", roundTripped.fieldSchema("DeclaredEntity")
                 .field("website").linkText());
+        assertTrue(roundTripped.fieldSchema("DeclaredEntity")
+                        .field("minorWebsite").minor(),
+                "@Minor must survive the typed-to-dynamic round trip");
+
+        WikidataDynamicObject loadedEntity = roundTripped.instances().stream()
+                .map(WikidataDynamicObject.class::cast)
+                .filter(object -> "DeclaredEntity".equals(object.typeName()))
+                .findFirst().orElseThrow();
+        RenderContext context = new RenderContext(
+                roundTripped.instances());
+        context.setFieldSchemaResolver(
+                value -> roundTripped.fieldSchema(value.typeName()));
+
+        Card[] defaultCard = new Card[1];
+        Card[] detailedCard = new Card[1];
+        javax.swing.SwingUtilities.invokeAndWait(() -> {
+            defaultCard[0] = new Card(
+                    loadedEntity,
+                    ViewConfig.all(WikidataDynamicObject.class),
+                    context, false);
+            detailedCard[0] = new Card(
+                    loadedEntity,
+                    ViewConfig.allWithMinorFields(
+                            WikidataDynamicObject.class),
+                    context, false);
+        });
+        assertEquals(1, count(defaultCard[0], LinkRow.class),
+                "default snapshot cards must hide minor fields");
+        assertEquals(2, count(detailedCard[0], LinkRow.class),
+                "detail snapshot cards may opt minor fields in");
+    }
+
+    private static int count(Component root, Class<?> type) {
+        int result = type.isInstance(root) ? 1 : 0;
+        if (root instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                result += count(child, type);
+            }
+        }
+        return result;
     }
 }

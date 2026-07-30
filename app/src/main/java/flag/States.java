@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import aux.*;
+import language.CountryLanguagesReader;
+import language.Language;
+import language.Languages;
 import objectview.viewconfig.DomainViews;
 import quiz.GroupReader;
 import quiz.ViewableGroup;
@@ -85,12 +88,43 @@ public class States implements DomainViews {
         DownloadFlagGroups.downloadColorFlagroups(root, states);
         DownloadFlagGroups.downloadDesignFlagroups(root, states);
         StateAdmissionDates.apply(states);
+        readLanguages();
 
         System.out.println(root.getChildren().size() + " groups, " +
                                    root.getMembers().size() + " vs. " + states.size());
         mem();
         groupView = new GroupView(root);
         built = true;
+    }
+
+    /**
+     * Connect the country-language list to the canonical {@link Language}
+     * instances loaded by the language domain. Keeping the shared objects (rather
+     * than constructing name-only copies) preserves their details and family
+     * references when a States view is saved as a snapshot.
+     */
+    void readLanguages() throws Exception {
+        Languages languageViews = new Languages();
+        languageViews.buildViews();
+        Map<String, List<String>> languageNamesByCountry =
+                CountryLanguagesReader.readCountryLanguages(
+                        Constants.languageDirectory + "languages.txt");
+
+        for (Entry<String, List<String>> country :
+                languageNamesByCountry.entrySet()) {
+            State state = states.get(country.getKey());
+            if (state == null) {
+                continue;
+            }
+            for (String languageName : country.getValue()) {
+                Language language =
+                        languageViews.getLanguage(languageName);
+                if (language != null
+                        && !state.getLanguages().contains(language)) {
+                    state.getLanguages().add(language);
+                }
+            }
+        }
     }
 
     private void mem() {

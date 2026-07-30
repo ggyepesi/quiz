@@ -75,9 +75,12 @@ public class LanguageStore {
             String line;
 
             while ((line = r.readLine()) != null) {
-                line = line.trim();
+                // Keep the original row: trailing tabs are significant empty
+                // columns. Trimming here used to turn a valid 15-column language
+                // with no leaf family into a 14-column row and silently drop it.
+                String marker = line.trim();
 
-                switch (line) {
+                switch (marker) {
                     case "" -> {
                         continue;
                     }

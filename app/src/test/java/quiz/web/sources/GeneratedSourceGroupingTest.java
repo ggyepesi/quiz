@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedSourceGroupingTest {
@@ -61,7 +62,8 @@ class GeneratedSourceGroupingTest {
                 new WikidataDynamicObjectJsonStore();
         store.save(List.of(unitedStates, zimbabwe), snapshot);
 
-        WikidataDynamicObject reloadedUnitedStates = store.loadAll(snapshot).stream()
+        List<WikidataDynamicObject> reloaded = store.loadAll(snapshot);
+        WikidataDynamicObject reloadedUnitedStates = reloaded.stream()
                 .filter(object -> "United States".equals(object.qid()))
                 .findFirst().orElseThrow();
         @SuppressWarnings("unchecked")
@@ -69,8 +71,41 @@ class GeneratedSourceGroupingTest {
                 (List<WikidataDynamicObject>) reloadedUnitedStates.get("groups");
         assertTrue(reloadedGroups.stream().allMatch(
                         group -> group.get("path") == null
+                                && group.isStructuralObject()
                                 && !group.structuralPath().isEmpty()),
                 "new and legacy group paths become hidden structural metadata");
+        assertTrue(reloadedGroups.stream()
+                        .map(WikidataDynamicObject::getReferenceLabel)
+                        .anyMatch("All/Capitals/ST/St. George's"::equals),
+                "a migrated group reference must show its full ancestry");
+        WikidataDynamicObject capital = reloadedGroups.stream()
+                .filter(group -> "All/Capitals/ST/St. George's".equals(
+                        group.getReferenceLabel()))
+                .findFirst().orElseThrow();
+        assertEquals(Set.of("United States"), memberIds(capital),
+                "the directly owning State must be a leaf member");
+        assertEquals(Set.of("United States"),
+                memberIds((WikidataDynamicObject) capital.get("parent")),
+                "membership must propagate to group ancestors");
+
+        WikidataDynamicObject reloadedZimbabwe =
+                reloaded.stream()
+                        .filter(object -> "Zimbabwe".equals(object.qid()))
+                        .findFirst().orElseThrow();
+        WikidataDynamicObject usDollar = reloadedGroups.stream()
+                .filter(group -> "All/Currencies/DO/dollar/United States"
+                        .equals(group.getReferenceLabel()))
+                .findFirst().orElseThrow();
+        WikidataDynamicObject zimbabweDollar =
+                structuralGroupValues(reloadedZimbabwe).stream()
+                        .filter(group -> "All/Currencies/DO/dollar/United States"
+                                .equals(group.getReferenceLabel()))
+                        .findFirst().orElseThrow();
+        assertSame(usDollar, zimbabweDollar,
+                "same full path must resolve to one shared group object");
+        assertEquals(Set.of("United States", "Zimbabwe"),
+                memberIds(usDollar),
+                "a shared group must contain every owning State");
 
         GeneratedSource source = new GeneratedSource("State", snapshot);
         quiz.ViewableGroup root = source.rootGroup();
@@ -132,5 +167,19 @@ class GeneratedSourceGroupingTest {
         group.valueObject(true);
         group.put("path", List.of(path));
         return group;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<WikidataDynamicObject> structuralGroupValues(
+            WikidataDynamicObject owner) {
+        return (List<WikidataDynamicObject>) owner.get("groups");
+    }
+
+    private static Set<String> memberIds(
+            WikidataDynamicObject group) {
+        return ((List<?>) group.get("members")).stream()
+                .map(WikidataDynamicObject.class::cast)
+                .map(WikidataDynamicObject::qid)
+                .collect(Collectors.toSet());
     }
 }

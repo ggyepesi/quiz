@@ -33,7 +33,7 @@ public class Languages implements DomainViews {
         if (built) {
             return;
         }
-        File file = new File(fileName);
+        File file = resolveDataFile(fileName);
         if (!file.exists()) {
             throw new RuntimeException(
                     "Language data file not found: "
@@ -43,7 +43,7 @@ public class Languages implements DomainViews {
         }
 
         LanguagesData data =
-                LanguageStore.read(fileName);
+                LanguageStore.read(file.getPath());
 
         languages.clear();
         families.clear();
@@ -60,6 +60,20 @@ public class Languages implements DomainViews {
                 );
 
         built = true;
+    }
+
+    /**
+     * Maven runs the app module with {@code app/} as its working directory,
+     * while IntelliJ normally runs from the reactor root. Accept both layouts
+     * for the repository-owned data file.
+     */
+    private static File resolveDataFile(String fileName) {
+        File direct = new File(fileName);
+        if (direct.exists() || direct.isAbsolute()) {
+            return direct;
+        }
+        File fromModule = new File("..", fileName);
+        return fromModule.exists() ? fromModule : direct;
     }
 
     @Override
