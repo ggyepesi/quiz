@@ -1,5 +1,6 @@
 package quiz.transform.ui;
 
+import objectview.demo.GroupTreeBrowser;
 import objectview.demo.MultiView;
 import process.CancellationToken;
 import process.ProcessInputHandler;
@@ -630,34 +631,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         return fallback;
     }
 
-    /** A grouped result: the group hierarchy is a NAVIGATOR at the bottom; selecting a node
-     *  renders that group's members in the instance panel above (not in place). */
     private JComponent groupView(
             objectview.group.ViewableGroup<?> root, String type) {
-        JPanel instances = new JPanel(new BorderLayout());
-        java.util.function.Consumer<objectview.group.ViewableGroup<?>> show = g -> {
-            instances.removeAll();
-            instances.add(flatView(renderedMembers(g), type), BorderLayout.CENTER);
-            instances.revalidate();
-            instances.repaint();
-        };
-        show.accept(root);   // start on the whole group
-
-        objectview.render.GroupView nav = new objectview.render.GroupView(root);
-        nav.getTree().addTreeSelectionListener(e -> {
-            if (nav.getTree().getLastSelectedPathComponent()
-                    instanceof javax.swing.tree.DefaultMutableTreeNode node) {
-                objectview.group.ViewableGroup<?> g = nav.getViewableGroup(node);
-                if (g != null) {
-                    show.accept(g);
-                }
-            }
-        });
-
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
-                instances, new JScrollPane(nav.getTree()));
-        split.setResizeWeight(0.72);
-        return split;
+        Viewable sample = controller.sampleOf(type);
+        Class<? extends Viewable> cls = sample != null ? sampleClass(sample) : Viewable.class;
+        return new GroupTreeBrowser(root, cls, sample,
+                controller.structuralFields(type), controller.fieldTypes(type),
+                q -> controller.fieldSchema(q.typeName()));
     }
 
     /** Persist the current view's members (the filtered / projected result) as a
