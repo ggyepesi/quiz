@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -104,6 +105,8 @@ class ReflectionDomainTest {
         ReflectionDomain domain = ReflectionDomain.of(views);
 
         assertEquals(List.of(root), domain.groupRoots());
+        assertSame(root, domain.groupRoot("Country"));
+        assertEquals("Country", domain.groupRootBindings().get(0).memberType());
         assertTrue(domain.instances().contains(root));
         assertTrue(domain.instances().contains(child));
     }

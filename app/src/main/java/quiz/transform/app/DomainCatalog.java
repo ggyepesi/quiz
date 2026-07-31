@@ -66,10 +66,16 @@ public final class DomainCatalog {
         quiz.transform.ui.DomainModel base =
                 compile(model, pool, loaded.fieldGraph());
         // Carry the curation store so the workbench can offer a "Curate…" action.
-        java.util.List<objectview.group.ViewableGroup<?>> groupRoots =
-                loaded.groupRoots().stream()
-                        .map(DynamicViewableGroup::adapt)
-                        .filter(java.util.Objects::nonNull)
+        java.util.List<objectview.viewconfig.DomainGroupRoot> groupRoots =
+                loaded.groupRootBindings().stream()
+                        .flatMap(binding -> {
+                            objectview.group.ViewableGroup<?> root =
+                                    DynamicViewableGroup.adapt(binding.root());
+                            return root == null ? java.util.stream.Stream.empty()
+                                    : java.util.stream.Stream.of(
+                                            new objectview.viewconfig.DomainGroupRoot(
+                                                    binding.memberType(), root));
+                        })
                         .toList();
         return new CuratableDomain(
                 base, curation, loaded.memberRoots(), groupRoots);

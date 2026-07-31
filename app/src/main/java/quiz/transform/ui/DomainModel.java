@@ -86,7 +86,28 @@ public interface DomainModel {
     /** Explicit group-graph roots to render. Their descendants remain ordinary
      * reachable Viewable references and need not be rediscovered as presentation roots. */
     default List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
+        return groupRootBindings().stream()
+                .map(objectview.viewconfig.DomainGroupRoot::root)
+                .toList();
+    }
+
+    /** One explicit group root per member type. The association belongs to the domain,
+     *  not to the group implementation or its runtime Java class. */
+    default List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {
         return List.of();
+    }
+
+    default objectview.group.ViewableGroup<?> groupRoot(String memberType) {
+        if (memberType == null) return null;
+        List<objectview.group.ViewableGroup<?>> matches = groupRootBindings().stream()
+                .filter(binding -> memberType.equals(binding.memberType()))
+                .map(objectview.viewconfig.DomainGroupRoot::root)
+                .toList();
+        if (matches.size() > 1) {
+            throw new IllegalStateException(
+                    "Several group roots declared for member type " + memberType);
+        }
+        return matches.isEmpty() ? null : matches.get(0);
     }
 
     /** The universe class for the {@code ClassTransformPlan} (kept-instances plan). */

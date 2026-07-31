@@ -14,7 +14,6 @@ import aux.UrlReader;
 import objectview.viewconfig.DomainViews;
 import objectview.facet.Facet;
 import quiz.ViewableGroup;
-import objectview.render.GroupView;
 import objectview.media.ImagePane;
 import objectview.Viewable;
 
@@ -38,7 +37,6 @@ public class SportTeams implements DomainViews {
 
     static final boolean downloadSvgs = false;
 
-    private GroupView groupView;
     private Map<String, Viewable> viewables;
     private ViewableGroup rootGroup;
 
@@ -56,8 +54,8 @@ public class SportTeams implements DomainViews {
     }
     
     @Override
-    public GroupView getGroupView() {
-        return groupView;
+    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
+        return rootGroup == null ? java.util.List.of() : java.util.List.of(rootGroup);
     }
 
     @Override
@@ -69,7 +67,6 @@ public class SportTeams implements DomainViews {
             readLogos(file);
         }
         System.out.println("Root " + rootGroup.getChildren().size() + ", " + rootGroup);
-        groupView = new GroupView(rootGroup);
     }
 
     public void readLogos(String filename) throws Exception {

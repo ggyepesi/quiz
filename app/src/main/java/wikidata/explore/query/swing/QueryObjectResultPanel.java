@@ -1,9 +1,7 @@
 package wikidata.explore.query.swing;
 
 import objectview.demo.MultiView;
-import objectview.render.CardListView;
 import objectview.render.RenderContext;
-import objectview.search.SearchPanel;
 import objectview.Viewable;
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
@@ -177,9 +175,6 @@ public class QueryObjectResultPanel
     }
 
     private JComponent searchPanelView(ObjectQueryResult result) {
-        CardListView view =
-                new CardListView();
-
         List<Viewable> typed =
                 new ArrayList<>();
 
@@ -200,53 +195,20 @@ public class QueryObjectResultPanel
             return new JLabel("No typed objects.");
         }
 
-        for (Viewable q : shown) {
-            view.addViewable(q);
-        }
-
-        view.createCardsPanel(1);
-
-        JPanel wrapped =
-                new JPanel(new BorderLayout());
-
         Viewable first =
                 shown.getFirst();
+        objectview.search.SearchableCardView browser =
+                objectview.search.SearchableCardView.builder(shown)
+                        .sample(first)
+                        .build();
+        activeContext = browser.renderContext();
 
-        SearchPanel searchPanel =
-                new SearchPanel(first.getClass());
-
-        searchPanel.setTarget(
-                view.getCardsPanel(),
-                view.getCardsScrollPane());
-
-        searchPanel.setRenderContext(
-                view.getRenderContext());
-
-        view.addTargetListener(searchPanel);
-
-        activeContext =
-                view.getRenderContext();
-
-        JComponent north =
-                searchPanel;
+        JPanel wrapped = new JPanel(new BorderLayout());
 
         if (full.size() > MAX_CARDS) {
-            JPanel header =
-                    new JPanel(new BorderLayout());
-
-            header.add(
-                    new JLabel(cappedNote(full.size())),
-                    BorderLayout.NORTH);
-
-            header.add(
-                    searchPanel,
-                    BorderLayout.CENTER);
-
-            north = header;
+            wrapped.add(new JLabel(cappedNote(full.size())), BorderLayout.NORTH);
         }
-
-        wrapped.add(north, BorderLayout.NORTH);
-        wrapped.add(view.getCardsScrollPane(), BorderLayout.CENTER);
+        wrapped.add(browser, BorderLayout.CENTER);
 
         return wrapped;
     }

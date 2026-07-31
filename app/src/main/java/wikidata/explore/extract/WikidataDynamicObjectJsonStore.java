@@ -131,8 +131,20 @@ public class WikidataDynamicObjectJsonStore {
             DomainModel schema)
             throws IOException {
 
+        List<GroupRootBinding> bindings = groupRoots == null ? List.of()
+                : groupRoots.stream().map(root -> new GroupRootBinding(null, root)).toList();
+        return saveWithGroupRootBindings(memberRoots, bindings, file, schema);
+    }
+
+    public SnapshotFieldGraph saveWithGroupRootBindings(
+            List<WikidataDynamicObject> memberRoots,
+            List<GroupRootBinding> groupRootBindings,
+            File file,
+            DomainModel schema)
+            throws IOException {
+
         if (memberRoots == null) memberRoots = List.of();
-        if (groupRoots == null) groupRoots = List.of();
+        if (groupRootBindings == null) groupRootBindings = List.of();
 
         File parent = file.getParentFile();
         if (parent != null && !parent.exists()) {
@@ -152,8 +164,8 @@ public class WikidataDynamicObjectJsonStore {
         for (WikidataDynamicObject o : memberRoots) {
             collect(o, byQid, visited, fieldGraph);
         }
-        for (WikidataDynamicObject o : groupRoots) {
-            collect(o, byQid, visited, fieldGraph);
+        for (GroupRootBinding binding : groupRootBindings) {
+            collect(binding.root(), byQid, visited, fieldGraph);
         }
         fieldGraph.declare(schema);
         fieldGraph.markMembers(memberRoots);
@@ -170,9 +182,18 @@ public class WikidataDynamicObjectJsonStore {
             // become a top-level member/root.
             if (k != null && o.hasTypeStamp()) snapshot.roots.add(k);
         }
-        for (WikidataDynamicObject o : groupRoots) {
+        for (GroupRootBinding binding : groupRootBindings) {
+            WikidataDynamicObject o = binding.root();
             String k = poolKey(o);
-            if (k != null && o.hasTypeStamp()) snapshot.groupRoots.add(k);
+            if (k != null && o.hasTypeStamp()) {
+                snapshot.groupRoots.add(k);
+                // Persist a binding for EVERY group root (blank member type when unknown, e.g.
+                // the saveWithFieldGraph delegation): the workbench builds its roots solely
+                // from groupRootBindings, so a root omitted here would be silently unrecoverable.
+                // A blank type is re-inferred on load rather than dropped.
+                String memberType = binding.memberType() == null ? "" : binding.memberType();
+                snapshot.groupRootBindings.add(new GroupRootRef(memberType, k));
+            }
         }
         // One qid can now yield SEVERAL entities — one per distinct real type — so a State
         // "France" and a ViewableGroup "France" stay separate ⟨type, qid⟩ objects instead
@@ -372,7 +393,7 @@ public class WikidataDynamicObjectJsonStore {
         JsonNode tree = mapper.readTree(file);
         if (tree == null) {
             return new LoadedSnapshot(new ArrayList<>(), new SnapshotFieldGraph(),
-                    new ArrayList<>(), new ArrayList<>());
+                    new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
         }
         if (tree.has("entities")) {
             FlatSnapshot snapshot = mapper.treeToValue(tree, FlatSnapshot.class);
@@ -386,13 +407,17 @@ public class WikidataDynamicObjectJsonStore {
                 graph = SnapshotFieldGraph.derive(objects);
             }
             attachSchemas(objects, graph);
+            List<WikidataDynamicObject> groups = snapshot == null
+                    ? new ArrayList<>()
+                    : resolveGroupRoots(snapshot, objects, entities);
             return new LoadedSnapshot(
                     objects, graph,
                     snapshot == null ? new ArrayList<>()
                             : resolveMemberRoots(
                                     snapshot, tree.has("roots"), objects, entities),
+                    groups,
                     snapshot == null ? new ArrayList<>()
-                            : resolveGroupRoots(snapshot, objects, entities));
+                            : resolveGroupRootBindings(snapshot, groups, entities, graph));
         }
         Snapshot legacy = mapper.treeToValue(tree, Snapshot.class);
         List<WikidataDynamicObject> objects = legacy == null || legacy.objects == null
@@ -400,8 +425,85 @@ public class WikidataDynamicObjectJsonStore {
                 : new ArrayList<>(legacy.objects);
         SnapshotFieldGraph graph = SnapshotFieldGraph.derive(objects);
         attachSchemas(objects, graph);
+        List<WikidataDynamicObject> groups = discoverLegacyGroupRoots(objects, true);
         return new LoadedSnapshot(objects, graph,
-                new ArrayList<>(objects), discoverLegacyGroupRoots(objects, true));
+                new ArrayList<>(objects), groups,
+                inferLegacyGroupRootBindings(groups, graph));
+    }
+
+    private static List<LoadedGroupRoot> resolveGroupRootBindings(
+            FlatSnapshot snapshot,
+            List<WikidataDynamicObject> roots,
+            Map<String, WikidataDynamicObject> entities,
+            SnapshotFieldGraph graph) {
+        if (snapshot.groupRootBindings != null
+                && !snapshot.groupRootBindings.isEmpty()) {
+            String soleMemberType = graph != null && graph.memberTypes().size() == 1
+                    ? graph.memberTypes().iterator().next() : null;
+            List<LoadedGroupRoot> result = new ArrayList<>();
+            for (GroupRootRef ref : snapshot.groupRootBindings) {
+                if (ref == null) continue;
+                WikidataDynamicObject root = entities.get(ref.root);
+                if (root == null) continue;
+                String memberType = ref.memberType;
+                if (memberType == null || memberType.isBlank()) {
+                    // A root persisted without a member type (saveWithFieldGraph path):
+                    // recover it by inference rather than dropping it.
+                    memberType = inferGroupMemberType(root,
+                            java.util.Collections.newSetFromMap(
+                                    new java.util.IdentityHashMap<>()));
+                    if (memberType == null) memberType = soleMemberType;
+                }
+                if (memberType != null && !memberType.isBlank()) {
+                    result.add(new LoadedGroupRoot(memberType, root));
+                }
+            }
+            return List.copyOf(result);
+        }
+        return inferLegacyGroupRootBindings(roots, graph);
+    }
+
+    /** Compatibility only: old snapshots persisted roots but not their member types. */
+    private static List<LoadedGroupRoot> inferLegacyGroupRootBindings(
+            List<WikidataDynamicObject> roots, SnapshotFieldGraph graph) {
+        String soleMemberType = graph != null && graph.memberTypes().size() == 1
+                ? graph.memberTypes().iterator().next() : null;
+        List<LoadedGroupRoot> result = new ArrayList<>();
+        for (WikidataDynamicObject root : roots) {
+            String memberType = inferGroupMemberType(root,
+                    java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
+            if (memberType == null) memberType = soleMemberType;
+            if (memberType != null && !memberType.isBlank()) {
+                result.add(new LoadedGroupRoot(memberType, root));
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private static String inferGroupMemberType(
+            WikidataDynamicObject group, java.util.Set<WikidataDynamicObject> seen) {
+        if (group == null || !seen.add(group)) return null;
+        Object members = group.get("members");
+        Collection<?> memberValues = members instanceof Map<?, ?> map
+                ? map.values() : members instanceof Collection<?> collection
+                        ? collection : List.of();
+        for (Object member : memberValues) {
+            if (member instanceof WikidataDynamicObject object
+                    && !"ViewableGroup".equals(object.typeName())) {
+                return object.typeName();
+            }
+        }
+        Object children = group.get("children");
+        Collection<?> childValues = children instanceof Map<?, ?> map
+                ? map.values() : children instanceof Collection<?> collection
+                        ? collection : List.of();
+        for (Object child : childValues) {
+            if (child instanceof WikidataDynamicObject object) {
+                String found = inferGroupMemberType(object, seen);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private static void attachSchemas(
@@ -693,6 +795,7 @@ public class WikidataDynamicObjectJsonStore {
         public int version = FORMAT_VERSION;
         public List<String> roots = new ArrayList<>();
         public List<String> groupRoots = new ArrayList<>();
+        public List<GroupRootRef> groupRootBindings = new ArrayList<>();
         public List<Entity> entities = new ArrayList<>();
         public SnapshotFieldGraph fieldGraph;
     }
@@ -701,7 +804,22 @@ public class WikidataDynamicObjectJsonStore {
             List<WikidataDynamicObject> objects,
             SnapshotFieldGraph fieldGraph,
             List<WikidataDynamicObject> memberRoots,
-            List<WikidataDynamicObject> groupRoots) {}
+            List<WikidataDynamicObject> groupRoots,
+            List<LoadedGroupRoot> groupRootBindings) {}
+
+    public record GroupRootBinding(String memberType, WikidataDynamicObject root) {}
+    public record LoadedGroupRoot(String memberType, WikidataDynamicObject root) {}
+
+    public static class GroupRootRef {
+        public String memberType;
+        public String root;
+
+        public GroupRootRef() {}
+        public GroupRootRef(String memberType, String root) {
+            this.memberType = memberType;
+            this.root = root;
+        }
+    }
 
     /**
      * Legacy format: objects with their references inlined recursively. Kept

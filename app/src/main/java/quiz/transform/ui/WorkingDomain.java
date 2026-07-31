@@ -29,6 +29,13 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     // show at 0% coverage, ready to be filled (e.g. via Find Data).
     private final Map<String, List<DomainField>> declaredFields = new LinkedHashMap<>();
     private final Map<String, Viewable> augmentedSample = new HashMap<>();
+    private final Map<String, quiz.transform.EditableGroup> groupRoots =
+            new LinkedHashMap<>();
+    // The sorted member-identifier signature the cached root was last refreshed against,
+    // so editableGroupRoot() only re-derives scope + recomputes produced descendants when
+    // the live instance set actually changed (identity-resolve, merge, "forget", derive) —
+    // leaving a stable tree, and the user's hand-nested groups, untouched otherwise.
+    private final Map<String, List<String>> groupRootSignatures = new HashMap<>();
 
     public WorkingDomain(DomainModel base) {
         this.base = base;
@@ -75,6 +82,35 @@ public final class WorkingDomain implements DomainModel, SchemaView,
 
     public boolean isDerived(String type) {
         return derived.containsKey(type);
+    }
+
+    public quiz.transform.EditableGroup editableGroupRoot(String type) {
+        if (type == null) return null;
+        quiz.transform.EditableGroup root =
+                groupRoots.computeIfAbsent(type, this::createGroupRoot);
+        List<? extends Viewable> live = instances().stream()
+                .filter(value -> type.equals(value.typeName()))
+                .toList();
+        List<String> signature = live.stream()
+                .map(Viewable::getIdentifier).sorted().toList();
+        if (!signature.equals(groupRootSignatures.get(type))) {
+            // The scope changed: re-derive the root's members and recompute every
+            // rule-produced descendant against the fresh scope, so the workbench never
+            // renders/validates/resolves against a stale membership snapshot.
+            root.replaceMembers(live);
+            root.reproduceDescendants();
+            groupRootSignatures.put(type, signature);
+        }
+        return root;
+    }
+
+    private quiz.transform.EditableGroup createGroupRoot(String type) {
+        objectview.group.ViewableGroup<?> declared = base.groupRoot(type);
+        // Members + produced descendants are (re)derived by editableGroupRoot's refresh;
+        // this only reconstructs the declared/empty tree shape.
+        return declared == null
+                ? new quiz.transform.EditableGroup("All " + type)
+                : quiz.transform.EditableGroup.copyOf(declared);
     }
 
     @Override public List<String> types() {
@@ -163,7 +199,15 @@ public final class WorkingDomain implements DomainModel, SchemaView,
 
     @Override
     public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
-        return base.groupRoots();
+        return DomainModel.super.groupRoots();
+    }
+
+    @Override
+    public List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {
+        return types().stream()
+                .map(type -> new objectview.viewconfig.DomainGroupRoot(
+                        type, editableGroupRoot(type)))
+                .toList();
     }
 
     @Override public Class<? extends Viewable> universe() {

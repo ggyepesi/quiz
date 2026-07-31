@@ -3,7 +3,6 @@ package wikidata.explore.extract;
 import objectview.viewconfig.DomainViews;
 import objectview.Viewable;
 import quiz.ViewableGroup;
-import objectview.render.GroupView;
 
 import java.io.File;
 import java.util.LinkedHashMap;
@@ -18,7 +17,7 @@ public class GeneratedKnowledgeSet implements DomainViews {
     private final Map<String, WikidataDynamicObject> viewables =
             new LinkedHashMap<>();
 
-    private GroupView groupView;
+    private ViewableGroup rootGroup;
 
     public GeneratedKnowledgeSet(String name, File file) {
         this.name = name == null ? "Generated Wikidata Set" : name;
@@ -41,19 +40,16 @@ public class GeneratedKnowledgeSet implements DomainViews {
             viewables.put(key, object);
         }
 
-        ViewableGroup root = new ViewableGroup(name);
+        rootGroup = new ViewableGroup(name);
 
         for (WikidataDynamicObject object : viewables.values()) {
-            root.addMember(object);
+            rootGroup.addMember(object);
         }
-
-        groupView =
-                new GroupView(root);
     }
 
     @Override
-    public GroupView getGroupView() {
-        return groupView;
+    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
+        return rootGroup == null ? java.util.List.of() : java.util.List.of(rootGroup);
     }
 
     @Override

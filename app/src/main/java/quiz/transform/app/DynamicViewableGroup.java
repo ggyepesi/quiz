@@ -53,7 +53,12 @@ public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
     }
 
     private static boolean isGroup(WikidataDynamicObject object) {
-        return object != null && "ViewableGroup".equals(object.typeName());
+        if (object == null) return false;
+        String type = object.typeName();
+        return "ViewableGroup".equals(type)
+                || "EditableGroup".equals(type)
+                || "FacetGroup".equals(type)
+                || "OperationGroup".equals(type);
     }
 
     private static DynamicViewableGroup wrap(

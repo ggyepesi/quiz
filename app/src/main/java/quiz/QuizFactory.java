@@ -20,7 +20,7 @@ import oscar.OscarNominations;
 import presidents.President;
 import presidents.USPresidents;
 import objectview.media.ImageBlurrer;
-import objectview.render.GroupView;
+import objectview.render.GroupTreeView;
 import objectview.viewconfig.ViewConfigEditor;
 
 import java.awt.*;
@@ -90,7 +90,7 @@ public class QuizFactory {
     private static JFrame quizFrame;
 
     private final Map<String, ? extends Viewable> viewables;
-    private final GroupView rootView;
+    private final GroupTreeView rootView;
     private final DomainViews qvs;
 
     public static void main(String[] args) {
@@ -224,7 +224,13 @@ public class QuizFactory {
     public QuizFactory(DomainViews qvs) throws Exception {
         this.qvs = qvs;
         qvs.buildViews();
-        rootView = qvs.getGroupView();
+        objectview.group.ViewableGroup<?> root =
+                objectview.group.MultiRootGroup.of(qvs.getRootGroups(), "All");
+        if (root == null) {
+            throw new IllegalStateException("Domain has no group root: "
+                    + qvs.getClass().getSimpleName());
+        }
+        rootView = new GroupTreeView(root);
         // getViewables() is typed Viewable (objectview SPI); every element is in fact a
         // Viewable here, so narrow it for the quiz-side generation code.
         @SuppressWarnings("unchecked")
@@ -232,8 +238,6 @@ public class QuizFactory {
                 (Map<String, ? extends Viewable>) (Map<String, ?>) qvs.getViewables();
         viewables = qz;
 
-        //System.out.println("Create ViewableFilterCollectionFrame");
-        //new ViewableFilterCollectionFrame(viewables.values(), cls);
     }
 
     public JFrame showQuizzes() {
@@ -266,7 +270,7 @@ public class QuizFactory {
         configSplit.setResizeWeight(0.5);
         configSplit.setOneTouchExpandable(true);
 
-        JPanel groupPanel = rootView.getMainPanel();
+        JPanel groupPanel = rootView;
         groupPanel.setPreferredSize(new Dimension(300, 800));
 
         JSplitPane mainSplit = new JSplitPane(

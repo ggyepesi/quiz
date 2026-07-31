@@ -9,7 +9,6 @@ import java.util.Map.Entry;
 import objectview.utils.swing.CachedImage;
 import aux.Constants;
 import aux.ResourceFinder;
-import quiz.ViewableGroup;
 import objectview.media.ImagePane;
 
 import java.util.TreeMap;
@@ -21,16 +20,14 @@ public class DownloadShapes {
     // instead of shape of the Bahamas one of its small islands, Cat Island is shown
     public static void main(String[] args) throws Exception {
         Map<String, State> states = new TreeMap<>();
-        readShapes(states, new ViewableGroup("All"));
+        readShapes(states);
     }
 
-    public static void readShapes(Map<String, State> states, ViewableGroup all) throws Exception {
+    public static void readShapes(Map<String, State> states) throws Exception {
         // Read shapes add them to stateImages
         Map<String, String> isoCodes = readIsoCodes();
         Map<String, String> shapeImageUrls = DownloadShapes.readImageFilenames(isoCodes);
         System.out.println("Reading shapes ");
-        ViewableGroup shapeGroup = all.getOrCreateChild("Shape");
-        ViewableGroup shapeOnlyGroup = all.getOrCreateChild("ShapeOnly");
         List<Reader> readers = new ArrayList<>();
         for (Entry<String, String> e : shapeImageUrls.entrySet()) {
             Reader reader =
@@ -41,31 +38,16 @@ public class DownloadShapes {
 
         for (Reader reader : readers) {
             reader.join();
-            if (!reader.failed()) {
-                State state = reader.getSt();
-                shapeGroup.addMember(state);
-                if (state.getFlagVersions().isEmpty() && state.getArmsVersions().isEmpty()) {
-                    shapeOnlyGroup.addMember(state);
-                }
-            }
         }
     }
 
     private static class Reader extends Thread {
         private final flag.State st;
         private final String fileName;
-        private boolean failed = false;
 
         public Reader(flag.State st, String fileName) {
             this.st = st;
             this.fileName = fileName;
-        }
-
-        public flag.State getSt() {
-            return st;
-        }
-        public boolean failed() {
-            return failed;
         }
 
         public void run() {
@@ -74,7 +56,6 @@ public class DownloadShapes {
                         new ImagePane(st.getName(), st, new CachedImage(fileName, null, true),
                                 true, true));
             } catch (Exception e) {
-                failed = true;
                 throw new RuntimeException(e);
             }
         }

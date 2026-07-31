@@ -29,8 +29,14 @@ public final class ViewableToWdo {
 
     public record ConvertedDomain(
             List<WikidataDynamicObject> memberRoots,
-            List<WikidataDynamicObject> groupRoots,
-            List<WikidataDynamicObject> allObjects) {}
+            List<ConvertedGroupRoot> groupRootBindings,
+            List<WikidataDynamicObject> allObjects) {
+        public List<WikidataDynamicObject> groupRoots() {
+            return groupRootBindings.stream().map(ConvertedGroupRoot::root).toList();
+        }
+    }
+
+    public record ConvertedGroupRoot(String memberType, WikidataDynamicObject root) {}
 
     public static List<WikidataDynamicObject> pool(Collection<? extends Viewable> members) {
         return pool(members, null);
@@ -48,7 +54,7 @@ public final class ViewableToWdo {
 
     public static ConvertedDomain convertDomain(
             Collection<? extends Viewable> memberRoots,
-            Collection<? extends objectview.group.ViewableGroup<?>> groupRoots,
+            Collection<objectview.viewconfig.DomainGroupRoot> groupRootBindings,
             DomainModel schema) {
         Map<Object, WikidataDynamicObject> seen = new IdentityHashMap<>();
         List<WikidataDynamicObject> convertedMembers = new ArrayList<>();
@@ -58,12 +64,12 @@ public final class ViewableToWdo {
                 convertedMembers.add(w);
             }
         }
-        List<WikidataDynamicObject> convertedGroups = new ArrayList<>();
-        if (groupRoots != null) {
-            for (objectview.group.ViewableGroup<?> group : groupRoots) {
-                Object c = convert(group, seen, schema);
+        List<ConvertedGroupRoot> convertedGroups = new ArrayList<>();
+        if (groupRootBindings != null) {
+            for (objectview.viewconfig.DomainGroupRoot binding : groupRootBindings) {
+                Object c = convert(binding.root(), seen, schema);
                 if (c instanceof WikidataDynamicObject w) {
-                    convertedGroups.add(w);
+                    convertedGroups.add(new ConvertedGroupRoot(binding.memberType(), w));
                 }
             }
         }
@@ -195,8 +201,12 @@ public final class ViewableToWdo {
             o.valueObject(value);
             seen.put(q, o);
             // Copy every field, whichever representation — no instanceof branch.
-            objectview.field.FieldSet set = objectview.field.FieldSet.of(
-                    q, schema == null ? null : schema.fieldSchema(q.typeName()));
+            objectview.field.FieldSet set = q.fields();
+            objectview.field.FieldSchema declared =
+                    schema == null ? null : schema.fieldSchema(q.typeName());
+            if (declared != null) {
+                set = new objectview.field.SchemaFieldSet(set, declared);
+            }
             for (objectview.field.FieldRef ref : set.fields()) {
                 Object cv = convert(set.read(ref.name()), seen, schema);
                 // Skip null AND blank scalars — a blank value carries no information and

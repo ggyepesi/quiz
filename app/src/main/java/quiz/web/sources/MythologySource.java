@@ -44,7 +44,7 @@ public class MythologySource implements ViewableSource {
 
     @Override
     public ViewableGroup rootGroup() throws Exception {
-        ViewableGroup root = (ViewableGroup) entities().getGroupView().getRootGroup();
+        ViewableGroup root = (ViewableGroup) entities().getRootGroups().get(0);
         FacetGrouper.wrapChildrenAsFacet(root, "Affiliation");
         FacetGrouper.addFacets(root, load(),
                 List.of(Facet.reference("father", "Father"),

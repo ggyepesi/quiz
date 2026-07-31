@@ -9,144 +9,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * The headless workbench logic: seeding the default pipeline, remembering each
- * type's steps across a type change, and validating an operation's field shape —
- * all without any Swing.
+ * The headless workbench logic: building the per-type group tree, adding named
+ * facet/filter producers under a selected group, and the removal guards — all
+ * without any Swing.
  */
 class TransformControllerTest {
-
-    /** A minimal domain: Nomination with a scalar `won`/`year` and a reference
-     *  `category`, enough to seed and to check slot validation. */
-    private static DomainModel domain() {
-        return new DomainModel() {
-            @Override public List<String> types() { return List.of("Nomination"); }
-            @Override public List<DomainField> fields(String type) {
-                if (!"Nomination".equals(type)) {
-                    return List.of();
-                }
-                return List.of(
-                        new DomainField("Nomination", "won", false, false),
-                        new DomainField("Nomination", "category", true, false),
-                        new DomainField("Nomination", "year", false, false));
-            }
-            @Override public Collection<? extends Viewable> instances() { return List.of(); }
-            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
-        };
-    }
-
-    private static TransformController controller() {
-        return new TransformController(domain(), null);
-    }
-
-    /** Build a "winners by category by year" view onto {@code Nomination} the way the
-     *  UI does — filter + two nested group-bys — so tests exercise a real pipeline
-     *  without any baked-in seed. */
-    private static void nominationView(TransformController c) {
-        c.selectType("Nomination");
-        OperationSpec byYear =
-                new OperationSpec(OperationKind.GROUP_BY, c.field("Nomination", "year"), null);
-        byYear.depth = 1;
-        c.replaceViewPipeline(List.of(
-                new OperationSpec(OperationKind.FILTER, c.field("Nomination", "won"), Boolean.TRUE),
-                new OperationSpec(OperationKind.GROUP_BY, c.field("Nomination", "category"), null),
-                byYear));
-    }
-
-    @Test void switchingToAFreshTypeGivesAnEmptyPipeline() {
-        TransformController c = controller();
-        nominationView(c);
-        assertFalse(c.pipeline().isEmpty());
-        c.selectType("Human");      // a type never configured — starts blank
-        assertTrue(c.pipeline().isEmpty());
-    }
-
-    @Test void returningToATypeRestoresItsPipeline() {
-        TransformController c = controller();
-        nominationView(c);
-        c.selectType("Human");      // stash Nomination's steps, blank slate
-        c.selectType("Nomination"); // its steps come back, not a reset
-        assertEquals("Nomination", c.selectedType());
-        assertEquals(
-                List.of(OperationKind.FILTER,
-                        OperationKind.GROUP_BY,
-                        OperationKind.GROUP_BY),
-                c.pipeline().stream().map(op -> op.kind).toList());
-    }
-
-    @Test void addingAValidFilterStepGrowsThePipeline() {
-        TransformController c = controller();
-        c.selectType("Nomination");
-        TransformController.OpOutcome out = c.addOperation(
-                OperationKind.FILTER, c.resolveFields("Nomination", List.of("won")),
-                "true", null, null, null);
-        assertTrue(out.ok());
-        assertNull(out.createdType());
-        assertEquals(1, c.pipeline().size());
-        assertEquals(Boolean.TRUE, c.pipeline().get(0).value);
-    }
-
-    @Test void filterIsOnePredicateWithAndConditions() {
-        TransformController c = controller();
-        c.selectType("Nomination");
-        c.addOperation(OperationKind.FILTER,
-                c.resolveFields("Nomination", List.of("won")), "true", null, null, null);
-        c.addOperation(OperationKind.FILTER,
-                c.resolveFields("Nomination", List.of("year")), "1994", null, null, null);
-
-        // One FILTER node holding two AND conditions — not two pipeline steps.
-        assertEquals(1, c.pipeline().size());
-        OperationSpec filter = c.pipeline().get(0);
-        assertEquals(OperationKind.FILTER, filter.kind);
-        assertEquals(2, filter.conditions.size());
-        assertEquals("won", filter.conditions.get(0).field().field());
-        assertEquals("year", filter.conditions.get(1).field().field());
-        assertEquals(1994, filter.conditions.get(1).value());
-    }
-
-    @Test void groupByAcceptsAnyFieldNotJustReferences() {
-        TransformController c = controller();
-        c.selectType("Nomination");
-        // One Group by: a scalar keys by value, a reference by the entity — so a
-        // scalar like `won` is valid (no more separate value/reference choice).
-        TransformController.OpOutcome scalar = c.addOperation(
-                OperationKind.GROUP_BY, c.resolveFields("Nomination", List.of("won")),
-                null, null, null, null);
-        assertTrue(scalar.ok(), scalar.message());
-        TransformController.OpOutcome reference = c.addOperation(
-                OperationKind.GROUP_BY, c.resolveFields("Nomination", List.of("category")),
-                null, null, null, null);
-        assertTrue(reference.ok(), reference.message());
-        assertEquals(2, c.pipeline().size());
-    }
-
-    @Test void singleTopLevelGroupByCompilesToAFacetGroup() {
-        quiz.transform.DynamicViewable paris = city("Paris", "Europe");
-        quiz.transform.DynamicViewable tokyo = city("Tokyo", "Asia");
-        DomainModel cities = new DomainModel() {
-            @Override public List<String> types() { return List.of("City"); }
-            @Override public List<DomainField> fields(String type) {
-                return List.of(new DomainField("City", "region", false, false));
-            }
-            @Override public Collection<? extends Viewable> instances() {
-                return List.of(paris, tokyo);
-            }
-            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
-        };
-        TransformController c = new TransformController(cities, null);
-        c.selectType("City");
-        c.replaceViewPipeline(List.of(new OperationSpec(
-                OperationKind.GROUP_BY, c.field("City", "region"), null)));
-
-        objectview.group.ViewableGroup<?> result = c.compileResult("City", c.pipeline());
-        assertInstanceOf(quiz.transform.FacetGroup.class, result);
-        quiz.transform.FacetGroup fg = (quiz.transform.FacetGroup) result;
-        assertEquals("City", fg.memberType());
-        assertEquals("region", fg.field());
-        objectview.group.ViewableGroup<?> dim = fg.getChild("region");
-        assertNotNull(dim);
-        assertNotNull(dim.getChild("Europe"));
-        assertNotNull(dim.getChild("Asia"));
-    }
 
     private static quiz.transform.DynamicViewable city(String name, String region) {
         quiz.transform.DynamicViewable c = new quiz.transform.DynamicViewable(name, name);
@@ -155,16 +22,82 @@ class TransformControllerTest {
         return c;
     }
 
-    @Test void removeAndMoveReorderThePipeline() {
-        TransformController c = controller();
-        nominationView(c);                      // FILTER won, GROUP_BY category, GROUP_BY year
-        c.removeOperation(0);                   // -> GROUP_BY category, GROUP_BY year
-        assertEquals(2, c.pipeline().size());
-        // Both group steps share the kind now, so reorder is verified by FIELD.
-        assertEquals("category", c.pipeline().get(0).field.field());
+    @Test void producedGroupsRecomputeWhenInstancesChangeAndSurviveWhenStable() {
+        List<Viewable> pool = new java.util.ArrayList<>(List.of(
+                city("Paris", "Europe"), city("Tokyo", "Asia")));
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public List<DomainField> fields(String type) {
+                return List.of(new DomainField("City", "region", false, false));
+            }
+            @Override public Collection<? extends Viewable> instances() { return pool; }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController c = new TransformController(cities, null);
+        quiz.transform.EditableGroup root =
+                (quiz.transform.EditableGroup) c.groupRoot("City");
+        quiz.transform.FacetGroup facet =
+                c.addFacetGroup("City", root, "Regions", c.field("City", "region"));
+        assertNotNull(facet.getChild("region").getChild("Europe"));
+        assertNull(facet.getChild("region").getChild("Africa"));
 
-        assertEquals(1, c.moveOperation(0, 1)); // swap the two
-        assertEquals("year", c.pipeline().get(0).field.field());
-        assertEquals(-1, c.moveOperation(1, 1), "can't move the last one down");
+        // A hand-nested group under a bucket must survive an access with UNCHANGED data.
+        quiz.transform.EditableGroup europe =
+                (quiz.transform.EditableGroup) facet.getChild("region").getChild("Europe");
+        c.addManualGroup(europe, "Manual pick");
+        c.groupRoot("City");
+        assertNotNull(europe.getChild("Manual pick"),
+                "no instance change -> no recompute -> hand edits preserved");
+
+        // The instance set changes online -> the facet recomputes from its rule.
+        pool.add(city("Cairo", "Africa"));
+        c.groupRoot("City");
+        assertNotNull(facet.getChild("region").getChild("Africa"),
+                "scope changed -> produced descendants recompute");
+        assertEquals(3, root.getMembers().size());
+    }
+
+    @Test void realGroupTreeAddsNamedProducersUnderTheSelectedGroup() {
+        quiz.transform.DynamicViewable paris = city("Paris", "Europe");
+        quiz.transform.DynamicViewable berlin = city("Berlin", "Europe");
+        quiz.transform.DynamicViewable tokyo = city("Tokyo", "Asia");
+        paris.put("population", 1);
+        berlin.put("population", 2);
+        tokyo.put("population", 3);
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public List<DomainField> fields(String type) {
+                return List.of(
+                        new DomainField("City", "region", false, false),
+                        new DomainField("City", "population", false, false));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(paris, berlin, tokyo);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController c = new TransformController(cities, null);
+        quiz.transform.EditableGroup root =
+                (quiz.transform.EditableGroup) c.groupRoot("City");
+        assertEquals(3, root.getMembers().size());
+
+        quiz.transform.FacetGroup facet = c.addFacetGroup(
+                "City", root, "Regions", c.field("City", "region"));
+        quiz.transform.EditableGroup europe = (quiz.transform.EditableGroup)
+                facet.getChild("region").getChild("Europe");
+        quiz.transform.OperationGroup filtered = c.addFilterGroup(
+                "City", europe, "Only Paris",
+                new quiz.transform.pipeline.ui.FilterCondition(
+                        new DomainField("City", "population", false, false),
+                        quiz.transform.pipeline.ui.FilterOperator.EQUALS,
+                        1, null));
+
+        assertSame(europe, filtered.getParent());
+        assertEquals(List.of("Paris"), filtered.getMembers().stream()
+                .map(Viewable::getDisplayName).toList());
+        assertNull(facet.getChild("region").getChild("Asia").getChild("Only Paris"));
+        assertTrue(c.removeGroup("City", filtered));
+        assertTrue(europe.getChildren().isEmpty());
+        assertFalse(c.removeGroup("City", root));
     }
 }

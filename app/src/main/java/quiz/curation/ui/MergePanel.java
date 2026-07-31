@@ -4,9 +4,6 @@ import objectview.ViewableAdapter;
 import objectview.field.FieldAccess;
 import objectview.field.FieldRef;
 import objectview.field.FieldSet;
-import objectview.render.CardListView;
-import objectview.render.RenderContext;
-import objectview.search.SearchPanel;
 import objectview.Viewable;
 import quiz.curation.ManualCuration;
 import quiz.curation.Merge;
@@ -377,35 +374,16 @@ public final class MergePanel extends JPanel {
     }
 
     private JComponent instancesView(List<Viewable> items, String type) {
-        CardListView v = new CardListView();
-
-        RenderContext ctx = new RenderContext();
-        ctx.setCollapsibleCards(true);
-        ctx.setSelectionEnabled(true);
-        ctx.addSelectionListener(o -> selected = o instanceof Viewable q ? q : null);
-        v.setRenderContext(ctx);
-
-        for (Viewable m : items) {
-            v.addViewable(m);
-        }
-        v.createCardsPanel(1);
-
-        JPanel panel = new JPanel(new BorderLayout());
         Viewable sample = items.isEmpty() ? null : items.get(0);
-        if (sample != null) {
-            @SuppressWarnings("unchecked")
-            Class<? extends Viewable> cls = (Class<? extends Viewable>) sample.getClass();
-            SearchPanel engine = new SearchPanel(cls, sample);
-            engine.setHiddenFields(domain.structuralFields(type));
-            engine.setFieldTypes(domain.fieldTypes(type));
-            engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
-            v.addTargetListener(engine);
-            panel.add(engine, BorderLayout.NORTH);
-        } else {
-            panel.add(new JLabel("   No instances of this type."), BorderLayout.NORTH);
-        }
-        panel.add(v.getCardsScrollPane(), BorderLayout.CENTER);
-        return panel;
+        return objectview.search.SearchableCardView.builder(items)
+                .sample(sample)
+                .hiddenFields(domain.structuralFields(type))
+                .fieldTypes(domain.fieldTypes(type))
+                .fieldSchemas(q -> domain.fieldSchema(q.typeName()))
+                .collapsible(true)
+                .selectionListener(o -> selected = o instanceof Viewable q ? q : null)
+                .emptyMessage("No instances of this type.")
+                .build();
     }
 
     private Collection<? extends Viewable> mergeableInstances() {

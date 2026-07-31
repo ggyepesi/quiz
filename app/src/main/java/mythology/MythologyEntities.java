@@ -6,7 +6,6 @@ import java.util.*;
 import aux.Constants;
 import quiz.ViewableGroup;
 import objectview.Viewable;
-import objectview.render.GroupView;
 import objectview.viewconfig.DomainViews;
 
 import static aux.Constants.mythologyDir;
@@ -15,7 +14,6 @@ public class MythologyEntities implements DomainViews {
     private final Mythology mythology = new Mythology();
 
     private final ViewableGroup rootGroup = new ViewableGroup("All");
-    private GroupView groupView;
 
     public static void main(String[] args) throws Exception {
         MythologyEntities reader = new MythologyEntities();
@@ -65,13 +63,12 @@ public class MythologyEntities implements DomainViews {
         for (Creature creat : mythology.getCreatures().values()) {
             rootGroup.addMember(creat);
         }
-        System.out.println("GroupView for " + rootGroup);
-        groupView = new GroupView(rootGroup);
+        System.out.println("Groups for " + rootGroup);
     }
 
     @Override
-    public GroupView getGroupView() {
-        return groupView;
+    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
+        return java.util.List.of(rootGroup);
     }
 
     @Override

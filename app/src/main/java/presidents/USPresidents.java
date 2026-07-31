@@ -215,8 +215,8 @@ public class USPresidents implements DomainViews {
     }
 
     @Override
-    public GroupView getGroupView() {
-        return new GroupView(root);
+    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
+        return java.util.List.of(root);
     }
 
     @Override

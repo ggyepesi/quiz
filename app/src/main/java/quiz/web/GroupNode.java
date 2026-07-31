@@ -13,7 +13,8 @@ import java.util.Set;
 /**
  * A node in a dataset's group hierarchy, for the quiz config UI. {@code
  * fullName} uniquely identifies the group (used to scope a quiz); {@code
- * count} is the number of distinct members reachable under it.
+ * count} is the number of members explicitly assigned to it. Child membership never
+ * changes a parent's scope.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GroupNode(
@@ -27,7 +28,9 @@ public record GroupNode(
         }
 
         Set<String> ids = new HashSet<>();
-        collectIds(g, ids);
+        for (Viewable member : g.getMembers()) {
+            if (member != null) ids.add(member.getIdentifier());
+        }
 
         Viewable k = g.getKeyRef();
         ViewableView.Ref ref = k == null
@@ -40,14 +43,4 @@ public record GroupNode(
                 ids.size(), ref, kids.isEmpty() ? null : kids);
     }
 
-    private static void collectIds(ViewableGroup<?> g, Set<String> ids) {
-        for (Viewable m : g.getMembers()) {
-            if (m != null) {
-                ids.add(m.getIdentifier());
-            }
-        }
-        for (ViewableGroup<?> c : g.getChildren()) {
-            collectIds(c, ids);
-        }
-    }
 }

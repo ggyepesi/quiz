@@ -104,7 +104,7 @@ public class State extends ViewableAdapter {
 
     public void addGroup(ViewableGroup group) {
         // A local label is not an identity: "United States" can occur below
-        // Territories and below Currencies. Keep both memberships.
+        // A state may belong to several meaningful curated group branches.
         groups.put(group.getIdentifier(), group);
     }
 

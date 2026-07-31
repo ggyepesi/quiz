@@ -25,21 +25,22 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
     private final DomainModel base;
     private final ManualCuration curation;
     private final Collection<? extends Viewable> memberRoots;
-    private final List<? extends objectview.group.ViewableGroup<?>> groupRoots;
+    private final List<objectview.viewconfig.DomainGroupRoot> groupRootBindings;
 
     CuratableDomain(DomainModel base, ManualCuration curation) {
-        this(base, curation, base.memberRoots(), base.groupRoots());
+        this(base, curation, base.memberRoots(), base.groupRootBindings());
     }
 
     CuratableDomain(
             DomainModel base,
             ManualCuration curation,
             Collection<? extends Viewable> memberRoots,
-            List<? extends objectview.group.ViewableGroup<?>> groupRoots) {
+            List<objectview.viewconfig.DomainGroupRoot> groupRootBindings) {
         this.base = base;
         this.curation = curation;
         this.memberRoots = memberRoots == null ? List.of() : List.copyOf(memberRoots);
-        this.groupRoots = groupRoots == null ? List.of() : List.copyOf(groupRoots);
+        this.groupRootBindings = groupRootBindings == null
+                ? List.of() : List.copyOf(groupRootBindings);
     }
 
     @Override public ManualCuration curation() { return curation; }
@@ -57,7 +58,10 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
     @Override public Collection<? extends Viewable> instances() { return base.instances(); }
     @Override public Collection<? extends Viewable> memberRoots() { return memberRoots; }
     @Override public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
-        return groupRoots;
+        return DomainModel.super.groupRoots();
+    }
+    @Override public List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {
+        return groupRootBindings;
     }
     @Override public Class<? extends Viewable> universe() { return base.universe(); }
 }

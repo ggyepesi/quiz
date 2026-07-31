@@ -33,13 +33,17 @@ public final class DomainSaver implements DomainWriter {
         var converted = schema == null
                 ? ViewableToWdo.convertDomain(members, List.of(), null)
                 : ViewableToWdo.convertDomain(
-                        schema.memberRoots(), schema.groupRoots(), schema);
+                        schema.memberRoots(), schema.groupRootBindings(), schema);
 
         File file = new File(aux.Constants.wikidataDataDirectory
                 + "transform/" + key + ".snapshot.json");
         WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
-        var fieldGraph = store.saveWithFieldGraph(
-                converted.memberRoots(), converted.groupRoots(), file, schema);
+        var persistedGroups = converted.groupRootBindings().stream()
+                .map(binding -> new WikidataDynamicObjectJsonStore.GroupRootBinding(
+                        binding.memberType(), binding.root()))
+                .toList();
+        var fieldGraph = store.saveWithGroupRootBindings(
+                converted.memberRoots(), persistedGroups, file, schema);
         Set<String> types = new LinkedHashSet<>(fieldGraph.memberTypes());
 
         DatasetRegistry.Dataset d = new DatasetRegistry.Dataset();

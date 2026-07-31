@@ -108,13 +108,16 @@ class SnapshotFieldGraphStoreTest {
         WikidataDynamicObjectJsonStore store =
                 new WikidataDynamicObjectJsonStore();
 
-        store.saveWithFieldGraph(
-                List.of(), List.of(group), file, null);
+        store.saveWithGroupRootBindings(
+                List.of(), List.of(new WikidataDynamicObjectJsonStore.GroupRootBinding(
+                        "State", group)), file, null);
 
         var loaded = store.loadAllWithFieldGraph(file);
         assertTrue(loaded.memberRoots().isEmpty());
         assertEquals(List.of("All"), loaded.groupRoots().stream()
                 .map(WikidataDynamicObject::getIdentifier).toList());
+        assertEquals(List.of("State"), loaded.groupRootBindings().stream()
+                .map(WikidataDynamicObjectJsonStore.LoadedGroupRoot::memberType).toList());
     }
 
     private static WikidataDynamicObject wdo(

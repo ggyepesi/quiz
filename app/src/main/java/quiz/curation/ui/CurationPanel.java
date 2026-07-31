@@ -1,7 +1,5 @@
 package quiz.curation.ui;
 
-import objectview.render.CardListView;
-import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
 import objectview.Viewable;
 import quiz.curation.Corrections;
@@ -182,38 +180,16 @@ public final class CurationPanel extends JPanel {
     }
 
     private JComponent instancesView(List<Viewable> missing, String type) {
-        CardListView v = new CardListView();
-
-        // Enable click-to-select on the cards: clicking an instance's name
-        // selects it (green ring), and Set fills the selected instance. The
-        // context must be set before the cards are built so they pick it up.
-        RenderContext ctx = new RenderContext();
-        ctx.setCollapsibleCards(true);   // birdseye: cards start collapsed, drill in at will
-        ctx.setSelectionEnabled(true);
-        ctx.addSelectionListener(o -> onSelected(o instanceof Viewable q ? q : null));
-        v.setRenderContext(ctx);
-
-        for (Viewable m : missing) {
-            v.addViewable(m);
-        }
-        v.createCardsPanel(1);
-
-        JPanel panel = new JPanel(new BorderLayout());
         Viewable sample = missing.isEmpty() ? null : missing.get(0);
-        if (sample != null) {
-            @SuppressWarnings("unchecked")
-            Class<? extends Viewable> cls = (Class<? extends Viewable>) sample.getClass();
-            SearchPanel engine = new SearchPanel(cls, sample);
-            engine.setHiddenFields(domain.structuralFields(type));
-            engine.setFieldTypes(domain.fieldTypes(type));
-            engine.setTarget(v.getCardsPanel(), v.getCardsScrollPane());
-            v.addTargetListener(engine);
-            panel.add(engine, BorderLayout.NORTH);
-        } else {
-            panel.add(new JLabel("   No instances are missing this field."), BorderLayout.NORTH);
-        }
-        panel.add(v.getCardsScrollPane(), BorderLayout.CENTER);
-        return panel;
+        return objectview.search.SearchableCardView.builder(missing)
+                .sample(sample)
+                .hiddenFields(domain.structuralFields(type))
+                .fieldTypes(domain.fieldTypes(type))
+                .fieldSchemas(q -> domain.fieldSchema(q.typeName()))
+                .collapsible(true)
+                .selectionListener(o -> onSelected(o instanceof Viewable q ? q : null))
+                .emptyMessage("No instances are missing this field.")
+                .build();
     }
 
     private record FieldItem(DomainField field) {

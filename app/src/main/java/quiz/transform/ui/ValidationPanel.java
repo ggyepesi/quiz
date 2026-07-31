@@ -572,13 +572,16 @@ public final class ValidationPanel extends JPanel {
     // The shared instance rendering: selectable, searchable cards (same components the
     // curation panel uses), so a missing member is the object — click to select it.
     private JComponent instancesView(List<Viewable> missing, String type) {
-        return InstanceBrowser.create(
-                missing, missing.get(0), domain.structuralFields(type), domain.fieldTypes(type),
-                q -> domain.fieldSchema(q.typeName()),
-                o -> {
+        return objectview.search.SearchableCardView.builder(missing)
+                .sample(missing.get(0))
+                .hiddenFields(domain.structuralFields(type))
+                .fieldTypes(domain.fieldTypes(type))
+                .fieldSchemas(q -> domain.fieldSchema(q.typeName()))
+                .collapsible(true)
+                .selectionListener(o -> {
             selected = o instanceof Viewable q ? q : null;
             updateSourcesButton();
-        });
+        }).build();
     }
 
     private static boolean has(Viewable q, String path) {

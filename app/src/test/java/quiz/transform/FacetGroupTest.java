@@ -23,7 +23,8 @@ class FacetGroupTest {
         List<Viewable> members = new ArrayList<>(List.of(
                 city("Paris", "Europe"),
                 city("Berlin", "Europe"),
-                city("Tokyo", "Asia")));
+                city("Tokyo", "Asia"),
+                city("Nowhere", null)));
 
         FacetGroup fg = new FacetGroup("By region", "City", "region");
         fg.reproduce(members);
@@ -31,10 +32,17 @@ class FacetGroupTest {
         assertEquals("City", fg.memberType());
         assertEquals("region", fg.field());
         assertEquals(3, fg.getMembers().size());
+        assertEquals(List.of("Paris", "Berlin", "Tokyo"),
+                fg.getMembers().stream().map(Viewable::getDisplayName).toList(),
+                "the facet result contains only members assigned to a value bucket");
         // Structure the group-tree renderer expects: FacetGroup -> "region" -> buckets.
         objectview.group.ViewableGroup<?> dim = fg.getChild("region");
         assertNotNull(dim);
+        assertEquals(fg, dim.getParent());
+        assertEquals(List.of(), dim.getMembers(),
+                "a structural facet header has no inferred members");
         assertNotNull(dim.getChild("Europe"));
+        assertEquals(dim, dim.getChild("Europe").getParent());
         assertNotNull(dim.getChild("Asia"));
         assertEquals(2, dim.getChild("Europe").getMembers().size());
         assertNull(dim.getChild("Africa"));

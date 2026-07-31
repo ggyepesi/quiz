@@ -4,7 +4,6 @@ import aux.Constants;
 import objectview.viewconfig.DomainViews;
 import quiz.ViewableGroup;
 
-import objectview.render.GroupView;
 
 import java.io.File;
 import java.util.Map;
@@ -18,7 +17,6 @@ public class Languages implements DomainViews {
     private final Map<String, LanguageFamily> families = new TreeMap<>();
 
     private ViewableGroup rootGroup;
-    private GroupView groupView;
     private boolean built = false;
 
     public Languages() {
@@ -54,11 +52,6 @@ public class Languages implements DomainViews {
         rootGroup =
                 data.getRootGroup();
 
-        groupView =
-                new GroupView(
-                        rootGroup
-                );
-
         built = true;
     }
 
@@ -82,8 +75,8 @@ public class Languages implements DomainViews {
     }
 
     @Override
-    public GroupView getGroupView() {
-        return groupView;
+    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
+        return rootGroup == null ? java.util.List.of() : java.util.List.of(rootGroup);
     }
 
     public Map<String, Language> getLanguages() {

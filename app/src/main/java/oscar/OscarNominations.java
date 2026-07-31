@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import objectview.viewconfig.DomainViews;
 import objectview.Viewable;
 import quiz.ViewableGroup;
-import objectview.render.GroupView;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.io.File;
@@ -23,7 +22,6 @@ public class OscarNominations implements DomainViews {
 
     private ViewableGroup root = new ViewableGroup("All");
 
-    private GroupView groupView;
 
     public OscarNominations() {
     }
@@ -77,7 +75,6 @@ public class OscarNominations implements DomainViews {
             add(n);
         }
 
-        groupView = new GroupView(root);
     }
 
     public void saveToFile() throws Exception {
@@ -160,7 +157,6 @@ public class OscarNominations implements DomainViews {
             addToGroups(e.getKey(), e.getValue());
         }
 
-        groupView = new GroupView(root);
     }
 
     private void add(OscarNomination n) {
@@ -223,11 +219,7 @@ public class OscarNominations implements DomainViews {
     }
 
     @Override
-    public GroupView getGroupView() {
-        if (groupView == null) {
-            groupView = new GroupView(root);
-        }
-
-        return groupView;
+    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
+        return java.util.List.of(root);
     }
 }

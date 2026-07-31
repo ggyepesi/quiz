@@ -9,7 +9,6 @@ import quiz.ViewableGroup;
 import java.io.BufferedReader;
 import java.net.URL;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,7 +25,7 @@ public class DownloadFlagGroups implements UrlLineProcessor<ViewableGroup> {
             ViewableGroup parent,
             Map<String, State> states
     ) throws Exception {
-        new DownloadFlagGroups(parent, "Colors", states)
+        new DownloadFlagGroups(parent, "Flag colors", states)
                 .download(COLOR_GROUP_URL);
     }
 
@@ -82,26 +81,21 @@ public class DownloadFlagGroups implements UrlLineProcessor<ViewableGroup> {
     public static void readCurrencyGroup(
             String filename,
             String separator,
-            ViewableGroup parent,
             Map<String, State> states
     ) throws Exception {
         try (BufferedReader reader =
                      Constants.getBufferedReaderForResource(
                              Constants.flagDataDirectory + filename)) {
-            readCurrencyGroup(reader, separator, parent, states);
+            readCurrencyGroup(reader, separator, states);
         }
     }
 
     static void readCurrencyGroup(
             BufferedReader reader,
             String separator,
-            ViewableGroup parent,
             Map<String, State> states
     ) throws Exception {
         String line;
-
-        Map<String, Map<String, Set<String>>> countriesPerCurrencyVersion =
-                new TreeMap<>();
 
         while ((line = reader.readLine()) != null) {
             if (line.isEmpty()) {
@@ -133,14 +127,10 @@ public class DownloadFlagGroups implements UrlLineProcessor<ViewableGroup> {
             int split = currencyVersion.lastIndexOf(" ");
 
             String currency;
-            String version;
-
             if (split == -1) {
                 currency = currencyVersion;
-                version = "";
             } else {
                 currency = currencyVersion.substring(split + 1);
-                version = currencyVersion.substring(0, split);
             }
 
             State state = states.get(country);
@@ -153,47 +143,7 @@ public class DownloadFlagGroups implements UrlLineProcessor<ViewableGroup> {
             }
 
             state.getCurrencies().add(currency);
-
-            countriesPerCurrencyVersion
-                    .computeIfAbsent(currency, v -> new TreeMap<>())
-                    .computeIfAbsent(version, c -> new TreeSet<>())
-                    .add(country);
         }
-
-        ViewableGroup currenciesGroup =
-                parent.getOrCreateChild("Currencies");
-
-        for (Entry<String, Map<String, Set<String>>> e
-                : countriesPerCurrencyVersion.entrySet()) {
-
-            String currency = e.getKey();
-
-            ViewableGroup currencyGroup =
-                    getABCDGroup(currenciesGroup, currency)
-                            .getOrCreateChild(currency);
-
-            Map<String, Set<String>> countriesPerVersion = e.getValue();
-
-            if (countriesPerVersion.size() == 1) {
-                addStatesToGroup(
-                        currencyGroup,
-                        countriesPerVersion.values().iterator().next(),
-                        states);
-                continue;
-            }
-
-            for (Entry<String, Set<String>> versionEntry
-                    : countriesPerVersion.entrySet()) {
-
-                addStatesToGroup(
-                        currencyGroup.getOrCreateChild(versionEntry.getKey()),
-                        versionEntry.getValue(),
-                        states);
-            }
-        }
-
-        System.out.println(
-                countriesPerCurrencyVersion.size() + " currencies");
     }
 
     public static void readCapitalsAndContinents(
@@ -209,11 +159,8 @@ public class DownloadFlagGroups implements UrlLineProcessor<ViewableGroup> {
                 Constants.getBufferedReaderForResource(
                         Constants.flagDataDirectory + filename);
 
-        ViewableGroup continentsGroup =
-                parent.getOrCreateChild("Continents");
-
-        ViewableGroup capitalsGroup =
-                parent.getOrCreateChild("Capitals");
+        ViewableGroup continentsGroup = parseContinent
+                ? parent.getOrCreateChild("Continents") : null;
 
         int n = 0;
 
@@ -259,14 +206,7 @@ public class DownloadFlagGroups implements UrlLineProcessor<ViewableGroup> {
                 state.addGroup(continentGroup);
             }
 
-            if (state.getCapitals().add(capital)) {
-                ViewableGroup capitalGroup =
-                        getABCDGroup(capitalsGroup, capital)
-                                .getOrCreateChild(capital);
-
-                capitalGroup.addMember(state);
-                state.addGroup(capitalGroup);
-            }
+            state.getCapitals().add(capital);
 
             ++n;
         }
@@ -278,27 +218,6 @@ public class DownloadFlagGroups implements UrlLineProcessor<ViewableGroup> {
         reader.close();
     }
 
-    private static ViewableGroup getABCDGroup(
-            ViewableGroup parent,
-            String s
-    ) {
-        if (s == null || s.length() < 2) {
-            return parent.getOrCreateChild("??");
-        }
-
-        return parent.getOrCreateChild(
-                s.substring(0, 2).toUpperCase());
-    }
-
-    private static void addStatesToGroup(
-            ViewableGroup group,
-            Collection<String> stateNames,
-            Map<String, State> states
-    ) {
-        for (String stateName : stateNames) {
-            StateGroupAdder.addStateToGroup(group, stateName, states);
-        }
-    }
 }
 
 final class StateGroupAdder {
@@ -446,7 +365,7 @@ class DesignGroupReader implements UrlLineProcessor<ViewableGroup> {
             ViewableGroup parent,
             Map<String, State> states
     ) {
-        this.groupReader = new GroupReader(parent, "Design");
+        this.groupReader = new GroupReader(parent, "Flag design");
         this.states = states;
     }
 

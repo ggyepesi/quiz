@@ -128,10 +128,7 @@ public class ViewableStore {
         return out;
     }
 
-    /**
-     * The members of a group (recursively, de-duplicated), or the whole type
-     * if no group is given or it can't be resolved.
-     */
+    /** The group's explicit members, or the whole type if no group is selected. */
     public synchronized Collection<Viewable> members(String type, String groupFullName) throws Exception {
         if (groupFullName == null || groupFullName.isBlank()) {
             return list(type);
@@ -143,9 +140,10 @@ public class ViewableStore {
             return list(type);
         }
 
-        Map<String, Viewable> out = new LinkedHashMap<>();
-        collectMembers(group, out);
-        return new ArrayList<>(out.values());
+        return group.getMembers().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(Viewable.class::cast)
+                .toList();
     }
 
     private static ViewableGroup<?> findGroup(
@@ -160,16 +158,6 @@ public class ViewableStore {
             }
         }
         return null;
-    }
-
-    static void collectMembers(
-            ViewableGroup<?> g, Map<String, Viewable> out) {
-        for (Viewable member : g.getMembers()) {
-            out.putIfAbsent(member.getIdentifier(), member);
-        }
-        for (ViewableGroup<?> c : g.getChildren()) {
-            collectMembers(c, out);
-        }
     }
 
     /** Index q and, recursively, every Viewable reachable through its fields. */

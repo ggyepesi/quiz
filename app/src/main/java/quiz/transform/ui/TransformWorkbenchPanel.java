@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
-import objectview.demo.GroupTreeBrowser;
 import objectview.demo.MultiView;
+import objectview.render.GroupTreeView;
 import process.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessInputRequest;
@@ -51,6 +51,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     // instances before committing, and a re-run isn't forced through a disk write.
     private final JButton saveIdentitiesButton = new JButton("Save identities");
     private final JButton forgetResultButton = new JButton("Forget result");
+    private JPanel instanceScopeHeader;
+    private quiz.transform.EditableGroup selectedGroup;
+    // The group changes the instance scope, not the user's field choices. Dynamic
+    // classes share a Java implementation, so the domain type name is the right key.
+    private final java.util.Map<String, objectview.search.SearchPanel.ConfigState>
+            instanceConfigsByType = new java.util.HashMap<>();
     // Single-result convention: after a resolve, its result is PENDING (applied in memory)
     // until the user saves or forgets it. While pending, the resolve button re-opens the
     // retained review instead of starting a new resolve; save persists it, forget reverts.
@@ -138,7 +144,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             left.add(top, BorderLayout.NORTH);
         }
 
-        viewStepsPanel = new ViewStepsPanel(controller, this::render);
+        viewStepsPanel = new ViewStepsPanel(
+                controller, this::render, this::addFilterGroup);
         left.add(viewStepsPanel, BorderLayout.CENTER);
 
         return left;
@@ -177,7 +184,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         scopeButtons.add(saveIdentitiesButton);
         scopeButtons.add(resolveButton);
         scope.add(scopeButtons, BorderLayout.EAST);
-        right.add(scope, BorderLayout.NORTH);
+        instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
         return right;
     }
@@ -482,7 +489,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // it's being mutated.
         final int generation = ++renderGeneration;
         final String type = controller.selectedType();
-        final List<OperationSpec> ops = controller.pipeline();
         renderedScope = null;
         if (resolveRunner.isRunning()) {
             resolveButton.setText("Cancel identity resolution");
@@ -499,7 +505,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         new SwingWorker<objectview.group.ViewableGroup<?>, Void>() {
             @Override protected objectview.group.ViewableGroup<?> doInBackground() {
-                return controller.compileResult(type, ops);
+                return controller.groupRoot(type);
             }
             @Override protected void done() {
                 if (generation != renderGeneration) {
@@ -507,23 +513,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 }
                 try {
                     objectview.group.ViewableGroup<?> root = get();
-                    List<Viewable> visible = renderedMembers(root);
-                    renderedScope = new RenderedScope(generation, type, visible);
                     renderHolder.removeAll();
-                    List<? extends objectview.group.ViewableGroup<?>> declaredRoots =
-                            controller.groupRoots(type);
-                    objectview.group.ViewableGroup<?> existingGroups =
-                            GroupHierarchyPresentation.rootOf(
-                                    new ArrayList<>(declaredRoots), type);
-                    // A grouped (facet) result keeps its group structure; a flat one
-                    // shows its members as per-class instance sections, like the
-                    // modelbuilder — except when those members ARE an existing group
-                    // hierarchy, which uses the specialized group-tree renderer.
-                    renderHolder.add(existingGroups != null
-                            ? groupView(existingGroups, memberType(existingGroups, type))
-                            : root.getChildren().isEmpty()
-                                    ? flatView(visible, type)
-                                    : groupView(root, type), BorderLayout.CENTER);
+                    renderHolder.add(groupView(
+                            root, memberType(root, type), generation, type),
+                            BorderLayout.CENTER);
                     updateScopeStatus();
                 } catch (Exception ex) {
                     renderedScope = null;
@@ -539,22 +532,17 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }.execute();
     }
 
-    private static List<Viewable> renderedMembers(
-            objectview.group.ViewableGroup<?> root) {
-        java.util.LinkedHashSet<Viewable> members = new java.util.LinkedHashSet<>();
-        collectRenderedMembers(root, members);
-        return List.copyOf(members);
-    }
-
-    private static void collectRenderedMembers(
-            objectview.group.ViewableGroup<?> group, java.util.Set<Viewable> members) {
-        if (group == null) return;
-        for (Viewable member : group.getMembers()) {
-            members.add(member);
+    /** A group's scope is exactly its explicit membership. Children never contribute
+     *  members implicitly; hierarchy and membership are independent application choices. */
+    private static List<Viewable> explicitMembers(
+            objectview.group.ViewableGroup<?> group) {
+        if (group == null || group.getMembers() == null) {
+            return List.of();
         }
-        for (objectview.group.ViewableGroup<?> child : group.getChildren()) {
-            collectRenderedMembers(child, members);
-        }
+        return group.getMembers().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(Viewable.class::cast)
+                .toList();
     }
 
     private void updateScopeStatus() {
@@ -598,10 +586,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             String renderedType = byType.isEmpty()
                     ? type : byType.keySet().iterator().next();
             Viewable sample = controller.sampleOf(renderedType);
-            return InstanceBrowser.create(
-                    members, sample, controller.structuralFields(renderedType),
-                    controller.fieldTypes(renderedType),
-                    q -> controller.fieldSchema(q.typeName()), null);
+            return objectview.search.SearchableCardView.builder(members)
+                    .sample(sample)
+                    .hiddenFields(controller.structuralFields(renderedType))
+                    .fieldTypes(controller.fieldTypes(renderedType))
+                    .fieldSchemas(q -> controller.fieldSchema(q.typeName()))
+                    .configState(instanceConfigsByType.get(renderedType))
+                    .configListener(config ->
+                            instanceConfigsByType.put(renderedType, config))
+                    .collapsible(true)
+                    .build();
         }
 
         MultiView mv = new MultiView();
@@ -612,7 +606,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             String t = e.getKey();
             List<Viewable> objs = e.getValue();
             mv.addSection(t, sampleClass(objs.get(0)), objs,
-                    objs.get(0), controller.structuralFields(t), controller.fieldTypes(t));
+                    objs.get(0), controller.structuralFields(t), controller.fieldTypes(t),
+                    instanceConfigsByType.get(t),
+                    config -> instanceConfigsByType.put(t, config));
         }
         mv.build(1);
         return mv;
@@ -632,12 +628,122 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     private JComponent groupView(
-            objectview.group.ViewableGroup<?> root, String type) {
-        Viewable sample = controller.sampleOf(type);
-        Class<? extends Viewable> cls = sample != null ? sampleClass(sample) : Viewable.class;
-        return new GroupTreeBrowser(root, cls, sample,
-                controller.structuralFields(type), controller.fieldTypes(type),
-                q -> controller.fieldSchema(q.typeName()));
+            objectview.group.ViewableGroup<?> root,
+            String memberType,
+            int generation,
+            String selectedType) {
+        GroupTreeView groups = new GroupTreeView(root);
+        JPanel instances = new JPanel(new BorderLayout());
+
+        java.util.function.Consumer<objectview.group.ViewableGroup<?>> show = group -> {
+            List<Viewable> members = explicitMembers(group);
+            renderedScope = new RenderedScope(generation, selectedType, members);
+            instances.removeAll();
+            instances.add(titledInstancePanel(
+                    "Members of " + group.getDisplayName(), members, memberType),
+                    BorderLayout.CENTER);
+            instances.revalidate();
+            instances.repaint();
+            updateScopeStatus();
+        };
+        groups.setShowGroupHandler(show);
+        groups.setSelectionHandler(group -> {
+            selectedGroup = group instanceof quiz.transform.EditableGroup editable
+                    ? editable : null;
+            groups.setStatusText(selectedGroupStatus(group));
+            if (viewStepsPanel != null) viewStepsPanel.reflectGroupRule(group);
+        });
+        groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
+        groups.addControl("Add filter group", viewStepsPanel::requestAddFilterGroup);
+        groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
+        groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));
+        groups.getTree().setSelectionRow(0);
+        selectedGroup = root instanceof quiz.transform.EditableGroup editable
+                ? editable : null;
+        show.accept(root);
+
+        JSplitPane split = new JSplitPane(
+                JSplitPane.VERTICAL_SPLIT, instances, groups);
+        split.setResizeWeight(0.7);
+        split.setOneTouchExpandable(true);
+        return split;
+    }
+
+    private static String selectedGroupStatus(
+            objectview.group.ViewableGroup<?> group) {
+        if (group == null) return " ";
+        String name = group instanceof quiz.transform.EditableGroup editable
+                ? editable.name() : group.getDisplayName();
+        String status = "Selected group: " + name;
+        return group instanceof quiz.transform.ProducedGroup produced
+                ? status + " — " + produced.ruleDescription() : status;
+    }
+
+    private JComponent titledInstancePanel(
+            String scope, List<Viewable> members, String type) {
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createTitledBorder(
+                scope + " · " + members.size()));
+        if (instanceScopeHeader != null) {
+            panel.add(instanceScopeHeader, BorderLayout.NORTH);
+        }
+        panel.add(flatView(members, type), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private quiz.transform.EditableGroup selectedOrRoot(
+            objectview.group.ViewableGroup<?> root) {
+        return selectedGroup != null ? selectedGroup
+                : root instanceof quiz.transform.EditableGroup editable ? editable : null;
+    }
+
+    private void addFacetGroup(String type, objectview.group.ViewableGroup<?> root) {
+        DomainField field = viewStepsPanel.selectedDomainField();
+        if (field == null) {
+            JOptionPane.showMessageDialog(this, "Select a field first.");
+            return;
+        }
+        String name = JOptionPane.showInputDialog(this,
+                "Name the new facet group:", "By " + field.path());
+        if (name == null || name.isBlank()) return;
+        controller.addFacetGroup(type, selectedOrRoot(root), name.trim(), field);
+        render();
+    }
+
+    private void addManualGroup(String type, objectview.group.ViewableGroup<?> root) {
+        String name = JOptionPane.showInputDialog(this,
+                "Name the new manual group:", "New group");
+        if (name == null || name.isBlank()) return;
+        controller.addManualGroup(selectedOrRoot(root), name.trim());
+        render();
+    }
+
+    private void addFilterGroup(
+            String name, quiz.transform.pipeline.ui.FilterCondition condition) {
+        String type = controller.selectedType();
+        quiz.transform.EditableGroup root =
+                (quiz.transform.EditableGroup) controller.groupRoot(type);
+        controller.addFilterGroup(type, selectedOrRoot(root), name, condition);
+        render();
+    }
+
+    private void removeSelectedGroup(
+            String type, objectview.group.ViewableGroup<?> root) {
+        quiz.transform.EditableGroup selected = selectedOrRoot(root);
+        if (selected == null || selected == root) {
+            JOptionPane.showMessageDialog(this, "The root group cannot be removed.");
+            return;
+        }
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Remove group \"" + selected.getDisplayName()
+                        + "\" and all its nested groups?\n\n"
+                        + "The instances themselves will not be deleted.",
+                "Remove group", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (answer == JOptionPane.OK_OPTION && controller.removeGroup(type, selected)) {
+            selectedGroup = null;
+            render();
+        }
     }
 
     /** Persist the current view's members (the filtered / projected result) as a
@@ -657,7 +763,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // (e.g. curate countries → Save → "countries"); fall back to the type otherwise.
         String suggested = domainName != null && !domainName.isBlank()
                 ? domainName
-                : type + (controller.pipeline().isEmpty() ? "" : " view");
+                : type;
         String name = JOptionPane.showInputDialog(this,
                 "Save the current result as a domain named:", suggested);
         if (name == null || name.isBlank()) {

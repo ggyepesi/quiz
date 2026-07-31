@@ -16,7 +16,6 @@ import java.util.TreeSet;
 import aux.ResourceFinder;
 import objectview.viewconfig.DomainViews;
 import quiz.ViewableGroup;
-import objectview.render.GroupView;
 import objectview.media.ImagePane;
 import objectview.Viewable;
 
@@ -31,7 +30,6 @@ public class NobelPrizes implements DomainViews {
             "“No Nobel Prize was awarded this year.", NobelPrize.Domain.NONE);
     
     private final ViewableGroup rootGroup = new ViewableGroup("All");
-    private GroupView groupView;
     private final Map<String, NobelPrize> nobelPrizes = new TreeMap<>();
     private final Map<String, Laureate> laureatesByName = new TreeMap<>();
 
@@ -200,7 +198,6 @@ public class NobelPrizes implements DomainViews {
     public void buildViews() throws Exception {
         String filename = Constants.nobelDirectory + "nobelprizewithmotivation.txt"; // nobeltest 
         readNobelPrices(filename);
-        groupView = new GroupView(rootGroup);
     }
 
     private void store(NobelPrize prize) {
@@ -211,8 +208,8 @@ public class NobelPrizes implements DomainViews {
     }
 
     @Override
-    public GroupView getGroupView() {
-        return groupView;
+    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
+        return java.util.List.of(rootGroup);
     }
 
     @Override

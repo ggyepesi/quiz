@@ -46,6 +46,6 @@ public class StateSource implements ViewableSource {
 
     @Override
     public ViewableGroup rootGroup() throws Exception {
-        return FacetGrouper.assignRoles((ViewableGroup) states().getGroupView().getRootGroup());
+        return FacetGrouper.assignRoles((ViewableGroup) states().getRootGroups().get(0));
     }
 }

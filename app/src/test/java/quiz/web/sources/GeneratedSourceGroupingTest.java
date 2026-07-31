@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -72,12 +73,14 @@ class GeneratedSourceGroupingTest {
         ReflectionDomain domain =
                 new ReflectionDomain(List.of(item), List.of(root));
         var converted = ViewableToWdo.convertDomain(
-                domain.memberRoots(), domain.groupRoots(), domain);
+                domain.memberRoots(), domain.groupRootBindings(), domain);
         File snapshot = dir.resolve("explicit-group-root.snapshot.json").toFile();
         WikidataDynamicObjectJsonStore store =
                 new WikidataDynamicObjectJsonStore();
-        store.saveWithFieldGraph(
-                converted.memberRoots(), converted.groupRoots(),
+        store.saveWithGroupRootBindings(
+                converted.memberRoots(), converted.groupRootBindings().stream()
+                        .map(binding -> new WikidataDynamicObjectJsonStore.GroupRootBinding(
+                                binding.memberType(), binding.root())).toList(),
                 snapshot, domain);
 
         var loaded = store.loadAllWithFieldGraph(snapshot);
@@ -85,6 +88,8 @@ class GeneratedSourceGroupingTest {
                 .map(WikidataDynamicObject::getIdentifier).toList());
         assertEquals(List.of("Root"), loaded.groupRoots().stream()
                 .map(WikidataDynamicObject::getIdentifier).toList());
+        assertEquals(List.of("GroupedThing"), loaded.groupRootBindings().stream()
+                .map(WikidataDynamicObjectJsonStore.LoadedGroupRoot::memberType).toList());
 
         GeneratedSource source = new GeneratedSource("GroupedThing", snapshot);
         objectview.group.ViewableGroup<?> loadedRoot = source.rootGroup();
@@ -135,11 +140,14 @@ class GeneratedSourceGroupingTest {
         ReflectionDomain domain =
                 new ReflectionDomain(List.of(austria), List.of(root));
         var converted = ViewableToWdo.convertDomain(
-                domain.memberRoots(), domain.groupRoots(), domain);
+                domain.memberRoots(), domain.groupRootBindings(), domain);
 
         File snapshot = dir.resolve("generic-groups.snapshot.json").toFile();
-        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
-                converted.memberRoots(), converted.groupRoots(), snapshot, domain);
+        new WikidataDynamicObjectJsonStore().saveWithGroupRootBindings(
+                converted.memberRoots(), converted.groupRootBindings().stream()
+                        .map(binding -> new WikidataDynamicObjectJsonStore.GroupRootBinding(
+                                binding.memberType(), binding.root())).toList(),
+                snapshot, domain);
 
         GeneratedSource source = new GeneratedSource("State", snapshot);
         objectview.group.ViewableGroup<?> loadedRoot = source.rootGroup();
@@ -148,6 +156,94 @@ class GeneratedSourceGroupingTest {
                 .getChild("VI").getChild("Vienna"));
         assertTrue(source.coverage().stream()
                 .anyMatch(field -> "groups".equals(field.path())));
+    }
+
+    @Test
+    void untypedGroupRootIsRecoveredNotDropped(@TempDir Path dir) throws Exception {
+        // The saveWithFieldGraph path binds group roots with a null member type. A binding
+        // must still be persisted (blank type) and re-inferred on load — otherwise the root
+        // is written to the pool but invisible to the workbench, which builds from bindings.
+        State austria = new State("Austria");
+        ViewableGroup root = new ViewableGroup("All");
+        ViewableGroup vienna = root.getOrCreateChild("Capitals").getOrCreateChild("Vienna");
+        vienna.addMember(austria);
+        austria.addGroup(vienna);
+
+        ReflectionDomain domain =
+                new ReflectionDomain(List.of(austria), List.of(root));
+        var converted = ViewableToWdo.convertDomain(
+                domain.memberRoots(), domain.groupRootBindings(), domain);
+        File snapshot = dir.resolve("untyped-group-root.snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        // The untyped overload: group roots wrapped as GroupRootBinding(null, root).
+        store.saveWithFieldGraph(converted.memberRoots(),
+                converted.groupRootBindings().stream()
+                        .map(binding -> binding.root()).toList(),
+                snapshot, domain);
+
+        var loaded = store.loadAllWithFieldGraph(snapshot);
+        assertEquals(1, loaded.groupRootBindings().size(),
+                "an untyped root is recovered via inference, not dropped");
+        assertEquals("State", loaded.groupRootBindings().get(0).memberType());
+        objectview.group.ViewableGroup<?> loadedRoot =
+                new GeneratedSource("State", snapshot).rootGroup();
+        assertNotNull(loadedRoot.getChild("Capitals").getChild("Vienna"));
+    }
+
+    @Test
+    void producedGroupRulesSurviveSnapshotRoundTrip(@TempDir Path dir) throws Exception {
+        quiz.transform.DynamicViewable paris =
+                new quiz.transform.DynamicViewable("Paris", "Paris");
+        paris.type("City");
+        paris.put("region", "Europe");
+        quiz.transform.DynamicViewable tokyo =
+                new quiz.transform.DynamicViewable("Tokyo", "Tokyo");
+        tokyo.type("City");
+        tokyo.put("region", "Asia");
+        quiz.transform.ui.DomainModel base = new quiz.transform.ui.DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public List<quiz.transform.ui.DomainField> fields(String type) {
+                return List.of(new quiz.transform.ui.DomainField(
+                        "City", "region", false, false));
+            }
+            @Override public java.util.Collection<? extends objectview.Viewable> instances() {
+                return List.of(paris, tokyo);
+            }
+            @Override public Class<? extends objectview.Viewable> universe() {
+                return objectview.Viewable.class;
+            }
+        };
+        quiz.transform.ui.TransformController controller =
+                new quiz.transform.ui.TransformController(base, null);
+        quiz.transform.EditableGroup root =
+                (quiz.transform.EditableGroup) controller.groupRoot("City");
+        controller.addFacetGroup("City", root, "Regions",
+                new quiz.transform.ui.DomainField("City", "region", false, false));
+
+        var converted = ViewableToWdo.convertDomain(
+                controller.domain().memberRoots(),
+                controller.domain().groupRootBindings(), controller.domain());
+        File snapshot = dir.resolve("produced-groups.snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.saveWithGroupRootBindings(
+                converted.memberRoots(), converted.groupRootBindings().stream()
+                        .map(binding -> new WikidataDynamicObjectJsonStore.GroupRootBinding(
+                                binding.memberType(), binding.root())).toList(),
+                snapshot, controller.domain());
+
+        var loaded = store.loadAllWithFieldGraph(snapshot);
+        objectview.group.ViewableGroup<?> adapted =
+                quiz.transform.app.DynamicViewableGroup.adapt(
+                        loaded.groupRootBindings().get(0).root());
+        assertEquals("facet", adapted.getChildren().iterator().next()
+                .fields().read("producer"));
+        quiz.transform.EditableGroup restored = quiz.transform.EditableGroup.copyOf(adapted);
+        assertInstanceOf(quiz.transform.FacetGroup.class,
+                restored.getChildren().iterator().next());
+        quiz.transform.FacetGroup facet =
+                (quiz.transform.FacetGroup) restored.getChildren().iterator().next();
+        assertEquals("region", facet.field());
+        assertEquals("Regions", facet.name());
     }
 
     @Test

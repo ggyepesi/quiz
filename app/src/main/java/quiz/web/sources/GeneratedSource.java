@@ -39,6 +39,7 @@ public class GeneratedSource implements ViewableSource {
     private final List<String[]> nestedVocabularyPaths;
     private final wikidata.explore.model.GeneratedProjectModel model;   // for field expectations
     private List<WikidataDynamicObject> groupRoots;
+    private List<WikidataDynamicObjectJsonStore.LoadedGroupRoot> groupRootBindings = List.of();
     private List<WikidataDynamicObject> members;
     private ViewableGroup<?> explicitGroups;
     private boolean explicitGroupsBuilt;
@@ -145,6 +146,7 @@ public class GeneratedSource implements ViewableSource {
                     store.loadAllWithFieldGraph(file);
             List<WikidataDynamicObject> all = loaded.objects();
             groupRoots = loaded.groupRoots();
+            groupRootBindings = loaded.groupRootBindings();
             // Bare references (unstamped, no substance — e.g. type values) read
             // as display-name strings on the web too, matching the workbench.
             wikidata.explore.transform.BareReferenceCollapse.apply(all);
@@ -211,7 +213,18 @@ public class GeneratedSource implements ViewableSource {
     public synchronized ViewableGroup<?> rootGroup() throws Exception {
         if (!explicitGroupsBuilt) {
             members();
-            explicitGroups = DynamicViewableGroup.rootsOf(groupRoots);
+            // One snapshot can hold several member types, each served by its own source.
+            // Serve only the group roots bound to THIS source's type, so a State's group
+            // tree doesn't also surface under a sibling type's source. Legacy snapshots
+            // carry no bindings — serve all roots then, matching the old behaviour.
+            List<WikidataDynamicObject> mine = new ArrayList<>();
+            for (WikidataDynamicObjectJsonStore.LoadedGroupRoot binding : groupRootBindings) {
+                if (type.equals(binding.memberType())) {
+                    mine.add(binding.root());
+                }
+            }
+            explicitGroups = DynamicViewableGroup.rootsOf(
+                    groupRootBindings.isEmpty() ? groupRoots : mine);
             explicitGroupsBuilt = true;
         }
         return explicitGroups;

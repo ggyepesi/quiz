@@ -21,7 +21,6 @@ import quiz.ViewableGroup;
 import objectview.Viewable;
 
 import objectview.media.ImagePane;
-import objectview.render.GroupView;
 
 import java.util.TreeMap;
 
@@ -31,7 +30,6 @@ public class States implements DomainViews {
     // state -> {(flag, seal, etc.)->image}
     private final Map<String, State> states = new TreeMap<>();
     private final ViewableGroup root = new ViewableGroup("All");
-    private GroupView groupView;
     private boolean built;
 
     // state -> {state -> {imageKey starting with "Flag of " -> fullState}}
@@ -57,8 +55,8 @@ public class States implements DomainViews {
     }
 
     @Override
-    public GroupView getGroupView() {
-        return groupView;
+    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
+        return java.util.List.of(root);
     }
 
     @Override
@@ -75,11 +73,11 @@ public class States implements DomainViews {
         // images: -Dstates.imageFile=flags/curatedtest.txt
         readImagesFromFile(System.getProperty("states.imageFile",
                 "flags/curatedflagsandarms.txt"));
-        DownloadShapes.readShapes(states, root);
+        DownloadShapes.readShapes(states);
         cleanFlagOfs();
         if (downloadSvgs) return;
-        ReadFlagGroups.curateAndReadAll(root.getOrCreateChild("Objects"), this);
-        DownloadFlagGroups.readCurrencyGroup("currencies.txt", "\t", root, states);
+        ReadFlagGroups.curateAndReadAll(root.getOrCreateChild("Flag objects"), this);
+        DownloadFlagGroups.readCurrencyGroup("currencies.txt", "\t", states);
         DownloadFlagGroups.readCapitalsAndContinents(
                 "capitalsofterritories.txt", "\t", false, root, states);
         DownloadFlagGroups.readCapitalsAndContinents(
@@ -89,11 +87,11 @@ public class States implements DomainViews {
         DownloadFlagGroups.downloadDesignFlagroups(root, states);
         StateAdmissionDates.apply(states);
         readLanguages();
+        removeObsoleteRootGroups();
 
         System.out.println(root.getChildren().size() + " groups, " +
                                    root.getMembers().size() + " vs. " + states.size());
         mem();
-        groupView = new GroupView(root);
         built = true;
     }
 
@@ -142,7 +140,7 @@ public class States implements DomainViews {
             state = states.computeIfAbsent(prefixAndState.getState(),
                                     i -> new State(prefixAndState.getState()));
         }
-        if (group != null && !group.getName().equals("NOGROUP")) {
+        if (group != null) {
             synchronized (group) {
                 group.addMember(state);
                 state.addGroup(group);
@@ -260,9 +258,17 @@ public class States implements DomainViews {
         BufferedReader reader = Constants.getBufferedReaderForResource(Constants.flagDataDirectory + filename);
 
         GroupReader groupReader = new GroupReader(root);
+        boolean suppressGroupMembership = false;
         String line;
         while ((line = reader.readLine()) != null) {
+            // Input sentinel: load the following images, but do not create or assign
+            // a group named NOGROUP.
+            if ("==NOGROUP==".equals(line.strip())) {
+                suppressGroupMembership = true;
+                continue;
+            }
             if (groupReader.parseGroup(line)) {
+                suppressGroupMembership = false;
                 continue;
             }
             String[] tags = line.split("\t");
@@ -286,7 +292,10 @@ public class States implements DomainViews {
                         System.out.println("Couldn't download " + imageKey + ": " + de.getMessage());
                     }
                 } else {
-                    imageReaders.add(new Thread(new ImageReader(prefixAndState, urlString, line, groupReader.getGroup())));
+                    ViewableGroup group = suppressGroupMembership
+                            ? null : groupReader.getGroup();
+                    imageReaders.add(new Thread(
+                            new ImageReader(prefixAndState, urlString, line, group)));
                 }
             }
         }
@@ -322,6 +331,13 @@ public class States implements DomainViews {
         reader.close();
     }
 
+    /** Old navigation/presence groups are replaced by search, filters and facets. */
+    private void removeObsoleteRootGroups() {
+        for (String name : List.of("Shape", "ShapeOnly", "NOGROUP", "ByPrefix")) {
+            root.getChildrenMap().remove(name);
+        }
+    }
+
     public static void downloadSvg(String url, String filename) throws Exception {
         filename = Constants.getSvgDirectory() + filename + ".svg";
         System.out.println("Downloading " + url + " to " + filename);
@@ -344,8 +360,6 @@ public class States implements DomainViews {
     private synchronized void addImage(PrefixAndState prefixAndState, State state, ImagePane imagePane) {
         String prefix = prefixAndState.getPrefix();
         String imageKey = prefixAndState.getOriginalImageKey();
-        root.getOrCreateChild("ByPrefix").getOrCreateChild(prefix).addMember(state);
-
         if (PrefixAndState.isFlagPrefix(prefix)) {
             if (loadFlags) {
                 flagOfs.computeIfAbsent(state.getName(), s -> new TreeMap<>())

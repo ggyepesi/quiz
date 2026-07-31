@@ -31,27 +31,34 @@ public final class ReflectionDomain implements DomainModel {
 
     private final List<Viewable> instances;
     private final List<? extends Viewable> memberRoots;
-    private final List<? extends objectview.group.ViewableGroup<?>> groupRoots;
+    private final List<objectview.viewconfig.DomainGroupRoot> groupRootBindings;
     private final List<String> memberTypes = new ArrayList<>();
     private final Map<String, FieldSchema> schemasByType =
             new LinkedHashMap<>();
 
     public ReflectionDomain(Collection<? extends Viewable> roots) {
-        this(roots, List.of());
+        this(roots, List.<objectview.group.ViewableGroup<?>>of());
     }
 
     public ReflectionDomain(
             Collection<? extends Viewable> roots,
             Collection<? extends objectview.group.ViewableGroup<?>> groupRoots) {
+        this(roots, bindLegacyRoots(roots, groupRoots));
+    }
+
+    private ReflectionDomain(
+            Collection<? extends Viewable> roots,
+            List<objectview.viewconfig.DomainGroupRoot> groupRootBindings) {
         this.memberRoots = roots == null ? List.of() : List.copyOf(roots);
-        this.groupRoots = groupRoots == null ? List.of() : List.copyOf(groupRoots);
+        this.groupRootBindings = groupRootBindings == null
+                ? List.of() : List.copyOf(groupRootBindings);
         // Walk the whole reachable object graph so every Viewable class — the main
         // class AND referenced ones (Person, Terms, Language, ViewableGroup, …) —
         // uses the same discovery, schema and persistence rules.
         java.util.Set<Object> seen =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         java.util.Deque<Viewable> queue = new java.util.ArrayDeque<>(memberRoots);
-        queue.addAll(this.groupRoots);
+        this.groupRootBindings.forEach(binding -> queue.add(binding.root()));
         List<Viewable> closure = new ArrayList<>();
         Set<Class<?>> classes = new LinkedHashSet<>();
         while (!queue.isEmpty()) {
@@ -103,7 +110,20 @@ public final class ReflectionDomain implements DomainModel {
         @SuppressWarnings("unchecked")
         Collection<? extends Viewable> roots =
                 (Collection<? extends Viewable>) (Collection<?>) views.getViewables().values();
-        return new ReflectionDomain(roots, views.getRootGroups());
+        return new ReflectionDomain(roots, views.getGroupRootBindings());
+    }
+
+    private static List<objectview.viewconfig.DomainGroupRoot> bindLegacyRoots(
+            Collection<? extends Viewable> members,
+            Collection<? extends objectview.group.ViewableGroup<?>> roots) {
+        String memberType = members == null ? null : members.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(Viewable::typeName)
+                .findFirst().orElse(null);
+        if (memberType == null || roots == null) return List.of();
+        return roots.stream().filter(java.util.Objects::nonNull)
+                .map(root -> new objectview.viewconfig.DomainGroupRoot(memberType, root))
+                .toList();
     }
 
     @SuppressWarnings("unchecked")
@@ -149,7 +169,10 @@ public final class ReflectionDomain implements DomainModel {
     @Override public Collection<? extends Viewable> instances() { return instances; }
     @Override public Collection<? extends Viewable> memberRoots() { return memberRoots; }
     @Override public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
-        return groupRoots;
+        return DomainModel.super.groupRoots();
+    }
+    @Override public List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {
+        return groupRootBindings;
     }
     @Override public Class<? extends Viewable> universe() { return Viewable.class; }
 }
