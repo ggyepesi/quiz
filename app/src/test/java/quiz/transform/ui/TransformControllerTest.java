@@ -142,8 +142,10 @@ class TransformControllerTest {
         quiz.transform.FacetGroup fg = (quiz.transform.FacetGroup) result;
         assertEquals("City", fg.memberType());
         assertEquals("region", fg.field());
-        assertNotNull(fg.getChild("Europe"));
-        assertNotNull(fg.getChild("Asia"));
+        objectview.group.ViewableGroup<?> dim = fg.getChild("region");
+        assertNotNull(dim);
+        assertNotNull(dim.getChild("Europe"));
+        assertNotNull(dim.getChild("Asia"));
     }
 
     private static quiz.transform.DynamicViewable city(String name, String region) {

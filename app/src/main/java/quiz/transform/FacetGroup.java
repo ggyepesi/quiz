@@ -49,19 +49,18 @@ public final class FacetGroup extends ViewableGroupAdapter {
     public void reproduce(Collection<? extends Viewable> parentMembers) {
         clearChildren();
         clearMembers();
+        // Keep the FacetGrouper structure intact (root -> facet-dimension node -> buckets):
+        // that's exactly what the existing group-tree renderer expects — the dimension node
+        // is the header, the buckets its rows.
         quiz.ViewableGroup tree = FacetGrouper.group(
                 quiz.ViewableGroup::new, getDisplayName(), parentMembers,
                 List.of(Facet.<Viewable>field(field)));
+        role(tree.getRole());
+        for (quiz.ViewableGroup child : tree.getChildren()) {
+            putChild(child);
+        }
         for (Viewable member : tree.getMembers()) {
             putMember(member);
-        }
-        // group() nests the buckets under a facet-label node; this FacetGroup IS that
-        // facet, so lift the buckets up to be its direct children.
-        quiz.ViewableGroup facetNode = tree.getChild(field);
-        if (facetNode != null) {
-            for (quiz.ViewableGroup bucket : facetNode.getChildren()) {
-                putChild(bucket);
-            }
         }
     }
 }

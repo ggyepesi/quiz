@@ -31,16 +31,20 @@ class FacetGroupTest {
         assertEquals("City", fg.memberType());
         assertEquals("region", fg.field());
         assertEquals(3, fg.getMembers().size());
-        assertNotNull(fg.getChild("Europe"));
-        assertNotNull(fg.getChild("Asia"));
-        assertEquals(2, fg.getChild("Europe").getMembers().size());
-        assertNull(fg.getChild("Africa"));
+        // Structure the group-tree renderer expects: FacetGroup -> "region" -> buckets.
+        objectview.group.ViewableGroup<?> dim = fg.getChild("region");
+        assertNotNull(dim);
+        assertNotNull(dim.getChild("Europe"));
+        assertNotNull(dim.getChild("Asia"));
+        assertEquals(2, dim.getChild("Europe").getMembers().size());
+        assertNull(dim.getChild("Africa"));
 
         // instance set changes online -> reproduce refreshes the buckets from the rule
         members.add(city("Cairo", "Africa"));
         fg.reproduce(members);
         assertEquals(4, fg.getMembers().size());
-        assertNotNull(fg.getChild("Africa"));
-        assertEquals(1, fg.getChild("Africa").getMembers().size());
+        objectview.group.ViewableGroup<?> dim2 = fg.getChild("region");
+        assertNotNull(dim2.getChild("Africa"));
+        assertEquals(1, dim2.getChild("Africa").getMembers().size());
     }
 }
