@@ -243,7 +243,7 @@ public final class EnrichmentReviewPanel extends JPanel {
         row.add(proposed);
         JComboBox<EnrichmentProposal.ReviewAction> action =
                 candidate.compatible()
-                        ? new JComboBox<>(EnrichmentProposal.ReviewAction.values())
+                        ? new JComboBox<>(reviewActionsFor(candidate))
                         : new JComboBox<>(new EnrichmentProposal.ReviewAction[]{
                                 EnrichmentProposal.ReviewAction.IGNORE});
         action.setSelectedItem(candidate.suggestedAction() == null
@@ -251,6 +251,23 @@ public final class EnrichmentReviewPanel extends JPanel {
         fieldActions.put(candidate, action);
         row.add(action);
         return row;
+    }
+
+    /** Collection union is meaningful only when the target field is declared as a
+     * collection. The applier repeats this check against the authoritative schema. */
+    private static EnrichmentProposal.ReviewAction[] reviewActionsFor(
+            EnrichmentProposal.FieldCandidate candidate) {
+        java.util.List<EnrichmentProposal.ReviewAction> actions =
+                new java.util.ArrayList<>();
+        for (EnrichmentProposal.ReviewAction action
+                : EnrichmentProposal.ReviewAction.values()) {
+            if (action == EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
+                    && !candidate.targetCollection()) {
+                continue;
+            }
+            actions.add(action);
+        }
+        return actions.toArray(EnrichmentProposal.ReviewAction[]::new);
     }
 
     private JComponent mediaCell(EnrichmentProposal.MediaCandidate candidate) {

@@ -124,7 +124,8 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
                                     : incompatibility == null
                                     ? EnrichmentProposal.ReviewAction.FILL_IF_EMPTY
                                     : EnrichmentProposal.ReviewAction.IGNORE,
-                            incompatibility));
+                            incompatibility,
+                            request.collection()));
                 }
                 return new EnrichmentProposal(
                         request.subject(), List.of(identity), fields, List.of());

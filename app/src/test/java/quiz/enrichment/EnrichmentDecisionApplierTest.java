@@ -17,6 +17,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EnrichmentDecisionApplierTest {
 
@@ -60,6 +61,52 @@ class EnrichmentDecisionApplierTest {
         assertEquals(quiz.curation.CorrectionPolicy.FILL_IF_EMPTY,
                 reloaded.corrections().get(0).policy());
         assertEquals("421", reloaded.corrections().get(0).source().entityId());
+    }
+
+    @Test
+    void rejectsAddToCollectionForAScalarField(@TempDir Path dir) {
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "One");
+        person.type("Person");
+        person.put("population", 1L);
+        DomainModel domain = new DomainModel() {
+            @Override public List<String> types() { return List.of("Person"); }
+            @Override public List<DomainField> fields(String type) {
+                return List.of(new DomainField(
+                        "Person", "population", false, false, FieldKind.ORDERED));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(person);
+            }
+            @Override public Class<? extends Viewable> universe() {
+                return WikidataDynamicObject.class;
+            }
+        };
+        ManualCuration curation =
+                new ManualCuration(new File(dir.toFile(), "people.curation.json"));
+        EnrichmentProposal.SourceRef source =
+                new EnrichmentProposal.SourceRef("Wikidata", "Q1", "url", "P1082");
+        EnrichmentProposal.IdentityCandidate identity =
+                new EnrichmentProposal.IdentityCandidate(
+                        "wikidata", "One", List.of(), "", source, 1.0, List.of());
+        EnrichmentProposal.FieldCandidate candidate =
+                new EnrichmentProposal.FieldCandidate(
+                        "population", "wikidata", "population", 1L, 2L,
+                        source, EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                        null, false);
+        EnrichmentDecision decision = new EnrichmentDecision(
+                new EnrichmentProposal.Subject("Person", "Q1", "Q1", "One"),
+                identity,
+                List.of(new EnrichmentDecision.FieldDecision(
+                        candidate, EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION)),
+                null);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> EnrichmentDecisionApplier.apply(domain, curation, decision));
+        assertEquals("Cannot add to population: the target field is not a collection.",
+                error.getMessage());
+        assertEquals(1L, person.get("population"));
+        assertEquals(0, curation.corrections().size());
+        assertEquals(0, curation.identityLinks().size());
     }
 
     private static DomainModel domain(WikidataDynamicObject person) {

@@ -7,7 +7,5 @@ public enum CorrectionPolicy {
     /** Apply only while the target field has no usable value. */
     FILL_IF_EMPTY,
     /** Add the reviewed value(s) to the target collection without duplicates. */
-    ADD_TO_COLLECTION,
-    /** Alias-style collection addition; currently replayed like ADD_TO_COLLECTION. */
-    ADD_AS_ALIAS
+    ADD_TO_COLLECTION
 }

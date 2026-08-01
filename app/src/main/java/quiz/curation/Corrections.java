@@ -85,8 +85,8 @@ public final class Corrections {
     private static void applyCorrection(Viewable target, Correction correction,
                                         Object sample) {
         Object reviewed = coerceCorrection(correction, target, sample);
-        if (correction.effectivePolicy() == CorrectionPolicy.ADD_TO_COLLECTION
-                || correction.effectivePolicy() == CorrectionPolicy.ADD_AS_ALIAS) {
+        CorrectionPolicy policy = correction.effectivePolicy();
+        if (policy == CorrectionPolicy.ADD_TO_COLLECTION) {
             Object current = FieldAccess.getPath(target, correction.field());
             List<Object> combined = new ArrayList<>();
             addDistinct(combined, current);

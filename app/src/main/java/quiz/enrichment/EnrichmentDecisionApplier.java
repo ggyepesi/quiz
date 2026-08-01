@@ -56,9 +56,17 @@ public final class EnrichmentDecisionApplier {
                     throw new IllegalArgumentException("Cannot apply " + candidate.field()
                             + ": " + candidate.compatibilityError());
                 }
-                String currentProblem = FieldValueCompatibility.problem(
+                objectview.field.FieldRef targetSchema =
                         quiz.transform.ui.DomainSchemas.resolve(
-                                domain, type, candidate.field()),
+                                domain, type, candidate.field());
+                if (fieldDecision.action()
+                        == EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
+                        && (targetSchema == null || !targetSchema.collection())) {
+                    throw new IllegalArgumentException("Cannot add to " + candidate.field()
+                            + ": the target field is not a collection.");
+                }
+                String currentProblem = FieldValueCompatibility.problem(
+                        targetSchema,
                         candidate.proposedValue());
                 if (currentProblem != null) {
                     throw new IllegalArgumentException("Cannot apply " + candidate.field()
@@ -137,7 +145,6 @@ public final class EnrichmentDecisionApplier {
         return switch (action) {
             case REPLACE -> quiz.curation.CorrectionPolicy.REPLACE;
             case ADD_TO_COLLECTION -> quiz.curation.CorrectionPolicy.ADD_TO_COLLECTION;
-            case ADD_AS_ALIAS -> quiz.curation.CorrectionPolicy.ADD_AS_ALIAS;
             case FILL_IF_EMPTY, IGNORE -> quiz.curation.CorrectionPolicy.FILL_IF_EMPTY;
         };
     }

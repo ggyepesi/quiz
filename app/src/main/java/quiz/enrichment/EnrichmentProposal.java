@@ -63,12 +63,23 @@ public record EnrichmentProposal(
             Object proposedValue,
             SourceRef source,
             ReviewAction suggestedAction,
-            String compatibilityError) {
+            String compatibilityError,
+            boolean targetCollection) {
         public FieldCandidate(String candidateId, String identityCandidateId,
                               String field, Object currentValue, Object proposedValue,
                               SourceRef source, ReviewAction suggestedAction) {
             this(candidateId, identityCandidateId, field, currentValue, proposedValue,
-                    source, suggestedAction, null);
+                    source, suggestedAction, null,
+                    currentValue instanceof java.util.Collection<?>);
+        }
+
+        public FieldCandidate(String candidateId, String identityCandidateId,
+                              String field, Object currentValue, Object proposedValue,
+                              SourceRef source, ReviewAction suggestedAction,
+                              String compatibilityError) {
+            this(candidateId, identityCandidateId, field, currentValue, proposedValue,
+                    source, suggestedAction, compatibilityError,
+                    currentValue instanceof java.util.Collection<?>);
         }
 
         public boolean compatible() {
@@ -94,7 +105,6 @@ public record EnrichmentProposal(
         REPLACE,
         FILL_IF_EMPTY,
         ADD_TO_COLLECTION,
-        ADD_AS_ALIAS,
         IGNORE
     }
 }

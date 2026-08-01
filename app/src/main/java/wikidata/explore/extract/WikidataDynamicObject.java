@@ -79,7 +79,6 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @Hidden
     @JsonIgnore
     private final java.util.Set<String> directClasses = new java.util.LinkedHashSet<>();
-
     // The OBJECT-identity type key ⟨typeKey, qid⟩ — the stable logical class name. It
     // distinguishes objects that merely share a name across types (a State "France" vs a
     // ViewableGroup "France"); the QID stays an entity LINK, not the object identity.
