@@ -110,7 +110,7 @@ public class WikidataDynamicObjectJsonStore {
     public SnapshotFieldGraph saveWithFieldGraph(
             List<WikidataDynamicObject> objects, File file)
             throws IOException {
-        return saveWithFieldGraph(objects, file, null);
+        return saveWithFieldGraph(objects, file, (DomainModel) null);
     }
 
     /**
@@ -122,6 +122,17 @@ public class WikidataDynamicObjectJsonStore {
             List<WikidataDynamicObject> objects, File file, DomainModel schema)
             throws IOException {
         return saveWithFieldGraph(objects, List.of(), file, schema);
+    }
+
+    /** Generated-domain counterpart using the exact model that produced the values. */
+    public SnapshotFieldGraph saveWithFieldGraph(
+            List<WikidataDynamicObject> objects,
+            File file,
+            wikidata.explore.model.GeneratedProjectModel schema)
+            throws IOException {
+        return saveWithGroupRootBindingsInternal(
+                objects, List.of(), file,
+                builder -> builder.declare(schema));
     }
 
     public SnapshotFieldGraph saveWithFieldGraph(
@@ -141,6 +152,18 @@ public class WikidataDynamicObjectJsonStore {
             List<GroupRootBinding> groupRootBindings,
             File file,
             DomainModel schema)
+            throws IOException {
+
+        return saveWithGroupRootBindingsInternal(
+                memberRoots, groupRootBindings, file,
+                builder -> builder.declare(schema));
+    }
+
+    private SnapshotFieldGraph saveWithGroupRootBindingsInternal(
+            List<WikidataDynamicObject> memberRoots,
+            List<GroupRootBinding> groupRootBindings,
+            File file,
+            java.util.function.Consumer<SnapshotFieldGraph.Builder> declareSchema)
             throws IOException {
 
         if (memberRoots == null) memberRoots = List.of();
@@ -167,7 +190,9 @@ public class WikidataDynamicObjectJsonStore {
         for (GroupRootBinding binding : groupRootBindings) {
             collect(binding.root(), byQid, visited, fieldGraph);
         }
-        fieldGraph.declare(schema);
+        if (declareSchema != null) {
+            declareSchema.accept(fieldGraph);
+        }
         fieldGraph.markMembers(memberRoots);
 
         FlatSnapshot snapshot = new FlatSnapshot();

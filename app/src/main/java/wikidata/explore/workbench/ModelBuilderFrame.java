@@ -1711,8 +1711,13 @@ public class ModelBuilderFrame extends JFrame {
             int n = -1;
             if (lastRun != null && lastRun.dynamicObjects() != null
                     && !lastRun.dynamicObjects().isEmpty()) {
-                new WikidataDynamicObjectJsonStore()
-                        .save(lastRun.dynamicObjects(), snapshotFile());
+                // The run retains the EXACT model snapshot that produced these objects.
+                // Declare it into the persisted field graph so null fields and empty typed
+                // collections survive without shape placeholders. Do not use projectModel:
+                // the user may have explicitly accepted saving a stale run after editing it.
+                new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                        lastRun.dynamicObjects(), snapshotFile(),
+                        lastRun.modelSnapshot());
                 n = lastRun.dynamicObjects().size();
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');

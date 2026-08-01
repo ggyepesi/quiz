@@ -5,6 +5,9 @@ import objectview.field.FieldRef;
 import objectview.field.FieldSchema;
 import objectview.Viewable;
 import quiz.transform.ui.DomainModel;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -210,6 +213,50 @@ public final class SnapshotFieldGraph {
                         typeName, TypeShape::new);
                 type.baseType = domain.baseType(typeName);
                 declareType(typeName, domain, new LinkedHashSet<>());
+            }
+        }
+
+        /**
+         * Add the exact ModelBuilder declaration that produced a generated pool.
+         * Observed values remain authoritative; this supplies declaration-only shape
+         * such as null fields, empty typed collections, inheritance and render metadata.
+         */
+        public void declare(GeneratedProjectModel model) {
+            if (model == null) {
+                return;
+            }
+            Set<String> seen = new LinkedHashSet<>();
+            for (GeneratedClassModel generatedClass : model.classes()) {
+                if (generatedClass == null
+                        || !seen.add(generatedClass.className())) {
+                    continue;
+                }
+                TypeShape type = graph.types.computeIfAbsent(
+                        generatedClass.className(), TypeShape::new);
+                type.baseType = generatedClass.baseClassName();
+                for (GeneratedFieldModel generatedField
+                        : generatedClass.effectiveFields(model)) {
+                    if (generatedField == null || generatedField.name() == null
+                            || generatedField.name().isBlank()) {
+                        continue;
+                    }
+                    FieldRef declared = quiz.transform.ui.FieldDefinitions.toFieldRef(
+                            generatedField.definition());
+                    type.fields.computeIfAbsent(
+                            generatedField.name(), FieldShape::new).declare(declared);
+                    if (declared != null && declared.targetType() != null
+                            && !declared.targetType().isBlank()) {
+                        graph.types.computeIfAbsent(
+                                declared.targetType(), TypeShape::new);
+                    }
+                }
+                if (generatedClass.reifiesStatements()) {
+                    type.fields.computeIfAbsent("source", FieldShape::new)
+                            .declare(FieldRef.withStructural(
+                                    FieldRef.of("source", FieldKind.REFERENCE,
+                                            "Viewable", true, false, false),
+                                    true));
+                }
             }
         }
 

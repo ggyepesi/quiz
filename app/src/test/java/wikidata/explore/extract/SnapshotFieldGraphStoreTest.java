@@ -5,6 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.transform.app.SnapshotDomain;
 import quiz.transform.ui.DomainField;
+import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldType;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldType;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -15,6 +23,80 @@ import static org.junit.jupiter.api.Assertions.*;
 class SnapshotFieldGraphStoreTest {
 
     @TempDir File dir;
+
+    @Test void generatedModelEnrichesOnlyTheFieldGraph() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel state = new GeneratedClassModel("State");
+        state.addField("population", FieldType.NUMBER, FieldCardinality.SINGLE);
+        state.addField("tags", FieldType.STRING, FieldCardinality.COLLECTION);
+        state.addField("admissionDate", FieldType.DATE, FieldCardinality.SINGLE);
+        model.rootClass(state);
+
+        WikidataDynamicObject instance = wdo("Q1", "State", false);
+        instance.put("population", 10L);
+        instance.put("tags", new ArrayList<>());
+        List<WikidataDynamicObject> objects = new ArrayList<>(List.of(instance));
+
+        File fallbackFile = new File(dir, "generated-fallback.snapshot.json");
+        File richFile = new File(dir, "generated-rich.snapshot.json");
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(objects, fallbackFile);
+        store.saveWithFieldGraph(objects, richFile, model);
+
+        ObjectNode fallback = (ObjectNode) store.mapper().readTree(fallbackFile);
+        ObjectNode rich = (ObjectNode) store.mapper().readTree(richFile);
+        fallback.remove("fieldGraph");
+        rich.remove("fieldGraph");
+        assertEquals(fallback, rich,
+                "model enrichment must not change roots or entity values");
+
+        SnapshotFieldGraph fallbackGraph =
+                store.loadAllWithFieldGraph(fallbackFile).fieldGraph();
+        SnapshotFieldGraph richGraph =
+                store.loadAllWithFieldGraph(richFile).fieldGraph();
+        assertFalse(fallbackGraph.types.get("State").fields
+                .containsKey("admissionDate"));
+        SnapshotFieldGraph.TypeShape richState = richGraph.types.get("State");
+        assertTrue(richState.fields.containsKey("admissionDate"));
+        assertEquals("Date", richState.fields.get("admissionDate").typeLabel());
+        assertEquals("Collection<String>", richState.fields.get("tags").typeLabel());
+    }
+
+    @Test void generatedModelSubclassHierarchySurvivesTheRichSave() throws Exception {
+        // Phase B relies on this: a generated model's subclass (baseClassName) must round-trip
+        // through the rich save, so its baseType edge and its own field survive save -> load.
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("name", FieldType.STRING, FieldCardinality.SINGLE);
+        model.addClass(person);
+        GeneratedClassModel director = new GeneratedClassModel("Director");
+        director.baseClassName("Person");
+        director.addField("credits", FieldType.NUMBER, FieldCardinality.SINGLE);
+        model.addClass(director);
+        model.rootClass(person);
+
+        WikidataDynamicObject alice = wdo("Q1", "Director", false);
+        alice.put("name", "Alice");
+        alice.put("credits", 12L);
+        WikidataDynamicObject bob = wdo("Q2", "Person", false);
+        bob.put("name", "Bob");
+
+        File file = new File(dir, "generated-subclass.snapshot.json");
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.saveWithFieldGraph(new ArrayList<>(List.of(alice, bob)), file, model);
+
+        var loaded = store.loadAllWithFieldGraph(file);
+        SnapshotDomain restored = new SnapshotDomain(loaded.objects(), loaded.fieldGraph());
+
+        assertEquals("Person", restored.baseType("Director"),
+                "the model's subclass hierarchy survives the rich save");
+        assertNotNull(restored.fieldSchema("Director").field("credits"),
+                "the subclass's own field survives");
+        assertNull(restored.fieldSchema("Person").field("credits"),
+                "the subclass field does not leak onto the base");
+        assertEquals(2, restored.instancesOf("Person").size(),
+                "a Director is polymorphically a Person after reload");
+    }
 
     @Test void graphRoundTripsWithInlineValuesAndDrivesDomainWithoutInstanceScan()
             throws Exception {
