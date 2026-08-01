@@ -123,6 +123,18 @@ public interface DomainModel {
         return null;
     }
 
+    /** The sample a field-CONFIG table should enumerate from — or {@code null} when
+     *  {@code type} has an authoritative field schema ({@link #fieldTypes}). A null sample
+     *  makes the config table enumerate straight from the schema, so its structure (a
+     *  subclass's inherited + own fields included) cannot drift from {@link #fieldSchema},
+     *  and no synthetic shape sample is needed. The {@link #representativeSample} is only a
+     *  fallback for schema-less domains. Value pickers and coverage still read instances. */
+    default Viewable configSample(String type) {
+        FieldTypeSource types = fieldTypes(type);
+        return types != null && !types.fieldNames().isEmpty()
+                ? null : representativeSample(type);
+    }
+
     /** A representative instance for enumerating {@code type}'s fields. The default is
      *  the first matching instance; a persisted snapshot may return a small shape sample
      *  built from its saved field graph instead of scanning its instance pool. */

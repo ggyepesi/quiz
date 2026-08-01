@@ -28,11 +28,11 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     private final Map<String, String> subclassBases = new LinkedHashMap<>();
     private final java.util.IdentityHashMap<Viewable, java.util.Set<String>>
             assignedClasses = new java.util.IdentityHashMap<>();
-    // Empty fields DECLARED on a base class (the "New field" op) — a schema act, distinct
-    // from PROJECT-derived classes. They join the field pool and the shape sample so they
-    // show at 0% coverage, ready to be filled (e.g. via Find Data).
+    // Empty fields DECLARED on a base or subclass (the "New field" op) — a schema act,
+    // distinct from PROJECT-derived classes. They join the field schema so they show at
+    // 0% coverage, ready to be filled (e.g. via Find Data). Enumeration is schema-driven,
+    // so no synthetic shape sample is needed.
     private final Map<String, List<FieldRef>> declaredFields = new LinkedHashMap<>();
-    private final Map<String, Viewable> augmentedSample = new HashMap<>();
     private final Map<String, quiz.transform.EditableGroup> groupRoots =
             new LinkedHashMap<>();
     // The sorted member-identifier signature the cached root was last refreshed against,
@@ -69,7 +69,6 @@ public final class WorkingDomain implements DomainModel, SchemaView,
             }
         }
         declaredFields.computeIfAbsent(type, t -> new ArrayList<>()).add(field);
-        augmentedSample.remove(type);
         return true;
     }
 
@@ -280,49 +279,6 @@ public final class WorkingDomain implements DomainModel, SchemaView,
 
     @Override public FieldTypeSource fieldTypes(String type) {
         return DomainSchemas.fieldTypes(this, type);
-    }
-
-    @Override public Viewable representativeSample(String type) {
-        // Base types get the base's authoritative shape sample; a PROJECT-derived type
-        // falls back to the interface default over the combined instances.
-        if (derived.containsKey(type)) {
-            return DomainModel.super.representativeSample(type);
-        }
-        if (subclassBases.containsKey(type)) {
-            return augmentedSample.computeIfAbsent(type, t -> {
-                Viewable member = instancesOf(t).stream().findFirst().orElse(null);
-                if (!(member instanceof WikidataDynamicObject source)) return member;
-                WikidataDynamicObject shape = new WikidataDynamicObject(
-                        "__shape__:" + t, t);
-                shape.type(t);
-                shape.dynamicFields().putAll(source.dynamicFields());
-                List<FieldRef> extras = declaredFields.get(t);
-                if (extras != null) {
-                    for (FieldRef field : extras) {
-                        shape.dynamicFields().putIfAbsent(field.name(), "");
-                    }
-                }
-                return shape;
-            });
-        }
-        List<FieldRef> extra = declaredFields.get(type);
-        if (extra == null || extra.isEmpty()) {
-            return base.representativeSample(type);
-        }
-        // Add each declared field to the SHAPE sample as an empty placeholder so the
-        // sample-driven field/coverage UIs enumerate it. Real instances still lack it, so
-        // it reads as 0% coverage (a gap to fill) — the placeholder is shape-only.
-        return augmentedSample.computeIfAbsent(type, t -> {
-            Viewable sample = base.representativeSample(t);
-            if (sample instanceof WikidataDynamicObject wdo) {
-                for (FieldRef field : extra) {
-                    if (wdo.get(field.name()) == null) {
-                        wdo.put(field.name(), "");
-                    }
-                }
-            }
-            return sample;
-        });
     }
 
     @Override public Collection<? extends Viewable> instances() {

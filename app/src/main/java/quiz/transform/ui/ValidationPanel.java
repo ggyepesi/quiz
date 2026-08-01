@@ -221,7 +221,7 @@ public final class ValidationPanel extends JPanel {
         // clears the selection, which fires onFieldSelected and resets the drill. The
         // UNION sample shows every field of the type, not just those the first instance
         // happens to carry (a laureate with no portrait would otherwise hide the field).
-        Viewable sample = type == null ? null : domain.representativeSample(type);
+        Viewable sample = type == null ? null : domain.configSample(type);
         coverage.setConfigRows(
                 sample == null ? new ViewConfig() : ViewConfig.all(sampleClass(sample)),
                 sample,

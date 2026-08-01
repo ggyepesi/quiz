@@ -605,7 +605,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         boolean oneHierarchy = type != null && members.stream()
                 .allMatch(member -> controller.isInstanceOf(member, type));
         if (oneHierarchy) {
-            Viewable sample = controller.sampleOf(type);
+            Viewable sample = controller.configSample(type);
             java.util.List<objectview.search.SearchPanel.SubtypeConfig> subtypes =
                     new java.util.ArrayList<>();
             for (String subtype : controller.subtypesOf(type)) {
@@ -613,7 +613,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 if (additional.isEmpty()) continue;
                 subtypes.add(new objectview.search.SearchPanel.SubtypeConfig(
                         subtype, controller.baseType(subtype),
-                        controller.sampleOf(subtype),
+                        controller.configSample(subtype),
                         controller.fieldTypes(subtype), additional,
                         member -> controller.isInstanceOf(member, subtype)));
             }
@@ -640,7 +640,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (byType.size() <= 1) {
             String renderedType = byType.isEmpty()
                     ? type : byType.keySet().iterator().next();
-            Viewable sample = controller.sampleOf(renderedType);
+            Viewable sample = controller.configSample(renderedType);
             return objectview.search.SearchableCardView.builder(members)
                     .sample(sample)
                     .hiddenFields(controller.structuralFields(renderedType))

@@ -163,21 +163,11 @@ public final class TransformController {
         return domain.instancesOf(type).size();
     }
 
-    /** The representative for enumerating {@code type}'s fields — a UNION sample for a
-     *  snapshot, so the field pickers (tree / search / sort / group) show EVERY field of
-     *  the type, not just those the first instance carries. All callers use it for field
-     *  metadata, not to display data. */
-    public Viewable sampleOf(String type) {
-        Viewable union = domain.representativeSample(type);
-        if (union != null) {
-            return union;
-        }
-        for (Viewable q : domain.instances()) {
-            if (q != null && domain.isInstanceOf(q, type)) {
-                return q;
-            }
-        }
-        return null;
+    /** The sample a field-config table enumerates from — null for a schema-backed type so
+     *  its structure comes straight from the schema (see {@link DomainModel#configSample}),
+     *  which cannot drift and needs no synthetic shape. */
+    public Viewable configSample(String type) {
+        return domain.configSample(type);
     }
 
     /** A representative non-null value of {@code path} for {@code type} — used to
