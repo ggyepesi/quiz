@@ -27,7 +27,7 @@ import java.util.Set;
  */
 public final class SnapshotFieldGraph {
 
-    public static final int FORMAT_VERSION = 1;
+    public static final int FORMAT_VERSION = 2;
     private static final int MAX_PATH_DEPTH = 6;
 
     public int version = FORMAT_VERSION;
@@ -82,6 +82,12 @@ public final class SnapshotFieldGraph {
             }
         }
         return result;
+    }
+
+    public String baseType(String typeName) {
+        TypeShape type = types.get(typeName);
+        return type == null || type.baseType == null || type.baseType.isBlank()
+                ? null : type.baseType;
     }
 
     private static boolean hasSubstance(TypeShape type) {
@@ -173,14 +179,17 @@ public final class SnapshotFieldGraph {
                     || object.typeName().isBlank()) {
                 return;
             }
-            TypeShape type = graph.types.computeIfAbsent(
-                    object.typeName(), TypeShape::new);
-            type.member |= !object.isValueObject();
-            type.valueObject |= object.isValueObject();
-            for (Map.Entry<String, Object> entry
-                    : object.dynamicFieldValues().entrySet()) {
-                type.fields.computeIfAbsent(entry.getKey(), FieldShape::new)
-                        .observe(entry.getValue());
+            java.util.Set<String> classes = object.directClassNames();
+            if (classes.isEmpty()) classes = java.util.Set.of(object.typeName());
+            for (String className : classes) {
+                TypeShape type = graph.types.computeIfAbsent(className, TypeShape::new);
+                type.member |= !object.isValueObject();
+                type.valueObject |= object.isValueObject();
+                for (Map.Entry<String, Object> entry
+                        : object.dynamicFieldValues().entrySet()) {
+                    type.fields.computeIfAbsent(entry.getKey(), FieldShape::new)
+                            .observe(entry.getValue());
+                }
             }
         }
 
@@ -199,6 +208,7 @@ public final class SnapshotFieldGraph {
                 }
                 TypeShape type = graph.types.computeIfAbsent(
                         typeName, TypeShape::new);
+                type.baseType = domain.baseType(typeName);
                 declareType(typeName, domain, new LinkedHashSet<>());
             }
         }
@@ -218,8 +228,19 @@ public final class SnapshotFieldGraph {
                         || root.typeName() == null || root.typeName().isBlank()) {
                     continue;
                 }
-                graph.types.computeIfAbsent(root.typeName(), TypeShape::new)
-                        .member = true;
+                for (String directClass : root.directClassNames()) {
+                    markMemberAndBases(directClass);
+                }
+            }
+        }
+
+        private void markMemberAndBases(String className) {
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            String current = className;
+            while (current != null && !current.isBlank() && seen.add(current)) {
+                TypeShape type = graph.types.computeIfAbsent(current, TypeShape::new);
+                type.member = true;
+                current = type.baseType;
             }
         }
 
@@ -231,6 +252,7 @@ public final class SnapshotFieldGraph {
             }
             TypeShape type = graph.types.computeIfAbsent(
                     typeName, TypeShape::new);
+            type.baseType = domain.baseType(typeName);
             for (FieldRef declared : schema.fields()) {
                 if (declared == null || declared.name() == null
                         || declared.name().isBlank()) {
@@ -260,6 +282,7 @@ public final class SnapshotFieldGraph {
         public String name;
         public boolean member;
         public boolean valueObject;
+        public String baseType;
         public Map<String, FieldShape> fields = new LinkedHashMap<>();
 
         public TypeShape() {}

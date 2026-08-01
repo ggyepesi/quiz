@@ -1,7 +1,6 @@
 package quiz.web.sources;
 
 import objectview.Viewable;
-import objectview.Viewable;
 import quiz.ViewableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
@@ -64,13 +63,7 @@ public final class DomainModelSource implements ViewableSource {
     @Override public String type() { return type; }
 
     @Override public Collection<? extends Viewable> load() throws Exception {
-        List<Viewable> out = new ArrayList<>();
-        for (Viewable q : domain().instances()) {
-            if (q != null && type.equals(q.typeName())) {
-                out.add(q);
-            }
-        }
-        return out;
+        return domain().instancesOf(type);
     }
 
     @Override public ViewableGroup rootGroup() throws Exception {

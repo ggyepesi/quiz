@@ -41,7 +41,7 @@ public final class Projector {
 
         List<Viewable> instances = new ArrayList<>();
         for (Viewable q : domain.instances()) {
-            if (q == null || !memberType.equals(q.typeName())) {
+            if (q == null || !domain.isInstanceOf(q, memberType)) {
                 continue;
             }
             DynamicViewable o =

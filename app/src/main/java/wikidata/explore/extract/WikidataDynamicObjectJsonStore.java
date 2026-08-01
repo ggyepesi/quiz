@@ -199,7 +199,7 @@ public class WikidataDynamicObjectJsonStore {
         // "France" and a ViewableGroup "France" stay separate ⟨type, qid⟩ objects instead
         // of merging. An untyped reference copy is absorbed into the single stamped entity.
         for (List<WikidataDynamicObject> instances : byQid.values()) {
-            snapshot.entities.addAll(toEntities(instances));
+            snapshot.entities.addAll(toEntities(instances, snapshot.fieldGraph));
         }
 
         mapper.writeValue(file, snapshot);
@@ -243,7 +243,8 @@ public class WikidataDynamicObjectJsonStore {
      *  different types sharing a name stay distinct. Instances with NO real type (bare
      *  reference copies) are absorbed into the single stamped entity; only when there are
      *  genuinely 2+ real types do they split, with any untyped remainder kept on its own. */
-    private List<Entity> toEntities(List<WikidataDynamicObject> instances) {
+    private List<Entity> toEntities(List<WikidataDynamicObject> instances,
+                                    SnapshotFieldGraph graph) {
         LinkedHashMap<String, List<WikidataDynamicObject>> byType = new LinkedHashMap<>();
         List<WikidataDynamicObject> untyped = new ArrayList<>();
         for (WikidataDynamicObject o : instances) {
@@ -256,13 +257,13 @@ public class WikidataDynamicObjectJsonStore {
         List<Entity> out = new ArrayList<>();
         if (byType.size() <= 1) {
             String type = byType.isEmpty() ? null : byType.keySet().iterator().next();
-            out.add(toEntity(instances, type));   // merge everything (untyped absorbed)
+            out.add(toEntity(instances, type, graph));   // merge everything (untyped absorbed)
         } else {
             for (Map.Entry<String, List<WikidataDynamicObject>> t : byType.entrySet()) {
-                out.add(toEntity(t.getValue(), t.getKey()));
+                out.add(toEntity(t.getValue(), t.getKey(), graph));
             }
             if (!untyped.isEmpty()) {
-                out.add(toEntity(untyped, null));
+                out.add(toEntity(untyped, null, graph));
             }
         }
         return out;
@@ -272,7 +273,8 @@ public class WikidataDynamicObjectJsonStore {
     // over the bare qid, a real class stamp over the untyped sentinel, and the
     // UNION of every field's values (so a rich carrier's `type` isn't lost to a
     // field-poor reference copy). Object-valued fields become ⟨type, qid⟩ refs.
-    private Entity toEntity(List<WikidataDynamicObject> instances, String typeKey) {
+    private Entity toEntity(List<WikidataDynamicObject> instances, String typeKey,
+                            SnapshotFieldGraph graph) {
         WikidataDynamicObject first = instances.get(0);
         Entity e = new Entity();
         e.qid = first.qid();
@@ -291,12 +293,23 @@ public class WikidataDynamicObjectJsonStore {
             }
         }
 
-        e.type = null;
+        java.util.LinkedHashSet<String> classes = new java.util.LinkedHashSet<>();
         for (WikidataDynamicObject o : instances) {
-            String t = o.typeName();
-            if (t != null && !t.isBlank() && !"WikidataDynamicObject".equals(t)) {
-                e.type = t;
-                break;
+            if (o.hasTypeStamp()) classes.addAll(o.directClassNames());
+        }
+        // A duplicate reference copy can still carry the old base stamp beside the
+        // richer subtype carrier. Base membership is inherited, not a second direct claim.
+        classes.removeIf(base -> classes.stream().anyMatch(candidate ->
+                !candidate.equals(base) && isSubclassOf(candidate, base, graph)));
+        e.classes.addAll(classes);
+        e.type = mostSpecificClass(classes, graph);
+        if (e.type == null) {
+            for (WikidataDynamicObject o : instances) {
+                String t = o.typeName();
+                if (t != null && !t.isBlank() && !"WikidataDynamicObject".equals(t)) {
+                    e.type = t;
+                    break;
+                }
             }
         }
 
@@ -403,8 +416,10 @@ public class WikidataDynamicObjectJsonStore {
                     new ArrayList<>(entities.values());
             SnapshotFieldGraph graph = snapshot == null
                     ? null : snapshot.fieldGraph;
-            if (graph == null || graph.version != SnapshotFieldGraph.FORMAT_VERSION) {
+            if (graph == null || graph.version > SnapshotFieldGraph.FORMAT_VERSION) {
                 graph = SnapshotFieldGraph.derive(objects);
+            } else {
+                graph.version = SnapshotFieldGraph.FORMAT_VERSION;
             }
             attachSchemas(objects, graph);
             List<WikidataDynamicObject> groups = snapshot == null
@@ -513,9 +528,44 @@ public class WikidataDynamicObjectJsonStore {
             return;
         }
         for (WikidataDynamicObject object : objects) {
+            String className = mostSpecificClass(
+                    object.directClassNames(), graph);
+            if (className == null) className = object.typeName();
             object.dynamicFieldSchema(
-                    graph.fieldSchema(object.typeName(), Set.of()));
+                    graph.fieldSchema(className, Set.of()));
         }
+    }
+
+    private static String mostSpecificClass(
+            Collection<String> classes, SnapshotFieldGraph graph) {
+        String best = null;
+        int bestDepth = -1;
+        if (classes == null) return null;
+        for (String candidate : classes) {
+            if (candidate == null || candidate.isBlank()) continue;
+            int depth = 0;
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (String current = candidate; current != null && seen.add(current);
+                 current = graph == null ? null : graph.baseType(current)) {
+                depth++;
+            }
+            if (depth > bestDepth) {
+                best = candidate;
+                bestDepth = depth;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isSubclassOf(
+            String candidate, String expected, SnapshotFieldGraph graph) {
+        if (candidate == null || expected == null || graph == null) return false;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (String current = candidate; current != null && seen.add(current);
+             current = graph.baseType(current)) {
+            if (expected.equals(current)) return true;
+        }
+        return false;
     }
 
     private static List<WikidataDynamicObject> resolveGroupRoots(
@@ -605,6 +655,9 @@ public class WikidataDynamicObjectJsonStore {
             if (e.type != null && !e.type.isBlank()) {
                 o.type(e.type);
             }
+            o.directClasses(e.classes);
+            String concreteType = mostSpecificClass(e.classes, snapshot.fieldGraph);
+            if (concreteType != null) o.type(concreteType);
             if (e.typeKey != null && !e.typeKey.isBlank()) {
                 o.typeKey(e.typeKey);
             }
@@ -712,6 +765,7 @@ public class WikidataDynamicObjectJsonStore {
             e.referenceLabel = referenceLabel;
         }
         e.type = w.typeName();              // still carried, for rendering
+        e.classes.addAll(w.directClassNames());
         for (Map.Entry<String, Object> f : w.dynamicFields().entrySet()) {
             e.fields.put(f.getKey(), encode(f.getValue()));
         }
@@ -727,6 +781,7 @@ public class WikidataDynamicObjectJsonStore {
         if (e.type != null && !e.type.isBlank()) {
             o.type(e.type);
         }
+        o.directClasses(e.classes);
         o.referenceLabel(e.referenceLabel);
         o.valueObject(true);
         for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
@@ -784,6 +839,9 @@ public class WikidataDynamicObjectJsonStore {
         // The stamped domain class (e.g. "Constellation", "Star"); null for an
         // untyped leaf reference. Lets one snapshot carry several classes.
         public String type;
+        // Direct semantic class claims. Base-class membership is derived from the
+        // persisted class hierarchy in fieldGraph.
+        public List<String> classes = new ArrayList<>();
         // The OBJECT-identity type key ⟨typeKey, qid⟩ (stable logical class name).
         // Null for pre-v4 snapshots and untyped leaves.
         public String typeKey;

@@ -24,14 +24,12 @@ import java.util.List;
 /**
  * Structural transform workbench over a {@link DomainModel} — a Wikidata snapshot or
  * a hand-written Viewable domain like Nobel / State / SportTeam
- * ({@link ReflectionDomain}). Pick a member class, then build a pipeline of
- * operations: each operation's SIGNATURE narrows the fields pane to only the fields
- * that can be its argument (per shape), and every operation compiles to a real
- * {@link quiz.transform.View} — filters and facet groupings — whose grouped result
- * (the derived subdomain) renders live on the right via the shared card content view.
+ * ({@link ReflectionDomain}). Pick a member class, then build its group tree — facet
+ * and filter groups — whose members (the derived subdomain) render live on the right
+ * via the shared card content view.
  *
- * <p>This is a THIN Swing view: all logic — the {@link WorkingDomain}, the pipeline,
- * compiling the result, saving — lives in {@link TransformController}. This class
+ * <p>This is a THIN Swing view: all logic — the {@link WorkingDomain}, the group tree,
+ * subclassing, saving — lives in {@link TransformController}. This class
  * owns only the widgets, forwards user actions to the controller, and turns the
  * controller's {@link ViewableGroup} result into cards.
  */
@@ -575,6 +573,34 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     /** A flat result: members grouped by type — a single searchable instance view
      *  for one type, or a per-class {@link MultiView} for several. */
     private JComponent flatView(List<Viewable> members, String type) {
+        boolean oneHierarchy = type != null && members.stream()
+                .allMatch(member -> controller.isInstanceOf(member, type));
+        if (oneHierarchy) {
+            Viewable sample = controller.sampleOf(type);
+            java.util.List<objectview.search.SearchPanel.SubtypeConfig> subtypes =
+                    new java.util.ArrayList<>();
+            for (String subtype : controller.subtypesOf(type)) {
+                java.util.Set<String> additional = controller.additionalFields(subtype);
+                if (additional.isEmpty()) continue;
+                subtypes.add(new objectview.search.SearchPanel.SubtypeConfig(
+                        subtype, controller.baseType(subtype),
+                        controller.sampleOf(subtype),
+                        controller.fieldTypes(subtype), additional,
+                        member -> controller.isInstanceOf(member, subtype)));
+            }
+            return objectview.search.SearchableCardView.builder(members)
+                    .sample(sample)
+                    .hiddenFields(controller.structuralFields(type))
+                    .fieldTypes(controller.fieldTypes(type))
+                    .fieldSchemas(q -> controller.fieldSchema(
+                            controller.mostSpecificClass(q, type)))
+                    .subtypeConfigs(subtypes)
+                    .configState(instanceConfigsByType.get(type))
+                    .configListener(config -> instanceConfigsByType.put(type, config))
+                    .collapsible(true)
+                    .build();
+        }
+
         java.util.Map<String, List<Viewable>> byType = new java.util.LinkedHashMap<>();
         for (Viewable m : members) {
             if (m != null) {
@@ -656,6 +682,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
         groups.addControl("Add filter group", viewStepsPanel::requestAddFilterGroup);
         groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
+        groups.addControl("Create subclass…", () ->
+                createSubclassFromGroup(selectedType, root));
         groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));
         groups.getTree().setSelectionRow(0);
         selectedGroup = root instanceof quiz.transform.EditableGroup editable
@@ -716,6 +744,44 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (name == null || name.isBlank()) return;
         controller.addManualGroup(selectedOrRoot(root), name.trim());
         render();
+    }
+
+    private void createSubclassFromGroup(
+            String selectedType, objectview.group.ViewableGroup<?> root) {
+        objectview.group.ViewableGroup<?> source = selectedOrRoot(root);
+        if (source == null) return;
+        JTextField name = new JTextField(18);
+        JComboBox<String> base = new JComboBox<>(
+                controller.types().toArray(String[]::new));
+        base.setSelectedItem(selectedType);
+        JPanel form = new JPanel(new GridLayout(0, 2, 6, 6));
+        form.add(new JLabel("Subclass name:"));
+        form.add(name);
+        form.add(new JLabel("Base class:"));
+        form.add(base);
+        int result = JOptionPane.showConfirmDialog(this, form,
+                "Create subclass from “" + source.getDisplayName() + "”",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION || name.getText().isBlank()) return;
+        try {
+            String subtype = name.getText().trim();
+            int total = source.getMembers().size();
+            int assigned = controller.createSubclassFromGroup(
+                    subtype, (String) base.getSelectedItem(), source);
+            selectedGroup = null;
+            viewStepsPanel.refreshTypes(subtype);
+            render();
+            if (assigned < total) {
+                JOptionPane.showMessageDialog(this,
+                        assigned + " of " + total + " members are instances of "
+                                + base.getSelectedItem() + "; " + (total - assigned)
+                                + " were skipped.",
+                        "Subclass created", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (IllegalArgumentException error) {
+            JOptionPane.showMessageDialog(this, error.getMessage(),
+                    "Cannot create subclass", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void addFilterGroup(

@@ -35,6 +35,7 @@ public final class ReflectionDomain implements DomainModel {
     private final List<String> memberTypes = new ArrayList<>();
     private final Map<String, FieldSchema> schemasByType =
             new LinkedHashMap<>();
+    private final Map<String, String> baseTypes = new LinkedHashMap<>();
 
     public ReflectionDomain(Collection<? extends Viewable> roots) {
         this(roots, List.<objectview.group.ViewableGroup<?>>of());
@@ -72,9 +73,29 @@ public final class ReflectionDomain implements DomainModel {
         }
         this.instances = closure;
         for (Class<?> cls : classes) {
-            memberTypes.add(cls.getSimpleName());
+            addMemberClassHierarchy(cls);
             index(cls);
         }
+    }
+
+    /** A concrete instance discovers both its direct Java class and every Viewable
+     * superclass. This keeps a domain containing only USState instances usable as a
+     * State domain without requiring a separate State instance as a discovery seed. */
+    private void addMemberClassHierarchy(Class<?> cls) {
+        for (Class<?> current = cls;
+             current != null && Viewable.class.isAssignableFrom(current);) {
+            if (!memberTypes.contains(current.getSimpleName())) {
+                memberTypes.add(current.getSimpleName());
+            }
+            Class<?> superclass = current.getSuperclass();
+            if (isFrameworkBase(superclass)) break;
+            current = superclass;
+        }
+    }
+
+    private static boolean isFrameworkBase(Class<?> type) {
+        return type == null || type == ViewableAdapter.class
+                || type == objectview.group.DefaultViewableGroup.class;
     }
 
     /** Viewables reachable through {@code q}'s fields, read through the ONE FieldSet
@@ -132,6 +153,13 @@ public final class ReflectionDomain implements DomainModel {
         if (schemasByType.containsKey(type) || !Viewable.class.isAssignableFrom(cls)) {
             return;
         }
+        Class<?> superclass = cls.getSuperclass();
+        if (superclass != null
+                && !isFrameworkBase(superclass)
+                && Viewable.class.isAssignableFrom(superclass)) {
+            baseTypes.put(type, superclass.getSimpleName());
+            index(superclass);
+        }
         List<FieldRef> fields = new ArrayList<>();
         List<Class<? extends Viewable>> nestedClasses = new ArrayList<>();
         for (Field field : ViewableAdapter.getAllFields(cls)) {
@@ -154,6 +182,7 @@ public final class ReflectionDomain implements DomainModel {
     }
 
     @Override public List<String> types() { return List.copyOf(memberTypes); }
+    @Override public String baseType(String type) { return baseTypes.get(type); }
     @Override public List<DomainField> fields(String type) {
         return DomainSchemas.fields(this, type);
     }

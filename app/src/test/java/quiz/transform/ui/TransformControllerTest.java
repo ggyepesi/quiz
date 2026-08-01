@@ -100,4 +100,21 @@ class TransformControllerTest {
         assertTrue(europe.getChildren().isEmpty());
         assertFalse(c.removeGroup("City", root));
     }
+
+    @Test void createSubclassFromAnEmptyGroupIsRejected() {
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public List<DomainField> fields(String type) {
+                return List.of(new DomainField("City", "region", false, false));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(city("Paris", "Europe"));
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController c = new TransformController(cities, null);
+        quiz.transform.EditableGroup empty = new quiz.transform.EditableGroup("Empty");
+        assertThrows(IllegalArgumentException.class,
+                () -> c.createSubclassFromGroup("X", "City", empty));
+    }
 }

@@ -66,6 +66,10 @@ public class States implements DomainViews {
         }
         Constants.setSvgDirectory(Constants.flagSvgDirectory);
 
+        // Seed the fifty US states as USState (admissionDate lives there, not on State)
+        // BEFORE the readers get-or-create states by name, so they augment these objects.
+        StateAdmissionDates.seed(states);
+
         DownloadFlagGroups.readCapitalsAndContinents(
                 "capitals.txt", "\t", true, root, states);
         // Default: the full curated set. Override with a smaller file (e.g.
@@ -85,7 +89,6 @@ public class States implements DomainViews {
 
         DownloadFlagGroups.downloadColorFlagroups(root, states);
         DownloadFlagGroups.downloadDesignFlagroups(root, states);
-        StateAdmissionDates.apply(states);
         readLanguages();
         removeObsoleteRootGroups();
 

@@ -143,7 +143,8 @@ public final class ProductCompiler {
         if (c.reifiesStatements() && names.add("source")) {
             fields.add(ProductField.structural("source"));
         }
-        return new ProductClass(c.className(), c.displayClassName(), fields);
+        return new ProductClass(c.className(), c.displayClassName(),
+                c.baseClassName(), fields);
     }
 
     private static ProductField compileField(GeneratedProjectModel model,

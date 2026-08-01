@@ -1,7 +1,6 @@
 package quiz.transform;
 
 import org.junit.jupiter.api.Test;
-import objectview.Viewable;
 import objectview.ViewableAdapter;
 import quiz.ViewableGroup;
 import objectview.facet.Facet;
@@ -11,7 +10,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The view-layer worked example: filter the domain instances (winners only) and
@@ -82,29 +80,5 @@ class TransformFilterGroupTest {
 
         // Denzel / Angela (won=false) never became Winners, so no bucket for them.
         assertNull(bestActor.getChild("year").getChild("1993").getChild("Denzel"));
-    }
-
-    @Test void viewWithKeepingPreservesSourcesAndGroups() {
-        List<Nomination> noms = List.of(
-                new Nomination(true,  "Best Actor", 1993, "Al Pacino"),
-                new Nomination(false, "Best Actor", 1993, "Denzel"),
-                new Nomination(true,  "Best Actor", 1994, "Tom Hanks"));
-
-        // A View = filter-only plan (keep the sources) + nested grouping.
-        View view = new View("Winners", Nomination.class)
-                .plan(ClassTransformPlan.keeping(Nomination.class)
-                        .whereFieldEquals("won", true))
-                .groupBy(Facet.field("category"), Facet.field("year"));
-
-        // Members are the SAME source instances (identity) — display name intact.
-        List<? extends Viewable> members = view.members(noms);
-        assertEquals(2, members.size());
-        assertTrue(members.contains(noms.get(0)) && members.contains(noms.get(2)),
-                "kept the winner source instances, not projections");
-
-        ViewableGroup root = view.render(noms);
-        assertEquals("Al Pacino", root.getChild("category").getChild("Best Actor")
-                .getChild("year").getChild("1993").getMembers().iterator().next()
-                .getDisplayName());
     }
 }

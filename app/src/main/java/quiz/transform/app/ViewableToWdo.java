@@ -192,7 +192,13 @@ public final class ViewableToWdo {
                 id = q.getDisplayName();
             }
             WikidataDynamicObject o = new WikidataDynamicObject(id, q.getDisplayName());
-            o.type(q.typeName());
+            String concreteType = schema == null
+                    ? q.directClassNames().stream().findFirst().orElse(q.typeName())
+                    : schema.mostSpecificClass(q);
+            if (concreteType == null || concreteType.isBlank()) concreteType = q.typeName();
+            o.type(concreteType);
+            o.directClasses(schema == null
+                    ? q.directClassNames() : schema.directClasses(q));
             // Use the stable LOGICAL class name, shared by the editable model, DomainModel,
             // curation links and manual buildView classes. A Java package/class refactor
             // must not change persisted object identity.
@@ -203,7 +209,7 @@ public final class ViewableToWdo {
             // Copy every field, whichever representation — no instanceof branch.
             objectview.field.FieldSet set = q.fields();
             objectview.field.FieldSchema declared =
-                    schema == null ? null : schema.fieldSchema(q.typeName());
+                    schema == null ? null : schema.fieldSchema(concreteType);
             if (declared != null) {
                 set = new objectview.field.SchemaFieldSet(set, declared);
             }

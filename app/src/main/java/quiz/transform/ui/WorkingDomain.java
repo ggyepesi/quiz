@@ -24,6 +24,9 @@ public final class WorkingDomain implements DomainModel, SchemaView,
 
     private final DomainModel base;
     private final Map<String, DerivedClass> derived = new LinkedHashMap<>();
+    private final Map<String, String> subclassBases = new LinkedHashMap<>();
+    private final java.util.IdentityHashMap<Viewable, java.util.Set<String>>
+            assignedClasses = new java.util.IdentityHashMap<>();
     // Empty fields DECLARED on a base class (the "New field" op) — a schema act, distinct
     // from PROJECT-derived classes. They join the field pool and the shape sample so they
     // show at 0% coverage, ready to be filled (e.g. via Find Data).
@@ -48,7 +51,10 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         if (type == null || field == null || derived.containsKey(type)) {
             return false;
         }
-        if (!(base.representativeSample(type) instanceof WikidataDynamicObject)) {
+        Viewable sample = subclassBases.containsKey(type)
+                ? instancesOf(type).stream().findFirst().orElse(null)
+                : base.representativeSample(type);
+        if (!(sample instanceof WikidataDynamicObject)) {
             return false;
         }
         declaredFields.computeIfAbsent(type, t -> new ArrayList<>()).add(field);
@@ -84,12 +90,61 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return derived.containsKey(type);
     }
 
+    /** Defines a semantic subclass and assigns it directly to the supplied instances.
+     * The base class is mandatory; group structure is only a source of members. */
+    public int defineSubclass(String name, String baseType,
+                              Collection<? extends Viewable> members) {
+        if (name == null || name.isBlank() || baseType == null || baseType.isBlank()) {
+            throw new IllegalArgumentException("Subclass name and base class are required");
+        }
+        String subtype = name.trim();
+        String base = baseType.trim();
+        if (!types().contains(base)) {
+            throw new IllegalArgumentException("Unknown base class " + base);
+        }
+        String existingBase = subclassBases.get(subtype);
+        if (types().contains(subtype)
+                && (existingBase == null || !existingBase.equals(base))) {
+            throw new IllegalArgumentException("Class already exists: " + subtype);
+        }
+        if (subtype.equals(base) || isSubclassOf(base, subtype)) {
+            throw new IllegalArgumentException("Cyclic subclass definition "
+                    + subtype + " extends " + base);
+        }
+        // Validate before mutating: pick the members that actually are the base, and reject
+        // a base that matches none of them (a silent zero-member subclass otherwise).
+        List<Viewable> matched = new ArrayList<>();
+        int requested = 0;
+        if (members != null) {
+            for (Viewable member : members) {
+                if (member == null) continue;
+                requested++;
+                if (isInstanceOf(member, base)) matched.add(member);
+            }
+        }
+        if (requested > 0 && matched.isEmpty()) {
+            throw new IllegalArgumentException("None of the " + requested
+                    + " selected members are instances of " + base + ".");
+        }
+        subclassBases.put(subtype, base);
+        for (Viewable member : matched) {
+            assignedClasses.computeIfAbsent(member,
+                    ignored -> new java.util.LinkedHashSet<>()).add(subtype);
+            if (member instanceof WikidataDynamicObject dynamic) {
+                dynamic.assignSubclass(subtype, base);
+            }
+        }
+        groupRoots.remove(subtype);
+        groupRootSignatures.remove(subtype);
+        return matched.size();
+    }
+
     public quiz.transform.EditableGroup editableGroupRoot(String type) {
         if (type == null) return null;
         quiz.transform.EditableGroup root =
                 groupRoots.computeIfAbsent(type, this::createGroupRoot);
         List<? extends Viewable> live = instances().stream()
-                .filter(value -> type.equals(value.typeName()))
+                .filter(value -> isInstanceOf(value, type))
                 .toList();
         List<String> signature = live.stream()
                 .map(Viewable::getIdentifier).sorted().toList();
@@ -116,7 +171,29 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     @Override public List<String> types() {
         List<String> t = new ArrayList<>(base.types());
         t.addAll(derived.keySet());
+        for (String subtype : subclassBases.keySet()) {
+            if (!t.contains(subtype)) t.add(subtype);
+        }
         return t;
+    }
+
+    @Override public String baseType(String type) {
+        if (subclassBases.containsKey(type)) return subclassBases.get(type);
+        return derived.containsKey(type) ? null : base.baseType(type);
+    }
+
+    @Override public java.util.Set<String> directClasses(Viewable instance) {
+        java.util.LinkedHashSet<String> result =
+                new java.util.LinkedHashSet<>(base.directClasses(instance));
+        java.util.Set<String> assigned = assignedClasses.get(instance);
+        if (assigned != null) {
+            for (String subtype : assigned) {
+                for (String ancestor = baseType(subtype); ancestor != null;
+                     ancestor = baseType(ancestor)) result.remove(ancestor);
+                result.add(subtype);
+            }
+        }
+        return java.util.Collections.unmodifiableSet(result);
     }
 
     @Override public List<DomainField> fields(String type) {
@@ -127,6 +204,21 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         DerivedClass d = derived.get(type);
         if (d != null) {
             return d.fieldSchema();
+        }
+        String subtypeBase = subclassBases.get(type);
+        if (subtypeBase != null) {
+            FieldSchema inherited = fieldSchema(subtypeBase);
+            List<DomainField> own = declaredFields.get(type);
+            if (own == null || own.isEmpty()) return inherited;
+            Map<String, FieldRef> combined = new LinkedHashMap<>();
+            if (inherited != null) {
+                for (FieldRef field : inherited.fields()) combined.put(field.name(), field);
+            }
+            for (FieldRef field : DomainSchemas.flatSchema(own).fields()) {
+                combined.put(field.name(), field);
+            }
+            List<FieldRef> immutable = List.copyOf(combined.values());
+            return () -> immutable;
         }
         FieldSchema baseSchema = base.fieldSchema(type);
         List<DomainField> extra = declaredFields.get(type);
@@ -159,6 +251,23 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         // falls back to the interface default over the combined instances.
         if (derived.containsKey(type)) {
             return DomainModel.super.representativeSample(type);
+        }
+        if (subclassBases.containsKey(type)) {
+            return augmentedSample.computeIfAbsent(type, t -> {
+                Viewable member = instancesOf(t).stream().findFirst().orElse(null);
+                if (!(member instanceof WikidataDynamicObject source)) return member;
+                WikidataDynamicObject shape = new WikidataDynamicObject(
+                        "__shape__:" + t, t);
+                shape.type(t);
+                shape.dynamicFields().putAll(source.dynamicFields());
+                List<DomainField> extras = declaredFields.get(t);
+                if (extras != null) {
+                    for (DomainField field : extras) {
+                        shape.dynamicFields().putIfAbsent(field.field(), "");
+                    }
+                }
+                return shape;
+            });
         }
         List<DomainField> extra = declaredFields.get(type);
         if (extra == null || extra.isEmpty()) {

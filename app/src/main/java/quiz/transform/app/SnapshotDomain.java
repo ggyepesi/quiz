@@ -53,6 +53,7 @@ public final class SnapshotDomain implements DomainModel {
     }
 
     @Override public List<String> types() { return fieldGraph.memberTypes(); }
+    @Override public String baseType(String type) { return fieldGraph.baseType(type); }
 
     @Override public java.util.Set<String> structuralFields(String type) {
         return DomainSchemas.structuralFields(fieldSchema(type));

@@ -58,6 +58,38 @@ public final class TransformController {
     public Set<String> structuralFields(String type) { return domain.structuralFields(type); }
     public FieldTypeSource fieldTypes(String type) { return domain.fieldTypes(type); }
     public FieldSchema fieldSchema(String type) { return domain.fieldSchema(type); }
+    public String baseType(String type) { return domain.baseType(type); }
+    public List<String> subtypesOf(String type) { return domain.subtypesOf(type); }
+    public boolean isInstanceOf(Viewable instance, String type) {
+        return domain.isInstanceOf(instance, type);
+    }
+
+    public String mostSpecificClass(Viewable instance, String withinType) {
+        String concrete = domain.mostSpecificClass(instance);
+        return concrete != null && domain.isSubclassOf(concrete, withinType)
+                ? concrete : withinType;
+    }
+
+    public Set<String> additionalFields(String subtype) {
+        FieldSchema schema = domain.fieldSchema(subtype);
+        String base = domain.baseType(subtype);
+        FieldSchema inherited = base == null ? null : domain.fieldSchema(base);
+        Set<String> inheritedNames = new java.util.LinkedHashSet<>();
+        if (inherited != null) {
+            for (objectview.field.FieldRef field : inherited.fields()) {
+                inheritedNames.add(field.name());
+            }
+        }
+        Set<String> result = new java.util.LinkedHashSet<>();
+        if (schema != null) {
+            for (objectview.field.FieldRef field : schema.fields()) {
+                if (!field.structural() && !inheritedNames.contains(field.name())) {
+                    result.add(field.name());
+                }
+            }
+        }
+        return Set.copyOf(result);
+    }
 
     /** The explicit group root paired with the selected member type. */
     public objectview.group.ViewableGroup<?> groupRoot(String type) {
@@ -94,6 +126,19 @@ public final class TransformController {
         return group;
     }
 
+    /** Define a subclass from a group's members; returns how many were assigned (members
+     *  not of {@code baseType} are skipped). Rejects an empty group. */
+    public int createSubclassFromGroup(
+            String name, String baseType,
+            objectview.group.ViewableGroup<?> source) {
+        if (source == null) throw new IllegalArgumentException("Select a source group");
+        if (source.getMembers().isEmpty()) {
+            throw new IllegalArgumentException("The selected group “"
+                    + source.getDisplayName() + "” has no members.");
+        }
+        return domain.defineSubclass(name, baseType, source.getMembers());
+    }
+
     public boolean removeGroup(
             String type, quiz.transform.EditableGroup group) {
         quiz.transform.EditableGroup root = domain.editableGroupRoot(type);
@@ -111,13 +156,7 @@ public final class TransformController {
         if (type == null) {
             return 0;
         }
-        int n = 0;
-        for (Viewable q : domain.instances()) {
-            if (q != null && type.equals(q.typeName())) {
-                n++;
-            }
-        }
-        return n;
+        return domain.instancesOf(type).size();
     }
 
     /** The representative for enumerating {@code type}'s fields — a UNION sample for a
@@ -130,7 +169,7 @@ public final class TransformController {
             return union;
         }
         for (Viewable q : domain.instances()) {
-            if (q != null && type.equals(q.typeName())) {
+            if (q != null && domain.isInstanceOf(q, type)) {
                 return q;
             }
         }
@@ -178,7 +217,7 @@ public final class TransformController {
         final int cap = 25;
         java.util.TreeSet<String> distinct = new java.util.TreeSet<>();
         for (Viewable q : domain.instances()) {
-            if (q == null || !type.equals(q.typeName())) {
+            if (q == null || !domain.isInstanceOf(q, type)) {
                 continue;
             }
             Object v = objectview.field.FieldAccess.getPath(q, path);
@@ -210,7 +249,7 @@ public final class TransformController {
             Map<String, Object> values = new HashMap<>();
             int scanned = 0;
             for (Viewable q : domain.instances()) {
-                if (q == null || !t.equals(q.typeName())) {
+                if (q == null || !domain.isInstanceOf(q, t)) {
                     continue;
                 }
                 boolean complete = true;

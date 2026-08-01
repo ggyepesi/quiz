@@ -1,6 +1,5 @@
 package flag;
 
-import aux.FlexibleDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +25,6 @@ public class State extends ViewableAdapter {
 
     private final Set<String> currencies = new TreeSet<>();
     private final Set<String> capitals = new TreeSet<>();
-    private FlexibleDate admissionDate;
     @Reference
     private final List<Language> languages = new ArrayList<>();
 
@@ -114,14 +112,6 @@ public class State extends ViewableAdapter {
 
     public Set<String> getCapitals() {
         return capitals;
-    }
-
-    public FlexibleDate getAdmissionDate() {
-        return admissionDate;
-    }
-
-    public void setAdmissionDate(FlexibleDate admissionDate) {
-        this.admissionDate = admissionDate;
     }
 
     public List<Language> getLanguages() {

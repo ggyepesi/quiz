@@ -125,7 +125,18 @@ public final class Merges {
             Map<String, List<Viewable>> byId) {
         if (!blank(type)) {
             Key key = new Key(type, id);
-            return typed.containsKey(key) ? key : null;
+            if (typed.containsKey(key)) {
+                return key;
+            }
+            // A directive typed by the (base) class may reference an instance since
+            // reclassified to a subtype — its typeName is now the subtype, so the exact
+            // key misses. Fall back to a unique id match; ambiguity stays unsafe.
+            List<Viewable> byIdMatches = byId.getOrDefault(id, List.of());
+            if (byIdMatches.size() == 1) {
+                Viewable q = byIdMatches.get(0);
+                return new Key(q.typeName(), q.getIdentifier());
+            }
+            return null;
         }
         // Backward compatibility for old sidecars: accept an untyped id only when it
         // resolves uniquely. Ambiguity is unsafe, so leave the directive unapplied.
@@ -209,6 +220,10 @@ public final class Merges {
                 FieldAccess.setPath(primary, name, unionValue(primaryValue, duplicateValue));
             }
         }
+        // Class membership is not a FieldSet field, so it is unioned explicitly — the
+        // survivor must keep the most-specific claim the duplicate carried (absorbing a
+        // USState carrier into a base State copy must not lose the USState claim).
+        primary.absorbClasses(duplicate.directClassNames());
     }
 
     public static Object unionValue(Object primary, Object duplicate) {

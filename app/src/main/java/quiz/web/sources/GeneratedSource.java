@@ -152,11 +152,11 @@ public class GeneratedSource implements ViewableSource {
             wikidata.explore.transform.BareReferenceCollapse.apply(all);
             boolean anyTyped = all.stream().anyMatch(o -> isStamped(o.typeName()));
             if (anyTyped) {
-                List<WikidataDynamicObject> m = new ArrayList<>();
-                for (WikidataDynamicObject o : all) {
-                    if (type.equals(o.typeName())) m.add(o);
-                }
-                members = m;
+                quiz.transform.app.SnapshotDomain domain =
+                        new quiz.transform.app.SnapshotDomain(all, loaded.fieldGraph());
+                members = domain.instancesOf(type).stream()
+                        .map(WikidataDynamicObject.class::cast)
+                        .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
             } else {
                 members = new ArrayList<>(store.load(file)); // roots
                 for (WikidataDynamicObject o : members) o.type(type);
@@ -191,11 +191,7 @@ public class GeneratedSource implements ViewableSource {
         if (file.isFile()) {
             var loaded = new WikidataDynamicObjectJsonStore()
                     .loadAllWithFieldGraph(file);
-            for (WikidataDynamicObject root : loaded.memberRoots()) {
-                if (isStamped(root.typeName())) {
-                    types.add(root.typeName());
-                }
-            }
+            types.addAll(loaded.fieldGraph().memberTypes());
         }
         if (types.isEmpty()) types.add(defaultType);
         wikidata.explore.model.GeneratedProjectModel model = loadModel(modelFile);

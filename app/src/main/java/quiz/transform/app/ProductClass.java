@@ -17,7 +17,13 @@ import java.util.List;
  */
 public record ProductClass(String className,
                            String displayName,
+                           String baseClassName,
                            List<ProductField> fields) {
+
+    public ProductClass(String className, String displayName,
+                        List<ProductField> fields) {
+        this(className, displayName, null, fields);
+    }
 
     public ProductField field(String name) {
         for (ProductField f : fields) {

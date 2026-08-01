@@ -35,7 +35,7 @@ public final class Joiner {
 
         Map<String, Viewable> rightByKey = new HashMap<>();
         for (Viewable r : domain.instances()) {
-            if (r != null && rightType.equals(r.typeName())) {
+            if (r != null && domain.isInstanceOf(r, rightType)) {
                 String k = keyOf(FieldAccess.getPath(r, rightKey));
                 if (k != null) {
                     rightByKey.putIfAbsent(k, r);
@@ -45,7 +45,7 @@ public final class Joiner {
 
         List<Viewable> out = new ArrayList<>();
         for (Viewable l : domain.instances()) {
-            if (l == null || !leftType.equals(l.typeName())) {
+            if (l == null || !domain.isInstanceOf(l, leftType)) {
                 continue;
             }
             String k = keyOf(FieldAccess.getPath(l, leftKey));

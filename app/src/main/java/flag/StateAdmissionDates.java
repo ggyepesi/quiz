@@ -10,25 +10,28 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Bundled enrichment for the fifty US states. Kept separate from the ordering
- * quiz so admissionDate is an ordinary State field available to browsing,
- * ViewConfig, coverage, and other quiz modes.
+ * Bundled enrichment for the fifty US states. {@code admissionDate} lives on the
+ * {@link USState} subclass (it is null for every non-US State), so this SEEDS each US
+ * state as a {@link USState} up front — before the flag/shape/capital readers get-or-create
+ * states by name — and every later {@code computeIfAbsent(name, State::new)} then augments
+ * the same USState object rather than replacing it.
  */
 public final class StateAdmissionDates {
     private static final String RESOURCE = "/flag/txt/us-state-admissions.tsv";
 
     private StateAdmissionDates() {}
 
-    public static int apply(Map<String, State> states) {
-        int matched = 0;
+    /** Pre-register the fifty US states as {@link USState}s carrying their admission date.
+     *  Run BEFORE any reader so the get-or-create readers find and augment these objects. */
+    public static int seed(Map<String, State> states) {
+        int seeded = 0;
         for (Map.Entry<String, FlexibleDate> entry : load().entrySet()) {
-            State state = states.get(entry.getKey());
-            if (state != null) {
-                state.setAdmissionDate(entry.getValue());
-                matched++;
-            }
+            USState state = new USState(entry.getKey());
+            state.setAdmissionDate(entry.getValue());
+            states.put(entry.getKey(), state);
+            seeded++;
         }
-        return matched;
+        return seeded;
     }
 
     public static Map<String, FlexibleDate> load() {

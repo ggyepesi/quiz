@@ -50,6 +50,7 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
     }
 
     @Override public List<String> types() { return base.types(); }
+    @Override public String baseType(String type) { return base.baseType(type); }
     @Override public List<DomainField> fields(String type) { return base.fields(type); }
     @Override public FieldSchema fieldSchema(String type) { return base.fieldSchema(type); }
     @Override public Set<String> structuralFields(String type) { return base.structuralFields(type); }

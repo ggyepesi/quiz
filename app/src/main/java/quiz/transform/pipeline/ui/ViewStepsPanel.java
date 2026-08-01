@@ -26,6 +26,7 @@ public final class ViewStepsPanel extends JPanel {
     private final java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
+    private boolean refreshingTypes;
 
     // The single-select field picker: the shared field-config table in SINGLE mode over
     // the SHARED config source, so it shows the same fields / order / types as the
@@ -85,6 +86,7 @@ public final class ViewStepsPanel extends JPanel {
         });
 
         memberTypeCombo.addActionListener(e -> {
+            if (refreshingTypes) return;
             String chosen = (String) memberTypeCombo.getSelectedItem();
             // A JComboBox fires on re-selecting the value that's already showing;
             // only a genuine type change should reset the steps (its groups/filters
@@ -117,6 +119,20 @@ public final class ViewStepsPanel extends JPanel {
             controller.selectType((String) memberTypeCombo.getSelectedItem());
             rebuildFieldTree();
         }
+    }
+
+    /** Refresh after TransformApp creates a new semantic subclass. */
+    public void refreshTypes(String selectedType) {
+        refreshingTypes = true;
+        try {
+            memberTypeCombo.removeAllItems();
+            for (String type : controller.types()) memberTypeCombo.addItem(type);
+            if (selectedType != null) memberTypeCombo.setSelectedItem(selectedType);
+        } finally {
+            refreshingTypes = false;
+        }
+        controller.selectType((String) memberTypeCombo.getSelectedItem());
+        rebuildFieldTree();
     }
 
     private JComponent memberRow() {

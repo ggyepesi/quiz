@@ -18,6 +18,67 @@ public interface DomainModel {
 
     List<String> types();
 
+    /** Explicit base class, or null for a root class. */
+    default String baseType(String type) { return null; }
+
+    /** Whether {@code candidate} is {@code expected} or extends it. */
+    default boolean isSubclassOf(String candidate, String expected) {
+        if (candidate == null || expected == null) return false;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        String current = candidate;
+        while (current != null && seen.add(current)) {
+            if (expected.equals(current)) return true;
+            current = baseType(current);
+        }
+        return false;
+    }
+
+    /** Class membership belongs to the instance; inherited membership is derived
+     * from the explicit class hierarchy. */
+    default boolean isInstanceOf(Viewable instance, String type) {
+        if (instance == null || type == null) return false;
+        for (String direct : directClasses(instance)) {
+            if (isSubclassOf(direct, type)) return true;
+        }
+        return false;
+    }
+
+    /** Direct claims carried by an instance. A mutable working domain may overlay
+     * newly assigned classes until they are materialized into a snapshot. */
+    default java.util.Set<String> directClasses(Viewable instance) {
+        return instance == null ? java.util.Set.of() : instance.directClassNames();
+    }
+
+    /** The deepest direct class claim, used by consumers that need one concrete
+     * schema/rendering type while membership itself remains multi-valued. */
+    default String mostSpecificClass(Viewable instance) {
+        String best = null;
+        int bestDepth = -1;
+        for (String direct : directClasses(instance)) {
+            int depth = 0;
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (String current = direct; current != null && seen.add(current);
+                 current = baseType(current)) {
+                depth++;
+            }
+            if (depth > bestDepth) {
+                best = direct;
+                bestDepth = depth;
+            }
+        }
+        return best;
+    }
+
+    default List<Viewable> instancesOf(String type) {
+        return instances().stream().filter(value -> isInstanceOf(value, type))
+                .map(Viewable.class::cast).toList();
+    }
+
+    default List<String> subtypesOf(String type) {
+        return types().stream().filter(candidate -> !candidate.equals(type)
+                && isSubclassOf(candidate, type)).toList();
+    }
+
     /** The fields of a type — possibly NESTED paths (e.g. {@code nominee.name}) —
      *  each carrying its dotted path and leaf shape (reference/collection). */
     List<DomainField> fields(String type);
@@ -67,7 +128,7 @@ public interface DomainModel {
      *  built from its saved field graph instead of scanning its instance pool. */
     default Viewable representativeSample(String type) {
         for (Viewable q : instances()) {
-            if (q != null && type != null && type.equals(q.typeName())) {
+            if (q != null && type != null && directClasses(q).contains(type)) {
                 return q;
             }
         }

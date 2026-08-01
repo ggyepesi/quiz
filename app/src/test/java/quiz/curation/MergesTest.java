@@ -3,6 +3,7 @@ package quiz.curation;
 import objectview.annotations.Reference;
 import org.junit.jupiter.api.Test;
 import objectview.ViewableAdapter;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -142,6 +143,27 @@ class MergesTest {
                 new Merge("Country", "A", "B", Map.of(), Merge.MANUAL),
                 new Merge("Country", "B", "A", Map.of(), Merge.MANUAL))));
         assertEquals(List.of(a, b), pool);
+    }
+
+    @Test
+    void mergeKeepsTheDuplicateSubclassClaim() {
+        // A base "State" primary absorbing a reclassified "USState" duplicate must keep the
+        // USState claim — class membership is not a FieldSet field. The directive is typed
+        // by the BASE class, so it also exercises resolveKey's reclassified-instance fallback.
+        WikidataDynamicObject primary = new WikidataDynamicObject("France", "France");
+        primary.type("State");
+        WikidataDynamicObject duplicate = new WikidataDynamicObject("Francia", "Francia");
+        duplicate.type("State");
+        duplicate.assignSubclass("USState", "State");   // typeName is now "USState"
+
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(primary, duplicate));
+        int merged = Merges.apply(pool,
+                List.of(new Merge("State", "France", "Francia", Map.of(), Merge.MANUAL)));
+
+        assertEquals(1, merged);
+        assertFalse(pool.contains(duplicate));
+        assertTrue(primary.directClassNames().contains("USState"),
+                primary.directClassNames().toString());
     }
 
     @Test

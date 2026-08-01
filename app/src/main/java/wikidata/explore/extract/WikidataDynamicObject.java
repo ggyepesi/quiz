@@ -74,6 +74,12 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String type;
 
+    // Semantic classes assigned directly to this instance. Kept out of ordinary
+    // fields/rendering; the flattened snapshot DTO persists it explicitly.
+    @Hidden
+    @JsonIgnore
+    private final java.util.Set<String> directClasses = new java.util.LinkedHashSet<>();
+
     // The OBJECT-identity type key ⟨typeKey, qid⟩ — the stable logical class name. It
     // distinguishes objects that merely share a name across types (a State "France" vs a
     // ViewableGroup "France"); the QID stays an entity LINK, not the object identity.
@@ -252,6 +258,53 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
 
     public void type(String type) {
         this.type = type;
+        if (type != null && !type.isBlank()) {
+            directClasses.add(type);
+        }
+    }
+
+    public void assignClass(String className) {
+        if (className != null && !className.isBlank()) {
+            directClasses.add(className);
+            if (type == null || type.isBlank()) type = className;
+        }
+    }
+
+    @Override public void absorbClasses(java.util.Collection<String> classNames) {
+        // Union the claims (keeping this object's rendering type); the snapshot save
+        // path prunes ancestors to the most-specific leaf.
+        if (classNames != null) classNames.forEach(this::assignClass);
+    }
+
+    public void assignSubclass(String className, String baseClassName) {
+        // Preserve the established identity dimension when the concrete rendering
+        // type changes from the base class to its newly assigned subtype.
+        if ((typeKey == null || typeKey.isBlank()) && type != null && !type.isBlank()) {
+            typeKey = type;
+        }
+        if (baseClassName != null) directClasses.remove(baseClassName);
+        assignClass(className);
+        if (className != null && !className.isBlank()) type = className;
+    }
+
+    public void directClasses(java.util.Collection<String> classNames) {
+        directClasses.clear();
+        if (classNames != null) {
+            classNames.stream().filter(java.util.Objects::nonNull)
+                    .map(String::trim).filter(name -> !name.isBlank())
+                    .forEach(directClasses::add);
+        }
+        if (directClasses.isEmpty() && type != null && !type.isBlank()) {
+            directClasses.add(type);
+        }
+    }
+
+    @Override public java.util.Set<String> directClassNames() {
+        if (!directClasses.isEmpty()) return java.util.Collections.unmodifiableSet(
+                new java.util.LinkedHashSet<>(directClasses));
+        String fallback = typeName();
+        return fallback == null || fallback.isBlank()
+                ? java.util.Set.of() : java.util.Set.of(fallback);
     }
 
     /** The object-identity type key: the explicit key if set, else the logical type name

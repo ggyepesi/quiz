@@ -48,6 +48,13 @@ public final class ProductDomain implements DomainModel, SchemaView {
         return schema.memberClasses();
     }
 
+    @Override public String baseType(String type) {
+        ProductClass productClass = schema.get(type);
+        return productClass == null || productClass.baseClassName() == null
+                || productClass.baseClassName().isBlank()
+                ? null : productClass.baseClassName();
+    }
+
     @Override public List<DomainField> fields(String type) {
         return DomainSchemas.fields(this, type);
     }

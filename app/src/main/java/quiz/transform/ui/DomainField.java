@@ -8,8 +8,8 @@ import objectview.field.FieldKind;
  * arguments from. The path is a first-class {@link FieldPath} (dotted segments +
  * title + optional leaf {@code Field}), not a raw string, so nested structure is
  * carried, not re-parsed. A field belongs to a class ({@code type}) and is either a
- * reference (entity-valued), a collection, or a scalar; those shapes are what
- * {@link OperationSignature} slots filter on. The {@link #kind} is the value shape
+ * reference (entity-valued), a collection, or a scalar; those shapes are what the
+ * operation pickers filter on. The {@link #kind} is the value shape
  * (boolean / ordered / text / reference / collection), populated by the {@code
  * DomainModel} that knows the field's type — so operator/facet choices don't have
  * to re-sample the instances.
