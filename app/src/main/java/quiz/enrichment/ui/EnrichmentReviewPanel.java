@@ -233,9 +233,19 @@ public final class EnrichmentReviewPanel extends JPanel {
         row.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         row.add(new JLabel(candidate.field()));
         row.add(new JLabel(display(candidate.currentValue())));
-        row.add(new JLabel(display(candidate.proposedValue())));
+        JLabel proposed = new JLabel(candidate.compatible()
+                ? display(candidate.proposedValue())
+                : "Incompatible: " + candidate.compatibilityError());
+        if (!candidate.compatible()) {
+            proposed.setForeground(new Color(170, 30, 30));
+            proposed.setToolTipText(candidate.compatibilityError());
+        }
+        row.add(proposed);
         JComboBox<EnrichmentProposal.ReviewAction> action =
-                new JComboBox<>(EnrichmentProposal.ReviewAction.values());
+                candidate.compatible()
+                        ? new JComboBox<>(EnrichmentProposal.ReviewAction.values())
+                        : new JComboBox<>(new EnrichmentProposal.ReviewAction[]{
+                                EnrichmentProposal.ReviewAction.IGNORE});
         action.setSelectedItem(candidate.suggestedAction() == null
                 ? EnrichmentProposal.ReviewAction.IGNORE : candidate.suggestedAction());
         fieldActions.put(candidate, action);

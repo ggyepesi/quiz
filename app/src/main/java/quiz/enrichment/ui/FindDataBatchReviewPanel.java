@@ -93,7 +93,9 @@ public final class FindDataBatchReviewPanel extends JPanel {
         super(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Only members whose proposal yields an applicable decision are reviewable.
+        // Compatible proposals are reviewable; incompatible source values remain visible
+        // as disabled rows so a schema mismatch is explicit rather than looking like
+        // missing data.
         List<EnrichmentProposal> applicable = new ArrayList<>();
         for (EnrichmentProposal proposal : proposals) {
             if (EnrichmentDecision.acceptDefault(proposal) != null) {
@@ -101,14 +103,20 @@ public final class FindDataBatchReviewPanel extends JPanel {
             }
         }
 
+        int incompatible = proposals == null ? 0 : proposals.size() - applicable.size();
         add(new JLabel("<html>" + html(prompt) + " &nbsp;<i>(" + applicable.size()
-                + " member(s) with a proposed value)</i></html>"), BorderLayout.NORTH);
+                + " compatible proposal(s)" + (incompatible == 0 ? ""
+                : ", " + incompatible + " rejected by field type")
+                + ")</i></html>"), BorderLayout.NORTH);
 
         JPanel list = new JPanel();
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-        for (EnrichmentProposal proposal : applicable) {
-            JCheckBox box = new JCheckBox(rowLabel(proposal), true);
-            rows.put(proposal, box);
+        for (EnrichmentProposal proposal : proposals == null
+                ? List.<EnrichmentProposal>of() : proposals) {
+            boolean accepted = applicable.contains(proposal);
+            JCheckBox box = new JCheckBox(rowLabel(proposal), accepted);
+            box.setEnabled(accepted);
+            if (accepted) rows.put(proposal, box);
             list.add(box);
         }
         add(new JScrollPane(list), BorderLayout.CENTER);
@@ -150,7 +158,9 @@ public final class FindDataBatchReviewPanel extends JPanel {
         String detail;
         if (!proposal.fields().isEmpty()) {
             EnrichmentProposal.FieldCandidate field = proposal.fields().get(0);
-            detail = field.field() + " = " + field.proposedValue();
+            detail = field.compatible()
+                    ? field.field() + " = " + field.proposedValue()
+                    : field.field() + " rejected: " + field.compatibilityError();
         } else if (!proposal.media().isEmpty()) {
             detail = proposal.media().get(0).field() + ": image";
         } else {

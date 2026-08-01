@@ -20,7 +20,7 @@ import oscar.OscarNominations;
 import presidents.President;
 import presidents.USPresidents;
 import objectview.media.ImageBlurrer;
-import objectview.render.GroupTreeView;
+import objectview.render.GroupView;
 import objectview.viewconfig.ViewConfigEditor;
 
 import java.awt.*;
@@ -90,7 +90,7 @@ public class QuizFactory {
     private static JFrame quizFrame;
 
     private final Map<String, ? extends Viewable> viewables;
-    private final GroupTreeView rootView;
+    private final GroupView rootView;
     private final DomainViews qvs;
 
     public static void main(String[] args) {
@@ -230,7 +230,9 @@ public class QuizFactory {
             throw new IllegalStateException("Domain has no group root: "
                     + qvs.getClass().getSimpleName());
         }
-        rootView = new GroupTreeView(root);
+        // QuizFactory wants the standalone browser behavior: its tree's
+        // "Show instances" action opens the selected group's cards.
+        rootView = new GroupView(root);
         // getViewables() is typed Viewable (objectview SPI); every element is in fact a
         // Viewable here, so narrow it for the quiz-side generation code.
         @SuppressWarnings("unchecked")

@@ -20,15 +20,17 @@ import java.util.Set;
  * domain — it only adds the {@link Curatable} capability (and forwards {@link
  * SchemaView} when the base has one).
  */
-final class CuratableDomain implements DomainModel, SchemaView, Curatable {
+final class CuratableDomain implements DomainModel, SchemaView, Curatable,
+        quiz.curation.FieldRulePromoter {
 
     private final DomainModel base;
     private final ManualCuration curation;
     private final Collection<? extends Viewable> memberRoots;
     private final List<objectview.viewconfig.DomainGroupRoot> groupRootBindings;
+    private final java.io.File modelFile;
 
     CuratableDomain(DomainModel base, ManualCuration curation) {
-        this(base, curation, base.memberRoots(), base.groupRootBindings());
+        this(base, curation, base.memberRoots(), base.groupRootBindings(), null);
     }
 
     CuratableDomain(
@@ -36,11 +38,21 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
             ManualCuration curation,
             Collection<? extends Viewable> memberRoots,
             List<objectview.viewconfig.DomainGroupRoot> groupRootBindings) {
+        this(base, curation, memberRoots, groupRootBindings, null);
+    }
+
+    CuratableDomain(
+            DomainModel base,
+            ManualCuration curation,
+            Collection<? extends Viewable> memberRoots,
+            List<objectview.viewconfig.DomainGroupRoot> groupRootBindings,
+            java.io.File modelFile) {
         this.base = base;
         this.curation = curation;
         this.memberRoots = memberRoots == null ? List.of() : List.copyOf(memberRoots);
         this.groupRootBindings = groupRootBindings == null
                 ? List.of() : List.copyOf(groupRootBindings);
+        this.modelFile = modelFile;
     }
 
     @Override public ManualCuration curation() { return curation; }
@@ -51,10 +63,32 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
 
     @Override public List<String> types() { return base.types(); }
     @Override public String baseType(String type) { return base.baseType(type); }
-    @Override public List<DomainField> fields(String type) { return base.fields(type); }
-    @Override public FieldSchema fieldSchema(String type) { return base.fieldSchema(type); }
-    @Override public Set<String> structuralFields(String type) { return base.structuralFields(type); }
-    @Override public FieldTypeSource fieldTypes(String type) { return base.fieldTypes(type); }
+    @Override public List<DomainField> fields(String type) {
+        return quiz.transform.ui.DomainSchemas.fields(this, type);
+    }
+    @Override public FieldSchema fieldSchema(String type) {
+        java.util.Map<String, objectview.field.FieldRef> combined =
+                new java.util.LinkedHashMap<>();
+        FieldSchema inherited = base.fieldSchema(type);
+        if (inherited != null) {
+            for (objectview.field.FieldRef field : inherited.fields()) {
+                combined.put(field.name(), field);
+            }
+        }
+        for (quiz.curation.FieldDeclaration declaration : curation.fieldDeclarations()) {
+            if (java.util.Objects.equals(type, declaration.type())) {
+                combined.put(declaration.name(), declaration.fieldRef());
+            }
+        }
+        List<objectview.field.FieldRef> immutable = List.copyOf(combined.values());
+        return () -> immutable;
+    }
+    @Override public Set<String> structuralFields(String type) {
+        return quiz.transform.ui.DomainSchemas.structuralFields(fieldSchema(type));
+    }
+    @Override public FieldTypeSource fieldTypes(String type) {
+        return quiz.transform.ui.DomainSchemas.fieldTypes(this, type);
+    }
     @Override public Viewable representativeSample(String type) { return base.representativeSample(type); }
     @Override public Collection<? extends Viewable> instances() { return base.instances(); }
     @Override public Collection<? extends Viewable> memberRoots() { return memberRoots; }
@@ -65,4 +99,14 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable {
         return groupRootBindings;
     }
     @Override public Class<? extends Viewable> universe() { return base.universe(); }
+
+    @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
+            quiz.curation.Correction correction) {
+        return new ModelFieldRulePromoter(modelFile, this).preview(correction);
+    }
+
+    @Override public quiz.curation.FieldRulePromoter.PromotionPreview promote(
+            quiz.curation.Correction correction) throws Exception {
+        return new ModelFieldRulePromoter(modelFile, this).promote(correction);
+    }
 }

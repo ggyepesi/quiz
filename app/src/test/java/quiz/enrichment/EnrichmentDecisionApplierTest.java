@@ -57,6 +57,9 @@ class EnrichmentDecisionApplierTest {
         assertEquals("421", reloaded.identityLinks().get(0).sourceId());
         assertEquals("local-person-1", reloaded.identityLinks().get(0).targetId());
         assertEquals("nobelprize.org", reloaded.corrections().get(0).origin());
+        assertEquals(quiz.curation.CorrectionPolicy.FILL_IF_EMPTY,
+                reloaded.corrections().get(0).policy());
+        assertEquals("421", reloaded.corrections().get(0).source().entityId());
     }
 
     private static DomainModel domain(WikidataDynamicObject person) {

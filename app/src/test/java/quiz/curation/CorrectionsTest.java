@@ -93,6 +93,54 @@ class CorrectionsTest {
         assertEquals(Correction.MEDIA_COLLECTION, loaded.valueKind());
     }
 
+    @Test void sourcePropertyAndReplayPolicyRoundTrip(@TempDir Path dir) throws Exception {
+        File f = new File(dir.toFile(), "countries.curation.json");
+        ManualCuration c = new ManualCuration(f);
+        ValueSource source = new ValueSource(
+                "Wikidata", "Q133888", "P3896",
+                "https://www.wikidata.org/wiki/Q133888");
+        c.put("State", "Ashmore", "geoshapes", "Data:Ashmore.map",
+                "wikidata", null, CorrectionPolicy.ADD_TO_COLLECTION, source);
+        c.save();
+
+        Correction loaded = new ManualCuration(f).load().corrections().get(0);
+        assertEquals(CorrectionPolicy.ADD_TO_COLLECTION, loaded.policy());
+        assertEquals("Q133888", loaded.source().entityId());
+        assertEquals("P3896", loaded.source().propertyId());
+    }
+
+    @Test void addedFieldDefinitionRoundTrips(@TempDir Path dir) throws Exception {
+        File f = new File(dir.toFile(), "states.curation.json");
+        ManualCuration curation = new ManualCuration(f);
+        objectview.field.FieldRef field = objectview.field.FieldRef.described(
+                "maps", objectview.field.FieldKind.COLLECTION,
+                objectview.field.FieldKind.MEDIA, "Collection<ImagePane>",
+                false, true, null, false, false,
+                true, false, "", false, false);
+        curation.putFieldDeclaration("State", field);
+        curation.save();
+
+        FieldDeclaration loaded = new ManualCuration(f).load()
+                .fieldDeclarations().get(0);
+        assertEquals("State", loaded.type());
+        assertTrue(loaded.collection());
+        assertEquals(objectview.field.FieldKind.MEDIA, loaded.valueKind());
+        assertTrue(loaded.fieldRef().inline());
+    }
+
+    @Test void addPolicyReplaysOverFreshCollectionWithoutFreezingBaseValues() {
+        WikidataDynamicObject state = new WikidataDynamicObject("Q1", "State");
+        state.type("State");
+        state.put("aliases", new java.util.ArrayList<>(List.of("base")));
+        CorrectionSource source = () -> List.of(new Correction(
+                "State", "Q1", "aliases", "curated", "wikidata", null,
+                CorrectionPolicy.ADD_TO_COLLECTION,
+                new ValueSource("Wikidata", "Q1", "P1448", null)));
+
+        assertEquals(1, Corrections.apply(List.of(state), List.of(source)));
+        assertEquals(List.of("base", "curated"), state.get("aliases"));
+    }
+
     @Test void approvedIdentityLinkRoundTrips(@TempDir Path dir) throws Exception {
         File f = new File(dir.toFile(), "people.curation.json");
         ManualCuration c = new ManualCuration(f);

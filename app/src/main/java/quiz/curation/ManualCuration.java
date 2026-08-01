@@ -19,6 +19,7 @@ public final class ManualCuration implements CorrectionSource {
 
     private final File file;
     private final List<Correction> entries = new ArrayList<>();
+    private final List<FieldDeclaration> fieldDeclarations = new ArrayList<>();
     private final List<Merge> merges = new ArrayList<>();
     private final List<IdentityLink> identityLinks = new ArrayList<>();
 
@@ -39,6 +40,7 @@ public final class ManualCuration implements CorrectionSource {
 
     public ManualCuration load() {
         entries.clear();
+        fieldDeclarations.clear();
         merges.clear();
         identityLinks.clear();
         if (file != null && file.isFile()) {
@@ -47,7 +49,16 @@ public final class ManualCuration implements CorrectionSource {
                 if (doc.corrections != null) {
                     for (Entry e : doc.corrections) {
                         entries.add(new Correction(
-                                e.type, e.qid, e.field, e.value, e.origin, e.valueKind));
+                                e.type, e.qid, e.field, e.value, e.origin, e.valueKind,
+                                e.policy, e.source));
+                    }
+                }
+                if (doc.fieldDefinitions != null) {
+                    for (FieldEntry e : doc.fieldDefinitions) {
+                        fieldDeclarations.add(new FieldDeclaration(
+                                e.type, e.name, e.kind, e.valueKind, e.typeLabel,
+                                e.reference, e.collection, e.targetType, e.structural,
+                                e.minor, e.inline, e.annotatedReference));
                     }
                 }
                 if (doc.merges != null) {
@@ -64,8 +75,11 @@ public final class ManualCuration implements CorrectionSource {
                                 e.recordUrl, e.canonicalName, e.origin));
                     }
                 }
-            } catch (IOException ignored) {
-                // A missing/unreadable curation file is simply no curation.
+            } catch (IOException unreadable) {
+                // Missing is handled by the isFile guard. A present but unreadable
+                // sidecar must not fail silently and masquerade as "no curation".
+                System.err.println("Could not read curation sidecar " + file + ": "
+                        + unreadable.getMessage());
             }
         }
         return this;
@@ -79,6 +93,9 @@ public final class ManualCuration implements CorrectionSource {
         Doc doc = new Doc();
         for (Correction c : entries) {
             doc.corrections.add(new Entry(c));
+        }
+        for (FieldDeclaration field : fieldDeclarations) {
+            doc.fieldDefinitions.add(new FieldEntry(field));
         }
         for (Merge m : merges) {
             doc.merges.add(new MergeEntry(m));
@@ -105,9 +122,17 @@ public final class ManualCuration implements CorrectionSource {
     /** Store a correction qualified by its owning domain type and declared value shape. */
     public void put(String type, String qid, String field, Object value,
                     String origin, String valueKind) {
+        put(type, qid, field, value, origin, valueKind, null, null);
+    }
+
+    /** Store a typed field directive with independent replay policy and provenance. */
+    public void put(String type, String qid, String field, Object value,
+                    String origin, String valueKind, CorrectionPolicy policy,
+                    ValueSource source) {
         entries.removeIf(c -> (c.type() == null || java.util.Objects.equals(c.type(), type))
                 && c.qid().equals(qid) && c.field().equals(field));
-        entries.add(new Correction(type, qid, field, value, origin, valueKind));
+        entries.add(new Correction(type, qid, field, value, origin, valueKind,
+                policy, source));
     }
 
     public void remove(String qid, String field) {
@@ -143,6 +168,23 @@ public final class ManualCuration implements CorrectionSource {
         return List.copyOf(merges);
     }
 
+    public void putFieldDeclaration(String type, objectview.field.FieldRef field) {
+        fieldDeclarations.removeIf(existing ->
+                java.util.Objects.equals(existing.type(), type)
+                        && existing.name().equals(field.name()));
+        fieldDeclarations.add(FieldDeclaration.from(type, field));
+    }
+
+    public void removeFieldDeclaration(String type, String name) {
+        fieldDeclarations.removeIf(existing ->
+                java.util.Objects.equals(existing.type(), type)
+                        && existing.name().equals(name));
+    }
+
+    public List<FieldDeclaration> fieldDeclarations() {
+        return List.copyOf(fieldDeclarations);
+    }
+
     /** Record the approved identity for one source, replacing an earlier choice. */
     public void putIdentityLink(IdentityLink link) {
         removeIdentityLink(link.type(), link.targetId(), link.sourceKind());
@@ -172,6 +214,7 @@ public final class ManualCuration implements CorrectionSource {
      *  record-serialization support in the Jackson version. */
     static final class Doc {
         public List<Entry> corrections = new ArrayList<>();
+        public List<FieldEntry> fieldDefinitions = new ArrayList<>();
         public List<MergeEntry> merges = new ArrayList<>();
         public List<IdentityEntry> identityLinks = new ArrayList<>();
     }
@@ -183,6 +226,8 @@ public final class ManualCuration implements CorrectionSource {
         public Object value;
         public String origin;
         public String valueKind;
+        public CorrectionPolicy policy;
+        public ValueSource source;
 
         Entry() {}
 
@@ -193,6 +238,40 @@ public final class ManualCuration implements CorrectionSource {
             this.value = c.value();
             this.origin = c.origin();
             this.valueKind = c.valueKind();
+            this.policy = c.policy();
+            this.source = c.source();
+        }
+    }
+
+    static final class FieldEntry {
+        public String type;
+        public String name;
+        public objectview.field.FieldKind kind;
+        public objectview.field.FieldKind valueKind;
+        public String typeLabel;
+        public boolean reference;
+        public boolean collection;
+        public String targetType;
+        public boolean structural;
+        public boolean minor;
+        public boolean inline;
+        public boolean annotatedReference;
+
+        FieldEntry() { }
+
+        FieldEntry(FieldDeclaration field) {
+            type = field.type();
+            name = field.name();
+            kind = field.kind();
+            valueKind = field.valueKind();
+            typeLabel = field.typeLabel();
+            reference = field.reference();
+            collection = field.collection();
+            targetType = field.targetType();
+            structural = field.structural();
+            minor = field.minor();
+            inline = field.inline();
+            annotatedReference = field.annotatedReference();
         }
     }
 

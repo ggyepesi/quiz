@@ -55,6 +55,10 @@ public final class TransformController {
                 kind == null ? objectview.field.FieldKind.UNKNOWN : kind);
         return domain.addField(type, field);
     }
+
+    public boolean addField(String type, objectview.field.FieldRef field) {
+        return domain.addField(type, field);
+    }
     public Set<String> structuralFields(String type) { return domain.structuralFields(type); }
     public FieldTypeSource fieldTypes(String type) { return domain.fieldTypes(type); }
     public FieldSchema fieldSchema(String type) { return domain.fieldSchema(type); }

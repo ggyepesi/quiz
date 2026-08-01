@@ -429,7 +429,8 @@ public final class ValidationPanel extends JPanel {
             EnrichmentRequest request = new EnrichmentRequest(
                     new EnrichmentProposal.Subject(
                             type, member.getIdentifier(), qid, label),
-                    path, collection, sources);
+                    path, collection, sources,
+                    DomainSchemas.resolve(domain, type, path));
             List<quiz.enrichment.EnrichmentProvider> providers =
                     providersFor(media, qid, path);
             if (providers.stream().noneMatch(provider -> provider.supports(request))) {

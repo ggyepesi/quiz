@@ -121,7 +121,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private JComponent buildLeft() {
         JPanel left = new JPanel(new BorderLayout(6, 6));
 
+        JPanel toolbar = new JPanel();
+        toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.Y_AXIS));
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        top.setAlignmentX(Component.LEFT_ALIGNMENT);
         if (controller.domain() instanceof SchemaView) {
             top.add(button("Schema…", this::showSchema));
         }
@@ -134,12 +137,23 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         queries.runner().registerCancelButton(cancelQueryButton);
         queries.runner().cancelAction(requestClient::cancelCurrentQuery);
         top.add(cancelQueryButton);
+        toolbar.add(top);
+
         if (controller.domain() instanceof quiz.curation.Curatable c && c.curation() != null) {
-            top.add(button("Curate…", () -> openCuration(c.curation())));
-            top.add(button("Merge…", () -> openMerge(c.curation())));
+            JPanel curationActions = new JPanel(
+                    new FlowLayout(FlowLayout.LEFT, 4, 2));
+            curationActions.setAlignmentX(Component.LEFT_ALIGNMENT);
+            curationActions.add(new JLabel("Curation:"));
+            curationActions.add(button("Fill missing fields…",
+                    () -> openCuration(c.curation())));
+            curationActions.add(button("Merge duplicates…",
+                    () -> openMerge(c.curation())));
+            curationActions.add(button("Overview…",
+                    () -> openCurationOverview(c.curation())));
+            toolbar.add(curationActions);
         }
-        if (top.getComponentCount() > 0) {
-            left.add(top, BorderLayout.NORTH);
+        if (toolbar.getComponentCount() > 0) {
+            left.add(toolbar, BorderLayout.NORTH);
         }
 
         viewStepsPanel = new ViewStepsPanel(
@@ -201,33 +215,35 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JOptionPane.showMessageDialog(this, "Pick a member type first.");
             return;
         }
-        JTextField nameField = new JTextField(16);
-        JComboBox<String> kindCombo =
-                new JComboBox<>(new String[] {"Number", "Text", "Date", "Media"});
-        JPanel form = new JPanel(new GridLayout(0, 2, 4, 4));
-        form.add(new JLabel("Field name:"));
-        form.add(nameField);
-        form.add(new JLabel("Kind:"));
-        form.add(kindCombo);
-        int ok = JOptionPane.showConfirmDialog(this, form, "New field on " + type,
+        wikidata.explore.workbench.FieldDefinitionPanel editor =
+                new wikidata.explore.workbench.FieldDefinitionPanel();
+        editor.availableTargetTypes(controller.types());
+        editor.edit(new wikidata.explore.model.FieldDefinition(
+                "", wikidata.explore.model.FieldType.STRING, "",
+                wikidata.explore.model.FieldCardinality.SINGLE,
+                wikidata.explore.model.FieldRenderMode.AUTO));
+        int ok = JOptionPane.showConfirmDialog(this, editor, "New field on " + type,
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (ok != JOptionPane.OK_OPTION) {
             return;
         }
-        String name = nameField.getText();
-        if (name == null || name.isBlank()) {
+        String invalid = editor.validationError();
+        if (invalid != null) {
+            JOptionPane.showMessageDialog(this, invalid);
             return;
         }
-        objectview.field.FieldKind kind = switch ((String) kindCombo.getSelectedItem()) {
-            case "Text" -> objectview.field.FieldKind.TEXT;
-            case "Date" -> objectview.field.FieldKind.ORDERED;
-            case "Media" -> objectview.field.FieldKind.MEDIA;
-            default -> objectview.field.FieldKind.ORDERED;   // Number
-        };
-        if (controller.addField(type, name.trim(), kind)) {
+        wikidata.explore.model.FieldDefinition definition = editor.definition();
+        if (controller.fieldSchema(type) != null
+                && controller.fieldSchema(type).field(definition.name()) != null) {
+            JOptionPane.showMessageDialog(this,
+                    "Field already exists: " + type + "." + definition.name());
+            return;
+        }
+        objectview.field.FieldRef field = FieldDefinitions.toFieldRef(definition);
+        if (controller.addField(type, field)) {
             viewStepsPanel.refreshFields();
             render();
-            JOptionPane.showMessageDialog(this, "Added field \"" + name.trim() + "\" to "
+            JOptionPane.showMessageDialog(this, "Added field \"" + definition.name() + "\" to "
                     + type + ". Open Validate to fill it (Find Data).");
         } else {
             JOptionPane.showMessageDialog(this,
@@ -470,6 +486,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         dialog.add(new quiz.curation.ui.MergePanel(controller.domain(), curation, this::render),
                 BorderLayout.CENTER);
         dialog.setSize(1000, 720);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    /** Inspect every current overlay directive without changing the sidecar. */
+    private void openCurationOverview(quiz.curation.ManualCuration curation) {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Curation overview — current directives",
+                Dialog.ModalityType.MODELESS);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(new quiz.curation.ui.CurationOverviewPanel(
+                controller.domain(), curation), BorderLayout.CENTER);
+        dialog.setSize(1180, 760);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
@@ -769,7 +798,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             int assigned = controller.createSubclassFromGroup(
                     subtype, (String) base.getSelectedItem(), source);
             selectedGroup = null;
-            viewStepsPanel.refreshTypes(subtype);
+            // Creating a class must not navigate away from the group tree that supplied
+            // its members. Staying on the current/base view also presents the new class's
+            // fields as a nested subtype section instead of a standalone flat config.
+            viewStepsPanel.refreshTypes(selectedType != null
+                    ? selectedType : (String) base.getSelectedItem());
             render();
             if (assigned < total) {
                 JOptionPane.showMessageDialog(this,

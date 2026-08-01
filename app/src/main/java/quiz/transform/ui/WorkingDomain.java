@@ -20,7 +20,8 @@ import java.util.Map;
  * transform graph. Derived instances are added to {@link #instances()} for the view.
  */
 public final class WorkingDomain implements DomainModel, SchemaView,
-        quiz.curation.Curatable, quiz.curation.Mergeable {
+        quiz.curation.Curatable, quiz.curation.Mergeable,
+        quiz.curation.FieldRulePromoter {
 
     private final DomainModel base;
     private final Map<String, DerivedClass> derived = new LinkedHashMap<>();
@@ -30,7 +31,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     // Empty fields DECLARED on a base class (the "New field" op) — a schema act, distinct
     // from PROJECT-derived classes. They join the field pool and the shape sample so they
     // show at 0% coverage, ready to be filled (e.g. via Find Data).
-    private final Map<String, List<DomainField>> declaredFields = new LinkedHashMap<>();
+    private final Map<String, List<FieldRef>> declaredFields = new LinkedHashMap<>();
     private final Map<String, Viewable> augmentedSample = new HashMap<>();
     private final Map<String, quiz.transform.EditableGroup> groupRoots =
             new LinkedHashMap<>();
@@ -47,7 +48,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     /** Declare a new empty field on a base class so it appears in the field pool and at
      *  0% coverage — independent of how it is later filled. Supported only for dynamic
      *  (snapshot-backed) samples whose shape can carry it; returns false otherwise. */
-    public boolean addField(String type, DomainField field) {
+    public boolean addField(String type, FieldRef field) {
         if (type == null || field == null || derived.containsKey(type)) {
             return false;
         }
@@ -57,9 +58,25 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         if (!(sample instanceof WikidataDynamicObject)) {
             return false;
         }
+        quiz.curation.ManualCuration curation = curation();
+        if (curation != null) {
+            curation.putFieldDeclaration(type, field);
+            try {
+                curation.save();
+            } catch (java.io.IOException unreadable) {
+                curation.removeFieldDeclaration(type, field.name());
+                return false;
+            }
+        }
         declaredFields.computeIfAbsent(type, t -> new ArrayList<>()).add(field);
         augmentedSample.remove(type);
         return true;
+    }
+
+    /** Compatibility adapter for callers that only carry the older operation shape. */
+    public boolean addField(String type, DomainField field) {
+        FieldSchema schema = DomainSchemas.flatSchema(List.of(field));
+        return schema.fields().isEmpty() ? false : addField(type, schema.fields().get(0));
     }
 
     @Override public javax.swing.JComponent schemaView() {
@@ -70,10 +87,27 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return base instanceof quiz.curation.Curatable c ? c.curation() : null;
     }
 
+    @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
+            quiz.curation.Correction correction) {
+        return base instanceof quiz.curation.FieldRulePromoter promoter
+                ? promoter.previewPromotion(correction)
+                : quiz.curation.FieldRulePromoter.PromotionPreview.ineligible(
+                        "This dataset has no ModelBuilder model.");
+    }
+
+    @Override public quiz.curation.FieldRulePromoter.PromotionPreview promote(
+            quiz.curation.Correction correction) throws Exception {
+        if (!(base instanceof quiz.curation.FieldRulePromoter promoter)) {
+            throw new IllegalStateException("This dataset has no ModelBuilder model.");
+        }
+        return promoter.promote(correction);
+    }
+
     /** Apply a merge to the REAL base pool — not the throwaway combined copy that
      *  {@link #instances()} returns — so the duplicate's removal takes effect live. */
     @Override public int applyMerge(quiz.curation.Merge merge) {
-        return quiz.curation.Merges.apply(base.instances(), List.of(merge));
+        return quiz.curation.Merges.apply(
+                base.instances(), List.of(merge), this::baseType);
     }
 
     @Override public Collection<? extends Viewable> mergeableInstances() {
@@ -122,9 +156,11 @@ public final class WorkingDomain implements DomainModel, SchemaView,
                 if (isInstanceOf(member, base)) matched.add(member);
             }
         }
-        if (requested > 0 && matched.isEmpty()) {
-            throw new IllegalArgumentException("None of the " + requested
-                    + " selected members are instances of " + base + ".");
+        if (matched.isEmpty()) {
+            throw new IllegalArgumentException(requested == 0
+                    ? "Select at least one member to define " + subtype + "."
+                    : "None of the " + requested
+                            + " selected members are instances of " + base + ".");
         }
         subclassBases.put(subtype, base);
         for (Viewable member : matched) {
@@ -208,20 +244,20 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         String subtypeBase = subclassBases.get(type);
         if (subtypeBase != null) {
             FieldSchema inherited = fieldSchema(subtypeBase);
-            List<DomainField> own = declaredFields.get(type);
+            List<FieldRef> own = declaredFields.get(type);
             if (own == null || own.isEmpty()) return inherited;
             Map<String, FieldRef> combined = new LinkedHashMap<>();
             if (inherited != null) {
                 for (FieldRef field : inherited.fields()) combined.put(field.name(), field);
             }
-            for (FieldRef field : DomainSchemas.flatSchema(own).fields()) {
+            for (FieldRef field : own) {
                 combined.put(field.name(), field);
             }
             List<FieldRef> immutable = List.copyOf(combined.values());
             return () -> immutable;
         }
         FieldSchema baseSchema = base.fieldSchema(type);
-        List<DomainField> extra = declaredFields.get(type);
+        List<FieldRef> extra = declaredFields.get(type);
         if (extra == null || extra.isEmpty()) {
             return baseSchema;
         }
@@ -231,7 +267,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
                 combined.put(field.name(), field);
             }
         }
-        for (FieldRef field : DomainSchemas.flatSchema(extra).fields()) {
+        for (FieldRef field : extra) {
             combined.put(field.name(), field);
         }
         List<FieldRef> immutable = List.copyOf(combined.values());
@@ -260,16 +296,16 @@ public final class WorkingDomain implements DomainModel, SchemaView,
                         "__shape__:" + t, t);
                 shape.type(t);
                 shape.dynamicFields().putAll(source.dynamicFields());
-                List<DomainField> extras = declaredFields.get(t);
+                List<FieldRef> extras = declaredFields.get(t);
                 if (extras != null) {
-                    for (DomainField field : extras) {
-                        shape.dynamicFields().putIfAbsent(field.field(), "");
+                    for (FieldRef field : extras) {
+                        shape.dynamicFields().putIfAbsent(field.name(), "");
                     }
                 }
                 return shape;
             });
         }
-        List<DomainField> extra = declaredFields.get(type);
+        List<FieldRef> extra = declaredFields.get(type);
         if (extra == null || extra.isEmpty()) {
             return base.representativeSample(type);
         }
@@ -279,9 +315,9 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return augmentedSample.computeIfAbsent(type, t -> {
             Viewable sample = base.representativeSample(t);
             if (sample instanceof WikidataDynamicObject wdo) {
-                for (DomainField field : extra) {
-                    if (wdo.get(field.field()) == null) {
-                        wdo.put(field.field(), "");
+                for (FieldRef field : extra) {
+                    if (wdo.get(field.name()) == null) {
+                        wdo.put(field.name(), "");
                     }
                 }
             }

@@ -203,13 +203,16 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
             if (!seenUrls.add(url)) {
                 continue;
             }
+            EnrichmentProposal.SourceRef propertySource =
+                    new EnrichmentProposal.SourceRef(
+                            source.kind(), source.sourceId(), source.recordUrl(), property);
             media.add(new EnrichmentProposal.MediaCandidate(
                     "wikidata-" + property.toLowerCase() + "-" + index++,
                     identityId,
                     request.targetField(),
                     url,
                     url,
-                    source,
+                    propertySource,
                     method + ": " + filename,
                     confidence,
                     "",

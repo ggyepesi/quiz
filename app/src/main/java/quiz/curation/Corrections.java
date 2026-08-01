@@ -13,10 +13,10 @@ import java.util.Set;
 
 /**
  * Applies the correction overlay to a loaded pool, matching instances by identifier.
- * One precedence rule: {@link Correction#isManual() manual} values <em>override</em>;
- * every other source (rules, external fetches) only <em>fills a field that's absent</em>,
- * so real base data is never clobbered and the overlay is safe to re-apply after a
- * regeneration. Writes through {@link FieldAccess} (map-held or declared fields alike).
+ * Replay follows each correction's explicit {@link CorrectionPolicy}. Legacy manual
+ * records map to REPLACE and legacy external records to FILL_IF_EMPTY; fresh records can
+ * also add to collections while retaining their external provenance. Writes through
+ * {@link FieldAccess} (map-held or declared fields alike).
  */
 public final class Corrections {
 
@@ -47,17 +47,16 @@ public final class Corrections {
         int applied = 0;
         Set<String> manualKeys = new HashSet<>();
 
-        // Pass 1 — manual values override.
+        // Pass 1 — authoritative reviewed values override or extend the base.
         for (Correction c : all) {
-            if (!c.isManual()) {
+            if (!c.authoritative()) {
                 continue;
             }
             Viewable target = target(c, byKey, legacyByQid);
             if (target == null) {
                 continue;
             }
-            FieldAccess.setPath(target, c.field(), coerceCorrection(
-                    c, target, sampleByField.get(sampleKey(c))));
+            applyCorrection(target, c, sampleByField.get(sampleKey(c)));
             manualKeys.add(key(c));
             applied++;
         }
@@ -67,7 +66,7 @@ public final class Corrections {
         // empty flagVersions the same as it fills a null portrait — matching what the
         // coverage view counts as missing. Never clobbers a field that already has data.
         for (Correction c : all) {
-            if (c.isManual() || manualKeys.contains(key(c))) {
+            if (c.authoritative() || manualKeys.contains(key(c))) {
                 continue;
             }
             Viewable target = target(c, byKey, legacyByQid);
@@ -76,12 +75,36 @@ public final class Corrections {
                             FieldAccess.getPath(target, c.field()))) {
                 continue;
             }
-            FieldAccess.setPath(target, c.field(), coerceCorrection(
-                    c, target, sampleByField.get(sampleKey(c))));
+            applyCorrection(target, c, sampleByField.get(sampleKey(c)));
             applied++;
         }
 
         return applied;
+    }
+
+    private static void applyCorrection(Viewable target, Correction correction,
+                                        Object sample) {
+        Object reviewed = coerceCorrection(correction, target, sample);
+        if (correction.effectivePolicy() == CorrectionPolicy.ADD_TO_COLLECTION
+                || correction.effectivePolicy() == CorrectionPolicy.ADD_AS_ALIAS) {
+            Object current = FieldAccess.getPath(target, correction.field());
+            List<Object> combined = new ArrayList<>();
+            addDistinct(combined, current);
+            addDistinct(combined, reviewed);
+            FieldAccess.setPath(target, correction.field(), combined);
+        } else {
+            FieldAccess.setPath(target, correction.field(), reviewed);
+        }
+    }
+
+    private static void addDistinct(List<Object> target, Object value) {
+        if (value instanceof Collection<?> collection) {
+            for (Object item : collection) {
+                if (!target.contains(item)) target.add(item);
+            }
+        } else if (value != null && !target.contains(value)) {
+            target.add(value);
+        }
     }
 
     /** A representative existing value per corrected field, so {@link #coerce} can

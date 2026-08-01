@@ -33,19 +33,44 @@ public final class Merges {
      * are duplicate roots removed. Cycles and ambiguous legacy identifiers are rejected.
      */
     public static int apply(Collection<? extends Viewable> pool, List<Merge> merges) {
+        return apply(pool, merges, ignored -> null);
+    }
+
+    /** Apply merges with the owning domain's explicit class hierarchy. */
+    public static int apply(
+            Collection<? extends Viewable> pool, List<Merge> merges,
+            java.util.function.Function<String, String> baseType) {
         if (pool == null || merges == null || merges.isEmpty()) {
             return 0;
         }
 
         Map<Key, Viewable> typed = new LinkedHashMap<>();
+        Map<Key, Key> identityAliases = new LinkedHashMap<>();
+        Set<Key> ambiguousAliases = new LinkedHashSet<>();
         Map<String, List<Viewable>> byId = new LinkedHashMap<>();
         for (Viewable q : pool) {
             if (q == null || blank(q.getIdentifier())) {
                 continue;
             }
-            typed.putIfAbsent(new Key(q.typeName(), q.getIdentifier()), q);
+            Key concrete = new Key(q.typeName(), q.getIdentifier());
+            typed.putIfAbsent(concrete, q);
+            addIdentityAlias(new Key(q.identityTypeName(), q.getIdentifier()),
+                    concrete, identityAliases, ambiguousAliases);
+            // Every explicit ancestor is a valid former typed address after a later
+            // reclassification (State -> USState -> AlabamaState). Unlike the removed
+            // unique-id fallback, these aliases are proven by the domain hierarchy.
+            for (String directClass : q.directClassNames()) {
+                Set<String> seenClasses = new LinkedHashSet<>();
+                for (String className = directClass;
+                     className != null && seenClasses.add(className);
+                     className = baseType == null ? null : baseType.apply(className)) {
+                    addIdentityAlias(new Key(className, q.getIdentifier()),
+                            concrete, identityAliases, ambiguousAliases);
+                }
+            }
             byId.computeIfAbsent(q.getIdentifier(), ignored -> new ArrayList<>()).add(q);
         }
+        ambiguousAliases.forEach(identityAliases::remove);
 
         Map<Key, Key> direct = new LinkedHashMap<>();
         Map<Key, Merge> mergeByDuplicate = new LinkedHashMap<>();
@@ -54,8 +79,10 @@ public final class Merges {
                     || merge.primary().equals(merge.duplicate())) {
                 continue;
             }
-            Key primary = resolveKey(merge.type(), merge.primary(), typed, byId);
-            Key duplicate = resolveKey(merge.type(), merge.duplicate(), typed, byId);
+            Key primary = resolveKey(
+                    merge.type(), merge.primary(), typed, identityAliases, byId);
+            Key duplicate = resolveKey(
+                    merge.type(), merge.duplicate(), typed, identityAliases, byId);
             if (primary == null || duplicate == null || primary.equals(duplicate)) {
                 continue;
             }
@@ -103,7 +130,7 @@ public final class Merges {
             if (primary == duplicate) {
                 continue;
             }
-            union(primary, duplicate, resolved.merge());
+            union(primary, duplicate, resolved.merge(), baseType);
             replacements.put(duplicate, primary);
             applied++;
         }
@@ -120,23 +147,26 @@ public final class Merges {
         return applied;
     }
 
+    private static void addIdentityAlias(
+            Key alias, Key concrete, Map<Key, Key> aliases, Set<Key> ambiguous) {
+        if (blank(alias.type())) return;
+        Key previous = aliases.putIfAbsent(alias, concrete);
+        if (previous != null && !previous.equals(concrete)) ambiguous.add(alias);
+    }
+
     private static Key resolveKey(
             String type, String id, Map<Key, Viewable> typed,
+            Map<Key, Key> identityAliases,
             Map<String, List<Viewable>> byId) {
         if (!blank(type)) {
             Key key = new Key(type, id);
             if (typed.containsKey(key)) {
                 return key;
             }
-            // A directive typed by the (base) class may reference an instance since
-            // reclassified to a subtype — its typeName is now the subtype, so the exact
-            // key misses. Fall back to a unique id match; ambiguity stays unsafe.
-            List<Viewable> byIdMatches = byId.getOrDefault(id, List.of());
-            if (byIdMatches.size() == 1) {
-                Viewable q = byIdMatches.get(0);
-                return new Key(q.typeName(), q.getIdentifier());
-            }
-            return null;
+            // A reclassified dynamic instance retains the former base as its stable
+            // identity class. Resolve that explicit alias; never discard a supplied
+            // type merely because the identifier happens to be unique.
+            return identityAliases.get(key);
         }
         // Backward compatibility for old sidecars: accept an untyped id only when it
         // resolves uniquely. Ambiguity is unsafe, so leave the directive unapplied.
@@ -187,7 +217,9 @@ public final class Merges {
         return current;
     }
 
-    private static void union(Viewable primary, Viewable duplicate, Merge merge) {
+    private static void union(
+            Viewable primary, Viewable duplicate, Merge merge,
+            java.util.function.Function<String, String> baseType) {
         for (FieldRef ref : FieldSet.of(duplicate).fields()) {
             String name = ref.name();
             Object duplicateValue = FieldAccess.getPath(duplicate, name);
@@ -223,7 +255,7 @@ public final class Merges {
         // Class membership is not a FieldSet field, so it is unioned explicitly — the
         // survivor must keep the most-specific claim the duplicate carried (absorbing a
         // USState carrier into a base State copy must not lose the USState claim).
-        primary.absorbClasses(duplicate.directClassNames());
+        primary.absorbClasses(duplicate, baseType);
     }
 
     public static Object unionValue(Object primary, Object duplicate) {

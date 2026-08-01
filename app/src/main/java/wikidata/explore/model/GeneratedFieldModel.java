@@ -210,6 +210,19 @@ public class GeneratedFieldModel {
 
     public List<GeneratedFieldModel> fields() { return fields; }
 
+    public FieldDefinition definition() {
+        return new FieldDefinition(name, type, entityClassName, cardinality, renderMode);
+    }
+
+    public void definition(FieldDefinition definition) {
+        if (definition == null) return;
+        name(definition.name());
+        type(definition.type());
+        entityClassName(definition.entityClassName());
+        cardinality(definition.cardinality());
+        renderMode(definition.renderMode());
+    }
+
     public boolean collection() {
         return cardinality == FieldCardinality.COLLECTION;
     }

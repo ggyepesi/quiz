@@ -74,6 +74,8 @@ class SubclassDomainTest {
         assertEquals(List.of("Alabama"), restored.instancesOf("USState").stream()
                 .map(objectview.Viewable::getIdentifier).toList());
         assertNotNull(restored.fieldSchema("USState").field("admissionDate"));
+        assertNull(restored.fieldSchema("State").field("admissionDate"),
+                "the subtype's own field does not leak onto the base after reload");
 
         JsonNode json = new ObjectMapper().readTree(file);
         JsonNode alabamaJson = json.findParents("qid").stream()
@@ -100,6 +102,65 @@ class SubclassDomainTest {
         // Only base-matching members are assigned, and the count is returned.
         int assigned = working.defineSubclass("USState", "State", List.of(alabama, texas));
         assertEquals(2, assigned);
+    }
+
+    @Test void rejectsAnEmptyDefinitionBeforeAddingTheClass() {
+        WorkingDomain working = new WorkingDomain(
+                new SnapshotDomain(List.of(state("France"))));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> working.defineSubclass("Empty", "State", List.of()));
+        assertFalse(working.types().contains("Empty"));
+    }
+
+    @Test void aFieldDefinitionOnASubtypePersistsWithoutLeakingToTheBase() throws Exception {
+        WikidataDynamicObject france = state("France");
+        WikidataDynamicObject alabama = state("Alabama");
+        WorkingDomain working = new WorkingDomain(
+                new SnapshotDomain(List.of(france, alabama)));
+        working.defineSubclass("USState", "State", List.of(alabama));
+        var definition = new wikidata.explore.model.FieldDefinition(
+                "maps", wikidata.explore.model.FieldType.IMAGE, "",
+                wikidata.explore.model.FieldCardinality.COLLECTION,
+                wikidata.explore.model.FieldRenderMode.INLINE);
+        assertTrue(working.addField("USState", FieldDefinitions.toFieldRef(definition)));
+
+        var converted = ViewableToWdo.convertDomain(
+                working.memberRoots(), working.groupRootBindings(), working);
+        File file = new File(dir, "subtype-definition.snapshot.json");
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.saveWithGroupRootBindings(converted.memberRoots(), List.of(), file, working);
+        var loaded = store.loadAllWithFieldGraph(file);
+        var restored = new SnapshotDomain(loaded.objects(), loaded.fieldGraph());
+
+        assertNotNull(restored.fieldSchema("USState").field("maps"),
+                "a field declared on a subtype survives snapshot + reload");
+        assertNull(restored.fieldSchema("State").field("maps"),
+                "the subtype's own declared field does not leak onto the base");
+    }
+
+    @Test void completeNewFieldDefinitionSurvivesSnapshot() throws Exception {
+        WorkingDomain working = new WorkingDomain(
+                new SnapshotDomain(List.of(state("Ashmore"))));
+        var definition = new wikidata.explore.model.FieldDefinition(
+                "maps", wikidata.explore.model.FieldType.IMAGE, "",
+                wikidata.explore.model.FieldCardinality.COLLECTION,
+                wikidata.explore.model.FieldRenderMode.INLINE);
+        assertTrue(working.addField("State", FieldDefinitions.toFieldRef(definition)));
+
+        var converted = ViewableToWdo.convertDomain(
+                working.memberRoots(), working.groupRootBindings(), working);
+        File file = new File(dir, "field-definition.snapshot.json");
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.saveWithGroupRootBindings(converted.memberRoots(), List.of(), file, working);
+        var loaded = store.loadAllWithFieldGraph(file);
+        var restored = new SnapshotDomain(loaded.objects(), loaded.fieldGraph());
+
+        objectview.field.FieldRef maps = restored.fieldSchema("State").field("maps");
+        assertNotNull(maps);
+        assertTrue(maps.collection());
+        assertEquals(objectview.field.FieldKind.MEDIA, maps.valueKind());
+        assertTrue(maps.inline());
     }
 
     private static WikidataDynamicObject state(String name) {

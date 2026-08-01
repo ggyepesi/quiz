@@ -61,7 +61,8 @@ public final class DomainCatalog {
         quiz.curation.Corrections.apply(pool, List.of(curation, autofix));
         // Fold curated duplicates into their primaries (Tanzania ≈ "Tanzania, United
         // Republic of") on the same overlay basis — re-applied every load, no snapshot edit.
-        quiz.curation.Merges.apply(pool, curation.merges());
+        quiz.curation.Merges.apply(
+                pool, curation.merges(), loaded.fieldGraph()::baseType);
 
         quiz.transform.ui.DomainModel base =
                 compile(model, pool, loaded.fieldGraph());
@@ -78,7 +79,8 @@ public final class DomainCatalog {
                         })
                         .toList();
         return new CuratableDomain(
-                base, curation, loaded.memberRoots(), groupRoots);
+                base, curation, loaded.memberRoots(), groupRoots,
+                model != null && model.isFile() ? model : null);
     }
 
     private static quiz.transform.ui.DomainModel compile(

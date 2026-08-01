@@ -8,7 +8,6 @@ import quiz.transform.ui.DomainModel;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
@@ -53,19 +52,40 @@ public final class EnrichmentDecisionApplier {
 
             for (EnrichmentDecision.FieldDecision fieldDecision : decision.fields()) {
                 EnrichmentProposal.FieldCandidate candidate = fieldDecision.candidate();
+                if (!candidate.compatible()) {
+                    throw new IllegalArgumentException("Cannot apply " + candidate.field()
+                            + ": " + candidate.compatibilityError());
+                }
+                String currentProblem = FieldValueCompatibility.problem(
+                        quiz.transform.ui.DomainSchemas.resolve(
+                                domain, type, candidate.field()),
+                        candidate.proposedValue());
+                if (currentProblem != null) {
+                    throw new IllegalArgumentException("Cannot apply " + candidate.field()
+                            + ": " + currentProblem);
+                }
                 Object value = approvedValue(candidate, fieldDecision.action());
-                String correctionOrigin =
-                        fieldDecision.action() == EnrichmentProposal.ReviewAction.FILL_IF_EMPTY
-                                ? origin : Correction.MANUAL;
+                quiz.curation.CorrectionPolicy policy = policy(fieldDecision.action());
+                EnrichmentProposal.SourceRef candidateSource = candidate.source();
+                quiz.curation.ValueSource source = candidateSource == null ? null
+                        : new quiz.curation.ValueSource(
+                                candidateSource.kind(), candidateSource.sourceId(),
+                                candidateSource.propertyId(), candidateSource.recordUrl());
                 curation.put(type, targetId, candidate.field(), value,
-                        correctionOrigin, null);
+                        origin, null, policy, source);
             }
 
             EnrichmentProposal.MediaCandidate media = decision.media();
             if (media != null) {
+                EnrichmentProposal.SourceRef mediaSource = media.source();
+                quiz.curation.ValueSource source = mediaSource == null ? null
+                        : new quiz.curation.ValueSource(
+                                mediaSource.kind(), mediaSource.sourceId(),
+                                mediaSource.propertyId(), mediaSource.recordUrl());
                 curation.put(type, targetId, media.field(), media.imageUrl(), origin,
                         media.collection()
-                                ? Correction.MEDIA_COLLECTION : Correction.MEDIA);
+                                ? Correction.MEDIA_COLLECTION : Correction.MEDIA,
+                        quiz.curation.CorrectionPolicy.FILL_IF_EMPTY, source);
             }
             curation.save();
         } catch (IOException | RuntimeException ex) {
@@ -95,25 +115,10 @@ public final class EnrichmentDecisionApplier {
     private static Object approvedValue(
             EnrichmentProposal.FieldCandidate candidate,
             EnrichmentProposal.ReviewAction action) {
-        if (action != EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
-                && action != EnrichmentProposal.ReviewAction.ADD_AS_ALIAS) {
-            return candidate.proposedValue();
-        }
-        List<Object> values = new ArrayList<>();
-        if (candidate.currentValue() instanceof Collection<?> collection) {
-            values.addAll(collection);
-        } else if (candidate.currentValue() != null) {
-            values.add(candidate.currentValue());
-        }
-        if (candidate.proposedValue() instanceof Collection<?> collection) {
-            for (Object value : collection) {
-                if (!values.contains(value)) values.add(value);
-            }
-        } else if (candidate.proposedValue() != null
-                && !values.contains(candidate.proposedValue())) {
-            values.add(candidate.proposedValue());
-        }
-        return values;
+        // Persist only the reviewed contribution. ADD_* policy performs the union when
+        // replayed, so regenerated base values remain intact and are not frozen into the
+        // curation sidecar.
+        return candidate.proposedValue();
     }
 
     private static String origin(String sourceKind) {
@@ -124,5 +129,16 @@ public final class EnrichmentDecisionApplier {
                 .replaceFirst("^https?://", "")
                 .replaceFirst("^www\\.", "")
                 .replaceAll("[^a-z0-9.-]+", "-");
+    }
+
+    private static quiz.curation.CorrectionPolicy policy(
+            EnrichmentProposal.ReviewAction action) {
+        if (action == null) return quiz.curation.CorrectionPolicy.FILL_IF_EMPTY;
+        return switch (action) {
+            case REPLACE -> quiz.curation.CorrectionPolicy.REPLACE;
+            case ADD_TO_COLLECTION -> quiz.curation.CorrectionPolicy.ADD_TO_COLLECTION;
+            case ADD_AS_ALIAS -> quiz.curation.CorrectionPolicy.ADD_AS_ALIAS;
+            case FILL_IF_EMPTY, IGNORE -> quiz.curation.CorrectionPolicy.FILL_IF_EMPTY;
+        };
     }
 }

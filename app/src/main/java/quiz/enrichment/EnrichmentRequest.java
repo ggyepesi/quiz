@@ -7,7 +7,14 @@ public record EnrichmentRequest(
         EnrichmentProposal.Subject subject,
         String targetField,
         boolean collection,
-        List<EnrichmentProposal.SourceRef> sources) {
+        List<EnrichmentProposal.SourceRef> sources,
+        objectview.field.FieldRef targetSchema) {
+
+    public EnrichmentRequest(EnrichmentProposal.Subject subject, String targetField,
+                             boolean collection,
+                             List<EnrichmentProposal.SourceRef> sources) {
+        this(subject, targetField, collection, sources, null);
+    }
 
     public EnrichmentRequest {
         sources = sources == null ? List.of() : List.copyOf(sources);

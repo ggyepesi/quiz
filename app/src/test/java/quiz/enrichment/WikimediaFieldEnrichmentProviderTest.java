@@ -142,4 +142,34 @@ class WikimediaFieldEnrichmentProviderTest {
         // formatted by shape: a non-Jan-1 time → the full ISO date
         assertEquals("1959-08-21", result.fields().get(0).proposedValue());
     }
+
+    @Test
+    void rejectsGeoShapeStringForDeclaredImageCollectionAndKeepsPropertySource()
+            throws Exception {
+        String entity = """
+                {"entities": {"Q133888": {"claims": {"P3896": [{"rank": "normal",
+                  "mainsnak": {"datavalue": {"value":
+                    "Data:Ashmore and Cartier Islands.map"}}}]}}}}
+                """;
+        WikimediaFieldEnrichmentProvider provider =
+                new WikimediaFieldEnrichmentProvider("P3896", uri -> entity);
+        objectview.field.FieldRef shapeVersions = objectview.field.FieldRef.described(
+                "shapeVersions", objectview.field.FieldKind.COLLECTION,
+                objectview.field.FieldKind.MEDIA, "Collection<ImagePane>",
+                false, true, null, false, false,
+                true, false, "", false, false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject(
+                        "State", "Ashmore", "Q133888", "Ashmore"),
+                "shapeVersions", true, List.of(), shapeVersions);
+
+        EnrichmentProposal.FieldCandidate candidate = provider.discover(request)
+                .execute(new QueryContext(null, null)).fields().get(0);
+
+        assertFalse(candidate.compatible());
+        assertEquals(EnrichmentProposal.ReviewAction.IGNORE,
+                candidate.suggestedAction());
+        assertEquals("P3896", candidate.source().propertyId());
+        assertTrue(candidate.compatibilityError().contains("MEDIA"));
+    }
 }

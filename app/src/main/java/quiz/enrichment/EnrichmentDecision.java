@@ -30,6 +30,7 @@ public record EnrichmentDecision(
             return null;
         }
         List<FieldDecision> fields = proposal.fields().stream()
+                .filter(EnrichmentProposal.FieldCandidate::compatible)
                 .filter(candidate ->
                         candidate.suggestedAction() != EnrichmentProposal.ReviewAction.IGNORE)
                 .map(candidate -> new FieldDecision(candidate, candidate.suggestedAction()))

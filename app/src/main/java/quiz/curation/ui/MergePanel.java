@@ -193,7 +193,8 @@ public final class MergePanel extends JPanel {
         try {
             n = domain instanceof Mergeable mg
                     ? mg.applyMerge(merge)
-                    : Merges.apply(domain.instances(), List.of(merge));
+                    : Merges.apply(
+                            domain.instances(), List.of(merge), domain::baseType);
         } catch (RuntimeException ex) {
             JOptionPane.showMessageDialog(this, "Merge failed: " + ex.getMessage());
             return;

@@ -270,10 +270,52 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
         }
     }
 
-    @Override public void absorbClasses(java.util.Collection<String> classNames) {
-        // Union the claims (keeping this object's rendering type); the snapshot save
-        // path prunes ancestors to the most-specific leaf.
-        if (classNames != null) classNames.forEach(this::assignClass);
+    @Override public void absorbClasses(
+            objectview.Viewable source,
+            java.util.function.Function<String, String> baseType) {
+        if (source == null) return;
+        source.directClassNames().forEach(this::assignClass);
+
+        // Even without a hierarchy resolver, reclassified copies sharing one stable
+        // identity tell us that the identity base is inherited rather than direct.
+        String stableBase = identityTypeName();
+        String concrete = !java.util.Objects.equals(typeName(), stableBase)
+                ? typeName()
+                : java.util.Objects.equals(source.identityTypeName(), stableBase)
+                        && !java.util.Objects.equals(source.typeName(), stableBase)
+                        ? source.typeName() : null;
+        if (concrete != null && directClasses.contains(concrete)) {
+            directClasses.remove(stableBase);
+            type = concrete;
+        }
+        if (baseType == null || directClasses.size() < 2) return;
+
+        // Remove every claim inherited through another retained claim. Unrelated
+        // direct classes remain valid; only the deepest one becomes the compatibility
+        // rendering type for consumers that still require a single typeName().
+        java.util.LinkedHashSet<String> inherited = new java.util.LinkedHashSet<>();
+        for (String candidate : directClasses) {
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (String ancestor = baseType.apply(candidate);
+                 ancestor != null && seen.add(ancestor);
+                 ancestor = baseType.apply(ancestor)) {
+                if (directClasses.contains(ancestor)) inherited.add(ancestor);
+            }
+        }
+        directClasses.removeAll(inherited);
+        String deepest = null;
+        int deepestDepth = -1;
+        for (String candidate : directClasses) {
+            int depth = 0;
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (String current = candidate; current != null && seen.add(current);
+                 current = baseType.apply(current)) depth++;
+            if (depth > deepestDepth) {
+                deepest = candidate;
+                deepestDepth = depth;
+            }
+        }
+        if (deepest != null) type = deepest;
     }
 
     public void assignSubclass(String className, String baseClassName) {
@@ -311,6 +353,10 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
      *  (a generated class's name is already unique within its model). */
     public String typeKey() {
         return typeKey != null && !typeKey.isBlank() ? typeKey : typeName();
+    }
+
+    @Override public String identityTypeName() {
+        return typeKey();
     }
 
     public void typeKey(String typeKey) {

@@ -47,7 +47,12 @@ public record EnrichmentProposal(
     }
 
     /** A generic source record, independent of Wikidata, DBpedia, or a domain site. */
-    public record SourceRef(String kind, String sourceId, String recordUrl) { }
+    public record SourceRef(
+            String kind, String sourceId, String recordUrl, String propertyId) {
+        public SourceRef(String kind, String sourceId, String recordUrl) {
+            this(kind, sourceId, recordUrl, null);
+        }
+    }
 
     /** A proposed non-media value. The action is chosen explicitly in the review UI. */
     public record FieldCandidate(
@@ -57,7 +62,19 @@ public record EnrichmentProposal(
             Object currentValue,
             Object proposedValue,
             SourceRef source,
-            ReviewAction suggestedAction) { }
+            ReviewAction suggestedAction,
+            String compatibilityError) {
+        public FieldCandidate(String candidateId, String identityCandidateId,
+                              String field, Object currentValue, Object proposedValue,
+                              SourceRef source, ReviewAction suggestedAction) {
+            this(candidateId, identityCandidateId, field, currentValue, proposedValue,
+                    source, suggestedAction, null);
+        }
+
+        public boolean compatible() {
+            return compatibilityError == null || compatibilityError.isBlank();
+        }
+    }
 
     /** An attributed media candidate associated with a resolved identity candidate. */
     public record MediaCandidate(

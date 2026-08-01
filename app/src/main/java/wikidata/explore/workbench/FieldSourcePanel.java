@@ -40,7 +40,8 @@ public class FieldSourcePanel extends JPanel {
 
     private final JLabel titleLabel = new JLabel("Field");
 
-    private final JTextField fieldNameField = new JTextField(16);
+    private final FieldDefinitionPanel fieldDefinitionPanel = new FieldDefinitionPanel();
+    private final JTextField fieldNameField = fieldDefinitionPanel.nameField();
     private final JComboBox<wikidata.explore.model.EdgeMembershipMode> edgeMembershipBox =
             new JComboBox<>(wikidata.explore.model.EdgeMembershipMode.values());
     // Advanced: constrain related values to the chosen class's membership
@@ -53,13 +54,12 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<String> sortDirBox =
             new JComboBox<>(new String[]{"ascending", "descending"});
 
-    private final JComboBox<FieldType> typeBox =
-            new JComboBox<>(FieldType.values());
-    private final JComboBox<String> objectTypeBox = new JComboBox<>();
+    private final JComboBox<FieldType> typeBox = fieldDefinitionPanel.typeBox();
+    private final JComboBox<String> objectTypeBox = fieldDefinitionPanel.targetTypeBox();
     private final JComboBox<FieldCardinality> shapeBox =
-            new JComboBox<>(FieldCardinality.values());
+            fieldDefinitionPanel.cardinalityBox();
     private final JComboBox<FieldRenderMode> renderModeBox =
-            new JComboBox<>(FieldRenderMode.values());
+            fieldDefinitionPanel.renderModeBox();
 
     private final JCheckBox requiredBox =
             new JCheckBox("Required (membership filter — drops entities without it)");
@@ -272,12 +272,9 @@ public class FieldSourcePanel extends JPanel {
 
         titleLabel.setText("Field: " + field.name());
 
-        fieldNameField.setText(field.name());
+        fieldDefinitionPanel.edit(field.definition());
         sourceTypeBox.setSelectedItem(m.sourceType());
-        typeBox.setSelectedItem(field.type());
         refreshObjectTypeBox(entityClassForDisplay());
-        shapeBox.setSelectedItem(field.cardinality());
-        renderModeBox.setSelectedItem(field.renderMode());
         requiredBox.setSelected(field.required());
         requiredBox.setEnabled(!field.isNameField());
         edgeMembershipBox.setSelectedItem(field.edgeMembership());
@@ -406,17 +403,8 @@ public class FieldSourcePanel extends JPanel {
         question.setFont(question.getFont().deriveFont(Font.ITALIC));
         GridBagUtils.wideRow(form, y++, question);
 
-        GridBagUtils.labeledRow(form, c, y++, "Field name:", fieldNameField);
-
-        // --- What it holds ---
-        typeBox.setToolTipText("What this field holds: Text / Number / Date / "
-                                       + "Image, or an Entity (a domain class — pick it in \"Of class\").");
-        GridBagUtils.labeledRow(form, c, y++, "Holds:", typeBox);
-        objectTypeBox.setToolTipText("The domain class this field refers to "
-                                             + "(when Holds = Entity). The value is a reference to that class's "
-                                             + "instances — clicking navigates to them.");
-        GridBagUtils.labeledRow(form, c, y++, "Of class:", objectTypeBox);
-        GridBagUtils.labeledRow(form, c, y++, "Count:", shapeBox);
+        // The source-independent definition is shared with TransformApp's New Field.
+        GridBagUtils.wideRow(form, y++, fieldDefinitionPanel);
         GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
 
         // --- Where it comes from ---
@@ -652,16 +640,13 @@ public class FieldSourcePanel extends JPanel {
             autoAdjustFromProperty(m.propertyPid(), m.propertyLabel());
         }
 
-        field.name(fieldNameField.getText());
-        field.type((FieldType) typeBox.getSelectedItem());
-        field.entityClassName(selectedEntityClass());
-        field.cardinality((FieldCardinality) shapeBox.getSelectedItem());
-        // Display + "load as" are inferred now (those controls were retired):
-        // an entity field is a reference (link) to its class's instances; a
-        // scalar shows inline. Per-class generation (#43) populates the refs.
-        if (typeBox.getSelectedItem() != FieldType.AUTO) {
+        field.definition(fieldDefinitionPanel.definition());
+        // Auto display keeps the established inference; an explicit shared field
+        // definition wins in both ModelBuilder and TransformApp.
+        if (field.type() != FieldType.AUTO
+                && field.renderMode() == FieldRenderMode.AUTO) {
             field.renderMode(field.type() == FieldType.ENTITY
-                                     ? FieldRenderMode.REFERENCE : FieldRenderMode.INLINE);
+                    ? FieldRenderMode.REFERENCE : FieldRenderMode.INLINE);
         }
         field.required(requiredBox.isSelected());
         field.expectation((wikidata.explore.model.FieldExpectation)

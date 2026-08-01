@@ -162,8 +162,60 @@ class MergesTest {
 
         assertEquals(1, merged);
         assertFalse(pool.contains(duplicate));
-        assertTrue(primary.directClassNames().contains("USState"),
-                primary.directClassNames().toString());
+        assertEquals("USState", primary.typeName());
+        assertEquals(Set.of("USState"), primary.directClassNames());
+    }
+
+    @Test
+    void typedDirectiveNeverFallsBackToAnUnrelatedUniqueType() {
+        WikidataDynamicObject a = new WikidataDynamicObject("A", "A");
+        a.type("State");
+        WikidataDynamicObject b = new WikidataDynamicObject("B", "B");
+        b.type("State");
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(a, b));
+
+        int merged = Merges.apply(pool,
+                List.of(new Merge("Person", "A", "B", Map.of(), Merge.MANUAL)));
+
+        assertEquals(0, merged);
+        assertEquals(List.of(a, b), pool);
+    }
+
+    @Test
+    void subtypePrimaryDoesNotRegainTheInheritedBaseClaim() {
+        WikidataDynamicObject primary = new WikidataDynamicObject("A", "A");
+        primary.type("State");
+        primary.assignSubclass("USState", "State");
+        WikidataDynamicObject duplicate = new WikidataDynamicObject("B", "B");
+        duplicate.type("State");
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(primary, duplicate));
+
+        assertEquals(1, Merges.apply(pool,
+                List.of(new Merge("State", "A", "B", Map.of(), Merge.MANUAL))));
+        assertEquals("USState", primary.typeName());
+        assertEquals(Set.of("USState"), primary.directClassNames());
+    }
+
+    @Test
+    void hierarchyAwareMergeKeepsOnlyTheDeepestClaim() {
+        WikidataDynamicObject primary = new WikidataDynamicObject("A", "A");
+        primary.type("State");
+        primary.assignSubclass("USState", "State");
+        WikidataDynamicObject duplicate = new WikidataDynamicObject("B", "B");
+        duplicate.type("State");
+        duplicate.assignSubclass("USState", "State");
+        duplicate.assignSubclass("AlabamaState", "USState");
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(primary, duplicate));
+        Map<String, String> bases = Map.of(
+                "USState", "State", "AlabamaState", "USState");
+
+        assertEquals(1, Merges.apply(pool,
+                // The directive was saved while both instances were USState. It must
+                // still address B after B is reclassified one level deeper.
+                List.of(new Merge("USState", "A", "B", Map.of(), Merge.MANUAL)),
+                bases::get));
+        assertEquals("AlabamaState", primary.typeName());
+        assertEquals(Set.of("AlabamaState"), primary.directClassNames());
     }
 
     @Test

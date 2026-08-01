@@ -99,7 +99,8 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
 
                 String identityId = "wikimedia-wikidata";
                 EnrichmentProposal.SourceRef source = new EnrichmentProposal.SourceRef(
-                        "Wikidata", qid, "https://www.wikidata.org/wiki/" + qid);
+                        "Wikidata", qid, "https://www.wikidata.org/wiki/" + qid,
+                        property);
                 EnrichmentProposal.IdentityCandidate identity =
                         new EnrichmentProposal.IdentityCandidate(
                                 identityId, request.subject().displayName(), List.of(),
@@ -109,6 +110,8 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
                 List<EnrichmentProposal.FieldCandidate> fields = new ArrayList<>();
                 Object value = bestValue(entity.claims(property));
                 if (value != null) {
+                    String incompatibility = FieldValueCompatibility.problem(
+                            request.targetSchema(), value);
                     fields.add(new EnrichmentProposal.FieldCandidate(
                             "wikidata-" + property.toLowerCase(Locale.ROOT),
                             identityId,
@@ -116,9 +119,12 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
                             null,
                             value,
                             source,
-                            request.collection()
+                            incompatibility == null && request.collection()
                                     ? EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
-                                    : EnrichmentProposal.ReviewAction.FILL_IF_EMPTY));
+                                    : incompatibility == null
+                                    ? EnrichmentProposal.ReviewAction.FILL_IF_EMPTY
+                                    : EnrichmentProposal.ReviewAction.IGNORE,
+                            incompatibility));
                 }
                 return new EnrichmentProposal(
                         request.subject(), List.of(identity), fields, List.of());
