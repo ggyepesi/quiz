@@ -1,9 +1,7 @@
 package quiz.transform.app;
 
 import quiz.DatasetRegistry;
-import quiz.QuizFactory;
 import quiz.transform.ui.DomainEntry;
-import quiz.transform.ui.ReflectionDomain;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
@@ -11,10 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Assembles the {@link DomainEntry} catalog for the navigator — the wikidata bridge
- * that knows both sources: the generated Wikidata datasets ({@link DatasetRegistry})
- * and the built-in hand-written Viewable domains ({@link QuizFactory#builtInDomains()}).
- * The UI stays independent of these; this class wires them together.
+ * Assembles the {@link DomainEntry} catalog for the navigator from the saved Wikidata
+ * datasets ({@link DatasetRegistry}). The hand-written domains (States, Oscars, …) are no
+ * longer listed as live built-ins: once exported via "Save as domain" they are served from
+ * their saved snapshots like every other dataset (their Java builders stay in QuizFactory
+ * for re-export). The UI stays independent of this.
  */
 public final class DomainCatalog {
 
@@ -30,11 +29,6 @@ public final class DomainCatalog {
                 out.add(new DomainEntry(d.name(), "generated",
                         () -> open(snap, model)));
             }
-        }
-
-        for (QuizFactory.BuiltInDomain b : QuizFactory.builtInDomains()) {
-            out.add(new DomainEntry(b.icon() + " " + b.name(), "built-in",
-                    () -> ReflectionDomain.of(b.views())));
         }
 
         return out;
