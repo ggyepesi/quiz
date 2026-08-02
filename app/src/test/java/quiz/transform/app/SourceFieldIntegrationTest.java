@@ -59,9 +59,12 @@ class SourceFieldIntegrationTest {
                 assertInstanceOf(wikidata.explore.extract.WikidataDynamicObject.class,
                         storedSource);
         assertTrue(sourceValue.isValueObject());
-        assertEquals("Q42|https://www.wikidata.org/wiki/Q42",
+        // The visible link now carries the canonical NAME as its label (name|url) so the card
+        // shows a readable name; the QID identity is preserved in the sourceId field (name is
+        // hidden, folded into the link label).
+        assertEquals("Douglas Adams|https://www.wikidata.org/wiki/Q42",
                 sourceValue.dynamicFields().get("qid"));
-        assertEquals("Douglas Adams", sourceValue.dynamicFields().get("name"));
+        assertEquals("Q42", sourceValue.dynamicFields().get("sourceId"));
     }
 
     private static final class ManualItem extends ViewableAdapter {
