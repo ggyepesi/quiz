@@ -158,8 +158,8 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
         // A label match is useful ordering, not proof of entity type. Nothing is
         // pre-accepted until class/type constraints become part of candidate discovery.
         groups.addTab("Confident (" + confident.size() + ")",
-                sectionPanel("Name match — verify the entity type",
-                        confident, true, false, appliedByInstance));
+                sectionPanel("Top exact name match — accepted; uncheck any wrong entity type",
+                        confident, true, true, appliedByInstance));
         groups.addTab("Ambiguous (" + ambiguous.size() + ")",
                 sectionPanel("Choose the right entity",
                         ambiguous, true, false, appliedByInstance));
@@ -374,18 +374,17 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
     /** The one candidate whose label matches the instance name — but only when it is the
      *  SOLE such match. Two name-matches (Georgia the country vs the U.S. state) is the
      *  ambiguous case, not a confident one, so it returns null. */
-    private static IdentityMatch exactMatch(InstanceIdentity instance) {
-        IdentityMatch found = null;
+    /** The confident pick: the FIRST exact-label match. Candidates come back in Wikidata
+     *  relevance order, so the top exact hit is the canonical entity ("India" → Q668).
+     *  Homonyms sharing the label no longer demote it to ambiguous — ranking decides. */
+    static IdentityMatch exactMatch(InstanceIdentity instance) {
         for (IdentityMatch match : instance.candidates()) {
             if (match.label() != null && instance.name() != null
                     && match.label().equalsIgnoreCase(instance.name())) {
-                if (found != null) {
-                    return null;   // 2+ exact name matches → ambiguous, not confident
-                }
-                found = match;
+                return match;
             }
         }
-        return found;
+        return null;
     }
 
     private static String truncate(String value, int max) {
