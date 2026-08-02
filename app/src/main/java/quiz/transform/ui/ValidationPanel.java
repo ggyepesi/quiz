@@ -1017,33 +1017,59 @@ public final class ValidationPanel extends JPanel {
     }
 
     private void approveWikidataIdentity(Viewable target, String qid, String label) {
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation == null || target == null || qid == null || !qid.matches("Q\\d+")) {
-            return;
-        }
-        String targetType = concreteType(target);
+        if (target == null || qid == null || !qid.matches("Q\\d+")) return;
         String targetId = target.getIdentifier();
         if (targetId == null || targetId.isBlank()) {
             JOptionPane.showMessageDialog(this,
                     "This instance has no stable identifier, so its identity cannot be saved.");
             return;
         }
+        String picked = label == null ? "" : label.trim();
+        if (!picked.isBlank()) {
+            commitApprovedIdentity(target, qid, picked);
+            return;
+        }
+        // The picker returned no label — fetch the entity's Wikidata label OFF the EDT so the
+        // source name is always populated and rendered, then commit on the EDT.
+        new Thread(() -> {
+            String fetched = fetchWikidataLabel(qid);
+            SwingUtilities.invokeLater(() -> commitApprovedIdentity(target, qid, fetched));
+        }, "identity-label-fetch").start();
+    }
+
+    private String fetchWikidataLabel(String qid) {
+        try {
+            var record = new quiz.enrichment.WikimediaEntityLookup()
+                    .byQid(qid).execute(queryRunner.context());
+            return record == null ? null : record.label();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /** STAGE an approved identity: write the IdentityLink to memory with a non-empty canonical
+     *  name (falling back to the instance display name), refresh the instance so its source
+     *  (url + qid + name) is filled and rendered, and keep it visible until Apply. Find Data's
+     *  pre-resolve reads the staged link from memory, so deferring the write never blocks a
+     *  batch fill. */
+    private void commitApprovedIdentity(Viewable target, String qid, String canonicalName) {
+        quiz.curation.ManualCuration curation = curationStore();
+        if (curation == null || target == null) return;
+        String targetType = concreteType(target);
+        String targetId = target.getIdentifier();
+        if (targetId == null || targetId.isBlank()) return;
+        String name = canonicalName == null || canonicalName.isBlank()
+                ? target.getDisplayName() : canonicalName;
         IdentityLink approved = new IdentityLink(
                 targetType, targetId, "Wikidata", qid,
-                "https://www.wikidata.org/wiki/" + qid,
-                label == null || label.isBlank() ? target.getDisplayName() : label,
-                "manual");
-        // STAGE only — do NOT save. Put the link in memory and refresh the instance so its
-        // source (url + qid) is filled and visible; the instance stays in the drill until the
-        // user explicitly clicks "Save changes". Find Data's pre-resolve reads the staged link
-        // from memory, so deferring the write does not block a batch fill.
+                "https://www.wikidata.org/wiki/" + qid, name, "manual");
         curation.putIdentityLink(approved);
         quiz.curation.IdentitySources.refresh(target, curation);
         stage(new StagedEdit("identity", targetType, targetId, "source"));
         updateIdentityButton();
         updateIdentityStatus();
-        // Re-render (no re-filter) on the next UI turn so the modal picker closes promptly
-        // and the just-resolved instance stays visible with its source filled.
+        // Re-render (no re-filter) so the modal picker closes promptly and the just-resolved
+        // instance stays visible with its source filled.
         if (identityTask) {
             SwingUtilities.invokeLater(this::renderIdentityDrill);
         } else if (selectedFieldPath != null) {
