@@ -39,7 +39,7 @@ class EnrichmentSourcesTest {
     void requiresExplicitSelectionUntilTheTargetHasAnApprovedSource(
             @TempDir Path dir) {
         WikidataDynamicObject organization =
-                new WikidataDynamicObject("Q42970", "Amnesty International");
+                new WikidataDynamicObject("organization-1", "Amnesty International");
         organization.type("Organization");
         ManualCuration curation =
                 new ManualCuration(dir.resolve("organizations.curation.json").toFile());
@@ -48,7 +48,7 @@ class EnrichmentSourcesTest {
                 organization, "Organization", curation));
 
         curation.putIdentityLink(new IdentityLink(
-                "Organization", "Q42970", "Wikidata", "Q42970",
+                "Organization", "organization-1", "Wikidata", "Q42970",
                 "https://www.wikidata.org/wiki/Q42970",
                 "Amnesty International", "manual"));
 

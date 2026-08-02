@@ -115,7 +115,9 @@ public class GeneratedViewableMapper {
         // GUID (Q123-<guid>, e.g. a reified Nomination) isn't a Wikidata page, so a
         // chip would just show the GUID + an empty url (mirrors the guard in
         // WikidataDynamicObject, which this path bypasses by building its own Source).
-        if (source.qid() != null && source.qid().matches("Q\\d+")) {
+        if (source.source() != null) {
+            setIfExists(target, "source", source.source());
+        } else if (source.qid() != null && source.qid().matches("Q\\d+")) {
             setIfExists(target, "source",
                     new quiz.source.WikidataSource(source.qid(), source.wikidataUrl()));
         }

@@ -112,7 +112,11 @@ public class FlagCachedImage extends CachedImage {
         if (filename.startsWith("file:/")) {
             return filename;
         }
-        java.net.URL u = ResourceFinder.toURL(Constants.getSvgDirectory() + filename);
+        // A FlagCachedImage always belongs to the bundled flag resource tree. Using
+        // Constants.getSvgDirectory() made snapshot conversion depend on unrelated
+        // mutable application state; when it was null, sourceUrl() persisted only the
+        // bare title and the generic renderer later treated it as a Commons filename.
+        java.net.URL u = ResourceFinder.toURL(Constants.flagSvgDirectory + filename);
         return u == null ? null : u.toString();
     }
 

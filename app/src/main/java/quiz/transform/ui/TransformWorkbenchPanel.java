@@ -80,6 +80,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             queries.runner().context(), queries.runner().logListener(), this::handleProcessInput);
 
     private ViewStepsPanel viewStepsPanel;
+    private JDialog explorerDialog;
 
     // Bumped on every render() (EDT-only). A background render swaps its cards in
     // only if it's still the latest — so a slow earlier render can't overwrite a
@@ -132,6 +133,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             top.add(button("Save as domain…", this::saveAsDomain));
         }
         top.add(button("New field…", this::addNewField));
+        top.add(button("Explore…", this::showExplorer));
         top.add(button("Validate…", this::showValidation));
         top.add(button("Query logs…", () -> queries.showLogs(this)));
         queries.runner().registerCancelButton(cancelQueryButton);
@@ -174,7 +176,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 resolveButton.setText("Cancelling identity resolution…");
                 resolveButton.setEnabled(false);
                 resolveRunner.cancel();
-            } else if (identitiesDirty) {
+            } else if (!lastReviewItems.isEmpty()) {
                 recallLastResult();   // a result is pending — show it, don't re-resolve
             } else {
                 resolveRenderedIdentities();
@@ -249,6 +251,26 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JOptionPane.showMessageDialog(this,
                     "New field is only supported for snapshot-backed domains.");
         }
+    }
+
+    /** General Wikidata investigation, independent of identity resolution and of the
+     * currently rendered group. Reuses ModelBuilder's relation/graph explorer without
+     * exposing its model-mutating actions. */
+    private void showExplorer() {
+        if (explorerDialog == null) {
+            wikidata.explore.workbench.ExploreByExamplePanel explorer =
+                    new wikidata.explore.workbench.ExploreByExamplePanel();
+            explorer.explorationOnly();
+            explorer.setQueryRunner(queries.runner());
+            explorerDialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                    "Explore Wikidata", Dialog.ModalityType.MODELESS);
+            explorerDialog.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+            explorerDialog.add(explorer, BorderLayout.CENTER);
+            explorerDialog.setSize(900, 760);
+            explorerDialog.setLocationRelativeTo(this);
+        }
+        explorerDialog.setVisible(true);
+        explorerDialog.toFront();
     }
 
     /** Resolve the Wikidata identity of the SHOWN instances — the current scope (all /
@@ -332,6 +354,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (id != null && id.matches("Q\\d+")) {
             return id;
         }
+        Object sourceQid = objectview.field.FieldAccess.getPath(member, "source.qid");
+        if (sourceQid instanceof String text) {
+            String qid = text.split("\\|", 2)[0].strip();
+            if (qid.matches("Q\\d+")) return qid;
+        }
         return curation.identityLinks().stream()
                 .filter(link -> type.equals(link.type()) && id != null
                         && id.equals(link.targetId())
@@ -347,18 +374,54 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
         // In-memory only — the user inspects / fetches data for the newly identified
         // instances and then persists explicitly via "Save identities".
-        for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : decision.resolved()) {
-            curation.putIdentityLink(new quiz.curation.IdentityLink(
-                    r.type(), r.targetId(), "Wikidata", r.qid(),
-                    "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata"));
+        java.util.Map<String, quiz.enrichment.ResolveIdentitiesDecision.Resolved> pending =
+                new java.util.LinkedHashMap<>();
+        for (quiz.enrichment.ResolveIdentitiesDecision.Resolved applied : lastApplied) {
+            pending.put(identityKey(applied.type(), applied.targetId()), applied);
         }
-        lastApplied = decision.resolved();
-        identitiesDirty = true;
+        int changed = 0;
+        for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : decision.resolved()) {
+            if (hasIdentityLink(curation, r)) {
+                continue;
+            }
+            quiz.curation.IdentityLink link = new quiz.curation.IdentityLink(
+                    r.type(), r.targetId(), "Wikidata", r.qid(),
+                    "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata");
+            curation.putIdentityLink(link);
+            controller.domain().instances().stream()
+                    .filter(member -> java.util.Objects.equals(member.typeName(), r.type())
+                            && java.util.Objects.equals(member.getIdentifier(), r.targetId()))
+                    .findFirst().ifPresent(member -> quiz.curation.IdentitySources.apply(
+                            member, link));
+            pending.put(identityKey(r.type(), r.targetId()), r);
+            changed++;
+        }
+        if (changed == 0) {
+            // Re-applying the retained, already-applied rows is a no-op. In
+            // particular, a review containing only No match rows creates no dirty state.
+            return;
+        }
+        lastApplied = List.copyOf(pending.values());
+        identitiesDirty = !lastApplied.isEmpty();
         updateScopeStatus();   // pending state on the scope buttons, immediately
         render();
         JOptionPane.showMessageDialog(this,
-                decision.resolved().size() + " identity(ies) applied in memory —"
+                changed + " identity(ies) applied in memory —"
                         + " inspect them, then \"Save identities\" or \"Forget result\".");
+    }
+
+    private static boolean hasIdentityLink(
+            quiz.curation.ManualCuration curation,
+            quiz.enrichment.ResolveIdentitiesDecision.Resolved resolved) {
+        return curation.identityLinks().stream().anyMatch(link ->
+                java.util.Objects.equals(link.type(), resolved.type())
+                        && java.util.Objects.equals(link.targetId(), resolved.targetId())
+                        && "Wikidata".equalsIgnoreCase(link.sourceKind())
+                        && java.util.Objects.equals(link.sourceId(), resolved.qid()));
+    }
+
+    private static String identityKey(String type, String targetId) {
+        return String.valueOf(type) + '\u0000' + targetId;
     }
 
     /** Re-open the pending result's review so the user can inspect / re-decide it.
@@ -368,7 +431,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return;
         }
         quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showModeless(
-                this, lastReviewTitle, lastReviewPrompt, lastReviewItems,
+                this, lastReviewTitle, lastReviewPrompt, lastReviewItems, lastApplied,
                 decision -> {
                     quiz.curation.ManualCuration curation = curation();
                     if (curation != null && decision != null
@@ -382,9 +445,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      *  result is by definition unsaved, this restores the pre-resolve state. */
     private void forgetLastResult() {
         quiz.curation.ManualCuration curation = curation();
-        if (curation != null) {
+        if (identitiesDirty && curation != null) {
             for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : lastApplied) {
                 curation.removeIdentityLink(r.type(), r.targetId(), "Wikidata");
+                controller.domain().instances().stream()
+                        .filter(member -> java.util.Objects.equals(
+                                member.typeName(), r.type())
+                                && java.util.Objects.equals(
+                                member.getIdentifier(), r.targetId()))
+                        .findFirst().ifPresent(member ->
+                                quiz.curation.IdentitySources.refresh(member, curation));
             }
         }
         clearPendingResult();
@@ -407,10 +477,37 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (curation == null) {
             return true;
         }
+        java.util.Set<String> appliedKeys = lastApplied.stream()
+                .map(resolved -> identityKey(resolved.type(), resolved.targetId()))
+                .collect(java.util.stream.Collectors.toSet());
+        List<quiz.enrichment.ResolveIdentitiesReviewRequest.InstanceIdentity> unresolvedReview =
+                lastReviewItems.stream()
+                        .filter(item -> !appliedKeys.contains(
+                                identityKey(item.type(), item.targetId())))
+                        .toList();
+        boolean keepReview = false;
+        if (!unresolvedReview.isEmpty()) {
+            Object[] options = {"Keep unresolved review", "Forget unresolved review", "Cancel"};
+            int choice = JOptionPane.showOptionDialog(this,
+                    lastApplied.size() + " applied identity(ies) will be saved.\n"
+                            + unresolvedReview.size() + " unresolved review item(s) remain.\n\n"
+                            + "Keep their candidates and No match results for continued review?",
+                    "Save identities", JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+            if (choice < 0 || choice == 2) return false;
+            keepReview = choice == 0;
+        }
         try {
             curation.save();
-            clearPendingResult();
-            JOptionPane.showMessageDialog(this, "Identities saved.");
+            identitiesDirty = false;
+            lastApplied = List.of();
+            lastReviewItems = keepReview ? List.copyOf(unresolvedReview) : List.of();
+            saveIdentitiesButton.setEnabled(false);
+            updateScopeStatus();
+            JOptionPane.showMessageDialog(this, keepReview
+                    ? "Identities saved. " + unresolvedReview.size()
+                            + " unresolved review item(s) retained."
+                    : "Identities saved.");
             return true;
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
@@ -425,7 +522,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     /** True while identities have been applied in memory but not yet saved. */
     public boolean hasUnsavedIdentities() {
-        return identitiesDirty;
+        return identitiesDirty && !lastApplied.isEmpty();
     }
 
     /** Renders the identity-resolution review pause; other input requests are unsupported. */
@@ -590,13 +687,18 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         resolveButton.setText(unresolved == 0
                 ? "All identified" : "Resolve " + unresolved + " identities…");
         resolveButton.setEnabled(curation != null && unresolved > 0 && !resolveRunner.isRunning());
-        // A pending (unsaved) result takes over the button: re-open it, don't re-resolve.
-        if (identitiesDirty) {
-            resolveButton.setText("Show pending result…");
+        // A retained review takes over the button: saving accepted rows does not
+        // silently discard ambiguous / No match work.
+        if (!lastReviewItems.isEmpty()) {
+            resolveButton.setText(identitiesDirty
+                    ? "Show pending result…"
+                    : "Continue unresolved review (" + lastReviewItems.size() + ")…");
             resolveButton.setEnabled(true);
         }
         saveIdentitiesButton.setEnabled(identitiesDirty);
-        forgetResultButton.setEnabled(identitiesDirty);
+        forgetResultButton.setText(identitiesDirty
+                ? "Forget result" : "Forget unresolved review");
+        forgetResultButton.setEnabled(!lastReviewItems.isEmpty());
     }
 
     /** A flat result: members grouped by type — a single searchable instance view
@@ -940,6 +1042,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return;
         }
         closed = true;
+        if (explorerDialog != null) {
+            explorerDialog.dispose();
+        }
         queries.runner().cancel();
         requestClient.close();
     }

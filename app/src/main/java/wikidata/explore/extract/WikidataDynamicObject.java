@@ -3,11 +3,9 @@ package wikidata.explore.extract;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Hidden;
 import objectview.annotations.Link;
-import objectview.annotations.Provenance;
 import objectview.field.DynamicFields;
 import objectview.field.FieldSchema;
 import objectview.ViewableAdapter;
-import quiz.source.Source;
 import quiz.source.WikidataSource;
 
 import java.util.ArrayList;
@@ -97,18 +95,6 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     @JsonIgnore
     private transient FieldSchema dynamicFieldSchema;
 
-    // Provenance grouped as one nested Viewable: renders as a collapsed
-    // "source: Wikidata" chip that expands to the QID + link. Declared LAST so
-    // it renders as an unobtrusive footer below the real fields (reflection
-    // preserves declaration order). Derived from the QID, so it is rebuilt by
-    // the constructor / qid setter and never persisted (the snapshot store
-    // rebuilds objects through the constructor). @Provenance drives both: render
-    // as a collapsed chip (Card) and exclude from entity-type grouping
-    // (QueryObjectResultPanel).
-    @Provenance
-    @JsonIgnore
-    private transient Source source;
-
     // Reify provenance: per-field origin (qualifier vs subject-fallback vs
     // missing), recorded by the reify step and read by later passes to detect
     // degenerate/self-referential atoms generically. Sidecar metadata only —
@@ -138,13 +124,9 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     // is a real entity (so a blank shell or a statement-keyed synthetic renders no
     // source chip / link).
     private void rebuildSource() {
-        this.source = wikidataUrl == null || wikidataUrl.isBlank()
+        source(wikidataUrl == null || wikidataUrl.isBlank()
                 ? null
-                : new WikidataSource(qid, wikidataUrl);
-    }
-
-    public Source source() {
-        return source;
+                : new WikidataSource(qid, wikidataUrl));
     }
 
     // One interned instance per QID, replacing the legacy

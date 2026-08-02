@@ -79,6 +79,28 @@ public interface DomainModel {
                 && isSubclassOf(candidate, type)).toList();
     }
 
+    /** Fields introduced by this subtype rather than inherited from its base. */
+    default java.util.Set<String> additionalFields(String subtype) {
+        FieldSchema schema = fieldSchema(subtype);
+        String base = baseType(subtype);
+        FieldSchema inherited = base == null ? null : fieldSchema(base);
+        java.util.Set<String> inheritedNames = new java.util.LinkedHashSet<>();
+        if (inherited != null) {
+            for (objectview.field.FieldRef field : inherited.fields()) {
+                inheritedNames.add(field.name());
+            }
+        }
+        java.util.Set<String> result = new java.util.LinkedHashSet<>();
+        if (schema != null) {
+            for (objectview.field.FieldRef field : schema.fields()) {
+                if (!field.structural() && !inheritedNames.contains(field.name())) {
+                    result.add(field.name());
+                }
+            }
+        }
+        return java.util.Set.copyOf(result);
+    }
+
     /** The fields of a type — possibly NESTED paths (e.g. {@code nominee.name}) —
      *  each carrying its dotted path and leaf shape (reference/collection). */
     List<DomainField> fields(String type);
@@ -102,8 +124,8 @@ public interface DomainModel {
     }
 
     /**
-     * Top-level field names of {@code type} that are STRUCTURAL — plumbing or
-     * provenance the pickers should skip (they stay on the data). This is the
+     * Top-level field names of {@code type} that are STRUCTURAL — plumbing the
+     * pickers should skip (it stays on the data). This is the
      * generic seam for backing-specific exceptions: a bridge translates its
      * domain conventions (e.g. "a statement class's auto-created reify back-ref")
      * into plain field names here, so the workbench applies them without any

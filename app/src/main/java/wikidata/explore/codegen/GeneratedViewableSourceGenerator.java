@@ -123,14 +123,8 @@ public class GeneratedViewableSourceGenerator {
             sb.append(";\n");
         }
 
-        // Provenance LAST so it renders as an unobtrusive footer chip below the
-        // real fields (the QID/URL above are hidden via @Hidden).
-        // @Provenance drives the collapsed-chip rendering and keeps Source out
-        // of entity-type grouping. Populated by GeneratedViewableMapper.
-        sb.append("\n");
-        sb.append("    @objectview.annotations.Provenance\n");
-        sb.append("    @com.fasterxml.jackson.annotation.JsonIgnore\n");
-        sb.append("    public quiz.source.Source source;\n");
+        // Provenance is inherited from ViewableAdapter, so generated, dynamic and
+        // hand-written instances expose the same ordinary @Provenance source field.
 
         sb.append("\n");
         sb.append("    public ").append(className).append("() {}\n\n");

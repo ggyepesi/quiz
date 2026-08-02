@@ -75,24 +75,7 @@ public final class TransformController {
     }
 
     public Set<String> additionalFields(String subtype) {
-        FieldSchema schema = domain.fieldSchema(subtype);
-        String base = domain.baseType(subtype);
-        FieldSchema inherited = base == null ? null : domain.fieldSchema(base);
-        Set<String> inheritedNames = new java.util.LinkedHashSet<>();
-        if (inherited != null) {
-            for (objectview.field.FieldRef field : inherited.fields()) {
-                inheritedNames.add(field.name());
-            }
-        }
-        Set<String> result = new java.util.LinkedHashSet<>();
-        if (schema != null) {
-            for (objectview.field.FieldRef field : schema.fields()) {
-                if (!field.structural() && !inheritedNames.contains(field.name())) {
-                    result.add(field.name());
-                }
-            }
-        }
-        return Set.copyOf(result);
+        return domain.additionalFields(subtype);
     }
 
     /** The explicit group root paired with the selected member type. */

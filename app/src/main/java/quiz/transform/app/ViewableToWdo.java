@@ -186,7 +186,11 @@ public final class ViewableToWdo {
             }
             // A VALUE object is inlined, not pooled — it needs no identity (its display
             // name is just a label). Everything else is an entity, keyed by identity.
-            boolean value = q instanceof quiz.ValueObject;
+            // Provenance is nested value data owned by the instance, not an entity in
+            // the domain pool. Inline it exactly like other value objects so snapshot
+            // persistence does not manufacture one addressable Source entity per row.
+            boolean value = q instanceof quiz.ValueObject
+                    || q instanceof objectview.provenance.Source;
             String id = value ? null : q.getIdentifier();
             if (!value && (id == null || id.isBlank())) {
                 id = q.getDisplayName();

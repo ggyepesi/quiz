@@ -44,6 +44,12 @@ public class ExploreByExamplePanel extends JPanel {
     private final JButton showMembersButton = new JButton("Show members");
     private final JButton addTargetsButton = new JButton("Add as relation targets");
     private final JButton addSeedsButton = new JButton("Add as Seed QIDs");
+    private final JLabel hint = new JLabel(
+            "<html>Search → pick an entity → Explore relations → pick a "
+                    + "relation: <b>Show members</b> (then double-click a member to "
+                    + "<b>follow</b> it and explore further), or <b>add members as "
+                    + "Seed QIDs</b>. <b>◀ Back</b> retraces your path.</html>");
+    private boolean explorationOnly;
     // The entity whose relations are shown — used to fetch a relation's members.
     private String exploredQid = "";
     private String exploredLabel = "";
@@ -113,6 +119,19 @@ public class ExploreByExamplePanel extends JPanel {
         this.onUseAsSourceQid = handler == null ? (q, l) -> {} : handler;
     }
 
+    /** Use the graph browser outside ModelBuilder. The search, relation preview,
+     * member list and follow/back navigation remain; model-mutating actions do not. */
+    public void explorationOnly() {
+        explorationOnly = true;
+        useSourceButton.setVisible(false);
+        addTargetsButton.setVisible(false);
+        addSeedsButton.setVisible(false);
+        hint.setText(
+                "<html>Search → pick an entity → Explore relations → pick a "
+                        + "relation and <b>Show members</b>. Double-click a member to "
+                        + "follow it; <b>◀ Back</b> retraces your path.</html>");
+    }
+
     private void buildUi() {
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         searchRow.add(new JLabel("Describe / name it:"));
@@ -140,11 +159,6 @@ public class ExploreByExamplePanel extends JPanel {
         actionRow.add(addSeedsButton);
         actionRow.add(status);
 
-        JLabel hint = new JLabel(
-                "<html>Search → pick an entity → Explore relations → pick a "
-                + "relation: <b>Show members</b> (then double-click a member to "
-                + "<b>follow</b> it and explore further), or <b>add members as "
-                + "Seed QIDs</b>. <b>◀ Back</b> retraces your path.</html>");
         hint.setFont(hint.getFont().deriveFont(Font.ITALIC));
 
         JPanel top = new JPanel(new BorderLayout(4, 2));
@@ -298,8 +312,9 @@ public class ExploreByExamplePanel extends JPanel {
             probeModel.setRows(relations);
             status.setText(relations.isEmpty()
                     ? "No relations found."
-                    : relations.size() + " relation(s) — pick one to add its "
-                            + "members as seeds.");
+                    : relations.size() + " relation(s) — pick one to "
+                            + (explorationOnly ? "inspect its members."
+                                    : "add its members as seeds."));
             updateButtons();
         });
     }

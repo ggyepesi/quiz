@@ -46,7 +46,15 @@ class FieldSetTest {
 
     @Test void picksTheBackingImplementation() {
         assertInstanceOf(ReflectionFieldSet.class, FieldSet.of(new Film()));
-        assertInstanceOf(DynamicFieldSet.class, FieldSet.of(new WikidataDynamicObject("Q1", "Casino")));
+        FieldSet dynamic = FieldSet.of(new WikidataDynamicObject("Q1", "Casino"));
+        assertInstanceOf(LayeredFieldSet.class, dynamic);
+        assertTrue(dynamic.field("source").provenance(),
+                "dynamic data is layered with the adapter's declared provenance field");
+
+        WikidataDynamicObject reloaded = new WikidataDynamicObject("item-1", "Casino");
+        reloaded.put("source", new WikidataDynamicObject("", "Wikidata"));
+        assertTrue(FieldSet.of(reloaded).field("source").provenance(),
+                "declared provenance metadata wins over a persisted map value");
     }
 
     @Test void reflectionEnumeratesAndTypesFromDeclaredFields() {
@@ -97,7 +105,8 @@ class FieldSetTest {
 
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, schema));
 
-        assertEquals(2, f.size(), "enumeration comes from the schema");
+        assertEquals(3, f.size(),
+                "schema fields plus the adapter's ordinary provenance field");
         assertTrue(f.get("cast").collection(), "schema says collection despite the single value");
         assertEquals(FieldKind.ORDERED, f.get("year").kind(), "typed even though absent from the map");
         // Values still read from the object: cast present, year absent (null).
@@ -115,7 +124,7 @@ class FieldSetTest {
 
         Film film = new Film();
         FieldSet reflected = FieldSet.of(film, schema);
-        assertEquals(List.of("cast", "title", "year", "won", "director"),
+        assertEquals(List.of("cast", "title", "year", "won", "director", "source"),
                 reflected.fields().stream().map(FieldRef::name).toList(),
                 "schema metadata wins, but reflected data fields are not dropped");
         assertEquals("Person", reflected.field("cast").targetType());
@@ -125,7 +134,7 @@ class FieldSetTest {
         dynamic.put("cast", new WikidataDynamicObject("Q2", "Actor"));
         dynamic.put("unexpected", "kept");
         FieldSet dynamicSet = FieldSet.of(dynamic, schema);
-        assertEquals(List.of("cast", "unexpected"),
+        assertEquals(List.of("cast", "unexpected", "source"),
                 dynamicSet.fields().stream().map(FieldRef::name).toList());
         assertTrue(dynamicSet.has("cast"));
         assertEquals("kept", dynamicSet.read("unexpected"));

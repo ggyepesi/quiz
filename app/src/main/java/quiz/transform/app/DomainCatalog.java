@@ -45,6 +45,7 @@ public final class DomainCatalog {
         var loaded = new WikidataDynamicObjectJsonStore()
                 .loadAllWithFieldGraph(snap);
         var pool = loaded.objects();
+        BundledMediaSources.resolve(pool);
         // Overlay curated / auto-fixed values onto the freshly loaded base data,
         // before compiling — so the sidecar survives regeneration. See quiz.curation.
         // Manual values override; generated fills (e.g. <name>.autofix.json from a
@@ -53,6 +54,7 @@ public final class DomainCatalog {
         var autofix = quiz.curation.CorrectionsSidecar.source(
                 quiz.curation.CorrectionsSidecar.beside(snap, ".autofix.json"));
         quiz.curation.Corrections.apply(pool, List.of(curation, autofix));
+        quiz.curation.IdentitySources.apply(pool, curation.identityLinks());
         // Fold curated duplicates into their primaries (Tanzania ≈ "Tanzania, United
         // Republic of") on the same overlay basis — re-applied every load, no snapshot edit.
         quiz.curation.Merges.apply(
@@ -85,7 +87,8 @@ public final class DomainCatalog {
             try {
                 var project = new wikidata.explore.model.GeneratedProjectModelStore()
                         .load(model);
-                return wikidata.explore.transform.ProductCompiler.compile(project, pool);
+                var compiled = wikidata.explore.transform.ProductCompiler.compile(project, pool);
+                return new SnapshotCompatibleDomain(compiled, fieldGraph);
             } catch (Exception unreadable) {
                 // Fall through to the instance-derived schema.
             }

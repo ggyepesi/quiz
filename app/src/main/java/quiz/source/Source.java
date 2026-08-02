@@ -1,12 +1,10 @@
 package quiz.source;
 
-import objectview.Viewable;
-
 /**
- * Provenance of a {@link Viewable}: where its data came from and how to open
- * the original record.
+ * Application source base. The field/rendering contract lives in objectview;
+ * concrete source kinds remain in the host application.
  *
- * <p>Modelled as a {@link Viewable} so it renders like any other nested object
+ * <p>Modelled as an {@link objectview.Viewable} so it renders like any other nested object
  * — a collapsed reference chip on the owning card (see {@code Card}),
  * expandable to its source-specific internals. Different sources carry
  * different internals ({@link WikidataSource} holds a QID + a wiki URL; a
@@ -17,14 +15,8 @@ import objectview.Viewable;
  * owner's identity — it does not replace the canonical id (the QID stays the
  * key for canonicalization, snapshots, navigation, and web serving).
  */
-public interface Source extends Viewable {
-
-    /** Canonical id of the record within this source (e.g. a Wikidata QID). */
-    String sourceId();
-
-    /** Human-openable URL of the original record, or "" if none. */
-    String url();
-
-    /** Short human label for the source ("Wikidata", "DBpedia", …). */
-    String kind();
+public abstract class Source extends objectview.provenance.Source {
+    protected Source(String kind, String sourceId, String recordUrl) {
+        super(kind, sourceId, recordUrl);
+    }
 }

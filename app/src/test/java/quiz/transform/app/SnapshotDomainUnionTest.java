@@ -36,6 +36,38 @@ class SnapshotDomainUnionTest {
     }
 
     @Test
+    void compiledModelRetainsFieldsSavedOnlyInAnOlderSnapshot() {
+        WikidataDynamicObject item = wdo(
+                "Item", "one", "modelField", "m", "legacyField", "still here");
+        wikidata.explore.extract.SnapshotFieldGraph saved =
+                wikidata.explore.extract.SnapshotFieldGraph.derive(List.of(item));
+        quiz.transform.ui.DomainModel model = new quiz.transform.ui.DomainModel() {
+            @Override public List<String> types() { return List.of("Item"); }
+            @Override public List<DomainField> fields(String type) {
+                return quiz.transform.ui.DomainSchemas.fields(this, type);
+            }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return () -> List.of(objectview.field.FieldRef.of(
+                        "modelField", objectview.field.FieldKind.TEXT, "String",
+                        false, false, false));
+            }
+            @Override public java.util.Collection<? extends objectview.Viewable> instances() {
+                return List.of(item);
+            }
+            @Override public Class<? extends objectview.Viewable> universe() {
+                return WikidataDynamicObject.class;
+            }
+        };
+
+        SnapshotCompatibleDomain compatible =
+                new SnapshotCompatibleDomain(model, saved);
+
+        assertTrue(compatible.fieldTypes("Item").fieldNames().contains("modelField"));
+        assertTrue(compatible.fieldTypes("Item").fieldNames().contains("legacyField"),
+                "the rich model path must retain saved fields it does not declare");
+    }
+
+    @Test
     void representativeShapeSampleCarriesTheUnionFields() {
         WikidataDynamicObject first = wdo("Laureate", "A");
         WikidataDynamicObject second = wdo("Laureate", "B", "portrait", "p.jpg");

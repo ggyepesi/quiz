@@ -1,8 +1,5 @@
 package quiz.source;
 
-import objectview.ViewableAdapter;
-import objectview.annotations.Link;
-
 /**
  * {@link Source} backed by Wikidata: a QID plus its wikidata.org URL.
  *
@@ -11,62 +8,14 @@ import objectview.annotations.Link;
  * owner's canonical identity — this object just groups the provenance fields
  * so they stop cluttering the card's top level.
  */
-public class WikidataSource extends ViewableAdapter implements Source {
-
-    private String qid;
-
-    @Link
-    private String wikidataUrl;
-
-    public WikidataSource() {
-        this("");
-    }
+public class WikidataSource extends Source {
 
     public WikidataSource(String qid) {
-        this.qid = qid == null ? "" : qid.strip();
-        this.wikidataUrl = this.qid.isBlank()
-                ? ""
-                : "https://www.wikidata.org/wiki/" + this.qid;
+        this(qid, qid == null || qid.isBlank() ? ""
+                : "https://www.wikidata.org/wiki/" + qid.strip());
     }
 
     public WikidataSource(String qid, String wikidataUrl) {
-        this.qid = qid == null ? "" : qid.strip();
-        this.wikidataUrl = wikidataUrl == null ? "" : wikidataUrl;
-    }
-
-    @Override
-    public String sourceId() {
-        return qid;
-    }
-
-    @Override
-    public String url() {
-        return wikidataUrl;
-    }
-
-    @Override
-    public String kind() {
-        return "Wikidata";
-    }
-
-    @Override
-    public String getIdentifier() {
-        return qid;
-    }
-
-    @Override
-    public String getDisplayName() {
-        // The chip reads "source: Wikidata"; the QID/URL are the expanded body.
-        return kind();
-    }
-
-    @Override
-    public String typeName() {
-        return "Source";
-    }
-
-    @Override
-    public String toString() {
-        return kind() + (qid == null || qid.isBlank() ? "" : " (" + qid + ")");
+        super("Wikidata", qid, wikidataUrl);
     }
 }

@@ -50,7 +50,7 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
             String prompt,
             List<InstanceIdentity> instances,
             Consumer<ResolveIdentitiesDecision> onDone) {
-        createDialog(owner, title, prompt, instances, onDone,
+        createDialog(owner, title, prompt, instances, List.of(), onDone,
                 Dialog.ModalityType.APPLICATION_MODAL).setVisible(true);
     }
 
@@ -61,7 +61,18 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
             String prompt,
             List<InstanceIdentity> instances,
             Consumer<ResolveIdentitiesDecision> onDone) {
-        JDialog dialog = createDialog(owner, title, prompt, instances, onDone,
+        return showModeless(owner, title, prompt, instances, List.of(), onDone);
+    }
+
+    /** Re-open a retained result and mark assignments already applied in memory. */
+    public static JDialog showModeless(
+            Component owner,
+            String title,
+            String prompt,
+            List<InstanceIdentity> instances,
+            List<ResolveIdentitiesDecision.Resolved> applied,
+            Consumer<ResolveIdentitiesDecision> onDone) {
+        JDialog dialog = createDialog(owner, title, prompt, instances, applied, onDone,
                 Dialog.ModalityType.MODELESS);
         dialog.setVisible(true);
         return dialog;
@@ -72,6 +83,7 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
             String title,
             String prompt,
             List<InstanceIdentity> instances,
+            List<ResolveIdentitiesDecision.Resolved> applied,
             Consumer<ResolveIdentitiesDecision> onDone,
             Dialog.ModalityType modality) {
         Window window = SwingUtilities.getWindowAncestor(owner);
@@ -86,7 +98,7 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
             }
         };
         ResolveIdentitiesReviewPanel panel =
-                new ResolveIdentitiesReviewPanel(prompt, instances, finish);
+                new ResolveIdentitiesReviewPanel(prompt, instances, applied, finish);
         dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
@@ -112,6 +124,7 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
     private ResolveIdentitiesReviewPanel(
             String prompt,
             List<InstanceIdentity> instances,
+            List<ResolveIdentitiesDecision.Resolved> applied,
             Consumer<ResolveIdentitiesDecision> onApprove) {
         super(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -129,20 +142,30 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
             }
         }
 
-        add(new JLabel("<html>" + html(prompt) + "</html>"), BorderLayout.NORTH);
+        java.util.Map<String, ResolveIdentitiesDecision.Resolved> appliedByInstance =
+                new java.util.LinkedHashMap<>();
+        for (ResolveIdentitiesDecision.Resolved resolved
+                : applied == null ? List.<ResolveIdentitiesDecision.Resolved>of() : applied) {
+            appliedByInstance.put(key(resolved.type(), resolved.targetId()), resolved);
+        }
+        String appliedSummary = appliedByInstance.isEmpty() ? ""
+                : "<br><b>" + appliedByInstance.size()
+                        + " assignment(s) already applied in memory (not yet saved).</b>";
+        add(new JLabel("<html>" + html(prompt) + appliedSummary + "</html>"),
+                BorderLayout.NORTH);
 
         groups = new JTabbedPane();
         // A label match is useful ordering, not proof of entity type. Nothing is
         // pre-accepted until class/type constraints become part of candidate discovery.
         groups.addTab("Confident (" + confident.size() + ")",
                 sectionPanel("Name match — verify the entity type",
-                        confident, true, false));
+                        confident, true, false, appliedByInstance));
         groups.addTab("Ambiguous (" + ambiguous.size() + ")",
                 sectionPanel("Choose the right entity",
-                        ambiguous, true, false));
+                        ambiguous, true, false, appliedByInstance));
         groups.addTab("No match (" + noMatch.size() + ")",
                 sectionPanel("No match found",
-                        noMatch, false, false));
+                        noMatch, false, false, appliedByInstance));
 
         add(groups, BorderLayout.CENTER);
         add(buttons(onApprove), BorderLayout.SOUTH);
@@ -151,7 +174,8 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
     /** One confidence group as an independently scrollable result panel. */
     private JComponent sectionPanel(
             String title, List<InstanceIdentity> items,
-            boolean selectable, boolean checkedByDefault) {
+            boolean selectable, boolean checkedByDefault,
+            java.util.Map<String, ResolveIdentitiesDecision.Resolved> applied) {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
 
@@ -175,7 +199,8 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
         } else {
             int[] y = {1};
             for (InstanceIdentity instance : items) {
-                addRow(panel, y, instance, selectable, checkedByDefault);
+                addRow(panel, y, instance, selectable, checkedByDefault,
+                        applied.get(key(instance.type(), instance.targetId())));
             }
         }
 
@@ -195,12 +220,20 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
 
     private void addRow(
             JPanel grid, int[] y, InstanceIdentity instance,
-            boolean selectable, boolean checked) {
+            boolean selectable, boolean checked,
+            ResolveIdentitiesDecision.Resolved applied) {
         int row = y[0]++;
         Insets pad = new Insets(1, 4, 1, 4);
 
-        JCheckBox accept = new JCheckBox("", selectable && checked && !instance.candidates().isEmpty());
-        accept.setEnabled(selectable && !instance.candidates().isEmpty());
+        boolean alreadyApplied = applied != null;
+        JCheckBox accept = new JCheckBox(alreadyApplied ? "Applied" : "",
+                alreadyApplied || selectable && checked && !instance.candidates().isEmpty());
+        accept.setEnabled(!alreadyApplied && selectable && !instance.candidates().isEmpty());
+        accept.setToolTipText(alreadyApplied ? "Already applied in memory" : null);
+        if (alreadyApplied) {
+            accept.setForeground(new Color(35, 125, 55));
+            accept.setFont(accept.getFont().deriveFont(Font.BOLD));
+        }
         place(grid, accept, 0, row, 0, GridBagConstraints.NONE, pad);
 
         String typedName = instance.name() + "  [" + instance.type() + "]";
@@ -211,11 +244,24 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
 
         JComboBox<IdentityMatch> combo = null;
         if (!instance.candidates().isEmpty()) {
-            combo = new JComboBox<>(instance.candidates().toArray(new IdentityMatch[0]));
+            List<IdentityMatch> candidates = new ArrayList<>(instance.candidates());
+            if (alreadyApplied && candidates.stream()
+                    .noneMatch(candidate -> applied.qid().equals(candidate.qid()))) {
+                candidates.add(0, new IdentityMatch(
+                        applied.qid(), applied.label(), "Applied in memory"));
+            }
+            combo = new JComboBox<>(candidates.toArray(new IdentityMatch[0]));
             combo.setRenderer(new MatchRenderer());
             combo.setPreferredSize(new Dimension(190, combo.getPreferredSize().height));
             IdentityMatch exact = exactMatch(instance);
-            combo.setSelectedItem(exact != null ? exact : instance.candidates().get(0));
+            IdentityMatch appliedMatch = alreadyApplied
+                    ? candidates.stream()
+                            .filter(candidate -> applied.qid().equals(candidate.qid()))
+                            .findFirst().orElse(null)
+                    : null;
+            combo.setSelectedItem(appliedMatch != null ? appliedMatch
+                    : exact != null ? exact : instance.candidates().get(0));
+            combo.setEnabled(!alreadyApplied);
             place(grid, combo, 2, row, 0, GridBagConstraints.NONE, pad);
 
             JComboBox<IdentityMatch> boundCombo = combo;
@@ -256,6 +302,10 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
             grid.add(none, gc);
         }
         rows.add(new Row(instance, accept, combo));
+    }
+
+    private static String key(String type, String targetId) {
+        return String.valueOf(type) + '\u0000' + targetId;
     }
 
     private static void place(
