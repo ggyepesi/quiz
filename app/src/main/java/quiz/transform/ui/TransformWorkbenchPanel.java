@@ -146,8 +146,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     new FlowLayout(FlowLayout.LEFT, 4, 2));
             curationActions.setAlignmentX(Component.LEFT_ALIGNMENT);
             curationActions.add(new JLabel("Curation:"));
-            curationActions.add(button("Fill missing fields…",
-                    () -> openCuration(c.curation())));
+            curationActions.add(button("Curate data…",
+                    () -> openCuration(null)));
             curationActions.add(button("Merge duplicates…",
                     () -> openMerge(c.curation())));
             curationActions.add(button("Overview…",
@@ -242,11 +242,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return;
         }
         objectview.field.FieldRef field = FieldDefinitions.toFieldRef(definition);
+        RenderedScope currentScope = renderedScope;
         if (controller.addField(type, field)) {
             viewStepsPanel.refreshFields();
             render();
-            JOptionPane.showMessageDialog(this, "Added field \"" + definition.name() + "\" to "
-                    + type + ". Open Validate to fill it (Find Data).");
+            List<Viewable> members = currentScope == null
+                    ? controller.domain().instancesOf(type) : currentScope.members();
+            openCurationWorkspace(new quiz.curation.CurationPlan(
+                    "New field: " + type + "." + definition.name(), members,
+                    List.of(quiz.curation.CurationTask.field(type, definition.name(),
+                            quiz.curation.ScopeFilter.MISSING))));
         } else {
             JOptionPane.showMessageDialog(this,
                     "New field is only supported for snapshot-backed domains.");
@@ -563,14 +568,36 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         dialog.setVisible(true);
     }
 
-    /** Open the manual-curation panel over this domain; re-render on any change. */
-    private void openCuration(quiz.curation.ManualCuration curation) {
+    /** Define an explicit scope + one or more independent tasks, then execute all of
+     * them through the same ValidationPanel used by Validate. */
+    private void openCuration(String initialField) {
+        RenderedScope scope = renderedScope;
+        if (scope == null) {
+            JOptionPane.showMessageDialog(this, "Wait for the current view to finish rendering.");
+            return;
+        }
+        CurationSetupPanel setup = new CurationSetupPanel(
+                controller.domain(), scope.members(), scope.selectedType());
+        if (initialField != null) setup.selectField(initialField);
+        int answer = JOptionPane.showConfirmDialog(this, setup,
+                "Curate data — choose tasks", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+        if (answer != JOptionPane.OK_OPTION) return;
+        quiz.curation.CurationPlan plan = setup.plan();
+        if (plan == null) {
+            JOptionPane.showMessageDialog(this, "Choose Identity and/or at least one field.");
+            return;
+        }
+        openCurationWorkspace(plan);
+    }
+
+    private void openCurationWorkspace(quiz.curation.CurationPlan plan) {
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
-                "Curate — fill missing field values", Dialog.ModalityType.MODELESS);
+                "Curate — " + plan.label(), Dialog.ModalityType.MODELESS);
         dialog.setLayout(new BorderLayout());
-        dialog.add(new quiz.curation.ui.CurationPanel(controller.domain(), curation, this::render),
-                BorderLayout.CENTER);
-        dialog.setSize(1000, 720);
+        dialog.add(new CurationWorkspacePanel(controller.domain(), plan, queries.runner(),
+                this::render, this::resolveIdentities), BorderLayout.CENTER);
+        dialog.setSize(1220, 760);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }

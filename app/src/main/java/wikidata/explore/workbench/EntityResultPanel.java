@@ -101,6 +101,13 @@ public class EntityResultPanel extends JPanel {
         return table.getSelectedRow() >= 0;
     }
 
+    /** Select the first row, if any — e.g. after a single-entity lookup. */
+    public void selectFirstRow() {
+        if (model.getRowCount() > 0) {
+            table.setRowSelectionInterval(0, 0);
+        }
+    }
+
     /** Selected rows as their underlying model values (filter/sort-aware). */
     public List<List<Object>> selectedRows() {
         List<List<Object>> out = new ArrayList<>();

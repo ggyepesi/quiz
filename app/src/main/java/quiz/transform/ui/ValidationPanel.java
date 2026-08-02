@@ -20,6 +20,11 @@ import quiz.enrichment.WikimediaFieldEnrichmentProvider;
 import quiz.enrichment.WikimediaImageEnrichmentProvider;
 import quiz.enrichment.ui.EnrichmentReviewPanel;
 import quiz.curation.ui.SourceManagerDialog;
+import quiz.curation.Correction;
+import quiz.curation.CorrectionPolicy;
+import quiz.curation.Corrections;
+import quiz.curation.CurationTask;
+import quiz.curation.ScopeFilter;
 
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
@@ -41,6 +46,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -57,8 +63,8 @@ import java.util.function.Function;
  * over the WHOLE working schema the domain exposes (base classes, DERIVED classes and
  * facets), one type at a time. The coverage view IS the shared field-config table
  * ({@link ViewConfigEditor}) driven by a {@link FieldTableContributor}: per field it adds
- * {@code Coverage} / {@code Present} / {@code Missing} columns. Select a gappy field to
- * drill into the members missing it — rendered with the shared {@link CardListView} /
+ * {@code Coverage} / {@code Present} / {@code Missing} columns. Select a field to
+ * drill into the task's missing, present, or full member scope — rendered with the shared {@link CardListView} /
  * {@link SearchPanel} (selectable, searchable cards), so a missing member IS the object,
  * ready for curation (a manual fill or a source enrichment such as "Check DBpedia").
  */
@@ -79,6 +85,10 @@ public final class ValidationPanel extends JPanel {
     private final JButton sourcesButton = new JButton("Sources…");
     private final JButton cancelProcessButton = new JButton("Cancel Find Data");
     private final JButton resolveMissingButton = new JButton("Resolve identities…");
+    private final JLabel selectedLabel = new JLabel("No instance selected");
+    private final JTextField manualValue = new JTextField(18);
+    private final JButton setValueButton = new JButton("Set / replace");
+    private final JButton addValueButton = new JButton("Add to collection");
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     // Horizontal, NOT vertical: the coverage table's preferred HEIGHT grows with the
@@ -103,6 +113,8 @@ public final class ValidationPanel extends JPanel {
     private List<Viewable> drilledInstances = List.of();
     // null = ordinary field-gap drill; true/false = identified/unresolved identity drill.
     private Boolean identityDrill;
+    private boolean identityTask;
+    private ScopeFilter scopeFilter = ScopeFilter.MISSING;
 
     public ValidationPanel(DomainModel domain) {
         this(domain, null, null, null, null);
@@ -178,6 +190,10 @@ public final class ValidationPanel extends JPanel {
         });
         showIdentifiedButton.addActionListener(e -> showIdentityMembers(true));
         showUnresolvedButton.addActionListener(e -> showIdentityMembers(false));
+        setValueButton.addActionListener(e -> saveManualValue(CorrectionPolicy.REPLACE));
+        addValueButton.addActionListener(e -> saveManualValue(CorrectionPolicy.ADD_TO_COLLECTION));
+        setValueButton.setEnabled(false);
+        addValueButton.setEnabled(false);
 
         for (String t : domain.types()) {
             if (!byType.getOrDefault(t, List.of()).isEmpty()) {
@@ -226,12 +242,30 @@ public final class ValidationPanel extends JPanel {
         return selected;
     }
 
+    /** Open one item from a curation plan on this shared validation/curation surface. */
+    public void openTask(CurationTask task) {
+        if (task == null) return;
+        scopeFilter = task.scopeFilter();
+        typeCombo.setSelectedItem(task.type());
+        onType();
+        if (task.kind() == CurationTask.Kind.IDENTITY) {
+            if (scopeFilter == ScopeFilter.ALL) {
+                showIdentityMembers(null);
+            } else {
+                showIdentityMembers(scopeFilter == ScopeFilter.PRESENT);
+            }
+        } else {
+            coverage.setSelectedPath(task.field());
+        }
+    }
+
     private void onType() {
         type = (String) typeCombo.getSelectedItem();
         instances = type == null ? List.of() : byType.getOrDefault(type, List.of());
         selected = null;
         drilledInstances = List.of();
         identityDrill = null;
+        identityTask = false;
         selectedFieldType = null;
         selectedFieldPath = null;
 
@@ -260,8 +294,9 @@ public final class ValidationPanel extends JPanel {
         String path = scoped == null ? null : scoped.path();
         selectedFieldType = scoped == null ? null : scoped.type();
         selectedFieldPath = path;
-        selected = null;
+        selectedChanged(null);
         identityDrill = null;
+        identityTask = false;
         instancesHolder.removeAll();
         if (path == null) {
             instancesHolder.add(new JLabel(
@@ -271,18 +306,21 @@ public final class ValidationPanel extends JPanel {
             instancesHolder.repaint();
             return;
         }
-        List<Viewable> missing = new ArrayList<>();
+        List<Viewable> matching = new ArrayList<>();
         List<Viewable> eligible = scoped == null ? List.of() : instances.stream()
                 .filter(member -> domain.isInstanceOf(member, scoped.type())).toList();
         for (Viewable q : eligible) {
-            if (!has(q, path)) {
-                missing.add(q);
+            boolean present = has(q, path);
+            if (scopeFilter == ScopeFilter.ALL
+                    || scopeFilter == ScopeFilter.PRESENT && present
+                    || scopeFilter == ScopeFilter.MISSING && !present) {
+                matching.add(q);
             }
         }
-        drilledInstances = List.copyOf(missing);
-        instancesHolder.add(header(selectedFieldType, path, missing.size()), BorderLayout.NORTH);
-        if (!missing.isEmpty()) {
-            instancesHolder.add(instancesView(missing, selectedFieldType), BorderLayout.CENTER);
+        drilledInstances = List.copyOf(matching);
+        instancesHolder.add(header(selectedFieldType, path, matching.size()), BorderLayout.NORTH);
+        if (!matching.isEmpty()) {
+            instancesHolder.add(instancesView(matching, selectedFieldType), BorderLayout.CENTER);
         }
         instancesHolder.revalidate();
         instancesHolder.repaint();
@@ -302,20 +340,21 @@ public final class ValidationPanel extends JPanel {
         showUnresolvedButton.setEnabled(unresolved > 0);
     }
 
-    private void showIdentityMembers(boolean identified) {
+    private void showIdentityMembers(Boolean identified) {
+        identityTask = true;
         identityDrill = identified;
-        selected = null;
-        updateSourcesButton();
+        selectedChanged(null);
         List<Viewable> matching = instances.stream()
-                .filter(member -> hasIdentity(member) == identified)
+                .filter(member -> identified == null || hasIdentity(member) == identified)
                 .toList();
         drilledInstances = List.copyOf(matching);
         instancesHolder.removeAll();
 
         JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         header.add(new JLabel(matching.size() + " " + type + " instance(s) "
-                + (identified ? "with a Wikidata identity" : "without a Wikidata identity")));
-        if (!identified && identityResolver != null && !matching.isEmpty()) {
+                + (identified == null ? "with any identity state"
+                : identified ? "with a Wikidata identity" : "without a Wikidata identity")));
+        if (Boolean.FALSE.equals(identified) && identityResolver != null && !matching.isEmpty()) {
             resolveMissingButton.setText("Resolve " + matching.size() + " identities…");
             header.add(resolveMissingButton);
         }
@@ -530,22 +569,28 @@ public final class ValidationPanel extends JPanel {
         };
     }
 
-    private JComponent header(String fieldType, String path, int gap) {
+    private JComponent header(String fieldType, String path, int count) {
         JPanel h = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        h.add(new JLabel(gap == 0
-                ? fieldType + "." + path + " — fully covered."
-                : gap + " member(s) missing " + fieldType + "." + path));
-        if (gap > 0) {
+        h.add(new JLabel(count + " " + scopeFilter.toString().toLowerCase()
+                + " for " + fieldType + "." + path));
+        if (count > 0) {
             checkButton.setText("Find data ↗");
             checkButton.setToolTipText(
-                    "Find and review values for all members missing this field");
+                    "Find and review values for the members in this task");
             h.add(checkButton);   // re-parents the persistent, already-registered button
             updateSourcesButton();
             h.add(sourcesButton);
             if (identityResolver != null) {
-                resolveMissingButton.setText("Resolve identities for " + gap + " missing…");
+                resolveMissingButton.setText("Resolve identities for " + count + " member(s)…");
                 h.add(resolveMissingButton);
             }
+            h.add(new JLabel("Selected:"));
+            h.add(selectedLabel);
+            h.add(manualValue);
+            h.add(setValueButton);
+            DomainField field = selectedDomainField();
+            addValueButton.setVisible(field != null && field.collection());
+            h.add(addValueButton);
         }
         return h;
     }
@@ -585,7 +630,7 @@ public final class ValidationPanel extends JPanel {
             if (sampleQid != null) {
                 findDataRunner.run(
                         new quiz.enrichment.ChooseFieldPropertyProcess(sampleQid, path,
-                                WikimediaFieldEnrichmentProvider.suggestedPropertyPid(path)),
+                                null),
                         outcome -> SwingUtilities.invokeLater(() -> {
                             quiz.enrichment.ChosenProperty chosen = outcome.result();
                             if (chosen != null && chosen.isPresent()) {
@@ -609,9 +654,8 @@ public final class ValidationPanel extends JPanel {
     /** The first missing member that carries (or resolves to) a QID — the sample entity
      *  whose properties the picker lists. */
     private String sampleQidFor(String path, quiz.curation.ManualCuration curation) {
-        for (Viewable member : instances) {
+        for (Viewable member : drilledInstances) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
-            if (has(member, path)) continue;
             String qid = resolvedQid(member,
                     EnrichmentSources.collect(member, concreteType(member), curation));
             if (qid != null) return qid;
@@ -630,9 +674,8 @@ public final class ValidationPanel extends JPanel {
 
         List<FindDataProcess> jobs = new ArrayList<>();
         int skipped = 0;
-        for (Viewable member : instances) {
+        for (Viewable member : drilledInstances) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
-            if (has(member, path)) continue;
             String memberType = concreteType(member);
             List<EnrichmentProposal.SourceRef> sources =
                     EnrichmentSources.collect(member, memberType, curation);
@@ -779,10 +822,108 @@ public final class ValidationPanel extends JPanel {
         }
         updateSourcesButton();
         updateIdentityStatus();
-        if (identityDrill != null) {
+        if (identityTask) {
             showIdentityMembers(identityDrill);
         }
         onCurated.run();
+    }
+
+    private DomainField selectedDomainField() {
+        if (selectedFieldType == null || selectedFieldPath == null) return null;
+        return domain.fields(selectedFieldType).stream()
+                .filter(field -> selectedFieldPath.equals(field.field()))
+                .findFirst().orElse(null);
+    }
+
+    /** Persist an ordinary field edit as a Correction. Identity deliberately does not
+     * come through here: source.qid is approved and stored as an IdentityLink. */
+    private void saveManualValue(CorrectionPolicy policy) {
+        quiz.curation.ManualCuration store = curationStore();
+        if (store == null || selected == null || selectedFieldPath == null) return;
+        String text = manualValue.getText().trim();
+        if (text.isEmpty()) return;
+        DomainField field = selectedDomainField();
+        if (policy == CorrectionPolicy.ADD_TO_COLLECTION
+                && (field == null || !field.collection())) return;
+
+        Object value;
+        try {
+            value = typedManualValue(text);
+        } catch (IllegalArgumentException invalid) {
+            JOptionPane.showMessageDialog(this,
+                    "Value does not match the declared field type: " + invalid.getMessage());
+            return;
+        }
+        if (policy == CorrectionPolicy.ADD_TO_COLLECTION) {
+            List<Object> additions = new ArrayList<>();
+            store.corrections().stream()
+                    .filter(c -> java.util.Objects.equals(c.type(), concreteType(selected))
+                            && selected.getIdentifier().equals(c.qid())
+                            && selectedFieldPath.equals(c.field())
+                            && c.effectivePolicy() == CorrectionPolicy.ADD_TO_COLLECTION)
+                    .findFirst().map(Correction::value).ifPresent(existing -> {
+                        if (existing instanceof Collection<?> collection) additions.addAll(collection);
+                        else additions.add(existing);
+                    });
+            if (!additions.contains(value)) additions.add(value);
+            value = List.copyOf(additions);
+        }
+
+        String memberType = concreteType(selected);
+        List<Correction> before = store.corrections().stream()
+                .filter(c -> (c.type() == null || memberType.equals(c.type()))
+                        && selected.getIdentifier().equals(c.qid())
+                        && selectedFieldPath.equals(c.field()))
+                .toList();
+        store.put(memberType, selected.getIdentifier(), selectedFieldPath, value,
+                Correction.MANUAL, null, policy, null);
+        try {
+            store.save();
+        } catch (Exception ex) {
+            store.remove(memberType, selected.getIdentifier(), selectedFieldPath);
+            before.forEach(store::restore);
+            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
+            return;
+        }
+        Corrections.apply(domain.instances(), List.of(store));
+        manualValue.setText("");
+        onCurated.run();
+        onFieldSelected();
+    }
+
+    private Object typedManualValue(String text) {
+        objectview.field.FieldRef schema = DomainSchemas.resolve(
+                domain, selectedFieldType, selectedFieldPath);
+        if (schema == null) return text;
+        objectview.field.FieldKind kind = schema.collection()
+                ? schema.valueKind() : schema.kind();
+        try {
+            if (kind == objectview.field.FieldKind.BOOLEAN) {
+                if (!"true".equalsIgnoreCase(text) && !"false".equalsIgnoreCase(text)) {
+                    throw new IllegalArgumentException("Enter true or false");
+                }
+                return Boolean.valueOf(text);
+            }
+            if (kind == objectview.field.FieldKind.ORDERED) {
+                return text.matches("[-+]?\\d+")
+                        ? Long.valueOf(text) : Double.valueOf(text);
+            }
+        } catch (RuntimeException invalid) {
+            throw new IllegalArgumentException(invalid.getMessage(), invalid);
+        }
+        return text;
+    }
+
+    private void selectedChanged(Viewable member) {
+        selected = member;
+        selectedLabel.setText(member == null ? "No instance selected" : member.getDisplayName());
+        setValueButton.setEnabled(member != null && selectedFieldPath != null);
+        addValueButton.setEnabled(member != null && selectedFieldPath != null);
+        if (member != null && selectedFieldPath != null) {
+            Object current = objectview.field.FieldAccess.getPath(member, selectedFieldPath);
+            manualValue.setText(current == null ? "" : String.valueOf(current));
+        }
+        updateSourcesButton();
     }
 
     private String concreteType(Viewable member) {
@@ -822,8 +963,7 @@ public final class ValidationPanel extends JPanel {
                 .fieldSchemas(q -> domain.fieldSchema(q.typeName()))
                 .collapsible(true)
                 .selectionListener(o -> {
-            selected = o instanceof Viewable q ? q : null;
-            updateSourcesButton();
+            selectedChanged(o instanceof Viewable q ? q : null);
         }).build();
     }
 

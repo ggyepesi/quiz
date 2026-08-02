@@ -52,7 +52,7 @@ class ChooseFieldPropertyProcessTest {
 
         ProcessOutcome<ChosenProperty> outcome = new ProcessRunner(
                 new QueryContext(null, null), null, pickPopulation)
-                .run(new ChooseFieldPropertyProcess("Q782", "population", "P1082", fetcher),
+                .run(new ChooseFieldPropertyProcess("Q782", "population", null, fetcher),
                         new CancellationToken());
 
         assertEquals(ProcessStatus.SUCCEEDED, outcome.status());

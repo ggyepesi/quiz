@@ -32,6 +32,8 @@ public class ExploreByExamplePanel extends JPanel {
     private BiConsumer<String, String> onUseAsSourceQid = (qid, label) -> {};
 
     private final JTextField searchField = new JTextField(22);
+    private final JTextField qidField = new JTextField(8);
+    private final JButton openQidButton = new JButton("Open QID");
     private final JButton searchButton = new JButton("Search");
     private final EntityResultPanel candidates =
             new EntityResultPanel(List.of("QID", "Label", "Description"), 0, false);
@@ -132,11 +134,66 @@ public class ExploreByExamplePanel extends JPanel {
                         + "follow it; <b>◀ Back</b> retraces your path.</html>");
     }
 
+    /** Reuse the graph browser as a one-shot entity PICKER: search (or explore relations
+     * to verify) to find the entity, pick a candidate, then the single action emits it via
+     * {@link #onUseAsSourceQid}. Model-mutating actions are hidden; the use button is
+     * relabeled. This is the inverse of {@link #explorationOnly()}. */
+    public void entityPicker(String useButtonLabel) {
+        String label = useButtonLabel == null || useButtonLabel.isBlank()
+                ? "Use selected entity" : useButtonLabel;
+        useSourceButton.setText(label);
+        useSourceButton.setToolTipText("Assign the selected entity");
+        addTargetsButton.setVisible(false);
+        addSeedsButton.setVisible(false);
+        hint.setText("<html>Search (or Explore relations to verify) → pick an entity in the "
+                + "top list → <b>" + label + "</b>. Double-click a member to follow it; "
+                + "<b>◀ Back</b> retraces.</html>");
+    }
+
+    /** Pre-seed the search box and run it — e.g. the instance name when opening the picker.
+     *  Requires {@link #setQueryRunner} to have wired the search button first. */
+    public void searchFor(String term) {
+        if (term == null || term.isBlank()) {
+            return;
+        }
+        searchField.setText(term);
+        searchButton.doClick();
+    }
+
+    /** Open the explorer as a modal entity picker; the chosen (qid, label) is delivered to
+     *  {@code onSelected} and the dialog closes. The single reusable "find a Wikidata entity"
+     *  surface — search or browse relations, then use the selected one. */
+    public static void showPicker(
+            Component parent, SwingQueryRunner runner, String initialName,
+            BiConsumer<String, String> onSelected) {
+        Window owner = parent == null ? null : SwingUtilities.getWindowAncestor(parent);
+        JDialog dialog = new JDialog(owner, "Find Wikidata entity",
+                Dialog.ModalityType.APPLICATION_MODAL);
+        ExploreByExamplePanel explorer = new ExploreByExamplePanel();
+        explorer.setQueryRunner(runner);
+        explorer.entityPicker("Use selected entity");
+        explorer.onUseAsSourceQid((qid, label) -> {
+            if (onSelected != null) onSelected.accept(qid, label);
+            dialog.dispose();
+        });
+        dialog.add(explorer);
+        dialog.setMinimumSize(new Dimension(840, 640));
+        dialog.pack();
+        dialog.setLocationRelativeTo(parent);
+        if (initialName != null && !initialName.isBlank()) {
+            SwingUtilities.invokeLater(() -> explorer.searchFor(initialName));
+        }
+        dialog.setVisible(true);
+    }
+
     private void buildUi() {
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         searchRow.add(new JLabel("Describe / name it:"));
         searchRow.add(searchField);
         searchRow.add(searchButton);
+        searchRow.add(new JLabel("or QID:"));
+        searchRow.add(qidField);
+        searchRow.add(openQidButton);
 
         candidates.setColumnWidths(70, 180, 420);
 
@@ -199,12 +256,15 @@ public class ExploreByExamplePanel extends JPanel {
             }
         });
         useSourceButton.addActionListener(e -> {
-            String qid = candidates.firstSelected(0);
-            if (qid.matches("Q\\d+")) {
-                onUseAsSourceQid.accept(qid, candidates.firstSelected(1));
-                status.setText("Used " + qid + " as class type.");
+            String[] picked = pickEntity(candidates.hasSelection(),
+                    candidates.firstSelected(0), candidates.firstSelected(1),
+                    exploredQid, exploredLabel);
+            if (picked != null) {
+                onUseAsSourceQid.accept(picked[0], picked[1]);
+                status.setText("Used " + picked[0] + ".");
             }
         });
+        openQidButton.addActionListener(e -> openQid());
         // addSeedsButton is wired via the queryRunner (it fetches the relation's
         // members on demand, then onAddSeedQids — see buildMembersQuery /
         // acceptMembers).
@@ -212,11 +272,65 @@ public class ExploreByExamplePanel extends JPanel {
         updateButtons();
     }
 
+    /** Open a pasted QID: fetch its real label (via the API) so it isn't shown/emitted as
+     *  its own label, then explore it. Falls back to the bare QID if there's no runner. */
+    private void openQid() {
+        String qid = qidField.getText().trim().toUpperCase(java.util.Locale.ROOT);
+        if (!qid.matches("Q\\d+")) {
+            status.setText("Enter a QID such as Q42.");
+            return;
+        }
+        // Open-QID is a new explicit choice. An old highlighted search row must not
+        // continue to win in pickEntity while this lookup is in progress.
+        candidates.setRows(List.of());
+        exploredQid = "";
+        exploredLabel = "";
+        updateButtons();
+        if (queryRunner == null) {
+            status.setText("A query connection is required to verify " + qid + ".");
+            return;
+        }
+        status.setText("Opening " + qid + "…");
+        queryRunner.runQuiet(new quiz.enrichment.WikimediaEntityLookup().byQid(qid),
+                entity -> SwingUtilities.invokeLater(() -> {
+                    boolean found = entity != null
+                            && (!(entity.label() == null || entity.label().isBlank())
+                            || !(entity.description() == null || entity.description().isBlank())
+                            || !entity.claims().isEmpty());
+                    if (found) {
+                        exploreQid(qid, entity.label() == null || entity.label().isBlank()
+                                ? qid : entity.label());
+                    } else {
+                        status.setText(qid + " was not found.");
+                        updateButtons();
+                    }
+                }),
+                ex -> SwingUtilities.invokeLater(() -> {
+                    status.setText("Could not verify " + qid + ": " + ex.getMessage());
+                    updateButtons();
+                }));
+    }
+
+    /** The entity the "use" action emits. A visibly-selected candidate ALWAYS wins; the
+     *  explored/opened entity is the fallback only for the graph-follow / Open-QID paths,
+     *  where there is no candidate row. (Preferring exploredQid unconditionally emitted the
+     *  wrong entity after exploring A then re-selecting B in the top list.) */
+    static String[] pickEntity(boolean hasCandidate, String candidateQid, String candidateLabel,
+                               String exploredQid, String exploredLabel) {
+        if (hasCandidate && candidateQid != null && candidateQid.matches("Q\\d+")) {
+            return new String[]{candidateQid, candidateLabel};
+        }
+        if (exploredQid != null && exploredQid.matches("Q\\d+")) {
+            return new String[]{exploredQid, exploredLabel};
+        }
+        return null;
+    }
+
     private void updateButtons() {
         boolean haveCandidate = candidates.hasSelection();
         boolean haveProbe = probeTable.getSelectedRow() >= 0;
         exploreButton.setEnabled(haveCandidate && queryRunner != null);
-        useSourceButton.setEnabled(haveCandidate);
+        useSourceButton.setEnabled(haveCandidate || exploredQid.matches("Q\\d+"));
         showMembersButton.setEnabled(haveProbe);
         addTargetsButton.setEnabled(haveProbe);
         addSeedsButton.setEnabled(haveProbe);
@@ -236,6 +350,9 @@ public class ExploreByExamplePanel extends JPanel {
     private void acceptSearch(TableQueryResult result) {
         List<List<Object>> rows = result == null ? List.of() : result.rows();
         SwingUtilities.invokeLater(() -> {
+            exploredQid = "";
+            exploredLabel = "";
+            currentLabel.setText(" ");
             candidates.setRows(rows);
             status.setText(rows.size() + " candidate(s) — pick one, then Explore.");
             updateButtons();

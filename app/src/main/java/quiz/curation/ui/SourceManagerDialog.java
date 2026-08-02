@@ -162,7 +162,8 @@ public final class SourceManagerDialog extends JDialog {
         open.addActionListener(e -> open());
         JButton findWikidata = new JButton("Find Wikidata QID…");
         findWikidata.setToolTipText(
-                "Search by name, review labels and descriptions, then use the selected QID");
+                "Search by name — or paste a QID you already found (e.g. via Explore) — "
+                + "then use the selected entity");
         findWikidata.addActionListener(e -> findWikidata());
         actions.add(findWikidata);
         actions.add(save);

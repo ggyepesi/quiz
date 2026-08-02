@@ -7,20 +7,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikimediaFieldEnrichmentProviderTest {
-
-    @Test
-    void fieldNameSelectsThePopulationProperty() {
-        assertEquals("P1082",
-                WikimediaFieldEnrichmentProvider.propertyFor("population").property());
-        // the dotted-path leaf is matched, not the whole path
-        assertEquals("P1082",
-                WikimediaFieldEnrichmentProvider.propertyFor("demographics.population").property());
-        assertNull(WikimediaFieldEnrichmentProvider.propertyFor("capital"));
-    }
 
     @Test
     void readsPopulationQuantityAsANumber() throws Exception {
@@ -32,7 +21,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 }}}
                 """;
         WikimediaFieldEnrichmentProvider provider =
-                new WikimediaFieldEnrichmentProvider(uri -> entity);
+                new WikimediaFieldEnrichmentProvider("P1082", uri -> entity);
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject("Country", "Q1039", "Tanzania"),
                 "population", false, List.of());
@@ -62,7 +51,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 }}}
                 """;
         WikimediaFieldEnrichmentProvider provider =
-                new WikimediaFieldEnrichmentProvider(uri -> entity);
+                new WikimediaFieldEnrichmentProvider("P1082", uri -> entity);
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject("Country", "Q1039", "X"),
                 "population", false, List.of());
@@ -94,7 +83,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 }}}
                 """;
         WikimediaFieldEnrichmentProvider provider =
-                new WikimediaFieldEnrichmentProvider(uri -> entity);
+                new WikimediaFieldEnrichmentProvider("P1082", uri -> entity);
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject("Country", "Q1039", "X"),
                 "population", false, List.of());
@@ -106,18 +95,23 @@ class WikimediaFieldEnrichmentProviderTest {
     }
 
     @Test
-    void unsupportedWithoutQidOrMappableField() {
+    void unsupportedWithoutQidOrChosenProperty() {
         WikimediaFieldEnrichmentProvider provider =
-                new WikimediaFieldEnrichmentProvider(uri -> "{}");
+                new WikimediaFieldEnrichmentProvider("P1082", uri -> "{}");
         assertFalse(provider.supports(new EnrichmentRequest(
                 new EnrichmentProposal.Subject("Country", null, "X"),
                 "population", false, List.of())));            // no QID
-        assertFalse(provider.supports(new EnrichmentRequest(
-                new EnrichmentProposal.Subject("Country", "Q1039", "X"),
-                "capital", false, List.of())));               // unmapped field
         assertTrue(provider.supports(new EnrichmentRequest(
                 new EnrichmentProposal.Subject("Country", "Q1039", "X"),
-                "population", false, List.of())));            // mappable + QID
+                "anyFieldName", false, List.of())));          // explicit P1082
+        assertTrue(provider.supports(new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1039", "X"),
+                "population", false, List.of())));            // names are irrelevant
+        WikimediaFieldEnrichmentProvider noChosenProperty =
+                new WikimediaFieldEnrichmentProvider((String) null);
+        assertFalse(noChosenProperty.supports(new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1039", "X"),
+                "population", false, List.of())));
     }
 
     @Test
@@ -141,6 +135,35 @@ class WikimediaFieldEnrichmentProviderTest {
         assertEquals(1, result.fields().size());
         // formatted by shape: a non-Jan-1 time → the full ISO date
         assertEquals("1959-08-21", result.fields().get(0).proposedValue());
+    }
+
+    @Test
+    void resolvesEntityClaimToLabelForTextCollection() throws Exception {
+        String entity = """
+                {"entities":{"Q30":{"claims":{"P36":[{"rank":"normal",
+                  "mainsnak":{"datatype":"wikibase-item","datavalue":{"value":{"id":"Q61"}}}}]}}}}
+                """;
+        String label = """
+                {"entities":{"Q61":{"labels":{"en":{"value":"Washington, D.C."}}}}}
+                """;
+        WikimediaFieldEnrichmentProvider provider =
+                new WikimediaFieldEnrichmentProvider("P36",
+                        uri -> uri.toString().contains("props=labels") ? label : entity);
+        objectview.field.FieldRef capitals = objectview.field.FieldRef.described(
+                "capitals", objectview.field.FieldKind.COLLECTION,
+                objectview.field.FieldKind.TEXT, "Collection<String>",
+                false, true, null, false, false,
+                false, false, "", false, false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("State", "usa", "Q30", "United States"),
+                "capitals", true, List.of(), capitals);
+
+        EnrichmentProposal.FieldCandidate candidate = provider.discover(request)
+                .execute(new QueryContext(null, null)).fields().get(0);
+
+        assertEquals("Washington, D.C.", candidate.proposedValue());
+        assertEquals(EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                candidate.suggestedAction());
     }
 
     @Test

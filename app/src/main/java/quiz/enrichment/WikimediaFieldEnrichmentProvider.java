@@ -9,32 +9,21 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Reads a scalar Wikidata property value for the subject and proposes it as a field
- * value (Population, area, …). The property is AUTO-DERIVED from the target field's
- * name — mirroring {@link WikimediaImageEnrichmentProvider}'s field→property mapping,
- * but for scalar claims rather than Commons media. The provider only proposes; the
+ * Reads one explicitly selected Wikidata property value for the subject and proposes it
+ * as a field value. Selection comes from a sample entity's real claims; field names carry
+ * no source-specific meaning here. The provider only proposes; the
  * value lands via the ordinary review → Correction overlay, so it fills an existing
  * field or a newly added one identically.
  */
 public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvider {
 
     private final WikimediaEntityLookup lookup;
-    // An explicit property CHOSEN from the entity's real claims; null → fall back to the
-    // name-derived default. Choosing beats hardcoding, so the property finder passes this.
+    // The property CHOSEN from the sample entity's real claims.
     private final String propertyPid;
 
-    public WikimediaFieldEnrichmentProvider() {
-        this(null, WikimediaEntityLookup.defaultFetcher());
-    }
-
-    /** Read a SPECIFIC Wikidata property (chosen from the entity's claims), not one
-     *  auto-derived from the field name. */
+    /** Read the property chosen from the sample entity's claims. */
     public WikimediaFieldEnrichmentProvider(String propertyPid) {
         this(propertyPid, WikimediaEntityLookup.defaultFetcher());
-    }
-
-    WikimediaFieldEnrichmentProvider(WikimediaEntityLookup.JsonFetcher fetcher) {
-        this(null, fetcher);
     }
 
     WikimediaFieldEnrichmentProvider(
@@ -42,15 +31,6 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
         this.propertyPid = propertyPid == null || propertyPid.isBlank()
                 ? null : propertyPid.trim();
         this.lookup = new WikimediaEntityLookup(fetcher);
-    }
-
-    /** The property to read: the explicitly chosen one, else the name-derived default. */
-    private String resolvedProperty(EnrichmentRequest request) {
-        if (propertyPid != null) {
-            return propertyPid;
-        }
-        FieldProperty derived = propertyFor(request.targetField());
-        return derived == null ? null : derived.property();
     }
 
     @Override public String name() {
@@ -61,16 +41,16 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
         return request != null && request.subject() != null
                 && request.subject().id() != null
                 && request.subject().id().matches("Q\\d+")
-                && resolvedProperty(request) != null;
+                && propertyPid != null;
     }
 
     @Override public Query<EnrichmentProposal> discover(EnrichmentRequest request) {
         if (!supports(request)) {
             throw new IllegalArgumentException(
-                    "Wikimedia value discovery needs a QID and a chosen or mappable property");
+                    "Wikimedia value discovery needs a QID and a chosen property");
         }
         String qid = request.subject().id();
-        String property = resolvedProperty(request);
+        String property = propertyPid;
         return new Query<>() {
             @Override public String purpose() {
                 return "Read a Wikidata property value";
@@ -109,6 +89,14 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
 
                 List<EnrichmentProposal.FieldCandidate> fields = new ArrayList<>();
                 Object value = bestValue(entity.claims(property));
+                // Entity-valued claims are QIDs. A
+                // text field wants the entity label, while a reference field must stay
+                // schema-incompatible until a real Viewable reference can be resolved.
+                if (value instanceof String entityQid
+                        && entityQid.matches("Q\\d+") && textTarget(request)) {
+                    value = lookup.labels(List.of(entityQid)).execute(context)
+                            .getOrDefault(entityQid, entityQid);
+                }
                 if (value != null) {
                     String incompatibility = FieldValueCompatibility.problem(
                             request.targetSchema(), value);
@@ -149,6 +137,14 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
             }
         }
         return best == null ? null : formatValue(best.value());
+    }
+
+    private static boolean textTarget(EnrichmentRequest request) {
+        objectview.field.FieldRef schema = request.targetSchema();
+        if (schema == null) return false;
+        objectview.field.FieldKind kind = schema.collection()
+                ? schema.valueKind() : schema.kind();
+        return kind == objectview.field.FieldKind.TEXT;
     }
 
     /** Format a claim value by its SHAPE, so a property chosen from real data works
@@ -243,28 +239,4 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
         }
     }
 
-    /** The name-derived property to PRE-SELECT in the picker (a convenience default the
-     *  user confirms or overrides), or null when the name maps to nothing. */
-    public static String suggestedPropertyPid(String field) {
-        FieldProperty derived = propertyFor(field);
-        return derived == null ? null : derived.property();
-    }
-
-    /** Field name → Wikidata property, matched by keyword like the image mapping. Grows
-     *  as new scalar fields appear (inception/joined→P571, area→P2046, …). */
-    static FieldProperty propertyFor(String field) {
-        String leaf = field == null ? "" : field.toLowerCase(Locale.ROOT);
-        int dot = leaf.lastIndexOf('.');
-        if (dot >= 0) {
-            leaf = leaf.substring(dot + 1);
-        }
-        if (leaf.contains("population")) {
-            return new FieldProperty("P1082", ValueKind.QUANTITY);
-        }
-        return null;
-    }
-
-    enum ValueKind { QUANTITY, STRING }
-
-    record FieldProperty(String property, ValueKind kind) { }
 }
