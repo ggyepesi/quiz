@@ -30,10 +30,13 @@ class SourceFieldIntegrationTest {
         assertFalse(domain.types().contains("Source"));
         assertNotNull(domain.fieldSchema("Source"));
         assertTrue(domain.fieldSchema("Source").fields().stream()
-                .anyMatch(field -> field.name().equals("qid") && field.link()));
+                .anyMatch(field -> field.name().equals("record") && field.link()));
         assertTrue(domain.fields("ManualItem").stream()
-                .anyMatch(field -> field.field().equals("source.qid")),
-                "validation/search configuration sees QID through the ordinary field tree");
+                .anyMatch(field -> field.field().equals("source.record")),
+                "validation/search configuration sees the source link through the ordinary field tree");
+        assertTrue(domain.fields("ManualItem").stream()
+                .anyMatch(field -> field.field().equals("source.sourceId")),
+                "the provider-specific id remains an ordinary visible field");
     }
 
     @Test void resolvedIdentityMaterializesAndSnapshotConversionKeepsSourceAsValue(
@@ -63,7 +66,7 @@ class SourceFieldIntegrationTest {
         // shows a readable name; the QID identity is preserved in the sourceId field (name is
         // hidden, folded into the link label).
         assertEquals("Douglas Adams|https://www.wikidata.org/wiki/Q42",
-                sourceValue.dynamicFields().get("qid"));
+                sourceValue.dynamicFields().get("record"));
         assertEquals("Q42", sourceValue.dynamicFields().get("sourceId"));
     }
 

@@ -24,6 +24,7 @@ import quiz.enrichment.ui.EnrichmentReviewPanel;
 import quiz.curation.Correction;
 import quiz.curation.CorrectionPolicy;
 import quiz.curation.Corrections;
+import quiz.curation.CurationStaging;
 import quiz.curation.IdentityLink;
 import quiz.curation.ScopeFilter;
 
@@ -117,12 +118,11 @@ public final class ValidationPanel extends JPanel {
     // It is session-scoped until explicitly promoted, while accepted values remain durable
     // per-instance Corrections. The qualified key prevents same-named fields from colliding.
     private final Map<FieldKey, FieldSourceMapping> fieldSources = new java.util.HashMap<>();
-    // THE STAGING BUFFER of the curation pipeline — scope → produce → STAGE → review →
-    // approve. Each StagedEdit is a manual-value Correction or an approved IdentityLink,
-    // already in the in-memory store but NOT yet saved; the instance shows it (value or
-    // source filled) and stays visible until the user clicks "Apply changes", which commits
-    // every staged edit in one save. Any save (here or Find Data's) clears the buffer.
-    private final java.util.List<StagedEdit> staged = new java.util.ArrayList<>();
+    // Pending edits are deliberately separate from ManualCuration. The staging object is
+    // shared by every panel for the same sidecar, so modeless windows cannot accidentally
+    // save one another's pending work or display contradictory Apply counts.
+    private final CurationStaging staging;
+    private final Runnable stagingListener = this::updateApplyButton;
     private final SwingQueryRunner queryRunner;
     private final SwingProcessRunner findDataRunner;
     // Re-render the owning view after an accepted enrichment writes a correction.
@@ -133,6 +133,7 @@ public final class ValidationPanel extends JPanel {
     private Boolean identityDrill;
     private boolean identityTask;
     private ScopeFilter scopeFilter = ScopeFilter.MISSING;
+    private long identityLabelRequest;
 
     public ValidationPanel(DomainModel domain) {
         this(domain, null, null, null, null);
@@ -165,6 +166,7 @@ public final class ValidationPanel extends JPanel {
         this.domain = domain;
         this.onCurated = onCurated == null ? () -> { } : onCurated;
         this.identityResolver = identityResolver;
+        this.staging = CurationStaging.forCuration(curationStore());
         this.queryRunner = queryRunner == null
                 ? new SwingQueryRunner(
                         new QueryContext(new WikidataSparqlClient(
@@ -241,6 +243,10 @@ public final class ValidationPanel extends JPanel {
         bar.add(identityStatus);
         bar.add(showIdentifiedButton);
         bar.add(showUnresolvedButton);
+        // Apply is a transaction-level action, not an action of the currently visible
+        // field drill. Keep it reachable even when a filter has zero rows or the user
+        // navigates to another type after staging an edit.
+        bar.add(applyButton);
         bar.add(cancelProcessButton);
 
         JPanel top = new JPanel(new BorderLayout());
@@ -260,13 +266,20 @@ public final class ValidationPanel extends JPanel {
             typeCombo.setSelectedIndex(0);
             onType();
         }
+        updateApplyButton();
     }
 
     // Split the space evenly once realized (setResizeWeight only governs *resize*
     // distribution, not the initial divider seeded from preferred sizes).
     @Override public void addNotify() {
         super.addNotify();
+        if (staging != null) staging.addChangeListener(stagingListener);
         SwingUtilities.invokeLater(() -> split.setDividerLocation(0.5));
+    }
+
+    @Override public void removeNotify() {
+        if (staging != null) staging.removeChangeListener(stagingListener);
+        super.removeNotify();
     }
 
     /** The last selected missing member — the target a curation/enrichment action fills. */
@@ -421,8 +434,6 @@ public final class ValidationPanel extends JPanel {
             header.add(resolveMissingButton);
         }
         header.add(exploreIdentityButton);
-        updateApplyButton();
-        header.add(applyButton);
         instancesHolder.add(header, BorderLayout.NORTH);
         if (!matching.isEmpty()) {
             instancesHolder.add(identityInstancesView(matching), BorderLayout.CENTER);
@@ -434,7 +445,7 @@ public final class ValidationPanel extends JPanel {
     /** APPROVE stage indicator — one button commits every staged edit (manual values +
      *  identities) in a single save. */
     private void updateApplyButton() {
-        int n = staged.size();
+        int n = staging == null ? 0 : staging.size();
         applyButton.setEnabled(n > 0);
         applyButton.setText(n == 0 ? "Apply changes" : "Apply changes (" + n + ")");
         applyButton.setToolTipText(n == 0
@@ -621,10 +632,6 @@ public final class ValidationPanel extends JPanel {
     /** A ModelBuilder-compatible field source is qualified by its owning class. */
     private record FieldKey(String type, String path) { }
 
-    /** One staged curation edit awaiting explicit approval — a manual-value Correction or an
-     *  approved IdentityLink, already in the in-memory store but not yet saved. */
-    private record StagedEdit(String kind, String type, String id, String field) { }
-
     /** ViewConfigEditor represents a subtype heading with an internal path segment
      * such as {@code @subtype:USState.admissionDate}. Strip those presentation-only
      * segments and retain the deepest subtype as the field's coverage scope. */
@@ -733,9 +740,6 @@ public final class ValidationPanel extends JPanel {
                 addValueButton.setVisible(field != null && field.collection());
                 target.add(headerLine(manualValue, setValueButton, addValueButton));
             }
-            // APPROVE stage — manual values / identities staged above commit here.
-            updateApplyButton();
-            target.add(headerLine(applyButton));
         }
         target.revalidate();
         target.repaint();
@@ -993,10 +997,9 @@ public final class ValidationPanel extends JPanel {
             quiz.curation.ManualCuration curation,
             quiz.enrichment.EnrichmentDecision decision) {
         try {
-            // EnrichmentDecisionApplier saves the whole store, so any manual/identity edits
-            // staged in it are now persisted too — clear the shared buffer to stay honest.
+            // Find Data has its own reviewed, durable transaction. It cannot persist the
+            // detached manual/identity staging session, which remains pending afterwards.
             EnrichmentDecisionApplier.apply(domain, curation, decision);
-            staged.clear();
             updateApplyButton();
             onCurated.run();
             onFieldSelected();
@@ -1026,35 +1029,32 @@ public final class ValidationPanel extends JPanel {
         }
         String picked = label == null ? "" : label.trim();
         if (!picked.isBlank()) {
+            identityLabelRequest++;
             commitApprovedIdentity(target, qid, picked);
             return;
         }
-        // The picker returned no label — fetch the entity's Wikidata label OFF the EDT so the
-        // source name is always populated and rendered, then commit on the EDT.
-        new Thread(() -> {
-            String fetched = fetchWikidataLabel(qid);
-            SwingUtilities.invokeLater(() -> commitApprovedIdentity(target, qid, fetched));
-        }, "identity-label-fetch").start();
+        // Reuse the application's managed query runner rather than creating an unmanaged
+        // thread. The generation token prevents a slow fallback lookup from overwriting a
+        // newer picker choice for the same panel.
+        long request = ++identityLabelRequest;
+        queryRunner.runQuiet(new quiz.enrichment.WikimediaEntityLookup().byQid(qid),
+                record -> SwingUtilities.invokeLater(() -> {
+                    if (request != identityLabelRequest) return;
+                    commitApprovedIdentity(target, qid,
+                            record == null ? null : record.label());
+                }),
+                error -> SwingUtilities.invokeLater(() -> {
+                    if (request != identityLabelRequest) return;
+                    commitApprovedIdentity(target, qid, null);
+                }));
     }
 
-    private String fetchWikidataLabel(String qid) {
-        try {
-            var record = new quiz.enrichment.WikimediaEntityLookup()
-                    .byQid(qid).execute(queryRunner.context());
-            return record == null ? null : record.label();
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    /** STAGE an approved identity: write the IdentityLink to memory with a non-empty canonical
-     *  name (falling back to the instance display name), refresh the instance so its source
-     *  (url + qid + name) is filled and rendered, and keep it visible until Apply. Find Data's
-     *  pre-resolve reads the staged link from memory, so deferring the write never blocks a
-     *  batch fill. */
+    /** STAGE an approved identity with a non-empty canonical name (falling back to the
+     *  instance display name), preview its source on the instance, and keep it visible until
+     *  Apply. Find Data reads that preview through the ordinary source contract, so the
+     *  detached durable write never blocks a batch fill. */
     private void commitApprovedIdentity(Viewable target, String qid, String canonicalName) {
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation == null || target == null) return;
+        if (staging == null || target == null) return;
         String targetType = concreteType(target);
         String targetId = target.getIdentifier();
         if (targetId == null || targetId.isBlank()) return;
@@ -1063,9 +1063,10 @@ public final class ValidationPanel extends JPanel {
         IdentityLink approved = new IdentityLink(
                 targetType, targetId, "Wikidata", qid,
                 "https://www.wikidata.org/wiki/" + qid, name, "manual");
-        curation.putIdentityLink(approved);
-        quiz.curation.IdentitySources.refresh(target, curation);
-        stage(new StagedEdit("identity", targetType, targetId, "source"));
+        staging.stage(approved);
+        // Preview the pending identity on the live card. Its durable representation remains
+        // only in CurationStaging until Apply.
+        quiz.curation.IdentitySources.apply(target, approved);
         updateIdentityButton();
         updateIdentityStatus();
         // Re-render (no re-filter) so the modal picker closes promptly and the just-resolved
@@ -1077,29 +1078,18 @@ public final class ValidationPanel extends JPanel {
         }
     }
 
-    /** STAGE stage — record an edit already written to the in-memory store (replacing any
-     *  prior staged edit for the same instance+field) and refresh the Apply button. */
-    private void stage(StagedEdit edit) {
-        staged.removeIf(e -> e.type().equals(edit.type()) && e.id().equals(edit.id())
-                && e.field().equals(edit.field()));
-        staged.add(edit);
-        updateApplyButton();
-    }
-
     /** APPROVE stage — commit every staged edit (manual values + identities) to the sidecar
      *  in one save, then re-filter the current drill so approved items refresh out of scope. */
     private void applyStaged() {
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation == null || staged.isEmpty()) return;
+        if (staging == null || staging.size() == 0) return;
         try {
-            curation.save();
+            staging.apply();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     "Could not save the staged changes: " + ex.getMessage(),
                     "Save failed", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        staged.clear();
         updateApplyButton();
         onCurated.run();
         if (identityTask) showIdentityMembers(identityDrill);
@@ -1126,12 +1116,13 @@ public final class ValidationPanel extends JPanel {
                 .findFirst().orElse(null);
     }
 
-    /** Persist an ordinary field edit as a Correction on the selected field. Identity
-     * deliberately does not come through here: provenance identity is approved and stored as an
+    /** Stage an ordinary field edit as a Correction on the selected field. Identity
+     * deliberately does not come through here: provenance identity is approved and staged as an
      * IdentityLink. */
     private void saveManualValue(CorrectionPolicy policy) {
         quiz.curation.ManualCuration store = curationStore();
-        if (store == null || selected == null || selectedFieldPath == null) return;
+        if (store == null || staging == null || selected == null
+                || selectedFieldPath == null) return;
         String text = manualValue.getText().trim();
         if (text.isEmpty()) return;
         DomainField field = selectedDomainField();
@@ -1148,7 +1139,10 @@ public final class ValidationPanel extends JPanel {
         }
         if (policy == CorrectionPolicy.ADD_TO_COLLECTION) {
             List<Object> additions = new ArrayList<>();
-            store.corrections().stream()
+            // A pending replacement is the current session's value; consult it before the
+            // durable entry when accumulating another collection member.
+            java.util.stream.Stream.concat(
+                    staging.corrections().stream(), store.corrections().stream())
                     .filter(c -> java.util.Objects.equals(c.type(), concreteType(selected))
                             && selected.getIdentifier().equals(c.qid())
                             && selectedFieldPath.equals(c.field())
@@ -1162,13 +1156,11 @@ public final class ValidationPanel extends JPanel {
         }
 
         String memberType = concreteType(selected);
-        // STAGE only — put the Correction in the in-memory store and reflect it on the
-        // instances, but do NOT save. It joins the shared staging buffer and commits with
-        // every other staged edit when the user clicks "Apply changes".
-        store.put(memberType, selected.getIdentifier(), selectedFieldPath, value,
-                Correction.MANUAL, null, policy, null);
-        Corrections.apply(domain.instances(), List.of(store));
-        stage(new StagedEdit("value", memberType, selected.getIdentifier(), selectedFieldPath));
+        Correction pending = new Correction(memberType, selected.getIdentifier(),
+                selectedFieldPath, value, Correction.MANUAL, null, policy, null);
+        staging.stage(pending);
+        // Apply only the detached overlay for preview; the durable store is unchanged.
+        Corrections.apply(domain.instances(), List.of(staging));
         manualValue.setText("");
         onCurated.run();
         // Re-render (no re-filter) so the just-staged value shows and its instance stays.
