@@ -61,8 +61,9 @@ public final class FieldPropertyPickerPanel extends JPanel {
             Component owner, String title, String prompt,
             List<PropertyOption> options, String suggestedPid,
             Consumer<ChosenProperty> onChosen, Dialog.ModalityType modality) {
-        Window window = SwingUtilities.getWindowAncestor(owner);
+        Window window = quiz.ui.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
+        quiz.ui.Dialogs.raiseOnOpen(dialog);
         Consumer<ChosenProperty> handler = onChosen == null ? ignored -> { } : onChosen;
         java.util.concurrent.atomic.AtomicBoolean completed =
                 new java.util.concurrent.atomic.AtomicBoolean();

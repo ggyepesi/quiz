@@ -166,9 +166,10 @@ public class ExploreByExamplePanel extends JPanel {
     public static void showPicker(
             Component parent, SwingQueryRunner runner, String initialName,
             BiConsumer<String, String> onSelected) {
-        Window owner = parent == null ? null : SwingUtilities.getWindowAncestor(parent);
+        Window owner = quiz.ui.Dialogs.owner(parent);
         JDialog dialog = new JDialog(owner, "Find Wikidata entity",
                 Dialog.ModalityType.APPLICATION_MODAL);
+        quiz.ui.Dialogs.raiseOnOpen(dialog);
         ExploreByExamplePanel explorer = new ExploreByExamplePanel();
         explorer.setQueryRunner(runner);
         explorer.entityPicker("Use selected entity");

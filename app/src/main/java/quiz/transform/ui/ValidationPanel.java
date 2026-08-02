@@ -23,7 +23,6 @@ import quiz.curation.ui.SourceManagerDialog;
 import quiz.curation.Correction;
 import quiz.curation.CorrectionPolicy;
 import quiz.curation.Corrections;
-import quiz.curation.CurationTask;
 import quiz.curation.ScopeFilter;
 
 import wikidata.WikidataSparqlClient;
@@ -242,21 +241,26 @@ public final class ValidationPanel extends JPanel {
         return selected;
     }
 
-    /** Open one item from a curation plan on this shared validation/curation surface. */
-    public void openTask(CurationTask task) {
-        if (task == null) return;
-        scopeFilter = task.scopeFilter();
-        typeCombo.setSelectedItem(task.type());
+    /** Select the curation type: its instances become the drilled population; coverage %
+     *  stays over the full domain. */
+    public void selectType(String type) {
+        typeCombo.setSelectedItem(type);
         onType();
-        if (task.kind() == CurationTask.Kind.IDENTITY) {
-            if (scopeFilter == ScopeFilter.ALL) {
-                showIdentityMembers(null);
-            } else {
-                showIdentityMembers(scopeFilter == ScopeFilter.PRESENT);
-            }
-        } else {
-            coverage.setSelectedPath(task.field());
-        }
+    }
+
+    /** Curate a specific field: select the type, apply the scope filter, drill the field. */
+    public void selectField(String type, String field, ScopeFilter filter) {
+        scopeFilter = filter;
+        selectType(type);
+        coverage.setSelectedPath(field);
+    }
+
+    /** Curate identity (source.qid): select the type, apply the scope filter, show the
+     *  matching members in the identity drill. */
+    public void selectIdentity(String type, ScopeFilter filter) {
+        scopeFilter = filter;
+        selectType(type);
+        showIdentityMembers(filter == ScopeFilter.ALL ? null : filter == ScopeFilter.PRESENT);
     }
 
     private void onType() {

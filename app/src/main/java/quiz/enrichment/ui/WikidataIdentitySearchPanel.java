@@ -204,9 +204,10 @@ public final class WikidataIdentitySearchPanel extends JPanel {
     public static void showDialog(
             Component parent, SwingQueryRunner runner, String initialName,
             BiConsumer<String, String> onSelected) {
-        Window owner = parent == null ? null : SwingUtilities.getWindowAncestor(parent);
+        Window owner = quiz.ui.Dialogs.owner(parent);
         JDialog dialog = new JDialog(owner, "Find Wikidata identity",
                 JDialog.ModalityType.APPLICATION_MODAL);
+        quiz.ui.Dialogs.raiseOnOpen(dialog);
         final WikidataIdentitySearchPanel[] holder = new WikidataIdentitySearchPanel[1];
         holder[0] = new WikidataIdentitySearchPanel(runner, initialName, (qid, label) -> {
             onSelected.accept(qid, label);

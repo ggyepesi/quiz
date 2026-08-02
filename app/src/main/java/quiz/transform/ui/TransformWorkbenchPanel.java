@@ -242,16 +242,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return;
         }
         objectview.field.FieldRef field = FieldDefinitions.toFieldRef(definition);
-        RenderedScope currentScope = renderedScope;
         if (controller.addField(type, field)) {
             viewStepsPanel.refreshFields();
             render();
-            List<Viewable> members = currentScope == null
-                    ? controller.domain().instancesOf(type) : currentScope.members();
-            openCurationWorkspace(new quiz.curation.CurationPlan(
-                    "New field: " + type + "." + definition.name(), members,
-                    List.of(quiz.curation.CurationTask.field(type, definition.name(),
-                            quiz.curation.ScopeFilter.MISSING))));
+            openCurationPanel(type, definition.name());
         } else {
             JOptionPane.showMessageDialog(this,
                     "New field is only supported for snapshot-backed domains.");
@@ -568,38 +562,36 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         dialog.setVisible(true);
     }
 
-    /** Define an explicit scope + one or more independent tasks, then execute all of
-     * them through the same ValidationPanel used by Validate. */
+    /** Curate data on the full-population ValidationPanel — the single surface for
+     * validation, identity, manual edits and Find Data. Coverage % is over ALL instances
+     * (domain.instances()), never a filtered subset. Optionally drill a field on open. */
     private void openCuration(String initialField) {
-        RenderedScope scope = renderedScope;
-        if (scope == null) {
-            JOptionPane.showMessageDialog(this, "Wait for the current view to finish rendering.");
-            return;
-        }
-        CurationSetupPanel setup = new CurationSetupPanel(
-                controller.domain(), scope.members(), scope.selectedType());
-        if (initialField != null) setup.selectField(initialField);
-        int answer = JOptionPane.showConfirmDialog(this, setup,
-                "Curate data — choose tasks", JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE);
-        if (answer != JOptionPane.OK_OPTION) return;
-        quiz.curation.CurationPlan plan = setup.plan();
-        if (plan == null) {
-            JOptionPane.showMessageDialog(this, "Choose Identity and/or at least one field.");
-            return;
-        }
-        openCurationWorkspace(plan);
+        String type = renderedScope == null ? null : renderedScope.selectedType();
+        openCurationPanel(type, initialField);
     }
 
-    private void openCurationWorkspace(quiz.curation.CurationPlan plan) {
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
-                "Curate — " + plan.label(), Dialog.ModalityType.MODELESS);
+    private ValidationPanel openCurationPanel(String type, String initialField) {
+        // No explicit instance subset: coverage % is over domain.instances() (the panel's
+        // default) — the fix for the workspace wrapper's wrong per-field percentages.
+        ValidationPanel panel = new ValidationPanel(controller.domain(), null,
+                queries.runner(), this::render, this::resolveIdentities);
+        JDialog dialog = new JDialog(quiz.ui.Dialogs.owner(this),
+                "Curate data — coverage over all instances", Dialog.ModalityType.MODELESS);
         dialog.setLayout(new BorderLayout());
-        dialog.add(new CurationWorkspacePanel(controller.domain(), plan, queries.runner(),
-                this::render, this::resolveIdentities), BorderLayout.CENTER);
-        dialog.setSize(1220, 760);
+        dialog.add(panel, BorderLayout.CENTER);
+        dialog.setSize(1160, 720);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
+        if (type != null) {
+            SwingUtilities.invokeLater(() -> {
+                if (initialField != null) {
+                    panel.selectField(type, initialField, quiz.curation.ScopeFilter.MISSING);
+                } else {
+                    panel.selectType(type);
+                }
+            });
+        }
+        return panel;
     }
 
     /** Open the merge panel: fold a duplicate instance into a primary. Re-render after. */

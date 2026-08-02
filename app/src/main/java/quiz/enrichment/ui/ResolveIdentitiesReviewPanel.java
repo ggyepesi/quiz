@@ -86,8 +86,9 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
             List<ResolveIdentitiesDecision.Resolved> applied,
             Consumer<ResolveIdentitiesDecision> onDone,
             Dialog.ModalityType modality) {
-        Window window = SwingUtilities.getWindowAncestor(owner);
+        Window window = quiz.ui.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
+        quiz.ui.Dialogs.raiseOnOpen(dialog);
         Consumer<ResolveIdentitiesDecision> handler = onDone == null ? ignored -> { } : onDone;
         java.util.concurrent.atomic.AtomicBoolean completed =
                 new java.util.concurrent.atomic.AtomicBoolean();

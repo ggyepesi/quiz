@@ -88,8 +88,9 @@ public final class EnrichmentReviewPanel extends JPanel {
     private static JDialog createDialog(
             Component owner, String title, EnrichmentProposal proposal,
             Consumer<EnrichmentDecision> onApprove, Dialog.ModalityType modality) {
-        Window window = SwingUtilities.getWindowAncestor(owner);
+        Window window = quiz.ui.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
+        quiz.ui.Dialogs.raiseOnOpen(dialog);
         Consumer<EnrichmentDecision> handler =
                 onApprove == null ? ignored -> { } : onApprove;
         java.util.concurrent.atomic.AtomicBoolean completed =

@@ -59,8 +59,9 @@ public final class FindDataBatchReviewPanel extends JPanel {
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone,
             Dialog.ModalityType modality) {
-        Window window = SwingUtilities.getWindowAncestor(owner);
+        Window window = quiz.ui.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
+        quiz.ui.Dialogs.raiseOnOpen(dialog);
         Consumer<BatchReviewDecision> handler = onDone == null ? ignored -> { } : onDone;
         java.util.concurrent.atomic.AtomicBoolean completed =
                 new java.util.concurrent.atomic.AtomicBoolean();

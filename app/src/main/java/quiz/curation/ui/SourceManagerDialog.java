@@ -64,6 +64,7 @@ public final class SourceManagerDialog extends JDialog {
                                 String type, String targetId, String displayName,
                                 SwingQueryRunner queryRunner, Runnable onChanged) {
         super(owner(parent), "Sources — " + displayName, ModalityType.APPLICATION_MODAL);
+        quiz.ui.Dialogs.raiseOnOpen(this);
         this.curation = curation;
         this.type = type;
         this.targetId = targetId;
