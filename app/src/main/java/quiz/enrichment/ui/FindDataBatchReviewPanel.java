@@ -5,7 +5,7 @@ import quiz.enrichment.EnrichmentDecision;
 import quiz.enrichment.EnrichmentProposal;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
@@ -13,12 +13,18 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.Window;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -85,7 +91,12 @@ public final class FindDataBatchReviewPanel extends JPanel {
         return dialog;
     }
 
-    private final Map<EnrichmentProposal, JCheckBox> rows = new LinkedHashMap<>();
+    private record Row(EnrichmentProposal proposal, JCheckBox accept) { }
+
+    private final List<Row> rows = new ArrayList<>();
+    // Rows per tab, so "Select all/none in tab" act on the VISIBLE tab only.
+    private final Map<Component, List<Row>> rowsByTab = new LinkedHashMap<>();
+    private JTabbedPane groups;
 
     private FindDataBatchReviewPanel(
             String prompt,
@@ -94,42 +105,89 @@ public final class FindDataBatchReviewPanel extends JPanel {
         super(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Compatible proposals are reviewable; incompatible source values remain visible
-        // as disabled rows so a schema mismatch is explicit rather than looking like
-        // missing data.
-        List<EnrichmentProposal> applicable = new ArrayList<>();
-        for (EnrichmentProposal proposal : proposals) {
-            if (EnrichmentDecision.acceptDefault(proposal) != null) {
-                applicable.add(proposal);
-            }
-        }
-
-        int incompatible = proposals == null ? 0 : proposals.size() - applicable.size();
-        add(new JLabel("<html>" + html(prompt) + " &nbsp;<i>(" + applicable.size()
-                + " compatible proposal(s)" + (incompatible == 0 ? ""
-                : ", " + incompatible + " rejected by field type")
-                + ")</i></html>"), BorderLayout.NORTH);
-
-        JPanel list = new JPanel();
-        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+        // Same skeleton as Resolve identities: FOUND (compatible) values are accepted by
+        // default; NOT-APPLICABLE ones stay visible but unselectable so a schema mismatch is
+        // explicit rather than looking like missing data. No "ambiguous" tab — Find Data
+        // proposes one value per member, not a choice of candidates.
+        List<EnrichmentProposal> found = new ArrayList<>();
+        List<EnrichmentProposal> notApplicable = new ArrayList<>();
         for (EnrichmentProposal proposal : proposals == null
                 ? List.<EnrichmentProposal>of() : proposals) {
-            boolean accepted = applicable.contains(proposal);
-            JCheckBox box = new JCheckBox(rowLabel(proposal), accepted);
-            box.setEnabled(accepted);
-            if (accepted) rows.put(proposal, box);
-            list.add(box);
+            if (EnrichmentDecision.acceptDefault(proposal) != null) found.add(proposal);
+            else notApplicable.add(proposal);
         }
-        add(new JScrollPane(list), BorderLayout.CENTER);
+
+        add(new JLabel("<html>" + html(prompt) + "</html>"), BorderLayout.NORTH);
+
+        groups = new JTabbedPane();
+        groups.addTab("Found (" + found.size() + ")",
+                sectionPanel("Found values — accepted; uncheck any you don't want",
+                        found, true));
+        groups.addTab("Not applicable (" + notApplicable.size() + ")",
+                sectionPanel("Rejected by field type / no value found", notApplicable, false));
+        add(groups, BorderLayout.CENTER);
         add(buttons(onApprove), BorderLayout.SOUTH);
     }
 
+    /** One group as an independently scrollable result panel — mirrors the Resolve
+     *  identities section layout. */
+    private JComponent sectionPanel(
+            String title, List<EnrichmentProposal> items, boolean selectable) {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+
+        JLabel heading = new JLabel(title);
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD));
+        GridBagConstraints hc = gbc(0, new Insets(2, 4, 8, 4));
+        panel.add(heading, hc);
+
+        int firstRow = rows.size();
+        if (items.isEmpty()) {
+            JLabel none = new JLabel("(none)");
+            none.setForeground(Color.GRAY);
+            panel.add(none, gbc(1, new Insets(2, 4, 2, 4)));
+        } else {
+            int y = 1;
+            for (EnrichmentProposal proposal : items) {
+                String label = rowLabel(proposal);
+                JCheckBox accept = new JCheckBox(truncate(label, 90), selectable);
+                accept.setEnabled(selectable);
+                accept.setToolTipText(label);
+                panel.add(accept, gbc(y++, new Insets(1, 4, 1, 4)));
+                rows.add(new Row(proposal, accept));
+            }
+        }
+
+        GridBagConstraints filler = gbc(items.size() + 2, new Insets(0, 0, 0, 0));
+        filler.weighty = 1.0;
+        filler.fill = GridBagConstraints.BOTH;
+        panel.add(Box.createGlue(), filler);
+
+        JScrollPane scroll = new JScrollPane(panel);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        rowsByTab.put(scroll, new ArrayList<>(rows.subList(firstRow, rows.size())));
+        return scroll;
+    }
+
+    private GridBagConstraints gbc(int y, Insets pad) {
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.gridx = 0;
+        gc.gridy = y;
+        gc.weightx = 1.0;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.anchor = GridBagConstraints.WEST;
+        gc.gridwidth = GridBagConstraints.REMAINDER;
+        gc.insets = pad;
+        return gc;
+    }
+
     private JComponent buttons(Consumer<BatchReviewDecision> onApprove) {
-        JButton all = new JButton("Select all");
-        all.addActionListener(e -> rows.values().forEach(box -> box.setSelected(true)));
-        JButton none = new JButton("Select none");
-        none.addActionListener(e -> rows.values().forEach(box -> box.setSelected(false)));
-        JButton cancel = new JButton("Cancel");
+        JButton all = new JButton("Select all in tab");
+        all.addActionListener(e -> currentTabRows().forEach(
+                r -> { if (r.accept().isEnabled()) r.accept().setSelected(true); }));
+        JButton none = new JButton("Select none in tab");
+        none.addActionListener(e -> currentTabRows().forEach(r -> r.accept().setSelected(false)));
+        JButton cancel = new JButton("Close without applying");
         cancel.addActionListener(e -> onApprove.accept(new BatchReviewDecision(List.of())));
         JButton apply = new JButton("Apply selected");
         apply.addActionListener(e -> onApprove.accept(collect()));
@@ -137,22 +195,32 @@ public final class FindDataBatchReviewPanel extends JPanel {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         panel.add(all);
         panel.add(none);
+        panel.add(Box.createHorizontalStrut(12));
         panel.add(cancel);
         panel.add(apply);
         return panel;
     }
 
+    /** Rows of the currently visible tab — the scope of "Select all/none in tab".
+     *  (Apply still collects selected rows across ALL tabs.) */
+    private List<Row> currentTabRows() {
+        if (groups == null) return rows;
+        return rowsByTab.getOrDefault(groups.getSelectedComponent(), List.of());
+    }
+
     private BatchReviewDecision collect() {
         List<EnrichmentDecision> accepted = new ArrayList<>();
-        rows.forEach((proposal, box) -> {
-            if (box.isSelected()) {
-                EnrichmentDecision decision = EnrichmentDecision.acceptDefault(proposal);
-                if (decision != null) {
-                    accepted.add(decision);
-                }
-            }
-        });
+        for (Row row : rows) {
+            if (!row.accept().isSelected()) continue;
+            EnrichmentDecision decision = EnrichmentDecision.acceptDefault(row.proposal());
+            if (decision != null) accepted.add(decision);
+        }
         return new BatchReviewDecision(accepted);
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) return "";
+        return value.length() <= max ? value : value.substring(0, max - 1) + "…";
     }
 
     private static String rowLabel(EnrichmentProposal proposal) {

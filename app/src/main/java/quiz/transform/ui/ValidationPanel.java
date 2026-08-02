@@ -724,30 +724,22 @@ public final class ValidationPanel extends JPanel {
                 .findFirst().orElse(null);
         boolean media = drilled == null || drilled.kind() == objectview.field.FieldKind.MEDIA;
 
-        // For a scalar field with no property chosen yet, pick it ONCE from a sample
-        // member's REAL claims (not a hardcoded name→property map), then fill the batch.
+        // For a scalar field with no property chosen yet, find the RELATION in Explore:
+        // seed a sample member's entity, let the user pick the relation that carries the
+        // value, then produce the batch with that property.
         if (!media && !fieldProperty.containsKey(path)) {
             String sampleQid = sampleQidFor(path, curation);
             if (sampleQid != null) {
-                findDataRunner.run(
-                        new quiz.enrichment.ChooseFieldPropertyProcess(sampleQid, path,
-                                null),
-                        outcome -> SwingUtilities.invokeLater(() -> {
-                            quiz.enrichment.ChosenProperty chosen = outcome.result();
-                            if (chosen != null && chosen.isPresent()) {
-                                fieldProperty.put(path, chosen.pid());
-                                runFillBatch(path);
-                            } else if (outcome.status() == ProcessStatus.FAILED
-                                    && outcome.error() != null) {
-                                JOptionPane.showMessageDialog(ValidationPanel.this,
-                                        "Could not list properties: "
-                                                + outcome.error().getMessage());
-                            }
-                        }),
-                        ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
-                                "Could not list properties: " + ex.getMessage()));
+                wikidata.explore.workbench.ExploreByExamplePanel.showRelationPicker(
+                        this, queryRunner, sampleQid, sampleLabelFor(sampleQid),
+                        (pid, label) -> {
+                            fieldProperty.put(path, pid);
+                            runFillBatch(path);   // Produce: run the existing Find Data batch
+                        });
                 return;
             }
+            // No member resolves to a Wikidata entity yet — fall through so runFillBatch
+            // reports that identities must be resolved first (Find Data needs source.qid).
         }
         runFillBatch(path);
     }
@@ -760,6 +752,20 @@ public final class ValidationPanel extends JPanel {
             String qid = resolvedQid(member,
                     EnrichmentSources.collect(member, concreteType(member), curation));
             if (qid != null) return qid;
+        }
+        return null;
+    }
+
+    /** Display name of the drilled member resolving to {@code sampleQid} — the label shown
+     *  while its relations load in the Explore relation picker. */
+    private String sampleLabelFor(String sampleQid) {
+        if (sampleQid == null) return null;
+        quiz.curation.ManualCuration curation = curationStore();
+        for (Viewable member : drilledInstances) {
+            if (!domain.isInstanceOf(member, curatedFieldType)) continue;
+            String qid = resolvedQid(member,
+                    EnrichmentSources.collect(member, concreteType(member), curation));
+            if (sampleQid.equals(qid)) return member.getDisplayName();
         }
         return null;
     }
