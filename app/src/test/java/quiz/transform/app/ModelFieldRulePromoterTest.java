@@ -38,6 +38,7 @@ class ModelFieldRulePromoterTest {
                 "State", "Q1", "population", 10L, "wikidata", null,
                 CorrectionPolicy.FILL_IF_EMPTY,
                 new ValueSource("Wikidata", "Q1", "P1082",
+                        "population", "ROOT_TO_ITEM",
                         "https://www.wikidata.org/wiki/Q1"));
         curation.put("State", "Q1", "population", 10L, "wikidata", null,
                 correction.policy(), correction.source());
@@ -55,6 +56,7 @@ class ModelFieldRulePromoterTest {
                 .filter(field -> "population".equals(field.name()))
                 .findFirst().orElseThrow();
         assertEquals("P1082", promoted.mapping().propertyPid());
+        assertEquals("population", promoted.mapping().propertyLabel());
         assertEquals(wikidata.explore.model.RuleDirection.ROOT_TO_ITEM,
                 promoted.mapping().direction());
         assertEquals(1, curation.corrections().size(),

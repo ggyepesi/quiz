@@ -126,7 +126,7 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     private void rebuildSource() {
         source(wikidataUrl == null || wikidataUrl.isBlank()
                 ? null
-                : new WikidataSource(qid, wikidataUrl));
+                : new WikidataSource(qid, wikidataUrl, name));
     }
 
     // One interned instance per QID, replacing the legacy

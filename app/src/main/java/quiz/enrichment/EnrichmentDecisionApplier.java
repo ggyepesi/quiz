@@ -77,8 +77,9 @@ public final class EnrichmentDecisionApplier {
                 EnrichmentProposal.SourceRef candidateSource = candidate.source();
                 quiz.curation.ValueSource source = candidateSource == null ? null
                         : new quiz.curation.ValueSource(
-                                candidateSource.kind(), candidateSource.sourceId(),
-                                candidateSource.propertyId(), candidateSource.recordUrl());
+                        candidateSource.kind(), candidateSource.sourceId(),
+                        candidateSource.propertyId(), candidateSource.propertyLabel(),
+                        candidateSource.direction(), candidateSource.recordUrl());
                 curation.put(type, targetId, candidate.field(), value,
                         origin, null, policy, source);
             }
@@ -88,8 +89,9 @@ public final class EnrichmentDecisionApplier {
                 EnrichmentProposal.SourceRef mediaSource = media.source();
                 quiz.curation.ValueSource source = mediaSource == null ? null
                         : new quiz.curation.ValueSource(
-                                mediaSource.kind(), mediaSource.sourceId(),
-                                mediaSource.propertyId(), mediaSource.recordUrl());
+                        mediaSource.kind(), mediaSource.sourceId(),
+                        mediaSource.propertyId(), mediaSource.propertyLabel(),
+                        mediaSource.direction(), mediaSource.recordUrl());
                 curation.put(type, targetId, media.field(), media.imageUrl(), origin,
                         media.collection()
                                 ? Correction.MEDIA_COLLECTION : Correction.MEDIA,

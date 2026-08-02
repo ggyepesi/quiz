@@ -68,23 +68,12 @@ public final class FindDataBatchReviewPanel extends JPanel {
         Window window = quiz.ui.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
         quiz.ui.Dialogs.raiseOnOpen(dialog);
-        Consumer<BatchReviewDecision> handler = onDone == null ? ignored -> { } : onDone;
-        java.util.concurrent.atomic.AtomicBoolean completed =
-                new java.util.concurrent.atomic.AtomicBoolean();
-        Consumer<BatchReviewDecision> finish = decision -> {
-            if (completed.compareAndSet(false, true)) {
-                handler.accept(decision);
-                dialog.dispose();
-            }
-        };
+        Consumer<BatchReviewDecision> finish =
+                quiz.ui.Dialogs.completion(dialog, onDone);
         FindDataBatchReviewPanel panel =
                 new FindDataBatchReviewPanel(prompt, proposals, finish);
-        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosing(java.awt.event.WindowEvent e) {
-                finish.accept(new BatchReviewDecision(List.of()));
-            }
-        });
+        quiz.ui.Dialogs.completeOnClose(dialog, finish,
+                () -> new BatchReviewDecision(List.of()));
         dialog.add(panel);
         dialog.setSize(720, 560);
         dialog.setLocationRelativeTo(owner);
@@ -150,9 +139,16 @@ public final class FindDataBatchReviewPanel extends JPanel {
             int y = 1;
             for (EnrichmentProposal proposal : items) {
                 String label = rowLabel(proposal);
-                JCheckBox accept = new JCheckBox(truncate(label, 90), selectable);
+                // A REPLACE would overwrite an existing (possibly curated) value, so it is
+                // NOT pre-checked: overwriting is always a deliberate tick.
+                boolean overwrite = overwrites(proposal);
+                JCheckBox accept = new JCheckBox(
+                        truncate(label, 90) + (overwrite ? "  [overwrites existing]" : ""),
+                        selectable && !overwrite);
                 accept.setEnabled(selectable);
-                accept.setToolTipText(label);
+                accept.setToolTipText(overwrite
+                        ? label + " — would replace the current value; check to apply"
+                        : label);
                 panel.add(accept, gbc(y++, new Insets(1, 4, 1, 4)));
                 rows.add(new Row(proposal, accept));
             }
@@ -216,6 +212,12 @@ public final class FindDataBatchReviewPanel extends JPanel {
             if (decision != null) accepted.add(decision);
         }
         return new BatchReviewDecision(accepted);
+    }
+
+    /** A proposal overwrites existing data when any of its field candidates is a REPLACE. */
+    private static boolean overwrites(EnrichmentProposal proposal) {
+        return proposal.fields().stream().anyMatch(
+                f -> f.suggestedAction() == EnrichmentProposal.ReviewAction.REPLACE);
     }
 
     private static String truncate(String value, int max) {

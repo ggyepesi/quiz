@@ -30,9 +30,6 @@ public class ExploreByExamplePanel extends JPanel {
     private Consumer<List<String>> onAddSeedQids = qids -> {};
     private Consumer<List<String>> onAddRelationTargets = qids -> {};
     private BiConsumer<String, String> onUseAsSourceQid = (qid, label) -> {};
-    // Relation picker: emits the selected relation's property (pid, label) — the Wikidata
-    // property chosen to source a field in Find Data.
-    private BiConsumer<String, String> onUseRelation = (pid, label) -> {};
 
     private final JTextField searchField = new JTextField(22);
     private final JTextField qidField = new JTextField(8);
@@ -47,7 +44,6 @@ public class ExploreByExamplePanel extends JPanel {
     private final RelationModel probeModel = new RelationModel();
     private final JTable probeTable = new JTable(probeModel);
     private final JButton showMembersButton = new JButton("Show members");
-    private final JButton useRelationButton = new JButton("Use relation");
     private final JButton addTargetsButton = new JButton("Add as relation targets");
     private final JButton addSeedsButton = new JButton("Add as Seed QIDs");
     private final JLabel hint = new JLabel(
@@ -71,6 +67,8 @@ public class ExploreByExamplePanel extends JPanel {
     private String pendingLabel = "";
 
     private final JLabel status = new JLabel(" ");
+    private JSplitPane mainSplit;
+    private JComponent relationPanel;
 
     public ExploreByExamplePanel() {
         super(new BorderLayout(4, 4));
@@ -125,26 +123,6 @@ public class ExploreByExamplePanel extends JPanel {
         this.onUseAsSourceQid = handler == null ? (q, l) -> {} : handler;
     }
 
-    public void onUseRelation(BiConsumer<String, String> handler) {
-        this.onUseRelation = handler == null ? (p, l) -> {} : handler;
-    }
-
-    /** One-shot RELATION picker: pick an entity, Explore its relations, select the one that
-     * carries the value, then emit its property via {@link #onUseRelation}. "Show members"
-     * stays available to probe a relation; entity/model-mutating actions are hidden. */
-    public void relationPicker(String useButtonLabel) {
-        useRelationButton.setText(useButtonLabel == null || useButtonLabel.isBlank()
-                ? "Use relation" : useButtonLabel);
-        useRelationButton.setToolTipText(
-                "Use the selected relation's property to source the field");
-        useRelationButton.setVisible(true);
-        useSourceButton.setVisible(false);
-        addTargetsButton.setVisible(false);
-        addSeedsButton.setVisible(false);
-        hint.setText("<html>Explore relations → select the relation that carries the value → "
-                + "<b>Use relation</b>. <b>Show members</b> probes one first.</html>");
-    }
-
     /** Use the graph browser outside ModelBuilder. The search, relation preview,
      * member list and follow/back navigation remain; model-mutating actions do not. */
     public void explorationOnly() {
@@ -163,15 +141,35 @@ public class ExploreByExamplePanel extends JPanel {
      * {@link #onUseAsSourceQid}. Model-mutating actions are hidden; the use button is
      * relabeled. This is the inverse of {@link #explorationOnly()}. */
     public void entityPicker(String useButtonLabel) {
+        entityPicker(useButtonLabel, true);
+    }
+
+    /** Configure the same entity picker with optional graph/relation inspection. Identity
+     * curation needs only entity search and selection, while ModelBuilder can retain the
+     * relation browser for verifying and navigating graph structure. */
+    public void entityPicker(String useButtonLabel, boolean relationPanelNeeded) {
         String label = useButtonLabel == null || useButtonLabel.isBlank()
                 ? "Use selected entity" : useButtonLabel;
         useSourceButton.setText(label);
         useSourceButton.setToolTipText("Assign the selected entity");
         addTargetsButton.setVisible(false);
         addSeedsButton.setVisible(false);
-        hint.setText("<html>Search (or Explore relations to verify) → pick an entity in the "
-                + "top list → <b>" + label + "</b>. Double-click a member to follow it; "
-                + "<b>◀ Back</b> retraces.</html>");
+        if (relationPanelNeeded) {
+            hint.setText("<html>Search (or Explore relations to verify) → pick an entity in the "
+                    + "top list → <b>" + label + "</b>. Double-click a member to follow it; "
+                    + "<b>◀ Back</b> retraces.</html>");
+        }
+        showRelationPanel(relationPanelNeeded);
+    }
+
+    private void showRelationPanel(boolean visible) {
+        exploreButton.setVisible(visible);
+        if (mainSplit == null) return;
+        mainSplit.setBottomComponent(visible ? relationPanel : null);
+        mainSplit.setDividerSize(visible ? UIManager.getInt("SplitPane.dividerSize") : 0);
+        mainSplit.setResizeWeight(visible ? 0.5 : 1.0);
+        revalidate();
+        repaint();
     }
 
     /** Pre-seed the search box and run it — e.g. the instance name when opening the picker.
@@ -190,50 +188,33 @@ public class ExploreByExamplePanel extends JPanel {
     public static void showPicker(
             Component parent, SwingQueryRunner runner, String initialName,
             BiConsumer<String, String> onSelected) {
+        showPicker(parent, runner, initialName, true, onSelected);
+    }
+
+    public static void showPicker(
+            Component parent, SwingQueryRunner runner, String initialName,
+            boolean relationPanelNeeded,
+            BiConsumer<String, String> onSelected) {
         Window owner = quiz.ui.Dialogs.owner(parent);
         JDialog dialog = new JDialog(owner, "Find Wikidata entity",
                 Dialog.ModalityType.APPLICATION_MODAL);
         quiz.ui.Dialogs.raiseOnOpen(dialog);
         ExploreByExamplePanel explorer = new ExploreByExamplePanel();
         explorer.setQueryRunner(runner);
-        explorer.entityPicker("Use selected entity");
+        explorer.entityPicker("Use selected entity", relationPanelNeeded);
         explorer.onUseAsSourceQid((qid, label) -> {
-            if (onSelected != null) onSelected.accept(qid, label);
+            // Close immediately: the consumer may persist curation and rebuild a large
+            // instance panel. Keeping the modal picker visible during that work makes a
+            // successful click look unresponsive.
             dialog.dispose();
+            if (onSelected != null) onSelected.accept(qid, label);
         });
         dialog.add(explorer);
-        dialog.setMinimumSize(new Dimension(840, 640));
+        dialog.setMinimumSize(new Dimension(840, relationPanelNeeded ? 640 : 430));
         dialog.pack();
         dialog.setLocationRelativeTo(parent);
         if (initialName != null && !initialName.isBlank()) {
             SwingUtilities.invokeLater(() -> explorer.searchFor(initialName));
-        }
-        dialog.setVisible(true);
-    }
-
-    /** Open the explorer as a modal RELATION picker, seeded to {@code sampleQid} (a member
-     *  whose relations are the ones we source from). The chosen (pid, label) property is
-     *  delivered to {@code onChosen} and the dialog closes. */
-    public static void showRelationPicker(
-            Component parent, SwingQueryRunner runner, String sampleQid, String sampleLabel,
-            BiConsumer<String, String> onChosen) {
-        Window owner = quiz.ui.Dialogs.owner(parent);
-        JDialog dialog = new JDialog(owner, "Find Wikidata relation",
-                Dialog.ModalityType.APPLICATION_MODAL);
-        quiz.ui.Dialogs.raiseOnOpen(dialog);
-        ExploreByExamplePanel explorer = new ExploreByExamplePanel();
-        explorer.setQueryRunner(runner);
-        explorer.relationPicker("Use relation");
-        explorer.onUseRelation((pid, label) -> {
-            if (onChosen != null) onChosen.accept(pid, label);
-            dialog.dispose();
-        });
-        dialog.add(explorer);
-        dialog.setMinimumSize(new Dimension(840, 640));
-        dialog.pack();
-        dialog.setLocationRelativeTo(parent);
-        if (sampleQid != null && sampleQid.matches("Q\\d+")) {
-            SwingUtilities.invokeLater(() -> explorer.exploreQid(sampleQid, sampleLabel));
         }
         dialog.setVisible(true);
     }
@@ -262,8 +243,6 @@ public class ExploreByExamplePanel extends JPanel {
 
         JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         actionRow.add(showMembersButton);
-        useRelationButton.setVisible(false);   // shown only in relationPicker() mode
-        actionRow.add(useRelationButton);
         addTargetsButton.setToolTipText("Add the relation's members to the selected "
                 + "class's \"Also include types\" (membership relation targets)");
         actionRow.add(addTargetsButton);
@@ -294,9 +273,10 @@ public class ExploreByExamplePanel extends JPanel {
         bottomSouth.add(hint, BorderLayout.SOUTH);
         bottom.add(bottomSouth, BorderLayout.SOUTH);
 
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, bottom);
-        split.setResizeWeight(0.5);
-        add(split, BorderLayout.CENTER);
+        relationPanel = bottom;
+        mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, bottom);
+        mainSplit.setResizeWeight(0.5);
+        add(mainSplit, BorderLayout.CENTER);
 
         searchField.addActionListener(e -> searchButton.doClick());
         candidates.onSelectionChanged(this::updateButtons);
@@ -317,16 +297,6 @@ public class ExploreByExamplePanel extends JPanel {
                 onUseAsSourceQid.accept(picked[0], picked[1]);
                 status.setText("Used " + picked[0] + ".");
             }
-        });
-        useRelationButton.addActionListener(e -> {
-            int r = probeTable.getSelectedRow();
-            if (r < 0) {
-                status.setText("Select a relation first.");
-                return;
-            }
-            RelationRow rel = probeModel.row(r);
-            onUseRelation.accept(rel.pid(), rel.label());
-            status.setText("Used " + rel.relation() + ".");
         });
         openQidButton.addActionListener(e -> openQid());
         // addSeedsButton is wired via the queryRunner (it fetches the relation's
@@ -396,7 +366,6 @@ public class ExploreByExamplePanel extends JPanel {
         exploreButton.setEnabled(haveCandidate && queryRunner != null);
         useSourceButton.setEnabled(haveCandidate || exploredQid.matches("Q\\d+"));
         showMembersButton.setEnabled(haveProbe);
-        useRelationButton.setEnabled(haveProbe);
         addTargetsButton.setEnabled(haveProbe);
         addSeedsButton.setEnabled(haveProbe);
     }

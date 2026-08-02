@@ -9,26 +9,38 @@ public final class ValueSource {
     public String kind;
     public String entityId;
     public String propertyId;
+    public String propertyLabel;
+    public String direction;
     public String recordUrl;
 
     public ValueSource() { }
 
     public ValueSource(String kind, String entityId, String propertyId,
                        String recordUrl) {
+        this(kind, entityId, propertyId, null, null, recordUrl);
+    }
+
+    public ValueSource(String kind, String entityId, String propertyId,
+                       String propertyLabel, String direction, String recordUrl) {
         this.kind = kind;
         this.entityId = entityId;
         this.propertyId = propertyId;
+        this.propertyLabel = propertyLabel;
+        this.direction = direction;
         this.recordUrl = recordUrl;
     }
 
     public String kind() { return kind; }
     public String entityId() { return entityId; }
     public String propertyId() { return propertyId; }
+    public String propertyLabel() { return propertyLabel; }
+    public String direction() { return direction; }
     public String recordUrl() { return recordUrl; }
 
     @com.fasterxml.jackson.annotation.JsonIgnore
     public boolean isPresent() {
-        return present(kind) || present(entityId) || present(propertyId) || present(recordUrl);
+        return present(kind) || present(entityId) || present(propertyId)
+                || present(propertyLabel) || present(direction) || present(recordUrl);
     }
 
     private static boolean present(String value) {

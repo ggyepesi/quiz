@@ -2,6 +2,8 @@ package quiz.enrichment;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.query.core.QueryContext;
+import wikidata.explore.model.FieldSourceMapping;
+import wikidata.explore.model.RuleDirection;
 
 import java.util.List;
 
@@ -10,6 +12,21 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikimediaFieldEnrichmentProviderTest {
+
+    @Test
+    void consumesModelBuilderFieldSourceAndRejectsUnsupportedIncomingRule() {
+        FieldSourceMapping source = new FieldSourceMapping();
+        source.propertyPid("P1082");
+        source.propertyLabel("population");
+        source.direction(RuleDirection.ROOT_TO_ITEM);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1039", "Tanzania"),
+                "population", false, List.of());
+
+        assertTrue(new WikimediaFieldEnrichmentProvider(source).supports(request));
+        source.direction(RuleDirection.ITEM_TO_ROOT);
+        assertFalse(new WikimediaFieldEnrichmentProvider(source).supports(request));
+    }
 
     @Test
     void readsPopulationQuantityAsANumber() throws Exception {
@@ -37,6 +54,25 @@ class WikimediaFieldEnrichmentProviderTest {
         // an identity is emitted so the decision applies as a Wikidata-origin Correction
         assertEquals(1, result.identities().size());
         assertEquals("Wikidata", result.identities().get(0).source().kind());
+    }
+
+    @Test
+    void proposesReplaceWhenCurationScopeContainsAnExistingValue() throws Exception {
+        String entity = """
+                {"entities":{"Q1":{"claims":{"P1082":[{"rank":"normal",
+                  "mainsnak":{"datavalue":{"value":{"amount":"+20","unit":"1"}}}}]}}}}
+                """;
+        WikimediaFieldEnrichmentProvider provider =
+                new WikimediaFieldEnrichmentProvider("P1082", uri -> entity);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "Q1", "One"),
+                "population", false, List.of(), null, 10L);
+
+        EnrichmentProposal.FieldCandidate field = provider.discover(request)
+                .execute(new QueryContext(null, null)).fields().get(0);
+
+        assertEquals(10L, field.currentValue());
+        assertEquals(EnrichmentProposal.ReviewAction.REPLACE, field.suggestedAction());
     }
 
     @Test

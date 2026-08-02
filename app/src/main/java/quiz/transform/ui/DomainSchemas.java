@@ -237,6 +237,26 @@ public final class DomainSchemas {
         return current;
     }
 
+    /** Whether a path belongs to an annotation-declared provenance subtree. Curation
+     * uses this semantic instead of recognizing conventional names such as "source"
+     * or "qid". Once a provenance reference is entered, every nested presentation
+     * path still denotes that same identity/source object. */
+    public static boolean isProvenancePath(
+            DomainModel domain, String type, String dottedPath) {
+        if (domain == null || type == null || dottedPath == null
+                || dottedPath.isBlank()) return false;
+        String currentType = type;
+        for (String part : dottedPath.split("\\.")) {
+            FieldSchema schema = domain.fieldSchema(currentType);
+            FieldRef field = schema == null ? null : schema.field(part);
+            if (field == null) return false;
+            if (field.provenance()) return true;
+            currentType = field.targetType();
+            if (currentType == null || currentType.isBlank()) return false;
+        }
+        return false;
+    }
+
     /** Copy a field description under a projected/derived field name. */
     public static FieldRef renamed(FieldRef field, String name) {
         if (field == null) {

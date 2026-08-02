@@ -64,23 +64,12 @@ public final class FieldPropertyPickerPanel extends JPanel {
         Window window = quiz.ui.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
         quiz.ui.Dialogs.raiseOnOpen(dialog);
-        Consumer<ChosenProperty> handler = onChosen == null ? ignored -> { } : onChosen;
-        java.util.concurrent.atomic.AtomicBoolean completed =
-                new java.util.concurrent.atomic.AtomicBoolean();
-        Consumer<ChosenProperty> finish = chosen -> {
-            if (completed.compareAndSet(false, true)) {
-                handler.accept(chosen);
-                dialog.dispose();
-            }
-        };
+        Consumer<ChosenProperty> finish =
+                quiz.ui.Dialogs.completion(dialog, onChosen);
         FieldPropertyPickerPanel panel =
                 new FieldPropertyPickerPanel(prompt, options, suggestedPid, finish);
-        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosing(java.awt.event.WindowEvent e) {
-                finish.accept(new ChosenProperty("", ""));
-            }
-        });
+        quiz.ui.Dialogs.completeOnClose(dialog, finish,
+                () -> new ChosenProperty("", ""));
         dialog.add(panel);
         dialog.setSize(560, 560);
         dialog.setLocationRelativeTo(owner);

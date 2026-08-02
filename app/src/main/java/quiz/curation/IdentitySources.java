@@ -34,8 +34,11 @@ public final class IdentitySources {
     public static void apply(Viewable target, IdentityLink link) {
         if (target == null || link == null) return;
         target.source("Wikidata".equalsIgnoreCase(link.sourceKind())
-                ? new WikidataSource(link.sourceId(), link.recordUrl())
-                : new ExternalSource(link.sourceKind(), link.sourceId(), link.recordUrl()));
+                ? new WikidataSource(
+                        link.sourceId(), link.recordUrl(), link.canonicalName())
+                : new ExternalSource(
+                        link.sourceKind(), link.sourceId(), link.recordUrl(),
+                        link.canonicalName()));
     }
 
     public static void refresh(Viewable target, ManualCuration curation) {

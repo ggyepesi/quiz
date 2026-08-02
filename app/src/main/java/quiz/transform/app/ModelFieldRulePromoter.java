@@ -57,8 +57,11 @@ final class ModelFieldRulePromoter {
         field.definition(FieldDefinitions.fromFieldRef(schema));
         field.mapping().sourceType(FieldSourceType.SPARQL);
         field.mapping().propertyPid(preview.sourceProperty());
-        field.mapping().propertyLabel(preview.sourceProperty());
-        field.mapping().direction(RuleDirection.ROOT_TO_ITEM);
+        ValueSource source = correction.source();
+        field.mapping().propertyLabel(source.propertyLabel() == null
+                || source.propertyLabel().isBlank()
+                ? preview.sourceProperty() : source.propertyLabel());
+        field.mapping().direction(direction(source.direction()));
         field.mapping().productionKind(FieldProductionKind.AUTO);
 
         File parent = modelFile.getAbsoluteFile().getParentFile();
@@ -150,5 +153,16 @@ final class ModelFieldRulePromoter {
             if (name.equals(field.name()) || name.equalsIgnoreCase(field.name())) return field;
         }
         return null;
+    }
+
+    private static RuleDirection direction(String stored) {
+        if (stored != null && !stored.isBlank()) {
+            try {
+                return RuleDirection.valueOf(stored);
+            } catch (IllegalArgumentException ignored) {
+                // Older or foreign curation sidecars have no shared direction metadata.
+            }
+        }
+        return RuleDirection.ROOT_TO_ITEM;
     }
 }

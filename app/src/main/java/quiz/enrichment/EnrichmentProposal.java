@@ -48,9 +48,14 @@ public record EnrichmentProposal(
 
     /** A generic source record, independent of Wikidata, DBpedia, or a domain site. */
     public record SourceRef(
-            String kind, String sourceId, String recordUrl, String propertyId) {
+            String kind, String sourceId, String recordUrl, String propertyId,
+            String propertyLabel, String direction) {
         public SourceRef(String kind, String sourceId, String recordUrl) {
-            this(kind, sourceId, recordUrl, null);
+            this(kind, sourceId, recordUrl, null, null, null);
+        }
+
+        public SourceRef(String kind, String sourceId, String recordUrl, String propertyId) {
+            this(kind, sourceId, recordUrl, propertyId, null, null);
         }
     }
 

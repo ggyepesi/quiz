@@ -2,6 +2,9 @@ package quiz.enrichment;
 
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
+import wikidata.explore.model.FieldSourceMapping;
+import wikidata.explore.model.FieldSourceType;
+import wikidata.explore.model.RuleDirection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,16 +23,39 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
     private final WikimediaEntityLookup lookup;
     // The property CHOSEN from the sample entity's real claims.
     private final String propertyPid;
+    private final String propertyLabel;
+    private final RuleDirection direction;
 
     /** Read the property chosen from the sample entity's claims. */
     public WikimediaFieldEnrichmentProvider(String propertyPid) {
-        this(propertyPid, WikimediaEntityLookup.defaultFetcher());
+        this(propertyPid, null, RuleDirection.ROOT_TO_ITEM,
+                WikimediaEntityLookup.defaultFetcher());
+    }
+
+    /** Execute the same source-rule representation used by ModelBuilder. Only a Wikidata
+     *  (SPARQL) source is served here; any other source type yields a null PID so
+     *  {@link #supports} rejects it rather than reading a DBpedia/etc. property as a
+     *  Wikidata claim. */
+    public WikimediaFieldEnrichmentProvider(FieldSourceMapping source) {
+        this(source == null || source.sourceType() != FieldSourceType.SPARQL
+                        ? null : source.propertyPid(),
+                source == null ? null : source.propertyLabel(),
+                source == null ? RuleDirection.ROOT_TO_ITEM : source.direction(),
+                WikimediaEntityLookup.defaultFetcher());
     }
 
     WikimediaFieldEnrichmentProvider(
             String propertyPid, WikimediaEntityLookup.JsonFetcher fetcher) {
+        this(propertyPid, null, RuleDirection.ROOT_TO_ITEM, fetcher);
+    }
+
+    WikimediaFieldEnrichmentProvider(
+            String propertyPid, String propertyLabel, RuleDirection direction,
+            WikimediaEntityLookup.JsonFetcher fetcher) {
         this.propertyPid = propertyPid == null || propertyPid.isBlank()
                 ? null : propertyPid.trim();
+        this.propertyLabel = propertyLabel == null ? "" : propertyLabel.trim();
+        this.direction = direction == null ? RuleDirection.ROOT_TO_ITEM : direction;
         this.lookup = new WikimediaEntityLookup(fetcher);
     }
 
@@ -41,7 +67,8 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
         return request != null && request.subject() != null
                 && request.subject().id() != null
                 && request.subject().id().matches("Q\\d+")
-                && propertyPid != null;
+                && propertyPid != null
+                && direction == RuleDirection.ROOT_TO_ITEM;
     }
 
     @Override public Query<EnrichmentProposal> discover(EnrichmentRequest request) {
@@ -80,7 +107,7 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
                 String identityId = "wikimedia-wikidata";
                 EnrichmentProposal.SourceRef source = new EnrichmentProposal.SourceRef(
                         "Wikidata", qid, "https://www.wikidata.org/wiki/" + qid,
-                        property);
+                        property, propertyLabel, direction.name());
                 EnrichmentProposal.IdentityCandidate identity =
                         new EnrichmentProposal.IdentityCandidate(
                                 identityId, request.subject().displayName(), List.of(),
@@ -104,11 +131,13 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
                             "wikidata-" + property.toLowerCase(Locale.ROOT),
                             identityId,
                             request.targetField(),
-                            null,
+                            request.currentValue(),
                             value,
                             source,
                             incompatibility == null && request.collection()
                                     ? EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
+                                    : incompatibility == null && request.currentValue() != null
+                                    ? EnrichmentProposal.ReviewAction.REPLACE
                                     : incompatibility == null
                                     ? EnrichmentProposal.ReviewAction.FILL_IF_EMPTY
                                     : EnrichmentProposal.ReviewAction.IGNORE,

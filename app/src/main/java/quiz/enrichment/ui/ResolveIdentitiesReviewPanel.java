@@ -89,23 +89,12 @@ public final class ResolveIdentitiesReviewPanel extends JPanel {
         Window window = quiz.ui.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
         quiz.ui.Dialogs.raiseOnOpen(dialog);
-        Consumer<ResolveIdentitiesDecision> handler = onDone == null ? ignored -> { } : onDone;
-        java.util.concurrent.atomic.AtomicBoolean completed =
-                new java.util.concurrent.atomic.AtomicBoolean();
-        Consumer<ResolveIdentitiesDecision> finish = decision -> {
-            if (completed.compareAndSet(false, true)) {
-                handler.accept(decision);
-                dialog.dispose();
-            }
-        };
+        Consumer<ResolveIdentitiesDecision> finish =
+                quiz.ui.Dialogs.completion(dialog, onDone);
         ResolveIdentitiesReviewPanel panel =
                 new ResolveIdentitiesReviewPanel(prompt, instances, applied, finish);
-        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosing(java.awt.event.WindowEvent e) {
-                finish.accept(new ResolveIdentitiesDecision(List.of()));
-            }
-        });
+        quiz.ui.Dialogs.completeOnClose(dialog, finish,
+                () -> new ResolveIdentitiesDecision(List.of()));
         dialog.add(panel);
         dialog.setSize(840, 660);
         dialog.setLocationRelativeTo(owner);

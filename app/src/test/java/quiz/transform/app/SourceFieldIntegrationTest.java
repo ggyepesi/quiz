@@ -48,6 +48,7 @@ class SourceFieldIntegrationTest {
         IdentitySources.apply(List.of(item), curation.identityLinks());
         WikidataSource source = assertInstanceOf(WikidataSource.class, item.source());
         assertEquals("Q42", source.sourceId());
+        assertEquals("Douglas Adams", source.name());
 
         ReflectionDomain reflected = new ReflectionDomain(List.of(item));
         CuratableDomain domain = new CuratableDomain(reflected, curation);
@@ -60,6 +61,7 @@ class SourceFieldIntegrationTest {
         assertTrue(sourceValue.isValueObject());
         assertEquals("Q42|https://www.wikidata.org/wiki/Q42",
                 sourceValue.dynamicFields().get("qid"));
+        assertEquals("Douglas Adams", sourceValue.dynamicFields().get("name"));
     }
 
     private static final class ManualItem extends ViewableAdapter {

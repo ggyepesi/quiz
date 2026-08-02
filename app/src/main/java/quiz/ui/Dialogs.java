@@ -7,6 +7,9 @@ import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Dialog helpers so a blocking (modal) dialog reliably appears on TOP of the window the
@@ -37,5 +40,31 @@ public final class Dialogs {
             }
         });
         return dialog;
+    }
+
+    /** A dialog result can be submitted by a button or by closing the window, but its
+     * consumer must run exactly once. Centralizing that lifecycle keeps all review
+     * dialogs consistent. */
+    public static <T> Consumer<T> completion(
+            JDialog dialog, Consumer<T> onDone) {
+        Consumer<T> handler = onDone == null ? ignored -> { } : onDone;
+        AtomicBoolean completed = new AtomicBoolean();
+        return result -> {
+            if (completed.compareAndSet(false, true)) {
+                handler.accept(result);
+                dialog.dispose();
+            }
+        };
+    }
+
+    /** Complete a result dialog with {@code closedResult} when its window is closed. */
+    public static <T> void completeOnClose(
+            JDialog dialog, Consumer<T> completion, Supplier<T> closedResult) {
+        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override public void windowClosing(WindowEvent e) {
+                completion.accept(closedResult.get());
+            }
+        });
     }
 }

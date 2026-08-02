@@ -19,4 +19,8 @@ public abstract class Source extends objectview.provenance.Source {
     protected Source(String kind, String sourceId, String recordUrl) {
         super(kind, sourceId, recordUrl);
     }
+
+    protected Source(String kind, String sourceId, String recordUrl, String name) {
+        super(kind, sourceId, recordUrl, name);
+    }
 }

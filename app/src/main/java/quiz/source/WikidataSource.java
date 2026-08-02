@@ -18,4 +18,8 @@ public class WikidataSource extends Source {
     public WikidataSource(String qid, String wikidataUrl) {
         super("Wikidata", qid, wikidataUrl);
     }
+
+    public WikidataSource(String qid, String wikidataUrl, String name) {
+        super("Wikidata", qid, wikidataUrl, name);
+    }
 }
