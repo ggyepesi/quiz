@@ -97,8 +97,14 @@ public final class ValidationPanel extends JPanel {
     private final JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
     private String type;
+    // Stage 1 — the SELECTOR field: its missing/present gap builds the drilled instance set.
     private String selectedFieldType;
     private String selectedFieldPath;
+    // Stage 2 — the CURATED field: the target of Find Data / manual entry, chosen independently
+    // of the selector (defaults to it). Same → unchanged behaviour; different → curate field Y
+    // on the set selected by field X.
+    private String curatedFieldType;
+    private String curatedFieldPath;
     private List<Viewable> instances = List.of();
     private Viewable selected;
     // Field path → the Wikidata property CHOSEN to source it (via the property finder).
@@ -298,6 +304,9 @@ public final class ValidationPanel extends JPanel {
         String path = scoped == null ? null : scoped.path();
         selectedFieldType = scoped == null ? null : scoped.type();
         selectedFieldPath = path;
+        // Curated field defaults to the selector; the header combo can switch it.
+        curatedFieldType = selectedFieldType;
+        curatedFieldPath = path;
         selectedChanged(null);
         identityDrill = null;
         identityTask = false;
@@ -574,44 +583,96 @@ public final class ValidationPanel extends JPanel {
     }
 
     private JComponent header(String fieldType, String path, int count) {
-        JPanel h = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        h.add(new JLabel(count + " " + scopeFilter.toString().toLowerCase()
-                + " for " + fieldType + "." + path));
-        if (count == 0) return h;
+        JPanel h = new JPanel();
+        h.setLayout(new javax.swing.BoxLayout(h, javax.swing.BoxLayout.Y_AXIS));
 
-        // Stage 3 — the curation type offered is gated by the field's kind:
-        //   reference → out of scope (no Find Data / manual entry yet)
-        //   identity (source.qid) → Explore identity only, NEVER Find Data
-        //   data (scalar / media) → Find Data + manual value
-        CurateType ct = curateTypeOf(fieldType, path);
+        // Row 1 — Stage 1: the selector field's gap defines the instance set below.
+        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        row1.add(new JLabel(count + " " + scopeFilter.toString().toLowerCase()
+                + " for " + fieldType + "." + path));
+        if (count == 0) { h.add(row1); return h; }
+        if (identityResolver != null) {
+            resolveMissingButton.setText("Resolve identities for " + count + " member(s)…");
+            row1.add(resolveMissingButton);
+        }
+        h.add(row1);
+
+        // Row 2 — Stage 2: choose the field to CURATE (independent of the selector), then
+        // Stage 3 controls, gated by the curated field's kind, are rebuilt on change.
+        JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        row2.add(new JLabel("Curate:"));
+        JComboBox<String> curateCombo = curateFieldCombo(path);
+        row2.add(curateCombo);
+        JPanel curateActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        row2.add(curateActions);
+        curateCombo.addActionListener(e -> {
+            setCuratedField((String) curateCombo.getSelectedItem());
+            populateCurateActions(curateActions);
+        });
+        setCuratedField((String) curateCombo.getSelectedItem());
+        populateCurateActions(curateActions);
+        h.add(row2);
+        return h;
+    }
+
+    /** The curated-field combo: every field of the selected type, defaulting to the selector
+     *  field so the common "curate what I drilled" case is one step. */
+    private JComboBox<String> curateFieldCombo(String selectorPath) {
+        List<String> options = new ArrayList<>();
+        if (type != null) {
+            for (DomainField f : domain.fields(type)) {
+                if (!options.contains(f.field())) options.add(f.field());
+            }
+        }
+        JComboBox<String> combo = new JComboBox<>(options.toArray(String[]::new));
+        String def = options.contains(selectorPath) ? selectorPath
+                : selectorPath != null && selectorPath.startsWith("source")
+                        && options.contains("source") ? "source"
+                : options.isEmpty() ? null : options.get(0);
+        if (def != null) combo.setSelectedItem(def);
+        combo.setToolTipText("The field to curate — independent of the selector field above");
+        return combo;
+    }
+
+    private void setCuratedField(String path) {
+        curatedFieldPath = path;
+        // Keep the drill's scoped type when curating the selector field; otherwise the base
+        // type the combo enumerated.
+        curatedFieldType = path != null && path.equals(selectedFieldPath)
+                ? selectedFieldType : type;
+    }
+
+    /** Stage 3 — the actions offered are gated by the CURATED field's kind:
+     *   reference → out of scope; identity (source.*) → Explore identity only, never Find
+     *   Data; data (scalar / media) → Find Data + manual value. */
+    private void populateCurateActions(JPanel target) {
+        target.removeAll();
+        CurateType ct = curateTypeOf(curatedFieldType, curatedFieldPath);
         if (ct == CurateType.REFERENCE) {
             JLabel note = new JLabel("— reference-field curation isn't supported yet");
             note.setEnabled(false);
-            h.add(note);
-            return h;
+            target.add(note);
+        } else {
+            if (ct == CurateType.DATA) {
+                checkButton.setText("Find data ↗");
+                checkButton.setToolTipText(
+                        "Find and review values for the members in this task");
+                target.add(checkButton);   // persistent, already-registered button
+            }
+            updateSourcesButton();
+            target.add(sourcesButton);     // "Explore identity / sources…"
+            target.add(new JLabel("Selected:"));
+            target.add(selectedLabel);
+            if (ct == CurateType.DATA) {
+                target.add(manualValue);
+                target.add(setValueButton);
+                DomainField field = curatedDomainField();
+                addValueButton.setVisible(field != null && field.collection());
+                target.add(addValueButton);
+            }
         }
-        if (identityResolver != null) {
-            resolveMissingButton.setText("Resolve identities for " + count + " member(s)…");
-            h.add(resolveMissingButton);
-        }
-        if (ct == CurateType.DATA) {
-            checkButton.setText("Find data ↗");
-            checkButton.setToolTipText(
-                    "Find and review values for the members in this task");
-            h.add(checkButton);   // re-parents the persistent, already-registered button
-        }
-        updateSourcesButton();
-        h.add(sourcesButton);     // "Explore identity / sources…" — the identity action
-        h.add(new JLabel("Selected:"));
-        h.add(selectedLabel);
-        if (ct == CurateType.DATA) {
-            h.add(manualValue);
-            h.add(setValueButton);
-            DomainField field = selectedDomainField();
-            addValueButton.setVisible(field != null && field.collection());
-            h.add(addValueButton);
-        }
-        return h;
+        target.revalidate();
+        target.repaint();
     }
 
     /** How a chosen field is curated (Stage 3): identity (source.qid → Explore), an ordinary
@@ -637,14 +698,14 @@ public final class ValidationPanel extends JPanel {
 
     /** Batch the same reusable Find Data process over every missing member. */
     private void onCheck() {
-        if (selectedFieldPath != null) {
+        if (curatedFieldPath != null) {
             findData();
         }
     }
 
     // One immutable batch plan; one independently logged/cancellable child per member.
     private void findData() {
-        String path = selectedFieldPath;
+        String path = curatedFieldPath;
         if (path == null) return;
         quiz.curation.ManualCuration curation = curationStore();
         // Let a manually identified selected member establish its source before the
@@ -658,7 +719,7 @@ public final class ValidationPanel extends JPanel {
                     selected.getIdentifier(),
                     selected.getDisplayName(), queryRunner, this::identitySourceChanged);
         }
-        DomainField drilled = domain.fields(selectedFieldType).stream()
+        DomainField drilled = domain.fields(curatedFieldType).stream()
                 .filter(f -> path.equals(f.field()))
                 .findFirst().orElse(null);
         boolean media = drilled == null || drilled.kind() == objectview.field.FieldKind.MEDIA;
@@ -695,7 +756,7 @@ public final class ValidationPanel extends JPanel {
      *  whose properties the picker lists. */
     private String sampleQidFor(String path, quiz.curation.ManualCuration curation) {
         for (Viewable member : drilledInstances) {
-            if (!domain.isInstanceOf(member, selectedFieldType)) continue;
+            if (!domain.isInstanceOf(member, curatedFieldType)) continue;
             String qid = resolvedQid(member,
                     EnrichmentSources.collect(member, concreteType(member), curation));
             if (qid != null) return qid;
@@ -706,7 +767,7 @@ public final class ValidationPanel extends JPanel {
     // One immutable batch plan; one independently logged/cancellable child per member.
     private void runFillBatch(String path) {
         quiz.curation.ManualCuration curation = curationStore();
-        DomainField drilled = domain.fields(selectedFieldType).stream()
+        DomainField drilled = domain.fields(curatedFieldType).stream()
                 .filter(f -> path.equals(f.field()))
                 .findFirst().orElse(null);
         boolean collection = drilled != null && drilled.collection();
@@ -715,7 +776,7 @@ public final class ValidationPanel extends JPanel {
         List<FindDataProcess> jobs = new ArrayList<>();
         int skipped = 0;
         for (Viewable member : drilledInstances) {
-            if (!domain.isInstanceOf(member, selectedFieldType)) continue;
+            if (!domain.isInstanceOf(member, curatedFieldType)) continue;
             String memberType = concreteType(member);
             List<EnrichmentProposal.SourceRef> sources =
                     EnrichmentSources.collect(member, memberType, curation);
@@ -868,21 +929,22 @@ public final class ValidationPanel extends JPanel {
         onCurated.run();
     }
 
-    private DomainField selectedDomainField() {
-        if (selectedFieldType == null || selectedFieldPath == null) return null;
-        return domain.fields(selectedFieldType).stream()
-                .filter(field -> selectedFieldPath.equals(field.field()))
+    private DomainField curatedDomainField() {
+        if (curatedFieldType == null || curatedFieldPath == null) return null;
+        return domain.fields(curatedFieldType).stream()
+                .filter(field -> curatedFieldPath.equals(field.field()))
                 .findFirst().orElse(null);
     }
 
-    /** Persist an ordinary field edit as a Correction. Identity deliberately does not
-     * come through here: source.qid is approved and stored as an IdentityLink. */
+    /** Persist an ordinary field edit as a Correction on the CURATED field. Identity
+     * deliberately does not come through here: source.qid is approved and stored as an
+     * IdentityLink. */
     private void saveManualValue(CorrectionPolicy policy) {
         quiz.curation.ManualCuration store = curationStore();
-        if (store == null || selected == null || selectedFieldPath == null) return;
+        if (store == null || selected == null || curatedFieldPath == null) return;
         String text = manualValue.getText().trim();
         if (text.isEmpty()) return;
-        DomainField field = selectedDomainField();
+        DomainField field = curatedDomainField();
         if (policy == CorrectionPolicy.ADD_TO_COLLECTION
                 && (field == null || !field.collection())) return;
 
@@ -899,7 +961,7 @@ public final class ValidationPanel extends JPanel {
             store.corrections().stream()
                     .filter(c -> java.util.Objects.equals(c.type(), concreteType(selected))
                             && selected.getIdentifier().equals(c.qid())
-                            && selectedFieldPath.equals(c.field())
+                            && curatedFieldPath.equals(c.field())
                             && c.effectivePolicy() == CorrectionPolicy.ADD_TO_COLLECTION)
                     .findFirst().map(Correction::value).ifPresent(existing -> {
                         if (existing instanceof Collection<?> collection) additions.addAll(collection);
@@ -913,14 +975,14 @@ public final class ValidationPanel extends JPanel {
         List<Correction> before = store.corrections().stream()
                 .filter(c -> (c.type() == null || memberType.equals(c.type()))
                         && selected.getIdentifier().equals(c.qid())
-                        && selectedFieldPath.equals(c.field()))
+                        && curatedFieldPath.equals(c.field()))
                 .toList();
-        store.put(memberType, selected.getIdentifier(), selectedFieldPath, value,
+        store.put(memberType, selected.getIdentifier(), curatedFieldPath, value,
                 Correction.MANUAL, null, policy, null);
         try {
             store.save();
         } catch (Exception ex) {
-            store.remove(memberType, selected.getIdentifier(), selectedFieldPath);
+            store.remove(memberType, selected.getIdentifier(), curatedFieldPath);
             before.forEach(store::restore);
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
             return;
@@ -933,7 +995,7 @@ public final class ValidationPanel extends JPanel {
 
     private Object typedManualValue(String text) {
         objectview.field.FieldRef schema = DomainSchemas.resolve(
-                domain, selectedFieldType, selectedFieldPath);
+                domain, curatedFieldType, curatedFieldPath);
         if (schema == null) return text;
         objectview.field.FieldKind kind = schema.collection()
                 ? schema.valueKind() : schema.kind();
@@ -957,10 +1019,10 @@ public final class ValidationPanel extends JPanel {
     private void selectedChanged(Viewable member) {
         selected = member;
         selectedLabel.setText(member == null ? "No instance selected" : member.getDisplayName());
-        setValueButton.setEnabled(member != null && selectedFieldPath != null);
-        addValueButton.setEnabled(member != null && selectedFieldPath != null);
-        if (member != null && selectedFieldPath != null) {
-            Object current = objectview.field.FieldAccess.getPath(member, selectedFieldPath);
+        setValueButton.setEnabled(member != null && curatedFieldPath != null);
+        addValueButton.setEnabled(member != null && curatedFieldPath != null);
+        if (member != null && curatedFieldPath != null) {
+            Object current = objectview.field.FieldAccess.getPath(member, curatedFieldPath);
             manualValue.setText(current == null ? "" : String.valueOf(current));
         }
         updateSourcesButton();
