@@ -577,19 +577,34 @@ public final class ValidationPanel extends JPanel {
         JPanel h = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         h.add(new JLabel(count + " " + scopeFilter.toString().toLowerCase()
                 + " for " + fieldType + "." + path));
-        if (count > 0) {
+        if (count == 0) return h;
+
+        // Stage 3 — the curation type offered is gated by the field's kind:
+        //   reference → out of scope (no Find Data / manual entry yet)
+        //   identity (source.qid) → Explore identity only, NEVER Find Data
+        //   data (scalar / media) → Find Data + manual value
+        CurateType ct = curateTypeOf(fieldType, path);
+        if (ct == CurateType.REFERENCE) {
+            JLabel note = new JLabel("— reference-field curation isn't supported yet");
+            note.setEnabled(false);
+            h.add(note);
+            return h;
+        }
+        if (identityResolver != null) {
+            resolveMissingButton.setText("Resolve identities for " + count + " member(s)…");
+            h.add(resolveMissingButton);
+        }
+        if (ct == CurateType.DATA) {
             checkButton.setText("Find data ↗");
             checkButton.setToolTipText(
                     "Find and review values for the members in this task");
             h.add(checkButton);   // re-parents the persistent, already-registered button
-            updateSourcesButton();
-            h.add(sourcesButton);
-            if (identityResolver != null) {
-                resolveMissingButton.setText("Resolve identities for " + count + " member(s)…");
-                h.add(resolveMissingButton);
-            }
-            h.add(new JLabel("Selected:"));
-            h.add(selectedLabel);
+        }
+        updateSourcesButton();
+        h.add(sourcesButton);     // "Explore identity / sources…" — the identity action
+        h.add(new JLabel("Selected:"));
+        h.add(selectedLabel);
+        if (ct == CurateType.DATA) {
             h.add(manualValue);
             h.add(setValueButton);
             DomainField field = selectedDomainField();
@@ -597,6 +612,27 @@ public final class ValidationPanel extends JPanel {
             h.add(addValueButton);
         }
         return h;
+    }
+
+    /** How a chosen field is curated (Stage 3): identity (source.qid → Explore), an ordinary
+     *  data field (Find Data / manual value), or a reference (entity-valued — out of scope for
+     *  now). Identity is matched first, so the provenance {@code source} object — itself a
+     *  reference — routes to Explore, not the reference dead-end. */
+    private enum CurateType { IDENTITY, DATA, REFERENCE, NONE }
+
+    private CurateType curateTypeOf(String type, String path) {
+        if (path == null) return CurateType.NONE;
+        if (path.equals("source") || path.startsWith("source.")) return CurateType.IDENTITY;
+        DomainField f = fieldFor(type, path);
+        if (f != null && f.reference()) return CurateType.REFERENCE;
+        return CurateType.DATA;
+    }
+
+    private DomainField fieldFor(String type, String path) {
+        if (type == null || path == null) return null;
+        return domain.fields(type).stream()
+                .filter(f -> path.equals(f.field()))
+                .findFirst().orElse(null);
     }
 
     /** Batch the same reusable Find Data process over every missing member. */
