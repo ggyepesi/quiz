@@ -134,6 +134,11 @@ public final class DomainSchemas {
             return;
         }
         FieldSchema schema = domain.fieldSchema(currentType);
+        for (FieldRef field : objectview.field.ViewableContractFieldSet.fieldRefs()) {
+            if (schema != null && schema.field(field.name()) != null) continue;
+            String path = prefix.isEmpty() ? field.name() : prefix + "." + field.name();
+            out.add(new DomainField(topType, path, false, false, field.kind()));
+        }
         if (schema == null) {
             chain.remove(currentType);
             return;
@@ -148,8 +153,6 @@ public final class DomainSchemas {
                     field.collection(), field.kind()));
             if (field.reference() && field.targetType() != null
                     && !field.targetType().isBlank()) {
-                out.add(new DomainField(topType, path + ".name",
-                        false, false, FieldKind.TEXT));
                 collectFields(domain, topType, field.targetType(), path,
                         new LinkedHashSet<>(chain), depth + 1, out);
             }
@@ -217,22 +220,23 @@ public final class DomainSchemas {
         String[] parts = dottedPath.split("\\.");
         FieldRef current = null;
         for (int i = 0; i < parts.length; i++) {
-            if ("name".equals(parts[i]) && current != null
-                    && current.reference() && i == parts.length - 1) {
-                return FieldRef.of("name", FieldKind.TEXT, "String",
-                        false, false, false);
-            }
+            String part = parts[i];
             FieldSchema schema = domain.fieldSchema(currentType);
-            current = schema == null ? null : schema.field(parts[i]);
-            if (current == null) {
-                return null;
-            }
-            if (i < parts.length - 1) {
-                currentType = current.targetType();
-                if (currentType == null || currentType.isBlank()) {
-                    return null;
+            current = schema == null ? null : schema.field(part);
+            if (current != null) {
+                if (i < parts.length - 1) {
+                    currentType = current.targetType();
+                    if (currentType == null || currentType.isBlank()) return null;
                 }
+                continue;
             }
+            FieldRef contract = objectview.field.ViewableContractFieldSet.fieldRefs().stream()
+                    .filter(field -> field.name().equals(part))
+                    .findFirst().orElse(null);
+            if (contract != null) {
+                return i == parts.length - 1 ? contract : null;
+            }
+            return null;
         }
         return current;
     }
@@ -262,11 +266,7 @@ public final class DomainSchemas {
         if (field == null) {
             return null;
         }
-        return FieldRef.described(name, field.kind(), field.valueKind(),
-                field.typeLabel(), field.reference(), field.collection(),
-                field.targetType(), field.structural(), field.minor(),
-                field.inline(), field.link(), field.linkText(),
-                field.provenance(), field.annotatedReference());
+        return FieldRef.withName(field, name);
     }
 
     private static String typeLabel(DomainField field) {
@@ -317,9 +317,20 @@ public final class DomainSchemas {
         @Override public FieldTypeInfo field(String name) {
             FieldSchema schema = domain.fieldSchema(type);
             FieldRef field = schema == null ? null : schema.field(name);
-            if (field == null) {
-                return null;
+            if (field != null) {
+                return schemaInfo(field);
             }
+            FieldRef contract = objectview.field.ViewableContractFieldSet.fieldRefs().stream()
+                    .filter(candidate -> candidate.name().equals(name))
+                    .findFirst().orElse(null);
+            if (contract != null) {
+                return new FieldTypeInfo(contract.typeLabel(), false, false,
+                        null, null, contract.label(), contract.role());
+            }
+            return null;
+        }
+
+        private FieldTypeInfo schemaInfo(FieldRef field) {
             String target = field.targetType();
             FieldTypeSource nested = null;
             if (!field.structural() && target != null
@@ -333,13 +344,17 @@ public final class DomainSchemas {
                 }
             }
             return new FieldTypeInfo(field.typeLabel(), field.structural(),
-                    field.minor(), nested == null ? null : target, nested);
+                    field.minor(), nested == null ? null : target, nested,
+                    field.label(), field.role());
         }
 
         @Override public List<String> fieldNames() {
             FieldSchema schema = domain.fieldSchema(type);
-            return schema == null ? List.of() : schema.fields().stream()
-                    .map(FieldRef::name).toList();
+            java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+            objectview.field.ViewableContractFieldSet.fieldRefs().stream()
+                    .map(FieldRef::name).forEach(names::add);
+            if (schema != null) schema.fields().stream().map(FieldRef::name).forEach(names::add);
+            return List.copyOf(names);
         }
     }
 }

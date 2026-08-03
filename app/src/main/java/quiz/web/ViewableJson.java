@@ -152,10 +152,6 @@ public final class ViewableJson {
     }
 
     private static List<String> stringValuesSingle(Viewable owner, String fieldName) {
-        if ("name".equals(fieldName)) {
-            String dn = owner.getDisplayName();
-            return dn == null || dn.isBlank() ? List.of() : List.of(dn);
-        }
         List<String> out = new ArrayList<>();
         collectStrings(rawFieldValue(owner, fieldName), out);
         return out;
@@ -315,13 +311,6 @@ public final class ViewableJson {
 
     /** Render-model for a single named field of {@code owner}, or null. */
     private static ViewableView.Field fieldOfSingle(Viewable owner, String fieldName) {
-        // "name" is the display name (skipped as a normal field, but usable
-        // as a quiz prompt/answer).
-        if ("name".equals(fieldName)) {
-            String dn = owner.getDisplayName();
-            return dn == null || dn.isBlank() ? null : ViewableView.Field.text("name", dn);
-        }
-
         // One field through the ONE FieldSet bridge (#87) + the shared builder — no
         // `instanceof DynamicFields` fork, no separate dynamic/declared builders.
         objectview.field.FieldSet fs = objectview.field.FieldSet.of(owner);
@@ -343,11 +332,6 @@ public final class ViewableJson {
      * value's string. Null if empty.
      */
     private static String stringValueSingle(Viewable owner, String fieldName) {
-        if ("name".equals(fieldName)) {
-            String dn = owner.getDisplayName();
-            return dn == null || dn.isBlank() ? null : dn;
-        }
-
         // Both backings resolve the same way — read through the ONE FieldSet bridge
         // (#87), then stringify. No `instanceof DynamicFields` fork.
         String s = asString(objectview.field.FieldSet.of(owner).read(fieldName));
@@ -400,11 +384,12 @@ public final class ViewableJson {
             objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
             for (objectview.field.FieldRef fr : fs.fields()) {
                 String fn = fr.name();
-                // "name" is the display name (rendered from the header, not as a field);
+                // Contract fields are already represented by the view header/id;
                 // "__"-prefixed keys are internal plumbing (e.g. the reify's
                 // "__Nomination" statement-list scratch field), never user-facing;
                 // structural fields (a reify class's "source" back-ref) are hidden too.
-                if ("name".equals(fn) || (fn != null && fn.startsWith("__"))
+                if (fr.role() != objectview.field.FieldRole.NONE
+                        || (fn != null && fn.startsWith("__"))
                         || structural.contains(fn)) {
                     continue;
                 }

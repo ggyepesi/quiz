@@ -342,7 +342,7 @@ public class ViewableHttpServer {
         ex.close();
     }
 
-    // GET /api/fields?type=T -> [{name, kind}] across a sample of the dataset,
+    // GET /api/fields?type=T -> [{name, label, kind}] across a sample of the dataset,
     // for the quiz config UI to offer prompt/answer choices.
     private void handleFields(HttpExchange ex) throws IOException {
         String type = queryParam(ex, "type");
@@ -360,13 +360,19 @@ public class ViewableHttpServer {
             boolean nested = path != null && !path.isBlank();
 
             LinkedHashMap<String, String> kinds = new LinkedHashMap<>();
-            kinds.put("name", "text"); // display name — skipped in views, but quizzable
+            LinkedHashMap<String, String> labels = new LinkedHashMap<>();
+            for (objectview.field.FieldRef field
+                    : objectview.field.ViewableContractFieldSet.fieldRefs()) {
+                kinds.put(field.name(), "text");
+                labels.put(field.name(), field.label());
+            }
             int seen = 0;
             for (Viewable q : qs) {
                 Viewable target = nested ? ViewableJson.resolvePath(q, path) : q;
                 if (target != null) {
                     for (ViewableView.Field field : ViewableJson.of(target).fields()) {
                         kinds.putIfAbsent(field.name(), field.kind());
+                        labels.putIfAbsent(field.name(), field.name());
                     }
                 }
                 if (++seen >= 40) {
@@ -377,6 +383,7 @@ public class ViewableHttpServer {
             List<Map<String, Object>> out = new ArrayList<>();
             kinds.forEach((name, kind) -> out.add(Map.of(
                     "name", name,
+                    "label", labels.getOrDefault(name, name),
                     "kind", kind,
                     // ref/refs fields can be expanded to configure their own fields
                     "expandable", "ref".equals(kind) || "refs".equals(kind))));

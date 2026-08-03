@@ -55,6 +55,11 @@ class SourceFieldIntegrationTest {
 
         ReflectionDomain reflected = new ReflectionDomain(List.of(item));
         CuratableDomain domain = new CuratableDomain(reflected, curation);
+        assertTrue(domain.fieldSchema("Source").fields().stream()
+                .anyMatch(field -> field.name().equals("record") && field.link()));
+        assertFalse(domain.fieldSchema("Source").fields().stream()
+                .anyMatch(field -> field.name().equals("qid")),
+                "the curatable wrapper must not replace the canonical Source schema");
         ViewableToWdo.ConvertedDomain converted = ViewableToWdo.convertDomain(
                 List.of(item), List.of(), domain);
         Object storedSource = converted.memberRoots().get(0).dynamicFields().get("source");

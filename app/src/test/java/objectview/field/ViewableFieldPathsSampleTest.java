@@ -31,8 +31,12 @@ class ViewableFieldPathsSampleTest {
                                               .collect(Collectors.toSet());
 
         assertTrue(paths.contains("year"), paths.toString());          // dynamic scalar
-        assertTrue(paths.contains("category.name"), paths.toString()); // reference name
+        assertTrue(paths.contains("category."
+                + objectview.field.ViewableContractFieldSet.DISPLAY_KEY),
+                paths.toString()); // reference display
         assertTrue(paths.contains("category.edition"), paths.toString()); // NESTED dynamic field
-        assertTrue(paths.contains("name"), paths.toString());          // identity/display
+        assertTrue(paths.contains(
+                objectview.field.ViewableContractFieldSet.DISPLAY_KEY),
+                paths.toString());          // identity/display
     }
 }

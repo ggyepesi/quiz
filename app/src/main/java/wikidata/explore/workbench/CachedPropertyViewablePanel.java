@@ -106,7 +106,8 @@ public class CachedPropertyViewablePanel extends JPanel {
         config.setAllFields(false);
         config.setThumb(false);
         config.setAddListener(false);
-        config.addField("name", ViewConfig.leaf());
+        config.addField(objectview.field.ViewableContractFieldSet.DISPLAY_KEY,
+                ViewConfig.leaf());
         config.addField("pid", ViewConfig.leaf());
         config.addField("description", ViewConfig.leaf());
         context.putClassConfig(WikidataPropertyViewable.class, config);

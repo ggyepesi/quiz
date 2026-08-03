@@ -59,7 +59,8 @@ class ViewableKeyExtractorTest {
 
         assertEquals(1959, extractor.value(item, "year"));
         assertEquals(List.of(1959), extractor.alternatives(item, "year"));
-        assertEquals("Dynamic", extractor.value(item, "name"));
+        assertEquals("Dynamic", extractor.value(
+                item, objectview.field.ViewableContractFieldSet.DISPLAY_KEY));
         assertNull(extractor.value(item, "missing"));
     }
 

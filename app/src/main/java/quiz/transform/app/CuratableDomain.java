@@ -67,11 +67,6 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
         return quiz.transform.ui.DomainSchemas.fields(this, type);
     }
     @Override public FieldSchema fieldSchema(String type) {
-        if ("Source".equals(type)) {
-            return () -> List.of(objectview.field.FieldRef.of(
-                    "qid", objectview.field.FieldKind.TEXT, "String",
-                    false, false, false, false, true, "", false, false));
-        }
         java.util.Map<String, objectview.field.FieldRef> combined =
                 new java.util.LinkedHashMap<>();
         FieldSchema inherited = base.fieldSchema(type);
@@ -85,10 +80,6 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
                 combined.put(declaration.name(), declaration.fieldRef());
             }
         }
-        combined.putIfAbsent("source", objectview.field.FieldRef.described(
-                "source", objectview.field.FieldKind.REFERENCE,
-                objectview.field.FieldKind.REFERENCE, "Source", true, false,
-                "Source", false, false, false, false, "", true, false));
         List<objectview.field.FieldRef> immutable = List.copyOf(combined.values());
         return () -> immutable;
     }

@@ -34,7 +34,7 @@ public final class QuizGenerator {
 
         // A bare collection/ref path (e.g. "stars") defaults to showing its
         // members' names; once a child path under it is also selected (e.g.
-        // "stars.name"), the child specifies what to show and the bare parent is
+        // "stars.Name"), the child specifies what to show and the bare parent is
         // redundant — it duplicated the names (the "appears twice, under stars
         // AND under name" bug). Drop any path that has a strict descendant in
         // the same list.
@@ -154,7 +154,7 @@ public final class QuizGenerator {
 
     // The (possibly blurred) image field for a prompt/answer path, or the plain
     // field for a non-image. A nested collection image strip is blurred per
-    // member unless the sibling .name is also selected (so it doesn't reveal
+    // member unless the sibling display field is also selected (so it doesn't reveal
     // the answer); a top-level image uses the name-blur endpoint as before.
     static ViewableView.Field imageField(
             String type, Viewable q, String field, Set<String> selected) {
@@ -243,11 +243,11 @@ public final class QuizGenerator {
         return out;
     }
 
-    // For a nested field path, the sibling "name" path under the same parent:
-    // sharesBorderWith.chart -> sharesBorderWith.name.
+    // For a nested field path, the sibling display path under the same parent.
     private static String siblingNamePath(String path) {
         int i = path.lastIndexOf('.');
-        return (i < 0 ? "" : path.substring(0, i + 1)) + "name";
+        return (i < 0 ? "" : path.substring(0, i + 1))
+                + objectview.field.ViewableContractFieldSet.DISPLAY_KEY;
     }
 
     // For datasets whose image embeds the answer (e.g. a constellation chart

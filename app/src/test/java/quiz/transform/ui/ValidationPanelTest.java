@@ -67,9 +67,32 @@ class ValidationPanelTest {
                         domain, all, "USState", "admissionDate", ScopeFilter.ALL));
     }
 
+    @Test void sourceIdCoverageUsesTheOrdinaryNestedField() {
+        ManualItem identified = new ManualItem("identified");
+        identified.source(new quiz.source.WikidataSource(
+                "Q1", "https://www.wikidata.org/wiki/Q1", "Universe"));
+        ManualItem unresolved = new ManualItem("unresolved");
+        ReflectionDomain domain = new ReflectionDomain(List.of(identified, unresolved));
+
+        assertEquals(List.of(identified), ValidationPanel.membersWithFieldScope(
+                domain, domain.instances(), "ManualItem", "source.sourceId",
+                ScopeFilter.PRESENT));
+        assertEquals(List.of(unresolved), ValidationPanel.membersWithFieldScope(
+                domain, domain.instances(), "ManualItem", "source.sourceId",
+                ScopeFilter.MISSING));
+    }
+
     private static WikidataDynamicObject object(String id, String type) {
         WikidataDynamicObject object = new WikidataDynamicObject(id, id);
         object.type(type);
         return object;
+    }
+
+    private static final class ManualItem extends objectview.ViewableAdapter {
+        private final String id;
+
+        private ManualItem(String id) { this.id = id; }
+        @Override public String getIdentifier() { return id; }
+        @Override public String getDisplayName() { return id; }
     }
 }

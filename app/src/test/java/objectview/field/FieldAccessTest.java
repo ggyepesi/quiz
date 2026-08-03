@@ -9,18 +9,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * getPath is tolerant over arbitrary domains: `name`/`qid` come from the Viewable
+ * getPath is tolerant over arbitrary domains: identity/display come from the Viewable
  * contract (not a raw field), a collection intermediate is descended, and a missing
  * field yields null instead of throwing.
  */
 class FieldAccessTest {
 
-    @Test void nameAndIdComeFromTheViewableContract() {
+    @Test void displayAndIdentityComeFromTheViewableContract() {
         DynamicViewable q = new DynamicViewable("Q1", "Alice");
         q.type("Person");
-        // `name`/`qid` aren't in the property map — resolve via the contract.
-        assertEquals("Alice", FieldAccess.getPath(q, "name"));
-        assertEquals("Q1", FieldAccess.getPath(q, "qid"));
+        assertEquals("Alice", FieldAccess.getPath(
+                q, ViewableContractFieldSet.DISPLAY_KEY));
+        assertEquals("Q1", FieldAccess.getPath(
+                q, ViewableContractFieldSet.IDENTITY_KEY));
     }
 
     @Test void descendsThroughACollectionIntermediate() {
@@ -30,7 +31,8 @@ class FieldAccessTest {
         country.put("languages", List.of(en, fr));
 
         // languages is a list — descend into a representative element.
-        assertEquals("English", FieldAccess.getPath(country, "languages.name"));
+        assertEquals("English", FieldAccess.getPath(country,
+                "languages." + ViewableContractFieldSet.DISPLAY_KEY));
     }
 
     @Test void missingFieldIsNullNotAnException() {

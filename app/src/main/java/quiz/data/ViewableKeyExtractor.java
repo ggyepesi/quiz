@@ -119,9 +119,6 @@ public final class ViewableKeyExtractor {
             return;
         }
         for (Field field : ViewableAdapter.getAllFields(cls)) {
-            if ("name".equals(field.getName())) {
-                continue;
-            }
             List<String> path = new ArrayList<>(prefix);
             path.add(field.getName());
             out.add(List.copyOf(path));
@@ -168,13 +165,8 @@ public final class ViewableKeyExtractor {
             }
             try {
                 String part = path.get(index);
-                Object next;
-                if ("name".equals(part)) {
-                    next = viewable.getName();
-                } else {
-                    FieldSet fields = FieldSet.of(viewable);
-                    next = fields.has(part) ? fields.read(part) : null;
-                }
+                FieldSet fields = FieldSet.of(viewable);
+                Object next = fields.has(part) ? fields.read(part) : null;
                 return extractPathValueRecursive(next, path, index + 1, visited);
             } finally {
                 visited.remove(viewable);

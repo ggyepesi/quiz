@@ -62,9 +62,11 @@ class DynamicSearchConfigTest {
         assertEquals(1, byWon.getOrDefault("won", List.of()).size(), byWon.toString());
 
         // name checked: the display name matches again.
+        String displayKey = objectview.field.ViewableContractFieldSet.DISPLAY_KEY;
+        String displayLabel = objectview.field.ViewableContractFieldSet.label(displayKey);
         Map<String, List<Viewable>> withName = engine.searchViewables(
-                pool, List.of("casablanca"), explicit("name"));
-        assertEquals(1, withName.getOrDefault("name", List.of()).size(),
+                pool, List.of("casablanca"), explicit(displayKey));
+        assertEquals(1, withName.getOrDefault(displayLabel, List.of()).size(),
                 withName.toString());
     }
 
