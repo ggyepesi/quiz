@@ -611,6 +611,25 @@ public class FieldSourcePanel extends JPanel {
             return;
         }
 
+        GeneratedClassModel owner = ownerClass();
+        // Remember whether the stored key still equals the OLD automatic
+        // proposal before changing this field's mapping. If it does, the user has
+        // not customized the key and we may advance it to the NEW proposal after
+        // the edit. If it differs — including an explicitly cleared key while a
+        // non-empty default exists — the user's decision is authoritative and is
+        // left untouched. This avoids a persistent "automatic" flag in the model.
+        List<String> priorSuggestedKey =
+                wikidata.explore.model.StatementCanonicalDefaults.suggest(owner);
+        boolean canonicalFollowedSuggestion = owner != null
+                && owner.canonical().keyFields().equals(priorSuggestedKey);
+        // Key and display are independent user decisions. In particular, a
+        // modeller often keeps the proposed grain but chooses a more useful
+        // display template; remember the display's own default-following state so
+        // advancing the key cannot erase that customization.
+        boolean displayFollowedSuggestion =
+                wikidata.explore.model.StatementCanonicalDefaults
+                        .usesSuggestedDisplay(owner);
+
         FieldSourceMapping m = field.mapping();
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
         m.propertyPid(propertyPidField.getText());
@@ -663,7 +682,6 @@ public class FieldSourcePanel extends JPanel {
                 (FieldProductionKind) productionBox.getSelectedItem());
         propertyLabel.setText(m.displayProperty());
 
-        GeneratedClassModel owner = ownerClass();
         if (StatementFieldSemantics.supportsMissingQualifierPolicy(
                 owner,
                 field)) {
@@ -683,6 +701,18 @@ public class FieldSourcePanel extends JPanel {
         StatementFieldSemantics.normalizeMissingQualifierPolicy(
                 owner,
                 field);
+        // For example: configuring category as the statement value changes the
+        // followed default [] -> [category]; subsequently configuring nominee as
+        // a scalar entity qualifier changes it to [category, nominee]. A DATE,
+        // collection or COMPANION_MATCH edit contributes nothing.
+        if (canonicalFollowedSuggestion) {
+            wikidata.explore.model.StatementCanonicalDefaults
+                    .replaceKeyWithSuggestion(owner);
+        }
+        if (displayFollowedSuggestion) {
+            wikidata.explore.model.StatementCanonicalDefaults
+                    .replaceDisplayWithSuggestion(owner);
+        }
         missingQualifierBox.setSelectedItem(
                 policyLabel(m.missingQualifierPolicy()));
         refreshStatementFieldControls();

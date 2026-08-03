@@ -17,7 +17,7 @@ class StatementValueFieldTest {
         // A Nomination reify class like the Oscars model: category is the value
         // (mapped to P1411, the statement PID); year/forWork are qualifiers.
         GeneratedClassModel n = new GeneratedClassModel("Nomination");
-        n.statementSourceClass("OscarNominations");
+        n.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         n.instanceMapping().propertyPid("P1411");     // statementSource PID
         GeneratedFieldModel category =
                 n.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
@@ -35,7 +35,7 @@ class StatementValueFieldTest {
     @Test
     void noGuessWhenNoFieldIsOnTheStatementPid() {
         GeneratedClassModel n = new GeneratedClassModel("Nomination");
-        n.statementSourceClass("OscarNominations");
+        n.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         n.instanceMapping().propertyPid("P1411");
         // a non-qualifier field, but NOT mapped to P1411 — the old code would have
         // guessed this as the value; now it's not the value.

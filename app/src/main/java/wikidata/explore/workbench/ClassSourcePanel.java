@@ -11,6 +11,7 @@ import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.query.logical.ClassSearchQuery;
 import wikidata.explore.query.logical.DiscoverSubtypesQuery;
 import wikidata.explore.query.result.TableQueryResult;
@@ -221,7 +222,8 @@ public class ClassSourcePanel extends JPanel {
         baseClassBox.setSelectedItem(base == null || base.isBlank() ? NO_BASE : base);
         discriminatorPidField.setText(clazz == null ? "P31" : clazz.effectiveDiscriminatorPid());
         discriminatorQidField.setText(clazz == null ? "" : clazz.discriminatorQid());
-        statementSourceField.setText(clazz == null ? "" : clazz.statementSourceClass());
+        StatementClassSource statement = clazz == null ? null : clazz.statementSource();
+        statementSourceField.setText(statement == null ? "" : statement.sourceClassName());
     }
 
     // Rank-by options: none, notability, and the class's sortable (number/date)
@@ -852,6 +854,8 @@ public class ClassSourcePanel extends JPanel {
             return;
         }
 
+        boolean wasStatementClass = clazz.reifiesStatements();
+
         clazz.className(classNameField.getText());
         clazz.alias(aliasField.getText());
 
@@ -859,8 +863,6 @@ public class ClassSourcePanel extends JPanel {
         clazz.baseClassName(base == null || NO_BASE.equals(base) ? "" : base.toString());
         clazz.discriminatorPid(RuleNode.cleanPid(discriminatorPidField.getText()));
         clazz.discriminatorQid(RuleNode.cleanQid(discriminatorQidField.getText()));
-        clazz.statementSourceClass(statementSourceField.getText().trim());
-
         FieldSourceMapping m = clazz.instanceMapping();
         m.sourceQid(typeQidField.getText());
         m.additionalTypeQids().clear();
@@ -878,6 +880,9 @@ public class ClassSourcePanel extends JPanel {
             relPid = "P31";
         }
         m.propertyPid(relPid);
+        String statementSourceClass = statementSourceField.getText().trim();
+        clazz.statementSource(statementSourceClass.isBlank() ? null
+                : new StatementClassSource(statementSourceClass, relPid));
         // Preserve the resolved relation label (from "Find…" or a prior load) so
         // it persists and renders; default P31 to "instance of".
         String relLabelText = relationLabel.getText().trim();
@@ -927,19 +932,39 @@ public class ClassSourcePanel extends JPanel {
 
         applyCanonical();
 
+        // This older class-source entry point can also create a statement class.
+        // applyCanonical() above rebuilds CanonicalSpec from this panel's controls,
+        // so defaults MUST be materialized afterwards; doing it before that call
+        // merely wrote values which were immediately discarded. Preserve anything
+        // explicitly entered in the same apply: fill only a missing key and the
+        // entity-only LABEL display, while always making the identity kind agree
+        // with the newly assigned statement source.
+        if (!wasStatementClass && clazz.reifiesStatements()) {
+            CanonicalSpec canonical = clazz.canonical();
+            canonical.kind(CanonicalSpec.Kind.DERIVED);
+            if (canonical.keyFields().isEmpty()) {
+                wikidata.explore.model.StatementCanonicalDefaults
+                        .replaceKeyWithSuggestion(clazz);
+            }
+            if (canonical.displayNameMode() == CanonicalSpec.DisplayNameMode.LABEL) {
+                wikidata.explore.model.StatementCanonicalDefaults
+                        .replaceDisplayWithSuggestion(clazz);
+            }
+        }
+
         updateSummary();
         afterChange.accept(null);
     }
 
     // --- Identity & label (canonicalization) ---
 
-    /** Loads the class's canonical spec (explicit or inferred) into the section. */
+    /** Loads the class's canonical spec into the section. */
     private void loadCanonical() {
         populateDisplayNameFields();
 
         CanonicalSpec spec = clazz == null
                 ? new CanonicalSpec()
-                : clazz.effectiveCanonical();
+                : clazz.canonical();
 
         canonicalKindBox.setSelectedItem(spec.isDerived() ? KIND_DERIVED : KIND_ENTITY);
         displayNameModeBox.setSelectedItem(switch (spec.displayNameMode()) {

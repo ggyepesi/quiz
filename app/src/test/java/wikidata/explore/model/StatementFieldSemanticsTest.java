@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class StatementFieldSemanticsTest {
 
@@ -51,6 +52,98 @@ class StatementFieldSemanticsTest {
         assertTrue(StatementFieldSemantics.isCanonicalKeyCandidate(category));
         assertFalse(StatementFieldSemantics.isCanonicalKeyCandidate(others),
                 "a collection field can't be part of a natural key");
+    }
+
+    @Test
+    void statementDefaultKeyIsValuePlusScalarEntityQualifiers() {
+        GeneratedClassModel nom = reifyingClass();
+        GeneratedFieldModel category =
+                nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().propertyPid("P1411");
+        qualifier(nom, "nominee", FieldType.ENTITY,
+                FieldCardinality.SINGLE, "P2453");
+        qualifier(nom, "year", FieldType.DATE,
+                FieldCardinality.SINGLE, "P585");
+        qualifier(nom, "nominees", FieldType.ENTITY,
+                FieldCardinality.COLLECTION, "P2453");
+        GeneratedFieldModel won =
+                nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);
+        won.mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
+
+        assertEquals(
+                java.util.List.of("category", "nominee"),
+                StatementCanonicalDefaults.suggest(nom));
+    }
+
+    @Test
+    void statementDefaultDisplayFieldIsFirstSingleValuedNonDerivedField() {
+        GeneratedClassModel nom = reifyingClass();
+        // A collection can't be the display; the value comes next and wins.
+        nom.addField("nominees", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        GeneratedFieldModel category =
+                nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().propertyPid("P1411");
+        GeneratedFieldModel won =
+                nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);
+        won.mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
+
+        assertEquals("category",
+                StatementCanonicalDefaults.suggestDisplayField(nom),
+                "a reified statement has no label; the first single-valued "
+                        + "non-derived field is proposed instead");
+    }
+
+    @Test
+    void replaceWithSuggestionMaterializesKeyAndDisplay() {
+        GeneratedClassModel nom = reifyingClass();
+        GeneratedFieldModel category =
+                nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().propertyPid("P1411");
+        qualifier(nom, "nominee", FieldType.ENTITY,
+                FieldCardinality.SINGLE, "P2453");
+
+        StatementCanonicalDefaults.replaceWithSuggestion(nom);
+
+        CanonicalSpec spec = nom.canonical();
+        assertEquals(java.util.List.of("category", "nominee"), spec.keyFields());
+        assertEquals(CanonicalSpec.DisplayNameMode.FIELD, spec.displayNameMode());
+        assertEquals("category", spec.displayNameField());
+    }
+
+    @Test
+    void dateAndCollectionStatementValuesAreNotDefaultKeyFields() {
+        GeneratedClassModel dateStatement = reifyingClass();
+        GeneratedFieldModel date = dateStatement.addField(
+                "date", FieldType.DATE, FieldCardinality.SINGLE);
+        date.mapping().propertyPid("P1411");
+
+        GeneratedClassModel collectionStatement = reifyingClass();
+        GeneratedFieldModel values = collectionStatement.addField(
+                "values", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        values.mapping().propertyPid("P1411");
+
+        assertTrue(StatementCanonicalDefaults.suggest(dateStatement).isEmpty(),
+                "DATE values are attributes unless explicitly selected");
+        assertTrue(StatementCanonicalDefaults.suggest(collectionStatement).isEmpty(),
+                "a collection cannot be materialized as a canonical key field");
+    }
+
+    @Test
+    void updatingSuggestedKeyDoesNotReplaceCustomDisplay() {
+        GeneratedClassModel nom = reifyingClass();
+        GeneratedFieldModel category = nom.addField(
+                "category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().propertyPid("P1411");
+        nom.canonical()
+                .displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
+                .displayNameTemplate("{category} · custom");
+
+        StatementCanonicalDefaults.replaceKeyWithSuggestion(nom);
+
+        assertEquals(CanonicalSpec.DisplayNameMode.TEMPLATE,
+                nom.canonical().displayNameMode());
+        assertEquals("{category} · custom",
+                nom.canonical().displayNameTemplate());
     }
 
     @Test

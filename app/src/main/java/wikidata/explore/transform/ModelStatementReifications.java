@@ -150,7 +150,7 @@ public final class ModelStatementReifications {
         List<ReifyConstruct.Role> roles =
                 fallbackRoles(statementClass, valueField);
         List<String> dedup =
-                canonicalKey(statementClass, valueField);
+                canonicalKey(statementClass.canonical().keyFields());
 
         // The class sourceQid, when present, is a P31 filter for the statement
         // value (for example Q19020 for Academy Award categories).
@@ -293,7 +293,7 @@ public final class ModelStatementReifications {
         List<ReifyConstruct.Role> roles =
                 fallbackRoles(statementClass, valueField);
         List<String> dedup =
-                canonicalKey(statementClass, valueField);
+                canonicalKey(statementClass.canonical().keyFields());
 
         String valueTypeQid =
                 clean(statementClass.sourceMapping().sourceQid());
@@ -449,27 +449,6 @@ public final class ModelStatementReifications {
         return roles;
     }
 
-    private static List<String> canonicalKey(
-            CompiledClass statementClass,
-            String valueField) {
-
-        LinkedHashSet<String> key = new LinkedHashSet<>();
-        for (String fieldName : statementClass.canonical().keyFields()) {
-            String cleanName = clean(fieldName);
-            if (!cleanName.isBlank()
-                    && statementClass.field(cleanName).isPresent()) {
-                key.add(cleanName);
-            }
-        }
-
-        if (key.isEmpty()
-                && statementClass.field(valueField).isPresent()) {
-            key.add(valueField);
-        }
-
-        return new ArrayList<>(key);
-    }
-
     /** Compiled fields are never name fields (the compiler drops those), so a
      *  runtime statement field is simply an AUTO-produced one. */
     private static boolean runtimeStatementField(CompiledField field) {
@@ -609,46 +588,25 @@ public final class ModelStatementReifications {
     }
 
     /**
-     * Runtime identity comes from the class-level CanonicalSpec.
-     *
-     * <p>Old per-field inDedupKey flags are consulted only by
-     * GeneratedClassModel.effectiveCanonical(), which converts the legacy
-     * representation into the same class-level view.</p>
+     * Runtime identity is exactly the stored, de-duplicated canonical key, read
+     * identically off the editable ({@link CanonicalSpec}) or compiled
+     * ({@code CompiledCanonical}) model. Whether every key field still exists is a
+     * validation/compilation concern — {@link GeneratedProjectModelValidator}
+     * flags a missing one and the compiler rejects it — so this reader never
+     * filters or repairs: a reader that silently dropped a field would reopen the
+     * compiled-vs-editable divergence this construct exists to prevent.
      */
-    private static List<String> canonicalKey(
-            GeneratedClassModel statementClass,
-            String valueField) {
-
-        CanonicalSpec canonical =
-                statementClass.effectiveCanonical();
-
+    private static List<String> canonicalKey(List<String> storedKeyFields) {
         LinkedHashSet<String> key = new LinkedHashSet<>();
-        if (canonical != null && canonical.keyFields() != null) {
-            for (String fieldName : canonical.keyFields()) {
+        if (storedKeyFields != null) {
+            for (String fieldName : storedKeyFields) {
                 String cleanName = clean(fieldName);
-                if (!cleanName.isBlank()
-                        && fieldExists(statementClass, cleanName)) {
+                if (!cleanName.isBlank()) {
                     key.add(cleanName);
                 }
             }
         }
-
-        // A malformed or very old model should still produce stable records.
-        // Normally effectiveCanonical() already includes the value field.
-        if (key.isEmpty() && fieldExists(statementClass, valueField)) {
-            key.add(valueField);
-        }
-
         return new ArrayList<>(key);
-    }
-
-    private static boolean fieldExists(
-            GeneratedClassModel statementClass,
-            String fieldName) {
-
-        return statementClass.fields().stream()
-                             .filter(java.util.Objects::nonNull)
-                             .anyMatch(field -> fieldName.equals(field.name()));
     }
 
     /**

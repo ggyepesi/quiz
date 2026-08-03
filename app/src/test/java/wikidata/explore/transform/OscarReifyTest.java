@@ -42,7 +42,7 @@ class OscarReifyTest {
         project.addClass(src);
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("OscarNominations");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.instanceMapping().propertyPid("P1411");
         nom.instanceMapping().sourceQid("Q19020");   // the wrong value-type filter
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
@@ -67,7 +67,7 @@ class OscarReifyTest {
         project.addClass(src);
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("OscarNominations");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.instanceMapping().propertyPid("P1411");
         var cat = nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         cat.mapping().propertyPid("P1411");
@@ -90,7 +90,7 @@ class OscarReifyTest {
         project.addClass(src);
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("OscarNominations");
+        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.instanceMapping().propertyPid("P1411");
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P1411");
@@ -428,6 +428,8 @@ class OscarReifyTest {
                 .mapping().qualifierPid("P2453");                    // the nominee list
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
+        wikidata.explore.model.StatementCanonicalDefaults
+                .replaceWithSuggestion(nom);
         project.addClass(nom);
 
         ModelStatementReifications.Reification editable =

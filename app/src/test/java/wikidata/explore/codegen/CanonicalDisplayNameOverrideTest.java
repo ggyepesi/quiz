@@ -49,10 +49,8 @@ class CanonicalDisplayNameOverrideTest {
 
     @Test
     void legacyModelWithoutExplicitSpecDoesNotOverride() {
-        // reifiesStatements would make effectiveCanonical() DERIVED, but with no
-        // EXPLICIT spec we must leave the loaded label alone (safe migration).
+        // Entity identity with label display leaves the loaded label alone.
         GeneratedClassModel model = new GeneratedClassModel("Nomination");
-        model.statementSourceClass("OscarNominations");
 
         assertNull(GeneratedViewableMapper.canonicalDisplayNameOverride(
                 model, reader(Map.of("nominee", new Ref("Q1", "Al Pacino"))), "label"));

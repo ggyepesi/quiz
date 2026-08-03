@@ -5,6 +5,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.StatementClassSource;
 
 import java.util.List;
 
@@ -15,7 +16,7 @@ class CanonicalizationTest {
     private GeneratedProjectModel projectWithNominationSpec() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
-        nomination.statementSourceClass("OscarNominations");
+        nomination.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nomination.canonical(new CanonicalSpec()
                 .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)

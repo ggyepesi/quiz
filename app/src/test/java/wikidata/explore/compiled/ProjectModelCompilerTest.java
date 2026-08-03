@@ -10,6 +10,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.StatementCanonicalDefaults;
 
 import java.io.File;
 import java.util.List;
@@ -77,14 +78,16 @@ class ProjectModelCompilerTest {
     }
 
     @Test
-    void canonicalIsMaterializedAndExcludesDerivedFields() {
+    void compilerPreservesMaterializedCanonicalAndExcludesDerivedFields() {
         GeneratedProjectModel p = project("canon");
         p.addClass(new GeneratedClassModel("OscarNominations"));
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
-        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P1411");
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
+        StatementCanonicalDefaults.replaceWithSuggestion(nom);
         p.addClass(nom);
 
         CompiledClass cn = ProjectModelCompiler.compile(p)
@@ -170,19 +173,4 @@ class ProjectModelCompilerTest {
                 ex.validation().format());
     }
 
-    @Test
-    void compileDoesNotMigrateTheEditableModelInPlace() {
-        GeneratedProjectModel p = project("snapshot");
-        p.addClass(new GeneratedClassModel("OscarNominations"));
-        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("OscarNominations");        // legacy bridge
-        nom.instanceMapping().propertyPid("P1411");
-        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        p.addClass(nom);
-
-        ProjectModelCompiler.compile(p);
-
-        assertFalse(p.findClass("Nomination").hasExplicitStatementSource(),
-                "compile migrates a copy, never the Swing-owned editable");
-    }
 }

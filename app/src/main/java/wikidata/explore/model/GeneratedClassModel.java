@@ -1,7 +1,5 @@
 package wikidata.explore.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.ArrayList;
@@ -10,7 +8,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class GeneratedClassModel {
 
     private String className;
@@ -41,12 +38,6 @@ public class GeneratedClassModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private StatementClassSource statementSource;
 
-    // Legacy JSON compatibility. Older model files stored the source class here
-    // and the statement property in instanceMapping.propertyPid().
-    @Deprecated
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private String statementSourceClass = "";
-
     private int generationDepth = 1;
 
     private final FieldSourceMapping instanceMapping =
@@ -55,7 +46,7 @@ public class GeneratedClassModel {
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
     private final List<String> seedQids = new ArrayList<>();
 
-    private CanonicalSpec canonical;
+    private CanonicalSpec canonical = new CanonicalSpec();
 
     public GeneratedClassModel() {
         this("GeneratedClass");
@@ -74,15 +65,6 @@ public class GeneratedClassModel {
                 className == null || className.isBlank()
                         ? "GeneratedClass"
                         : className.trim();
-    }
-
-    /**
-     * True only when the explicit statementSource field is set, as opposed to a
-     * compatibility view synthesized from legacy JSON. The migration needs this to
-     * tell a legacy statement class from an already-migrated one.
-     */
-    public boolean hasExplicitStatementSource() {
-        return statementSource != null;
     }
 
     public int generationDepth() {
@@ -142,40 +124,19 @@ public class GeneratedClassModel {
         return pid.matches("(?i)P\\d+") ? pid : "P31";
     }
 
-    /**
-     * Returns the explicit statement source. For an old model, a compatibility
-     * view is synthesized from statementSourceClass and instanceMapping.
-     */
     public StatementClassSource statementSource() {
-        if (statementSource != null) {
-            return statementSource;
-        }
-        if (statementSourceClass == null
-                || statementSourceClass.isBlank()) {
-            return null;
-        }
-        return new StatementClassSource(
-                statementSourceClass,
-                instanceMapping.propertyPid());
+        return statementSource;
     }
 
-    /**
-     * Makes the explicit representation authoritative. The property is also
-     * mirrored into instanceMapping temporarily so consumers not yet migrated
-     * continue to work while the refactor is introduced incrementally.
-     */
     public void statementSource(StatementClassSource value) {
         statementSource = value == null ? null : value.copy();
-
-        if (statementSource == null) {
-            statementSourceClass = "";
-            return;
-        }
-
-        statementSourceClass = "";
-
-        if (statementSource.hasProperty()) {
-            instanceMapping.propertyPid(statementSource.propertyPid());
+        if (statementSource != null) {
+            // The source changes the identity CATEGORY, but it cannot choose the
+            // natural-key fields here: callers commonly assign the source before
+            // adding/mapping the statement value and qualifiers. Editors invoke
+            // StatementCanonicalDefaults after those field semantics are known,
+            // and persist the resulting list in canonical.keyFields.
+            canonical.kind(CanonicalSpec.Kind.DERIVED);
         }
     }
 
@@ -195,27 +156,7 @@ public class GeneratedClassModel {
 
     public String statementPropertyPid() {
         StatementClassSource source = statementSource();
-        if (source != null && !source.propertyPid().isBlank()) {
-            return source.propertyPid();
-        }
-        return instanceMapping.propertyPid();
-    }
-
-    @Deprecated
-    @JsonIgnore
-    public String statementSourceClass() {
-        StatementClassSource source = statementSource();
-        return source == null ? "" : source.sourceClassName();
-    }
-
-    @Deprecated
-    public void statementSourceClass(String value) {
-        statementSourceClass = clean(value);
-
-        if (statementSource != null) {
-            statementSource.sourceClassName(statementSourceClass);
-            statementSourceClass = "";
-        }
+        return source == null ? "" : source.propertyPid();
     }
 
     public FieldSourceMapping instanceMapping() {
@@ -293,83 +234,7 @@ public class GeneratedClassModel {
     }
 
     public void canonical(CanonicalSpec canonical) {
-        this.canonical = canonical;
-    }
-
-    public boolean hasCanonical() {
-        return canonical != null;
-    }
-
-    public CanonicalSpec effectiveCanonical() {
-        return canonical != null ? canonical : inferCanonical();
-    }
-
-    /**
-     * Infers the old runtime identity without mutating an old model.
-     *
-     * <p>Statement reification historically treated DATE qualifiers as
-     * attributes rather than identity, because the date is often missing on
-     * one denormalized copy of an otherwise identical statement. Explicit
-     * legacy inDedupKey values still win. This inference is now exposed through
-     * CanonicalSpec so runtime code has one source of truth.</p>
-     */
-    private CanonicalSpec inferCanonical() {
-        CanonicalSpec spec = new CanonicalSpec();
-
-        if (!reifiesStatements()) {
-            return spec.kind(CanonicalSpec.Kind.WIKIDATA_ENTITY)
-                       .displayNameMode(
-                               CanonicalSpec.DisplayNameMode.LABEL)
-                       .labelLanguage("en");
-        }
-
-        spec.kind(CanonicalSpec.Kind.DERIVED);
-
-        GeneratedFieldModel primary = null;
-        boolean hasExplicitDedupFlags = fields.stream()
-                                              .filter(
-                                                      StatementFieldSemantics
-                                                              ::isCanonicalKeyCandidate)
-                                              .map(GeneratedFieldModel::mapping)
-                                              .anyMatch(mapping ->
-                                                                mapping.inDedupKey() != null);
-
-        for (GeneratedFieldModel field : fields) {
-            // Scalar, non-name, AUTO-produced fields only. Derived fields
-            // (COMPANION_MATCH flags like `won`, INVERT reverse refs) are produced
-            // AFTER reify — they must not enter the identity key, or e.g. won=null
-            // vs won=<x> would split the two denormalized copies of one statement.
-            if (!StatementFieldSemantics.isCanonicalKeyCandidate(field)) {
-                continue;
-            }
-
-            if (primary == null) {
-                primary = field;
-            }
-
-            if (hasExplicitDedupFlags) {
-                if (Boolean.TRUE.equals(
-                        field.mapping().inDedupKey())) {
-                    spec.keyFields().add(field.name());
-                }
-            } else if (field.type() != FieldType.DATE) {
-                // Preserve the legacy statement-reification default:
-                // ceremony/event dates describe an event but do not distinguish
-                // the two denormalized copies used to construct that event.
-                spec.keyFields().add(field.name());
-            }
-        }
-
-        if (primary != null) {
-            spec.displayNameMode(
-                        CanonicalSpec.DisplayNameMode.FIELD)
-                .displayNameField(primary.name());
-        } else {
-            spec.displayNameMode(
-                    CanonicalSpec.DisplayNameMode.LABEL);
-        }
-
-        return spec;
+        this.canonical = canonical == null ? new CanonicalSpec() : canonical;
     }
 
     public GeneratedClassModel copy() {
@@ -386,8 +251,6 @@ public class GeneratedClassModel {
                 statementSource == null
                         ? null
                         : statementSource.copy();
-        copy.statementSourceClass = statementSourceClass;
-
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.seedQids.addAll(seedQids);
         copy.canonical =

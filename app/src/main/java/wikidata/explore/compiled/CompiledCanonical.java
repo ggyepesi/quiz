@@ -16,8 +16,7 @@ public record CompiledCanonical(
         CanonicalSpec.DisplayNameMode displayNameMode,
         String displayNameField,
         String displayNameTemplate,
-        String labelLanguage,
-        boolean explicit) {
+        String labelLanguage) {
 
     public CompiledCanonical {
         kind = kind == null ? CanonicalSpec.Kind.WIKIDATA_ENTITY : kind;
@@ -62,8 +61,7 @@ public record CompiledCanonical(
                 source.displayNameMode(),
                 source.displayNameField(),
                 source.displayNameTemplate(),
-                source.labelLanguage(),
-                false);
+                source.labelLanguage());
     }
 
     private static String clean(String value) {

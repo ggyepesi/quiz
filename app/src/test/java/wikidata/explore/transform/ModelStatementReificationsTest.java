@@ -4,8 +4,11 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.StatementCanonicalDefaults;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.compiled.ProjectModelCompiler;
 
 import java.util.List;
 
@@ -26,12 +29,13 @@ class ModelStatementReificationsTest {
         GeneratedClassModel oscar = new GeneratedClassModel("Oscarnominations");
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("Oscarnominations");
+        nom.statementSource(new StatementClassSource("Oscarnominations", "P1411"));
         nom.instanceMapping().propertyPid("P1411");     // the reified statement property
         nom.instanceMapping().sourceQid("Q19020");      // value-type filter (categories)
         nom.fields().add(field("category", FieldType.ENTITY, "P1411", ""));   // ps: value
         nom.fields().add(field("year", FieldType.DATE, "", "P585"));          // qualifier → YEAR
         nom.fields().add(field("nominee", FieldType.ENTITY, "", "P2453"));    // qualifier → ENTITY (role)
+        StatementCanonicalDefaults.replaceWithSuggestion(nom);
 
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(oscar);
@@ -75,7 +79,7 @@ class ModelStatementReificationsTest {
         // the two and blocking dedup).
         GeneratedClassModel oscar = new GeneratedClassModel("Oscarnominations");
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSourceClass("Oscarnominations");
+        nom.statementSource(new StatementClassSource("Oscarnominations", "P1411"));
         nom.instanceMapping().propertyPid("P1411");
         nom.fields().add(field("category", FieldType.ENTITY, "P1411", ""));
         nom.fields().add(field("forWork", FieldType.ENTITY, "", "P1686"));
@@ -83,6 +87,7 @@ class ModelStatementReificationsTest {
         won.mapping().productionKind(
                 wikidata.explore.model.FieldProductionKind.COMPANION_MATCH);
         nom.fields().add(won);
+        StatementCanonicalDefaults.replaceWithSuggestion(nom);
 
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(oscar);
@@ -104,5 +109,30 @@ class ModelStatementReificationsTest {
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(plain);
         assertTrue(ModelStatementReifications.derive(p).isEmpty());
+    }
+
+    @Test void emptyStoredCanonicalKeyIsNotInferredAtRuntime() {
+        GeneratedClassModel source = new GeneratedClassModel("Oscarnominations");
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSource(new StatementClassSource("Oscarnominations", "P1411"));
+        nom.fields().add(field("category", FieldType.ENTITY, "P1411", ""));
+        nom.fields().add(field("nominee", FieldType.ENTITY, "", "P2453"));
+        // Deliberately do not call StatementCanonicalDefaults: this represents an
+        // explicitly stored empty/surrogate key, not an old model needing repair.
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(source);
+        project.addClass(nom);
+
+        ModelStatementReifications.Reification editable =
+                ModelStatementReifications.deriveOne(nom, project);
+        var compiledProject = ProjectModelCompiler.compile(project);
+        ModelStatementReifications.Reification compiled =
+                ModelStatementReifications.deriveOne(
+                        compiledProject.findClass("Nomination").orElseThrow(),
+                        compiledProject);
+
+        assertTrue(editable.reify().dedupBy().isEmpty());
+        assertTrue(compiled.reify().dedupBy().isEmpty());
     }
 }

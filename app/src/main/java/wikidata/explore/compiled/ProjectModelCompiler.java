@@ -7,7 +7,7 @@ import java.util.*;
 /**
  * Semantic-analysis boundary between the mutable editor model and runtime.
  *
- * <p>The compiler snapshots, migrates and validates the project, then resolves
+ * <p>The compiler snapshots and validates the project, then resolves
  * inheritance, canonical field references, sort fields and class references
  * into immutable compiled values.</p>
  */
@@ -26,8 +26,6 @@ public final class ProjectModelCompiler {
 
         // Never normalize the object currently owned by Swing controls.
         GeneratedProjectModel snapshot = editable.copy();
-        GeneratedProjectModelMigration.migrate(snapshot);
-
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(snapshot);
         if (!validation.valid()) {
@@ -72,8 +70,7 @@ public final class ProjectModelCompiler {
 
         CompiledCanonical canonical =
                 compileCanonical(
-                        clazz.effectiveCanonical(),
-                        clazz.hasCanonical(),
+                        clazz.canonical(),
                         effectiveFields,
                         clazz.className());
 
@@ -103,7 +100,6 @@ public final class ProjectModelCompiler {
 
     private static CompiledCanonical compileCanonical(
             CanonicalSpec source,
-            boolean explicit,
             List<CompiledField> effectiveFields,
             String className) {
 
@@ -116,6 +112,10 @@ public final class ProjectModelCompiler {
         List<String> resolvedKeys = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
 
+        // Compilation resolves and de-duplicates the STORED field names; it does
+        // not invent an identity key. Default selection is an earlier, explicit
+        // model-editing operation (StatementCanonicalDefaults), and an empty list
+        // must remain empty so editable and compiled execution stay equivalent.
         for (String configuredKey : canonical.keyFields()) {
             String configured = clean(configuredKey);
             CompiledField resolved =
@@ -160,8 +160,7 @@ public final class ProjectModelCompiler {
                 canonical.displayNameMode(),
                 resolvedDisplayField,
                 canonical.displayNameTemplate(),
-                canonical.labelLanguage(),
-                explicit);
+                canonical.labelLanguage());
     }
 
     private static List<CompiledField> compileFields(

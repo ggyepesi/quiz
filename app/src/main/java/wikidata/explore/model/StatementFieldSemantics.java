@@ -120,8 +120,14 @@ public final class StatementFieldSemantics {
     }
 
     /**
-     * Fields eligible for a derived class's canonical key. In particular,
-     * COMPANION_MATCH fields such as Oscar Nomination.won are excluded.
+     * Fields eligible for a derived class's explicitly configured canonical
+     * key. In particular, COMPANION_MATCH fields such as Oscar Nomination.won
+     * are excluded because they do not exist at reification time.
+     *
+     * <p>This is deliberately broader than the automatic proposal in
+     * {@link StatementCanonicalDefaults}: a modeller may explicitly decide that
+     * a scalar date participates in identity, although dates are omitted from
+     * the initial default.</p>
      */
     public static boolean isCanonicalKeyCandidate(
             GeneratedFieldModel field) {

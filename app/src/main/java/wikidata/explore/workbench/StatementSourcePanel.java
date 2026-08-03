@@ -7,6 +7,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.StatementCanonicalDefaults;
 import wikidata.explore.model.StatementFieldSemantics;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.transform.ModelStatementReifications;
@@ -141,6 +142,8 @@ public class StatementSourcePanel extends JPanel {
                 RuleNode.cleanPid(
                         statementPropField.getText());
 
+        boolean wasStatementClass = clazz.reifiesStatements();
+
         // The source class is OPTIONAL: a blank one means subjects are discovered
         // directly from the statement property (guarded by a value domain). Only a
         // blank property AND blank source class means "not a statement class" — a
@@ -159,6 +162,17 @@ public class StatementSourcePanel extends JPanel {
                 next.valueSelectionName(prior.valueSelectionName());
             }
             clazz.statementSource(next);
+        }
+
+        // A kind transition is a model-creation event, so this is the correct
+        // place to materialize the initial proposal. Reopening or recompiling an
+        // existing statement class never runs this branch and therefore never
+        // overwrites a user-edited key. Rebuild the checkboxes so the newly stored
+        // fields are visible before applyCanonicalControls reads them back.
+        if (!wasStatementClass && clazz.reifiesStatements()
+                && clazz.canonical().keyFields().isEmpty()) {
+            StatementCanonicalDefaults.replaceWithSuggestion(clazz);
+            rebuildCanonicalControls();
         }
 
         clazz.instanceMapping().sourceQid(
@@ -212,8 +226,7 @@ public class StatementSourcePanel extends JPanel {
             return;
         }
 
-        CanonicalSpec canonical =
-                clazz.effectiveCanonical();
+        CanonicalSpec canonical = clazz.canonical();
 
         int row = 0;
         for (GeneratedFieldModel field : clazz.fields()) {
@@ -267,10 +280,7 @@ public class StatementSourcePanel extends JPanel {
     }
 
     private void applyCanonicalControls() {
-        CanonicalSpec canonical =
-                clazz.hasCanonical()
-                        ? clazz.canonical()
-                        : clazz.effectiveCanonical().copy();
+        CanonicalSpec canonical = clazz.canonical();
 
         canonical.kind(CanonicalSpec.Kind.DERIVED);
         canonical.keyFields().clear();

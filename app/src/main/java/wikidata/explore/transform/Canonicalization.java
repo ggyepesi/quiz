@@ -45,9 +45,6 @@ public final class Canonicalization {
                 continue;
             }
             withModel++;
-            if (!model.hasCanonical()) {
-                continue;
-            }
             withSpec++;
             CanonicalSpec spec = model.canonical();
             if (!spec.isDerived()
@@ -68,8 +65,7 @@ public final class Canonicalization {
 
     /**
      * Compiled-model overload — reads the same explicit DERIVED-with-FIELD/TEMPLATE
-     * spec off the compiled class ({@code explicit()} mirrors {@code hasCanonical()})
-     * and applies the identical displayName rule.
+     * spec off the compiled class and applies the identical displayName rule.
      */
     public static void apply(CompiledProjectModel project,
                              Collection<WikidataDynamicObject> pool,
@@ -90,9 +86,6 @@ public final class Canonicalization {
             }
             withModel++;
             CompiledCanonical canonical = model.canonical();
-            if (!canonical.explicit()) {
-                continue;
-            }
             withSpec++;
             if (!canonical.derivedIdentity()
                     || canonical.displayNameMode()
