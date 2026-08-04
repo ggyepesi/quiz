@@ -15,12 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  */
 class FieldAccessTest {
 
-    @Test void displayAndIdentityComeFromTheViewableContract() {
+    @Test void displayComesFromTheViewableContractButIdentityIsNotAField() {
         DynamicViewable q = new DynamicViewable("Q1", "Alice");
         q.type("Person");
         assertEquals("Alice", FieldAccess.getPath(
                 q, ViewableContractFieldSet.DISPLAY_KEY));
-        assertEquals("Q1", FieldAccess.getPath(
+        // Identity is a keying method, never rendered — so it is not a field/path.
+        assertNull(FieldAccess.getPath(
                 q, ViewableContractFieldSet.IDENTITY_KEY));
     }
 

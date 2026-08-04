@@ -98,8 +98,8 @@ class FieldSetTest {
 
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, schema));
 
-        assertEquals(4, f.size(),
-                "the two schema fields plus the two Viewable contract fields");
+        assertEquals(3, f.size(),
+                "the two schema fields plus the one Viewable contract field (display name)");
         assertTrue(f.get("cast").collection(), "schema says collection despite the single value");
         assertEquals(FieldKind.ORDERED, f.get("year").kind(), "typed even though absent from the map");
         // Values still read from the object: cast present, year absent (null).
@@ -118,8 +118,7 @@ class FieldSetTest {
         Film film = new Film();
         FieldSet reflected = FieldSet.of(film, schema);
         assertEquals(List.of("cast", "title", "year", "won", "director",
-                        ViewableContractFieldSet.DISPLAY_KEY,
-                        ViewableContractFieldSet.IDENTITY_KEY),
+                        ViewableContractFieldSet.DISPLAY_KEY),
                 reflected.fields().stream().map(FieldRef::name).toList(),
                 "schema metadata wins, but reflected data fields are not dropped");
         assertEquals("Person", reflected.field("cast").targetType());
@@ -130,8 +129,7 @@ class FieldSetTest {
         dynamic.put("unexpected", "kept");
         FieldSet dynamicSet = FieldSet.of(dynamic, schema);
         assertEquals(List.of("cast", "unexpected",
-                        ViewableContractFieldSet.DISPLAY_KEY,
-                        ViewableContractFieldSet.IDENTITY_KEY),
+                        ViewableContractFieldSet.DISPLAY_KEY),
                 dynamicSet.fields().stream().map(FieldRef::name).toList());
         assertTrue(dynamicSet.has("cast"));
         assertEquals("kept", dynamicSet.read("unexpected"));
@@ -146,8 +144,8 @@ class FieldSetTest {
         WikidataDynamicObject wdo = new WikidataDynamicObject("Q1", "N");
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, pc.asFieldSchema()));
 
-        assertEquals(5, f.size(),
-                "year, category, structural source, + two contract fields");
+        assertEquals(4, f.size(),
+                "year, category, structural source, + the display-name contract field");
         assertEquals(FieldKind.ORDERED, f.get("year").kind());
         assertTrue(f.get("category").collection());
         assertTrue(f.get("category").reference());

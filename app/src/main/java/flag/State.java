@@ -8,13 +8,14 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import language.Language;
+import objectview.annotations.Hidden;
 import objectview.annotations.Reference;
 import quiz.ViewableGroup;
 import objectview.media.ImagePane;
 import quiz.source.ManualEntity;
 
 public class State extends ManualEntity {
-
+    @Hidden
     private final String name;
     private final List<ImagePane> flagVersions = new ArrayList<>();
     private final List<ImagePane> armsVersions = new ArrayList<>();
