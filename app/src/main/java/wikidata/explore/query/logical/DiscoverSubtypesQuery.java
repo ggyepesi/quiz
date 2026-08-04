@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
@@ -59,7 +61,7 @@ public class DiscoverSubtypesQuery implements Query<TableQueryResult> {
                     List<List<Object>> rows = new ArrayList<>();
                     for (WikidataBinding b : context.sparql().query(sparql)) {
                         String qid = b.qid("type");
-                        if (qid == null || !qid.matches("Q\\d+")) {
+                        if (qid == null || !WikidataIds.isQid(qid)) {
                             continue;
                         }
                         String label = b.value("typeLabel");

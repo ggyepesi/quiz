@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.query.logical.DiscoverClassPropertiesQuery;
 import wikidata.explore.query.logical.EntityLabelQuery;
 import wikidata.explore.query.result.DiscoveredProperty;
@@ -301,7 +303,7 @@ public class PropertyDiscoveryPanel extends JPanel {
         customQidLabel.setText(" ");
         if (qidResolveTimer != null) qidResolveTimer.stop();
         String raw = customQidField.getText().trim();
-        if (!raw.matches("Q\\d+")) return;
+        if (!WikidataIds.isQid(raw)) return;
         qidResolveTimer = new Timer(600, e -> resolveQidLabel(raw));
         qidResolveTimer.setRepeats(false);
         qidResolveTimer.start();
@@ -325,7 +327,7 @@ public class PropertyDiscoveryPanel extends JPanel {
         applyEdits.run();
 
         String customQid = customQidField.getText().trim();
-        boolean useCustom = customQid.matches("Q\\d+");
+        boolean useCustom = WikidataIds.isQid(customQid);
         int     n         = (int) sampleSpinner.getValue();
 
         RuleNode node = nodeSupplier.get();
@@ -514,7 +516,7 @@ public class PropertyDiscoveryPanel extends JPanel {
             return null;
         }
         String pid = RuleNode.cleanPid(node.propertyPid());
-        if (!pid.matches("P\\d+") || pid.equals("P31")) {
+        if (!WikidataIds.isPid(pid) || pid.equals("P31")) {
             statusLabel.setText("\"Qualifiers\" needs a relational membership "
                     + "(a non-P31 relation, e.g. P1411 → categories).");
             return null;
@@ -840,7 +842,7 @@ public class PropertyDiscoveryPanel extends JPanel {
                 JTable table, Object value, boolean sel, boolean focus, int row, int col) {
             super.getTableCellRendererComponent(table, value, sel, focus, row, col);
             String text = value == null ? "" : value.toString();
-            if (!sel && text.matches("[PQ]\\d+"))
+            if (!sel && WikidataIds.isId(text))
                 setForeground(new Color(0, 80, 200));
             else if (!sel)
                 setForeground(table.getForeground());

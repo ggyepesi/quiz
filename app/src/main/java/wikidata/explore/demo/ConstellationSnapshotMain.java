@@ -1,5 +1,7 @@
 package wikidata.explore.demo;
 
+import wikidata.WikidataIds;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -112,7 +114,7 @@ public final class ConstellationSnapshotMain {
         }
         int slash = uri.lastIndexOf('/');
         String tail = slash >= 0 ? uri.substring(slash + 1) : uri;
-        return tail.matches("Q\\d+") ? tail : null;
+        return WikidataIds.isQid(tail) ? tail : null;
     }
 
     private ConstellationSnapshotMain() {}

@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.query.template.rule.RuleIncludedFieldSparql;
 import wikidata.explore.query.template.rule.RuleTreeQueries;
 import wikidata.explore.rule.RuleTreeCompiler;
@@ -102,7 +104,7 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
                         String qid = b.qid("value");
                         String label = b.label("value");
 
-                        if (qid != null && qid.matches("Q\\d+")) {
+                        if (qid != null && WikidataIds.isQid(qid)) {
                             result.add(new Parent(qid, label == null ? "" : label));
                         }
                     }

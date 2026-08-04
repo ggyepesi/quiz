@@ -1,5 +1,7 @@
 package wikidata.explore;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.query.WikidataExplorerQueries;
@@ -32,7 +34,7 @@ public class WikidataPropertyCacheDownloader {
                         : "true".equals(isMulti)             ? "COLLECTION"
                         :                                      "AUTO";
 
-                if (pid != null && pid.matches("P\\d+")) {
+                if (pid != null && WikidataIds.isPid(pid)) {
                     properties.add(new WikidataProperty(
                             pid,
                             label == null || label.isBlank()

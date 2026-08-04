@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import wikidata.explore.query.template.rule.RuleIncludedFieldSparql;
@@ -130,7 +132,7 @@ public class RuleTreeExtractor {
             if (!child.valueFilters().isEmpty()) continue;
             if (!child.excludedPredicateObjects().isEmpty()) continue;
             String pid = RuleNode.cleanPid(child.propertyPid());
-            if (!pid.matches("P\\d+")) continue;
+            if (!WikidataIds.isPid(pid)) continue;
             simple.add(edge);
         }
         return simple;
@@ -611,7 +613,7 @@ public class RuleTreeExtractor {
         for (WikidataBinding b : client.query(sparql)) {
             String qid = b.qid("value");
             String label = b.label("value");
-            if (qid == null || !qid.matches("Q\\d+")) continue;
+            if (qid == null || !WikidataIds.isQid(qid)) continue;
 
             WikidataDynamicObject obj = rowsByQid.computeIfAbsent(
                     qid, k -> registry.getOrCreate(qid, label));
@@ -620,7 +622,7 @@ public class RuleTreeExtractor {
 
             if (capture) {
                 String targetQid = b.qid("root");
-                if (targetQid != null && targetQid.matches("Q\\d+")) {
+                if (targetQid != null && WikidataIds.isQid(targetQid)) {
                     edges.computeIfAbsent(qid, k -> new LinkedHashSet<>())
                          .add(targetQid);
                 }
@@ -668,7 +670,7 @@ public class RuleTreeExtractor {
 
         List<String> memberQids = members.stream()
                                          .map(WikidataDynamicObject::qid)
-                                         .filter(q -> q != null && q.matches("Q\\d+"))
+                                         .filter(q -> q != null && WikidataIds.isQid(q))
                                          .toList();
         if (memberQids.isEmpty()) return;
         int total = (memberQids.size() + memberFieldBatchSize - 1) / memberFieldBatchSize;
@@ -715,8 +717,8 @@ public class RuleTreeExtractor {
         for (WikidataBinding b : client.query(sparql)) {
             String valueQid = b.qid("value");
             String fieldValueQid = b.qid("fieldValue");
-            if (valueQid == null || !valueQid.matches("Q\\d+")) continue;
-            if (fieldValueQid == null || !fieldValueQid.matches("Q\\d+")) continue;
+            if (valueQid == null || !WikidataIds.isQid(valueQid)) continue;
+            if (fieldValueQid == null || !WikidataIds.isQid(fieldValueQid)) continue;
             WikidataDynamicObject member = registry.get(valueQid);
             if (member == null) continue;   // not a backbone member
             member.merge(field.fieldName(),
@@ -741,13 +743,13 @@ public class RuleTreeExtractor {
 
         List<String> memberQids = members.stream()
                                          .map(WikidataDynamicObject::qid)
-                                         .filter(q -> q != null && q.matches("Q\\d+"))
+                                         .filter(q -> q != null && WikidataIds.isQid(q))
                                          .toList();
         if (memberQids.isEmpty()) return;
 
         List<String> pids = outgoingFields.stream()
                                           .map(f -> RuleNode.cleanPid(f.propertyPid()))
-                                          .filter(p -> p.matches("P\\d+"))
+                                          .filter(p -> WikidataIds.isPid(p))
                                           .toList();
 
         String names = outgoingFields.stream().map(RuleIncludedField::fieldName)
@@ -817,7 +819,7 @@ public class RuleTreeExtractor {
 
         List<String> qids = placeholders.stream()
                                         .map(WikidataDynamicObject::qid)
-                                        .filter(q -> q != null && q.matches("Q\\d+"))
+                                        .filter(q -> q != null && WikidataIds.isQid(q))
                                         .toList();
         try (GenerationLog.Group g = progress.group("wbgetentities LABELS — "
                                                             + qids.size() + " refs, " + ((qids.size() + 49) / 50)
@@ -858,7 +860,7 @@ public class RuleTreeExtractor {
     private static boolean isPlaceholderLabel(WikidataDynamicObject o) {
         if (o == null) return false;
         String qid = o.qid();
-        if (qid == null || !qid.matches("Q\\d+")) return false;
+        if (qid == null || !WikidataIds.isQid(qid)) return false;
         String name = o.getDisplayName();
         return name == null || name.isBlank() || name.equals(qid);
     }
@@ -894,7 +896,7 @@ public class RuleTreeExtractor {
         for (WikidataBinding b : client.query(sparql)) {
             String qid   = b.qid("value");
             String label = b.label("value");
-            if (qid == null || !qid.matches("Q\\d+")) continue;
+            if (qid == null || !WikidataIds.isQid(qid)) continue;
 
             WikidataDynamicObject obj = rowsByQid.computeIfAbsent(
                     qid, k -> registry.getOrCreate(qid, label));
@@ -924,7 +926,7 @@ public class RuleTreeExtractor {
         String label = parts.length > 1 ? parts[1].trim() : "";
 
         String childQid = entityQid(uriOrQid);
-        if (childQid == null && uriOrQid.matches("Q\\d+")) {
+        if (childQid == null && WikidataIds.isQid(uriOrQid)) {
             childQid = uriOrQid;
         }
 
@@ -987,7 +989,7 @@ public class RuleTreeExtractor {
 
         List<String> parentQids = new ArrayList<>();
         for (WikidataDynamicObject p : parentObjects) {
-            if (p != null && p.qid() != null && p.qid().matches("Q\\d+"))
+            if (p != null && p.qid() != null && WikidataIds.isQid(p.qid()))
                 parentQids.add(p.qid());
         }
 
@@ -1091,7 +1093,7 @@ public class RuleTreeExtractor {
         for (WikidataBinding b : client.query(sparql)) {
             String childQid  = b.qid("value");
             String childLabel = b.label("value");
-            if (childQid == null || !childQid.matches("Q\\d+")) {
+            if (childQid == null || !WikidataIds.isQid(childQid)) {
                 continue;
             }
             WikidataDynamicObject child = kids.computeIfAbsent(
@@ -1155,7 +1157,7 @@ public class RuleTreeExtractor {
         for (WikidataBinding b : client.query(sparql)) {
             String qid   = b.qid("value");
             String label = b.label("value");
-            if (qid == null || !qid.matches("Q\\d+")) continue;
+            if (qid == null || !WikidataIds.isQid(qid)) continue;
 
             WikidataDynamicObject obj = rowsByQid.computeIfAbsent(
                     qid, k -> registry.getOrCreate(qid, label));
@@ -1234,7 +1236,7 @@ public class RuleTreeExtractor {
         if (value == null) return null;
         int idx = value.lastIndexOf('/');
         String tail = idx >= 0 ? value.substring(idx + 1) : value;
-        return tail.matches("Q\\d+") ? tail : null;
+        return WikidataIds.isQid(tail) ? tail : null;
     }
 
     private static List<WikidataDynamicObject> trimChildren(

@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledField;
 import wikidata.explore.compiled.CompiledProjectModel;
@@ -107,7 +109,7 @@ public final class FieldValueRestrictions {
                 if (slash >= 0) {
                     q = q.substring(slash + 1);
                 }
-                if (q.matches("Q\\d+")) {
+                if (WikidataIds.isQid(q)) {
                     out.add(q);
                 }
             }

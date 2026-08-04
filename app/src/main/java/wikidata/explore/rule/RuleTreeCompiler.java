@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledField;
 import wikidata.explore.compiled.CompiledFieldSource;
@@ -54,7 +56,7 @@ public final class RuleTreeCompiler {
         // (e.g. exclude Roman deities from a Greek-character class).
         for (String exq : m.excludedTypeQids()) {
             String qid = RuleNode.cleanQid(exq);
-            if (qid.matches("Q\\d+")) {
+            if (WikidataIds.isQid(qid)) {
                 node.excludedPredicateObjects().add(
                         new RuleNode.PredicateObjectExclusion("P31", qid));
             }
@@ -351,7 +353,7 @@ public final class RuleTreeCompiler {
         }
         for (String exq : m.excludedTypeQids()) {
             String qid = RuleNode.cleanQid(exq);
-            if (qid.matches("Q\\d+")) {
+            if (WikidataIds.isQid(qid)) {
                 node.excludedPredicateObjects().add(
                         new RuleNode.PredicateObjectExclusion("P31", qid));
             }

@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import wikidata.WikidataIds;
+
 /** The Wikidata property a user chose to source a field from — picked from the sample
  *  entity's real claims, not a hardcoded name→property map. */
 public record ChosenProperty(String pid, String label) {
@@ -10,6 +12,6 @@ public record ChosenProperty(String pid, String label) {
     }
 
     public boolean isPresent() {
-        return pid.matches("P\\d+");
+        return WikidataIds.isPid(pid);
     }
 }

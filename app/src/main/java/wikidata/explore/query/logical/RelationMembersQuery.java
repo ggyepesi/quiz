@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
@@ -70,7 +72,7 @@ public class RelationMembersQuery implements Query<TableQueryResult> {
                     List<List<Object>> rows = new ArrayList<>();
                     for (WikidataBinding b : context.sparql().query(sparql)) {
                         String m = b.qid("m");
-                        if (m == null || !m.matches("Q\\d+")) {
+                        if (m == null || !WikidataIds.isQid(m)) {
                             continue;
                         }
                         String label = b.value("mLabel");

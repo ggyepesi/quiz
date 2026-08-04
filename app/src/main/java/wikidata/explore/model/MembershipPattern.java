@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import wikidata.WikidataIds;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -107,14 +109,14 @@ public enum MembershipPattern {
         String pid = clean(m.propertyPid());
         boolean seeded = !clazz.seedQids().isEmpty();
 
-        if (!pid.matches("P\\d+")) {
+        if (!WikidataIds.isPid(pid)) {
             return seeded ? SEEDED : UNCONFIGURED;
         }
         if (pid.equals("P31")) {
-            if (m.additionalTypeQids().stream().anyMatch(q -> clean(q).matches("Q\\d+"))) {
+            if (m.additionalTypeQids().stream().anyMatch(q -> WikidataIds.isQid(clean(q)))) {
                 return MULTI_TYPE;
             }
-            if (clean(m.sourceQid()).matches("Q\\d+")) {
+            if (WikidataIds.isQid(clean(m.sourceQid()))) {
                 return SINGLE_TYPE;
             }
             return seeded ? SEEDED : UNCONFIGURED;
@@ -179,12 +181,12 @@ public enum MembershipPattern {
     private static int targetCount(FieldSourceMapping m) {
         Set<String> t = new LinkedHashSet<>();
         String src = clean(m.sourceQid());
-        if (src.matches("Q\\d+")) {
+        if (WikidataIds.isQid(src)) {
             t.add(src);
         }
         for (String q : m.additionalTypeQids()) {
             String c = clean(q);
-            if (c.matches("Q\\d+")) {
+            if (WikidataIds.isQid(c)) {
                 t.add(c);
             }
         }

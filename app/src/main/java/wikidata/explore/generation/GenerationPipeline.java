@@ -1,5 +1,7 @@
 package wikidata.explore.generation;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.codegen.GeneratedViewableRuntimeBuilder;
 import wikidata.explore.codegen.GeneratedViewableRuntime;
 import wikidata.explore.codegen.GeneratedViewableMapper;
@@ -154,7 +156,7 @@ public class GenerationPipeline {
                 }
                 String pid = f.mapping() == null
                         ? "" : RuleNode.cleanPid(f.mapping().propertyPid());
-                if (pid == null || !pid.matches("P\\d+")) {
+                if (pid == null || !WikidataIds.isPid(pid)) {
                     continue;
                 }
                 // P5061 unit symbols are monolingual; prefer the English one

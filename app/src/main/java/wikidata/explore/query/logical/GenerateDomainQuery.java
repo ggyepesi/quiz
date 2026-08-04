@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import objectview.Viewable;
 import wikidata.explore.codegen.GeneratedViewableRuntime;
 import wikidata.explore.extract.GenerationLog;
@@ -389,7 +391,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             continue;
                         }
                         String qid = o.qid();
-                        if (qid == null || !qid.matches("Q\\d+")) {
+                        if (qid == null || !WikidataIds.isQid(qid)) {
                             continue;
                         }
                         servedByType.computeIfAbsent(

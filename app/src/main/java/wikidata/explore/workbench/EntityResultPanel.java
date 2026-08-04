@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -131,7 +133,7 @@ public class EntityResultPanel extends JPanel {
         for (List<Object> row : selectedRows()) {
             Object v = qidColumn < row.size() ? row.get(qidColumn) : null;
             String s = v == null ? "" : v.toString().trim();
-            if (s.matches("Q\\d+") && !out.contains(s)) {
+            if (WikidataIds.isQid(s) && !out.contains(s)) {
                 out.add(s);
             }
         }

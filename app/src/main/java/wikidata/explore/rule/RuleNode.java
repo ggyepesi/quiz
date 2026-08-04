@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.filter.WikidataValueFilter;
 
@@ -340,7 +342,7 @@ public class RuleNode {
         if (text == null || text.isBlank()) return out;
         for (String token : text.split("[,;\\s]+")) {
             String qid = cleanQid(token);
-            if (qid.matches("Q\\d+")) out.add(qid);
+            if (WikidataIds.isQid(qid)) out.add(qid);
         }
         return out;
     }
@@ -358,7 +360,7 @@ public class RuleNode {
             if (pieces.length != 2) continue;
             String pid = cleanPid(pieces[0]);
             String qid = cleanQid(pieces[1]);
-            if (pid.matches("P\\d+") && qid.matches("Q\\d+"))
+            if (WikidataIds.isPid(pid) && WikidataIds.isQid(qid))
                 out.add(new PredicateObjectExclusion(pid, qid));
         }
         return out;

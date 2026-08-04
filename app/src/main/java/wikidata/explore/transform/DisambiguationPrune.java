@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -94,7 +96,7 @@ public final class DisambiguationPrune {
         List<WikidataDynamicObject> reachable = collectReachable(pool);
         for (WikidataDynamicObject o : reachable) {
             String qid = o.qid();
-            if (qid == null || !qid.matches("Q\\d+")) {
+            if (qid == null || !WikidataIds.isQid(qid)) {
                 continue;
             }
             // Only vet STAMPED domain members; a wrong reference becomes one. Raw

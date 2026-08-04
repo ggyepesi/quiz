@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.query.core.Query;
@@ -58,14 +60,14 @@ public class DiscoverQualifiersQuery implements Query<TableQueryResult> {
         if (node != null) {
             for (String t : node.allSourceQids()) {
                 String q = RuleNode.cleanQid(t);
-                if (q.matches("Q\\d+")) {
+                if (WikidataIds.isQid(q)) {
                     targets.add(q);
                 }
             }
         }
         // Only the ITEM_TO_ROOT relational case (the entity holds the relation,
         // e.g. nominee --P1411--> category); P31 isn't a relation worth probing.
-        if (!pid.matches("P\\d+") || pid.equals("P31") || targets.isEmpty()
+        if (!WikidataIds.isPid(pid) || pid.equals("P31") || targets.isEmpty()
                 || node.direction() != RuleDirection.ITEM_TO_ROOT) {
             return new TableQueryResult(COLUMNS, List.of());
         }
@@ -103,7 +105,7 @@ public class DiscoverQualifiersQuery implements Query<TableQueryResult> {
                     List<List<Object>> rows = new ArrayList<>();
                     for (WikidataBinding b : context.sparql().query(sparql)) {
                         String qual = b.qid("qual");
-                        if (qual == null || !qual.matches("P\\d+")) {
+                        if (qual == null || !WikidataIds.isPid(qual)) {
                             continue;
                         }
                         rows.add(List.of(

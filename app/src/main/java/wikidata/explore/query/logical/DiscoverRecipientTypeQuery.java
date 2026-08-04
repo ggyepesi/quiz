@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
@@ -56,12 +58,12 @@ public class DiscoverRecipientTypeQuery implements Query<TableQueryResult> {
         if (node != null) {
             for (String t : node.allSourceQids()) {
                 String q = RuleNode.cleanQid(t);
-                if (q.matches("Q\\d+")) {
+                if (WikidataIds.isQid(q)) {
                     targets.add(q);
                 }
             }
         }
-        if (!pid.matches("P\\d+") || targets.size() < 2) {
+        if (!WikidataIds.isPid(pid) || targets.size() < 2) {
             return new TableQueryResult(COLUMNS, List.of());
         }
 
@@ -92,7 +94,7 @@ public class DiscoverRecipientTypeQuery implements Query<TableQueryResult> {
                     for (WikidataBinding b : context.sparql().query(s1)) {
                         String t = b.qid("target");
                         String insts = b.value("insts");
-                        if (t == null || !t.matches("Q\\d+") || insts == null) {
+                        if (t == null || !WikidataIds.isQid(t) || insts == null) {
                             continue;
                         }
                         int kept = 0;
@@ -102,7 +104,7 @@ public class DiscoverRecipientTypeQuery implements Query<TableQueryResult> {
                             }
                             int slash = uri.lastIndexOf('/');
                             String v = slash >= 0 ? uri.substring(slash + 1) : uri;
-                            if (v.matches("Q\\d+")) {
+                            if (WikidataIds.isQid(v)) {
                                 pairs.append("(wd:").append(t)
                                      .append(" wd:").append(v).append(") ");
                                 kept++;

@@ -1,5 +1,7 @@
 package wikidata.explore.query.template.rule;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.rule.RuleLabelConfig;
 import wikidata.explore.rule.RuleIncludedField;
 import wikidata.explore.rule.RuleNode;
@@ -257,7 +259,7 @@ public final class RuleTreeQueries {
             String qid =
                     RuleNode.cleanQid(e.objectQid());
 
-            if (!pid.matches("P\\d+") || !qid.matches("Q\\d+")) {
+            if (!WikidataIds.isPid(pid) || !WikidataIds.isQid(qid)) {
                 continue;
             }
 
@@ -354,7 +356,7 @@ public final class RuleTreeQueries {
     private static boolean isValidIncludedField(RuleIncludedField field) {
         return field != null
                 && field.propertyPid() != null
-                && field.propertyPid().matches("P\\d+")
+                && WikidataIds.isPid(field.propertyPid())
                 && field.fieldName() != null
                 && !field.fieldName().isBlank();
     }

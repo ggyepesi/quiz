@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,7 +36,7 @@ public final class QualifierLoadConfigs {
                                                      List<Discovered> discovered) {
         List<QualifierLoadConfig.Qualifier> quals = new ArrayList<>();
         for (Discovered d : discovered) {
-            if (d != null && d.pid() != null && d.pid().matches("P\\d+")) {
+            if (d != null && d.pid() != null && WikidataIds.isPid(d.pid())) {
                 quals.add(new QualifierLoadConfig.Qualifier(
                         d.pid(), fieldName(d.label(), d.pid()), d.kind()));
             }

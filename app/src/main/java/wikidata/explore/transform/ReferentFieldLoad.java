@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -84,7 +86,7 @@ public final class ReferentFieldLoad {
         // do. Flattening finds it regardless of which pool the caller passes.
         Map<String, List<WikidataDynamicObject>> referents = new LinkedHashMap<>();
         for (WikidataDynamicObject o : collectReachable(pool)) {
-            if (o == null || o.qid() == null || !o.qid().matches("Q\\d+")) {
+            if (o == null || o.qid() == null || !WikidataIds.isQid(o.qid())) {
                 continue;
             }
             if (byClass.containsKey(o.typeName())) {

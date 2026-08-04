@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldType;
@@ -155,7 +157,7 @@ public final class DescriptiveVocabularyBuild {
 
     private static void collectQids(Object value, LinkedHashSet<String> out) {
         if (value instanceof WikidataDynamicObject w) {
-            if (w.qid() != null && w.qid().matches("Q\\d+")) {
+            if (w.qid() != null && WikidataIds.isQid(w.qid())) {
                 out.add(w.qid());
             }
         } else if (value instanceof Collection<?> c) {

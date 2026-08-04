@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.model.RuleDirection;
 
 public class RuleIncludedField {
@@ -50,7 +52,7 @@ public class RuleIncludedField {
     public String membershipQid() { return membershipQid == null ? "" : membershipQid; }
     public void   membershipQid(String q) { this.membershipQid = q == null ? "" : q.trim(); }
     public boolean hasMembership() {
-        return !membershipQid().isBlank() && membershipQid().matches("Q\\d+");
+        return !membershipQid().isBlank() && WikidataIds.isQid(membershipQid());
     }
 
     public RuleIncludedField() {

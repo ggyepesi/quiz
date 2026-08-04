@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -50,7 +52,7 @@ public final class OrphanPrune {
 
         for (WikidataDynamicObject o : pool) {
             if (o != null && !o.hasTypeStamp()
-                    && o.qid() != null && o.qid().matches("Q\\d+")
+                    && o.qid() != null && WikidataIds.isQid(o.qid())
                     && !referenced.contains(o.qid())) {
                 orphans.add(o);
             }

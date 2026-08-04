@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import aux.SplitPaneUtils;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
@@ -345,7 +347,7 @@ public class ModelBuilderFrame extends JFrame {
                     java.util.List<String> qids = new java.util.ArrayList<>();
                     for (java.util.List<Object> row : result.rows()) {
                         if (!row.isEmpty() && row.get(0) != null
-                                && row.get(0).toString().matches("Q\\d+")) {
+                                && WikidataIds.isQid(row.get(0).toString())) {
                             qids.add(row.get(0).toString());
                         }
                     }
@@ -435,7 +437,7 @@ public class ModelBuilderFrame extends JFrame {
                     return;
                 }
                 String qid = c.effectiveInstanceMapping(projectModel).sourceQid();
-                if (qid == null || !qid.matches("Q\\d+")) {
+                if (qid == null || !WikidataIds.isQid(qid)) {
                     logWindow.info("Class \"" + name + "\" has no membership target "
                             + "QID to explore — set a Relation target first.");
                     return;
@@ -472,7 +474,7 @@ public class ModelBuilderFrame extends JFrame {
                     continue;
                 }
                 String qid = o.qid();
-                if (qid == null || !qid.matches("Q\\d+")) {
+                if (qid == null || !WikidataIds.isQid(qid)) {
                     continue;   // not a saved entity — don't inflate the count
                 }
                 qidsByType.computeIfAbsent(
@@ -786,7 +788,7 @@ public class ModelBuilderFrame extends JFrame {
             // (Q123-UUID / Q123__Q456) are named by a shared field on purpose
             // (e.g. a Nomination shows its nominee), so a person with many
             // nominations would otherwise look like a huge "collision".
-            if (!qid.matches("Q\\d+")) {
+            if (!WikidataIds.isQid(qid)) {
                 continue;
             }
             byName.computeIfAbsent(name, k -> new java.util.LinkedHashSet<>()).add(qid);
@@ -1433,7 +1435,7 @@ public class ModelBuilderFrame extends JFrame {
     // Make the given entity the selected class's membership type. Shared by the
     // WikiProject and Explore panels.
     private void useSourceQid(String qid, String label) {
-        if (qid == null || !qid.matches("Q\\d+")) {
+        if (qid == null || !WikidataIds.isQid(qid)) {
             return;
         }
         GeneratedClassModel c = activeClass();
@@ -1454,7 +1456,7 @@ public class ModelBuilderFrame extends JFrame {
         }
         int added = 0;
         for (String qid : qids) {
-            if (qid != null && qid.matches("Q\\d+") && !c.seedQids().contains(qid)) {
+            if (qid != null && WikidataIds.isQid(qid) && !c.seedQids().contains(qid)) {
                 c.seedQids().add(qid);
                 added++;
             }
@@ -1475,7 +1477,7 @@ public class ModelBuilderFrame extends JFrame {
         var targets = c.instanceMapping().additionalTypeQids();
         int added = 0;
         for (String qid : qids) {
-            if (qid != null && qid.matches("Q\\d+") && !targets.contains(qid)) {
+            if (qid != null && WikidataIds.isQid(qid) && !targets.contains(qid)) {
                 targets.add(qid);
                 added++;
             }

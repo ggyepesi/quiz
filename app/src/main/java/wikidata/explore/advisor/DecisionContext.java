@@ -1,5 +1,7 @@
 package wikidata.explore.advisor;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -38,12 +40,12 @@ public record DecisionContext(
         }
         java.util.Set<String> t = new java.util.LinkedHashSet<>();
         String src = cleanQid(clazz.instanceMapping().sourceQid());
-        if (src.matches("Q\\d+")) {
+        if (WikidataIds.isQid(src)) {
             t.add(src);
         }
         for (String q : clazz.instanceMapping().additionalTypeQids()) {
             String c = cleanQid(q);
-            if (c.matches("Q\\d+")) {
+            if (WikidataIds.isQid(c)) {
                 t.add(c);
             }
         }
@@ -68,7 +70,7 @@ public record DecisionContext(
 
     public boolean hasTargetField() {
         String r = relationPid();
-        return r.matches("P\\d+") && !r.equals("P31") && hasFieldWithPid(r);
+        return WikidataIds.isPid(r) && !r.equals("P31") && hasFieldWithPid(r);
     }
 
     /** Name of the P31 (type) field, for matching a facet/subclass against it. */

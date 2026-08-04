@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
@@ -65,7 +67,7 @@ public class SampleClassQuery implements Query<TableQueryResult> {
                         String qid = b.qid("value");
                         String label = b.label("value");
 
-                        if (qid != null && qid.matches("Q\\d+")) {
+                        if (qid != null && WikidataIds.isQid(qid)) {
                             rows.add(List.of(
                                     qid,
                                     label == null ? "" : label,

@@ -1,5 +1,7 @@
 package wikidata.explore.query.swing;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.TableQueryResult;
 
@@ -132,8 +134,8 @@ public class QueryTableResultPanel
 
     private static boolean isLink(String text) {
         return text != null
-                && (text.matches("Q\\d+")
-                || text.matches("P\\d+")
+                && (WikidataIds.isQid(text)
+                || WikidataIds.isPid(text)
                 || text.startsWith("http://")
                 || text.startsWith("https://"));
     }
@@ -141,9 +143,9 @@ public class QueryTableResultPanel
     private static void openLink(String text) {
         String url;
 
-        if (text.matches("Q\\d+")) {
+        if (WikidataIds.isQid(text)) {
             url = "https://www.wikidata.org/wiki/" + text;
-        } else if (text.matches("P\\d+")) {
+        } else if (WikidataIds.isPid(text)) {
             url = "https://www.wikidata.org/wiki/Property:" + text;
         } else {
             url = text;

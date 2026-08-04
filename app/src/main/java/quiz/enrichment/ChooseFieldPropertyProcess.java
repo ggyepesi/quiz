@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import wikidata.WikidataIds;
+
 import process.Process;
 import process.ProcessContext;
 import process.ProcessOutcome;
@@ -49,7 +51,7 @@ public final class ChooseFieldPropertyProcess implements Process<ChosenProperty>
 
     @Override public ProcessOutcome<ChosenProperty> execute(ProcessContext context)
             throws Exception {
-        if (sampleQid == null || !sampleQid.matches("Q\\d+")) {
+        if (sampleQid == null || !WikidataIds.isQid(sampleQid)) {
             return ProcessOutcome.failed(new IllegalArgumentException(
                     "A sample Wikidata QID is required to list properties"));
         }

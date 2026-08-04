@@ -1,5 +1,7 @@
 package quiz.transform.ui;
 
+import wikidata.WikidataIds;
+
 import quiz.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentProvider;
 import quiz.enrichment.EnrichmentRequest;
@@ -27,7 +29,7 @@ final class DBpediaImageEnrichmentProvider implements EnrichmentProvider {
         }
         String id = request.subject().id();
         String name = request.subject().displayName();
-        return (id != null && id.matches("Q\\d+"))
+        return (id != null && WikidataIds.isQid(id))
                 || (name != null && !name.isBlank());
     }
 
@@ -36,7 +38,7 @@ final class DBpediaImageEnrichmentProvider implements EnrichmentProvider {
             throw new IllegalArgumentException("DBpedia requires a QID or display name");
         }
         String id = request.subject().id();
-        String qid = id != null && id.matches("Q\\d+") ? id : null;
+        String qid = id != null && WikidataIds.isQid(id) ? id : null;
         Query<List<DBpediaLookup.ImageHit>> delegate =
                 DBpediaLookup.images(qid, request.subject().displayName());
 

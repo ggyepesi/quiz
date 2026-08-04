@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
@@ -65,7 +67,7 @@ public class QualifierLoader {
         Map<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
         Map<String, WikidataDynamicObject> poolByQid = new LinkedHashMap<>();
         for (WikidataDynamicObject o : pool) {
-            if (o == null || o.qid() == null || !o.qid().matches("Q\\d+")) {
+            if (o == null || o.qid() == null || !WikidataIds.isQid(o.qid())) {
                 continue;
             }
             poolByQid.putIfAbsent(o.qid(), o);
@@ -101,7 +103,7 @@ public class QualifierLoader {
             // wbgetentities so they render as names, not bare QIDs, when referenced.
             List<String> newQids = new ArrayList<>();
             for (WikidataDynamicObject s : discovered) {
-                if (s != null && s.qid() != null && s.qid().matches("Q\\d+")) {
+                if (s != null && s.qid() != null && WikidataIds.isQid(s.qid())) {
                     newQids.add(s.qid());
                 }
             }
@@ -124,7 +126,7 @@ public class QualifierLoader {
             }
 
             for (WikidataDynamicObject s : discovered) {
-                if (s != null && s.qid() != null && s.qid().matches("Q\\d+")) {
+                if (s != null && s.qid() != null && WikidataIds.isQid(s.qid())) {
                     pool.add(s);   // a newly-discovered subject joins the shared pool
                     byQid.putIfAbsent(s.qid(), s);
                     poolByQid.putIfAbsent(s.qid(), s);
@@ -139,7 +141,7 @@ public class QualifierLoader {
         List<String> qualifierPids = new ArrayList<>();
         if (cfg.qualifiers() != null) {
             for (QualifierLoadConfig.Qualifier q : cfg.qualifiers()) {
-                if (q != null && q.pid() != null && q.pid().matches("P\\d+")) {
+                if (q != null && q.pid() != null && WikidataIds.isPid(q.pid())) {
                     qualifierPids.add(q.pid());
                 }
             }
@@ -216,7 +218,7 @@ public class QualifierLoader {
             return;
         }
         for (QualifierLoadConfig.Qualifier q : cfg.qualifiers()) {
-            if (q == null || q.pid() == null || !q.pid().matches("P\\d+")) {
+            if (q == null || q.pid() == null || !WikidataIds.isPid(q.pid())) {
                 continue;
             }
             List<String> vals = s.qualifier(q.pid());
@@ -226,7 +228,7 @@ public class QualifierLoader {
             switch (q.kind() == null ? QualifierLoadConfig.Kind.STRING : q.kind()) {
                 case ENTITY -> {
                     for (String vq : vals) {
-                        if (!vq.matches("Q\\d+")) {
+                        if (!WikidataIds.isQid(vq)) {
                             continue;
                         }
                         WikidataDynamicObject ref = ref(vq, poolByQid, refCache);
@@ -311,7 +313,7 @@ public class QualifierLoader {
         try {
             for (WikidataBinding b : client.query(q)) {
                 String qid = b.qid("value");
-                if (qid != null && qid.matches("Q\\d+")) {
+                if (qid != null && WikidataIds.isQid(qid)) {
                     out.add(qid);
                 }
             }

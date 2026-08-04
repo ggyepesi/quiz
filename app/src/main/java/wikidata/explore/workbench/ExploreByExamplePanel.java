@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.query.logical.ClassSearchQuery;
 import wikidata.explore.query.logical.ExploreEntityQuery;
 import wikidata.explore.query.logical.RelationMembersQuery;
@@ -310,7 +312,7 @@ public class ExploreByExamplePanel extends JPanel {
      *  its own label, then explore it. Falls back to the bare QID if there's no runner. */
     private void openQid() {
         String qid = qidField.getText().trim().toUpperCase(java.util.Locale.ROOT);
-        if (!qid.matches("Q\\d+")) {
+        if (!WikidataIds.isQid(qid)) {
             status.setText("Enter a QID such as Q42.");
             return;
         }
@@ -351,10 +353,10 @@ public class ExploreByExamplePanel extends JPanel {
      *  wrong entity after exploring A then re-selecting B in the top list.) */
     static String[] pickEntity(boolean hasCandidate, String candidateQid, String candidateLabel,
                                String exploredQid, String exploredLabel) {
-        if (hasCandidate && candidateQid != null && candidateQid.matches("Q\\d+")) {
+        if (hasCandidate && candidateQid != null && WikidataIds.isQid(candidateQid)) {
             return new String[]{candidateQid, candidateLabel};
         }
-        if (exploredQid != null && exploredQid.matches("Q\\d+")) {
+        if (exploredQid != null && WikidataIds.isQid(exploredQid)) {
             return new String[]{exploredQid, exploredLabel};
         }
         return null;
@@ -364,7 +366,7 @@ public class ExploreByExamplePanel extends JPanel {
         boolean haveCandidate = candidates.hasSelection();
         boolean haveProbe = probeTable.getSelectedRow() >= 0;
         exploreButton.setEnabled(haveCandidate && queryRunner != null);
-        useSourceButton.setEnabled(haveCandidate || exploredQid.matches("Q\\d+"));
+        useSourceButton.setEnabled(haveCandidate || WikidataIds.isQid(exploredQid));
         showMembersButton.setEnabled(haveProbe);
         addTargetsButton.setEnabled(haveProbe);
         addSeedsButton.setEnabled(haveProbe);
@@ -396,7 +398,7 @@ public class ExploreByExamplePanel extends JPanel {
     /** Explore an entity's relations from outside (e.g. a model-graph node click):
      *  a fresh exploration that resets the navigation history. */
     public void exploreQid(String qid, String label) {
-        if (qid == null || !qid.matches("Q\\d+")) {
+        if (qid == null || !WikidataIds.isQid(qid)) {
             return;
         }
         history.clear();
@@ -406,10 +408,10 @@ public class ExploreByExamplePanel extends JPanel {
     // Explore an arbitrary entity (following a relation's member), pushing the
     // current one onto the Back history. Triggers the same wired explore action.
     private void exploreEntity(String qid, String label, boolean pushHistory) {
-        if (qid == null || !qid.matches("Q\\d+")) {
+        if (qid == null || !WikidataIds.isQid(qid)) {
             return;
         }
-        if (pushHistory && exploredQid.matches("Q\\d+")) {
+        if (pushHistory && WikidataIds.isQid(exploredQid)) {
             history.push(new String[]{exploredQid, exploredLabel});
         }
         pendingQid = qid;
@@ -423,7 +425,7 @@ public class ExploreByExamplePanel extends JPanel {
     private ExploreEntityQuery buildExploreQuery() {
         String qid;
         String label;
-        if (pendingQid.matches("Q\\d+")) {
+        if (WikidataIds.isQid(pendingQid)) {
             qid = pendingQid;
             label = pendingLabel;
             pendingQid = "";
@@ -434,7 +436,7 @@ public class ExploreByExamplePanel extends JPanel {
             label = candidates.firstSelected(1);
             history.clear();
         }
-        if (!qid.matches("Q\\d+")) {
+        if (!WikidataIds.isQid(qid)) {
             return null;
         }
         exploredQid = qid;
@@ -453,7 +455,7 @@ public class ExploreByExamplePanel extends JPanel {
         for (List<Object> row : rows) {
             String dir = str(row, 0);
             String pid = str(row, 1);
-            if (!pid.matches("P\\d+")) {
+            if (!WikidataIds.isPid(pid)) {
                 continue;
             }
             relations.add(new RelationRow(
@@ -472,7 +474,7 @@ public class ExploreByExamplePanel extends JPanel {
 
     private RelationMembersQuery buildMembersQuery() {
         int r = probeTable.getSelectedRow();
-        if (r < 0 || !exploredQid.matches("Q\\d+")) {
+        if (r < 0 || !WikidataIds.isQid(exploredQid)) {
             return null;
         }
         RelationRow rel = probeModel.row(r);
@@ -485,7 +487,7 @@ public class ExploreByExamplePanel extends JPanel {
         List<String> qids = new ArrayList<>();
         for (List<Object> row : rows) {
             String qid = str(row, 0);
-            if (qid.matches("Q\\d+") && !qids.contains(qid)) {
+            if (WikidataIds.isQid(qid) && !qids.contains(qid)) {
                 qids.add(qid);
             }
         }

@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.Query;
@@ -160,7 +162,7 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
                         String label = b.label("item");
                         String desc = b.value("itemDescription");
 
-                        if (qid != null && qid.matches("Q\\d+")) {
+                        if (qid != null && WikidataIds.isQid(qid)) {
                             out.add(new Row(
                                     qid,
                                     label == null ? qid : label,

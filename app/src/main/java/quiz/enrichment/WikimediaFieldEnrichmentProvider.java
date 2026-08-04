@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.model.FieldSourceMapping;
@@ -66,7 +68,7 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
     @Override public boolean supports(EnrichmentRequest request) {
         return request != null && request.subject() != null
                 && request.subject().id() != null
-                && request.subject().id().matches("Q\\d+")
+                && WikidataIds.isQid(request.subject().id())
                 && propertyPid != null
                 && direction == RuleDirection.ROOT_TO_ITEM;
     }
@@ -120,7 +122,7 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
                 // text field wants the entity label, while a reference field must stay
                 // schema-incompatible until a real Viewable reference can be resolved.
                 if (value instanceof String entityQid
-                        && entityQid.matches("Q\\d+") && textTarget(request)) {
+                        && WikidataIds.isQid(entityQid) && textTarget(request)) {
                     value = lookup.labels(List.of(entityQid)).execute(context)
                             .getOrDefault(entityQid, entityQid);
                 }

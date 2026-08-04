@@ -1,5 +1,7 @@
 package quiz.transform.ui;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
@@ -18,7 +20,7 @@ final class DBpediaLookup {
     record ImageHit(String resourceUrl, String imageUrl) { }
 
     static Query<List<String>> values(String qid, String property) {
-        if (qid == null || !qid.matches("Q\\d+")
+        if (qid == null || !WikidataIds.isQid(qid)
                 || property == null || property.isBlank()) {
             throw new IllegalArgumentException("A Wikidata QID and DBpedia property are required");
         }
@@ -56,7 +58,7 @@ final class DBpediaLookup {
     static Query<List<ImageHit>> images(String qid, String label) {
         String subject;
         Map<String, String> parameters = new LinkedHashMap<>();
-        if (qid != null && qid.matches("Q\\d+")) {
+        if (qid != null && WikidataIds.isQid(qid)) {
             subject = "?candidate owl:sameAs <http://www.wikidata.org/entity/" + qid + "> .";
             parameters.put("qid", qid);
         } else if (label != null && !label.isBlank()) {

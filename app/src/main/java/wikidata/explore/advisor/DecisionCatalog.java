@@ -1,5 +1,7 @@
 package wikidata.explore.advisor;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.model.MembershipFields;
 import wikidata.explore.model.MembershipPattern;
 
@@ -38,7 +40,7 @@ public final class DecisionCatalog {
                     "Discover the targets from a parent's parts instead of pasting QIDs.",
                     ctx -> {
                         String r = ctx.relationPid();
-                        return r.matches("P\\d+") && !r.equals("P31");
+                        return WikidataIds.isPid(r) && !r.equals("P31");
                     },
                     ctx -> ctx.targetCount() >= 1),
 

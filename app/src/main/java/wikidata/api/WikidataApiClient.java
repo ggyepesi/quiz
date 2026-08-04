@@ -1,5 +1,7 @@
 package wikidata.api;
 
+import wikidata.WikidataIds;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -410,7 +412,7 @@ public class WikidataApiClient {
             java.util.function.ToIntFunction<JsonNode> handle) throws Exception {
 
         List<String> clean = qids.stream()
-                .filter(q -> q != null && q.matches("Q\\d+"))
+                .filter(q -> q != null && WikidataIds.isQid(q))
                 .distinct()
                 .toList();
         if (clean.isEmpty()) return;
@@ -524,7 +526,7 @@ public class WikidataApiClient {
             JsonNode entity = entry.getValue();
             if (entity.has("missing")) return;
             String qid = entity.path("id").asText("");
-            if (!qid.matches("Q\\d+")) return;
+            if (!WikidataIds.isQid(qid)) return;
 
             String label = entity.path("labels").path("en").path("value").asText("");
             if (label.isBlank()) {
@@ -553,7 +555,7 @@ public class WikidataApiClient {
             if (id.isBlank() && val.has("numeric-id")) {
                 id = "Q" + val.path("numeric-id").asText();
             }
-            if (id.matches("Q\\d+")) out.add(id);
+            if (WikidataIds.isQid(id)) out.add(id);
         }
         return out;
     }
@@ -584,7 +586,7 @@ public class WikidataApiClient {
             JsonNode entity = entry.getValue();
             if (entity.has("missing")) return;
             String qid = entity.path("id").asText("");
-            if (!qid.matches("Q\\d+")) return;
+            if (!WikidataIds.isQid(qid)) return;
 
             JsonNode claims = entity.path("claims").path(statementPid);
             if (!claims.isArray() || claims.isEmpty()) return;

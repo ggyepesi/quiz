@@ -1,5 +1,7 @@
 package wikidata.explore.demo;
 
+import wikidata.WikidataIds;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import wikidata.WikidataBinding;
@@ -153,7 +155,7 @@ public class BacklinksIncomingPropertyDemo {
 
         for (JsonNode n : backlinks) {
             String qid = n.path("title").asText("");
-            if (qid.matches("Q\\d+")) {
+            if (WikidataIds.isQid(qid)) {
                 out.add(qid);
             }
         }
@@ -195,7 +197,7 @@ public class BacklinksIncomingPropertyDemo {
 
         for (String qid : qids) {
             qid = cleanQid(qid);
-            if (!qid.matches("Q\\d+")) {
+            if (!WikidataIds.isQid(qid)) {
                 continue;
             }
 

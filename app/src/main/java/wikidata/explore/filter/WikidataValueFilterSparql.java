@@ -1,5 +1,7 @@
 package wikidata.explore.filter;
 
+import wikidata.WikidataIds;
+
 import java.util.Collection;
 
 /**
@@ -108,7 +110,7 @@ public final class WikidataValueFilterSparql {
     private static boolean isValid(WikidataValueFilter f) {
         return f != null
                 && f.propertyPid() != null
-                && f.propertyPid().matches("P\\d+");
+                && WikidataIds.isPid(f.propertyPid());
     }
 
     private static String formatNumber(double d) {

@@ -1,5 +1,7 @@
 package wikidata.query;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.query.template.rule.RuleTreeQueries;
 import java.util.Arrays;
 import java.util.Collection;
@@ -185,7 +187,7 @@ public class WikidataQueryBuilder {
         StringBuilder sb = new StringBuilder();
         for (String qid : qids) {
             qid = cleanQid(qid);
-            if (!qid.matches("Q\\d+")) continue;
+            if (!WikidataIds.isQid(qid)) continue;
             if (!sb.isEmpty()) sb.append(" ");
             sb.append("wd:").append(qid);
         }
@@ -201,7 +203,7 @@ public class WikidataQueryBuilder {
         StringBuilder sb = new StringBuilder();
         for (String pid : pids) {
             pid = cleanPid(pid);
-            if (!pid.matches("P\\d+")) continue;
+            if (!WikidataIds.isPid(pid)) continue;
             if (!sb.isEmpty()) sb.append(" ");
             sb.append("wdt:").append(pid);
         }

@@ -1,5 +1,7 @@
 package wikidata.explore.codegen;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.extract.WikidataMediaValue;
 import wikidata.explore.extract.WikidataDynamicObject;
 import objectview.Viewable;
@@ -90,7 +92,7 @@ public class GeneratedViewableMapper {
         // merging any fields this copy adds. This is what collapses the same
         // category / nominee referenced from many places instead of duplicating it.
         String entityQid = source.qid();
-        boolean realEntity = entityQid != null && entityQid.matches("Q\\d+");
+        boolean realEntity = entityQid != null && WikidataIds.isQid(entityQid);
         if (realEntity) {
             Object byQid = generatedByQid.get(entityQid);
             if (byQid != null && !(byQid instanceof WikidataDynamicObject)) {

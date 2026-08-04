@@ -1,5 +1,7 @@
 package wikidata.explore.filter;
 
+import wikidata.WikidataIds;
+
 import objectview.utils.swing.GridBagUtils;
 
 import javax.swing.*;
@@ -241,7 +243,7 @@ public class ValueFilterEditorPanel extends JPanel {
         String pid =
                 WikidataValueFilter.cleanPid(pidField.getText());
 
-        if (!pid.matches("P\\d+")) {
+        if (!WikidataIds.isPid(pid)) {
             JOptionPane.showMessageDialog(
                     this,
                     "Property PID must look like P1215.",

@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.query.logical.WikiProjectSeedQuery;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.explore.wikiproject.WikiProjectArticle;
@@ -133,7 +135,7 @@ public class WikiProjectSeedPanel extends JPanel {
         replaceSelectedButton.addActionListener(e -> onReplaceSeedQids.accept(results.selectedQids()));
         useSourceButton.addActionListener(e -> {
             String qid = results.firstSelected(1);
-            if (qid.matches("Q\\d+")) {
+            if (WikidataIds.isQid(qid)) {
                 onUseAsSourceQid.accept(qid, results.firstSelected(0));
             }
         });
@@ -197,7 +199,7 @@ public class WikiProjectSeedPanel extends JPanel {
 
     private static boolean hasQid(WikiProjectArticle article) {
         return article != null && article.qid() != null
-                && article.qid().matches("Q\\d+");
+                && WikidataIds.isQid(article.qid());
     }
 
     private static String nz(String s) {

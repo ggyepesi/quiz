@@ -22,7 +22,7 @@ public final class WikidataLinks {
     }
 
     public static boolean isId(String s) {
-        return s != null && s.trim().matches("[PQ]\\d+");
+        return s != null && wikidata.WikidataIds.isId(s.trim());
     }
 
     public static String url(String id) {
@@ -30,10 +30,10 @@ public final class WikidataLinks {
             return null;
         }
         id = id.trim();
-        if (id.matches("P\\d+")) {
+        if (wikidata.WikidataIds.isPid(id)) {
             return "https://www.wikidata.org/wiki/Property:" + id;
         }
-        if (id.matches("Q\\d+")) {
+        if (wikidata.WikidataIds.isQid(id)) {
             return "https://www.wikidata.org/wiki/" + id;
         }
         return null;

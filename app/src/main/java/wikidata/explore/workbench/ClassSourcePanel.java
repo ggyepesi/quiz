@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import objectview.utils.swing.GridBagUtils;
 
 import wikidata.explore.rule.RuleTreeCompiler;
@@ -551,7 +553,7 @@ public class ClassSourcePanel extends JPanel {
         }
         String parent = RuleNode.cleanQid(parentField.getText());
         String pid = RuleNode.cleanPid(pidField.getText());
-        if (!parent.matches("Q\\d+") || !pid.matches("P\\d+")) {
+        if (!WikidataIds.isQid(parent) || !WikidataIds.isPid(pid)) {
             JOptionPane.showMessageDialog(this,
                     "Enter a parent QID (e.g. Q19020) and a parts property "
                             + "(e.g. P527).",
@@ -729,13 +731,13 @@ public class ClassSourcePanel extends JPanel {
 
     private void addAdditionalType(String rawQid) {
         String qid = RuleNode.cleanQid(rawQid);
-        if (!qid.matches("Q\\d+")) {
+        if (!WikidataIds.isQid(qid)) {
             return;
         }
         java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
         for (String tok : additionalTypesField.getText().trim().split("[,;\\s]+")) {
             String q = RuleNode.cleanQid(tok);
-            if (q.matches("Q\\d+")) set.add(q);
+            if (WikidataIds.isQid(q)) set.add(q);
         }
         set.add(qid);
         additionalTypesField.setText(String.join(" ", set));
@@ -868,15 +870,15 @@ public class ClassSourcePanel extends JPanel {
         m.additionalTypeQids().clear();
         for (String tok : additionalTypesField.getText().trim().split("[,;\\s]+")) {
             String qid = RuleNode.cleanQid(tok);
-            if (qid.matches("Q\\d+")) m.additionalTypeQids().add(qid);
+            if (WikidataIds.isQid(qid)) m.additionalTypeQids().add(qid);
         }
         m.excludedTypeQids().clear();
         for (String tok : excludeTypesField.getText().trim().split("[,;\\s]+")) {
             String qid = RuleNode.cleanQid(tok);
-            if (qid.matches("Q\\d+")) m.excludedTypeQids().add(qid);
+            if (WikidataIds.isQid(qid)) m.excludedTypeQids().add(qid);
         }
         String relPid = RuleNode.cleanPid(relationPidField.getText());
-        if (!relPid.matches("P\\d+")) {
+        if (!WikidataIds.isPid(relPid)) {
             relPid = "P31";
         }
         m.propertyPid(relPid);
@@ -913,7 +915,7 @@ public class ClassSourcePanel extends JPanel {
         clazz.seedQids().clear();
         for (String tok : seedQidsArea.getText().trim().split("[,;\\s]+")) {
             String qid = RuleNode.cleanQid(tok);
-            if (qid.matches("Q\\d+") && !clazz.seedQids().contains(qid)) {
+            if (WikidataIds.isQid(qid) && !clazz.seedQids().contains(qid)) {
                 clazz.seedQids().add(qid);
             }
         }

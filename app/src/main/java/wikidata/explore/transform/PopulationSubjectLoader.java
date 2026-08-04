@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.extract.GenerationLog;
@@ -49,7 +51,7 @@ public final class PopulationSubjectLoader {
         Map<String, WikidataDynamicObject> known = new LinkedHashMap<>();
         if (pool != null) {
             for (WikidataDynamicObject o : pool) {
-                if (o != null && o.qid() != null && o.qid().matches("Q\\d+")) {
+                if (o != null && o.qid() != null && WikidataIds.isQid(o.qid())) {
                     known.putIfAbsent(o.qid(), o);
                 }
             }
@@ -64,7 +66,7 @@ public final class PopulationSubjectLoader {
             int rows = 0;
             for (WikidataBinding binding : client.query(query)) {
                 String qid = binding.qid("subject");
-                if (qid == null || !qid.matches("Q\\d+")) {
+                if (qid == null || !WikidataIds.isQid(qid)) {
                     continue;
                 }
                 rows++;

@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import wikidata.WikidataBinding;
@@ -49,7 +51,7 @@ public class DBpediaEnrichment {
 
         Map<String, WikidataDynamicObject> byQid = new HashMap<>();
         for (WikidataDynamicObject o : roots) {
-            if (o != null && o.qid() != null && o.qid().matches("Q\\d+")) {
+            if (o != null && o.qid() != null && WikidataIds.isQid(o.qid())) {
                 byQid.put(o.qid(), o);
             }
         }
@@ -117,6 +119,6 @@ public class DBpediaEnrichment {
         }
         int i = uri.lastIndexOf('/');
         String tail = i >= 0 ? uri.substring(i + 1) : uri;
-        return tail.matches("Q\\d+") ? tail : null;
+        return WikidataIds.isQid(tail) ? tail : null;
     }
 }

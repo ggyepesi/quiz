@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import wikidata.WikidataIds;
+
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,7 +47,7 @@ public final class MembershipFields {
         }
         FieldSourceMapping m = clazz.instanceMapping();
         String pid = clean(m.propertyPid());
-        return pid.matches("P\\d+") && !pid.equals(P31) && !targets(m).isEmpty();
+        return WikidataIds.isPid(pid) && !pid.equals(P31) && !targets(m).isEmpty();
     }
 
     /**
@@ -61,7 +63,7 @@ public final class MembershipFields {
         }
         FieldSourceMapping m = clazz.instanceMapping();
         String pid = clean(m.propertyPid());
-        if (!pid.matches("P\\d+")) {
+        if (!WikidataIds.isPid(pid)) {
             return false;
         }
         return !pid.equals(P31) || m.additionalTypeQids().size() >= 1;
@@ -98,12 +100,12 @@ public final class MembershipFields {
     private static Set<String> targets(FieldSourceMapping m) {
         Set<String> t = new LinkedHashSet<>();
         String src = clean(m.sourceQid());
-        if (src.matches("Q\\d+")) {
+        if (WikidataIds.isQid(src)) {
             t.add(src);
         }
         for (String q : m.additionalTypeQids()) {
             String c = clean(q);
-            if (c.matches("Q\\d+")) {
+            if (WikidataIds.isQid(c)) {
                 t.add(c);
             }
         }

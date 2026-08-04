@@ -6,8 +6,6 @@ import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
 import objectview.annotations.Link;
 
-import java.util.regex.Pattern;
-
 /**
  * A Wikidata provenance descriptor: the owning object's data comes from the
  * Wikidata entity identified by {@link #qid()}.
@@ -19,15 +17,13 @@ import java.util.regex.Pattern;
  */
 public final class WikidataSource extends ViewableAdapter implements Source {
 
-    private static final Pattern QID = Pattern.compile("Q\\d+");
-
     /**
-     * Whether {@code s} is a Wikidata entity id (a QID). The single place this
-     * format is decided — callers ask here instead of re-spelling the pattern, so
-     * "is this identity a Wikidata source?" has one answer across the app.
+     * Whether {@code s} is a Wikidata entity id (a QID) — the identity/source
+     * predicate for the domain layer, delegating to {@link wikidata.WikidataIds}
+     * so the format is decided in exactly one place.
      */
     public static boolean isQid(String s) {
-        return s != null && QID.matcher(s).matches();
+        return wikidata.WikidataIds.isQid(s);
     }
 
     @Hidden

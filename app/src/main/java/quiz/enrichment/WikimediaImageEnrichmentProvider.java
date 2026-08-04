@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import wikidata.WikidataIds;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import wikidata.explore.CommonsMedia;
@@ -44,7 +46,7 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
     @Override public boolean supports(EnrichmentRequest request) {
         return request != null && request.subject() != null
                 && request.subject().id() != null
-                && request.subject().id().matches("Q\\d+");
+                && WikidataIds.isQid(request.subject().id());
     }
 
     @Override public Query<EnrichmentProposal> discover(EnrichmentRequest request) {

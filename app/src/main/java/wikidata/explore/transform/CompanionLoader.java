@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.extract.GenerationLog;
@@ -50,7 +52,7 @@ public final class CompanionLoader {
         }
 
         List<String> values = new ArrayList<>(new LinkedHashSet<>(
-                valueQids.stream().filter(q -> q != null && q.matches("Q\\d+")).toList()));
+                valueQids.stream().filter(q -> q != null && WikidataIds.isQid(q)).toList()));
         if (values.isEmpty()) {
             return out;
         }

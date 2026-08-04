@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import java.util.List;
 
 /**
@@ -74,7 +76,7 @@ public record QualifierLoadConfig(
      *  value is {@code wdt:P31} this type — e.g. only Oscar categories, dropping
      *  every other award a winner also received. */
     public boolean hasValueType() {
-        return valueTypeQid != null && valueTypeQid.matches("Q\\d+");
+        return valueTypeQid != null && WikidataIds.isQid(valueTypeQid);
     }
 
     /** The EXPLICIT allowed value QIDs (e.g. the 59 Oscar categories). When
@@ -109,7 +111,7 @@ public record QualifierLoadConfig(
 
     public boolean valid() {
         return entityType != null && !entityType.isBlank()
-                && propertyPid != null && propertyPid.matches("P\\d+")
+                && propertyPid != null && WikidataIds.isPid(propertyPid)
                 && statementField != null && !statementField.isBlank();
     }
 }

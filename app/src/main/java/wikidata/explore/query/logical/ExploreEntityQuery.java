@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
@@ -100,7 +102,7 @@ public class ExploreEntityQuery implements Query<TableQueryResult> {
                 sparql, null);
         for (WikidataBinding b : context.sparql().query(sparql)) {
             String pid = b.qid("p");
-            if (pid == null || !pid.matches("P\\d+")) {
+            if (pid == null || !WikidataIds.isPid(pid)) {
                 continue;
             }
             String label = b.value("pl");

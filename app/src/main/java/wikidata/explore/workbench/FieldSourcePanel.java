@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import objectview.utils.swing.GridBagUtils;
 
 import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
@@ -949,10 +951,8 @@ public class FieldSourcePanel extends JPanel {
 
         boolean statementClass =
                 owner != null && owner.reifiesStatements();
-        boolean validQualifier =
-                RuleNode.cleanPid(
-                                qualifierPidField.getText())
-                        .matches("P\\d+");
+        boolean validQualifier = WikidataIds.isPid(
+                RuleNode.cleanPid(qualifierPidField.getText()));
         boolean entity =
                 typeBox.getSelectedItem() == FieldType.ENTITY;
         boolean scalar =
@@ -996,7 +996,7 @@ public class FieldSourcePanel extends JPanel {
         GeneratedClassModel owner = ownerClass();
         String typeQid = owner == null || owner.instanceMapping() == null
                 ? "" : owner.instanceMapping().sourceQid();
-        if (typeQid == null || !typeQid.matches("Q\\d+")) {
+        if (typeQid == null || !WikidataIds.isQid(typeQid)) {
             JOptionPane.showMessageDialog(this,
                                           "Set the owning class's Wikidata type first.",
                                           "No class type", JOptionPane.INFORMATION_MESSAGE);

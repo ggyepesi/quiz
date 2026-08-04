@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledField;
@@ -90,7 +92,7 @@ public final class ModelStatementReifications {
         // Resolve to the actual class name case-insensitively, so the
         // qualifier-load entityType matches the type stamped on pool objects.
         String statementPid = clean(statementSource.propertyPid());
-        if (!statementPid.matches("P\\d+")) {
+        if (!WikidataIds.isPid(statementPid)) {
             return null;
         }
 
@@ -179,7 +181,7 @@ public final class ModelStatementReifications {
                 "__" + statementClass.className(),
                 statementClass.className(),
                 valueField,
-                valueTypeQid.matches("Q\\d+")
+                WikidataIds.isQid(valueTypeQid)
                         ? valueTypeQid
                         : "",
                 qualifiers,
@@ -236,7 +238,7 @@ public final class ModelStatementReifications {
         CompiledStatementSource statementSource =
                 statementClass.statementSource();
         String statementPid = clean(statementSource.propertyPid());
-        if (!statementPid.matches("P\\d+")) {
+        if (!WikidataIds.isPid(statementPid)) {
             return null;
         }
 
@@ -321,7 +323,7 @@ public final class ModelStatementReifications {
                 "__" + statementClass.className(),
                 statementClass.className(),
                 valueField,
-                valueTypeQid.matches("Q\\d+") ? valueTypeQid : "",
+                WikidataIds.isQid(valueTypeQid) ? valueTypeQid : "",
                 qualifiers,
                 valueQids,
                 discoverSubjects,
@@ -387,7 +389,7 @@ public final class ModelStatementReifications {
         if (valueModel != null) {
             for (String qid : valueModel.source().allowedQids()) {
                 String cleanQid = clean(qid);
-                if (cleanQid.matches("Q\\d+")) {
+                if (WikidataIds.isQid(cleanQid)) {
                     values.add(cleanQid);
                 }
             }
@@ -399,14 +401,14 @@ public final class ModelStatementReifications {
 
             String sourceQid =
                     clean(sourceClass.sourceMapping().sourceQid());
-            if (sourceQid.matches("Q\\d+")) {
+            if (WikidataIds.isQid(sourceQid)) {
                 values.add(sourceQid);
             }
 
             for (String qid
                     : sourceClass.sourceMapping().additionalTypeQids()) {
                 String cleanQid = clean(qid);
-                if (cleanQid.matches("Q\\d+")) {
+                if (WikidataIds.isQid(cleanQid)) {
                     values.add(cleanQid);
                 }
             }
@@ -494,7 +496,7 @@ public final class ModelStatementReifications {
         if (valueModel != null) {
             for (String qid : valueModel.mapping().allowedQids()) {
                 String cleanQid = clean(qid);
-                if (cleanQid.matches("Q\\d+")) {
+                if (WikidataIds.isQid(cleanQid)) {
                     values.add(cleanQid);
                 }
             }
@@ -513,14 +515,14 @@ public final class ModelStatementReifications {
 
             String sourceQid =
                     clean(sourceClass.instanceMapping().sourceQid());
-            if (sourceQid.matches("Q\\d+")) {
+            if (WikidataIds.isQid(sourceQid)) {
                 values.add(sourceQid);
             }
 
             for (String qid
                     : sourceClass.instanceMapping().additionalTypeQids()) {
                 String cleanQid = clean(qid);
-                if (cleanQid.matches("Q\\d+")) {
+                if (WikidataIds.isQid(cleanQid)) {
                     values.add(cleanQid);
                 }
             }
@@ -840,7 +842,7 @@ public final class ModelStatementReifications {
 
         String sourceQid =
                 clean(sourceClass.instanceMapping().sourceQid());
-        if (sourceQid.matches("Q\\d+")
+        if (WikidataIds.isQid(sourceQid)
                 && !filter.contains(sourceQid)) {
             missed.add(sourceQid);
         }
@@ -848,7 +850,7 @@ public final class ModelStatementReifications {
         for (String qid
                 : sourceClass.instanceMapping().additionalTypeQids()) {
             String cleanQid = clean(qid);
-            if (cleanQid.matches("Q\\d+")
+            if (WikidataIds.isQid(cleanQid)
                     && !filter.contains(cleanQid)) {
                 missed.add(cleanQid);
             }
@@ -955,13 +957,13 @@ public final class ModelStatementReifications {
         Set<String> filter = new LinkedHashSet<>(config.valueQids());
 
         String sourceQid = clean(sourceClass.sourceMapping().sourceQid());
-        if (sourceQid.matches("Q\\d+") && !filter.contains(sourceQid)) {
+        if (WikidataIds.isQid(sourceQid) && !filter.contains(sourceQid)) {
             missed.add(sourceQid);
         }
 
         for (String qid : sourceClass.sourceMapping().additionalTypeQids()) {
             String cleanQid = clean(qid);
-            if (cleanQid.matches("Q\\d+") && !filter.contains(cleanQid)) {
+            if (WikidataIds.isQid(cleanQid) && !filter.contains(cleanQid)) {
                 missed.add(cleanQid);
             }
         }

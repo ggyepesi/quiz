@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.model.FieldSampleContext;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleIncludedField;
@@ -435,7 +437,7 @@ public class NodeSamplePanel extends JPanel {
                         String text =
                                 value == null ? "" : value.toString();
 
-                        if (!sel && text.matches("[PQ]\\d+")) {
+                        if (!sel && WikidataIds.isId(text)) {
                             setForeground(new java.awt.Color(0, 80, 200));
                         } else if (!sel) {
                             setForeground(t.getForeground());
@@ -467,9 +469,9 @@ public class NodeSamplePanel extends JPanel {
                 String text =
                         val == null ? "" : val.toString();
 
-                if (text.matches("Q\\d+")) {
+                if (WikidataIds.isQid(text)) {
                     openInBrowser("https://www.wikidata.org/wiki/" + text);
-                } else if (text.matches("P\\d+")) {
+                } else if (WikidataIds.isPid(text)) {
                     openInBrowser("https://www.wikidata.org/wiki/Property:" + text);
                 } else if (text.startsWith("http")) {
                     openInBrowser(text);
@@ -498,7 +500,7 @@ public class NodeSamplePanel extends JPanel {
                                     val == null ? "" : val.toString();
 
                             link =
-                                    text.matches("[PQ]\\d+")
+                                    WikidataIds.isId(text)
                                             || text.startsWith("http");
                         }
 

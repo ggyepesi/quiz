@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
@@ -142,7 +144,7 @@ public class DiscoverClassPropertiesQuery
     }
 
     private String classQid() {
-        if (overrideClassQid.matches("Q\\d+")) {
+        if (WikidataIds.isQid(overrideClassQid)) {
             return overrideClassQid;
         }
 
@@ -157,7 +159,7 @@ public class DiscoverClassPropertiesQuery
         String sparql;
         String var;
 
-        if (overrideClassQid.matches("Q\\d+")) {
+        if (WikidataIds.isQid(overrideClassQid)) {
             sparql = SparqlQueries.sampleInstancesByP31(
                     overrideClassQid,
                     sampleSize);
@@ -190,7 +192,7 @@ public class DiscoverClassPropertiesQuery
                     for (WikidataBinding b : context.sparql().query(sampleSparql)) {
                         String qid = b.qid(sampleVar);
 
-                        if (qid != null && qid.matches("Q\\d+")) {
+                        if (qid != null && WikidataIds.isQid(qid)) {
                             qids.add(qid);
                         }
                     }
@@ -210,7 +212,7 @@ public class DiscoverClassPropertiesQuery
         for (WikidataBinding b : bindings) {
             String pid = b.qid("prop");
 
-            if (pid == null || !pid.matches("P\\d+")) {
+            if (pid == null || !WikidataIds.isPid(pid)) {
                 continue;
             }
 
@@ -252,7 +254,7 @@ public class DiscoverClassPropertiesQuery
         if (value == null) return "";
         int i = value.lastIndexOf('/');
         String tail = i >= 0 ? value.substring(i + 1) : value;
-        return tail.matches("Q\\d+") ? tail : "";
+        return WikidataIds.isQid(tail) ? tail : "";
     }
 
     private static String localName(String uri) {

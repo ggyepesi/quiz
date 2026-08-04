@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import wikidata.WikidataBinding;
@@ -66,7 +68,7 @@ public final class ValueVocabularyDiscovery {
             Set<String> seen = new LinkedHashSet<>();
             for (WikidataBinding binding : sparql.query(query)) {
                 String v = binding.qid("value");
-                if (v != null && v.matches("Q\\d+") && seen.add(v)) {
+                if (v != null && WikidataIds.isQid(v) && seen.add(v)) {
                     valueQids.add(v);
                 }
             }

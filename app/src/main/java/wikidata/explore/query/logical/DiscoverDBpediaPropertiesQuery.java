@@ -1,5 +1,7 @@
 package wikidata.explore.query.logical;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.query.core.Query;
@@ -90,7 +92,7 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
     }
 
     private List<String> sampleInstances(QueryContext context) throws Exception {
-        if (!typeQid.matches("Q\\d+")) {
+        if (!WikidataIds.isQid(typeQid)) {
             return List.of();
         }
         String sparql = SparqlQueries.sampleInstancesByP31(typeQid, sampleSize);
@@ -105,7 +107,7 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
                     List<String> qids = new ArrayList<>();
                     for (WikidataBinding b : context.sparql().query(sparql)) {
                         String qid = b.qid("item");
-                        if (qid != null && qid.matches("Q\\d+")) {
+                        if (qid != null && WikidataIds.isQid(qid)) {
                             qids.add(qid);
                         }
                     }

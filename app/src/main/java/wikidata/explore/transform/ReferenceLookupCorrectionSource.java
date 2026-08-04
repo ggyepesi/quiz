@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import quiz.curation.Correction;
 import quiz.curation.CorrectionSource;
 import wikidata.WikidataBinding;
@@ -133,7 +135,7 @@ public final class ReferenceLookupCorrectionSource implements CorrectionSource {
     private static String values(Iterable<String> qids) {
         StringBuilder sb = new StringBuilder();
         for (String q : qids) {
-            if (q != null && q.matches("Q\\d+")) {
+            if (q != null && WikidataIds.isQid(q)) {
                 sb.append("wd:").append(q).append(' ');
             }
         }

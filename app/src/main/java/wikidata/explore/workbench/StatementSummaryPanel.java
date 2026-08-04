@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.WikidataIds;
+
 import wikidata.WikidataSparqlClient;
 
 import javax.swing.*;
@@ -220,7 +222,7 @@ public final class StatementSummaryPanel extends JPanel {
         List<String> out = new ArrayList<>();
         if (text != null) {
             for (String tok : text.trim().split("[\\s,]+")) {
-                if (tok.matches("Q\\d+")) {
+                if (WikidataIds.isQid(tok)) {
                     out.add(tok);
                 }
             }

@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import wikidata.WikidataIds;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import wikidata.explore.query.core.Query;
@@ -33,7 +35,7 @@ public final class WikimediaEntityLookup {
     }
 
     public Query<EntityRecord> byQid(String qid) {
-        if (qid == null || !qid.matches("Q\\d+")) {
+        if (qid == null || !WikidataIds.isQid(qid)) {
             throw new IllegalArgumentException("A Wikidata QID is required");
         }
         URI uri = api(qid);
@@ -88,7 +90,7 @@ public final class WikimediaEntityLookup {
      *  dropped (an entity rarely has that many distinct properties). */
     public Query<Map<String, String>> labels(java.util.Collection<String> ids) {
         List<String> clean = ids == null ? List.of() : ids.stream()
-                .filter(id -> id != null && id.matches("[PQ]\\d+"))
+                .filter(WikidataIds::isId)
                 .distinct().limit(50).toList();
         URI uri = labelsUri(clean);
         return new Query<>() {

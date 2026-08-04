@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -89,7 +91,7 @@ public final class ReferentClassStamp {
     private static int stamp(Object value, String className) {
         if (value instanceof WikidataDynamicObject w) {
             if (!w.hasTypeStamp()
-                    && w.qid() != null && w.qid().matches("Q\\d+")) {
+                    && w.qid() != null && WikidataIds.isQid(w.qid())) {
                 w.type(className);
                 return 1;
             }

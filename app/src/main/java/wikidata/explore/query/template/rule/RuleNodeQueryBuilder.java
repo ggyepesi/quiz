@@ -1,5 +1,7 @@
 package wikidata.explore.query.template.rule;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.rule.RuleLabelConfig;
 import wikidata.explore.rule.RuleIncludedField;
 import wikidata.explore.rule.RuleEdge;
@@ -96,11 +98,11 @@ public final class RuleNodeQueryBuilder {
         List<String> targets = new ArrayList<>();
         for (String t : node.allSourceQids()) {
             String q = RuleNode.cleanQid(t);
-            if (q.matches("Q\\d+")) {
+            if (WikidataIds.isQid(q)) {
                 targets.add(q);
             }
         }
-        if (targets.size() < 2 || !pid.matches("P\\d+")) {
+        if (targets.size() < 2 || !WikidataIds.isPid(pid)) {
             return null;
         }
         // direction: ITEM_TO_ROOT -> ?inst wdt:pid ?target ; ROOT_TO_ITEM -> reverse
@@ -160,7 +162,7 @@ public final class RuleNodeQueryBuilder {
         if (field.isMediaField()) return false;
 
         String pid = RuleNode.cleanPid(field.propertyPid());
-        if (!pid.matches("P\\d+")) return false;
+        if (!WikidataIds.isPid(pid)) return false;
 
         return field.collection() && field.isEntityField();
     }
@@ -358,7 +360,7 @@ public final class RuleNodeQueryBuilder {
         // incoming P1411 to a relational class). Treating that as the empty case
         // is what dropped such children entirely.
         boolean parentAnchored = !isVariable
-                && RuleNode.cleanQid(rootQidOrVar).matches("Q\\d+");
+                && WikidataIds.isQid(RuleNode.cleanQid(rootQidOrVar));
         boolean blankMembership = !isVariable
                 && node.additionalSourceQids().isEmpty()
                 && RuleNode.cleanQid(node.sourceQid()).isBlank()
@@ -510,7 +512,7 @@ public final class RuleNodeQueryBuilder {
         }
 
         boolean parentAnchored = !isVariable
-                && RuleNode.cleanQid(rootQidOrVar).matches("Q\\d+");
+                && WikidataIds.isQid(RuleNode.cleanQid(rootQidOrVar));
         boolean blankMembership = !isVariable
                 && node.additionalSourceQids().isEmpty()
                 && RuleNode.cleanQid(node.sourceQid()).isBlank()
@@ -1186,7 +1188,7 @@ public final class RuleNodeQueryBuilder {
                 : node.excludedPredicateObjects()) {
             String pid = RuleNode.cleanPid(e.predicatePid());
             String qid = RuleNode.cleanQid(e.objectQid());
-            if (!pid.matches("P\\d+") || !qid.matches("Q\\d+")) continue;
+            if (!WikidataIds.isPid(pid) || !WikidataIds.isQid(qid)) continue;
             q.filterNotExists("?value wdt:" + pid + " wd:" + qid + " .");
         }
     }

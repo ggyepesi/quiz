@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.WikidataIds;
+
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import wikidata.WikidataBinding;
@@ -103,7 +105,7 @@ public final class SelectionContentResolver {
         try {
             for (WikidataBinding binding : sparql.query(query)) {
                 String qid = binding.qid("subject");
-                if (qid != null && qid.matches("Q\\d+") && !qids.contains(qid)) {
+                if (qid != null && WikidataIds.isQid(qid) && !qids.contains(qid)) {
                     qids.add(qid);
                 }
             }
