@@ -479,7 +479,7 @@ public final class ValidationPanel extends JPanel {
                 .filter(l -> java.util.Objects.equals(l.type(), type))
                 .filter(l -> java.util.Objects.equals(l.targetId(), targetId))
                 .map(IdentityLink::sourceId)
-                .filter(q -> q != null && q.matches("Q\\d+"))
+                .filter(ValidationPanel::isQid)
                 .findFirst().orElse(null);
     }
 
@@ -970,7 +970,7 @@ public final class ValidationPanel extends JPanel {
     }
 
     private static boolean isQid(String id) {
-        return id != null && id.matches("Q\\d+");
+        return quiz.source.WikidataSource.isQid(id);
     }
 
     /** Rich input remains rendered by Swing, but the pause/request belongs to Find Data. */
@@ -1033,7 +1033,7 @@ public final class ValidationPanel extends JPanel {
     }
 
     private void approveWikidataIdentity(Viewable target, String qid, String label) {
-        if (target == null || qid == null || !qid.matches("Q\\d+")) return;
+        if (target == null || !isQid(qid)) return;
         String targetId = target.getIdentifier();
         if (targetId == null || targetId.isBlank()) {
             JOptionPane.showMessageDialog(this,
@@ -1231,12 +1231,12 @@ public final class ValidationPanel extends JPanel {
     private static String resolvedQid(Viewable member,
                                       List<EnrichmentProposal.SourceRef> sources) {
         String id = member.getIdentifier();
-        if (id != null && id.matches("Q\\d+")) {
+        if (isQid(id)) {
             return id;
         }
         for (EnrichmentProposal.SourceRef source : sources) {
             if ("Wikidata".equalsIgnoreCase(source.kind())
-                    && source.sourceId() != null && source.sourceId().matches("Q\\d+")) {
+                    && isQid(source.sourceId())) {
                 return source.sourceId();
             }
         }

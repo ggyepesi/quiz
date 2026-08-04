@@ -113,7 +113,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
      *  For a Wikidata entity the identity and the source key coincide, so the qid
      *  is read straight from identity — it is never a stored source descriptor. */
     public String qid() {
-        return identifier != null && identifier.matches("Q\\d+") ? identifier : "";
+        return quiz.source.WikidataSource.isQid(identifier) ? identifier : "";
     }
 
     public String wikidataUrl() {

@@ -6,6 +6,8 @@ import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
 import objectview.annotations.Link;
 
+import java.util.regex.Pattern;
+
 /**
  * A Wikidata provenance descriptor: the owning object's data comes from the
  * Wikidata entity identified by {@link #qid()}.
@@ -16,6 +18,17 @@ import objectview.annotations.Link;
  * descriptor, which establishes the object's new source identity.</p>
  */
 public final class WikidataSource extends ViewableAdapter implements Source {
+
+    private static final Pattern QID = Pattern.compile("Q\\d+");
+
+    /**
+     * Whether {@code s} is a Wikidata entity id (a QID). The single place this
+     * format is decided — callers ask here instead of re-spelling the pattern, so
+     * "is this identity a Wikidata source?" has one answer across the app.
+     */
+    public static boolean isQid(String s) {
+        return s != null && QID.matcher(s).matches();
+    }
 
     @Hidden
     private final String qid;
@@ -34,7 +47,7 @@ public final class WikidataSource extends ViewableAdapter implements Source {
         this.name = name == null || name.isBlank() ? this.qid : name;
         // A Wikidata source's id is a QID by definition; only a real QID yields a
         // link. A blank/non-QID here is a construction error, not a silent fallback.
-        this.wikidataUrl = this.qid.matches("Q\\d+")
+        this.wikidataUrl = isQid(this.qid)
                 ? "https://www.wikidata.org/wiki/" + this.qid : "";
         this.identity = wikidataUrl.isBlank() ? "" : this.name + "|" + wikidataUrl;
     }

@@ -17,13 +17,13 @@ public final class SourceIdentities {
         if (viewable instanceof WikidataSource wikidata) return wikidata;
         if (viewable == null) return null;
         String id = viewable.getIdentifier();
-        return id != null && id.matches("Q\\d+")
+        return WikidataSource.isQid(id)
                 ? new WikidataSource(id, viewable.getDisplayName()) : null;
     }
 
     public static String wikidataQid(Viewable viewable) {
         WikidataSource wikidata = wikidata(viewable);
-        return wikidata != null && wikidata.qid().matches("Q\\d+")
+        return wikidata != null && WikidataSource.isQid(wikidata.qid())
                 ? wikidata.qid() : null;
     }
 }

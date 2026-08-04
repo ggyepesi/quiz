@@ -350,7 +350,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private static String currentQid(
             quiz.curation.ManualCuration curation, String type, Viewable member) {
         String id = member.getIdentifier();
-        if (id != null && id.matches("Q\\d+")) {
+        if (quiz.source.WikidataSource.isQid(id)) {
             return id;
         }
         // Not a Wikidata-native identity — the resolved qid, if any, is curation history.
