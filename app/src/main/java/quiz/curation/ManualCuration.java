@@ -157,6 +157,33 @@ public final class ManualCuration implements CorrectionSource {
         merges.removeIf(m -> java.util.Objects.equals(m.type(), type)
                 && m.duplicate().equals(duplicate));
         merges.add(new Merge(type, primary, duplicate, fieldSource, Merge.MANUAL));
+        inheritIdentityOnMerge(type, primary, duplicate);
+    }
+
+    /** A merge carries identity, because identity lives here (in the curation), not on
+     *  the instance: the survivor keeps the primary's Wikidata identity, or inherits the
+     *  secondary's when the primary had none; the secondary's link is always dropped, its
+     *  instance being gone. So the resolved/unresolved lists follow the merge. */
+    private void inheritIdentityOnMerge(String survivorType, String survivorId, String loserId) {
+        IdentityLink survivorLink = wikidataLinkFor(survivorId);
+        IdentityLink loserLink = wikidataLinkFor(loserId);
+        if (survivorLink == null && loserLink != null) {
+            putIdentityLink(new IdentityLink(
+                    survivorType, survivorId, loserLink.sourceKind(), loserLink.sourceId(),
+                    loserLink.recordUrl(), loserLink.canonicalName(), loserLink.origin()));
+        }
+        if (loserLink != null) {
+            removeIdentityLink(loserLink.type(), loserLink.targetId(), loserLink.sourceKind());
+        }
+    }
+
+    /** The approved Wikidata identity link whose target is {@code id}, or null. Matched
+     *  by target id (the instance key) so a type alias never hides it. */
+    private IdentityLink wikidataLinkFor(String id) {
+        return identityLinks.stream()
+                .filter(link -> "Wikidata".equalsIgnoreCase(link.sourceKind()))
+                .filter(link -> java.util.Objects.equals(link.targetId(), id))
+                .findFirst().orElse(null);
     }
 
     public void removeMerge(String type, String duplicate) {

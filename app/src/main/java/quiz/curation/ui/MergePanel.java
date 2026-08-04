@@ -204,6 +204,8 @@ public final class MergePanel extends JPanel {
             return;
         }
 
+        // putMerge also reconciles identity (survivor inherits primary→secondary; the
+        // loser's link is dropped), since identity lives in the curation, not the instance.
         curation.putMerge(type, pid, did, fieldSource);
         try {
             curation.save();
