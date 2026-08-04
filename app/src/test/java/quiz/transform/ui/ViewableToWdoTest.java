@@ -203,6 +203,36 @@ class ViewableToWdoTest {
                 .findFirst().orElseThrow().getIdentifier());
     }
 
+    @Test void aGroupBindingResolvesToTheMemberReferencedGroupNotAnEditableCopy() {
+        // The "save manual States as domain" shape: a member references a
+        // ViewableGroup, and the group-root binding is the transform-app's
+        // EditableGroup COPY of the same root. Both paths must resolve to ONE
+        // ⟨ViewableGroup, id⟩ — the EditableGroup copy must never be snapshotted.
+        ViewableGroup root = new ViewableGroup("All");
+        ViewableGroup leaf = root.getOrCreateChild("Lozengy");
+        GroupedEntity member = new GroupedEntity("m1");
+        member.groups.put(leaf.getIdentifier(), leaf);
+
+        quiz.transform.EditableGroup editableRoot =
+                quiz.transform.EditableGroup.copyOf(root);
+        var converted = ViewableToWdo.convertDomain(
+                java.util.List.of(member),
+                java.util.List.of(new objectview.viewconfig.DomainGroupRoot(
+                        "GroupedEntity", editableRoot)),
+                null);
+
+        // The EditableGroup copy never enters the pool.
+        assertTrue(converted.allObjects().stream()
+                        .noneMatch(o -> "EditableGroup".equals(o.typeName())),
+                "the transform-app EditableGroup copy must not be snapshotted");
+        // The binding resolved to the member-referenced group.
+        assertEquals("ViewableGroup",
+                converted.groupRootBindings().get(0).root().typeName());
+        // Exactly one group object per id (root + leaf) — no duplicate representation.
+        assertEquals(2, converted.allObjects().stream()
+                        .filter(o -> "ViewableGroup".equals(o.typeName())).count());
+    }
+
     @Test void preservesMapKeys() {
         GroupedEntity grouped = new GroupedEntity("grouped");
         grouped.groups.put("meaningful-key", new ViewableGroup("A"));

@@ -67,9 +67,20 @@ public final class ViewableToWdo {
         List<ConvertedGroupRoot> convertedGroups = new ArrayList<>();
         if (groupRootBindings != null) {
             for (objectview.viewconfig.DomainGroupRoot binding : groupRootBindings) {
-                Object c = convert(binding.root(), seen, schema);
-                if (c instanceof WikidataDynamicObject w) {
-                    convertedGroups.add(new ConvertedGroupRoot(binding.memberType(), w));
+                // Prefer the member-referenced group already converted via a member's
+                // `groups` reference, so the binding and the member path resolve to ONE
+                // ⟨type, id⟩ and the transform-app's EditableGroup copy never enters the
+                // snapshot. Fall back to converting the binding root only when no member
+                // reaches it (e.g. an empty group has nothing pointing back at it).
+                String rootId = binding.root() == null
+                        ? null : binding.root().getIdentifier();
+                WikidataDynamicObject root = memberReferencedGroup(seen, rootId);
+                if (root == null) {
+                    Object c = convert(binding.root(), seen, schema);
+                    root = c instanceof WikidataDynamicObject w ? w : null;
+                }
+                if (root != null) {
+                    convertedGroups.add(new ConvertedGroupRoot(binding.memberType(), root));
                 }
             }
         }
@@ -79,6 +90,25 @@ public final class ViewableToWdo {
                 List.copyOf(convertedMembers),
                 List.copyOf(convertedGroups),
                 List.copyOf(seen.values()));
+    }
+
+    /** The already-converted group (reached via a member's group reference) with this
+     *  identifier — the member-referenced group, never a transform-app EditableGroup
+     *  copy. Null when no member reaches a group with this id (e.g. an empty group). */
+    private static WikidataDynamicObject memberReferencedGroup(
+            Map<Object, WikidataDynamicObject> seen, String id) {
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+        for (Map.Entry<Object, WikidataDynamicObject> e : seen.entrySet()) {
+            if (e.getKey() instanceof quiz.transform.EditableGroup) {
+                continue;   // never resolve a binding to a transform-app editing copy
+            }
+            if (id.equals(e.getValue().getIdentifier())) {
+                return e.getValue();
+            }
+        }
+        return null;
     }
 
     /** Report explicitly when distinct data instances share one identifier. Cross-type
