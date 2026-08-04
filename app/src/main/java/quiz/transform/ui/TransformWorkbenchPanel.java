@@ -353,8 +353,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (id != null && id.matches("Q\\d+")) {
             return id;
         }
-        String anchored = quiz.source.SourceIdentities.wikidataQid(member);
-        if (anchored != null) return anchored;
+        // Not a Wikidata-native identity — the resolved qid, if any, is curation history.
         return curation.identityLinks().stream()
                 .filter(link -> type.equals(link.type()) && id != null
                         && id.equals(link.targetId())
@@ -384,11 +383,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     r.type(), r.targetId(), "Wikidata", r.qid(),
                     "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata");
             curation.putIdentityLink(link);
-            controller.domain().instances().stream()
-                    .filter(member -> java.util.Objects.equals(member.typeName(), r.type())
-                            && java.util.Objects.equals(member.getIdentifier(), r.targetId()))
-                    .findFirst().ifPresent(member -> quiz.curation.IdentitySources.apply(
-                            member, link));
             pending.put(identityKey(r.type(), r.targetId()), r);
             changed++;
         }
@@ -444,13 +438,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (identitiesDirty && curation != null) {
             for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : lastApplied) {
                 curation.removeIdentityLink(r.type(), r.targetId(), "Wikidata");
-                controller.domain().instances().stream()
-                        .filter(member -> java.util.Objects.equals(
-                                member.typeName(), r.type())
-                                && java.util.Objects.equals(
-                                member.getIdentifier(), r.targetId()))
-                        .findFirst().ifPresent(member ->
-                                quiz.curation.IdentitySources.refresh(member, curation));
             }
         }
         clearPendingResult();

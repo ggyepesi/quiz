@@ -6,13 +6,19 @@ import objectview.Viewable;
 public final class SourceIdentities {
     private SourceIdentities() { }
 
+    /**
+     * The instance's own Wikidata source, derived from its stable identity: a
+     * Wikidata entity's identifier IS its QID, so the source is read from identity,
+     * not from any stored field. Manual instances (non-QID identity) return null —
+     * a resolved Wikidata identity for them lives in the curation history, which
+     * consumers read separately.
+     */
     public static WikidataSource wikidata(Viewable viewable) {
         if (viewable instanceof WikidataSource wikidata) return wikidata;
-        if (viewable instanceof Sourced anchorable
-                && anchorable.anchor() instanceof WikidataSource wikidata) {
-            return wikidata;
-        }
-        return null;
+        if (viewable == null) return null;
+        String id = viewable.getIdentifier();
+        return id != null && id.matches("Q\\d+")
+                ? new WikidataSource(id, viewable.getDisplayName()) : null;
     }
 
     public static String wikidataQid(Viewable viewable) {

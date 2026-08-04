@@ -82,10 +82,6 @@ public class WikidataDynamicObjectJsonStore {
         mapper.activateDefaultTypingAsProperty(
                 BasicPolymorphicTypeValidator.builder()
                         .allowIfSubType("wikidata.explore")
-                        .allowIfSubType("quiz.source")
-                        // Any Source implementation, wherever it lives — a source
-                        // descriptor is not confined to the quiz.source package.
-                        .allowIfSubType(quiz.source.Source.class)
                         .allowIfSubType("java.util")
                         .allowIfSubType("java.lang")
                         .build(),
@@ -291,7 +287,6 @@ public class WikidataDynamicObjectJsonStore {
         WikidataDynamicObject first = instances.get(0);
         Entity e = new Entity();
         e.id = first.getIdentifier();
-        e.anchor = first.anchor();
         e.typeKey = typeKey;
         e.name = first.getDisplayName();
         for (WikidataDynamicObject o : instances) {
@@ -509,7 +504,6 @@ public class WikidataDynamicObjectJsonStore {
         Map<String, WikidataDynamicObject> byKey = new LinkedHashMap<>();
         for (Entity e : snapshot.entities) {
             WikidataDynamicObject o = new WikidataDynamicObject(e.id, e.name);
-            o.anchor(e.anchor);
             if (e.type != null && !e.type.isBlank()) {
                 o.type(e.type);
             }
@@ -604,7 +598,6 @@ public class WikidataDynamicObjectJsonStore {
         Entity e = new Entity();
         e.id = null;                       // a value has no identity
         e.name = w.getDisplayName();
-        e.anchor = w.anchor();
         String referenceLabel = w.getReferenceLabel();
         if (referenceLabel != null
                 && !referenceLabel.equals(w.getDisplayName())) {
@@ -624,7 +617,6 @@ public class WikidataDynamicObjectJsonStore {
             Entity e, Map<String, WikidataDynamicObject> byKey,
             Map<String, WikidataDynamicObject> byQidSingle) {
         WikidataDynamicObject o = new WikidataDynamicObject(null, e.name);
-        o.anchor(e.anchor);
         if (e.type != null && !e.type.isBlank()) {
             o.type(e.type);
         }
@@ -680,7 +672,6 @@ public class WikidataDynamicObjectJsonStore {
     public static class Entity {
         public String id;
         public String name;
-        public quiz.source.Source anchor;
         // Generic Viewable reference label when it differs from the display name.
         public String referenceLabel;
         // The stamped domain class (e.g. "Constellation", "Star"); null for an

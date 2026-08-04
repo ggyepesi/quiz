@@ -106,26 +106,12 @@ public class GeneratedViewableMapper {
             generatedByQid.put(entityQid, target);
         }
 
-        // Stable identity + display come from the source object at creation, NOT
-        // from the anchor. The anchor is only the (transient) enrichment handle.
+        // Stable identity + display come from the source object at creation. The
+        // instance holds only results; where it came from (Wikidata QID, or a reified
+        // statement's GUID + property) is curation history, not state on the instance.
         if (target instanceof quiz.source.GeneratedEntity ge) {
             ge.identifier(source.getIdentifier());
             ge.label(source.getDisplayName());
-        }
-
-        // Attach the provenance/enrichment anchor: an entity by QID, a reified
-        // statement by its GUID + property. A statement never inherits entity
-        // semantics — the shape lives in the anchor, not a base class.
-        if (target instanceof quiz.source.Sourced anchorable) {
-            if (cr.model().reifiesStatements()) {
-                anchorable.anchor(new quiz.source.WikidataStatementSource(
-                        source.getIdentifier(),
-                        cr.model().statementPropertyPid(),
-                        source.getDisplayName()));
-            } else if (realEntity) {
-                anchorable.anchor(new quiz.source.WikidataSource(
-                        source.qid(), source.getDisplayName()));
-            }
         }
 
         applyFields(cr, target, source, false);

@@ -108,7 +108,6 @@ public final class EnrichmentDecisionApplier {
             throw ex;
         }
 
-        quiz.curation.IdentitySources.apply(domain.instances(), curation.identityLinks());
         return Corrections.apply(domain.instances(), List.of(curation));
     }
 

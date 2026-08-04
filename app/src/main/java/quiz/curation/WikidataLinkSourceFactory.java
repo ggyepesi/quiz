@@ -14,9 +14,10 @@ import java.util.Objects;
  * the link names — or nothing when no Wikidata link matches.
  *
  * <p>This is the "identify" half of the datasource construct for curated
- * identities: {@link IdentitySources} orchestrates it (identify → resolve → set
- * the anchor). A non-Wikidata cross-reference produces no candidate, so it is
- * simply not identified rather than mis-anchored.</p>
+ * identities: from an instance and the curation's approved links, it yields the
+ * {@link WikidataSource} a {@code SourceProducer} can act on — the source lives in
+ * the curation history, not on the instance. A non-Wikidata cross-reference
+ * produces no candidate, so it is simply not identified.</p>
  */
 public final class WikidataLinkSourceFactory implements SourceFactory<WikidataSource> {
 

@@ -68,7 +68,6 @@ public final class PoolCopy {
         c.type(o.typeName());
         c.typeKey(o.typeKey());
         c.valueObject(o.isValueObject());
-        c.anchor(o.anchor());   // the provenance anchor survives a copy
         clones.put(o, c);
         work.add(o);   // its fields still need copying
         return c;

@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Hidden;
 import objectview.field.DynamicFields;
 import objectview.field.FieldSchema;
-import quiz.source.Source;
-import quiz.source.WikidataSource;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,23 +24,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class WikidataDynamicObject extends objectview.ViewableAdapter
-        implements DynamicFields, quiz.source.Sourced {
+        implements DynamicFields {
 
     // The stable logical identity — assigned at creation (a qid for a Wikidata
-    // entity, a local key for a manual instance) and NEVER changed by re-anchoring.
+    // entity, a local key for a manual instance). The instance holds only results;
+    // where it came from (its source) is curation history, never a field here.
     @Hidden
     private String identifier = "";
     @Hidden
     private String name = "";
-
-    // The provenance descriptor (Wikidata / manual / statement / …). Swapping it
-    // re-anchors the object WITHOUT touching identity: the anchor merely REMEMBERS
-    // the source's native id (e.g. a resolved qid) for enrichment. Rendered as a
-    // chip. Named `anchor`, not `source`, to avoid colliding with the reify
-    // back-reference field and structural schema fields already named `source`.
-    @objectview.annotations.Provenance
-    @JsonIgnore
-    private Source anchor;
 
     @Hidden
     @JsonIgnore
@@ -80,17 +70,6 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         String id = normalizeQid(qid);
         this.identifier = id == null ? "" : id;
         this.name = name == null || name.isBlank() ? this.identifier : name;
-        // Historically this carrier was always a Wikidata entity; preserve that
-        // by anchoring a Wikidata source when the id is a QID. A non-QID id (a
-        // manual key) simply has no source yet — it can be re-anchored later.
-        anchorWikidataIfQid();
-    }
-
-    /** Seeds/refreshes a Wikidata anchor when the identity is QID-shaped. */
-    private void anchorWikidataIfQid() {
-        if (identifier != null && identifier.matches("Q\\d+")) {
-            anchor = new WikidataSource(identifier, name);
-        }
     }
 
     private static final Map<String, WikidataDynamicObject> CACHE =
@@ -115,9 +94,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         return name == null || name.isBlank() ? identifier : name;
     }
 
-    // Identity is the stable `identifier`, never the source. Re-anchoring changes
-    // only the `anchor` field (which merely REMEMBERS the source's native id, e.g.
-    // a resolved qid), so identity never moves and value-equality is safe.
+    // Identity is the stable `identifier`, never the source, so value-equality is safe.
     @Override public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof WikidataDynamicObject w)) return false;
@@ -132,17 +109,16 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
                 : java.util.Objects.hash(typeKey(), identifier);
     }
 
-    @Override public Source anchor() { return anchor; }
-
-    @Override public void anchor(Source anchor) { this.anchor = anchor; }
-
-    /** The Wikidata QID iff this object's anchor is Wikidata; else "". */
+    /** The Wikidata QID when this object's stable identity IS a QID; else "".
+     *  For a Wikidata entity the identity and the source key coincide, so the qid
+     *  is read straight from identity — it is never a stored source descriptor. */
     public String qid() {
-        return anchor instanceof WikidataSource w ? w.qid() : "";
+        return identifier != null && identifier.matches("Q\\d+") ? identifier : "";
     }
 
     public String wikidataUrl() {
-        return anchor instanceof WikidataSource w ? w.wikidataUrl() : "";
+        String qid = qid();
+        return qid.isEmpty() ? "" : "https://www.wikidata.org/wiki/" + qid;
     }
 
     public String getQid() { return qid(); }
@@ -160,16 +136,8 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     public String displayLabel() { return getDisplayName(); }
 
-    public void qid(String qid) {
-        String id = normalizeQid(qid);
-        if (id != null && id.matches("Q\\d+")) {
-            anchor = new WikidataSource(id, name);
-        }
-    }
-
     public void name(String name) {
-        // Presentation only — never re-derives the anchor, so renaming can't reset a
-        // resolved/selected source. The anchor is set at construction or by resolution.
+        // Presentation only. Identity (the qid) is stable and set at construction.
         this.name = name == null || name.isBlank() ? identifier : name;
     }
 

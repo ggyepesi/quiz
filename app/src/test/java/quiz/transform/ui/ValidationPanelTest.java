@@ -9,6 +9,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ValidationPanelTest {
 
@@ -67,33 +68,20 @@ class ValidationPanelTest {
                         domain, all, "USState", "admissionDate", ScopeFilter.ALL));
     }
 
-    @Test void identityCoverageUsesTheSourceField() {
-        // A QID identity anchors a Wikidata source; a non-QID key has none.
+    @Test void identityCoverageDerivesFromTheStableIdentity() {
+        // A QID identity IS a Wikidata identity; a non-QID key has none. There is no
+        // stored source field — coverage is read from the identity itself.
         WikidataDynamicObject identified = new WikidataDynamicObject("Q1", "Universe");
-        identified.type("ManualItem");
-        WikidataDynamicObject unresolved = new WikidataDynamicObject("unresolved", "unresolved");
-        unresolved.type("ManualItem");
-        ReflectionDomain domain = new ReflectionDomain(List.of(identified, unresolved));
+        WikidataDynamicObject unresolved =
+                new WikidataDynamicObject("unresolved", "unresolved");
 
-        assertEquals(List.of(identified), ValidationPanel.membersWithFieldScope(
-                domain, domain.instances(), "ManualItem", "anchor",
-                ScopeFilter.PRESENT));
-        assertEquals(List.of(unresolved), ValidationPanel.membersWithFieldScope(
-                domain, domain.instances(), "ManualItem", "anchor",
-                ScopeFilter.MISSING));
+        assertEquals("Q1", quiz.source.SourceIdentities.wikidataQid(identified));
+        assertNull(quiz.source.SourceIdentities.wikidataQid(unresolved));
     }
 
     private static WikidataDynamicObject object(String id, String type) {
         WikidataDynamicObject object = new WikidataDynamicObject(id, id);
         object.type(type);
         return object;
-    }
-
-    private static final class ManualItem extends objectview.ViewableAdapter {
-        private final String id;
-
-        private ManualItem(String id) { this.id = id; }
-        @Override public String getIdentifier() { return id; }
-        @Override public String getDisplayName() { return id; }
     }
 }

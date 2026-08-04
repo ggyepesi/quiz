@@ -1062,9 +1062,8 @@ public final class ValidationPanel extends JPanel {
                 targetType, targetId, "Wikidata", qid,
                 "https://www.wikidata.org/wiki/" + qid, name, "manual");
         staging.stage(approved);
-        // Preview the pending identity on the live card. Its durable representation remains
-        // only in CurationStaging until Apply.
-        quiz.curation.IdentitySources.apply(target, approved);
+        // The pending identity lives only in CurationStaging until Apply; the card reads
+        // it back from there (and from the curation history), never from instance state.
         updateIdentityButton();
         updateIdentityStatus();
         // Re-render (no re-filter) so the modal picker closes promptly and the just-resolved

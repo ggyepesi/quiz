@@ -2,28 +2,21 @@ package quiz.source;
 
 import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
-import objectview.annotations.Provenance;
 
 /**
  * Base for code-generated domain entities (the runtime-compiled classes the
  * ModelBuilder emits).
  *
- * <p>Identity is the stable {@code identifier} the mapper assigns at creation —
- * NEVER derived from the anchor. The {@code anchor} is the transient enrichment
- * handle ("where to fetch more data"), independent of identity, so the two
- * carriers ({@code WikidataDynamicObject} and this) are symmetric: stable
- * identity + transient enrichment anchor.</p>
+ * <p>Identity is the stable {@code identifier} the mapper assigns at creation.
+ * The instance holds only results; where it came from (its originating source)
+ * is curation history, not a field on the entity.</p>
  */
-public abstract class GeneratedEntity extends ViewableAdapter implements Sourced {
+public abstract class GeneratedEntity extends ViewableAdapter {
 
     @Hidden
     private String identifier = "";
     @Hidden
     private String label = "";
-
-    // Transient enrichment/provenance handle — where to fetch more data. Not identity.
-    @Provenance
-    private Source anchor;
 
     @Override public String getIdentifier() { return identifier; }
 
@@ -36,8 +29,4 @@ public abstract class GeneratedEntity extends ViewableAdapter implements Sourced
     }
 
     public void label(String label) { this.label = label == null ? "" : label; }
-
-    @Override public Source anchor() { return anchor; }
-
-    @Override public void anchor(Source anchor) { this.anchor = anchor; }
 }
