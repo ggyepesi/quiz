@@ -93,7 +93,8 @@ public interface DomainModel {
         java.util.Set<String> result = new java.util.LinkedHashSet<>();
         if (schema != null) {
             for (objectview.field.FieldRef field : schema.fields()) {
-                if (!field.structural() && !inheritedNames.contains(field.name())) {
+                if (!field.structural() && !field.provenance()
+                        && !inheritedNames.contains(field.name())) {
                     result.add(field.name());
                 }
             }

@@ -10,14 +10,14 @@ import objectview.annotations.Hidden;
  * produced from a particular statement (a GUID) on a property — not from an
  * entity.
  *
- * <p>A <b>sibling</b> of {@link WikidataViewable}, never a subclass: a statement
+ * <p>A <b>sibling</b> of {@link WikidataSource}, never a subclass: a statement
  * is not a QID-identified entity, so it must not inherit entity/qid semantics
  * (see the no-dynamic-carrier-inheritance rule). Both are Wikidata-sourced, but
  * they identify by different shapes — an entity by its QID, a statement by its
  * GUID + property.</p>
  */
-public final class WikidataStatementViewable extends ViewableAdapter
-        implements SourceViewable {
+public final class WikidataStatementSource extends ViewableAdapter
+        implements Source {
 
     @Hidden
     private final String statement;
@@ -27,7 +27,7 @@ public final class WikidataStatementViewable extends ViewableAdapter
     private final String name;
 
     @JsonCreator
-    public WikidataStatementViewable(
+    public WikidataStatementSource(
             @JsonProperty("statement") String statement,
             @JsonProperty("property") String property,
             @JsonProperty("name") String name) {

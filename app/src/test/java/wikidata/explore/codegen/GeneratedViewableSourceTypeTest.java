@@ -28,7 +28,7 @@ class GeneratedViewableSourceTypeTest {
         // A statement is not an entity: it extends the neutral base, its
         // statement/property provenance living in the anchor, not a superclass.
         assertTrue(source.contains("extends quiz.source.GeneratedEntity"));
-        assertFalse(source.contains("extends quiz.source.WikidataViewable"));
+        assertFalse(source.contains("extends quiz.source.WikidataSource"));
         assertFalse(source.contains("public String qid"));
     }
 

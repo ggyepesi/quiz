@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Hidden;
 import objectview.field.DynamicFields;
 import objectview.field.FieldSchema;
-import quiz.source.SourceViewable;
-import quiz.source.WikidataViewable;
+import quiz.source.Source;
+import quiz.source.WikidataSource;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class WikidataDynamicObject extends objectview.ViewableAdapter
-        implements DynamicFields, quiz.source.Anchorable {
+        implements DynamicFields, quiz.source.Sourced {
 
     // The stable logical identity — assigned at creation (a qid for a Wikidata
     // entity, a local key for a manual instance) and NEVER changed by re-anchoring.
@@ -42,7 +42,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     // back-reference field and structural schema fields already named `source`.
     @objectview.annotations.Provenance
     @JsonIgnore
-    private SourceViewable anchor;
+    private Source anchor;
 
     @Hidden
     @JsonIgnore
@@ -89,7 +89,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     /** Seeds/refreshes a Wikidata anchor when the identity is QID-shaped. */
     private void anchorWikidataIfQid() {
         if (identifier != null && identifier.matches("Q\\d+")) {
-            anchor = new WikidataViewable(identifier, name);
+            anchor = new WikidataSource(identifier, name);
         }
     }
 
@@ -132,17 +132,17 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
                 : java.util.Objects.hash(typeKey(), identifier);
     }
 
-    @Override public SourceViewable anchor() { return anchor; }
+    @Override public Source anchor() { return anchor; }
 
-    @Override public void anchor(SourceViewable anchor) { this.anchor = anchor; }
+    @Override public void anchor(Source anchor) { this.anchor = anchor; }
 
     /** The Wikidata QID iff this object's anchor is Wikidata; else "". */
     public String qid() {
-        return anchor instanceof WikidataViewable w ? w.qid() : "";
+        return anchor instanceof WikidataSource w ? w.qid() : "";
     }
 
     public String wikidataUrl() {
-        return anchor instanceof WikidataViewable w ? w.wikidataUrl() : "";
+        return anchor instanceof WikidataSource w ? w.wikidataUrl() : "";
     }
 
     public String getQid() { return qid(); }
@@ -163,13 +163,14 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     public void qid(String qid) {
         String id = normalizeQid(qid);
         if (id != null && id.matches("Q\\d+")) {
-            anchor = new WikidataViewable(id, name);
+            anchor = new WikidataSource(id, name);
         }
     }
 
     public void name(String name) {
+        // Presentation only — never re-derives the anchor, so renaming can't reset a
+        // resolved/selected source. The anchor is set at construction or by resolution.
         this.name = name == null || name.isBlank() ? identifier : name;
-        anchorWikidataIfQid();
     }
 
     public Map<String, Object> dynamicFields() { return dynamicFields; }

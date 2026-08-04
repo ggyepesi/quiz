@@ -222,7 +222,7 @@ public final class ViewableToWdo {
                 id = q.getDisplayName();
             }
             WikidataDynamicObject o = new WikidataDynamicObject(id, q.getDisplayName());
-            if (q instanceof quiz.source.Anchorable anchorable) {
+            if (q instanceof quiz.source.Sourced anchorable) {
                 o.anchor(anchorable.anchor());
             }
             String concreteType = schema == null
@@ -249,7 +249,13 @@ public final class ViewableToWdo {
             for (objectview.field.FieldRef ref : set.fields()) {
                 // The source identity is carried by the dynamic carrier contract and
                 // persisted explicitly by the snapshot DTO, never duplicated as data.
-                if (q instanceof quiz.source.Anchorable && "anchor".equals(ref.name())) {
+                if (q instanceof quiz.source.Sourced && "anchor".equals(ref.name())) {
+                    continue;
+                }
+                // Identity/display are the Viewable contract (getIdentifier /
+                // getDisplayName), not data — never store the virtual contract fields.
+                if (objectview.field.ViewableContractFieldSet.IDENTITY_KEY.equals(ref.name())
+                        || objectview.field.ViewableContractFieldSet.DISPLAY_KEY.equals(ref.name())) {
                     continue;
                 }
                 Object cv = convert(set.read(ref.name()), seen, schema);

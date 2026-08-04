@@ -11,11 +11,11 @@ import objectview.annotations.Link;
  * Wikidata entity identified by {@link #qid()}.
  *
  * <p>This is the <b>value of an {@code anchor} field</b>, not a base class — a
- * domain object <em>has</em> a {@code WikidataViewable}, it does not extend one.
+ * domain object <em>has</em> a {@code WikidataSource}, it does not extend one.
  * It is immutable: to re-anchor an object you set its {@code source} to a new
  * descriptor, which establishes the object's new source identity.</p>
  */
-public final class WikidataViewable extends ViewableAdapter implements SourceViewable {
+public final class WikidataSource extends ViewableAdapter implements Source {
 
     @Hidden
     private final String qid;
@@ -27,7 +27,7 @@ public final class WikidataViewable extends ViewableAdapter implements SourceVie
     private final String identity;
 
     @JsonCreator
-    public WikidataViewable(
+    public WikidataSource(
             @JsonProperty("qid") String qid,
             @JsonProperty("name") String name) {
         this.qid = qid == null ? "" : qid.strip();
@@ -39,7 +39,7 @@ public final class WikidataViewable extends ViewableAdapter implements SourceVie
         this.identity = wikidataUrl.isBlank() ? "" : this.name + "|" + wikidataUrl;
     }
 
-    public WikidataViewable(String qid) { this(qid, qid); }
+    public WikidataSource(String qid) { this(qid, qid); }
 
     @Override public String provenance() { return "wikidata"; }
 

@@ -1,79 +1,63 @@
 package quiz.curation;
 
 import objectview.Viewable;
-import quiz.source.Anchorable;
-import quiz.source.WikidataViewable;
+import quiz.source.Sourced;
+import quiz.source.SourceFactory;
+import quiz.source.WikidataSource;
 
 import java.util.Collection;
 import java.util.List;
 
-/** Applies durable Wikidata identity links to Wikidata-backed instances. */
+/**
+ * Resolves durable Wikidata identity links onto instances via the datasource
+ * construct: a {@link WikidataLinkSourceFactory} does the <em>identify</em> (link →
+ * candidate {@link WikidataSource}); this class does the <em>resolution</em> (a
+ * single candidate becomes the instance's anchor). Re-anchoring never changes the
+ * instance's own identity.
+ */
 public final class IdentitySources {
     private IdentitySources() { }
 
+    /** Batch: resolve every instance that a Wikidata link identifies. */
     public static int apply(Collection<? extends Viewable> instances,
                             Collection<IdentityLink> links) {
         if (instances == null || links == null) return 0;
+        SourceFactory<WikidataSource> factory = new WikidataLinkSourceFactory(links);
         int count = 0;
-        for (IdentityLink link : links) {
-            Viewable target = instances.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .filter(instance -> java.util.Objects.equals(
-                            instance.typeName(), link.type()))
-                    .filter(instance -> java.util.Objects.equals(
-                            instance.getIdentifier(), link.targetId()))
-                    .findFirst().orElse(null);
-            // Only a Wikidata link names an identity this construct can apply. A
-            // non-Wikidata cross-reference (e.g. a NobelPrize.org laureate ID) is
-            // recorded in curation as provenance but is NOT the object's Wikidata
-            // anchor — applying it would overwrite the qid with a foreign id — so
-            // it is skipped rather than aborting the whole batch.
-            if (target != null && applicable(target, link)) {
-                apply(target, link);
-                count++;
-            }
+        for (Viewable instance : instances) {
+            if (resolveAndAnchor(instance, factory)) count++;
         }
         return count;
     }
 
+    /** Single approved link (used by the resolve-identities UI). */
     public static void apply(Viewable target, IdentityLink link) {
-        if (target == null || link == null) return;
-        if (!isWikidataLink(link)) {
-            throw new IllegalArgumentException(
-                    "Unsupported identity provenance: " + link.sourceKind());
-        }
-        if (!(target instanceof Anchorable anchorable)) {
-            throw new IllegalArgumentException(
-                    target.typeName() + " does not accept a source anchor");
-        }
-        // Re-anchor: the Wikidata source descriptor becomes the object's identity.
-        // Carriers retain object-identity equality, so this cannot corrupt Java sets;
-        // indexes keyed by getIdentifier() must be rebuilt by their owning workflow.
-        anchorable.anchor(
-                new WikidataViewable(link.sourceId(), link.canonicalName()));
-    }
-
-    /** A link this construct can apply: a Wikidata provenance onto a carrier that
-     *  accepts a source anchor. The non-throwing form of {@link #apply}'s
-     *  preconditions, used to filter a mixed batch. */
-    private static boolean applicable(Viewable target, IdentityLink link) {
-        return target instanceof Anchorable && isWikidataLink(link);
-    }
-
-    private static boolean isWikidataLink(IdentityLink link) {
-        return link != null && "Wikidata".equalsIgnoreCase(link.sourceKind());
+        resolveAndAnchor(target, new WikidataLinkSourceFactory(
+                link == null ? List.of() : List.of(link)));
     }
 
     public static void refresh(Viewable target, ManualCuration curation) {
-        if (target == null) return;
-        IdentityLink link = curation == null ? null : curation.identityLinks().stream()
-                .filter(candidate -> java.util.Objects.equals(
-                        candidate.type(), target.typeName()))
-                .filter(candidate -> java.util.Objects.equals(
-                        candidate.targetId(), target.getIdentifier()))
-                .findFirst().orElse(null);
-        if (applicable(target, link)) {
-            apply(target, link);
+        if (curation == null) return;
+        resolveAndAnchor(target, new WikidataLinkSourceFactory(curation.identityLinks()));
+    }
+
+    /**
+     * Identify {@code instance} through the factory and, when exactly one candidate
+     * resolves, set it as the instance's anchor. Skips instances that aren't
+     * {@link Sourced}, aren't identified (0 candidates — e.g. a non-Wikidata link),
+     * or are ambiguous (&gt;1 — a pick is the UI's job, not this batch's).
+     */
+    private static boolean resolveAndAnchor(
+            Viewable instance, SourceFactory<WikidataSource> factory) {
+        if (!(instance instanceof Sourced sourced)) return false;
+        List<WikidataSource> candidates;
+        try {
+            candidates = factory.identify(instance);
+        } catch (Exception e) {
+            return false;
         }
+        if (candidates.size() != 1) return false;
+        sourced.anchor(candidates.get(0));
+        return true;
     }
 }

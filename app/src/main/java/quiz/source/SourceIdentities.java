@@ -6,17 +6,17 @@ import objectview.Viewable;
 public final class SourceIdentities {
     private SourceIdentities() { }
 
-    public static WikidataViewable wikidata(Viewable viewable) {
-        if (viewable instanceof WikidataViewable wikidata) return wikidata;
-        if (viewable instanceof Anchorable anchorable
-                && anchorable.anchor() instanceof WikidataViewable wikidata) {
+    public static WikidataSource wikidata(Viewable viewable) {
+        if (viewable instanceof WikidataSource wikidata) return wikidata;
+        if (viewable instanceof Sourced anchorable
+                && anchorable.anchor() instanceof WikidataSource wikidata) {
             return wikidata;
         }
         return null;
     }
 
     public static String wikidataQid(Viewable viewable) {
-        WikidataViewable wikidata = wikidata(viewable);
+        WikidataSource wikidata = wikidata(viewable);
         return wikidata != null && wikidata.qid().matches("Q\\d+")
                 ? wikidata.qid() : null;
     }

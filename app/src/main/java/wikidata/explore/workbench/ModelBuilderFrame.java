@@ -849,7 +849,7 @@ public class ModelBuilderFrame extends JFrame {
             java.util.List<objectview.Viewable> entities = new java.util.ArrayList<>();
             for (String qid : e.getValue()) {
                 objectview.Viewable used = byQid.get(qid);
-                entities.add(used != null ? used : new quiz.source.WikidataViewable(qid));
+                entities.add(used != null ? used : new quiz.source.WikidataSource(qid));
             }
             cards.add(new NameCollision(e.getKey(), entities));
         }

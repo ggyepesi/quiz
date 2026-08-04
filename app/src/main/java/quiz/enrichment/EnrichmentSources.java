@@ -18,7 +18,7 @@ public final class EnrichmentSources {
     public static List<EnrichmentProposal.SourceRef> collect(
             Viewable member, String type, ManualCuration curation) {
         Map<String, EnrichmentProposal.SourceRef> result = new LinkedHashMap<>();
-        quiz.source.WikidataViewable wikidata = SourceIdentities.wikidata(member);
+        quiz.source.WikidataSource wikidata = SourceIdentities.wikidata(member);
         if (wikidata != null) {
             add(result, "Wikidata", wikidata.qid(), wikidata.wikidataUrl());
         }

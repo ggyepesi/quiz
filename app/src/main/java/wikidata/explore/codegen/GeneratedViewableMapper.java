@@ -116,14 +116,14 @@ public class GeneratedViewableMapper {
         // Attach the provenance/enrichment anchor: an entity by QID, a reified
         // statement by its GUID + property. A statement never inherits entity
         // semantics — the shape lives in the anchor, not a base class.
-        if (target instanceof quiz.source.Anchorable anchorable) {
+        if (target instanceof quiz.source.Sourced anchorable) {
             if (cr.model().reifiesStatements()) {
-                anchorable.anchor(new quiz.source.WikidataStatementViewable(
+                anchorable.anchor(new quiz.source.WikidataStatementSource(
                         source.getIdentifier(),
                         cr.model().statementPropertyPid(),
                         source.getDisplayName()));
             } else if (realEntity) {
-                anchorable.anchor(new quiz.source.WikidataViewable(
+                anchorable.anchor(new quiz.source.WikidataSource(
                         source.qid(), source.getDisplayName()));
             }
         }

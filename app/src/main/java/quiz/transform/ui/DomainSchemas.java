@@ -58,17 +58,17 @@ public final class DomainSchemas {
             return;
         }
         FieldSchema schema = domain.fieldSchema(currentType);
-        for (FieldRef field : objectview.field.ViewableContractFieldSet.fieldRefs()) {
-            if (schema != null && schema.field(field.name()) != null) continue;
-            String path = prefix.isEmpty() ? field.name() : prefix + "." + field.name();
-            out.add(new DomainField(topType, path, false, false, field.kind()));
-        }
+        // Identity/display are the read-only Viewable contract, not operation fields —
+        // they must not enter this (writable) operation pool. Consumers that need the
+        // display use getDisplayName() directly, not a field path.
         if (schema == null) {
             chain.remove(currentType);
             return;
         }
         for (FieldRef field : schema.fields()) {
-            if (field.structural()) {
+            if (field.structural() || field.provenance()) {
+                // structural = reify/back-ref plumbing; provenance = the source anchor.
+                // Neither is a domain data field, so neither belongs in the operation pool.
                 continue;
             }
             String path = prefix.isEmpty()

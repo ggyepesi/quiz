@@ -14,7 +14,7 @@ import objectview.annotations.Provenance;
  * carriers ({@code WikidataDynamicObject} and this) are symmetric: stable
  * identity + transient enrichment anchor.</p>
  */
-public abstract class GeneratedEntity extends ViewableAdapter implements Anchorable {
+public abstract class GeneratedEntity extends ViewableAdapter implements Sourced {
 
     @Hidden
     private String identifier = "";
@@ -23,7 +23,7 @@ public abstract class GeneratedEntity extends ViewableAdapter implements Anchora
 
     // Transient enrichment/provenance handle — where to fetch more data. Not identity.
     @Provenance
-    private SourceViewable anchor;
+    private Source anchor;
 
     @Override public String getIdentifier() { return identifier; }
 
@@ -37,7 +37,7 @@ public abstract class GeneratedEntity extends ViewableAdapter implements Anchora
 
     public void label(String label) { this.label = label == null ? "" : label; }
 
-    @Override public SourceViewable anchor() { return anchor; }
+    @Override public Source anchor() { return anchor; }
 
-    @Override public void anchor(SourceViewable anchor) { this.anchor = anchor; }
+    @Override public void anchor(Source anchor) { this.anchor = anchor; }
 }

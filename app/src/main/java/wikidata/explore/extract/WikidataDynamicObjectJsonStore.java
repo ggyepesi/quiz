@@ -83,6 +83,9 @@ public class WikidataDynamicObjectJsonStore {
                 BasicPolymorphicTypeValidator.builder()
                         .allowIfSubType("wikidata.explore")
                         .allowIfSubType("quiz.source")
+                        // Any Source implementation, wherever it lives — a source
+                        // descriptor is not confined to the quiz.source package.
+                        .allowIfSubType(quiz.source.Source.class)
                         .allowIfSubType("java.util")
                         .allowIfSubType("java.lang")
                         .build(),
@@ -677,7 +680,7 @@ public class WikidataDynamicObjectJsonStore {
     public static class Entity {
         public String id;
         public String name;
-        public quiz.source.SourceViewable anchor;
+        public quiz.source.Source anchor;
         // Generic Viewable reference label when it differs from the display name.
         public String referenceLabel;
         // The stamped domain class (e.g. "Constellation", "Star"); null for an

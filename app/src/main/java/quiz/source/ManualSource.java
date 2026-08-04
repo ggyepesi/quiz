@@ -11,9 +11,9 @@ import objectview.annotations.Hidden;
  *
  * <p>The <b>value of an {@code anchor} field</b>, not a base class — a domain
  * entity <em>has</em> a manual anchor (see {@link ManualEntity}), and gains a
- * Wikidata identity by having that field replaced with a {@link WikidataViewable}.</p>
+ * Wikidata identity by having that field replaced with a {@link WikidataSource}.</p>
  */
-public final class ManualViewable extends ViewableAdapter implements SourceViewable {
+public final class ManualSource extends ViewableAdapter implements Source {
 
     @Hidden
     private final String id;
@@ -21,14 +21,14 @@ public final class ManualViewable extends ViewableAdapter implements SourceViewa
     private final String name;
 
     @JsonCreator
-    public ManualViewable(
+    public ManualSource(
             @JsonProperty("id") String id,
             @JsonProperty("name") String name) {
         this.id = id == null ? "" : id;
         this.name = name == null || name.isBlank() ? this.id : name;
     }
 
-    public ManualViewable(String id) { this(id, id); }
+    public ManualSource(String id) { this(id, id); }
 
     @Override public String provenance() { return "manual"; }
 
