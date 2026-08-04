@@ -1,9 +1,9 @@
 package nobel;
 
 import objectview.media.ImagePane;
-import objectview.ViewableAdapter;
+import quiz.source.ManualEntity;
 
-class Laureate extends ViewableAdapter {
+class Laureate extends ManualEntity {
     private String name;
     private ImagePane portrait;
 

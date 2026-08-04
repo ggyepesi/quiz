@@ -55,10 +55,6 @@ public final class ProductDomain implements DomainModel, SchemaView {
                 ? null : productClass.baseClassName();
     }
 
-    @Override public List<DomainField> fields(String type) {
-        return DomainSchemas.fields(this, type);
-    }
-
     @Override public Set<String> structuralFields(String type) {
         return DomainSchemas.structuralFields(fieldSchema(type));
     }

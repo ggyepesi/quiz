@@ -75,8 +75,10 @@ public class Languages implements DomainViews {
     }
 
     @Override
-    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
-        return rootGroup == null ? java.util.List.of() : java.util.List.of(rootGroup);
+    public java.util.List<objectview.viewconfig.DomainGroupRoot> getGroupRootBindings() {
+        return rootGroup == null ? java.util.List.of()
+                : java.util.List.of(new objectview.viewconfig.DomainGroupRoot(
+                        Language.class.getSimpleName(), rootGroup));
     }
 
     public Map<String, Language> getLanguages() {

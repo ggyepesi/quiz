@@ -1,5 +1,9 @@
 package wikidata.explore.extract;
 
+import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -142,7 +146,7 @@ class SnapshotFieldGraphStoreTest {
                 "laureatesWithMotivation.laureates.portrait"), fields.toString());
     }
 
-    @Test void preGraphSnapshotDerivesSchemaAsCompatibilityFallback()
+    @Test void preGraphSnapshotMustBeRegenerated()
             throws Exception {
         WikidataDynamicObject laureate = wdo("L1", "Laureate", false);
         laureate.put("portrait", "portrait.jpg");
@@ -156,10 +160,24 @@ class SnapshotFieldGraphStoreTest {
         json.put("version", 2);
         store.mapper().writeValue(file, json);
 
-        var loaded = store.loadAllWithFieldGraph(file);
-        assertNotNull(loaded.fieldGraph());
-        assertTrue(loaded.fieldGraph().types.get("Laureate")
-                .fields.containsKey("portrait"));
+        java.io.IOException failure = assertThrows(java.io.IOException.class,
+                () -> store.loadAllWithFieldGraph(file));
+        assertTrue(failure.getMessage().contains("regenerate"));
+    }
+
+    @Test void previousFlatSnapshotVersionMustBeRegenerated() throws Exception {
+        File file = new File(dir, "previous.snapshot.json");
+        WikidataDynamicObjectJsonStore store =
+                new WikidataDynamicObjectJsonStore();
+        store.save(List.of(wdo("L1", "Laureate", false)), file);
+
+        ObjectNode json = (ObjectNode) store.mapper().readTree(file);
+        json.put("version", 5);
+        store.mapper().writeValue(file, json);
+
+        java.io.IOException failure = assertThrows(java.io.IOException.class,
+                () -> store.loadAllWithFieldGraph(file));
+        assertTrue(failure.getMessage().contains("regenerate"));
     }
 
     @Test void bareReferencesKeepTheirTransparentTextShape()
@@ -183,7 +201,7 @@ class SnapshotFieldGraphStoreTest {
         assertEquals("Collection<String>", type.typeLabel());
     }
 
-    @Test void anExplicitlyRootlessV5SnapshotStaysRootless()
+    @Test void anExplicitlyRootlessCurrentSnapshotStaysRootless()
             throws Exception {
         WikidataDynamicObject group = wdo("All", "ViewableGroup", false);
         File file = new File(dir, "group-only.snapshot.json");

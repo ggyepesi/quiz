@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import objectview.field.FieldKind;
 import objectview.field.FieldRef;
 import objectview.field.FieldSchema;

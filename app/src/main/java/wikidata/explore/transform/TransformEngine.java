@@ -181,8 +181,8 @@ public class TransformEngine {
         }
         Map<String, WikidataDynamicObject> byQid = new HashMap<>();
         for (WikidataDynamicObject o : pool) {
-            if (o != null && o.qid() != null && !o.qid().isBlank()) {
-                byQid.putIfAbsent(o.qid(), o);
+            if (o != null && o.getIdentifier() != null && !o.getIdentifier().isBlank()) {
+                byQid.putIfAbsent(o.getIdentifier(), o);
             }
         }
         Object sample = sampleValue(pool, targetType, outField);
@@ -213,8 +213,8 @@ public class TransformEngine {
     private WikidataDynamicObject referent(Object viaValue,
                                            Map<String, WikidataDynamicObject> byQid) {
         for (WikidataDynamicObject ref : referencedObjects(viaValue)) {
-            return ref.qid() != null && byQid.containsKey(ref.qid())
-                    ? byQid.get(ref.qid())
+            return ref.getIdentifier() != null && byQid.containsKey(ref.getIdentifier())
+                    ? byQid.get(ref.getIdentifier())
                     : ref;
         }
         return null;
@@ -320,7 +320,7 @@ public class TransformEngine {
                     created.add(el);
                 } else {
                     WikidataDynamicObject n = new WikidataDynamicObject(
-                            src.qid() + "__" + el.qid(),
+                            src.getIdentifier() + "__" + el.getIdentifier(),
                             src.getDisplayName() + " — " + el.getDisplayName());
                     n.type(c.targetType());
                     n.put(srcField, src);
@@ -485,7 +485,7 @@ public class TransformEngine {
     }
 
     private static String describe(WikidataDynamicObject o) {
-        return o.qid() + " \"" + o.getDisplayName() + "\"";
+        return o.getIdentifier() + " \"" + o.getDisplayName() + "\"";
     }
 
     /**
@@ -668,7 +668,7 @@ public class TransformEngine {
             return false;
         }
         if (a instanceof WikidataDynamicObject x && b instanceof WikidataDynamicObject y) {
-            return x.qid() != null && x.qid().equals(y.qid());
+            return x.getIdentifier() != null && x.getIdentifier().equals(y.getIdentifier());
         }
         return a.equals(b);
     }
@@ -725,7 +725,7 @@ public class TransformEngine {
     }
 
     private static String refQid(Object v) {
-        return v instanceof WikidataDynamicObject w ? w.qid() : null;
+        return v instanceof WikidataDynamicObject w ? w.getIdentifier() : null;
     }
 
     private static String keyOf(WikidataDynamicObject o, List<String> fields) {
@@ -738,7 +738,7 @@ public class TransformEngine {
 
     private static String valueKey(Object v) {
         if (v instanceof WikidataDynamicObject w) {
-            return w.qid() != null ? w.qid() : w.getDisplayName();
+            return w.getIdentifier() != null ? w.getIdentifier() : w.getDisplayName();
         }
         if (v instanceof Collection<?> col) {
             return col.stream().map(TransformEngine::valueKey).sorted()

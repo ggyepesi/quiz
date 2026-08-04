@@ -72,12 +72,6 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return true;
     }
 
-    /** Compatibility adapter for callers that only carry the older operation shape. */
-    public boolean addField(String type, DomainField field) {
-        FieldSchema schema = DomainSchemas.flatSchema(List.of(field));
-        return schema.fields().isEmpty() ? false : addField(type, schema.fields().get(0));
-    }
-
     @Override public javax.swing.JComponent schemaView() {
         return base instanceof SchemaView sv ? sv.schemaView() : null;
     }
@@ -229,10 +223,6 @@ public final class WorkingDomain implements DomainModel, SchemaView,
             }
         }
         return java.util.Collections.unmodifiableSet(result);
-    }
-
-    @Override public List<DomainField> fields(String type) {
-        return DomainSchemas.fields(this, type);
     }
 
     @Override public FieldSchema fieldSchema(String type) {

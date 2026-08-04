@@ -49,7 +49,7 @@
         {:else}
           <span class="exp"></span>
         {/if}
-        <span class="nm">{f.name}</span> <span class="kind">{f.kind}</span>
+        <span class="nm" title={f.name}>{f.label ?? f.name}</span> <span class="kind">{f.kind}</span>
       </span>
       <span class="cb"><input type="checkbox" checked={promptFields.includes(fp)} onchange={(e) => onPrompt(fp, e.currentTarget.checked)} /></span>
       <span class="cb"><input type="checkbox" checked={answerFields.includes(fp)} onchange={(e) => onAnswer(fp, e.currentTarget.checked)} /></span>

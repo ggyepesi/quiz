@@ -1,7 +1,11 @@
 package quiz.transform.app;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import quiz.DatasetRegistry;
+import quiz.QuizFactory;
 import quiz.transform.ui.DomainEntry;
+import quiz.transform.ui.ReflectionDomain;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
@@ -31,21 +35,27 @@ public final class DomainCatalog {
             }
         }
 
+        // Re-wired: list the hand-written domains as LIVE ReflectionDomains again, so each can
+        // be opened on the current code and re-exported via "Save as domain" — producing fresh
+        // snapshots that match the live field model (no stale-schema translation).
+        for (QuizFactory.BuiltInDomain b : QuizFactory.builtInDomains()) {
+            out.add(new DomainEntry(b.icon() + " " + b.name(), "built-in",
+                    () -> ReflectionDomain.of(b.views())));
+        }
+
         return out;
     }
 
     /**
-     * Opens a generated dataset: when the model.json is readable, compile it +
-     * the pool into a typed {@link ProductDomain} (model-authoritative schema);
-     * otherwise fall back to the snapshot's persisted field graph. Pre-v3 snapshots
-     * derive that graph once as a compatibility fallback.
+     * Opens a generated dataset: when model.json exists, compile it with the pool
+     * into a typed {@link ProductDomain} (model-authoritative schema); a dataset
+     * without a model uses the snapshot's persisted field graph.
      */
     private static quiz.transform.ui.DomainModel open(File snap, File model)
             throws Exception {
         var loaded = new WikidataDynamicObjectJsonStore()
                 .loadAllWithFieldGraph(snap);
         var pool = loaded.objects();
-        BundledMediaSources.resolve(pool);
         // Overlay curated / auto-fixed values onto the freshly loaded base data,
         // before compiling — so the sidecar survives regeneration. See quiz.curation.
         // Manual values override; generated fills (e.g. <name>.autofix.json from a
@@ -82,16 +92,11 @@ public final class DomainCatalog {
     private static quiz.transform.ui.DomainModel compile(
             File model,
             java.util.List<wikidata.explore.extract.WikidataDynamicObject> pool,
-            wikidata.explore.extract.SnapshotFieldGraph fieldGraph) {
+            wikidata.explore.extract.SnapshotFieldGraph fieldGraph) throws Exception {
         if (model != null && model.isFile()) {
-            try {
-                var project = new wikidata.explore.model.GeneratedProjectModelStore()
-                        .load(model);
-                var compiled = wikidata.explore.transform.ProductCompiler.compile(project, pool);
-                return new SnapshotCompatibleDomain(compiled, fieldGraph);
-            } catch (Exception unreadable) {
-                // Fall through to the instance-derived schema.
-            }
+            var project = new wikidata.explore.model.GeneratedProjectModelStore()
+                    .load(model);
+            return wikidata.explore.transform.ProductCompiler.compile(project, pool);
         }
         return new SnapshotDomain(pool, fieldGraph);
     }

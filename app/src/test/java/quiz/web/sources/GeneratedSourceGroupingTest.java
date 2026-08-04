@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GeneratedSourceGroupingTest {
 
@@ -71,7 +72,9 @@ class GeneratedSourceGroupingTest {
                 .keyRef(item);
         leaf.addMember(item);
         ReflectionDomain domain =
-                new ReflectionDomain(List.of(item), List.of(root));
+                new ReflectionDomain(List.of(item), List.of(
+                        new objectview.viewconfig.DomainGroupRoot(
+                                "GroupedThing", root)));
         var converted = ViewableToWdo.convertDomain(
                 domain.memberRoots(), domain.groupRootBindings(), domain);
         File snapshot = dir.resolve("explicit-group-root.snapshot.json").toFile();
@@ -138,7 +141,8 @@ class GeneratedSourceGroupingTest {
         austria.addGroup(vienna);
 
         ReflectionDomain domain =
-                new ReflectionDomain(List.of(austria), List.of(root));
+                new ReflectionDomain(List.of(austria), List.of(
+                        new objectview.viewconfig.DomainGroupRoot("State", root)));
         var converted = ViewableToWdo.convertDomain(
                 domain.memberRoots(), domain.groupRootBindings(), domain);
 
@@ -159,10 +163,7 @@ class GeneratedSourceGroupingTest {
     }
 
     @Test
-    void untypedGroupRootIsRecoveredNotDropped(@TempDir Path dir) throws Exception {
-        // The saveWithFieldGraph path binds group roots with a null member type. A binding
-        // must still be persisted (blank type) and re-inferred on load — otherwise the root
-        // is written to the pool but invisible to the workbench, which builds from bindings.
+    void groupRootRequiresAnExplicitMemberType(@TempDir Path dir) throws Exception {
         State austria = new State("Austria");
         ViewableGroup root = new ViewableGroup("All");
         ViewableGroup vienna = root.getOrCreateChild("Capitals").getOrCreateChild("Vienna");
@@ -170,24 +171,17 @@ class GeneratedSourceGroupingTest {
         austria.addGroup(vienna);
 
         ReflectionDomain domain =
-                new ReflectionDomain(List.of(austria), List.of(root));
+                new ReflectionDomain(List.of(austria), List.of(
+                        new objectview.viewconfig.DomainGroupRoot("State", root)));
         var converted = ViewableToWdo.convertDomain(
                 domain.memberRoots(), domain.groupRootBindings(), domain);
         File snapshot = dir.resolve("untyped-group-root.snapshot.json").toFile();
         WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
-        // The untyped overload: group roots wrapped as GroupRootBinding(null, root).
-        store.saveWithFieldGraph(converted.memberRoots(),
-                converted.groupRootBindings().stream()
-                        .map(binding -> binding.root()).toList(),
-                snapshot, domain);
-
-        var loaded = store.loadAllWithFieldGraph(snapshot);
-        assertEquals(1, loaded.groupRootBindings().size(),
-                "an untyped root is recovered via inference, not dropped");
-        assertEquals("State", loaded.groupRootBindings().get(0).memberType());
-        objectview.group.ViewableGroup<?> loadedRoot =
-                new GeneratedSource("State", snapshot).rootGroup();
-        assertNotNull(loadedRoot.getChild("Capitals").getChild("Vienna"));
+        assertThrows(IllegalArgumentException.class,
+                () -> store.saveWithGroupRootBindings(converted.memberRoots(),
+                        List.of(new WikidataDynamicObjectJsonStore.GroupRootBinding(
+                                null, converted.groupRootBindings().getFirst().root())),
+                        snapshot, domain));
     }
 
     @Test
@@ -202,9 +196,10 @@ class GeneratedSourceGroupingTest {
         tokyo.put("region", "Asia");
         quiz.transform.ui.DomainModel base = new quiz.transform.ui.DomainModel() {
             @Override public List<String> types() { return List.of("City"); }
-            @Override public List<quiz.transform.ui.DomainField> fields(String type) {
-                return List.of(new quiz.transform.ui.DomainField(
-                        "City", "region", false, false));
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return quiz.transform.ui.DomainSchemas.flatSchema(List.of(
+                        new quiz.transform.ui.DomainField(
+                                "City", "region", false, false)));
             }
             @Override public java.util.Collection<? extends objectview.Viewable> instances() {
                 return List.of(paris, tokyo);

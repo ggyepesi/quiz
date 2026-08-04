@@ -146,19 +146,6 @@ public class GeneratedProjectModel {
         }
     }
 
-    /** Rewrites the selection list in place (used by migration to upgrade bare
-     *  base {@link Selection}s to their concrete subtypes). Null-safe. */
-    public void replaceSelections(List<Selection> newSelections) {
-        selections.clear();
-        if (newSelections != null) {
-            for (Selection s : newSelections) {
-                if (s != null) {
-                    selections.add(s);
-                }
-            }
-        }
-    }
-
     public Selection findSelection(String name) {
         if (name == null || name.isBlank()) {
             return null;

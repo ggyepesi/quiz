@@ -106,20 +106,19 @@ public class GeneratedViewableMapper {
             generatedByQid.put(entityQid, target);
         }
 
-        setIfExists(target, "qid", source.qid());
-        setIfExists(target, "wikidataUrl", source.wikidataUrl());
-        setIfExists(target, "name", source.getDisplayName());
-        // Group QID/URL into the collapsed provenance chip, same as the dynamic
-        // object — so typed roots and dynamic references render alike. Only a REAL
-        // entity QID (Q123) gets a source chip; a synthetic keyed by a statement
-        // GUID (Q123-<guid>, e.g. a reified Nomination) isn't a Wikidata page, so a
-        // chip would just show the GUID + an empty url (mirrors the guard in
-        // WikidataDynamicObject, which this path bypasses by building its own Source).
-        if (source.source() != null) {
-            setIfExists(target, "source", source.source());
-        } else if (source.qid() != null && source.qid().matches("Q\\d+")) {
-            setIfExists(target, "source",
-                    new quiz.source.WikidataSource(source.qid(), source.wikidataUrl()));
+        // Attach the provenance anchor: an entity by QID, a reified statement by
+        // its GUID + property. GeneratedEntity derives its identity from this
+        // anchor — a statement never inherits entity semantics.
+        if (target instanceof quiz.source.Anchorable anchorable) {
+            if (cr.model().reifiesStatements()) {
+                anchorable.anchor(new quiz.source.WikidataStatementViewable(
+                        source.getIdentifier(),
+                        cr.model().statementPropertyPid(),
+                        source.getDisplayName()));
+            } else if (realEntity) {
+                anchorable.anchor(new quiz.source.WikidataViewable(
+                        source.qid(), source.getDisplayName()));
+            }
         }
 
         applyFields(cr, target, source, false);
@@ -148,8 +147,8 @@ public class GeneratedViewableMapper {
         };
         String override = canonicalDisplayNameOverride(
                 cr.model(), reader, source.getDisplayName());
-        if (override != null) {
-            setIfExists(target, "name", override);
+        if (override != null && target instanceof quiz.source.GeneratedEntity ge) {
+            ge.label(override);   // canonical display name, without touching identity
         }
 
         return target;
@@ -212,13 +211,13 @@ public class GeneratedViewableMapper {
     /** The displayName to force onto a materialized object from its class's
      *  {@link CanonicalSpec}, or null to leave the default (the loaded label). Only
      *  an EXPLICIT spec on a DERIVED class with a FIELD/TEMPLATE displayName
-     *  overrides; entities and legacy (spec-less) models are untouched. */
+     *  overrides; entity classes are untouched. */
     static String canonicalDisplayNameOverride(
             GeneratedClassModel model,
             Canonicalizer.FieldReader reader,
             String fallbackLabel) {
 
-        if (model == null || !model.hasCanonical()) {
+        if (model == null) {
             return null;
         }
         CanonicalSpec spec = model.canonical();

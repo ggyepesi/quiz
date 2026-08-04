@@ -1,5 +1,9 @@
 package wikidata.explore.extract;
 
+import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -45,7 +49,7 @@ class WikidataDynamicObjectJsonStoreMergeTest {
 
         List<WikidataDynamicObject> reloaded = store.loadAll(file);
         Map<String, WikidataDynamicObject> byQid = new java.util.HashMap<>();
-        for (WikidataDynamicObject o : reloaded) byQid.put(o.qid(), o);
+        for (WikidataDynamicObject o : reloaded) byQid.put(o.getIdentifier(), o);
 
         WikidataDynamicObject q1 = byQid.get("Q1");
         assertNotNull(q1, "carrier must be saved");
@@ -57,8 +61,8 @@ class WikidataDynamicObjectJsonStoreMergeTest {
         Object type = typeValue(q1);
         assertNotNull(type, "type link must survive the round-trip");
         String typeQid = (type instanceof java.util.Collection<?> col)
-                ? ((WikidataDynamicObject) col.iterator().next()).qid()
-                : ((WikidataDynamicObject) type).qid();
+                ? ((WikidataDynamicObject) col.iterator().next()).getIdentifier()
+                : ((WikidataDynamicObject) type).getIdentifier();
         assertEquals("Q7366", typeQid);
         assertTrue(byQid.containsKey("Q7366"), "type value entity present");
     }
@@ -91,7 +95,7 @@ class WikidataDynamicObjectJsonStoreMergeTest {
 
         List<WikidataDynamicObject> loaded = store.loadAll(file);
         List<WikidataDynamicObject> france = loaded.stream()
-                .filter(o -> "France".equals(o.qid()))
+                .filter(o -> "France".equals(o.getIdentifier()))
                 .toList();
         assertEquals(2, france.size());
         assertTrue(france.stream().anyMatch(o -> "State".equals(o.typeKey())
@@ -100,7 +104,7 @@ class WikidataDynamicObjectJsonStoreMergeTest {
                 && o.get("members") != null));
 
         WikidataDynamicObject root = loaded.stream()
-                .filter(o -> "root".equals(o.qid()))
+                .filter(o -> "root".equals(o.getIdentifier()))
                 .findFirst().orElseThrow();
         assertTrue(root.get("items") instanceof java.util.Collection<?>);
         assertEquals(2, ((java.util.Collection<?>) root.get("items")).size(),

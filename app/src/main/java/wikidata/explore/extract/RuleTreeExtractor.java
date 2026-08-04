@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import wikidata.explore.query.template.rule.RuleIncludedFieldSparql;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.RuleDirection;

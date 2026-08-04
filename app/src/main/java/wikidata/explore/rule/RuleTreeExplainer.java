@@ -38,7 +38,8 @@ public final class RuleTreeExplainer {
         sb.append(name).append('\n');
         sb.append("  Members: ").append(membershipPhrase(node)).append('\n');
         sb.append("  Take up to ").append(node.limit()).append(" of them");
-        if (node.requireEnglishLabel()) {
+        if (node.labelConfig().requireLabel()
+                && "en".equalsIgnoreCase(node.labelConfig().language())) {
             sb.append(", each with an English label");
         }
         sb.append(".\n");

@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;

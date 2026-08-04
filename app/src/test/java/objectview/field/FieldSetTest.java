@@ -48,12 +48,12 @@ class FieldSetTest {
         assertInstanceOf(LayeredFieldSet.class, FieldSet.of(new Film()));
         FieldSet dynamic = FieldSet.of(new WikidataDynamicObject("Q1", "Casino"));
         assertInstanceOf(LayeredFieldSet.class, dynamic);
-        assertTrue(dynamic.field("source").provenance(),
-                "dynamic data is layered with the adapter's declared provenance field");
+        assertTrue(dynamic.field("anchor").provenance(),
+                "dynamic data is layered with the adapter's declared provenance (source) field");
 
         WikidataDynamicObject reloaded = new WikidataDynamicObject("item-1", "Casino");
-        reloaded.put("source", new WikidataDynamicObject("", "Wikidata"));
-        assertTrue(FieldSet.of(reloaded).field("source").provenance(),
+        reloaded.put("source", "stale-map-value");
+        assertTrue(FieldSet.of(reloaded).field("anchor").provenance(),
                 "declared provenance metadata wins over a persisted map value");
     }
 
@@ -106,7 +106,8 @@ class FieldSetTest {
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, schema));
 
         assertEquals(5, f.size(),
-                "schema fields plus provenance and the two Viewable contract fields");
+                "schema fields plus the base identity link and the two Viewable "
+                        + "contract fields");
         assertTrue(f.get("cast").collection(), "schema says collection despite the single value");
         assertEquals(FieldKind.ORDERED, f.get("year").kind(), "typed even though absent from the map");
         // Values still read from the object: cast present, year absent (null).
@@ -124,7 +125,7 @@ class FieldSetTest {
 
         Film film = new Film();
         FieldSet reflected = FieldSet.of(film, schema);
-        assertEquals(List.of("cast", "title", "year", "won", "director", "source",
+        assertEquals(List.of("cast", "title", "year", "won", "director",
                         ViewableContractFieldSet.DISPLAY_KEY,
                         ViewableContractFieldSet.IDENTITY_KEY),
                 reflected.fields().stream().map(FieldRef::name).toList(),
@@ -136,7 +137,7 @@ class FieldSetTest {
         dynamic.put("cast", new WikidataDynamicObject("Q2", "Actor"));
         dynamic.put("unexpected", "kept");
         FieldSet dynamicSet = FieldSet.of(dynamic, schema);
-        assertEquals(List.of("cast", "unexpected", "source",
+        assertEquals(List.of("cast", "unexpected", "anchor",
                         ViewableContractFieldSet.DISPLAY_KEY,
                         ViewableContractFieldSet.IDENTITY_KEY),
                 dynamicSet.fields().stream().map(FieldRef::name).toList());
@@ -153,8 +154,10 @@ class FieldSetTest {
         WikidataDynamicObject wdo = new WikidataDynamicObject("Q1", "N");
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, pc.asFieldSchema()));
 
-        assertEquals(5, f.size(),
-                "the complete schema retains structural and contract fields");
+        // The structural "source" schema field and the carrier's @Provenance
+        // "anchor" field no longer collide, so both are present.
+        assertEquals(6, f.size(),
+                "year, category, structural source, the anchor field, + two contract fields");
         assertEquals(FieldKind.ORDERED, f.get("year").kind());
         assertTrue(f.get("category").collection());
         assertTrue(f.get("category").reference());

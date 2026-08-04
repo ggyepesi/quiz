@@ -1,5 +1,7 @@
 package quiz.web;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;

@@ -70,9 +70,10 @@ class EnrichmentDecisionApplierTest {
         person.put("population", 1L);
         DomainModel domain = new DomainModel() {
             @Override public List<String> types() { return List.of("Person"); }
-            @Override public List<DomainField> fields(String type) {
-                return List.of(new DomainField(
-                        "Person", "population", false, false, FieldKind.ORDERED));
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return quiz.transform.ui.DomainSchemas.flatSchema(List.of(
+                        new DomainField("Person", "population", false, false,
+                                FieldKind.ORDERED)));
             }
             @Override public Collection<? extends Viewable> instances() {
                 return List.of(person);
@@ -112,9 +113,10 @@ class EnrichmentDecisionApplierTest {
     private static DomainModel domain(WikidataDynamicObject person) {
         return new DomainModel() {
             @Override public List<String> types() { return List.of("Person"); }
-            @Override public List<DomainField> fields(String type) {
-                return List.of(new DomainField(
-                        "Person", "image", false, false, FieldKind.MEDIA));
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return quiz.transform.ui.DomainSchemas.flatSchema(List.of(
+                        new DomainField("Person", "image", false, false,
+                                FieldKind.MEDIA)));
             }
             @Override public Collection<? extends Viewable> instances() {
                 return List.of(person);

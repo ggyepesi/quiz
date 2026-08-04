@@ -6,10 +6,11 @@ import java.util.List;
 import aux.FlexibleDate;
 import objectview.media.ImagePane;
 import objectview.ViewableAdapter;
+import quiz.source.ManualEntity;
 
 // private fields are seemengly unused - they are used via reflection!
 @SuppressWarnings("unused")
-public class President extends ViewableAdapter {
+public class President extends ManualEntity {
     private Person person;
     private List<Term> terms = new ArrayList<>();
     
@@ -77,7 +78,7 @@ enum CauseOfDeath {
 }
 
 @SuppressWarnings("unused")
-class Person extends ViewableAdapter {
+class Person extends ManualEntity {
     private String name;
 
     private ImagePane portrait;
@@ -115,7 +116,7 @@ class Person extends ViewableAdapter {
     }
 }
 
-class Party extends ViewableAdapter {
+class Party extends ManualEntity {
     @SuppressWarnings("unused")
     private String name;
 

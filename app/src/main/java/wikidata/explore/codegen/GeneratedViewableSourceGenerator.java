@@ -66,29 +66,18 @@ public class GeneratedViewableSourceGenerator {
             sb.append("import objectview.annotations.Reference;\n\n");
         }
 
+        // All generated classes extend the neutral GeneratedEntity carrier; their
+        // provenance (entity QID vs statement GUID) lives in the anchor the mapper
+        // attaches, not in the base class — a statement never inherits entity
+        // semantics.
         sb.append("public class ").append(className)
-          .append(" extends objectview.ViewableAdapter {\n\n");
+          .append(" extends quiz.source.GeneratedEntity {\n\n");
 
         if (model.hasBase()) {
             sb.append("    // extends ").append(model.baseClassName())
               .append(" — base fields below are inherited (flattened in;\n")
               .append("    // the generated runtime compiles each class standalone).\n");
         }
-
-        // QID stays the identity (getIdentifier), but the raw QID/URL are
-        // hidden from the card (@Hidden) and surfaced together as one
-        // collapsed "source" chip below — mirrors WikidataDynamicObject so typed
-        // and dynamic instances render the same.
-        sb.append("    @objectview.annotations.Hidden\n");
-        sb.append("    public String qid = \"\";\n");
-        sb.append("    @objectview.annotations.Hidden\n");
-        sb.append("    @objectview.annotations.Link\n");
-        sb.append("    public String wikidataUrl = \"\";\n");
-        // Identity/display name = the card TITLE, re-injected once as an identity
-        // field by getConfigurableFields; without @Hidden it also leaks
-        // into getAllFields and shows up TWICE in sort/search/viewconfig.
-        sb.append("    @objectview.annotations.Hidden\n");
-        sb.append("    public String name = \"\";\n\n");
 
         for (GeneratedFieldModel field : fields) {
             if (field == null || field.isNameField()) {
@@ -123,21 +112,8 @@ public class GeneratedViewableSourceGenerator {
             sb.append(";\n");
         }
 
-        // Provenance is inherited from ViewableAdapter, so generated, dynamic and
-        // hand-written instances expose the same ordinary @Provenance source field.
-
         sb.append("\n");
         sb.append("    public ").append(className).append("() {}\n\n");
-
-        sb.append("    @Override\n")
-          .append("    public String getIdentifier() {\n")
-          .append("        return qid == null || qid.isBlank() ? name : qid;\n")
-          .append("    }\n\n");
-
-        sb.append("    @Override\n")
-          .append("    public String getDisplayName() {\n")
-          .append("        return name == null || name.isBlank() ? qid : name;\n")
-          .append("    }\n\n");
 
         sb.append("    @Override\n")
           .append("    public String toString() { return getDisplayName(); }\n");

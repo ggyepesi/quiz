@@ -121,6 +121,8 @@ public class EditableGroup extends ViewableGroupAdapter {
         values.put("members", getMembers());
         values.put("parent", getParent());
         values.put("groupName", name);
+        values.put("role", getRole().name());
+        if (getKeyRef() != null) values.put("keyRef", getKeyRef());
         values.putAll(ruleFields());
         return new objectview.field.FieldSet() {
             @Override public List<objectview.field.FieldRef> fields() {
@@ -143,6 +145,14 @@ public class EditableGroup extends ViewableGroupAdapter {
                 refs.add(objectview.field.FieldRef.of(
                         "groupName", objectview.field.FieldKind.TEXT, "String",
                         false, false, true));
+                refs.add(objectview.field.FieldRef.of(
+                        "role", objectview.field.FieldKind.TEXT, "String",
+                        false, false, true));
+                refs.add(objectview.field.FieldRef.described(
+                        "keyRef", objectview.field.FieldKind.REFERENCE,
+                        objectview.field.FieldKind.REFERENCE, "Viewable",
+                        true, false, null, true, true,
+                        false, false, "", false, true));
                 for (String key : ruleFields().keySet()) {
                     refs.add(objectview.field.FieldRef.of(
                             key, objectview.field.FieldKind.TEXT, "String",

@@ -1,13 +1,14 @@
 package quiz.transform.app;
 
-import objectview.ViewableAdapter;
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import objectview.field.FieldSet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.curation.IdentityLink;
 import quiz.curation.IdentitySources;
 import quiz.curation.ManualCuration;
-import quiz.source.WikidataSource;
+import quiz.source.ManualEntity;
 import quiz.transform.ui.ReflectionDomain;
 
 import java.nio.file.Path;
@@ -15,33 +16,24 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SourceFieldIntegrationTest {
 
-    @Test void manualDomainDeclaresSourceWithoutDiscoveringASourceEntity() {
+    @Test void manualEntityDeclaresItsAnchorAsAnOrdinaryProvenanceField() {
         ManualItem item = new ManualItem("manual-1");
         ReflectionDomain domain = new ReflectionDomain(List.of(item));
 
-        assertTrue(domain.fieldTypes("ManualItem").fieldNames().contains("source"));
-        assertFalse(domain.structuralFields("ManualItem").contains("source"));
+        assertTrue(domain.fieldTypes("ManualItem").fieldNames().contains("anchor"));
+        assertFalse(domain.structuralFields("ManualItem").contains("anchor"));
         assertFalse(domain.types().contains("Source"));
-        assertNotNull(domain.fieldSchema("Source"));
-        assertTrue(domain.fieldSchema("Source").fields().stream()
-                .anyMatch(field -> field.name().equals("record") && field.link()));
-        assertTrue(domain.fields("ManualItem").stream()
-                .anyMatch(field -> field.field().equals("source.record")),
-                "validation/search configuration sees the source link through the ordinary field tree");
-        assertTrue(domain.fields("ManualItem").stream()
-                .anyMatch(field -> field.field().equals("source.sourceId")),
-                "the provider-specific id remains an ordinary visible field");
     }
 
-    @Test void resolvedIdentityMaterializesAndSnapshotConversionKeepsSourceAsValue(
+    @Test void resolvingIdentityReAnchorsSourceWithoutChangingIdentity(
             @TempDir Path dir) {
-        ManualItem item = new ManualItem("manual-1");
+        WikidataDynamicObject item =
+                new WikidataDynamicObject("manual-1", "manual-1");
+        item.type("ManualItem");
         IdentityLink link = new IdentityLink(
                 "ManualItem", "manual-1", "Wikidata", "Q42",
                 "https://www.wikidata.org/wiki/Q42", "Douglas Adams", "test");
@@ -49,33 +41,17 @@ class SourceFieldIntegrationTest {
         curation.putIdentityLink(link);
 
         IdentitySources.apply(List.of(item), curation.identityLinks());
-        WikidataSource source = assertInstanceOf(WikidataSource.class, item.source());
-        assertEquals("Q42", source.sourceId());
-        assertEquals("Douglas Adams", source.name());
 
-        ReflectionDomain reflected = new ReflectionDomain(List.of(item));
-        CuratableDomain domain = new CuratableDomain(reflected, curation);
-        assertTrue(domain.fieldSchema("Source").fields().stream()
-                .anyMatch(field -> field.name().equals("record") && field.link()));
-        assertFalse(domain.fieldSchema("Source").fields().stream()
-                .anyMatch(field -> field.name().equals("qid")),
-                "the curatable wrapper must not replace the canonical Source schema");
-        ViewableToWdo.ConvertedDomain converted = ViewableToWdo.convertDomain(
-                List.of(item), List.of(), domain);
-        Object storedSource = converted.memberRoots().get(0).dynamicFields().get("source");
-        wikidata.explore.extract.WikidataDynamicObject sourceValue =
-                assertInstanceOf(wikidata.explore.extract.WikidataDynamicObject.class,
-                        storedSource);
-        assertTrue(sourceValue.isValueObject());
-        // The visible link now carries the canonical NAME as its label (name|url) so the card
-        // shows a readable name; the QID identity is preserved in the sourceId field (name is
-        // hidden, folded into the link label).
-        assertEquals("Douglas Adams|https://www.wikidata.org/wiki/Q42",
-                sourceValue.dynamicFields().get("record"));
-        assertEquals("Q42", sourceValue.dynamicFields().get("sourceId"));
+        // Re-anchoring never re-keys the object: identity is stable.
+        assertEquals("manual-1", item.getIdentifier());
+        // The Wikidata anchor is attached as the source descriptor.
+        assertTrue(item.anchor() instanceof quiz.source.WikidataViewable);
+        quiz.source.WikidataViewable src = (quiz.source.WikidataViewable) item.anchor();
+        assertEquals("Q42", src.qid());
+        assertEquals("Douglas Adams", src.getDisplayName());
     }
 
-    private static final class ManualItem extends ViewableAdapter {
+    private static final class ManualItem extends ManualEntity {
         private final String id;
 
         private ManualItem(String id) { this.id = id; }

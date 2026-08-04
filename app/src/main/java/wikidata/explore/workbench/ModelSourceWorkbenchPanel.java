@@ -653,6 +653,10 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                         new StatementClassSource(
                                 sourceClass,
                                 "P1411"));
+                // Switching the class kind is an explicit creation operation.
+                // Persist the current proposal now; runtime code never infers it.
+                wikidata.explore.model.StatementCanonicalDefaults
+                        .replaceWithSuggestion(clazz);
             }
 
             statementSourcePanel.edit(clazz);

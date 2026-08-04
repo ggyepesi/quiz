@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.model.FieldSourceType;

@@ -2,7 +2,6 @@ package wikidata.explore.extract;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -24,19 +23,19 @@ import java.util.Set;
  * Bridge:
  *   RuleTreeExtractor output -> JSON cache -> GeneratedKnowledgeSet -> QuizFactory
  *
- * <p>One QID maps to one object. Reference fields (e.g. a constellation's
+ * <p>One qid maps to one object. Reference fields (e.g. a constellation's
  * neighbours, which point at other constellations) make the graph cyclic and
  * deep, so objects are <b>not</b> inlined recursively — that would loop forever
  * or blow Jackson's nesting-depth limit. Instead the graph is flattened: every
  * reachable object is written once into a pool keyed by qid, and object-valued
  * fields are stored as {@link Ref} markers (just a qid) and re-linked on load.
  *
- * <p>Snapshots written by the older inlined format (no {@code entities} pool)
- * still load via the legacy path.
+ * <p>The reader accepts only the current flattened format. Older snapshots must be
+ * regenerated from their source/model rather than translated during every load.
  */
 public class WikidataDynamicObjectJsonStore {
 
-    private static final int FORMAT_VERSION = 5;
+    private static final int FORMAT_VERSION = 6;
 
     // Object identity is ⟨typeKey, qid⟩, not the bare qid — so two entities that merely
     // share a name across types (a State "France" vs a ViewableGroup "France") never
@@ -60,11 +59,10 @@ public class WikidataDynamicObjectJsonStore {
 
     /** Pool/ref key: ⟨typeKey, qid⟩. */
     private static String poolKey(WikidataDynamicObject o) {
-        return o == null ? null : compositeKey(typePart(o), o.qid());
+        return o == null ? null : compositeKey(typePart(o), o.getIdentifier());
     }
 
-    /** The qid part of a composite key — the whole string when it has no separator (e.g.
-     *  a pre-v4 root persisted as a bare qid). */
+    /** The qid part of a composite key. */
     private static String qidPart(String key) {
         if (key == null) {
             return null;
@@ -91,10 +89,6 @@ public class WikidataDynamicObjectJsonStore {
                 "@class");
 
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        // Tolerate fields that no longer exist (e.g. retired structuralObject/
-        // structuralPath) so a snapshot written by an older build still loads —
-        // schema evolution shouldn't require regenerating every snapshot.
-        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
     // ------------------------------------------------------------------
@@ -121,7 +115,7 @@ public class WikidataDynamicObjectJsonStore {
     public SnapshotFieldGraph saveWithFieldGraph(
             List<WikidataDynamicObject> objects, File file, DomainModel schema)
             throws IOException {
-        return saveWithFieldGraph(objects, List.of(), file, schema);
+        return saveWithGroupRootBindings(objects, List.of(), file, schema);
     }
 
     /** Generated-domain counterpart using the exact model that produced the values. */
@@ -133,18 +127,6 @@ public class WikidataDynamicObjectJsonStore {
         return saveWithGroupRootBindingsInternal(
                 objects, List.of(), file,
                 builder -> builder.declare(schema));
-    }
-
-    public SnapshotFieldGraph saveWithFieldGraph(
-            List<WikidataDynamicObject> memberRoots,
-            List<WikidataDynamicObject> groupRoots,
-            File file,
-            DomainModel schema)
-            throws IOException {
-
-        List<GroupRootBinding> bindings = groupRoots == null ? List.of()
-                : groupRoots.stream().map(root -> new GroupRootBinding(null, root)).toList();
-        return saveWithGroupRootBindings(memberRoots, bindings, file, schema);
     }
 
     public SnapshotFieldGraph saveWithGroupRootBindings(
@@ -188,6 +170,12 @@ public class WikidataDynamicObjectJsonStore {
             collect(o, byQid, visited, fieldGraph);
         }
         for (GroupRootBinding binding : groupRootBindings) {
+            if (binding == null || binding.root() == null
+                    || binding.memberType() == null
+                    || binding.memberType().isBlank()) {
+                throw new IllegalArgumentException(
+                        "Every group root requires an explicit member type");
+            }
             collect(binding.root(), byQid, visited, fieldGraph);
         }
         if (declareSchema != null) {
@@ -212,12 +200,8 @@ public class WikidataDynamicObjectJsonStore {
             String k = poolKey(o);
             if (k != null && o.hasTypeStamp()) {
                 snapshot.groupRoots.add(k);
-                // Persist a binding for EVERY group root (blank member type when unknown, e.g.
-                // the saveWithFieldGraph delegation): the workbench builds its roots solely
-                // from groupRootBindings, so a root omitted here would be silently unrecoverable.
-                // A blank type is re-inferred on load rather than dropped.
-                String memberType = binding.memberType() == null ? "" : binding.memberType();
-                snapshot.groupRootBindings.add(new GroupRootRef(memberType, k));
+                snapshot.groupRootBindings.add(
+                        new GroupRootRef(binding.memberType(), k));
             }
         }
         // One qid can now yield SEVERAL entities — one per distinct real type — so a State
@@ -302,12 +286,12 @@ public class WikidataDynamicObjectJsonStore {
                             SnapshotFieldGraph graph) {
         WikidataDynamicObject first = instances.get(0);
         Entity e = new Entity();
-        e.qid = first.qid();
+        e.id = first.getIdentifier();
         e.typeKey = typeKey;
         e.name = first.getDisplayName();
         for (WikidataDynamicObject o : instances) {
             String n = o.getDisplayName();
-            if (n != null && !n.equals(e.qid)) { e.name = n; break; }
+            if (n != null && !n.equals(e.id)) { e.name = n; break; }
         }
         for (WikidataDynamicObject o : instances) {
             String label = o.getReferenceLabel();
@@ -376,8 +360,8 @@ public class WikidataDynamicObjectJsonStore {
         if (a == b) return true;
         if (a instanceof WikidataDynamicObject wa
                 && b instanceof WikidataDynamicObject wb) {
-            return wa.qid() != null
-                    && wa.qid().equals(wb.qid())
+            return wa.getIdentifier() != null
+                    && wa.getIdentifier().equals(wb.getIdentifier())
                     && java.util.Objects.equals(typePart(wa), typePart(wb));
         }
         return a != null && a.equals(b);
@@ -387,7 +371,7 @@ public class WikidataDynamicObjectJsonStore {
         if (v instanceof WikidataDynamicObject w) {
             // A value object is serialized INLINE (a nested Entity) rather than a Ref to
             // a pooled entity — it has no identity and belongs to this parent.
-            return w.isValueObject() ? inlineEntity(w) : new Ref(typePart(w), w.qid());
+            return w.isValueObject() ? inlineEntity(w) : new Ref(typePart(w), w.getIdentifier());
         }
         if (v instanceof aux.FlexibleDate d) {
             // The compact form carries the precision ("1959" vs "1959-04-06"),
@@ -424,126 +408,45 @@ public class WikidataDynamicObjectJsonStore {
     }
 
     /**
-     * Loads instances and their persisted schema from one parse of the snapshot.
-     * Pre-v3 snapshots derive the graph once as a compatibility fallback.
+     * Loads instances and their persisted schema from one parse of a current snapshot.
      */
     public LoadedSnapshot loadAllWithFieldGraph(File file) throws IOException {
         JsonNode tree = mapper.readTree(file);
-        if (tree == null) {
-            return new LoadedSnapshot(new ArrayList<>(), new SnapshotFieldGraph(),
-                    new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+        if (tree == null || !tree.has("entities") || !tree.has("roots")
+                || !tree.has("groupRoots") || !tree.has("groupRootBindings")
+                || !tree.has("fieldGraph")) {
+            throw new IOException("Unsupported snapshot format; regenerate " + file);
         }
-        if (tree.has("entities")) {
-            FlatSnapshot snapshot = mapper.treeToValue(tree, FlatSnapshot.class);
-            Map<String, WikidataDynamicObject> entities = snapshot == null
-                    ? new LinkedHashMap<>() : buildEntities(snapshot);
-            List<WikidataDynamicObject> objects =
-                    new ArrayList<>(entities.values());
-            SnapshotFieldGraph graph = snapshot == null
-                    ? null : snapshot.fieldGraph;
-            if (graph == null || graph.version > SnapshotFieldGraph.FORMAT_VERSION) {
-                graph = SnapshotFieldGraph.derive(objects);
-            } else {
-                graph.version = SnapshotFieldGraph.FORMAT_VERSION;
-            }
-            attachSchemas(objects, graph);
-            List<WikidataDynamicObject> groups = snapshot == null
-                    ? new ArrayList<>()
-                    : resolveGroupRoots(snapshot, objects, entities);
-            return new LoadedSnapshot(
-                    objects, graph,
-                    snapshot == null ? new ArrayList<>()
-                            : resolveMemberRoots(
-                                    snapshot, tree.has("roots"), objects, entities),
-                    groups,
-                    snapshot == null ? new ArrayList<>()
-                            : resolveGroupRootBindings(snapshot, groups, entities, graph));
+        FlatSnapshot snapshot = mapper.treeToValue(tree, FlatSnapshot.class);
+        if (snapshot == null || snapshot.version != FORMAT_VERSION
+                || snapshot.fieldGraph == null
+                || snapshot.fieldGraph.version != SnapshotFieldGraph.FORMAT_VERSION) {
+            throw new IOException("Unsupported snapshot version; regenerate " + file);
         }
-        Snapshot legacy = mapper.treeToValue(tree, Snapshot.class);
-        List<WikidataDynamicObject> objects = legacy == null || legacy.objects == null
-                ? new ArrayList<>()
-                : new ArrayList<>(legacy.objects);
-        SnapshotFieldGraph graph = SnapshotFieldGraph.derive(objects);
-        attachSchemas(objects, graph);
-        List<WikidataDynamicObject> groups = discoverLegacyGroupRoots(objects, true);
-        return new LoadedSnapshot(objects, graph,
-                new ArrayList<>(objects), groups,
-                inferLegacyGroupRootBindings(groups, graph));
+        Map<String, WikidataDynamicObject> entities = buildEntities(snapshot);
+        List<WikidataDynamicObject> objects = new ArrayList<>(entities.values());
+        attachSchemas(objects, snapshot.fieldGraph);
+        List<WikidataDynamicObject> groups = resolveRoots(
+                snapshot.groupRoots, entities);
+        return new LoadedSnapshot(objects, snapshot.fieldGraph,
+                resolveRoots(snapshot.roots, entities), groups,
+                resolveGroupRootBindings(snapshot, entities));
     }
 
     private static List<LoadedGroupRoot> resolveGroupRootBindings(
             FlatSnapshot snapshot,
-            List<WikidataDynamicObject> roots,
-            Map<String, WikidataDynamicObject> entities,
-            SnapshotFieldGraph graph) {
-        if (snapshot.groupRootBindings != null
-                && !snapshot.groupRootBindings.isEmpty()) {
-            String soleMemberType = graph != null && graph.memberTypes().size() == 1
-                    ? graph.memberTypes().iterator().next() : null;
-            List<LoadedGroupRoot> result = new ArrayList<>();
-            for (GroupRootRef ref : snapshot.groupRootBindings) {
-                if (ref == null) continue;
-                WikidataDynamicObject root = entities.get(ref.root);
-                if (root == null) continue;
-                String memberType = ref.memberType;
-                if (memberType == null || memberType.isBlank()) {
-                    // A root persisted without a member type (saveWithFieldGraph path):
-                    // recover it by inference rather than dropping it.
-                    memberType = inferGroupMemberType(root,
-                            java.util.Collections.newSetFromMap(
-                                    new java.util.IdentityHashMap<>()));
-                    if (memberType == null) memberType = soleMemberType;
-                }
-                if (memberType != null && !memberType.isBlank()) {
-                    result.add(new LoadedGroupRoot(memberType, root));
-                }
-            }
-            return List.copyOf(result);
-        }
-        return inferLegacyGroupRootBindings(roots, graph);
-    }
-
-    /** Compatibility only: old snapshots persisted roots but not their member types. */
-    private static List<LoadedGroupRoot> inferLegacyGroupRootBindings(
-            List<WikidataDynamicObject> roots, SnapshotFieldGraph graph) {
-        String soleMemberType = graph != null && graph.memberTypes().size() == 1
-                ? graph.memberTypes().iterator().next() : null;
+            Map<String, WikidataDynamicObject> entities) throws IOException {
         List<LoadedGroupRoot> result = new ArrayList<>();
-        for (WikidataDynamicObject root : roots) {
-            String memberType = inferGroupMemberType(root,
-                    java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
-            if (memberType == null) memberType = soleMemberType;
-            if (memberType != null && !memberType.isBlank()) {
-                result.add(new LoadedGroupRoot(memberType, root));
+        for (GroupRootRef ref : snapshot.groupRootBindings) {
+            if (ref == null || ref.memberType == null || ref.memberType.isBlank()) {
+                throw new IOException("Snapshot group root has no member type");
             }
+            WikidataDynamicObject root = entities.get(ref.root);
+            if (root == null) throw new IOException(
+                    "Snapshot group root is missing from entity pool: " + ref.root);
+            result.add(new LoadedGroupRoot(ref.memberType, root));
         }
         return List.copyOf(result);
-    }
-
-    private static String inferGroupMemberType(
-            WikidataDynamicObject group, java.util.Set<WikidataDynamicObject> seen) {
-        if (group == null || !seen.add(group)) return null;
-        Object members = group.get("members");
-        Collection<?> memberValues = members instanceof Map<?, ?> map
-                ? map.values() : members instanceof Collection<?> collection
-                        ? collection : List.of();
-        for (Object member : memberValues) {
-            if (member instanceof WikidataDynamicObject object
-                    && !"ViewableGroup".equals(object.typeName())) {
-                return object.typeName();
-            }
-        }
-        Object children = group.get("children");
-        Collection<?> childValues = children instanceof Map<?, ?> map
-                ? map.values() : children instanceof Collection<?> collection
-                        ? collection : List.of();
-        for (Object child : childValues) {
-            if (child instanceof WikidataDynamicObject object) {
-                String found = inferGroupMemberType(object, seen);
-                if (found != null) return found;
-            }
-        }
-        return null;
     }
 
     private static void attachSchemas(
@@ -593,82 +496,6 @@ public class WikidataDynamicObjectJsonStore {
         return false;
     }
 
-    private static List<WikidataDynamicObject> resolveGroupRoots(
-            FlatSnapshot snapshot,
-            Collection<WikidataDynamicObject> objects,
-            Map<String, WikidataDynamicObject> entities) {
-        if (snapshot.version < 5) {
-            return discoverLegacyGroupRoots(objects, true);
-        }
-        if (snapshot.groupRoots == null || snapshot.groupRoots.isEmpty()) {
-            return discoverLegacyGroupRoots(objects, false);
-        }
-        return resolveRoots(snapshot.groupRoots, entities);
-    }
-
-    private static List<WikidataDynamicObject> resolveMemberRoots(
-            FlatSnapshot snapshot,
-            boolean rootsPropertyPresent,
-            Collection<WikidataDynamicObject> objects,
-            Map<String, WikidataDynamicObject> entities) {
-        if (snapshot.roots != null && !snapshot.roots.isEmpty()) {
-            return resolveRoots(snapshot.roots, entities);
-        }
-        // Before v5, or when an older/foreign flat pool omitted the property
-        // altogether, the historical interpretation was "every entity is a root".
-        if (snapshot.version < 5 || !rootsPropertyPresent) {
-            return new ArrayList<>(objects);
-        }
-        // In v5 an explicitly present empty list is meaningful: the domain has no
-        // ordinary member roots (it may, for example, contain only group roots).
-        return new ArrayList<>();
-    }
-
-    /** Compatibility only: formats before v5 did not persist group-root refs. */
-    private static List<WikidataDynamicObject> discoverLegacyGroupRoots(
-            Collection<WikidataDynamicObject> objects,
-            boolean includeOrdinaryGroups) {
-        java.util.Set<WikidataDynamicObject> reachable =
-                java.util.Collections.newSetFromMap(
-                        new java.util.IdentityHashMap<>());
-        for (WikidataDynamicObject object : objects) {
-            collectReachableObjects(object, reachable);
-        }
-        List<WikidataDynamicObject> roots = new ArrayList<>();
-        for (WikidataDynamicObject object : reachable) {
-            if (!"ViewableGroup".equals(object.typeName())
-                    || !includeOrdinaryGroups) {
-                continue;
-            }
-            Object parent = object.get("parent");
-            if (!(parent instanceof WikidataDynamicObject group)
-                    || !"ViewableGroup".equals(group.typeName())) {
-                roots.add(object);
-            }
-        }
-        return roots;
-    }
-
-    private static void collectReachableObjects(
-            Object value,
-            java.util.Set<WikidataDynamicObject> reachable) {
-        if (value instanceof WikidataDynamicObject object) {
-            if (!reachable.add(object)) {
-                return;
-            }
-            for (Object nested : object.dynamicFieldValues().values()) {
-                collectReachableObjects(nested, reachable);
-            }
-        } else if (value instanceof Collection<?> collection) {
-            for (Object nested : collection) {
-                collectReachableObjects(nested, reachable);
-            }
-        } else if (value instanceof Map<?, ?> map) {
-            for (Object nested : map.values()) {
-                collectReachableObjects(nested, reachable);
-            }
-        }
-    }
 
     private Map<String, WikidataDynamicObject> buildEntities(FlatSnapshot snapshot) {
         // Build shells first so refs (including cycles) resolve to one instance per
@@ -676,7 +503,7 @@ public class WikidataDynamicObjectJsonStore {
         // identity split round-trip.
         Map<String, WikidataDynamicObject> byKey = new LinkedHashMap<>();
         for (Entity e : snapshot.entities) {
-            WikidataDynamicObject o = new WikidataDynamicObject(e.qid, e.name);
+            WikidataDynamicObject o = new WikidataDynamicObject(e.id, e.name);
             if (e.type != null && !e.type.isBlank()) {
                 o.type(e.type);
             }
@@ -687,11 +514,11 @@ public class WikidataDynamicObjectJsonStore {
                 o.typeKey(e.typeKey);
             }
             o.referenceLabel(e.referenceLabel);
-            byKey.put(compositeKey(e.typeKey, e.qid), o);
+            byKey.put(compositeKey(e.typeKey, e.id), o);
         }
         Map<String, WikidataDynamicObject> byQidSingle = uniqueByQid(byKey);
         for (Entity e : snapshot.entities) {
-            WikidataDynamicObject o = byKey.get(compositeKey(e.typeKey, e.qid));
+            WikidataDynamicObject o = byKey.get(compositeKey(e.typeKey, e.id));
             for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
                 o.dynamicFields().put(entry.getKey(),
                         decode(entry.getValue(), byKey, byQidSingle));
@@ -700,8 +527,8 @@ public class WikidataDynamicObjectJsonStore {
         return byKey;
     }
 
-    /** Map each qid to its entity ONLY when that qid has a single entity — the safe
-     *  fallback for an untyped or pre-v4 ref/root whose ⟨type, qid⟩ doesn't match. */
+    /** Map each qid to its entity only when that qid has a single entity. This resolves
+     *  current-format untyped reference copies without confusing cross-type namesakes. */
     private static Map<String, WikidataDynamicObject> uniqueByQid(
             Map<String, WikidataDynamicObject> byKey) {
         Map<String, WikidataDynamicObject> single = new java.util.HashMap<>();
@@ -721,20 +548,16 @@ public class WikidataDynamicObjectJsonStore {
 
     private static List<WikidataDynamicObject> resolveRoots(
             List<String> keys,
-            Map<String, WikidataDynamicObject> byKey) {
+            Map<String, WikidataDynamicObject> byKey) throws IOException {
         if (keys == null || keys.isEmpty()) {
             return new ArrayList<>();
         }
-        Map<String, WikidataDynamicObject> byQidSingle = uniqueByQid(byKey);
         List<WikidataDynamicObject> roots = new ArrayList<>();
         for (String key : keys) {
             WikidataDynamicObject value = byKey.get(key);
-            if (value == null) {
-                value = byQidSingle.get(qidPart(key));
-            }
-            if (value != null) {
-                roots.add(value);
-            }
+            if (value == null) throw new IOException(
+                    "Snapshot root is missing from entity pool: " + key);
+            roots.add(value);
         }
         return roots;
     }
@@ -742,10 +565,10 @@ public class WikidataDynamicObjectJsonStore {
     private Object decode(Object v, Map<String, WikidataDynamicObject> byKey,
             Map<String, WikidataDynamicObject> byQidSingle) {
         if (v instanceof Ref ref) {
-            WikidataDynamicObject o = byKey.get(compositeKey(ref.type, ref.qid));
-            // An untyped ref (or a pre-v4 ref with no type) may not match a stamped
-            // entity's ⟨type, qid⟩ key — fall back to the unique entity for that qid.
-            return o != null ? o : byQidSingle.get(ref.qid);
+            WikidataDynamicObject o = byKey.get(compositeKey(ref.type, ref.id));
+            // An untyped ref may not match a stamped entity's ⟨type, qid⟩ key;
+            // resolve it only when the qid identifies one entity unambiguously.
+            return o != null ? o : byQidSingle.get(ref.id);
         }
         if (v instanceof Entity e) {
             return inlineWdo(e, byKey, byQidSingle);   // an inlined value object, not a ref
@@ -766,15 +589,6 @@ public class WikidataDynamicObjectJsonStore {
             }
             return out;
         }
-        // Snapshots saved before typed dates hold the raw time literal as a
-        // string; upgrade it on load (the probe only matches unambiguous
-        // [+-]YYYY-MM-DDT… literals) so old domains need no regeneration.
-        if (v instanceof String s) {
-            aux.FlexibleDate date = aux.FlexibleDate.fromWikidataLiteral(s);
-            if (date != null) {
-                return date;
-            }
-        }
         return v;
     }
 
@@ -782,7 +596,7 @@ public class WikidataDynamicObjectJsonStore {
      *  fields recursively encoded (entity fields still become Refs). */
     private Entity inlineEntity(WikidataDynamicObject w) {
         Entity e = new Entity();
-        e.qid = null;                       // a value has no identity
+        e.id = null;                       // a value has no identity
         e.name = w.getDisplayName();
         String referenceLabel = w.getReferenceLabel();
         if (referenceLabel != null
@@ -817,7 +631,7 @@ public class WikidataDynamicObjectJsonStore {
 
     private static String keyOf(WikidataDynamicObject o) {
         if (o == null) return null;
-        String qid = o.qid();
+        String qid = o.getIdentifier();
         return qid == null || qid.isBlank() ? null : qid;
     }
 
@@ -830,17 +644,16 @@ public class WikidataDynamicObjectJsonStore {
     // ------------------------------------------------------------------
 
     /** A reference to another entity in the same snapshot, by ⟨type, qid⟩. {@code type}
-     *  is the target's typeKey; blank/absent for an untyped target or a pre-v4 snapshot,
-     *  in which case load falls back to the unique entity for the qid. */
+     *  is blank only for a current-format untyped target, resolved by unique qid. */
     public static class Ref {
         public String type;
-        public String qid;
+        public String id;
 
         public Ref() {}
 
         public Ref(String type, String qid) {
             this.type = type;
-            this.qid = qid;
+            this.id = qid;
         }
     }
 
@@ -857,7 +670,7 @@ public class WikidataDynamicObjectJsonStore {
     }
 
     public static class Entity {
-        public String qid;
+        public String id;
         public String name;
         // Generic Viewable reference label when it differs from the display name.
         public String referenceLabel;
@@ -868,7 +681,7 @@ public class WikidataDynamicObjectJsonStore {
         // persisted class hierarchy in fieldGraph.
         public List<String> classes = new ArrayList<>();
         // The OBJECT-identity type key ⟨typeKey, qid⟩ (stable logical class name).
-        // Null for pre-v4 snapshots and untyped leaves.
+        // Null for untyped leaves.
         public String typeKey;
         public Map<String, Object> fields = new LinkedHashMap<>();
     }
@@ -904,13 +717,4 @@ public class WikidataDynamicObjectJsonStore {
         }
     }
 
-    /**
-     * Legacy format: objects with their references inlined recursively. Kept
-     * (same class name as the old writer used) so pre-existing snapshots —
-     * whose {@code @class} names this type — still load.
-     */
-    public static class Snapshot {
-        public int version = 1;
-        public List<WikidataDynamicObject> objects = new ArrayList<>();
-    }
 }

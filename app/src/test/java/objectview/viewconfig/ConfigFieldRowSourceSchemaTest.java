@@ -23,7 +23,10 @@ class ConfigFieldRowSourceSchemaTest {
         FieldTypeSource categoryChildren = new FieldTypeSource() {
             @Override public FieldTypeInfo field(String name) {
                 return "year".equals(name)
-                        ? new FieldTypeInfo("int", false, null, null)
+                        ? new FieldTypeInfo("int", false, false, null, null,
+                                null, objectview.field.FieldRole.NONE,
+                                objectview.field.FieldKind.ORDERED,
+                                objectview.field.FieldKind.ORDERED)
                         : null;
             }
             @Override public List<String> fieldNames() {
@@ -33,7 +36,11 @@ class ConfigFieldRowSourceSchemaTest {
         return new FieldTypeSource() {
             @Override public FieldTypeInfo field(String name) {
                 return "category".equals(name)
-                        ? new FieldTypeInfo("Category", false, "Category", categoryChildren)
+                        ? new FieldTypeInfo("Category", false, false,
+                                "Category", categoryChildren, null,
+                                objectview.field.FieldRole.NONE,
+                                objectview.field.FieldKind.REFERENCE,
+                                objectview.field.FieldKind.REFERENCE)
                         : null;
             }
             @Override public List<String> fieldNames() {
@@ -54,8 +61,14 @@ class ConfigFieldRowSourceSchemaTest {
         return new FieldTypeSource() {
             @Override public FieldTypeInfo field(String name) {
                 return switch (name) {
-                    case "population" -> new FieldTypeInfo("Long", false, false, null, null);
-                    case "isoCode" -> new FieldTypeInfo("String", false, true, null, null);
+                    case "population" -> new FieldTypeInfo("Long", false, false,
+                            null, null, null, objectview.field.FieldRole.NONE,
+                            objectview.field.FieldKind.ORDERED,
+                            objectview.field.FieldKind.ORDERED);
+                    case "isoCode" -> new FieldTypeInfo("String", false, true,
+                            null, null, null, objectview.field.FieldRole.NONE,
+                            objectview.field.FieldKind.TEXT,
+                            objectview.field.FieldKind.TEXT);
                     default -> null;
                 };
             }

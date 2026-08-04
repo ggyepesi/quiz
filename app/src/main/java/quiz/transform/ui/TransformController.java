@@ -51,8 +51,12 @@ public final class TransformController {
         if (type == null || name == null || name.isBlank()) {
             return false;
         }
-        DomainField field = new DomainField(type, name.trim(), false, false,
-                kind == null ? objectview.field.FieldKind.UNKNOWN : kind);
+        objectview.field.FieldKind actualKind = kind == null
+                ? objectview.field.FieldKind.UNKNOWN : kind;
+        objectview.field.FieldRef field = objectview.field.FieldRef.described(
+                name.trim(), actualKind, actualKind, actualKind.name(),
+                false, false, null, false, false,
+                false, false, "", false, false);
         return domain.addField(type, field);
     }
 

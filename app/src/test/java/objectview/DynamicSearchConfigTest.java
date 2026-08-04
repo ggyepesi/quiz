@@ -35,6 +35,12 @@ class DynamicSearchConfigTest {
         return cfg;
     }
 
+    private static List<ViewableFieldPaths.FieldPath> paths(
+            Viewable sample, ViewConfig config) {
+        return ViewableFieldPaths.collectFromSample(
+                sample, config, ViewableFieldPaths.NOT_MEDIA_FIELDS);
+    }
+
     @Test void configNamedDynamicFieldYieldsAPath() {
         List<ViewableFieldPaths.FieldPath> paths =
                 ViewableFieldPaths.collect(explicit("won"));
@@ -54,18 +60,18 @@ class DynamicSearchConfigTest {
 
         // won checked, name not: "casablanca" finds nothing, "true" hits won.
         Map<String, List<Viewable>> byName = engine.searchViewables(
-                pool, List.of("casablanca"), explicit("won"));
+                pool, List.of("casablanca"), paths(pool.getFirst(), explicit("won")));
         assertTrue(byName.isEmpty(), byName.toString());
 
         Map<String, List<Viewable>> byWon = engine.searchViewables(
-                pool, List.of("true"), explicit("won"));
+                pool, List.of("true"), paths(pool.getFirst(), explicit("won")));
         assertEquals(1, byWon.getOrDefault("won", List.of()).size(), byWon.toString());
 
         // name checked: the display name matches again.
         String displayKey = objectview.field.ViewableContractFieldSet.DISPLAY_KEY;
         String displayLabel = objectview.field.ViewableContractFieldSet.label(displayKey);
         Map<String, List<Viewable>> withName = engine.searchViewables(
-                pool, List.of("casablanca"), explicit(displayKey));
+                pool, List.of("casablanca"), paths(pool.getFirst(), explicit(displayKey)));
         assertEquals(1, withName.getOrDefault(displayLabel, List.of()).size(),
                 withName.toString());
     }

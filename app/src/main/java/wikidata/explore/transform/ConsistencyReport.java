@@ -135,7 +135,7 @@ public final class ConsistencyReport {
             int shown = Math.min(suspects.size(), 25);
             for (int i = 0; i < shown; i++) {
                 WikidataDynamicObject a = suspects.get(i);
-                log.message("  ! " + a.qid() + " \"" + a.getDisplayName() + "\"\n");
+                log.message("  ! " + a.getIdentifier() + " \"" + a.getDisplayName() + "\"\n");
             }
             if (suspects.size() > shown) {
                 log.message("  … and " + (suspects.size() - shown) + " more\n");
@@ -145,6 +145,6 @@ public final class ConsistencyReport {
     }
 
     private static String qid(Object v) {
-        return v instanceof WikidataDynamicObject w ? w.qid() : null;
+        return v instanceof WikidataDynamicObject w ? w.getIdentifier() : null;
     }
 }

@@ -96,20 +96,11 @@ public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
     @Override
     public Role getRole() {
         Object persisted = object.get("role");
-        if (persisted instanceof Role role) {
-            return role;
-        }
         if (persisted instanceof String text) {
-            try {
-                return Role.valueOf(text);
-            } catch (IllegalArgumentException ignored) {
-                // Pre-v5 groups had no persisted role; use their shape below.
-            }
+            return Role.valueOf(text);
         }
-        if (getParent() == null) {
-            return Role.UNIVERSE;
-        }
-        return getChildren().isEmpty() ? Role.BUCKET : Role.FACET;
+        throw new IllegalStateException(
+                "Persisted group has no role: " + object.getIdentifier());
     }
 
     @Override

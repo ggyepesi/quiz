@@ -1,5 +1,7 @@
 package wikidata.explore.extract;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;

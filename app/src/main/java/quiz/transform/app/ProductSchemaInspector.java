@@ -107,7 +107,7 @@ public final class ProductSchemaInspector extends JPanel {
         info.setText("  " + (schema.isMember(name) ? "member" : "reference-target")
                 + (mc != null && !mc.alias().isBlank() ? " · alias: " + mc.alias() : "")
                 + (mc != null && mc.reifiesStatements()
-                        ? " · reifies: " + mc.statementSourceClass() : ""));
+                        ? " · reifies: " + mc.statementSource().sourceClassName() : ""));
     }
 
     private static String modelDesc(GeneratedFieldModel f) {

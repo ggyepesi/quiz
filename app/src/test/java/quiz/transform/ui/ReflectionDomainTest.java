@@ -92,10 +92,10 @@ class ReflectionDomainTest {
         child.addMember(c);
         DomainViews views = new DomainViews() {
             @Override public void buildViews() {}
-            @Override public objectview.render.GroupView getGroupView() { return null; }
-            @Override public List<? extends objectview.group.ViewableGroup<?>>
-                    getRootGroups() {
-                return List.of(root);
+            @Override public List<objectview.viewconfig.DomainGroupRoot>
+                    getGroupRootBindings() {
+                return List.of(new objectview.viewconfig.DomainGroupRoot(
+                        "Country", root));
             }
             @Override public Map<String, ? extends objectview.Viewable> getViewables() {
                 return Map.of(c.getIdentifier(), c);

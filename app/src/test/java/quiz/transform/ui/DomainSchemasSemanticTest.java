@@ -43,7 +43,6 @@ class DomainSchemasSemanticTest {
     private static DomainModel domain(FieldSchema record, FieldSchema source) {
         return new DomainModel() {
             @Override public List<String> types() { return List.of("Record"); }
-            @Override public List<DomainField> fields(String type) { return List.of(); }
             @Override public FieldSchema fieldSchema(String type) {
                 return "ExternalSource".equals(type) ? source : record;
             }

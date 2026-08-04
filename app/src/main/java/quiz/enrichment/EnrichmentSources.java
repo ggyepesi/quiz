@@ -1,18 +1,16 @@
 package quiz.enrichment;
 
-import objectview.field.FieldAccess;
 import objectview.Viewable;
 import quiz.curation.IdentityLink;
 import quiz.curation.ManualCuration;
-import quiz.source.Source;
+import quiz.source.WikidataViewable;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Collects embedded and manually approved sources without exposing their storage. */
+/** Collects an instance's own Wikidata identity and manually approved identities. */
 public final class EnrichmentSources {
 
     private EnrichmentSources() { }
@@ -20,15 +18,9 @@ public final class EnrichmentSources {
     public static List<EnrichmentProposal.SourceRef> collect(
             Viewable member, String type, ManualCuration curation) {
         Map<String, EnrichmentProposal.SourceRef> result = new LinkedHashMap<>();
-        Object value = FieldAccess.getPath(member, "source");
-        if (value instanceof Source source) {
-            add(result, source.kind(), source.sourceId(), source.url());
-        } else if (value instanceof Collection<?> collection) {
-            for (Object item : collection) {
-                if (item instanceof Source source) {
-                    add(result, source.kind(), source.sourceId(), source.url());
-                }
-            }
+        if (member instanceof WikidataViewable wikidata
+                && wikidata.qid().matches("Q\\d+")) {
+            add(result, "Wikidata", wikidata.qid(), wikidata.wikidataUrl());
         }
 
         if (curation != null) {

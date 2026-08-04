@@ -33,7 +33,7 @@ class PoolCopyTest {
         WikidataDynamicObject catC = copy.get(1);
         // fresh instances, same data
         assertNotSame(film, filmC);
-        assertEquals("Q1", filmC.qid());
+        assertEquals("Q1", filmC.getIdentifier());
         assertEquals("Oscarnominations", filmC.typeName());
 
         // the statement was reached through the list field and cloned
@@ -41,7 +41,7 @@ class PoolCopyTest {
         assertTrue(noms instanceof List<?>);
         WikidataDynamicObject stmtC = (WikidataDynamicObject) ((List<?>) noms).get(0);
         assertNotSame(stmt, stmtC);
-        assertEquals("Q1-ST", stmtC.qid());
+        assertEquals("Q1-ST", stmtC.getIdentifier());
 
         // references rewired to the COPIES, not the originals
         assertSame(catC, stmtC.get("category"));

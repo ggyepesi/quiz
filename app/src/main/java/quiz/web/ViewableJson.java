@@ -1,5 +1,7 @@
 package quiz.web;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import objectview.render.FieldLabels;

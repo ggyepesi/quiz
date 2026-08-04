@@ -11,9 +11,9 @@ import language.Language;
 import objectview.annotations.Reference;
 import quiz.ViewableGroup;
 import objectview.media.ImagePane;
-import objectview.ViewableAdapter;
+import quiz.source.ManualEntity;
 
-public class State extends ViewableAdapter {
+public class State extends ManualEntity {
 
     private final String name;
     private final List<ImagePane> flagVersions = new ArrayList<>();

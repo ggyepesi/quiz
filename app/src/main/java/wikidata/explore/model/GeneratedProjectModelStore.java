@@ -48,11 +48,6 @@ public final class GeneratedProjectModelStore {
                     "model must not be null");
         }
 
-        // Saving is also the migration boundary. A model loaded from an older
-        // JSON file is written back using StatementClassSource,
-        // MissingQualifierPolicy and CanonicalSpec rather than legacy flags.
-        GeneratedProjectModelMigration.migrate(model);
-
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(model);
 
@@ -79,8 +74,6 @@ public final class GeneratedProjectModelStore {
                     "model must not be null");
         }
 
-        GeneratedProjectModelMigration.migrate(model);
-
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(model);
 
@@ -97,43 +90,6 @@ public final class GeneratedProjectModelStore {
     public GeneratedProjectModel load(
             File file) throws IOException {
 
-        GeneratedProjectModel model =
-                mapper.readValue(
-                        file,
-                        GeneratedProjectModel.class);
-
-        stripLegacyNameFields(model);
-        GeneratedProjectModelMigration.migrate(model);
-
-        return model;
-    }
-
-    // A model saved before canonicalization carries a vestigial `name` field per
-    // class (identity/display now comes from CanonicalSpec + the generated
-    // @Hidden name). Drop them on load so the editor and generation
-    // see a clean model — you don't have to hand-delete per class.
-    private static void stripLegacyNameFields(
-            GeneratedProjectModel model) {
-
-        if (model == null) {
-            return;
-        }
-
-        if (model.rootClass() != null) {
-            model.rootClass()
-                 .fields()
-                 .removeIf(field ->
-                                   field != null
-                                           && field.isNameField());
-        }
-
-        for (GeneratedClassModel clazz : model.classes()) {
-            if (clazz != null) {
-                clazz.fields()
-                     .removeIf(field ->
-                                       field != null
-                                               && field.isNameField());
-            }
-        }
+        return mapper.readValue(file, GeneratedProjectModel.class);
     }
 }

@@ -60,7 +60,9 @@ class JoinerTest {
         @Override public List<String> types() {
             return items.stream().map(Viewable::typeName).distinct().toList();
         }
-        @Override public List<DomainField> fields(String type) { return List.of(); }
+        @Override public objectview.field.FieldSchema fieldSchema(String type) {
+            return List::of;
+        }
         @Override public Collection<? extends Viewable> instances() { return items; }
         @Override public Class<? extends Viewable> universe() { return Viewable.class; }
     }

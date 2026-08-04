@@ -2,11 +2,10 @@ package wikidata.explore.extract;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Hidden;
-import objectview.annotations.Link;
 import objectview.field.DynamicFields;
 import objectview.field.FieldSchema;
-import objectview.ViewableAdapter;
-import quiz.source.WikidataSource;
+import quiz.source.SourceViewable;
+import quiz.source.WikidataViewable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,113 +24,76 @@ import java.util.concurrent.ConcurrentHashMap;
  *   1 value   -> scalar
  *   2+ values -> List
  */
-// Tolerate extra fields on read: derived getters (getUrl→"url", getIdentifier,
-// getDisplayName, …) get serialized but aren't settable, so an older/foreign
-// JSON (e.g. a saved OscarNomination cache) carries "url" that we must skip
-// rather than fail on. Only "name"/"qid" round-trip.
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-public class WikidataDynamicObject extends ViewableAdapter implements DynamicFields {
-    // Identity + provenance. Hidden from the card (@Hidden) because
-    // they're surfaced together as one collapsed "source" chip below — the raw
-    // QID and wiki URL no longer clutter every card's top level. The QID is
-    // still the canonical key (equals/hashCode, snapshots, web serving); these
-    // annotations only affect Viewable rendering, not Jackson persistence.
-    @Hidden
-    private String qid;
-    // Identity/display name — the card TITLE, not a field row. Like qid it is
-    // re-injected once as an identity field by getConfigurableFields; without
-    // @Hidden it also leaks into getAllFields, so `name` showed up TWICE
-    // in sort/search/viewconfig (and as a redundant field row).
-    @Hidden
-    private String name;
+public class WikidataDynamicObject extends objectview.ViewableAdapter
+        implements DynamicFields, quiz.source.Anchorable {
 
-    // Optional label used when this object is referenced by another object. This is
-    // generic Viewable metadata (not a group field): converters preserve
-    // Viewable.getReferenceLabel() so dynamic objects render references exactly like
-    // their Java-backed source objects.
+    // Stable identity of this carrier — NOT tied to any source. Usually a QID
+    // today, but the carrier is source-neutral: provenance and the external
+    // anchor live in the `source` descriptor, which can be re-anchored without
+    // moving identity (so hashCode stays valid under pooling).
     @Hidden
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String identifier = "";
+    @Hidden
+    private String name = "";
+
+    // The provenance descriptor (Wikidata / manual / statement / …). Swapping it
+    // re-anchors the object; it never changes identity. Rendered as a chip. Named
+    // `anchor`, not `source`, to avoid colliding with the reify back-reference
+    // field and structural schema fields that are already named `source`.
+    @objectview.annotations.Provenance
+    @JsonIgnore
+    private SourceViewable anchor;
+
+    @Hidden
+    @JsonIgnore
     private String referenceLabel;
 
-    @Hidden
-    @Link
-    private String wikidataUrl;
+    private final Map<String, Object> dynamicFields = new LinkedHashMap<>();
 
-    // The dynamic data. NOTE: NOT @Hidden — Card renders this
-    // map's entries AS the object's fields (see isDynamicContainer there); hiding
-    // it would hide all the data. Its unwanted "dynamicFields" titled border is
-    // dropped in Card instead.
-    private final Map<String, Object> dynamicFields =
-            new LinkedHashMap<>();
-
-    // Web/runtime only (not persisted): the domain type this object is served
-    // under, since all generated objects share this one Java class. @Hidden
-    // so the class STAMP doesn't render as a `type` field (distinct from the P31
-    // `type` data field a domain may declare).
     @Hidden
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     private String type;
 
-    // Semantic classes assigned directly to this instance. Kept out of ordinary
-    // fields/rendering; the flattened snapshot DTO persists it explicitly.
     @Hidden
     @JsonIgnore
     private final java.util.Set<String> directClasses = new java.util.LinkedHashSet<>();
-    // The OBJECT-identity type key ⟨typeKey, qid⟩ — the stable logical class name. It
-    // distinguishes objects that merely share a name across types (a State "France" vs a
-    // ViewableGroup "France"); the QID stays an entity LINK, not the object identity.
-    // Falls back to typeName() when unset.
+
     @Hidden
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     private String typeKey;
 
-    // Runtime marker (not a persisted field — implied by the inline representation):
-    // this object is a VALUE inlined in its parent, not a pooled, qid-keyed entity.
     @Hidden
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     private boolean valueObject;
 
     @Hidden
     @JsonIgnore
     private transient FieldSchema dynamicFieldSchema;
 
-    // Reify provenance: per-field origin (qualifier vs subject-fallback vs
-    // missing), recorded by the reify step and read by later passes to detect
-    // degenerate/self-referential atoms generically. Sidecar metadata only —
-    // @Hidden + @JsonIgnore + transient keep it out of rendering, field listing,
-    // and serialization (it is never a data field).
     @Hidden
     @JsonIgnore
     private transient Map<String, FieldOrigin> fieldOrigins;
 
-    public WikidataDynamicObject() {
-        this("", "");
-    }
+    public WikidataDynamicObject() { }
 
     public WikidataDynamicObject(String qid, String name) {
-        this.qid = qid == null ? "" : qid;
-        this.name = name == null || name.isBlank() ? this.qid : name;
-        // Only a real entity QID (Q123) gets a Wikidata link/source. A synthetic
-        // object keyed by a statement GUID (Q123-<guid>, e.g. a reified Nomination)
-        // is NOT a Wikidata page — a link built from its key 404s.
-        this.wikidataUrl = this.qid.matches("Q\\d+")
-                ? "https://www.wikidata.org/wiki/" + this.qid
-                : "";
-        rebuildSource();
+        String id = normalizeQid(qid);
+        this.identifier = id == null ? "" : id;
+        this.name = name == null || name.isBlank() ? this.identifier : name;
+        // Historically this carrier was always a Wikidata entity; preserve that
+        // by anchoring a Wikidata source when the id is a QID. A non-QID id (a
+        // manual key) simply has no source yet — it can be re-anchored later.
+        anchorWikidataIfQid();
     }
 
-    // (Re)builds the grouped provenance from the current QID. Null unless the QID
-    // is a real entity (so a blank shell or a statement-keyed synthetic renders no
-    // source chip / link).
-    private void rebuildSource() {
-        source(wikidataUrl == null || wikidataUrl.isBlank()
-                ? null
-                : new WikidataSource(qid, wikidataUrl, name));
+    /** Seeds/refreshes a Wikidata anchor when the identity is QID-shaped. */
+    private void anchorWikidataIfQid() {
+        if (identifier != null && identifier.matches("Q\\d+")) {
+            anchor = new WikidataViewable(identifier, name);
+        }
     }
 
-    // One interned instance per QID, replacing the legacy
-    // WikidataEntity.canonical. Seeds a wikidata link so a bare reference's
-    // card isn't empty (the DynamicFields renderer skips declared fields).
     private static final Map<String, WikidataDynamicObject> CACHE =
             new ConcurrentHashMap<>();
 
@@ -146,50 +108,47 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
         });
     }
 
-    /** Alias for {@link #qid()} (legacy WikidataEntity API). Not a Jackson
-     *  property — the snapshot mapper is field-only, so this getter is ignored
-     *  and the qid field round-trips. (An @JsonIgnore here would wrongly ignore
-     *  the field too.) */
-    public String getQid() {
-        return qid;
+    @Override public String getIdentifier() {
+        return identifier == null || identifier.isBlank() ? name : identifier;
     }
 
-    /** Alias for {@link #wikidataUrl()} (legacy WikidataEntity API). */
-    public String getUrl() {
-        return wikidataUrl;
+    @Override public String getDisplayName() {
+        return name == null || name.isBlank() ? identifier : name;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof WikidataDynamicObject w)) {
-            return false;
-        }
-        return qid != null && !qid.isBlank()
-                && qid.equals(w.qid)
+    @Override public SourceViewable anchor() { return anchor; }
+
+    @Override public void anchor(SourceViewable anchor) { this.anchor = anchor; }
+
+    /** The Wikidata QID iff this object's anchor is Wikidata; else "". */
+    public String qid() {
+        return anchor instanceof WikidataViewable w ? w.qid() : "";
+    }
+
+    public String wikidataUrl() {
+        return anchor instanceof WikidataViewable w ? w.wikidataUrl() : "";
+    }
+
+    public String getQid() { return qid(); }
+
+    public String getUrl() { return wikidataUrl(); }
+
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof WikidataDynamicObject w)) return false;
+        return identifier != null && !identifier.isBlank()
+                && identifier.equals(w.identifier)
                 && java.util.Objects.equals(typeKey(), w.typeKey());
     }
 
-    @Override
-    public int hashCode() {
-        return qid == null || qid.isBlank()
+    @Override public int hashCode() {
+        return identifier == null || identifier.isBlank()
                 ? System.identityHashCode(this)
-                : java.util.Objects.hash(typeKey(), qid);
+                : java.util.Objects.hash(typeKey(), identifier);
     }
 
-    @Override
-    public String getIdentifier() { return qid; }
-
-    @Override
-    public String getDisplayName() { return name == null || name.isBlank() ? qid : name; }
-
-    @Override
-    public String getReferenceLabel() {
-        if (referenceLabel != null && !referenceLabel.isBlank()) {
-            return referenceLabel;
-        }
+    @Override public String getReferenceLabel() {
+        if (referenceLabel != null && !referenceLabel.isBlank()) return referenceLabel;
         return getName();
     }
 
@@ -199,49 +158,28 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
 
     public String displayLabel() { return getDisplayName(); }
 
-    public String qid() {
-        return qid;
-    }
-
     public void qid(String qid) {
-        this.qid = normalizeQid(qid);
-        this.wikidataUrl = this.qid.isBlank()
-                ? ""
-                : "https://www.wikidata.org/wiki/" + this.qid;
-        rebuildSource();
+        String id = normalizeQid(qid);
+        this.identifier = id == null ? "" : id;
+        anchorWikidataIfQid();
     }
 
     public void name(String name) {
-        this.name = name == null ? "" : name;
+        this.name = name == null || name.isBlank() ? identifier : name;
+        anchorWikidataIfQid();
     }
 
-    public String wikidataUrl() {
-        return wikidataUrl;
-    }
+    public Map<String, Object> dynamicFields() { return dynamicFields; }
 
-    public Map<String, Object> dynamicFields() {
-        return dynamicFields;
-    }
+    @Override public Map<String, Object> dynamicFieldValues() { return dynamicFields; }
 
-    @Override
-    public Map<String, Object> dynamicFieldValues() {
-        return dynamicFields;
-    }
+    @Override public FieldSchema dynamicFieldSchema() { return dynamicFieldSchema; }
 
-    @Override
-    public FieldSchema dynamicFieldSchema() {
-        return dynamicFieldSchema;
-    }
-
-    public void dynamicFieldSchema(FieldSchema schema) {
-        this.dynamicFieldSchema = schema;
-    }
+    public void dynamicFieldSchema(FieldSchema schema) { this.dynamicFieldSchema = schema; }
 
     public void type(String type) {
         this.type = type;
-        if (type != null && !type.isBlank()) {
-            directClasses.add(type);
-        }
+        if (type != null && !type.isBlank()) directClasses.add(type);
     }
 
     public void assignClass(String className) {
@@ -257,8 +195,6 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
         if (source == null) return;
         source.directClassNames().forEach(this::assignClass);
 
-        // Even without a hierarchy resolver, reclassified copies sharing one stable
-        // identity tell us that the identity base is inherited rather than direct.
         String stableBase = identityTypeName();
         String concrete = !java.util.Objects.equals(typeName(), stableBase)
                 ? typeName()
@@ -271,9 +207,6 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
         }
         if (baseType == null || directClasses.size() < 2) return;
 
-        // Remove every claim inherited through another retained claim. Unrelated
-        // direct classes remain valid; only the deepest one becomes the compatibility
-        // rendering type for consumers that still require a single typeName().
         java.util.LinkedHashSet<String> inherited = new java.util.LinkedHashSet<>();
         for (String candidate : directClasses) {
             java.util.Set<String> seen = new java.util.HashSet<>();
@@ -300,8 +233,6 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     }
 
     public void assignSubclass(String className, String baseClassName) {
-        // Preserve the established identity dimension when the concrete rendering
-        // type changes from the base class to its newly assigned subtype.
         if ((typeKey == null || typeKey.isBlank()) && type != null && !type.isBlank()) {
             typeKey = type;
         }
@@ -330,101 +261,62 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
                 ? java.util.Set.of() : java.util.Set.of(fallback);
     }
 
-    /** The object-identity type key: the explicit key if set, else the logical type name
-     *  (a generated class's name is already unique within its model). */
     public String typeKey() {
         return typeKey != null && !typeKey.isBlank() ? typeKey : typeName();
     }
 
-    @Override public String identityTypeName() {
-        return typeKey();
-    }
+    @Override public String identityTypeName() { return typeKey(); }
 
-    public void typeKey(String typeKey) {
-        this.typeKey = typeKey;
-    }
+    public void typeKey(String typeKey) { this.typeKey = typeKey; }
 
-    /** A VALUE object: inlined in its parent, not pooled/keyed by qid. */
-    public boolean isValueObject() {
-        return valueObject;
-    }
+    public boolean isValueObject() { return valueObject; }
 
-    public void valueObject(boolean valueObject) {
-        this.valueObject = valueObject;
-    }
+    public void valueObject(boolean valueObject) { this.valueObject = valueObject; }
 
-    /** True when a domain class was stamped ({@link #typeName()} would otherwise
-     *  fall back to the Java class name — an unstamped reference, not a member). */
-    public boolean hasTypeStamp() {
-        return type != null && !type.isBlank();
-    }
+    public boolean hasTypeStamp() { return type != null && !type.isBlank(); }
 
-    @Override
-    public String typeName() {
+    @Override public String typeName() {
         return type == null || type.isBlank() ? getClass().getSimpleName() : type;
     }
 
-    public Object get(String fieldName) {
-        return dynamicFields.get(fieldName);
-    }
+    public Object get(String fieldName) { return dynamicFields.get(fieldName); }
 
-    /** Removes a field entirely (put ignores nulls, so this is the way to clear). */
     public void remove(String fieldName) {
-        if (fieldName != null) {
-            dynamicFields.remove(fieldName);
-        }
+        if (fieldName != null) dynamicFields.remove(fieldName);
     }
 
     public void put(String fieldName, Object value) {
-        if (fieldName == null || fieldName.isBlank() || value == null) {
-            return;
-        }
+        if (fieldName == null || fieldName.isBlank() || value == null) return;
         dynamicFields.put(fieldName, value);
     }
 
-    /** Records where a field's value came from during reification (sidecar
-     *  provenance, not a data field). See {@link FieldOrigin}. */
     public void recordOrigin(String fieldName, FieldOrigin origin) {
-        if (fieldName == null || fieldName.isBlank() || origin == null) {
-            return;
-        }
-        if (fieldOrigins == null) {
-            fieldOrigins = new java.util.HashMap<>();
-        }
+        if (fieldName == null || fieldName.isBlank() || origin == null) return;
+        if (fieldOrigins == null) fieldOrigins = new java.util.HashMap<>();
         fieldOrigins.put(fieldName, origin);
     }
 
-    /** The recorded origin of a field, or {@code null} if none was recorded. */
     public FieldOrigin origin(String fieldName) {
         return fieldOrigins == null ? null : fieldOrigins.get(fieldName);
     }
 
-    /** All recorded field origins (empty if none). */
     public Map<String, FieldOrigin> fieldOrigins() {
         return fieldOrigins == null ? Map.of() : fieldOrigins;
     }
 
     public void merge(String fieldName, Object value) {
-        if (fieldName == null || fieldName.isBlank() || value == null) {
-            return;
-        }
-
+        if (fieldName == null || fieldName.isBlank() || value == null) return;
         Object existing = dynamicFields.get(fieldName);
-
         if (existing == null) {
             dynamicFields.put(fieldName, value);
             return;
         }
-
         if (sameValue(existing, value)) return;
-
         if (existing instanceof List<?> existingList) {
-            @SuppressWarnings("unchecked")
-            List<Object> list = (List<Object>) existingList;
+            @SuppressWarnings("unchecked") List<Object> list = (List<Object>) existingList;
             addIfMissing(list, value);
             return;
         }
-
         List<Object> list = new ArrayList<>();
         list.add(existing);
         addIfMissing(list, value);
@@ -436,37 +328,29 @@ public class WikidataDynamicObject extends ViewableAdapter implements DynamicFie
     }
 
     private static void addIfMissing(List<Object> list, Object value) {
-        for (Object item : list) {
-            if (sameValue(item, value)) return;
-        }
+        for (Object item : list) if (sameValue(item, value)) return;
         list.add(value);
     }
 
     private static boolean sameValue(Object a, Object b) {
         if (a == b) return true;
         if (a == null || b == null) return false;
-
         if (a instanceof WikidataDynamicObject wa
                 && b instanceof WikidataDynamicObject wb) {
-            return safe(wa.qid()).equals(safe(wb.qid()));
+            return safe(wa.getIdentifier()).equals(safe(wb.getIdentifier()));
         }
-
         if (a instanceof WikidataMediaValue ma
                 && b instanceof WikidataMediaValue mb) {
             return safe(ma.url()).equals(safe(mb.url()))
                     && safe(ma.label()).equals(safe(mb.label()));
         }
-
         return a.equals(b);
     }
 
-    private static String safe(String s) {
-        return s == null ? "" : s;
-    }
+    private static String safe(String s) { return s == null ? "" : s; }
 
-    @Override
-    public String toString() {
-        return name + (qid == null || qid.isBlank() ? "" : " (" + qid + ")");
+    @Override public String toString() {
+        return name + (identifier == null || identifier.isBlank()
+                ? "" : " (" + identifier + ")");
     }
-
 }

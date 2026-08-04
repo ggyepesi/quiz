@@ -1,10 +1,10 @@
 package flag;
 
 import objectview.media.ImagePane;
-import objectview.ViewableAdapter;
+import quiz.source.ManualEntity;
 
 // seemingly unused fields are used via reflection
-public class SportTeam extends ViewableAdapter {
+public class SportTeam extends ManualEntity {
     private String name = null;
     @SuppressWarnings("unused")
     private String league = null;
@@ -48,4 +48,3 @@ public class SportTeam extends ViewableAdapter {
     public String getDisplayName() { return name; }
 
 }
-

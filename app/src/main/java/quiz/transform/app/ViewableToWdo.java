@@ -91,10 +91,10 @@ public final class ViewableToWdo {
         // entries under one id are two different objects claiming the same identifier.
         Map<String, List<WikidataDynamicObject>> byId = new LinkedHashMap<>();
         for (WikidataDynamicObject w : entities) {
-            if (w.isValueObject() || w.qid() == null || w.qid().isBlank()) {
+            if (w.isValueObject() || w.getIdentifier() == null || w.getIdentifier().isBlank()) {
                 continue;
             }
-            byId.computeIfAbsent(w.qid(), k -> new ArrayList<>()).add(w);
+            byId.computeIfAbsent(w.getIdentifier(), k -> new ArrayList<>()).add(w);
         }
 
         StringBuilder report = new StringBuilder();
@@ -117,7 +117,7 @@ public final class ViewableToWdo {
                     .append('\n');
             for (WikidataDynamicObject w : instances) {
                 report.append("      · ⟨").append(w.typeKey()).append(", ")
-                        .append(w.qid()).append("⟩  name=\"").append(w.getDisplayName())
+                        .append(w.getIdentifier()).append("⟩  name=\"").append(w.getDisplayName())
                         .append("\"  fields=").append(w.dynamicFields().keySet()).append('\n');
             }
             for (Map.Entry<String, List<WikidataDynamicObject>> typed : byType.entrySet()) {
@@ -154,7 +154,7 @@ public final class ViewableToWdo {
             if (w.isValueObject()) {
                 continue;   // value objects are inlined — a blank id is expected/correct
             }
-            if (w.qid() == null || w.qid().isBlank()) {
+            if (w.getIdentifier() == null || w.getIdentifier().isBlank()) {
                 blankByType.merge(
                         w.typeName() == null || w.typeName().isBlank() ? "?" : w.typeName(),
                         1, Integer::sum);
@@ -186,11 +186,7 @@ public final class ViewableToWdo {
             }
             // A VALUE object is inlined, not pooled — it needs no identity (its display
             // name is just a label). Everything else is an entity, keyed by identity.
-            // Provenance is nested value data owned by the instance, not an entity in
-            // the domain pool. Inline it exactly like other value objects so snapshot
-            // persistence does not manufacture one addressable Source entity per row.
-            boolean value = q instanceof quiz.ValueObject
-                    || q instanceof objectview.provenance.Source;
+            boolean value = q instanceof quiz.ValueObject;
             String id = value ? null : q.getIdentifier();
             if (!value && (id == null || id.isBlank())) {
                 id = q.getDisplayName();

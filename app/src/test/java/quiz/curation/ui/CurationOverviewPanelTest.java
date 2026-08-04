@@ -47,8 +47,8 @@ class CurationOverviewPanelTest {
 
     private record TestDomain(List<? extends Viewable> values) implements DomainModel {
         @Override public List<String> types() { return List.of("State"); }
-        @Override public List<quiz.transform.ui.DomainField> fields(String type) {
-            return List.of();
+        @Override public objectview.field.FieldSchema fieldSchema(String type) {
+            return List::of;
         }
         @Override public Collection<? extends Viewable> instances() { return values; }
         @Override public Class<? extends Viewable> universe() { return Item.class; }

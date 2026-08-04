@@ -1,6 +1,5 @@
 package wikidata.explore.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.LinkedHashSet;
@@ -50,14 +49,6 @@ public class FieldSourceMapping {
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private RoleKind roleKind;
-
-    @Deprecated
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private Boolean subjectDefault;
-
-    @Deprecated
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private Boolean inDedupKey;
 
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
     private boolean requireLabel = true;
@@ -150,20 +141,11 @@ public class FieldSourceMapping {
     }
 
     public MissingQualifierPolicy missingQualifierPolicy() {
-        if (missingQualifierPolicy != null) {
-            return missingQualifierPolicy;
-        }
-        if (subjectDefault == null) {
-            return null;
-        }
-        return subjectDefault
-                ? MissingQualifierPolicy.STATEMENT_SUBJECT
-                : MissingQualifierPolicy.MISSING;
+        return missingQualifierPolicy;
     }
 
     public void missingQualifierPolicy(MissingQualifierPolicy value) {
         missingQualifierPolicy = value;
-        subjectDefault = null;
     }
 
     public RoleKind roleKind() {
@@ -174,36 +156,6 @@ public class FieldSourceMapping {
         roleKind = value == RoleKind.REFERENCE ? null : value;
     }
 
-    @Deprecated
-    @JsonIgnore
-    public Boolean subjectDefault() {
-        MissingQualifierPolicy policy = missingQualifierPolicy();
-        if (policy == null) {
-            return null;
-        }
-        return policy == MissingQualifierPolicy.STATEMENT_SUBJECT;
-    }
-
-    @Deprecated
-    public void subjectDefault(Boolean value) {
-        subjectDefault = value;
-        missingQualifierPolicy = value == null
-                ? null
-                : value
-                  ? MissingQualifierPolicy.STATEMENT_SUBJECT
-                  : MissingQualifierPolicy.MISSING;
-    }
-
-    @Deprecated
-    public Boolean inDedupKey() {
-        return inDedupKey;
-    }
-
-    @Deprecated
-    public void inDedupKey(Boolean value) {
-        inDedupKey = value;
-    }
-
     public RuleDirection direction() {
         return direction;
     }
@@ -212,13 +164,6 @@ public class FieldSourceMapping {
         this.direction = direction == null
                 ? RuleDirection.ITEM_TO_ROOT
                 : direction;
-    }
-
-    /**
-     * True when an old model supplied the legacy subjectDefault JSON field.
-     */
-    public boolean hasLegacySubjectDefault() {
-        return subjectDefault != null;
     }
 
     public boolean requireLabel() {
@@ -340,9 +285,6 @@ public class FieldSourceMapping {
 
         missingQualifierPolicy = other.missingQualifierPolicy;
         roleKind = other.roleKind;
-        subjectDefault = other.subjectDefault;
-        inDedupKey = other.inDedupKey;
-
         direction = other.direction;
         requireLabel = other.requireLabel;
         requireSitelink = other.requireSitelink;

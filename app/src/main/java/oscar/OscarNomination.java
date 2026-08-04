@@ -1,10 +1,10 @@
 package oscar;
 
 import objectview.annotations.Reference;
-import objectview.ViewableAdapter;
+import quiz.source.ManualEntity;
 import wikidata.explore.extract.WikidataDynamicObject;
 
-public class OscarNomination extends ViewableAdapter {
+public class OscarNomination extends ManualEntity {
     private String name;
 
     @Reference

@@ -208,8 +208,9 @@ public class NobelPrizes implements DomainViews {
     }
 
     @Override
-    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
-        return java.util.List.of(rootGroup);
+    public java.util.List<objectview.viewconfig.DomainGroupRoot> getGroupRootBindings() {
+        return java.util.List.of(new objectview.viewconfig.DomainGroupRoot(
+                NobelPrize.class.getSimpleName(), rootGroup));
     }
 
     @Override

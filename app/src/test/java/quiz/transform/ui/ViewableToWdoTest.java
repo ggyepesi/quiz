@@ -114,7 +114,7 @@ class ViewableToWdoTest {
         store.save(pool, file);
 
         java.util.Map<String, WikidataDynamicObject> byId = new java.util.HashMap<>();
-        for (WikidataDynamicObject o : store.loadAll(file)) byId.put(o.qid(), o);
+        for (WikidataDynamicObject o : store.loadAll(file)) byId.put(o.getIdentifier(), o);
 
         WikidataDynamicObject reloaded = byId.get("Alice");
         assertNotNull(reloaded);
@@ -166,7 +166,7 @@ class ViewableToWdoTest {
         assertEquals(List.of("A", "A"), groups.stream()
                 .map(WikidataDynamicObject::getDisplayName).toList());
         assertEquals(List.of("B.A", "C.A"), groups.stream()
-                .map(WikidataDynamicObject::qid).toList());
+                .map(WikidataDynamicObject::getIdentifier).toList());
         assertTrue(groups.stream().noneMatch(WikidataDynamicObject::isValueObject));
         assertTrue(groups.stream().allMatch(
                 group -> "ViewableGroup".equals(group.typeName())));
@@ -189,18 +189,18 @@ class ViewableToWdoTest {
 
         WikidataDynamicObject loadedBA = loaded.objects().stream()
                 .filter(object -> "ViewableGroup".equals(object.typeName())
-                        && "B.A".equals(object.qid()))
+                        && "B.A".equals(object.getIdentifier()))
                 .findFirst().orElseThrow(() -> new AssertionError(
                         loaded.objects().stream()
-                                .map(object -> object.typeName() + ":" + object.qid())
+                                .map(object -> object.typeName() + ":" + object.getIdentifier())
                                 .toList().toString()));
         assertEquals("B", ((WikidataDynamicObject)
-                loadedBA.get("parent")).qid());
+                loadedBA.get("parent")).getIdentifier());
         assertEquals("B/A", loadedBA.getReferenceLabel());
         assertEquals("grouped", ((java.util.Map<?, ?>) loadedBA.get("members"))
                 .values().stream()
                 .map(WikidataDynamicObject.class::cast)
-                .findFirst().orElseThrow().qid());
+                .findFirst().orElseThrow().getIdentifier());
     }
 
     @Test void preservesMapKeys() {
@@ -229,7 +229,7 @@ class ViewableToWdoTest {
         var loaded = store.loadAllWithFieldGraph(file);
         assertTrue(objectview.field.FieldSet.of(loaded.objects().get(0))
                         .field("website").link(),
-                "a loaded dynamic object carries its persisted annotation schema");
+                "a loaded WDO carries its persisted annotation schema");
         SnapshotDomain roundTripped =
                 new SnapshotDomain(loaded.objects(), loaded.fieldGraph());
 

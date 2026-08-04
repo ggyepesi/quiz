@@ -14,7 +14,7 @@ import java.util.List;
  *
  * <p>Each entry is the actual generated instance where one exists (a typed
  * {@code Character}/{@code Episode} you can click through to), otherwise a
- * {@link quiz.source.Source} carrying just the QID + wiki link.
+ * a {@link quiz.source.WikidataViewable} carrying just the QID + wiki link.
  */
 public class NameCollision extends ViewableAdapter {
 

@@ -1,5 +1,7 @@
 package wikidata.explore.query.swing;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import objectview.demo.MultiView;
 import objectview.render.RenderContext;
 import objectview.Viewable;

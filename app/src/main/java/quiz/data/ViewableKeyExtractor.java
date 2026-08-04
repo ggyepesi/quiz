@@ -1,10 +1,10 @@
 package quiz.data;
 
 import objectview.Viewable;
-import objectview.field.FieldSet;
-import objectview.viewconfig.ViewConfig;
-import objectview.Viewable;
 import objectview.ViewableAdapter;
+import objectview.field.FieldSet;
+import objectview.field.ViewableFieldPaths;
+import objectview.viewconfig.ViewConfig;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -24,9 +24,8 @@ import java.util.Set;
 public final class ViewableKeyExtractor {
 
     public List<List<String>> paths(ViewConfig config) {
-        List<List<String>> paths = new ArrayList<>();
-        collectPaths(config, new ArrayList<>(), paths);
-        return List.copyOf(paths);
+        return ViewableFieldPaths.collect(config, ViewableFieldPaths.ALL_FIELDS)
+                .stream().map(ViewableFieldPaths.FieldPath::path).toList();
     }
 
     public List<List<Object>> combinations(Viewable viewable, ViewConfig config) {
@@ -87,42 +86,6 @@ public final class ViewableKeyExtractor {
         List<Object> out = new ArrayList<>();
         flattenAlternatives(raw, out);
         return out;
-    }
-
-    private static void collectPaths(
-            ViewConfig config, List<String> prefix, List<List<String>> out) {
-        if (config == null) {
-            return;
-        }
-        if (config.isAllFields()) {
-            collectAllFieldPaths(config.getCls(), prefix, out);
-            return;
-        }
-
-        for (Map.Entry<String, ViewConfig> entry : config.getFields().entrySet()) {
-            List<String> path = new ArrayList<>(prefix);
-            path.add(entry.getKey());
-            ViewConfig child = entry.getValue();
-            if (child == null || child.isAllFields() || child.getFields().isEmpty()) {
-                out.add(List.copyOf(path));
-            } else {
-                collectPaths(child, path, out);
-            }
-        }
-    }
-
-    private static void collectAllFieldPaths(
-            Class<? extends Viewable> cls,
-            List<String> prefix,
-            List<List<String>> out) {
-        if (cls == null) {
-            return;
-        }
-        for (Field field : ViewableAdapter.getAllFields(cls)) {
-            List<String> path = new ArrayList<>(prefix);
-            path.add(field.getName());
-            out.add(List.copyOf(path));
-        }
     }
 
     private Object extractPathValueRecursive(

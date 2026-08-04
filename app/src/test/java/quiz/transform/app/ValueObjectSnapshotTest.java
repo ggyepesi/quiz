@@ -55,7 +55,7 @@ class ValueObjectSnapshotTest {
 
         Map<String, WikidataDynamicObject> items = loaded.stream()
                 .filter(o -> "Item".equals(o.typeName()))
-                .collect(Collectors.toMap(WikidataDynamicObject::qid, o -> o));
+                .collect(Collectors.toMap(WikidataDynamicObject::getIdentifier, o -> o));
         assertEquals(2, items.size());
 
         // Each item keeps ITS OWN note — not one merged value shared by both.

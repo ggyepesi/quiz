@@ -64,7 +64,7 @@ class StateLanguagesTest {
         WikidataDynamicObject loadedFrance =
                 store.loadAllWithFieldGraph(snapshot).objects().stream()
                         .filter(value -> "State".equals(value.typeName())
-                                && "France".equals(value.qid()))
+                                && "France".equals(value.getIdentifier()))
                         .findFirst().orElseThrow();
         assertEquals(List.of(
                         "French", "Corsican", "Basque", "Breton", "Occitan"),

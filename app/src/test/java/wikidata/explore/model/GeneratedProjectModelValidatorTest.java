@@ -15,7 +15,7 @@ class GeneratedProjectModelValidatorTest {
         project.addClass(new GeneratedClassModel("OscarNominations"));
 
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
-        nomination.statementSourceClass("OscarNominations");
+        nomination.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nomination.instanceMapping().propertyPid("P1411");
         nomination.addField("edition", FieldType.ENTITY, FieldCardinality.SINGLE)
                   .entityClassName("Edition");

@@ -45,14 +45,16 @@ class SubclassDomainTest {
         SnapshotDomain source = new SnapshotDomain(List.of(france, alabama));
         WorkingDomain working = new WorkingDomain(source);
         working.defineSubclass("USState", "State", List.of(alabama));
-        working.addField("USState", new DomainField(
-                "USState", "admissionDate", false, false,
-                objectview.field.FieldKind.ORDERED));
+        working.addField("USState", objectview.field.FieldRef.described(
+                "admissionDate", objectview.field.FieldKind.ORDERED,
+                objectview.field.FieldKind.ORDERED, "Ordered",
+                false, false, null, false, false,
+                false, false, "", false, false));
 
         var converted = ViewableToWdo.convertDomain(
                 working.memberRoots(), working.groupRootBindings(), working);
-        // Simulate an older base-typed reference copy of the same logical entity.
-        // Snapshot merging must retain only the most-specific direct claim.
+        // A base-typed duplicate of the same logical entity must not replace the
+        // most-specific direct class claim during snapshot normalization.
         List<WikidataDynamicObject> roots = new java.util.ArrayList<>(
                 converted.memberRoots());
         roots.add(state("Alabama"));
@@ -64,7 +66,7 @@ class SubclassDomainTest {
         SnapshotDomain restored = new SnapshotDomain(
                 loaded.objects(), loaded.fieldGraph());
         WikidataDynamicObject restoredAlabama = loaded.objects().stream()
-                .filter(value -> "Alabama".equals(value.qid())).findFirst().orElseThrow();
+                .filter(value -> "Alabama".equals(value.getIdentifier())).findFirst().orElseThrow();
 
         assertEquals("USState", restoredAlabama.typeName());
         assertEquals(java.util.Set.of("USState"),
@@ -78,8 +80,8 @@ class SubclassDomainTest {
                 "the subtype's own field does not leak onto the base after reload");
 
         JsonNode json = new ObjectMapper().readTree(file);
-        JsonNode alabamaJson = json.findParents("qid").stream()
-                .filter(entity -> "Alabama".equals(entity.path("qid").asText()))
+        JsonNode alabamaJson = json.findParents("id").stream()
+                .filter(entity -> "Alabama".equals(entity.path("id").asText()))
                 .findFirst().orElseThrow();
         assertTrue(alabamaJson.path("classes").toString().contains("\"USState\""));
         assertTrue(json.findValues("baseType").stream()

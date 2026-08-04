@@ -1,5 +1,7 @@
 package quiz.transform.ui;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import objectview.Viewable;
 import quiz.transform.DynamicViewable;
 import objectview.field.FieldAccess;

@@ -44,8 +44,8 @@ public final class SnapshotDomain implements DomainModel {
         // "film", "song") reads as its display-name String, not an object chip.
         wikidata.explore.transform.BareReferenceCollapse.apply(pool);
         this.pool = pool;
-        // New snapshots carry this graph. Derivation remains only for old snapshots
-        // and direct in-memory construction/tests.
+        // Loaded snapshots pass their persisted graph; direct in-memory domains derive
+        // the same graph once from their freshly assembled instances.
         this.fieldGraph = fieldGraph == null
                 ? SnapshotFieldGraph.derive(pool) : fieldGraph;
         this.statementTypes = statementTypes == null
@@ -57,10 +57,6 @@ public final class SnapshotDomain implements DomainModel {
 
     @Override public java.util.Set<String> structuralFields(String type) {
         return DomainSchemas.structuralFields(fieldSchema(type));
-    }
-
-    @Override public List<DomainField> fields(String type) {
-        return DomainSchemas.fields(this, type);
     }
 
     // The snapshot is immutable, so each type's schema is stable — cache it, since the

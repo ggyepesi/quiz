@@ -38,16 +38,10 @@ public final class ReflectionDomain implements DomainModel {
     private final Map<String, String> baseTypes = new LinkedHashMap<>();
 
     public ReflectionDomain(Collection<? extends Viewable> roots) {
-        this(roots, List.<objectview.group.ViewableGroup<?>>of());
+        this(roots, List.of());
     }
 
     public ReflectionDomain(
-            Collection<? extends Viewable> roots,
-            Collection<? extends objectview.group.ViewableGroup<?>> groupRoots) {
-        this(roots, bindLegacyRoots(roots, groupRoots));
-    }
-
-    private ReflectionDomain(
             Collection<? extends Viewable> roots,
             List<objectview.viewconfig.DomainGroupRoot> groupRootBindings) {
         this.memberRoots = roots == null ? List.of() : List.copyOf(roots);
@@ -135,19 +129,6 @@ public final class ReflectionDomain implements DomainModel {
         return new ReflectionDomain(roots, views.getGroupRootBindings());
     }
 
-    private static List<objectview.viewconfig.DomainGroupRoot> bindLegacyRoots(
-            Collection<? extends Viewable> members,
-            Collection<? extends objectview.group.ViewableGroup<?>> roots) {
-        String memberType = members == null ? null : members.stream()
-                .filter(java.util.Objects::nonNull)
-                .map(Viewable::typeName)
-                .findFirst().orElse(null);
-        if (memberType == null || roots == null) return List.of();
-        return roots.stream().filter(java.util.Objects::nonNull)
-                .map(root -> new objectview.viewconfig.DomainGroupRoot(memberType, root))
-                .toList();
-    }
-
     @SuppressWarnings("unchecked")
     private void index(Class<?> cls) {
         String type = cls.getSimpleName();
@@ -181,9 +162,6 @@ public final class ReflectionDomain implements DomainModel {
 
     @Override public List<String> types() { return List.copyOf(memberTypes); }
     @Override public String baseType(String type) { return baseTypes.get(type); }
-    @Override public List<DomainField> fields(String type) {
-        return DomainSchemas.fields(this, type);
-    }
     @Override public FieldSchema fieldSchema(String type) {
         return schemasByType.get(type);
     }

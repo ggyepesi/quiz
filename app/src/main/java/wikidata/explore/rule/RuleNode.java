@@ -1,7 +1,6 @@
 package wikidata.explore.rule;
 
 import wikidata.explore.model.RuleDirection;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import wikidata.explore.filter.WikidataValueFilter;
 
 import java.util.ArrayList;
@@ -40,40 +39,16 @@ public class RuleNode {
     private String membershipQid = "";
 
     // -----------------------------------------------------------------
-    // Label config (replaces the old requireEnglishLabel boolean)
+    // Label config
     // -----------------------------------------------------------------
 
     private RuleLabelConfig labelConfig = new RuleLabelConfig();
 
-    /**
-     * Kept for Jackson backward-compatibility with v1 JSON files that
-     * serialised a plain {@code requireEnglishLabel} boolean.
-     * {@link RuleTreeSerializer} calls
-     * {@link #migrateRequireEnglishLabel} during load if this is non-null.
-     *
-     * @deprecated use {@link #labelConfig()} instead.
-     */
-    @Deprecated
-    @JsonProperty("requireEnglishLabel")
-    private Boolean requireEnglishLabelLegacy = null;
-
     // -----------------------------------------------------------------
-    // Included direct fields (replaces the old includeImage boolean)
+    // Included direct fields
     // -----------------------------------------------------------------
 
     private final List<RuleIncludedField> includedFields = new ArrayList<>();
-
-    /**
-     * Kept for Jackson backward-compatibility with v1 JSON files that
-     * serialised a plain {@code includeImage} boolean.
-     * {@link RuleTreeSerializer} calls
-     * {@link #migrateIncludeImage} during load if this is non-null.
-     *
-     * @deprecated use {@link #includedFields()} instead.
-     */
-    @Deprecated
-    @JsonProperty("includeImage")
-    private Boolean includeImageLegacy = null;
 
     // -----------------------------------------------------------------
     // Filters / exclusions / edges
@@ -136,46 +111,6 @@ public class RuleNode {
         valueFilters().forEach(s::addValueFilter);
 
         return s;
-    }
-
-    // -----------------------------------------------------------------
-    // Migration helpers (called by RuleTreeSerializer after load)
-    // -----------------------------------------------------------------
-
-    /**
-     * If an old JSON file contained {@code "requireEnglishLabel": true/false},
-     * Jackson will have populated {@link #requireEnglishLabelLegacy}.
-     * This method migrates that value into {@link #labelConfig} and clears
-     * the legacy field so it isn't saved back out.
-     */
-    public void migrateRequireEnglishLabel() {
-        if (requireEnglishLabelLegacy == null) {
-            return;
-        }
-
-        boolean require = requireEnglishLabelLegacy;
-        labelConfig = new RuleLabelConfig(require, "en");
-        requireEnglishLabelLegacy = null;
-    }
-
-    /**
-     * If an old JSON file contained {@code "includeImage": true},
-     * Jackson will have populated {@link #includeImageLegacy}.
-     * This method adds the standard P18 included field and clears
-     * the legacy field.
-     */
-    public void migrateIncludeImage() {
-        if (includeImageLegacy == null) {
-            return;
-        }
-
-        if (includeImageLegacy
-                && includedFields.stream()
-                                 .noneMatch(f -> "P18".equals(f.propertyPid()))) {
-            includedFields.add(RuleIncludedField.imageP18());
-        }
-
-        includeImageLegacy = null;
     }
 
     // -----------------------------------------------------------------
@@ -267,25 +202,6 @@ public class RuleNode {
     public void labelConfig(RuleLabelConfig labelConfig)
         { this.labelConfig = labelConfig == null ? new RuleLabelConfig() : labelConfig; }
 
-    /**
-     * Convenience forwarder so call sites that only care about
-     * English-or-not don't need to unwrap the config.
-     */
-    public boolean requireEnglishLabel() {
-        return labelConfig != null
-                && labelConfig.requireLabel()
-                && "en".equalsIgnoreCase(labelConfig.language());
-    }
-
-    /**
-     * Convenience setter — equivalent to setting a new RuleLabelConfig
-     * with the given flag and language="en". Kept so existing editor
-     * code compiles without change during the migration period.
-     */
-    public void requireEnglishLabel(boolean require) {
-        labelConfig = new RuleLabelConfig(require, "en");
-    }
-
     // -----------------------------------------------------------------
     // Accessors — included fields
     // -----------------------------------------------------------------
@@ -295,28 +211,6 @@ public class RuleNode {
     public RuleNode addIncludedField(RuleIncludedField field) {
         if (field != null) includedFields.add(field);
         return this;
-    }
-
-    /**
-     * Convenience — returns true if any included field targets P18.
-     * Replaces the old {@code includeImage()} boolean.
-     */
-    public boolean includeImage() {
-        return includedFields.stream()
-                             .anyMatch(f -> "P18".equals(f.propertyPid()));
-    }
-
-    /**
-     * Convenience setter for backward compatibility with old call sites.
-     * Adds or removes the standard P18 image field.
-     */
-    public void includeImage(boolean include) {
-        boolean already = includeImage();
-        if (include && !already) {
-            includedFields.add(RuleIncludedField.imageP18());
-        } else if (!include && already) {
-            includedFields.removeIf(f -> "P18".equals(f.propertyPid()));
-        }
     }
 
     // -----------------------------------------------------------------

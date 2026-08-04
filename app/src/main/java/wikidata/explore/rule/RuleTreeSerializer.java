@@ -2,7 +2,6 @@ package wikidata.explore.rule;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
@@ -16,12 +15,6 @@ import java.io.IOException;
  * Format:
  *
  *   RuleTreeConfig { version, name, description, root }
- *
- * Backward compatibility:
- *   - Old files containing a bare RuleNode are detected and wrapped.
- *   - v1 fields (requireEnglishLabel boolean, includeImage boolean) are
- *     migrated to RuleLabelConfig / RuleIncludedField via RuleNode's
- *     migration helpers after deserialization.
  */
 public class RuleTreeSerializer {
 
@@ -99,91 +92,25 @@ public class RuleTreeSerializer {
     }
 
     public RuleTreeConfig loadConfig(File file) throws IOException {
-        JsonNode rootJson = mapper.readTree(file);
-
-        RuleTreeConfig config;
-
-        if (looksLikeWrappedConfig(rootJson)) {
-            config = mapper.treeToValue(rootJson, RuleTreeConfig.class);
-        } else {
-            // Backward compatibility: bare RuleNode written by the original
-            // serializer before RuleTreeConfig was introduced.
-            RuleNode root = mapper.treeToValue(rootJson, RuleNode.class);
-            config = RuleTreeConfig.of(root);
-        }
-
-        migrateIfNeeded(config);
+        RuleTreeConfig config = mapper.readValue(file, RuleTreeConfig.class);
         validateConfigAfterLoad(config, file);
 
         return config;
     }
 
     // ------------------------------------------------------------------
-    // Migration
-    // ------------------------------------------------------------------
-
-    private void migrateIfNeeded(RuleTreeConfig config) {
-        if (config.version() <= 0) {
-            config.version(RuleTreeConfig.CURRENT_VERSION);
-        }
-
-        // Migrate legacy boolean fields on every RuleNode in the tree
-        if (config.root() != null) {
-            migrateNodeTree(config.root());
-        }
-
-        if (config.version() > RuleTreeConfig.CURRENT_VERSION) {
-            throw new IllegalStateException(
-                    "Config version " + config.version()
-                    + " is newer than supported version "
-                    + RuleTreeConfig.CURRENT_VERSION);
-        }
-
-        // Future version migrations go here:
-        // if (config.version() == 1) { migrateV1ToV2(config); config.version(2); }
-    }
-
-    /**
-     * Recursively migrates legacy boolean fields in every RuleNode
-     * in the tree (requireEnglishLabel → RuleLabelConfig,
-     * includeImage → RuleIncludedField).
-     */
-    private static void migrateNodeTree(RuleNode node) {
-        if (node == null) return;
-
-        node.migrateRequireEnglishLabel();
-        node.migrateIncludeImage();
-
-        for (RuleEdge edge : node.edges()) {
-            if (edge != null && edge.childNode() != null) {
-                migrateNodeTree(edge.childNode());
-            }
-        }
-    }
-
-    // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
-
-    /**
-     * A JSON object is a wrapped RuleTreeConfig if it has both "version"
-     * and "root" fields. Using "version" as the discriminator prevents
-     * false positives from RuleNodes that have a child edge named "root".
-     */
-    private static boolean looksLikeWrappedConfig(JsonNode rootJson) {
-        return rootJson != null
-                && rootJson.isObject()
-                && rootJson.has("version")
-                && rootJson.has("root");
-    }
 
     private static void validateConfigForSave(RuleTreeConfig config) {
         if (config == null)
             throw new IllegalArgumentException("config must not be null");
         if (config.root() == null)
             throw new IllegalArgumentException("config.root must not be null");
-        if (config.version() <= 0)
-            config.version(RuleTreeConfig.CURRENT_VERSION);
+        if (config.version() != RuleTreeConfig.CURRENT_VERSION)
+            throw new IllegalArgumentException("Rule-tree version " + config.version()
+                    + " is not supported; regenerate it with version "
+                    + RuleTreeConfig.CURRENT_VERSION);
     }
 
     private static void validateConfigAfterLoad(
@@ -195,6 +122,10 @@ public class RuleTreeSerializer {
         if (config.root() == null)
             throw new IllegalStateException(
                     "Rule tree config has no root node: " + file);
+        if (config.version() != RuleTreeConfig.CURRENT_VERSION)
+            throw new IllegalStateException("Rule-tree version " + config.version()
+                    + " is not supported; regenerate " + file + " with version "
+                    + RuleTreeConfig.CURRENT_VERSION);
     }
 
     private static void ensureParentDirectory(File file) throws IOException {

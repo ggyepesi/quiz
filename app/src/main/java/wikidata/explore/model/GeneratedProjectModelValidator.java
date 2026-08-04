@@ -285,10 +285,7 @@ public final class GeneratedProjectModelValidator {
             GeneratedClassModel clazz,
             List<Problem> problems) {
 
-        CanonicalSpec canonical = clazz.effectiveCanonical();
-        if (canonical == null) {
-            return;
-        }
+        CanonicalSpec canonical = clazz.canonical();
 
         Set<String> fieldNames = fieldNames(clazz);
 

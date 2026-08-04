@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Compatibility adapters around the canonical {@link FieldSchema}.
+ * Projections and queries over the canonical {@link FieldSchema}.
  *
  * <p>{@link DomainField} (dotted operation paths) and {@link FieldTypeSource}
  * (the existing config editor API) are projections of the schema, not independent
@@ -25,88 +25,12 @@ public final class DomainSchemas {
 
     private static final int MAX_PATH_DEPTH = 6;
 
-    // Guards the fromLegacy <-> projection recursion: if a source leaves fieldSchema() as
-    // the default AND projects fieldTypes()/structuralFields() from fieldSchema(), the two
-    // adapters call each other forever — fail loud with the cause instead of a stack overflow.
-    private static final ThreadLocal<Set<String>> RESOLVING_LEGACY =
-            ThreadLocal.withInitial(LinkedHashSet::new);
     // Warn AT MOST once per (topType, nested type) that a deep reference chain was truncated,
     // so the MAX_PATH_DEPTH cap is never silent but also never spams.
     private static final Set<String> WARNED_DEPTH =
             java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private DomainSchemas() {}
-
-    /**
-     * Builds a canonical top-level schema from an older {@link DomainModel}
-     * implementation. Native domain implementations should override
-     * {@link DomainModel#fieldSchema(String)}; this adapter keeps small external
-     * and test implementations source-compatible.
-     */
-    public static FieldSchema fromLegacy(DomainModel domain, String type) {
-        String key = System.identityHashCode(domain) + "\0" + type;
-        Set<String> active = RESOLVING_LEGACY.get();
-        if (!active.add(key)) {
-            throw new IllegalStateException("DomainModel "
-                    + (domain == null ? "null" : domain.getClass().getName())
-                    + " for type '" + type + "' neither overrides fieldSchema() nor supplies a"
-                    + " fields()/fieldTypes() independent of it — fromLegacy and the schema"
-                    + " projections are calling each other. Override fieldSchema(), OR keep"
-                    + " fields()/fieldTypes() from projecting the schema.");
-        }
-        try {
-            return buildFromLegacy(domain, type);
-        } finally {
-            active.remove(key);
-            if (active.isEmpty()) {
-                RESOLVING_LEGACY.remove();
-            }
-        }
-    }
-
-    private static FieldSchema buildFromLegacy(DomainModel domain, String type) {
-        Map<String, DomainField> declared = new LinkedHashMap<>();
-        for (DomainField field : domain.fields(type)) {
-            if (field != null && field.field() != null
-                    && !field.field().contains(".")) {
-                declared.putIfAbsent(field.field(), field);
-            }
-        }
-
-        FieldTypeSource types = domain.fieldTypes(type);
-        Set<String> names = new LinkedHashSet<>();
-        if (types != null) {
-            names.addAll(types.fieldNames());
-        }
-        names.addAll(declared.keySet());
-
-        Set<String> structuralFields = domain.structuralFields(type);
-        List<FieldRef> refs = new ArrayList<>();
-        for (String name : names) {
-            DomainField field = declared.get(name);
-            FieldTypeSource.FieldTypeInfo info =
-                    types == null ? null : types.field(name);
-            String label = info == null ? null : info.typeLabel();
-            boolean collection = (field != null && field.collection())
-                    || isContainerLabel(label);
-            String target = info == null ? null : info.nestedClassName();
-            boolean reference = (field != null && field.reference())
-                    || (target != null && !target.isBlank());
-            FieldKind valueKind = reference ? FieldKind.REFERENCE
-                    : field != null && !collection ? field.kind()
-                    : FieldKind.ofTypeLabel(elementTypeLabel(label));
-            FieldKind kind = collection ? FieldKind.COLLECTION
-                    : reference ? FieldKind.REFERENCE : valueKind;
-            boolean structural = structuralFields.contains(name)
-                    || info != null && info.structural();
-            boolean minor = info != null && info.minor();
-            refs.add(FieldRef.described(name, kind, valueKind, label,
-                    reference, collection, target, structural, minor,
-                    false, false, "", false, false));
-        }
-        List<FieldRef> immutable = List.copyOf(refs);
-        return () -> immutable;
-    }
 
     /** Dotted operation fields projected recursively from canonical schemas. */
     public static List<DomainField> fields(DomainModel domain, String type) {
@@ -325,7 +249,8 @@ public final class DomainSchemas {
                     .findFirst().orElse(null);
             if (contract != null) {
                 return new FieldTypeInfo(contract.typeLabel(), false, false,
-                        null, null, contract.label(), contract.role());
+                        null, null, contract.label(), contract.role(),
+                        contract.kind(), contract.valueKind());
             }
             return null;
         }
@@ -345,7 +270,7 @@ public final class DomainSchemas {
             }
             return new FieldTypeInfo(field.typeLabel(), field.structural(),
                     field.minor(), nested == null ? null : target, nested,
-                    field.label(), field.role());
+                    field.label(), field.role(), field.kind(), field.valueKind());
         }
 
         @Override public List<String> fieldNames() {

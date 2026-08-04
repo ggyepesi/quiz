@@ -203,7 +203,7 @@ public class OscarNominations implements DomainViews {
             return "";
         }
 
-        String qid = e.getQid();
+        String qid = e.getIdentifier();
 
         return qid == null ? "" : qid;
     }
@@ -219,7 +219,8 @@ public class OscarNominations implements DomainViews {
     }
 
     @Override
-    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
-        return java.util.List.of(root);
+    public java.util.List<objectview.viewconfig.DomainGroupRoot> getGroupRootBindings() {
+        return java.util.List.of(new objectview.viewconfig.DomainGroupRoot(
+                OscarNomination.class.getSimpleName(), root));
     }
 }

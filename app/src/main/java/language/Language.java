@@ -1,13 +1,13 @@
 package language;
 
 import objectview.annotations.Minor;
-import objectview.ViewableAdapter;
+import quiz.source.ManualEntity;
 import objectview.annotations.Reference;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class Language extends ViewableAdapter {
+public class Language extends ManualEntity {
     private final String name;
 
     private String nativeName;

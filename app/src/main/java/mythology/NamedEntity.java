@@ -7,9 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JPanel;
 
-import objectview.ViewableAdapter;
+import quiz.source.ManualEntity;
 
-public  class NamedEntity extends ViewableAdapter implements MythologyEntity {
+public  class NamedEntity extends ManualEntity implements MythologyEntity {
     private String name;
 
     protected NamedEntity() {}

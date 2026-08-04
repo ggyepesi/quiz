@@ -1,5 +1,7 @@
 package quiz.transform;
 
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import org.junit.jupiter.api.Test;
 import objectview.field.DynamicFields;
 import objectview.ViewableAdapter;

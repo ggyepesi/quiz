@@ -67,8 +67,9 @@ public class MythologyEntities implements DomainViews {
     }
 
     @Override
-    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
-        return java.util.List.of(rootGroup);
+    public java.util.List<objectview.viewconfig.DomainGroupRoot> getGroupRootBindings() {
+        return java.util.List.of(new objectview.viewconfig.DomainGroupRoot(
+                Creature.class.getSimpleName(), rootGroup));
     }
 
     @Override

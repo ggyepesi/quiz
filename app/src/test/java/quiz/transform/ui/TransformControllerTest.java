@@ -27,8 +27,9 @@ class TransformControllerTest {
                 city("Paris", "Europe"), city("Tokyo", "Asia")));
         DomainModel cities = new DomainModel() {
             @Override public List<String> types() { return List.of("City"); }
-            @Override public List<DomainField> fields(String type) {
-                return List.of(new DomainField("City", "region", false, false));
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("City", "region", false, false)));
             }
             @Override public Collection<? extends Viewable> instances() { return pool; }
             @Override public Class<? extends Viewable> universe() { return Viewable.class; }
@@ -66,10 +67,10 @@ class TransformControllerTest {
         tokyo.put("population", 3);
         DomainModel cities = new DomainModel() {
             @Override public List<String> types() { return List.of("City"); }
-            @Override public List<DomainField> fields(String type) {
-                return List.of(
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
                         new DomainField("City", "region", false, false),
-                        new DomainField("City", "population", false, false));
+                        new DomainField("City", "population", false, false)));
             }
             @Override public Collection<? extends Viewable> instances() {
                 return List.of(paris, berlin, tokyo);
@@ -104,8 +105,9 @@ class TransformControllerTest {
     @Test void createSubclassFromAnEmptyGroupIsRejected() {
         DomainModel cities = new DomainModel() {
             @Override public List<String> types() { return List.of("City"); }
-            @Override public List<DomainField> fields(String type) {
-                return List.of(new DomainField("City", "region", false, false));
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("City", "region", false, false)));
             }
             @Override public Collection<? extends Viewable> instances() {
                 return List.of(city("Paris", "Europe"));

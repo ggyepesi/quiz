@@ -1,10 +1,9 @@
 package wikidata.explore.rule;
 
 /**
- * Versioned wrapper around a serialized RuleNode tree.
+ * Versioned serialized RuleNode tree.
  *
- * Storing the root node directly works today, but a wrapper gives us a stable
- * place for future metadata and migrations:
+ * The wrapper gives metadata a stable home:
  *
  *   version
  *   name

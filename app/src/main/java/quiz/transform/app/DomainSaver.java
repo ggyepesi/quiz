@@ -22,18 +22,14 @@ import java.util.Set;
 public final class DomainSaver implements DomainWriter {
 
     @Override
-    public String save(String name, Collection<? extends Viewable> members) throws Exception {
-        return save(name, members, null);
-    }
-
-    @Override
     public String save(String name, Collection<? extends Viewable> members,
                        DomainModel schema) throws Exception {
         String key = sanitize(name);
-        var converted = schema == null
-                ? ViewableToWdo.convertDomain(members, List.of(), null)
-                : ViewableToWdo.convertDomain(
-                        schema.memberRoots(), schema.groupRootBindings(), schema);
+        if (schema == null) {
+            throw new IllegalArgumentException("A domain schema is required");
+        }
+        var converted = ViewableToWdo.convertDomain(
+                schema.memberRoots(), schema.groupRootBindings(), schema);
 
         File file = new File(aux.Constants.wikidataDataDirectory
                 + "transform/" + key + ".snapshot.json");

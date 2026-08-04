@@ -1,5 +1,9 @@
 package wikidata.explore.extract;
 
+import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+
+import wikidata.explore.extract.WikidataDynamicObject;
+
 import objectview.viewconfig.DomainViews;
 import objectview.Viewable;
 import quiz.ViewableGroup;
@@ -48,8 +52,11 @@ public class GeneratedKnowledgeSet implements DomainViews {
     }
 
     @Override
-    public java.util.List<? extends objectview.group.ViewableGroup<?>> getRootGroups() {
-        return rootGroup == null ? java.util.List.of() : java.util.List.of(rootGroup);
+    public java.util.List<objectview.viewconfig.DomainGroupRoot> getGroupRootBindings() {
+        if (rootGroup == null || viewables.isEmpty()) return java.util.List.of();
+        String memberType = viewables.values().iterator().next().typeName();
+        return java.util.List.of(new objectview.viewconfig.DomainGroupRoot(
+                memberType, rootGroup));
     }
 
     @Override

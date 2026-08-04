@@ -71,7 +71,7 @@ export function getViewable(type, id) {
 
 /** Fields of a type, or — with a dotted `path` — the fields available under a
  *  reference (e.g. path="namedAfter" → the target's fields), for deep config.
- *  @returns {Promise<Array<{name:string,kind:string,expandable:boolean}>>} */
+ *  @returns {Promise<Array<{name:string,label:string,kind:string,expandable:boolean}>>} */
 export function getFields(type, path = '') {
   const p = new URLSearchParams({ type });
   if (path) p.set('path', path);
@@ -84,7 +84,7 @@ export function getGroups(type) {
 }
 
 /** @returns {Promise<object|null>} a generated multiple-choice quiz */
-export function getQuiz(type, { prompt = 'logo', ask = 'name', n = 10, group = '' } = {}) {
+export function getQuiz(type, { prompt = 'logo', ask = '@view:display', n = 10, group = '' } = {}) {
   const p = new URLSearchParams({ type, prompt, ask, n: String(n) });
   if (group) p.set('group', group);
   return json(`${apiBase()}/api/quiz?${p}`);
@@ -113,7 +113,7 @@ export function getOrderingQuiz(
 }
 
 /** @returns {Promise<object|null>} a matching game (prompts vs answers) */
-export function getPairing(type, { prompt = 'logo', ask = 'name', n = 12, group = '' } = {}) {
+export function getPairing(type, { prompt = 'logo', ask = '@view:display', n = 12, group = '' } = {}) {
   const p = new URLSearchParams({ type, prompt, ask, n: String(n) });
   if (group) p.set('group', group);
   return json(`${apiBase()}/api/pairing?${p}`);
