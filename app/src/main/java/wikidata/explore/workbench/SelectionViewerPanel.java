@@ -261,9 +261,8 @@ public class SelectionViewerPanel extends JPanel {
         RenderContext context = new RenderContext(viewables);
 
         ViewConfig config = ViewConfig.of(WikidataDynamicObject.class);
-        // Render all (non-hidden) fields so the @Provenance "selection: Wikidata" chip —
-        // the link to the entity — shows on each member. A bare vocabulary member has
-        // only that chip besides its title, so this stays clean.
+        // Render all (non-hidden) fields so each member shows its Wikidata link field
+        // besides its title. A bare vocabulary member has only that, so this stays clean.
         config.setAllFields(true);
         config.setThumb(false);
         config.setAddListener(false);

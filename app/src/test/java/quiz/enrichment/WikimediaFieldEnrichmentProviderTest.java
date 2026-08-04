@@ -189,7 +189,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 "capitals", objectview.field.FieldKind.COLLECTION,
                 objectview.field.FieldKind.TEXT, "Collection<String>",
                 false, true, null, false, false,
-                false, false, "", false, false);
+                false, false, "", false);
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject("State", "usa", "Q30", "United States"),
                 "capitals", true, List.of(), capitals);
@@ -216,7 +216,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 "shapeVersions", objectview.field.FieldKind.COLLECTION,
                 objectview.field.FieldKind.MEDIA, "Collection<ImagePane>",
                 false, true, null, false, false,
-                true, false, "", false, false);
+                true, false, "", false);
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject(
                         "State", "Ashmore", "Q133888", "Ashmore"),

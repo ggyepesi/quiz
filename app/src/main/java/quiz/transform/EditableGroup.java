@@ -131,17 +131,17 @@ public class EditableGroup extends ViewableGroupAdapter {
                         "children", objectview.field.FieldKind.COLLECTION,
                         objectview.field.FieldKind.REFERENCE, "Collection<ViewableGroup>",
                         true, true, "ViewableGroup", true, false,
-                        false, false, "", false, true));
+                        false, false, "", true));
                 refs.add(objectview.field.FieldRef.described(
                         "members", objectview.field.FieldKind.COLLECTION,
                         objectview.field.FieldKind.REFERENCE, "Collection<Viewable>",
                         true, true, null, true, false,
-                        false, false, "", false, true));
+                        false, false, "", true));
                 refs.add(objectview.field.FieldRef.described(
                         "parent", objectview.field.FieldKind.REFERENCE,
                         objectview.field.FieldKind.REFERENCE, "ViewableGroup",
                         true, false, "ViewableGroup", true, false,
-                        false, false, "", false, true));
+                        false, false, "", true));
                 refs.add(objectview.field.FieldRef.of(
                         "groupName", objectview.field.FieldKind.TEXT, "String",
                         false, false, true));
@@ -152,7 +152,7 @@ public class EditableGroup extends ViewableGroupAdapter {
                         "keyRef", objectview.field.FieldKind.REFERENCE,
                         objectview.field.FieldKind.REFERENCE, "Viewable",
                         true, false, null, true, true,
-                        false, false, "", false, true));
+                        false, false, "", true));
                 for (String key : ruleFields().keySet()) {
                     refs.add(objectview.field.FieldRef.of(
                             key, objectview.field.FieldKind.TEXT, "String",

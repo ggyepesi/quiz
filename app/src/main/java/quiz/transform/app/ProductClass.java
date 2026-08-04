@@ -48,7 +48,7 @@ public record ProductClass(String className,
             refs.add(FieldRef.described(f.name(), kind, valueKind,
                     f.typeLabel(), f.reference(), f.collection(),
                     f.nestedClassName(), f.structural(), false,
-                    false, false, "", false, false));
+                    false, false, "", false));
         }
         List<FieldRef> immutable = List.copyOf(refs);
         return () -> immutable;

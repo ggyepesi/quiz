@@ -15,9 +15,9 @@ import java.util.List;
  * factory yields a source from an external id the instance already carries.</p>
  *
  * <p>Its output is fed to resolution (auto when there is a single candidate,
- * otherwise a user pick), which sets the chosen {@code Source} as the instance's
- * anchor via {@link Sourced#anchor(Source)}. A {@link SourceProducer} then
- * consumes that anchor.</p>
+ * otherwise a user pick); the chosen {@code Source} is then consumed by a
+ * {@link SourceProducer} to pull data. The source itself is not stored on the
+ * instance — a resolved identity lives in the curation history.</p>
  *
  * @param <S> the concrete {@link Source} kind this factory produces
  */

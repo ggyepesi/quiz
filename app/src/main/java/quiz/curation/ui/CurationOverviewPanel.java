@@ -135,6 +135,7 @@ public final class CurationOverviewPanel extends JPanel {
         });
 
         JPanel right = new JPanel(new BorderLayout(6, 6));
+        wikidata.explore.workbench.WikidataLinks.installOnColumn(table, 3);
         JScrollPane operations = new JScrollPane(table);
         operations.setBorder(BorderFactory.createTitledBorder("Curation directives"));
         detail.setBorder(BorderFactory.createTitledBorder("Directive details"));
@@ -483,6 +484,17 @@ public final class CurationOverviewPanel extends JPanel {
         return entityLabel(operation.entity());
     }
 
+    /** The row's QID as a bare id so it renders as a Wikidata link: a resolved identity
+     *  link's target when present, else the entity's own id when Wikidata-shaped. */
+    private String entityQid(Operation operation) {
+        if (operation.source() instanceof IdentityLink link
+                && wikidata.explore.workbench.WikidataLinks.isId(link.sourceId())) {
+            return link.sourceId();
+        }
+        String id = operation.entity().id();
+        return wikidata.explore.workbench.WikidataLinks.isId(id) ? id : "";
+    }
+
     private String entityLabel(EntityKey entity) {
         return labelFor(entity.type(), entity.id());
     }
@@ -682,7 +694,8 @@ public final class CurationOverviewPanel extends JPanel {
     }
 
     private final class OperationTableModel extends AbstractTableModel {
-        private final String[] columns = {"Directive", "Class", "Entity", "Summary", "Origin"};
+        private final String[] columns =
+                {"Directive", "Class", "Entity", "QID", "Summary", "Origin"};
         private List<Operation> operations = List.of();
 
         void setOperations(List<Operation> value) {
@@ -704,8 +717,9 @@ public final class CurationOverviewPanel extends JPanel {
                 case 0 -> operation.kind().label;
                 case 1 -> operation.typeLabel();
                 case 2 -> entityLabel(operation);
-                case 3 -> operation.summary();
-                case 4 -> blankAsDash(operation.origin());
+                case 3 -> entityQid(operation);
+                case 4 -> operation.summary();
+                case 5 -> blankAsDash(operation.origin());
                 default -> "";
             };
         }

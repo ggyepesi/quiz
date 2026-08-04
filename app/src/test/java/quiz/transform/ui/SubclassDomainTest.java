@@ -49,7 +49,7 @@ class SubclassDomainTest {
                 "admissionDate", objectview.field.FieldKind.ORDERED,
                 objectview.field.FieldKind.ORDERED, "Ordered",
                 false, false, null, false, false,
-                false, false, "", false, false));
+                false, false, "", false));
 
         var converted = ViewableToWdo.convertDomain(
                 working.memberRoots(), working.groupRootBindings(), working);

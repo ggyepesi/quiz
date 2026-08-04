@@ -66,10 +66,9 @@ public class GeneratedViewableSourceGenerator {
             sb.append("import objectview.annotations.Reference;\n\n");
         }
 
-        // All generated classes extend the neutral GeneratedEntity carrier; their
-        // provenance (entity QID vs statement GUID) lives in the anchor the mapper
-        // attaches, not in the base class — a statement never inherits entity
-        // semantics.
+        // All generated classes extend the neutral GeneratedEntity carrier, which
+        // holds only results. Where the instance came from (entity QID vs statement
+        // GUID) is curation history, not state on the base class.
         sb.append("public class ").append(className)
           .append(" extends quiz.source.GeneratedEntity {\n\n");
 

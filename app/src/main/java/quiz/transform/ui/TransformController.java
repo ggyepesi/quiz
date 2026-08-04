@@ -56,7 +56,7 @@ public final class TransformController {
         objectview.field.FieldRef field = objectview.field.FieldRef.described(
                 name.trim(), actualKind, actualKind, actualKind.name(),
                 false, false, null, false, false,
-                false, false, "", false, false);
+                false, false, "", false);
         return domain.addField(type, field);
     }
 

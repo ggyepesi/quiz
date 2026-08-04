@@ -42,7 +42,7 @@ public final class FieldDefinitions {
                 reference ? definition.entityClassName() : null,
                 false, false,
                 definition.renderMode() == FieldRenderMode.INLINE,
-                false, "", false,
+                false, "",
                 definition.renderMode() == FieldRenderMode.REFERENCE);
     }
 

@@ -70,8 +70,8 @@ public final class SnapshotDomain implements DomainModel {
     }
 
     private FieldSchema buildFieldSchema(String type) {
-        // Only explicitly declared provenance is hidden from transform operations.
-        // Group-valued fields are ordinary references and remain configurable.
+        // Only reify back-reference (structural) fields are hidden from transform
+        // operations. Group-valued fields are ordinary references and stay configurable.
         java.util.Set<String> extraStructural = new java.util.LinkedHashSet<>();
         if (statementTypes.contains(type)) {
             extraStructural.add("source");

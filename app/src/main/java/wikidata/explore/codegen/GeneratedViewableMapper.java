@@ -106,9 +106,11 @@ public class GeneratedViewableMapper {
             generatedByQid.put(entityQid, target);
         }
 
-        // Stable identity + display come from the source object at creation. The
-        // instance holds only results; where it came from (Wikidata QID, or a reified
-        // statement's GUID + property) is curation history, not state on the instance.
+        // Stable identity + display come from the source object at creation; the
+        // instance holds only results, never a source field. Where it came from is not
+        // persisted here: a Wikidata entity's origin is derivable from its identity (the
+        // identifier IS the QID), and a durable per-instance creation record is deferred
+        // until the curation-history UI that would consume it.
         if (target instanceof quiz.source.GeneratedEntity ge) {
             ge.identifier(source.getIdentifier());
             ge.label(source.getDisplayName());

@@ -152,9 +152,6 @@ public class QueryObjectResultPanel
             Deque<Viewable> queue) {
         objectview.field.FieldSet fields = objectview.field.FieldSet.of(q);
         for (objectview.field.FieldRef field : fields.fields()) {
-            if (field.provenance()) {
-                continue;
-            }
             addReferences(fields.read(field.name()), queue);
         }
     }

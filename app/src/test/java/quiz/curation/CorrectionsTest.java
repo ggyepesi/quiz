@@ -116,7 +116,7 @@ class CorrectionsTest {
                 "maps", objectview.field.FieldKind.COLLECTION,
                 objectview.field.FieldKind.MEDIA, "Collection<ImagePane>",
                 false, true, null, false, false,
-                true, false, "", false, false);
+                true, false, "", false);
         curation.putFieldDeclaration("State", field);
         curation.save();
 

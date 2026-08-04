@@ -69,11 +69,11 @@ public final class Joiner {
                 FieldRef.described(leftField, FieldKind.REFERENCE,
                         FieldKind.REFERENCE, leftType, true, false,
                         leftType, false, false,
-                        false, false, "", false, false),
+                        false, false, "", false),
                 FieldRef.described(rightField, FieldKind.REFERENCE,
                         FieldKind.REFERENCE, rightType, true, false,
                         rightType, false, false,
-                        false, false, "", false, false));
+                        false, false, "", false));
         FieldSchema fieldSchema = () -> refs;
         return new DerivedClass(newType, fields, out, fieldSchema);
     }

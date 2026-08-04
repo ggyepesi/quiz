@@ -461,8 +461,26 @@ public final class ValidationPanel extends JPanel {
     private String identityQid(Viewable member) {
         String anchored = quiz.source.SourceIdentities.wikidataQid(member);
         if (anchored != null) return anchored;
+        // A just-approved identity is staged (not yet in the durable curation), so the
+        // preview must read pending links too — otherwise the resolved instance shows blank.
+        String staged = stagedQid(member);
+        if (staged != null) return staged;
         return resolvedQid(member, EnrichmentSources.collect(
                 member, concreteType(member), curationStore()));
+    }
+
+    /** The Wikidata QID of a pending (staged, not yet applied) identity for {@code member}. */
+    private String stagedQid(Viewable member) {
+        if (staging == null || member == null) return null;
+        String type = concreteType(member);
+        String targetId = member.getIdentifier();
+        return staging.identityLinks().stream()
+                .filter(l -> "Wikidata".equalsIgnoreCase(l.sourceKind()))
+                .filter(l -> java.util.Objects.equals(l.type(), type))
+                .filter(l -> java.util.Objects.equals(l.targetId(), targetId))
+                .map(IdentityLink::sourceId)
+                .filter(q -> q != null && q.matches("Q\\d+"))
+                .findFirst().orElse(null);
     }
 
     /** Identity coverage needs the actual source key, not just a yes/no count.
@@ -751,9 +769,6 @@ public final class ValidationPanel extends JPanel {
 
     private CurateType curateTypeOf(String type, String path) {
         if (path == null) return CurateType.NONE;
-        if (DomainSchemas.isProvenancePath(domain, type, path)) {
-            return CurateType.IDENTITY;
-        }
         DomainField f = fieldFor(type, path);
         if (f != null && f.reference()) return CurateType.REFERENCE;
         return CurateType.DATA;

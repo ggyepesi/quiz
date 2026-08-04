@@ -99,7 +99,6 @@ public final class ReflectionDomain implements DomainModel {
         List<Viewable> out = new ArrayList<>();
         objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
         for (objectview.field.FieldRef fr : fs.fields()) {
-            if (fr.provenance()) continue; // metadata field, not a domain-graph edge
             addViewables(fs.read(fr.name()), out);
         }
         return out;

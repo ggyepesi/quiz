@@ -27,6 +27,6 @@ public record FieldDeclaration(
     public FieldRef fieldRef() {
         return FieldRef.described(name, kind, valueKind, typeLabel,
                 reference, collection, targetType, structural, minor,
-                inline, false, "", false, annotatedReference);
+                inline, false, "", annotatedReference);
     }
 }

@@ -113,7 +113,7 @@ class FieldSetTest {
                 FieldRef.described("cast", FieldKind.COLLECTION,
                         FieldKind.REFERENCE, "List<Person>", true, true,
                         "Person", false, false,
-                        false, false, "", false, false));
+                        false, false, "", false));
 
         Film film = new Film();
         FieldSet reflected = FieldSet.of(film, schema);

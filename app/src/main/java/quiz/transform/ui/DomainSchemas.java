@@ -66,9 +66,8 @@ public final class DomainSchemas {
             return;
         }
         for (FieldRef field : schema.fields()) {
-            if (field.structural() || field.provenance()) {
-                // structural = reify/back-ref plumbing; provenance = the source anchor.
-                // Neither is a domain data field, so neither belongs in the operation pool.
+            if (field.structural()) {
+                // structural = reify/back-ref plumbing, not a domain data field.
                 continue;
             }
             String path = prefix.isEmpty()
@@ -126,7 +125,7 @@ public final class DomainSchemas {
                 refs.add(FieldRef.described(field.field(), kind,
                         valueKind, typeLabel(field), field.reference(),
                         field.collection(), null, false, false,
-                        false, false, "", false, false));
+                        false, false, "", false));
             }
         }
         List<FieldRef> immutable = List.copyOf(refs);
@@ -163,26 +162,6 @@ public final class DomainSchemas {
             return null;
         }
         return current;
-    }
-
-    /** Whether a path belongs to an annotation-declared provenance subtree. Curation
-     * uses this semantic instead of recognizing conventional names such as "source"
-     * or "qid". Once a provenance reference is entered, every nested presentation
-     * path still denotes that same identity/source object. */
-    public static boolean isProvenancePath(
-            DomainModel domain, String type, String dottedPath) {
-        if (domain == null || type == null || dottedPath == null
-                || dottedPath.isBlank()) return false;
-        String currentType = type;
-        for (String part : dottedPath.split("\\.")) {
-            FieldSchema schema = domain.fieldSchema(currentType);
-            FieldRef field = schema == null ? null : schema.field(part);
-            if (field == null) return false;
-            if (field.provenance()) return true;
-            currentType = field.targetType();
-            if (currentType == null || currentType.isBlank()) return false;
-        }
-        return false;
     }
 
     /** Copy a field description under a projected/derived field name. */

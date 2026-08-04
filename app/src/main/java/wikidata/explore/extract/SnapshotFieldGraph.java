@@ -123,7 +123,7 @@ public final class SnapshotFieldGraph {
                     field.primaryTargetType(),
                     field.structural || extra.contains(field.name),
                     field.minor, field.inline, field.link, field.linkText,
-                    field.provenance, field.annotatedReference));
+                    field.annotatedReference));
         }
         List<FieldRef> immutable = List.copyOf(refs);
         return () -> immutable;
@@ -351,7 +351,6 @@ public final class SnapshotFieldGraph {
         public boolean inline;
         public boolean link;
         public String linkText = "";
-        public boolean provenance;
         public boolean annotatedReference;
         public String scalarKind = FieldKind.UNKNOWN.name();
         public String scalarTypeLabel = "";
@@ -376,7 +375,6 @@ public final class SnapshotFieldGraph {
             if (field.linkText() != null && !field.linkText().isBlank()) {
                 linkText = field.linkText();
             }
-            provenance |= field.provenance();
             annotatedReference |= field.annotatedReference();
             String target = field.targetType();
             if (target != null && !target.isBlank()
