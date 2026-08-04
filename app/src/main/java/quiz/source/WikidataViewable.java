@@ -1,5 +1,7 @@
 package quiz.source;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
 import objectview.annotations.Link;
@@ -8,10 +10,10 @@ import objectview.annotations.Link;
  * A Wikidata provenance descriptor: the owning object's data comes from the
  * Wikidata entity identified by {@link #qid()}.
  *
- * <p>This is the <b>value of a {@code source} field</b>, not a base class — a
+ * <p>This is the <b>value of an {@code anchor} field</b>, not a base class — a
  * domain object <em>has</em> a {@code WikidataViewable}, it does not extend one.
  * It is immutable: to re-anchor an object you set its {@code source} to a new
- * descriptor, which never disturbs the object's own identity.</p>
+ * descriptor, which establishes the object's new source identity.</p>
  */
 public final class WikidataViewable extends ViewableAdapter implements SourceViewable {
 
@@ -24,7 +26,10 @@ public final class WikidataViewable extends ViewableAdapter implements SourceVie
     @Link
     private final String identity;
 
-    public WikidataViewable(String qid, String name) {
+    @JsonCreator
+    public WikidataViewable(
+            @JsonProperty("qid") String qid,
+            @JsonProperty("name") String name) {
         this.qid = qid == null ? "" : qid.strip();
         this.name = name == null || name.isBlank() ? this.qid : name;
         // A Wikidata source's id is a QID by definition; only a real QID yields a

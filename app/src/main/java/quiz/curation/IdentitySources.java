@@ -46,8 +46,9 @@ public final class IdentitySources {
             throw new IllegalArgumentException(
                     target.typeName() + " does not accept a source anchor");
         }
-        // Re-anchor: swap in a Wikidata source descriptor. Identity is untouched,
-        // so the object stays valid in any pool it already sits in.
+        // Re-anchor: the Wikidata source descriptor becomes the object's identity.
+        // Carriers retain object-identity equality, so this cannot corrupt Java sets;
+        // indexes keyed by getIdentifier() must be rebuilt by their owning workflow.
         anchorable.anchor(
                 new WikidataViewable(link.sourceId(), link.canonicalName()));
     }

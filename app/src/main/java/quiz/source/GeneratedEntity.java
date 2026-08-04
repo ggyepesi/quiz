@@ -8,26 +8,31 @@ import objectview.annotations.Provenance;
  * Base for code-generated domain entities (the runtime-compiled classes the
  * ModelBuilder emits).
  *
- * <p>Identity comes from the provenance {@code anchor} the mapper attaches: a
- * native Wikidata entity is identified by its QID, a reified statement by its
- * GUID. The anchor is a field (named {@code anchor}, not {@code source}), so a
- * generated entity is {@link Anchorable} like every other carrier and never
- * extends a source descriptor.</p>
+ * <p>Identity is the stable {@code identifier} the mapper assigns at creation —
+ * NEVER derived from the anchor. The {@code anchor} is the transient enrichment
+ * handle ("where to fetch more data"), independent of identity, so the two
+ * carriers ({@code WikidataDynamicObject} and this) are symmetric: stable
+ * identity + transient enrichment anchor.</p>
  */
 public abstract class GeneratedEntity extends ViewableAdapter implements Anchorable {
 
-    @Provenance
-    private SourceViewable anchor;
+    @Hidden
+    private String identifier = "";
     @Hidden
     private String label = "";
 
-    @Override public String getIdentifier() {
-        return anchor == null ? "" : anchor.id();
-    }
+    // Transient enrichment/provenance handle — where to fetch more data. Not identity.
+    @Provenance
+    private SourceViewable anchor;
+
+    @Override public String getIdentifier() { return identifier; }
 
     @Override public String getDisplayName() {
-        if (label != null && !label.isBlank()) return label;
-        return anchor == null ? "" : anchor.getDisplayName();
+        return label == null || label.isBlank() ? identifier : label;
+    }
+
+    public void identifier(String identifier) {
+        this.identifier = identifier == null ? "" : identifier;
     }
 
     public void label(String label) { this.label = label == null ? "" : label; }

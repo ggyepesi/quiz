@@ -353,10 +353,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (id != null && id.matches("Q\\d+")) {
             return id;
         }
-        if (member instanceof quiz.source.WikidataViewable wikidata) {
-            String qid = wikidata.qid();
-            if (qid != null && qid.matches("Q\\d+")) return qid;
-        }
+        String anchored = quiz.source.SourceIdentities.wikidataQid(member);
+        if (anchored != null) return anchored;
         return curation.identityLinks().stream()
                 .filter(link -> type.equals(link.type()) && id != null
                         && id.equals(link.targetId())

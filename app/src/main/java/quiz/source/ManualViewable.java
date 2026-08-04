@@ -1,5 +1,7 @@
 package quiz.source;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
 
@@ -9,8 +11,7 @@ import objectview.annotations.Hidden;
  *
  * <p>The <b>value of an {@code anchor} field</b>, not a base class — a domain
  * entity <em>has</em> a manual anchor (see {@link ManualEntity}), and gains a
- * Wikidata anchor by having that field replaced with a {@link WikidataViewable};
- * its own identity is never touched.</p>
+ * Wikidata identity by having that field replaced with a {@link WikidataViewable}.</p>
  */
 public final class ManualViewable extends ViewableAdapter implements SourceViewable {
 
@@ -19,7 +20,10 @@ public final class ManualViewable extends ViewableAdapter implements SourceViewa
     @Hidden
     private final String name;
 
-    public ManualViewable(String id, String name) {
+    @JsonCreator
+    public ManualViewable(
+            @JsonProperty("id") String id,
+            @JsonProperty("name") String name) {
         this.id = id == null ? "" : id;
         this.name = name == null || name.isBlank() ? this.id : name;
     }

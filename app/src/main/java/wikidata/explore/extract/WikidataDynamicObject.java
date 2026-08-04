@@ -28,19 +28,18 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WikidataDynamicObject extends objectview.ViewableAdapter
         implements DynamicFields, quiz.source.Anchorable {
 
-    // Stable identity of this carrier — NOT tied to any source. Usually a QID
-    // today, but the carrier is source-neutral: provenance and the external
-    // anchor live in the `source` descriptor, which can be re-anchored without
-    // moving identity (so hashCode stays valid under pooling).
+    // The stable logical identity — assigned at creation (a qid for a Wikidata
+    // entity, a local key for a manual instance) and NEVER changed by re-anchoring.
     @Hidden
     private String identifier = "";
     @Hidden
     private String name = "";
 
     // The provenance descriptor (Wikidata / manual / statement / …). Swapping it
-    // re-anchors the object; it never changes identity. Rendered as a chip. Named
-    // `anchor`, not `source`, to avoid colliding with the reify back-reference
-    // field and structural schema fields that are already named `source`.
+    // re-anchors the object WITHOUT touching identity: the anchor merely REMEMBERS
+    // the source's native id (e.g. a resolved qid) for enrichment. Rendered as a
+    // chip. Named `anchor`, not `source`, to avoid colliding with the reify
+    // back-reference field and structural schema fields already named `source`.
     @objectview.annotations.Provenance
     @JsonIgnore
     private SourceViewable anchor;
@@ -116,6 +115,23 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         return name == null || name.isBlank() ? identifier : name;
     }
 
+    // Identity is the stable `identifier`, never the source. Re-anchoring changes
+    // only the `anchor` field (which merely REMEMBERS the source's native id, e.g.
+    // a resolved qid), so identity never moves and value-equality is safe.
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof WikidataDynamicObject w)) return false;
+        return identifier != null && !identifier.isBlank()
+                && identifier.equals(w.identifier)
+                && java.util.Objects.equals(typeKey(), w.typeKey());
+    }
+
+    @Override public int hashCode() {
+        return identifier == null || identifier.isBlank()
+                ? System.identityHashCode(this)
+                : java.util.Objects.hash(typeKey(), identifier);
+    }
+
     @Override public SourceViewable anchor() { return anchor; }
 
     @Override public void anchor(SourceViewable anchor) { this.anchor = anchor; }
@@ -133,20 +149,6 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     public String getUrl() { return wikidataUrl(); }
 
-    @Override public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof WikidataDynamicObject w)) return false;
-        return identifier != null && !identifier.isBlank()
-                && identifier.equals(w.identifier)
-                && java.util.Objects.equals(typeKey(), w.typeKey());
-    }
-
-    @Override public int hashCode() {
-        return identifier == null || identifier.isBlank()
-                ? System.identityHashCode(this)
-                : java.util.Objects.hash(typeKey(), identifier);
-    }
-
     @Override public String getReferenceLabel() {
         if (referenceLabel != null && !referenceLabel.isBlank()) return referenceLabel;
         return getName();
@@ -160,8 +162,9 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     public void qid(String qid) {
         String id = normalizeQid(qid);
-        this.identifier = id == null ? "" : id;
-        anchorWikidataIfQid();
+        if (id != null && id.matches("Q\\d+")) {
+            anchor = new WikidataViewable(id, name);
+        }
     }
 
     public void name(String name) {
@@ -350,7 +353,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     private static String safe(String s) { return s == null ? "" : s; }
 
     @Override public String toString() {
-        return name + (identifier == null || identifier.isBlank()
-                ? "" : " (" + identifier + ")");
+        String id = getIdentifier();
+        return name + (id == null || id.isBlank() ? "" : " (" + id + ")");
     }
 }

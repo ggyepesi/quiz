@@ -192,6 +192,9 @@ public final class ViewableToWdo {
                 id = q.getDisplayName();
             }
             WikidataDynamicObject o = new WikidataDynamicObject(id, q.getDisplayName());
+            if (q instanceof quiz.source.Anchorable anchorable) {
+                o.anchor(anchorable.anchor());
+            }
             String concreteType = schema == null
                     ? q.directClassNames().stream().findFirst().orElse(q.typeName())
                     : schema.mostSpecificClass(q);
@@ -214,6 +217,11 @@ public final class ViewableToWdo {
                 set = new objectview.field.SchemaFieldSet(set, declared);
             }
             for (objectview.field.FieldRef ref : set.fields()) {
+                // The source identity is carried by the dynamic carrier contract and
+                // persisted explicitly by the snapshot DTO, never duplicated as data.
+                if (q instanceof quiz.source.Anchorable && "anchor".equals(ref.name())) {
+                    continue;
+                }
                 Object cv = convert(set.read(ref.name()), seen, schema);
                 // Skip null AND blank scalars — a blank value carries no information and
                 // would otherwise render as an empty field row.

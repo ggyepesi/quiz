@@ -8,8 +8,8 @@ import objectview.annotations.Provenance;
  *
  * <p>Provides the uniform provenance {@code anchor}: <b>manual by default</b>
  * (derived from the entity's own identity), and re-anchorable to a
- * {@link WikidataViewable} etc. without changing the entity's identity — the same
- * contract the dynamic carrier honours. The anchor is a field named {@code anchor},
+ * {@link WikidataViewable} etc., thereby changing its source identity. The anchor
+ * is a field named {@code anchor},
  * not {@code source}, to avoid colliding with reify/structural {@code source}
  * fields.</p>
  */
@@ -26,4 +26,10 @@ public abstract class ManualEntity extends ViewableAdapter implements Anchorable
     }
 
     @Override public void anchor(SourceViewable anchor) { this.anchor = anchor; }
+
+    /** Ensure reflection sees the lazy default anchor as a value, not merely a field type. */
+    @Override public objectview.field.FieldSet fields() {
+        anchor();
+        return objectview.field.FieldSet.of(this);
+    }
 }

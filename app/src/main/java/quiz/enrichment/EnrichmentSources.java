@@ -3,7 +3,7 @@ package quiz.enrichment;
 import objectview.Viewable;
 import quiz.curation.IdentityLink;
 import quiz.curation.ManualCuration;
-import quiz.source.WikidataViewable;
+import quiz.source.SourceIdentities;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,8 +18,8 @@ public final class EnrichmentSources {
     public static List<EnrichmentProposal.SourceRef> collect(
             Viewable member, String type, ManualCuration curation) {
         Map<String, EnrichmentProposal.SourceRef> result = new LinkedHashMap<>();
-        if (member instanceof WikidataViewable wikidata
-                && wikidata.qid().matches("Q\\d+")) {
+        quiz.source.WikidataViewable wikidata = SourceIdentities.wikidata(member);
+        if (wikidata != null) {
             add(result, "Wikidata", wikidata.qid(), wikidata.wikidataUrl());
         }
 

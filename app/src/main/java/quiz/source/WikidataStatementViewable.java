@@ -1,5 +1,7 @@
 package quiz.source;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
 
@@ -24,7 +26,11 @@ public final class WikidataStatementViewable extends ViewableAdapter
     @Hidden
     private final String name;
 
-    public WikidataStatementViewable(String statement, String property, String name) {
+    @JsonCreator
+    public WikidataStatementViewable(
+            @JsonProperty("statement") String statement,
+            @JsonProperty("property") String property,
+            @JsonProperty("name") String name) {
         this.statement = statement == null ? "" : statement;
         this.property = property == null ? "" : property;
         this.name = name == null || name.isBlank() ? this.statement : name;

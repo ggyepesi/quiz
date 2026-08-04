@@ -2,7 +2,6 @@ package quiz.transform.app;
 
 import wikidata.explore.extract.WikidataDynamicObject;
 
-import objectview.field.FieldSet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.curation.IdentityLink;
@@ -27,9 +26,10 @@ class SourceFieldIntegrationTest {
         assertTrue(domain.fieldTypes("ManualItem").fieldNames().contains("anchor"));
         assertFalse(domain.structuralFields("ManualItem").contains("anchor"));
         assertFalse(domain.types().contains("Source"));
+        assertTrue(item.fields().read("anchor") instanceof quiz.source.ManualViewable);
     }
 
-    @Test void resolvingIdentityReAnchorsSourceWithoutChangingIdentity(
+    @Test void resolvingIdentityReAnchorsWithoutChangingIdentity(
             @TempDir Path dir) {
         WikidataDynamicObject item =
                 new WikidataDynamicObject("manual-1", "manual-1");
@@ -40,15 +40,42 @@ class SourceFieldIntegrationTest {
         ManualCuration curation = new ManualCuration(dir.resolve("x.curation.json").toFile());
         curation.putIdentityLink(link);
 
+        java.util.Set<WikidataDynamicObject> membership = new java.util.HashSet<>();
+        membership.add(item);
+
         IdentitySources.apply(List.of(item), curation.identityLinks());
 
-        // Re-anchoring never re-keys the object: identity is stable.
+        // Identity is STABLE — re-anchoring never re-keys the object.
         assertEquals("manual-1", item.getIdentifier());
-        // The Wikidata anchor is attached as the source descriptor.
+        // The resolved qid is REMEMBERED in the anchor (for enrichment), not adopted
+        // as identity.
         assertTrue(item.anchor() instanceof quiz.source.WikidataViewable);
         quiz.source.WikidataViewable src = (quiz.source.WikidataViewable) item.anchor();
         assertEquals("Q42", src.qid());
         assertEquals("Douglas Adams", src.getDisplayName());
+        assertTrue(membership.contains(item),
+                "stable identity keeps the object valid in membership collections");
+    }
+
+    @Test void statementAnchorSurvivesSnapshotRoundTrip(@TempDir Path dir)
+            throws Exception {
+        WikidataDynamicObject item = new WikidataDynamicObject(
+                "Q42$statement-guid", "statement fact");
+        item.type("StatementFact");
+        item.anchor(new quiz.source.WikidataStatementViewable(
+                "Q42$statement-guid", "P31", "statement fact"));
+
+        java.io.File snapshot = dir.resolve("statement.snapshot.json").toFile();
+        wikidata.explore.extract.WikidataDynamicObjectJsonStore store =
+                new wikidata.explore.extract.WikidataDynamicObjectJsonStore();
+        store.save(List.of(item), snapshot);
+
+        WikidataDynamicObject loaded = store.load(snapshot).getFirst();
+        assertEquals("Q42$statement-guid", loaded.getIdentifier());
+        assertTrue(loaded.anchor() instanceof quiz.source.WikidataStatementViewable);
+        quiz.source.WikidataStatementViewable statement =
+                (quiz.source.WikidataStatementViewable) loaded.anchor();
+        assertEquals("P31", statement.property());
     }
 
     private static final class ManualItem extends ManualEntity {
@@ -58,6 +85,5 @@ class SourceFieldIntegrationTest {
 
         @Override public String getIdentifier() { return id; }
         @Override public String getDisplayName() { return id; }
-        @Override public FieldSet fields() { return FieldSet.of(this); }
     }
 }

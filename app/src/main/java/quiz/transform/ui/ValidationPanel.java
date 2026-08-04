@@ -459,10 +459,8 @@ public final class ValidationPanel extends JPanel {
     }
 
     private String identityQid(Viewable member) {
-        if (member instanceof quiz.source.WikidataViewable wikidata) {
-            String qid = wikidata.qid();
-            if (qid != null && qid.matches("Q\\d+")) return qid;
-        }
+        String anchored = quiz.source.SourceIdentities.wikidataQid(member);
+        if (anchored != null) return anchored;
         return resolvedQid(member, EnrichmentSources.collect(
                 member, concreteType(member), curationStore()));
     }
