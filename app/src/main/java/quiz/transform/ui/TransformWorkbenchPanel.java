@@ -87,6 +87,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     // newer one that finished first.
     private int renderGeneration;
     private RenderedScope renderedScope;
+    // The coverage filter driven by the left field picker: when set, the RIGHT view shows
+    // only instances MISSING this field. The left coverage stays over the full working set.
+    private DomainField coverageFilter;
+    private java.util.function.Consumer<objectview.group.ViewableGroup<?>> activeShow;
+    private objectview.group.ViewableGroup<?> activeGroup;
     private boolean closed;
 
     /** The exact immutable result successfully swapped into the right-hand browser. */
@@ -159,7 +164,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         viewStepsPanel = new ViewStepsPanel(
                 controller, this::render, this::addFilterGroup,
-                () -> renderedScope == null ? java.util.List.of() : renderedScope.members());
+                () -> renderedScope == null ? java.util.List.of() : renderedScope.members(),
+                this::applyCoverageFilter);
         left.add(viewStepsPanel, BorderLayout.CENTER);
 
         return left;
@@ -640,6 +646,15 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }.execute();
     }
 
+    /** Selecting a field in the left picker filters the RIGHT view to those MISSING it
+     *  (null clears). Re-applies the current group's view over the same working set. */
+    private void applyCoverageFilter(DomainField field) {
+        coverageFilter = field;
+        if (activeShow != null && activeGroup != null) {
+            activeShow.accept(activeGroup);
+        }
+    }
+
     /** A group's scope is exactly its explicit membership. Children never contribute
      *  members implicitly; hierarchy and membership are independent application choices. */
     private static List<Viewable> explicitMembers(
@@ -777,16 +792,24 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         JPanel instances = new JPanel(new BorderLayout());
 
         java.util.function.Consumer<objectview.group.ViewableGroup<?>> show = group -> {
+            activeGroup = group;
             List<Viewable> members = explicitMembers(group);
             renderedScope = new RenderedScope(generation, selectedType, members);
+            // The RIGHT view shows only those MISSING the field the left picker selected;
+            // renderedScope keeps the FULL working set so coverage/status stay over all.
+            List<Viewable> shown = coverageFilter == null ? members
+                    : members.stream()
+                            .filter(m -> !FieldCoverageColumns.hasValue(m, coverageFilter.field()))
+                            .toList();
             instances.removeAll();
             instances.add(titledInstancePanel(
-                    "Members of " + group.getDisplayName(), members, memberType),
+                    "Members of " + group.getDisplayName(), shown, memberType),
                     BorderLayout.CENTER);
             instances.revalidate();
             instances.repaint();
             updateScopeStatus();
         };
+        activeShow = show;
         groups.setShowGroupHandler(show);
         groups.setSelectionHandler(group -> {
             selectedGroup = group instanceof quiz.transform.EditableGroup editable

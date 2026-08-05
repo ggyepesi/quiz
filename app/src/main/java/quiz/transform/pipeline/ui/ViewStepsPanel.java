@@ -24,6 +24,9 @@ public final class ViewStepsPanel extends JPanel {
     private final TransformController controller;
     private final Listener listener;
     private final java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator;
+    // Selecting a field asks the parent to filter the RIGHT instances to those MISSING it
+    // (null on deselect); the left coverage stays over the full working set.
+    private final java.util.function.Consumer<quiz.transform.ui.DomainField> onCoverageFilter;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private boolean refreshingTypes;
@@ -61,15 +64,18 @@ public final class ViewStepsPanel extends JPanel {
             Listener listener,
             java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
             java.util.function.Supplier<
-                    ? extends java.util.Collection<? extends Viewable>> workingSet) {
+                    ? extends java.util.Collection<? extends Viewable>> workingSet,
+            java.util.function.Consumer<quiz.transform.ui.DomainField> onCoverageFilter) {
         this.controller = controller;
         this.listener = listener;
         this.filterGroupCreator = filterGroupCreator;
+        this.onCoverageFilter = onCoverageFilter == null ? f -> { } : onCoverageFilter;
         // The left field picker IS the validation panel: Coverage / Present / Missing over
         // the working set shown on the right, so selecting a field can filter to the gap.
         this.fieldPicker = new ViewConfigEditor(new ViewConfig(), (Viewable) null,
                 new quiz.transform.ui.FieldCoverageColumns(
                         controller.domain(), controller::selectedType, workingSet));
+        this.fieldPicker.setToggleDeselect(true);
 
         setLayout(new BorderLayout(6, 6));
 
@@ -273,6 +279,8 @@ public final class ViewStepsPanel extends JPanel {
         DomainField f = currentField();
         reloadOperators(kindOf(f));
         populateValueChoices(f);
+        // Filter the right instances to those MISSING the selected field (null = clear).
+        onCoverageFilter.accept(f);
     }
 
     /** Repopulate the value combo's dropdown with the field's candidate values (enum /
