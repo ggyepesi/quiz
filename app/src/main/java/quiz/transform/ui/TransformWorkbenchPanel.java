@@ -84,7 +84,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             queries.runner().context(), queries.runner().logListener(), this::handleProcessInput);
 
     private ViewStepsPanel viewStepsPanel;
-    private JDialog explorerDialog;
     private JDialog identityCurationDialog;
     private RenderedScope identityActionScope;
 
@@ -152,7 +151,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (controller.canSave()) {
             top.add(button("Save as domain…", this::saveAsDomain));
         }
-        top.add(button("Explore…", this::showExplorer));
         top.add(button("Query logs…", () -> queries.showLogs(this)));
         queries.runner().registerCancelButton(cancelQueryButton);
         queries.runner().cancelAction(requestClient::cancelCurrentQuery);
@@ -279,25 +277,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
     }
 
-    /** General Wikidata investigation, independent of identity resolution and of the
-     * currently rendered group. Reuses ModelBuilder's relation/graph explorer without
-     * exposing its model-mutating actions. */
-    private void showExplorer() {
-        if (explorerDialog == null) {
-            wikidata.explore.workbench.ExploreByExamplePanel explorer =
-                    new wikidata.explore.workbench.ExploreByExamplePanel();
-            explorer.explorationOnly();
-            explorer.setQueryRunner(queries.runner());
-            explorerDialog = new JDialog(SwingUtilities.getWindowAncestor(this),
-                    "Explore Wikidata", Dialog.ModalityType.MODELESS);
-            explorerDialog.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
-            explorerDialog.add(explorer, BorderLayout.CENTER);
-            explorerDialog.setSize(900, 760);
-            explorerDialog.setLocationRelativeTo(this);
-        }
-        explorerDialog.setVisible(true);
-        explorerDialog.toFront();
-    }
 
     /** Resolve the immutable scope captured when Curate → Resolve identities was opened. */
     private void resolveCuratedIdentities() {
@@ -1178,9 +1157,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return;
         }
         closed = true;
-        if (explorerDialog != null) {
-            explorerDialog.dispose();
-        }
         queries.runner().cancel();
         requestClient.close();
     }
