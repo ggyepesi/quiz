@@ -5,6 +5,13 @@ import java.util.Map;
 public interface Query<R> {
     String purpose();
 
+    /** The datasource this query is generated for — WIKIDATA by default. Its execute()
+     *  must read {@code context.sparql(datasource())} so it can never be sent to the wrong
+     *  endpoint. Set by the QueryFactory at creation for datasource-dependent queries. */
+    default Datasource datasource() {
+        return Datasource.WIKIDATA;
+    }
+
     /**
      * Query skeleton/template, not workflow description.
      */

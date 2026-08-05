@@ -28,7 +28,7 @@ class DBpediaLookupTest {
             List<LogNode> roots = new ArrayList<>();
             List<String> accepted = new ArrayList<>();
             QueryWorkflow<List<String>> workflow = new QueryWorkflow<>(
-                    new QueryContext(client, null),
+                    new QueryContext(client, null).withDatasource(wikidata.explore.query.core.Datasource.DBPEDIA, client),
                     accepted::addAll,
                     (root, added) -> {
                         if (added && !roots.contains(root)) {
@@ -57,7 +57,7 @@ class DBpediaLookupTest {
                         "img", "https://example.test/image.jpg"))))) {
 
             List<DBpediaLookup.ImageHit> result = DBpediaLookup.images(null, "Ada Lovelace")
-                    .execute(new QueryContext(client, null));
+                    .execute(new QueryContext(client, null).withDatasource(wikidata.explore.query.core.Datasource.DBPEDIA, client));
 
             assertEquals(List.of(new DBpediaLookup.ImageHit(
                     "http://dbpedia.org/resource/Ada_Lovelace",

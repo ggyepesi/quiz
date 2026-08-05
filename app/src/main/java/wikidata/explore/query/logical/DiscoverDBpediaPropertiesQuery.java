@@ -70,19 +70,21 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
                     step.request(dbSparql);
 
                     List<List<Object>> rows = new ArrayList<>();
-                    try (WikidataSparqlClient dbpedia = new WikidataSparqlClient(
-                            "quiz-modelbuilder (ggyepesi@gmail.com)", 2,
-                            WikidataSparqlClient.DBPEDIA_ENDPOINT)) {
-                        for (WikidataBinding b : dbpedia.query(dbSparql)) {
-                            String prop = localName(b.value("p"));
-                            if (prop.isEmpty()) {
-                                continue;
-                            }
-                            rows.add(List.of(
-                                    prop,
-                                    orEmpty(b.value("n")),
-                                    shorten(localName(b.value("ex")))));
+                    WikidataSparqlClient dbpedia =
+                            context.sparql(wikidata.explore.query.core.Datasource.DBPEDIA);
+                    if (dbpedia == null) {
+                        throw new IllegalStateException(
+                                "No DBpedia SPARQL client configured");
+                    }
+                    for (WikidataBinding b : dbpedia.query(dbSparql)) {
+                        String prop = localName(b.value("p"));
+                        if (prop.isEmpty()) {
+                            continue;
                         }
+                        rows.add(List.of(
+                                prop,
+                                orEmpty(b.value("n")),
+                                shorten(localName(b.value("ex")))));
                     }
 
                     step.summary(rows.size() + " properties");

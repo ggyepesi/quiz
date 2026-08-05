@@ -25,6 +25,7 @@ import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.model.Selection;
 import wikidata.explore.model.VocabularySelection;
 import wikidata.explore.query.core.QueryContext;
+import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.logical.RemapInstancesQuery;
 import wikidata.explore.query.swing.QueryObjectResultPanel;
@@ -171,7 +172,10 @@ public class ModelBuilderFrame extends JFrame {
         super("Wikidata Viewable Model Builder");
 
         this.client = client;
-        QueryContext queryContext = new QueryContext(client, apiClient);
+        // The factory owns the datasource↔endpoint bindings; we take a context with every
+        // datasource wired (WDQS default + DBpedia). client stays the WDQS primary.
+        QueryContext queryContext = new QueryFactory(
+                client, apiClient, "quiz-modelbuilder (ggyepesi@gmail.com)").newContext();
         this.querySession = new SwingQuerySession(queryContext);
         this.logWindow = querySession.logs();
         this.processRunner = new SwingProcessRunner(

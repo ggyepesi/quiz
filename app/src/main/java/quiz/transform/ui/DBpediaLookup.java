@@ -3,6 +3,8 @@ package quiz.transform.ui;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
+import wikidata.WikidataSparqlClient;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 
@@ -128,8 +130,13 @@ final class DBpediaLookup {
                 return parameters;
             }
 
+            @Override public Datasource datasource() {
+                return Datasource.DBPEDIA;
+            }
+
             @Override public List<T> execute(QueryContext context) throws Exception {
-                if (context.sparql() == null) {
+                WikidataSparqlClient client = context.sparql(datasource());
+                if (client == null) {
                     throw new IllegalStateException("No DBpedia SPARQL client configured");
                 }
                 return context.step(
@@ -139,7 +146,7 @@ final class DBpediaLookup {
                         parameters,
                         step -> {
                             step.request(sparql);
-                            List<T> result = mapper.apply(context.sparql().query(sparql));
+                            List<T> result = mapper.apply(client.query(sparql));
                             step.summary(result.size() + " candidate(s)");
                             return result;
                         });

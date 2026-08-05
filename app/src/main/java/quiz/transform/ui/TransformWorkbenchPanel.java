@@ -14,7 +14,7 @@ import quiz.transform.pipeline.ui.ViewStepsPanel;
 import quiz.curation.ScopeFilter;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
-import wikidata.explore.query.core.QueryContext;
+import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.swing.SwingQuerySession;
 
 import javax.swing.*;
@@ -70,13 +70,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private String lastReviewPrompt = "";
     private java.util.List<quiz.enrichment.ResolveIdentitiesDecision.Resolved>
             lastApplied = List.of();
+    // Primary datasource is WDQS (Wikidata queries + Explore); the factory owns the
+    // DBpedia binding (enrichment joins), so each query routes to the endpoint it was
+    // generated for. requestClient is the WDQS primary, closed by this panel.
     private final WikidataSparqlClient requestClient = new WikidataSparqlClient(
-            "QuizProject/1.0 (ggyepesi@gmail.com)", 2,
-            WikidataSparqlClient.DBPEDIA_ENDPOINT);
-    // SPARQL points at DBpedia (enrichment); the API client is Wikidata's (the identity
-    // search runs in API mode via context.api()) — different transports, both needed.
-    private final SwingQuerySession queries = new SwingQuerySession(new QueryContext(
-            requestClient, new WikidataApiClient("QuizProject/1.0 (ggyepesi@gmail.com)")));
+            "QuizProject/1.0 (ggyepesi@gmail.com)", 2);
+    private final QueryFactory queryFactory = new QueryFactory(
+            requestClient, new WikidataApiClient("QuizProject/1.0 (ggyepesi@gmail.com)"),
+            "QuizProject/1.0 (ggyepesi@gmail.com)");
+    private final SwingQuerySession queries =
+            new SwingQuerySession(queryFactory.newContext());
     private final JButton cancelQueryButton = new JButton("Cancel request");
     // Runs the identity-resolution process (off-EDT, with a review pause). Shares the
     // session's query context + log window, so its searches show in "Query logs…".
@@ -1159,5 +1162,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         closed = true;
         queries.runner().cancel();
         requestClient.close();
+        queryFactory.close();
     }
 }

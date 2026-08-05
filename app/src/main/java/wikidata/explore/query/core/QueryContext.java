@@ -7,48 +7,75 @@ import wikidata.explore.query.log.LogNode;
 import wikidata.explore.query.log.LogStepBody;
 import wikidata.explore.query.log.WorkflowRecorder;
 
+import java.util.EnumMap;
 import java.util.Map;
 
 public class QueryContext {
-    private final WikidataSparqlClient sparqlClient;
+    // A SPARQL client per datasource, so a query routes to the endpoint it was generated
+    // for. The single-client constructor makes WIKIDATA the default; bind others (DBpedia)
+    // with withDatasource — the binding is explicit, not a runner-configuration accident.
+    private final Map<Datasource, WikidataSparqlClient> sparqlClients;
     private final WikidataApiClient apiClient;
     private final WorkflowRecorder recorder;
     private final LogNode processParent;
 
+    /** {@code sparqlClient} is the WIKIDATA (default) client. Add DBpedia (or another
+     *  datasource) via {@link #withDatasource}. */
     public QueryContext(
             WikidataSparqlClient sparqlClient,
             WikidataApiClient apiClient) {
 
-        this(sparqlClient, apiClient, null, null);
+        this(clients(Datasource.WIKIDATA, sparqlClient), apiClient, null, null);
     }
 
     private QueryContext(
-            WikidataSparqlClient sparqlClient,
+            Map<Datasource, WikidataSparqlClient> sparqlClients,
             WikidataApiClient apiClient,
             WorkflowRecorder recorder,
             LogNode processParent) {
 
-        this.sparqlClient = sparqlClient;
+        this.sparqlClients = sparqlClients;
         this.apiClient = apiClient;
         this.recorder = recorder;
         this.processParent = processParent;
     }
 
+    private static Map<Datasource, WikidataSparqlClient> clients(
+            Datasource datasource, WikidataSparqlClient client) {
+        Map<Datasource, WikidataSparqlClient> map = new EnumMap<>(Datasource.class);
+        if (client != null) {
+            map.put(datasource, client);
+        }
+        return map;
+    }
+
+    /** A context that also routes {@code datasource} queries to {@code client}: the
+     *  explicit datasource↔endpoint binding, so a query for it can't hit the wrong one. */
+    public QueryContext withDatasource(Datasource datasource, WikidataSparqlClient client) {
+        Map<Datasource, WikidataSparqlClient> next = new EnumMap<>(sparqlClients);
+        if (client != null) {
+            next.put(datasource, client);
+        }
+        return new QueryContext(next, apiClient, recorder, processParent);
+    }
+
     public QueryContext withRecorder(WorkflowRecorder recorder) {
-        return new QueryContext(
-                sparqlClient,
-                apiClient,
-                recorder,
-                null);
+        return new QueryContext(sparqlClients, apiClient, recorder, null);
     }
 
     /** Binds adapted-query steps beneath their owning Process subprocess. */
     public QueryContext withRecorder(WorkflowRecorder recorder, LogNode processParent) {
-        return new QueryContext(sparqlClient, apiClient, recorder, processParent);
+        return new QueryContext(sparqlClients, apiClient, recorder, processParent);
     }
 
+    /** The WIKIDATA SPARQL client (the default datasource). */
     public WikidataSparqlClient sparql() {
-        return sparqlClient;
+        return sparql(Datasource.WIKIDATA);
+    }
+
+    /** The SPARQL client bound to {@code datasource}, or null if none is bound. */
+    public WikidataSparqlClient sparql(Datasource datasource) {
+        return sparqlClients.get(datasource);
     }
 
     public WikidataApiClient api() {
