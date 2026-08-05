@@ -44,8 +44,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private final JPanel renderHolder = new JPanel(new BorderLayout());
     private final JLabel scopeStatus = new JLabel("No rendered scope");
-    private final JToggleButton showIdentitiesButton =
-            new JToggleButton("Show identities");
     private final JButton curateFieldButton = new JButton("Curate field…");
     private final JButton resolveButton = new JButton("Resolve identities…");
     // Applying resolved identities only mutates the in-memory curation; "Save identities"
@@ -191,15 +189,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         JPanel scope = new JPanel(new BorderLayout(8, 2));
         scope.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
         scope.add(scopeStatus, BorderLayout.CENTER);
-        showIdentitiesButton.setToolTipText(
-                "Show the visible instances' native or curated Wikidata identities below the cards");
-        showIdentitiesButton.addActionListener(e -> {
-            showIdentitiesButton.setText(showIdentitiesButton.isSelected()
-                    ? "Hide identities" : "Show identities");
-            if (activeShow != null && activeGroup != null) {
-                activeShow.accept(activeGroup);
-            }
-        });
         resolveButton.addActionListener(e -> {
             if (resolveRunner.isRunning()) {
                 resolveButton.setText("Cancelling identity resolution…");
@@ -232,7 +221,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         actions.add(resolveButton);
         actions.add(saveIdentitiesButton);
         actions.add(forgetResultButton);
-        actions.add(showIdentitiesButton);
         scope.add(actions, BorderLayout.EAST);
         instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
@@ -378,6 +366,18 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                         && "Wikidata".equalsIgnoreCase(link.sourceKind()))
                 .map(quiz.curation.IdentityLink::sourceId)
                 .findFirst().orElse(null);
+    }
+
+    /** The card-header identity chip for a member: its Wikidata QID as a link when known, else
+     *  an "unidentified" marker so curation gaps show at a glance. Resolution stays here
+     *  (outside the renderer). Returns null for a non-curatable domain, where identity isn't
+     *  a concept. */
+    private JComponent identityChip(Viewable member) {
+        quiz.curation.ManualCuration curation = curation();
+        if (member == null || curation == null) {
+            return null;
+        }
+        return IdentityChip.of(currentQid(curation, member.typeName(), member));
     }
 
     private void applyResolvedIdentities(
@@ -784,6 +784,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .subtypeConfigs(subtypes)
                     .configState(instanceConfigsByType.get(type))
                     .configListener(config -> instanceConfigsByType.put(type, config))
+                    .cardDecorator(this::identityChip)
                     .collapsible(true)
                     .build();
         }
@@ -807,6 +808,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .configState(instanceConfigsByType.get(renderedType))
                     .configListener(config ->
                             instanceConfigsByType.put(renderedType, config))
+                    .cardDecorator(this::identityChip)
                     .collapsible(true)
                     .build();
         }
@@ -815,6 +817,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         mv.context().setCollapsibleCards(true);
         mv.context().setFieldSchemaResolver(
                 q -> controller.fieldSchema(q.typeName()));
+        mv.context().setCardDecorator(this::identityChip);
         for (java.util.Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
             String t = e.getKey();
             List<Viewable> objs = e.getValue();
@@ -905,24 +908,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (instanceScopeHeader != null) {
             panel.add(instanceScopeHeader, BorderLayout.NORTH);
         }
-        JComponent cards = flatView(members, type);
-        showIdentitiesButton.setEnabled(!members.isEmpty());
-        if (showIdentitiesButton.isSelected() && !members.isEmpty()) {
-            quiz.curation.ManualCuration curation = curation();
-            IdentityIndexPanel identities = new IdentityIndexPanel(
-                    members,
-                    member -> controller.mostSpecificClass(member, type),
-                    member -> currentQid(curation, member.typeName(), member));
-            identities.setBorder(BorderFactory.createTitledBorder("Identities"));
-            JSplitPane cardsAndIdentities = new JSplitPane(
-                    JSplitPane.VERTICAL_SPLIT, cards, identities);
-            cardsAndIdentities.setResizeWeight(0.72);
-            cardsAndIdentities.setOneTouchExpandable(true);
-            SwingUtilities.invokeLater(() -> cardsAndIdentities.setDividerLocation(0.72));
-            panel.add(cardsAndIdentities, BorderLayout.CENTER);
-        } else {
-            panel.add(cards, BorderLayout.CENTER);
-        }
+        // Identity rides in each card's header as a chip (identityChip via cardDecorator),
+        // so there is no separate identity index or toggle.
+        panel.add(flatView(members, type), BorderLayout.CENTER);
         return panel;
     }
 

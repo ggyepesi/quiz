@@ -465,7 +465,9 @@ public final class ValidationPanel extends JPanel {
         header.add(exploreIdentityButton);
         instancesHolder.add(header, BorderLayout.NORTH);
         if (!matching.isEmpty()) {
-            instancesHolder.add(identityInstancesView(matching), BorderLayout.CENTER);
+            // Identity rides in each card's header as a chip (instancesView's cardDecorator),
+            // and card selection sets the target — no separate identity index.
+            instancesHolder.add(instancesView(matching, type), BorderLayout.CENTER);
         }
         instancesHolder.revalidate();
         instancesHolder.repaint();
@@ -511,23 +513,6 @@ public final class ValidationPanel extends JPanel {
                 .findFirst().orElse(null);
     }
 
-    /** Identity coverage needs the actual source key, not just a yes/no count.
-     * Keep the ordinary cards below it, but add a compact searchable index whose
-     * QID column uses the shared Wikidata-link renderer. */
-    private JComponent identityInstancesView(List<Viewable> matching) {
-        IdentityIndexPanel identities = new IdentityIndexPanel(
-                matching, this::concreteType, this::identityQid);
-        identities.onSelectionChanged(value -> {
-            selected = value;
-            updateIdentityButton();
-        });
-
-        JSplitPane identityAndCards = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
-                identities, instancesView(matching, type));
-        identityAndCards.setResizeWeight(0.32);
-        SwingUtilities.invokeLater(() -> identityAndCards.setDividerLocation(0.32));
-        return identityAndCards;
-    }
 
     /** Subclass membership is inherited: a USState belongs in State validation too. */
     static List<Viewable> membersOf(
@@ -1128,6 +1113,7 @@ public final class ValidationPanel extends JPanel {
                 .hiddenFields(domain.structuralFields(type))
                 .fieldTypes(domain.fieldTypes(type))
                 .fieldSchemas(q -> domain.fieldSchema(q.typeName()))
+                .cardDecorator(member -> IdentityChip.of(identityQid(member)))
                 .collapsible(true)
                 .selectionListener(o -> {
             selectedChanged(o instanceof Viewable q ? q : null);
