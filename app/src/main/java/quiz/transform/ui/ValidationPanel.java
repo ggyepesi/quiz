@@ -123,6 +123,9 @@ public final class ValidationPanel extends JPanel {
     private final CurationStaging staging;
     private final Runnable stagingListener = this::updateApplyButton;
     private final SwingQueryRunner queryRunner;
+    // Explore's queries are Wikidata (wd:/wikibase:, predefined by WDQS). The curate flow's
+    // SPARQL client points at DBpedia (enrichment), so Explore needs its own WDQS runner.
+    private SwingQueryRunner exploreRunner;
     private final SwingProcessRunner findDataRunner;
     // Re-render the owning view after an accepted enrichment writes a correction.
     private final Runnable onCurated;
@@ -718,7 +721,7 @@ public final class ValidationPanel extends JPanel {
         // Explore mode 2: pick a property of the resolved sample entity and RETURN it —
         // the caller (here) sets the field source. No bespoke property-picker path.
         wikidata.explore.workbench.ExploreByExamplePanel.findProperty(
-                this, queryRunner, sampleQid, null,
+                this, exploreRunner(), sampleQid, null,
                 (pid, label) -> {
                     if (pid == null || pid.isBlank()) return;
                     FieldSourceMapping source = new FieldSourceMapping();
@@ -891,6 +894,18 @@ public final class ValidationPanel extends JPanel {
         }
     }
 
+    /** A WDQS-backed runner for Explore (its Wikidata queries can't run on the DBpedia
+     *  SPARQL client the curate flow uses for enrichment). */
+    private SwingQueryRunner exploreRunner() {
+        if (exploreRunner == null) {
+            String ua = "QuizProject/1.0 (ggyepesi@gmail.com)";
+            exploreRunner = new SwingQueryRunner(new QueryContext(
+                    new WikidataSparqlClient(ua, 2),
+                    new WikidataApiClient(ua)), null);
+        }
+        return exploreRunner;
+    }
+
     private void exploreIdentity() {
         if (selected == null) {
             JOptionPane.showMessageDialog(this, "Select a member card first.");
@@ -898,7 +913,7 @@ public final class ValidationPanel extends JPanel {
         }
         Viewable target = selected;
         wikidata.explore.workbench.ExploreByExamplePanel.showPicker(
-                this, queryRunner, target.getDisplayName(), false,
+                this, exploreRunner(), target.getDisplayName(), false,
                 (qid, label) -> approveWikidataIdentity(target, qid, label));
     }
 
