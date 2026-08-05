@@ -46,7 +46,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JLabel scopeStatus = new JLabel("No rendered scope");
     private final JToggleButton showIdentitiesButton =
             new JToggleButton("Show identities");
-    private final JLabel identityActionStatus = new JLabel("No identity scope");
+    private final JButton curateFieldButton = new JButton("Curate field…");
     private final JButton resolveButton = new JButton("Resolve identities…");
     // Applying resolved identities only mutates the in-memory curation; "Save identities"
     // persists it. So the user can inspect / fetch field data for the newly-identified
@@ -87,8 +87,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             queries.runner().context(), queries.runner().logListener(), this::handleProcessInput);
 
     private ViewStepsPanel viewStepsPanel;
-    private JDialog identityCurationDialog;
-    private RenderedScope identityActionScope;
 
     // Bumped on every render() (EDT-only). A background render swaps its cards in
     // only if it's still the latest — so a slow earlier render can't overwrite a
@@ -165,8 +163,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     new FlowLayout(FlowLayout.LEFT, 4, 2));
             curationActions.setAlignmentX(Component.LEFT_ALIGNMENT);
             curationActions.add(new JLabel("Curation:"));
-            curationActions.add(button("Curate…",
-                    this::openCuration));
             curationActions.add(button("Merge duplicates…",
                     () -> openMerge(c.curation())));
             curationActions.add(button("Overview…",
@@ -187,8 +183,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         return left;
     }
 
-    /** The right header describes the selected instances. Mutating operations are configured
-     *  from Curate, so this surface remains selection/presentation only. */
+    /** The right header describes the visible instances and hosts the actions that operate on
+     *  them — curate the selected field (in-pane) and resolve/save/forget identities. No
+     *  separate curation window: the left panel picks field + scope, the header acts on it. */
     private JComponent buildRight() {
         JPanel right = new JPanel(new BorderLayout(4, 4));
         JPanel scope = new JPanel(new BorderLayout(8, 2));
@@ -203,7 +200,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 activeShow.accept(activeGroup);
             }
         });
-        scope.add(showIdentitiesButton, BorderLayout.EAST);
         resolveButton.addActionListener(e -> {
             if (resolveRunner.isRunning()) {
                 resolveButton.setText("Cancelling identity resolution…");
@@ -216,7 +212,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             }
         });
         resolveButton.setToolTipText(
-                "Resolve unresolved Wikidata identities in this captured curation scope");
+                "Resolve unresolved Wikidata identities for the visible instances");
         resolveButton.setEnabled(false);
         saveIdentitiesButton.setToolTipText(
                 "Persist the pending identities to the curation store");
@@ -226,6 +222,18 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 "Revert the pending identities (remove the links applied in memory)");
         forgetResultButton.setEnabled(false);
         forgetResultButton.addActionListener(e -> forgetLastResult());
+        curateFieldButton.setToolTipText(
+                "Fill the field selected on the left for the visible instances (in this pane)");
+        curateFieldButton.setEnabled(false);
+        curateFieldButton.addActionListener(e -> openFieldCuration());
+        // All actions operate on the visible scope; they live in the header, not a window.
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        actions.add(curateFieldButton);
+        actions.add(resolveButton);
+        actions.add(saveIdentitiesButton);
+        actions.add(forgetResultButton);
+        actions.add(showIdentitiesButton);
+        scope.add(actions, BorderLayout.EAST);
         instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
         return right;
@@ -281,11 +289,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
 
-    /** Resolve the immutable scope captured when Curate → Resolve identities was opened. */
+    /** Resolve identities for the instances currently visible in the right pane. */
     private void resolveCuratedIdentities() {
-        RenderedScope scope = identityActionScope;
-        if (scope == null) {
-            JOptionPane.showMessageDialog(this, "Open Curate and select Resolve identities first.");
+        RenderedScope scope = renderedScope;
+        if (scope == null || scope.visibleMembers().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No visible instances to resolve.");
             return;
         }
         resolveIdentities(scope.visibleMembers(),
@@ -343,7 +351,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private void setResolveRunning(boolean running, String scopeLabel, int size) {
         if (running) {
-            identityActionStatus.setText("Resolving identities · " + size + " in " + scopeLabel
+            scopeStatus.setText("Resolving identities · " + size + " in " + scopeLabel
                     + " · Query logs remain available");
             resolveButton.setText("Cancel identity resolution");
             resolveButton.setEnabled(true);
@@ -537,78 +545,43 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
 
-    /** The workbench owns selection; Curate configures an action for that immutable target.
-     *  It must not ask the user to select class/field/scope a second time. */
-    private void openCuration() {
-        DomainField field = viewStepsPanel == null ? null : viewStepsPanel.selectedDomainField();
+    /** Curate the field selected on the left for the visible instances, in-pane: swap the
+     *  cards for the fixed-target {@link ValidationPanel} scoped to exactly the shown members.
+     *  No window — "Back to cards" re-renders. The left panel already established field +
+     *  scope, so this never re-asks class/field/scope. */
+    private void openFieldCuration() {
+        DomainField field = scopeField;
         RenderedScope scope = renderedScope;
-        if (scope == null) {
-            JOptionPane.showMessageDialog(this, "Wait for the selected instances to render.");
+        if (field == null) {
+            JOptionPane.showMessageDialog(this, "Select a field on the left to curate.");
             return;
         }
-        if (scope.visibleMembers().isEmpty()) {
+        if (scope == null || scope.visibleMembers().isEmpty()) {
             JOptionPane.showMessageDialog(this, "The selected scope contains no instances.");
             return;
         }
-        Object[] options = field == null
-                ? new Object[] {"Resolve identities…", "Cancel"}
-                : new Object[] {"Curate " + field.displayPath() + "…",
-                        "Resolve identities…", "Cancel"};
-        int choice = JOptionPane.showOptionDialog(this,
-                scope.visibleMembers().size() + " selected "
-                        + (scope.visibleMembers().size() == 1 ? "instance" : "instances")
-                        + ". Choose the curation action:",
-                "Curate selected instances", JOptionPane.DEFAULT_OPTION,
-                JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
-        if (choice < 0 || choice == options.length - 1) {
-            return;
-        }
-        if (field != null && choice == 0) {
-            openCurationPanel(field, scope);
-        } else {
-            openIdentityCuration(scope);
-        }
-    }
-
-    private void openIdentityCuration(RenderedScope scope) {
-        identityActionScope = scope;
-        if (identityCurationDialog == null) {
-            JPanel panel = new JPanel(new BorderLayout(8, 8));
-            panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-            panel.add(identityActionStatus, BorderLayout.NORTH);
-            JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-            actions.add(forgetResultButton);
-            actions.add(saveIdentitiesButton);
-            actions.add(resolveButton);
-            panel.add(actions, BorderLayout.CENTER);
-            identityCurationDialog = new JDialog(quiz.ui.Dialogs.owner(this),
-                    "Curate identities", Dialog.ModalityType.MODELESS);
-            identityCurationDialog.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
-            identityCurationDialog.add(panel, BorderLayout.CENTER);
-            identityCurationDialog.pack();
-        }
-        updateIdentityActionStatus();
-        identityCurationDialog.pack();
-        identityCurationDialog.setLocationRelativeTo(this);
-        identityCurationDialog.setVisible(true);
-        identityCurationDialog.toFront();
-    }
-
-    private ValidationPanel openCurationPanel(DomainField field, RenderedScope scope) {
+        // Applying a value refreshes the left-panel coverage but keeps this pane open (fill
+        // several instances in a row); the cards rebuild with new values only on Back.
         ValidationPanel panel = new ValidationPanel(controller.domain(), scope.visibleMembers(),
-                queries.runner(), this::render, this::resolveIdentities);
+                queries.runner(),
+                () -> { if (viewStepsPanel != null) viewStepsPanel.refreshWorkingSet(); },
+                this::resolveIdentities);
         String scopeLabel = scope.visibleMembers().size() + " selected "
                 + (scope.visibleMembers().size() == 1 ? "instance" : "instances")
                 + " · " + fieldScope;
         panel.useFixedTarget(field.type(), field.field(), scopeLabel);
-        JDialog dialog = new JDialog(quiz.ui.Dialogs.owner(this),
-                "Curate " + field.displayPath(), Dialog.ModalityType.MODELESS);
-        dialog.setLayout(new BorderLayout());
-        dialog.add(panel, BorderLayout.CENTER);
-        dialog.setSize(1160, 720);
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-        return panel;
+
+        JButton back = new JButton("← Back to cards");
+        back.addActionListener(e -> render());
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        bar.add(back);
+        bar.add(new JLabel("Curating " + field.displayPath()));
+
+        renderHolder.removeAll();
+        renderHolder.add(bar, BorderLayout.NORTH);
+        renderHolder.add(panel, BorderLayout.CENTER);
+        renderHolder.revalidate();
+        renderHolder.repaint();
     }
 
     /** Open the merge panel: fold a duplicate instance into a primary. Re-render after. */
@@ -737,7 +710,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private void updateScopeStatus() {
         RenderedScope scope = renderedScope;
         if (scope == null) {
-            updateIdentityActionStatus();
+            curateFieldButton.setEnabled(false);
+            if (!resolveRunner.isRunning()) {
+                resolveButton.setEnabled(false);
+                saveIdentitiesButton.setEnabled(false);
+                forgetResultButton.setEnabled(!lastReviewItems.isEmpty());
+            }
             return;
         }
         quiz.curation.ManualCuration curation =
@@ -753,42 +731,30 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         scopeStatus.setText((scope.selectedType() == null ? "View" : scope.selectedType())
                 + " · " + count + " · "
                 + identified + " identified · " + unresolved + " unresolved");
-        updateIdentityActionStatus();
-    }
 
-    private void updateIdentityActionStatus() {
-        if (resolveRunner.isRunning()) {
-            return; // setResolveRunning owns the action text while the process is active.
+        curateFieldButton.setText(scopeField == null ? "Curate field…"
+                : "Curate " + scopeField.displayPath() + "…");
+        curateFieldButton.setEnabled(scopeField != null && !scope.visibleMembers().isEmpty());
+
+        // Identity actions operate on this same visible scope. While the resolve process is
+        // active it owns the button text (setResolveRunning), so don't clobber it here.
+        if (!resolveRunner.isRunning()) {
+            resolveButton.setText(unresolved == 0
+                    ? "All identified" : "Resolve " + unresolved + " identities…");
+            resolveButton.setEnabled(curation != null && unresolved > 0);
+            // A retained review takes over the button: saving accepted rows does not
+            // silently discard ambiguous / No match work.
+            if (!lastReviewItems.isEmpty()) {
+                resolveButton.setText(identitiesDirty
+                        ? "Show pending result…"
+                        : "Continue unresolved review (" + lastReviewItems.size() + ")…");
+                resolveButton.setEnabled(true);
+            }
+            saveIdentitiesButton.setEnabled(identitiesDirty);
+            forgetResultButton.setText(identitiesDirty
+                    ? "Forget result" : "Forget unresolved review");
+            forgetResultButton.setEnabled(!lastReviewItems.isEmpty());
         }
-        RenderedScope scope = identityActionScope;
-        if (scope == null) {
-            identityActionStatus.setText("No identity curation scope selected");
-            resolveButton.setEnabled(false);
-            return;
-        }
-        quiz.curation.ManualCuration curation = curation();
-        long identified = curation == null ? 0 : scope.visibleMembers().stream()
-                .filter(member -> currentQid(curation, member.typeName(), member) != null)
-                .count();
-        long unresolved = scope.visibleMembers().size() - identified;
-        identityActionStatus.setText((scope.selectedType() == null ? "View" : scope.selectedType())
-                + " · " + scope.visibleMembers().size() + " selected · "
-                + identified + " identified · " + unresolved + " unresolved");
-        resolveButton.setText(unresolved == 0
-                ? "All identified" : "Resolve " + unresolved + " identities…");
-        resolveButton.setEnabled(curation != null && unresolved > 0 && !resolveRunner.isRunning());
-        // A retained review takes over the button: saving accepted rows does not
-        // silently discard ambiguous / No match work.
-        if (!lastReviewItems.isEmpty()) {
-            resolveButton.setText(identitiesDirty
-                    ? "Show pending result…"
-                    : "Continue unresolved review (" + lastReviewItems.size() + ")…");
-            resolveButton.setEnabled(true);
-        }
-        saveIdentitiesButton.setEnabled(identitiesDirty);
-        forgetResultButton.setText(identitiesDirty
-                ? "Forget result" : "Forget unresolved review");
-        forgetResultButton.setEnabled(!lastReviewItems.isEmpty());
     }
 
     /** A flat result: members grouped by type — a single searchable instance view
