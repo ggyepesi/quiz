@@ -158,7 +158,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
 
         viewStepsPanel = new ViewStepsPanel(
-                controller, this::render, this::addFilterGroup);
+                controller, this::render, this::addFilterGroup,
+                () -> renderedScope == null ? java.util.List.of() : renderedScope.members());
         left.add(viewStepsPanel, BorderLayout.CENTER);
 
         return left;

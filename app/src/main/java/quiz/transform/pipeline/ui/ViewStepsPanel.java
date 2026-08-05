@@ -32,8 +32,7 @@ public final class ViewStepsPanel extends JPanel {
     // the SHARED config source, so it shows the same fields / order / types as the
     // search/sort/view editors, with references as an inline collapsible tree. The
     // chosen DomainField is rebuilt from the selected row's FieldRow.
-    private final ViewConfigEditor fieldPicker =
-            new ViewConfigEditor(new ViewConfig(), (Viewable) null, FieldTableContributor.SINGLE);
+    private final ViewConfigEditor fieldPicker;
 
     private final JComboBox<FilterOperator> filterOperator =
             new JComboBox<>();
@@ -60,10 +59,17 @@ public final class ViewStepsPanel extends JPanel {
     public ViewStepsPanel(
             TransformController controller,
             Listener listener,
-            java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator) {
+            java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
+            java.util.function.Supplier<
+                    ? extends java.util.Collection<? extends Viewable>> workingSet) {
         this.controller = controller;
         this.listener = listener;
         this.filterGroupCreator = filterGroupCreator;
+        // The left field picker IS the validation panel: Coverage / Present / Missing over
+        // the working set shown on the right, so selecting a field can filter to the gap.
+        this.fieldPicker = new ViewConfigEditor(new ViewConfig(), (Viewable) null,
+                new quiz.transform.ui.FieldCoverageColumns(
+                        controller.domain(), controller::selectedType, workingSet));
 
         setLayout(new BorderLayout(6, 6));
 

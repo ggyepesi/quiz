@@ -190,7 +190,8 @@ public final class ValidationPanel extends JPanel {
             }
         }
 
-        coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null, new CoverageColumns());
+        coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null,
+                new FieldCoverageColumns(domain, () -> type, () -> instances));
         coverage.setChangeListener(this::onFieldSelected);
 
         checkButton.addActionListener(e -> onCheck());
@@ -555,50 +556,6 @@ public final class ValidationPanel extends JPanel {
                 .toList();
     }
 
-    // The coverage plugin: single-select field picker + Coverage / Present / Missing
-    // columns computed over the currently selected type's instances.
-    private final class CoverageColumns implements FieldTableContributor {
-        @Override public SelectionMode selectionMode() {
-            return SelectionMode.SINGLE;
-        }
-
-        @Override public List<ExtraColumn> columns() {
-            return List.of(
-                    column("Coverage", 80, this::pct),
-                    column("Present", 64, p -> String.valueOf(present(p))),
-                    column("Missing", 64, p -> String.valueOf(eligibleCount(p) - present(p))));
-        }
-
-        private String pct(String path) {
-            int total = eligibleCount(path);
-            if (total == 0) {
-                return "—";
-            }
-            return (Math.round(1000.0 * present(path) / total) / 10.0) + "%";
-        }
-    }
-
-    private int present(String path) {
-        ScopedField scoped = scopedField(path);
-        if (scoped == null) return 0;
-        int n = 0;
-        for (Viewable q : instances) {
-            if (domain.isInstanceOf(q, scoped.type()) && has(q, scoped.path())) {
-                n++;
-            }
-        }
-        return n;
-    }
-
-    private int eligibleCount(String path) {
-        ScopedField scoped = scopedField(path);
-        if (scoped == null) return 0;
-        int n = 0;
-        for (Viewable q : instances) {
-            if (domain.isInstanceOf(q, scoped.type())) n++;
-        }
-        return n;
-    }
 
     private record ScopedField(String type, String path) { }
 
@@ -609,18 +566,8 @@ public final class ValidationPanel extends JPanel {
      * such as {@code @subtype:USState.admissionDate}. Strip those presentation-only
      * segments and retain the deepest subtype as the field's coverage scope. */
     private ScopedField scopedField(String rawPath) {
-        if (rawPath == null || rawPath.isBlank() || type == null) return null;
-        String scopedType = type;
-        List<String> fieldSegments = new ArrayList<>();
-        for (String segment : rawPath.split("\\.")) {
-            if (segment.startsWith("@subtype:") && segment.length() > 9) {
-                scopedType = segment.substring(9);
-            } else if (!segment.isBlank()) {
-                fieldSegments.add(segment);
-            }
-        }
-        return fieldSegments.isEmpty() ? null
-                : new ScopedField(scopedType, String.join(".", fieldSegments));
+        FieldCoverageColumns.Scoped s = FieldCoverageColumns.scoped(type, rawPath);
+        return s == null ? null : new ScopedField(s.type(), s.path());
     }
 
     @SuppressWarnings("unchecked")
@@ -628,28 +575,6 @@ public final class ValidationPanel extends JPanel {
         return (Class<? extends Viewable>) q.getClass();
     }
 
-    private static FieldTableContributor.ExtraColumn column(
-            String header,
-            int width,
-            Function<String, Object> value) {
-
-        return new FieldTableContributor.ExtraColumn() {
-            @Override
-            public String header() {
-                return header;
-            }
-
-            @Override
-            public int width() {
-                return width;
-            }
-
-            @Override
-            public Object value(FieldRow row) {
-                return value.apply(row.path());
-            }
-        };
-    }
 
     private JComponent header(String fieldType, String path, int count) {
         JPanel h = new JPanel();
@@ -1215,34 +1140,6 @@ public final class ValidationPanel extends JPanel {
     }
 
     private static boolean has(Viewable q, String path) {
-        List<Object> current = new ArrayList<>();
-        current.add(q);
-        for (String seg : path.split("\\.")) {
-            List<Object> next = new ArrayList<>();
-            for (Object o : current) {
-                if (o instanceof Viewable v) {
-                    Object val = FieldSet.of(v).read(seg);
-                    if (val instanceof Collection<?> c) {
-                        next.addAll(c);
-                    } else if (val != null) {
-                        next.add(val);
-                    }
-                }
-            }
-            current = next;
-        }
-        for (Object o : current) {
-            if (o == null) {
-                continue;
-            }
-            if (o instanceof String s && s.isBlank()) {
-                continue;
-            }
-            if (o instanceof Collection<?> c && c.isEmpty()) {
-                continue;
-            }
-            return true;
-        }
-        return false;
+        return FieldCoverageColumns.hasValue(q, path);
     }
 }
