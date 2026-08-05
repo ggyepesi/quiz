@@ -12,8 +12,6 @@ import quiz.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
 import quiz.enrichment.EnrichmentSources;
 import quiz.enrichment.EnrichmentReviewRequest;
-import quiz.enrichment.ChooseFieldPropertyProcess;
-import quiz.enrichment.ChosenProperty;
 import quiz.enrichment.FindDataProcess;
 import quiz.enrichment.FindDataBatchProcess;
 import quiz.enrichment.FindDataBatchResult;
@@ -717,28 +715,24 @@ public final class ValidationPanel extends JPanel {
 
     private void chooseFieldSource(
             String sampleQid, FieldKey key, boolean produceAfterChoice) {
-        findDataRunner.run(
-                new ChooseFieldPropertyProcess(sampleQid, key.path(),
-                        sourceFor(key) == null ? null : sourceFor(key).propertyPid()),
-                outcome -> {
-                    ChosenProperty chosen = outcome.result();
-                    if (chosen == null || !chosen.isPresent()) return;
+        // Explore mode 2: pick a property of the resolved sample entity and RETURN it —
+        // the caller (here) sets the field source. No bespoke property-picker path.
+        wikidata.explore.workbench.ExploreByExamplePanel.findProperty(
+                this, queryRunner, sampleQid, null,
+                (pid, label) -> {
+                    if (pid == null || pid.isBlank()) return;
                     FieldSourceMapping source = new FieldSourceMapping();
                     source.sourceType(FieldSourceType.SPARQL);
-                    source.propertyPid(chosen.pid());
-                    source.propertyLabel(chosen.label());
+                    source.propertyPid(pid);
+                    source.propertyLabel(label);
                     source.direction(RuleDirection.ROOT_TO_ITEM);
                     source.productionKind(FieldProductionKind.AUTO);
                     fieldSources.put(key, source);
                     updateFieldSourceButton();
                     if (produceAfterChoice) {
-                        // SwingProcessRunner is still completing this process during the
-                        // callback; queue production after it releases the runner.
                         SwingUtilities.invokeLater(() -> runFillBatch(key.path()));
                     }
-                },
-                ex -> JOptionPane.showMessageDialog(this,
-                        "Property discovery failed: " + ex.getMessage()));
+                });
     }
 
     private FieldSourceMapping sourceFor(FieldKey key) {
@@ -872,14 +866,6 @@ public final class ValidationPanel extends JPanel {
                     SwingProcessInput.await(cancellation, completed ->
                     quiz.enrichment.ui.FindDataBatchReviewPanel.showModeless(
                             this, batch.title(), batch.prompt(), batch.proposals(), completed));
-            return request.responseType().cast(answer);
-        }
-        if (request instanceof quiz.enrichment.PropertySelectionRequest pick) {
-            quiz.enrichment.ChosenProperty answer =
-                    SwingProcessInput.await(cancellation, completed ->
-                    quiz.enrichment.ui.FieldPropertyPickerPanel.showModeless(
-                            this, pick.title(), pick.prompt(), pick.field(), pick.options(),
-                            pick.suggestedPid(), completed));
             return request.responseType().cast(answer);
         }
         return ProcessInputHandler.unsupported().request(request, cancellation);
