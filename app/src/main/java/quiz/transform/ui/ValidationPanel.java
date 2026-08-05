@@ -82,6 +82,7 @@ public final class ValidationPanel extends JPanel {
     private final JComboBox<String> typeCombo = new JComboBox<>();
     private final JComboBox<ScopeFilter> scopeCombo =
             new JComboBox<>(ScopeFilter.values());
+    private final FieldCoverageColumns coverageColumns;
     private final ViewConfigEditor coverage;
     private final JLabel status = new JLabel(" ");
     private final JLabel identityStatus = new JLabel(" ");
@@ -192,8 +193,9 @@ public final class ValidationPanel extends JPanel {
 
         // this.instances (the FIELD onType() fills with the selected type's members),
         // NOT the constructor parameter — which "Curate data" passes as null.
-        coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null,
-                new FieldCoverageColumns(domain, () -> type, () -> this.instances));
+        coverageColumns = new FieldCoverageColumns(
+                domain, () -> type, () -> this.instances);
+        coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null, coverageColumns);
         coverage.setChangeListener(this::onFieldSelected);
 
         checkButton.addActionListener(e -> onCheck());
@@ -303,6 +305,31 @@ public final class ValidationPanel extends JPanel {
         scopeCombo.setSelectedItem(filter);
         selectType(type);
         coverage.setSelectedPath(field);
+    }
+
+    /** Turn this panel into the action half of curation for a target selected elsewhere.
+     *  TransformApp's main workbench already chose the class, group, field and visible
+     *  instances; repeating those selectors here creates two competing scope models.
+     *  The supplied constructor population is therefore treated as the exact target and
+     *  this surface retains only action configuration, instance choice and Apply. */
+    public void useFixedTarget(String type, String field, String scopeDescription) {
+        // The constructor already restricted the population to the visible instances, so
+        // ALL here means all of that immutable target—not all members of the domain.
+        selectField(type, field, ScopeFilter.ALL);
+
+        remove(split);
+        JPanel summary = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        summary.add(new JLabel("Curating:"));
+        summary.add(new JLabel(type + "." + field));
+        if (scopeDescription != null && !scopeDescription.isBlank()) {
+            summary.add(new JLabel("· " + scopeDescription));
+        }
+        summary.add(applyButton);
+        summary.add(cancelProcessButton);
+        add(summary, BorderLayout.NORTH);
+        add(instancesHolder, BorderLayout.CENTER);
+        revalidate();
+        repaint();
     }
 
     /** Curate the provenance-declared identity: select the type, apply the scope filter, show the
@@ -490,21 +517,10 @@ public final class ValidationPanel extends JPanel {
      * Keep the ordinary cards below it, but add a compact searchable index whose
      * QID column uses the shared Wikidata-link renderer. */
     private JComponent identityInstancesView(List<Viewable> matching) {
-        wikidata.explore.workbench.EntityResultPanel identities =
-                new wikidata.explore.workbench.EntityResultPanel(
-                        List.of("Instance", "Class", "QID"), 2, false);
-        identities.setColumnWidths(260, 110, 90);
-        identities.setRows(matching.stream()
-                .map(member -> List.<Object>of(
-                        new IdentityMember(member),
-                        java.util.Objects.requireNonNullElse(concreteType(member), ""),
-                        java.util.Objects.requireNonNullElse(identityQid(member), "")))
-                .toList());
-        identities.onSelectionChanged(() -> {
-            List<List<Object>> rows = identities.selectedRows();
-            Object value = rows.isEmpty() || rows.get(0).isEmpty()
-                    ? null : rows.get(0).get(0);
-            selected = value instanceof IdentityMember item ? item.member() : null;
+        IdentityIndexPanel identities = new IdentityIndexPanel(
+                matching, this::concreteType, this::identityQid);
+        identities.onSelectionChanged(value -> {
+            selected = value;
             updateIdentityButton();
         });
 
@@ -513,12 +529,6 @@ public final class ValidationPanel extends JPanel {
         identityAndCards.setResizeWeight(0.32);
         SwingUtilities.invokeLater(() -> identityAndCards.setDividerLocation(0.32));
         return identityAndCards;
-    }
-
-    private record IdentityMember(Viewable member) {
-        @Override public String toString() {
-            return member == null ? "" : member.getDisplayName();
-        }
     }
 
     /** Subclass membership is inherited: a USState belongs in State validation too. */
@@ -543,19 +553,8 @@ public final class ValidationPanel extends JPanel {
             String ownerType,
             String path,
             ScopeFilter filter) {
-        if (domain == null || source == null || ownerType == null
-                || path == null || filter == null) return List.of();
-        return source.stream()
-                .filter(java.util.Objects::nonNull)
-                .filter(member -> domain.isInstanceOf(member, ownerType))
-                .filter(member -> {
-                    boolean present = has(member, path);
-                    return filter == ScopeFilter.ALL
-                            || filter == ScopeFilter.PRESENT && present
-                            || filter == ScopeFilter.MISSING && !present;
-                })
-                .map(Viewable.class::cast)
-                .toList();
+        return FieldCoverageColumns.select(
+                domain, source, ownerType, path, filter);
     }
 
 
@@ -898,6 +897,7 @@ public final class ValidationPanel extends JPanel {
             // detached manual/identity staging session, which remains pending afterwards.
             EnrichmentDecisionApplier.apply(domain, curation, decision);
             updateApplyButton();
+            refreshCoverage();
             onCurated.run();
             onFieldSelected();
         } catch (Exception ex) {
@@ -987,6 +987,7 @@ public final class ValidationPanel extends JPanel {
             return;
         }
         updateApplyButton();
+        refreshCoverage();
         onCurated.run();
         if (identityTask) showIdentityMembers(identityDrill);
         else if (selectedFieldPath != null) onFieldSelected();
@@ -1057,10 +1058,16 @@ public final class ValidationPanel extends JPanel {
         staging.stage(pending);
         // Apply only the detached overlay for preview; the durable store is unchanged.
         Corrections.apply(domain.instances(), List.of(staging));
+        refreshCoverage();
         manualValue.setText("");
         onCurated.run();
         // Re-render (no re-filter) so the just-staged value shows and its instance stays.
         renderFieldDrill();
+    }
+
+    private void refreshCoverage() {
+        coverageColumns.invalidate();
+        coverage.repaint();
     }
 
     private Object typedManualValue(String text) {

@@ -11,6 +11,7 @@ import process.swing.SwingProcessRunner;
 import objectview.Viewable;
 import quiz.ViewableGroup;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
+import quiz.curation.ScopeFilter;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.QueryContext;
@@ -43,6 +44,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private final JPanel renderHolder = new JPanel(new BorderLayout());
     private final JLabel scopeStatus = new JLabel("No rendered scope");
+    private final JToggleButton showIdentitiesButton =
+            new JToggleButton("Show identities");
+    private final JLabel identityActionStatus = new JLabel("No identity scope");
     private final JButton resolveButton = new JButton("Resolve identities…");
     // Applying resolved identities only mutates the in-memory curation; "Save identities"
     // persists it. So the user can inspect / fetch field data for the newly-identified
@@ -81,24 +85,33 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private ViewStepsPanel viewStepsPanel;
     private JDialog explorerDialog;
+    private JDialog identityCurationDialog;
+    private RenderedScope identityActionScope;
 
     // Bumped on every render() (EDT-only). A background render swaps its cards in
     // only if it's still the latest — so a slow earlier render can't overwrite a
     // newer one that finished first.
     private int renderGeneration;
     private RenderedScope renderedScope;
-    // The coverage filter driven by the left field picker: when set, the RIGHT view shows
-    // only instances MISSING this field. The left coverage stays over the full working set.
-    private DomainField coverageFilter;
+    // The selected field is not a filter by itself. These two values represent the explicit
+    // All/Missing/Present choice made below the field table.
+    private DomainField scopeField;
+    private ScopeFilter fieldScope = ScopeFilter.ALL;
     private java.util.function.Consumer<objectview.group.ViewableGroup<?>> activeShow;
     private objectview.group.ViewableGroup<?> activeGroup;
     private boolean closed;
 
-    /** The exact immutable result successfully swapped into the right-hand browser. */
+    /** One authoritative selection state. {@code baseMembers} is the selected group's
+     *  explicit membership; {@code visibleMembers} is the exact list rendered after the
+     *  optional field-value scope. Instance actions always use the latter. */
     private record RenderedScope(
-            int generation, String selectedType, List<Viewable> members) {
+            int generation,
+            String selectedType,
+            List<Viewable> baseMembers,
+            List<Viewable> visibleMembers) {
         private RenderedScope {
-            members = List.copyOf(members);
+            baseMembers = List.copyOf(baseMembers);
+            visibleMembers = List.copyOf(visibleMembers);
         }
     }
 
@@ -134,6 +147,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (controller.domain() instanceof SchemaView) {
             top.add(button("Schema…", this::showSchema));
         }
+        top.add(button("New field…", this::addNewField));
+        top.add(button("Create subclass from group…", this::createSubclassFromSelection));
         if (controller.canSave()) {
             top.add(button("Save as domain…", this::saveAsDomain));
         }
@@ -149,9 +164,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     new FlowLayout(FlowLayout.LEFT, 4, 2));
             curationActions.setAlignmentX(Component.LEFT_ALIGNMENT);
             curationActions.add(new JLabel("Curation:"));
-            curationActions.add(button("Curate data…",
-                    () -> openCuration(null)));
-            curationActions.add(button("New field…", this::addNewField));
+            curationActions.add(button("Curate…",
+                    this::openCuration));
             curationActions.add(button("Merge duplicates…",
                     () -> openMerge(c.curation())));
             curationActions.add(button("Overview…",
@@ -164,19 +178,31 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         viewStepsPanel = new ViewStepsPanel(
                 controller, this::render, this::addFilterGroup,
-                () -> renderedScope == null ? java.util.List.of() : renderedScope.members(),
-                this::applyCoverageFilter);
+                () -> renderedScope == null
+                        ? java.util.List.of() : renderedScope.baseMembers(),
+                this::applyFieldScope);
         left.add(viewStepsPanel, BorderLayout.CENTER);
 
         return left;
     }
 
-    /** Scope-level actions live beside the instances they operate on, not among pipeline tools. */
+    /** The right header describes the selected instances. Mutating operations are configured
+     *  from Curate, so this surface remains selection/presentation only. */
     private JComponent buildRight() {
         JPanel right = new JPanel(new BorderLayout(4, 4));
         JPanel scope = new JPanel(new BorderLayout(8, 2));
         scope.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
         scope.add(scopeStatus, BorderLayout.CENTER);
+        showIdentitiesButton.setToolTipText(
+                "Show the visible instances' native or curated Wikidata identities below the cards");
+        showIdentitiesButton.addActionListener(e -> {
+            showIdentitiesButton.setText(showIdentitiesButton.isSelected()
+                    ? "Hide identities" : "Show identities");
+            if (activeShow != null && activeGroup != null) {
+                activeShow.accept(activeGroup);
+            }
+        });
+        scope.add(showIdentitiesButton, BorderLayout.EAST);
         resolveButton.addActionListener(e -> {
             if (resolveRunner.isRunning()) {
                 resolveButton.setText("Cancelling identity resolution…");
@@ -185,11 +211,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             } else if (!lastReviewItems.isEmpty()) {
                 recallLastResult();   // a result is pending — show it, don't re-resolve
             } else {
-                resolveRenderedIdentities();
+                resolveCuratedIdentities();
             }
         });
         resolveButton.setToolTipText(
-                "Resolve unresolved Wikidata identities in the exact rendered scope");
+                "Resolve unresolved Wikidata identities in this captured curation scope");
         resolveButton.setEnabled(false);
         saveIdentitiesButton.setToolTipText(
                 "Persist the pending identities to the curation store");
@@ -199,11 +225,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 "Revert the pending identities (remove the links applied in memory)");
         forgetResultButton.setEnabled(false);
         forgetResultButton.addActionListener(e -> forgetLastResult());
-        JPanel scopeButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        scopeButtons.add(forgetResultButton);
-        scopeButtons.add(saveIdentitiesButton);
-        scopeButtons.add(resolveButton);
-        scope.add(scopeButtons, BorderLayout.EAST);
         instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
         return right;
@@ -250,8 +271,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         objectview.field.FieldRef field = FieldDefinitions.toFieldRef(definition);
         if (controller.addField(type, field)) {
             viewStepsPanel.refreshFields();
+            viewStepsPanel.selectField(definition.name(), ScopeFilter.MISSING);
             render();
-            openCurationPanel(type, definition.name());
         } else {
             JOptionPane.showMessageDialog(this,
                     "New field is only supported for snapshot-backed domains.");
@@ -278,18 +299,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         explorerDialog.toFront();
     }
 
-    /** Resolve the Wikidata identity of the SHOWN instances — the current scope (all /
-     *  filtered / grouped members of the selected class). Field-independent, so it lives
-     *  here over the view rather than in the field-drill Validate panel. */
-    private void resolveRenderedIdentities() {
-        RenderedScope scope = renderedScope;
+    /** Resolve the immutable scope captured when Curate → Resolve identities was opened. */
+    private void resolveCuratedIdentities() {
+        RenderedScope scope = identityActionScope;
         if (scope == null) {
-            JOptionPane.showMessageDialog(this, "Wait for the current view to finish rendering.");
+            JOptionPane.showMessageDialog(this, "Open Curate and select Resolve identities first.");
             return;
         }
-        resolveIdentities(scope.members(),
+        resolveIdentities(scope.visibleMembers(),
                 (scope.selectedType() == null ? "View" : scope.selectedType())
-                        + " rendered instances");
+                        + " visible instances");
     }
 
     /** Resolve an explicit immutable list. Callers may be the rendered view, Validate's
@@ -297,8 +316,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private void resolveIdentities(List<Viewable> requested, String scopeLabel) {
         if (resolveRunner.isRunning()) {
             JOptionPane.showMessageDialog(this,
-                    "An identity resolution is already running. Cancel it from the "
-                            + "rendered-scope header before starting another.");
+                    "An identity resolution is already running. Cancel it from its "
+                            + "curation window before starting another.");
             return;
         }
         quiz.curation.ManualCuration curation = curation();
@@ -342,7 +361,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private void setResolveRunning(boolean running, String scopeLabel, int size) {
         if (running) {
-            scopeStatus.setText("Resolving identities · " + size + " in " + scopeLabel
+            identityActionStatus.setText("Resolving identities · " + size + " in " + scopeLabel
                     + " · Query logs remain available");
             resolveButton.setText("Cancel identity resolution");
             resolveButton.setEnabled(true);
@@ -358,6 +377,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         String id = member.getIdentifier();
         if (quiz.source.WikidataSource.isQid(id)) {
             return id;
+        }
+        if (curation == null) {
+            return null;
         }
         // Not a Wikidata-native identity — the resolved qid, if any, is curation history.
         return curation.identityLinks().stream()
@@ -533,35 +555,77 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
 
-    /** Curate data on the full-population ValidationPanel — the single surface for
-     * validation, identity, manual edits and Find Data. Coverage % is over ALL instances
-     * (domain.instances()), never a filtered subset. Optionally drill a field on open. */
-    private void openCuration(String initialField) {
-        String type = renderedScope == null ? null : renderedScope.selectedType();
-        openCurationPanel(type, initialField);
+    /** The workbench owns selection; Curate configures an action for that immutable target.
+     *  It must not ask the user to select class/field/scope a second time. */
+    private void openCuration() {
+        DomainField field = viewStepsPanel == null ? null : viewStepsPanel.selectedDomainField();
+        RenderedScope scope = renderedScope;
+        if (scope == null) {
+            JOptionPane.showMessageDialog(this, "Wait for the selected instances to render.");
+            return;
+        }
+        if (scope.visibleMembers().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "The selected scope contains no instances.");
+            return;
+        }
+        Object[] options = field == null
+                ? new Object[] {"Resolve identities…", "Cancel"}
+                : new Object[] {"Curate " + field.displayPath() + "…",
+                        "Resolve identities…", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(this,
+                scope.visibleMembers().size() + " selected "
+                        + (scope.visibleMembers().size() == 1 ? "instance" : "instances")
+                        + ". Choose the curation action:",
+                "Curate selected instances", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+        if (choice < 0 || choice == options.length - 1) {
+            return;
+        }
+        if (field != null && choice == 0) {
+            openCurationPanel(field, scope);
+        } else {
+            openIdentityCuration(scope);
+        }
     }
 
-    private ValidationPanel openCurationPanel(String type, String initialField) {
-        // No explicit instance subset: coverage % is over domain.instances() (the panel's
-        // default) — the fix for the workspace wrapper's wrong per-field percentages.
-        ValidationPanel panel = new ValidationPanel(controller.domain(), null,
+    private void openIdentityCuration(RenderedScope scope) {
+        identityActionScope = scope;
+        if (identityCurationDialog == null) {
+            JPanel panel = new JPanel(new BorderLayout(8, 8));
+            panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+            panel.add(identityActionStatus, BorderLayout.NORTH);
+            JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+            actions.add(forgetResultButton);
+            actions.add(saveIdentitiesButton);
+            actions.add(resolveButton);
+            panel.add(actions, BorderLayout.CENTER);
+            identityCurationDialog = new JDialog(quiz.ui.Dialogs.owner(this),
+                    "Curate identities", Dialog.ModalityType.MODELESS);
+            identityCurationDialog.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+            identityCurationDialog.add(panel, BorderLayout.CENTER);
+            identityCurationDialog.pack();
+        }
+        updateIdentityActionStatus();
+        identityCurationDialog.pack();
+        identityCurationDialog.setLocationRelativeTo(this);
+        identityCurationDialog.setVisible(true);
+        identityCurationDialog.toFront();
+    }
+
+    private ValidationPanel openCurationPanel(DomainField field, RenderedScope scope) {
+        ValidationPanel panel = new ValidationPanel(controller.domain(), scope.visibleMembers(),
                 queries.runner(), this::render, this::resolveIdentities);
+        String scopeLabel = scope.visibleMembers().size() + " selected "
+                + (scope.visibleMembers().size() == 1 ? "instance" : "instances")
+                + " · " + fieldScope;
+        panel.useFixedTarget(field.type(), field.field(), scopeLabel);
         JDialog dialog = new JDialog(quiz.ui.Dialogs.owner(this),
-                "Curate data — coverage over all instances", Dialog.ModalityType.MODELESS);
+                "Curate " + field.displayPath(), Dialog.ModalityType.MODELESS);
         dialog.setLayout(new BorderLayout());
         dialog.add(panel, BorderLayout.CENTER);
         dialog.setSize(1160, 720);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
-        if (type != null) {
-            SwingUtilities.invokeLater(() -> {
-                if (initialField != null) {
-                    panel.selectField(type, initialField, quiz.curation.ScopeFilter.MISSING);
-                } else {
-                    panel.selectType(type);
-                }
-            });
-        }
         return panel;
     }
 
@@ -646,13 +710,33 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }.execute();
     }
 
-    /** Selecting a field in the left picker filters the RIGHT view to those MISSING it
-     *  (null clears). Re-applies the current group's view over the same working set. */
-    private void applyCoverageFilter(DomainField field) {
-        coverageFilter = field;
+    /** Apply the explicit value scope chosen below the field table. Merely selecting a
+     *  field while All is active does not call this with a restrictive mode. */
+    private void applyFieldScope(DomainField field, ScopeFilter filter) {
+        scopeField = field;
+        fieldScope = field == null || filter == null ? ScopeFilter.ALL : filter;
         if (activeShow != null && activeGroup != null) {
             activeShow.accept(activeGroup);
         }
+    }
+
+    /** Apply the explicit value mode and, for a subtype-owned field, restrict eligibility
+     *  to that subtype. A USState field must never classify every ordinary State as missing. */
+    private List<Viewable> applyFieldScope(List<Viewable> members) {
+        if (scopeField == null || fieldScope == ScopeFilter.ALL) {
+            return members;
+        }
+        return FieldCoverageColumns.select(controller.domain(), members,
+                scopeField.type(), scopeField.field(), fieldScope);
+    }
+
+    private String instanceTitle(objectview.group.ViewableGroup<?> group) {
+        String title = "Members of " + group.getDisplayName();
+        if (scopeField == null || fieldScope == ScopeFilter.ALL) {
+            return title;
+        }
+        return title + " · " + scopeField.displayPath() + " "
+                + (fieldScope == ScopeFilter.MISSING ? "missing" : "present");
     }
 
     /** A group's scope is exactly its explicit membership. Children never contribute
@@ -669,19 +753,44 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     private void updateScopeStatus() {
-        if (resolveRunner.isRunning()) {
+        RenderedScope scope = renderedScope;
+        if (scope == null) {
+            updateIdentityActionStatus();
             return;
         }
-        RenderedScope scope = renderedScope;
-        if (scope == null) return;
         quiz.curation.ManualCuration curation =
                 controller.domain() instanceof quiz.curation.Curatable c ? c.curation() : null;
-        long identified = curation == null ? 0 : scope.members().stream()
+        long identified = curation == null ? 0 : scope.visibleMembers().stream()
                 .filter(member -> currentQid(curation, member.typeName(), member) != null)
                 .count();
-        long unresolved = scope.members().size() - identified;
+        long unresolved = scope.visibleMembers().size() - identified;
+        String count = scope.visibleMembers().size() == scope.baseMembers().size()
+                ? scope.visibleMembers().size() + " shown"
+                : scope.visibleMembers().size() + " shown of "
+                        + scope.baseMembers().size() + " group members";
         scopeStatus.setText((scope.selectedType() == null ? "View" : scope.selectedType())
-                + " · " + scope.members().size() + " shown · "
+                + " · " + count + " · "
+                + identified + " identified · " + unresolved + " unresolved");
+        updateIdentityActionStatus();
+    }
+
+    private void updateIdentityActionStatus() {
+        if (resolveRunner.isRunning()) {
+            return; // setResolveRunning owns the action text while the process is active.
+        }
+        RenderedScope scope = identityActionScope;
+        if (scope == null) {
+            identityActionStatus.setText("No identity curation scope selected");
+            resolveButton.setEnabled(false);
+            return;
+        }
+        quiz.curation.ManualCuration curation = curation();
+        long identified = curation == null ? 0 : scope.visibleMembers().stream()
+                .filter(member -> currentQid(curation, member.typeName(), member) != null)
+                .count();
+        long unresolved = scope.visibleMembers().size() - identified;
+        identityActionStatus.setText((scope.selectedType() == null ? "View" : scope.selectedType())
+                + " · " + scope.visibleMembers().size() + " selected · "
                 + identified + " identified · " + unresolved + " unresolved");
         resolveButton.setText(unresolved == 0
                 ? "All identified" : "Resolve " + unresolved + " identities…");
@@ -794,16 +903,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         java.util.function.Consumer<objectview.group.ViewableGroup<?>> show = group -> {
             activeGroup = group;
             List<Viewable> members = explicitMembers(group);
-            renderedScope = new RenderedScope(generation, selectedType, members);
-            // The RIGHT view shows only those MISSING the field the left picker selected;
-            // renderedScope keeps the FULL working set so coverage/status stay over all.
-            List<Viewable> shown = coverageFilter == null ? members
-                    : members.stream()
-                            .filter(m -> !FieldCoverageColumns.hasValue(m, coverageFilter.field()))
-                            .toList();
+            List<Viewable> shown = applyFieldScope(members);
+            renderedScope = new RenderedScope(generation, selectedType, members, shown);
+            if (viewStepsPanel != null) {
+                viewStepsPanel.refreshWorkingSet();
+            }
             instances.removeAll();
             instances.add(titledInstancePanel(
-                    "Members of " + group.getDisplayName(), shown, memberType),
+                    instanceTitle(group), shown, memberType),
                     BorderLayout.CENTER);
             instances.revalidate();
             instances.repaint();
@@ -815,13 +922,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             selectedGroup = group instanceof quiz.transform.EditableGroup editable
                     ? editable : null;
             groups.setStatusText(selectedGroupStatus(group));
-            if (viewStepsPanel != null) viewStepsPanel.reflectGroupRule(group);
         });
         groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
         groups.addControl("Add filter group", viewStepsPanel::requestAddFilterGroup);
         groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
-        groups.addControl("Create subclass…", () ->
-                createSubclassFromGroup(selectedType, root));
         groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));
         groups.getTree().setSelectionRow(0);
         selectedGroup = root instanceof quiz.transform.EditableGroup editable
@@ -853,7 +957,24 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (instanceScopeHeader != null) {
             panel.add(instanceScopeHeader, BorderLayout.NORTH);
         }
-        panel.add(flatView(members, type), BorderLayout.CENTER);
+        JComponent cards = flatView(members, type);
+        showIdentitiesButton.setEnabled(!members.isEmpty());
+        if (showIdentitiesButton.isSelected() && !members.isEmpty()) {
+            quiz.curation.ManualCuration curation = curation();
+            IdentityIndexPanel identities = new IdentityIndexPanel(
+                    members,
+                    member -> controller.mostSpecificClass(member, type),
+                    member -> currentQid(curation, member.typeName(), member));
+            identities.setBorder(BorderFactory.createTitledBorder("Identities"));
+            JSplitPane cardsAndIdentities = new JSplitPane(
+                    JSplitPane.VERTICAL_SPLIT, cards, identities);
+            cardsAndIdentities.setResizeWeight(0.72);
+            cardsAndIdentities.setOneTouchExpandable(true);
+            SwingUtilities.invokeLater(() -> cardsAndIdentities.setDividerLocation(0.72));
+            panel.add(cardsAndIdentities, BorderLayout.CENTER);
+        } else {
+            panel.add(cards, BorderLayout.CENTER);
+        }
         return panel;
     }
 
@@ -882,6 +1003,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (name == null || name.isBlank()) return;
         controller.addManualGroup(selectedOrRoot(root), name.trim());
         render();
+    }
+
+    private void createSubclassFromSelection() {
+        if (activeGroup == null) {
+            JOptionPane.showMessageDialog(this, "Select the source group first.");
+            return;
+        }
+        createSubclassFromGroup(controller.selectedType(), activeGroup);
     }
 
     private void createSubclassFromGroup(

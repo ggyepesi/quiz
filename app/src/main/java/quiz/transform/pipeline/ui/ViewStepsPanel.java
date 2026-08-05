@@ -7,6 +7,8 @@ import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
 import quiz.transform.ui.DomainField;
 import objectview.field.FieldKind;
+import quiz.curation.ScopeFilter;
+import quiz.transform.ui.FieldCoverageColumns;
 import quiz.transform.ui.TransformController;
 
 import javax.swing.*;
@@ -24,9 +26,12 @@ public final class ViewStepsPanel extends JPanel {
     private final TransformController controller;
     private final Listener listener;
     private final java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator;
-    // Selecting a field asks the parent to filter the RIGHT instances to those MISSING it
-    // (null on deselect); the left coverage stays over the full working set.
-    private final java.util.function.Consumer<quiz.transform.ui.DomainField> onCoverageFilter;
+    // Field selection and value scope are deliberately independent. Selecting a row says
+    // which field subsequent actions refer to; only these explicit All/Missing/Present
+    // controls change the instances shown on the right.
+    private final java.util.function.BiConsumer<DomainField, ScopeFilter> onScopeChanged;
+    private final java.util.function.Supplier<
+            ? extends java.util.Collection<? extends Viewable>> workingSet;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private boolean refreshingTypes;
@@ -36,6 +41,11 @@ public final class ViewStepsPanel extends JPanel {
     // search/sort/view editors, with references as an inline collapsible tree. The
     // chosen DomainField is rebuilt from the selected row's FieldRow.
     private final ViewConfigEditor fieldPicker;
+    private final FieldCoverageColumns coverageColumns;
+    private final JToggleButton allScope = new JToggleButton("All");
+    private final JToggleButton missingScope = new JToggleButton("Missing");
+    private final JToggleButton presentScope = new JToggleButton("Present");
+    private ScopeFilter scopeFilter = ScopeFilter.ALL;
 
     private final JComboBox<FilterOperator> filterOperator =
             new JComboBox<>();
@@ -65,17 +75,18 @@ public final class ViewStepsPanel extends JPanel {
             java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
             java.util.function.Supplier<
                     ? extends java.util.Collection<? extends Viewable>> workingSet,
-            java.util.function.Consumer<quiz.transform.ui.DomainField> onCoverageFilter) {
+            java.util.function.BiConsumer<DomainField, ScopeFilter> onScopeChanged) {
         this.controller = controller;
         this.listener = listener;
         this.filterGroupCreator = filterGroupCreator;
-        this.onCoverageFilter = onCoverageFilter == null ? f -> { } : onCoverageFilter;
-        // The left field picker IS the validation panel: Coverage / Present / Missing over
-        // the working set shown on the right, so selecting a field can filter to the gap.
+        this.workingSet = workingSet == null ? List::of : workingSet;
+        this.onScopeChanged = onScopeChanged == null ? (f, s) -> { } : onScopeChanged;
+        // The same coverage contributor is used here and in curation. It describes the
+        // current group; it does not decide which part of that group is visible.
+        this.coverageColumns = new FieldCoverageColumns(
+                controller.domain(), controller::selectedType, this.workingSet);
         this.fieldPicker = new ViewConfigEditor(new ViewConfig(), (Viewable) null,
-                new quiz.transform.ui.FieldCoverageColumns(
-                        controller.domain(), controller::selectedType, workingSet));
-        this.fieldPicker.setToggleDeselect(true);
+                coverageColumns);
 
         setLayout(new BorderLayout(6, 6));
 
@@ -124,6 +135,14 @@ public final class ViewStepsPanel extends JPanel {
 
         reloadOperators(FieldKind.UNKNOWN);
         filterOperator.addActionListener(e -> updateFilterValueEnablement());
+        ButtonGroup scopeButtons = new ButtonGroup();
+        scopeButtons.add(allScope);
+        scopeButtons.add(missingScope);
+        scopeButtons.add(presentScope);
+        allScope.setSelected(true);
+        allScope.addActionListener(e -> selectScope(ScopeFilter.ALL));
+        missingScope.addActionListener(e -> selectScope(ScopeFilter.MISSING));
+        presentScope.addActionListener(e -> selectScope(ScopeFilter.PRESENT));
 
         // Every class opens on its root group (all instances, no steps) — build
         // groups/filters yourself. Select the first member type to seed the field tree.
@@ -149,7 +168,7 @@ public final class ViewStepsPanel extends JPanel {
 
     private JComponent memberRow() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        p.add(new JLabel("Members:"));
+        p.add(new JLabel("Class:"));
         p.add(memberTypeCombo);
         return p;
     }
@@ -160,6 +179,12 @@ public final class ViewStepsPanel extends JPanel {
                 "Field — pick one (a reference's nested fields are indented below it)"));
         fieldPicker.setChangeListener(this::onFieldSelectionChanged);
         p.add(fieldPicker, BorderLayout.CENTER);
+        JPanel scopes = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        scopes.add(new JLabel("Show:"));
+        scopes.add(allScope);
+        scopes.add(missingScope);
+        scopes.add(presentScope);
+        p.add(scopes, BorderLayout.SOUTH);
         return p;
     }
 
@@ -236,9 +261,16 @@ public final class ViewStepsPanel extends JPanel {
             return null;
         }
 
-        if (controller != null && type != null) {
-            for (DomainField field : controller.fields(type)) {
-                if (field.field().equals(row.path())) {
+        // ObjectView keeps subtype branches under a stable synthetic config key. Resolve
+        // that presentation path once at the application boundary: domain operations must
+        // receive the real owning class and its plain field path, never @subtype:... .
+        FieldCoverageColumns.Scoped scoped = FieldCoverageColumns.scoped(type, row.path());
+        String ownerType = scoped == null ? type : scoped.type();
+        String fieldPath = scoped == null ? row.path() : scoped.path();
+
+        if (controller != null && ownerType != null) {
+            for (DomainField field : controller.fields(ownerType)) {
+                if (field.field().equals(fieldPath)) {
                     return field;
                 }
             }
@@ -255,7 +287,7 @@ public final class ViewStepsPanel extends JPanel {
                 : reference ? FieldKind.REFERENCE
                 : leaf != null ? FieldKind.ofClass(leaf.getType())
                 : FieldKind.ofTypeLabel(row.typeLabel());
-        return new DomainField(type, row.path(), reference, collection, kind);
+        return new DomainField(ownerType, fieldPath, reference, collection, kind);
     }
 
     private static boolean isContainerTypeLabel(String label) {
@@ -279,8 +311,50 @@ public final class ViewStepsPanel extends JPanel {
         DomainField f = currentField();
         reloadOperators(kindOf(f));
         populateValueChoices(f);
-        // Filter the right instances to those MISSING the selected field (null = clear).
-        onCoverageFilter.accept(f);
+        updateScopeLabels();
+        // If the user explicitly chose Missing/Present, that mode naturally follows a new
+        // selected field. Merely selecting a field while All is active changes no scope.
+        if (scopeFilter != ScopeFilter.ALL) {
+            if (f == null) {
+                selectScope(ScopeFilter.ALL);
+            } else {
+                onScopeChanged.accept(f, scopeFilter);
+            }
+        }
+    }
+
+    private void selectScope(ScopeFilter selected) {
+        DomainField field = currentField();
+        scopeFilter = selected == null ? ScopeFilter.ALL : selected;
+        if (scopeFilter != ScopeFilter.ALL && field == null) {
+            scopeFilter = ScopeFilter.ALL;
+        }
+        allScope.setSelected(scopeFilter == ScopeFilter.ALL);
+        missingScope.setSelected(scopeFilter == ScopeFilter.MISSING);
+        presentScope.setSelected(scopeFilter == ScopeFilter.PRESENT);
+        updateScopeLabels();
+        onScopeChanged.accept(field, scopeFilter);
+    }
+
+    /** Recompute coverage after a group switch or in-place curation and refresh the labels
+     *  without changing either the selected field or the explicit value scope. */
+    public void refreshWorkingSet() {
+        coverageColumns.invalidate();
+        updateScopeLabels();
+        fieldPicker.repaint();
+    }
+
+    private void updateScopeLabels() {
+        java.util.Collection<? extends Viewable> members = workingSet.get();
+        int all = members == null ? 0 : members.size();
+        FieldRow row = fieldPicker.selectedRow();
+        FieldCoverageColumns.Coverage coverage = row == null
+                ? null : coverageColumns.coverage(row.path());
+        allScope.setText("All " + all);
+        missingScope.setText("Missing " + (coverage == null ? "—" : coverage.missing()));
+        presentScope.setText("Present " + (coverage == null ? "—" : coverage.present()));
+        missingScope.setEnabled(coverage != null && coverage.eligible() > 0);
+        presentScope.setEnabled(coverage != null && coverage.eligible() > 0);
     }
 
     /** Repopulate the value combo's dropdown with the field's candidate values (enum /
@@ -289,7 +363,7 @@ public final class ViewStepsPanel extends JPanel {
     private void populateValueChoices(DomainField f) {
         List<String> choices = f == null
                 ? List.of()
-                : controller.candidateValues(controller.selectedType(), f.field());
+                : controller.candidateValues(f.type(), f.field());
         filterValue.setModel(new DefaultComboBoxModel<>(choices.toArray(new String[0])));
         filterValue.setSelectedItem("");
     }
@@ -311,7 +385,7 @@ public final class ViewStepsPanel extends JPanel {
             return f.kind();
         }
         return FieldKind.ofValue(
-                controller.sampleFieldValue(controller.selectedType(), f.field()));
+                controller.sampleFieldValue(f.type(), f.field()));
     }
 
     /** Repopulate the operator combo with only the operators applicable to {@code
@@ -370,16 +444,15 @@ public final class ViewStepsPanel extends JPanel {
         return currentField();
     }
 
-    public void reflectGroupRule(objectview.group.ViewableGroup<?> group) {
-        if (group instanceof quiz.transform.FacetGroup facet) {
-            fieldPicker.setSelectedPath(facet.field());
-        } else if (group instanceof quiz.transform.OperationGroup operation) {
-            FilterCondition c = operation.condition();
-            if (c.field() != null) fieldPicker.setSelectedPath(c.field().field());
-            filterOperator.setSelectedItem(c.operator());
-            filterValue.setSelectedItem(c.value() == null ? "" : String.valueOf(c.value()));
-            filterValue2.setText(c.value2() == null ? "" : String.valueOf(c.value2()));
-        }
+    /** Select a newly-declared field and an explicit initial value scope in the one main
+     *  selection surface. The caller may then open Curate to configure an action. */
+    public void selectField(String path, ScopeFilter filter) {
+        // Avoid briefly applying the previous field's mode to the new field while the
+        // programmatic row selection fires its normal change notification.
+        scopeFilter = ScopeFilter.ALL;
+        allScope.setSelected(true);
+        fieldPicker.setSelectedPath(path);
+        selectScope(filter);
     }
 
     private static Object parseValue(String text) {

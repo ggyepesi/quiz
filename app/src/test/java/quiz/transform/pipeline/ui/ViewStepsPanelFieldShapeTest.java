@@ -2,9 +2,12 @@ package quiz.transform.pipeline.ui;
 
 import objectview.field.FieldKind;
 import objectview.viewconfig.FieldRow;
+import flag.State;
+import flag.USState;
 import org.junit.jupiter.api.Test;
 import quiz.transform.app.SnapshotDomain;
 import quiz.transform.ui.TransformController;
+import quiz.transform.ui.ReflectionDomain;
 import wikidata.explore.extract.SnapshotFieldGraph;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataMediaValue;
@@ -40,5 +43,21 @@ class ViewStepsPanelFieldShapeTest {
         assertEquals(FieldKind.COLLECTION, field.kind());
         assertTrue(FilterOperator.SIZE_EQUALS.appliesTo(field.kind()));
         assertTrue(FilterOperator.SIZE_GREATER_THAN.appliesTo(field.kind()));
+    }
+
+    @Test
+    void subtypeBranchResolvesToItsOwningClassAndPlainFieldPath() {
+        TransformController controller = new TransformController(
+                new ReflectionDomain(List.of(new State("France"), new USState("Alabama"))),
+                null);
+        controller.selectType("State");
+
+        FieldRow row = FieldRow.path(
+                "admissionDate", "@subtype:USState.admissionDate",
+                1, false, "FlexibleDate");
+        var field = ViewStepsPanel.domainFieldForRow(controller, "State", row);
+
+        assertEquals("USState", field.type());
+        assertEquals("admissionDate", field.field());
     }
 }
