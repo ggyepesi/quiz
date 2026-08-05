@@ -51,6 +51,12 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                 column("Missing", 64, p -> String.valueOf(eligibleCount(p) - present(p))));
     }
 
+    /** The working set, never null — a supplier may return null before the first render. */
+    private Collection<? extends Viewable> members() {
+        Collection<? extends Viewable> set = instances.get();
+        return set == null ? List.of() : set;
+    }
+
     private String pct(String path) {
         int total = eligibleCount(path);
         if (total == 0) {
@@ -65,7 +71,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
             return 0;
         }
         int n = 0;
-        for (Viewable q : instances.get()) {
+        for (Viewable q : members()) {
             if (domain.isInstanceOf(q, scoped.type()) && hasValue(q, scoped.path())) {
                 n++;
             }
@@ -79,7 +85,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
             return 0;
         }
         int n = 0;
-        for (Viewable q : instances.get()) {
+        for (Viewable q : members()) {
             if (domain.isInstanceOf(q, scoped.type())) {
                 n++;
             }
