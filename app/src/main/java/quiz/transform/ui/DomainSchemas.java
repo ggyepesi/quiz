@@ -102,6 +102,53 @@ public final class DomainSchemas {
         return new SchemaFieldTypeSource(domain, type, new LinkedHashSet<>());
     }
 
+    /** The subtype "class branches" for {@code baseType}: one branch per subtype that
+     *  introduces its OWN fields, so every field picker (coverage, filter, view) shows a
+     *  subclass's own fields under its heading. The SINGLE subclass-aware enumeration all
+     *  pickers share — instead of each one re-deriving it (or omitting it, which hid e.g.
+     *  {@code USState.admissionDate} from the filter picker). Only fields introduced by the
+     *  subtype occur under its heading; base fields stay in the base branch. */
+    public static List<objectview.viewconfig.ViewConfigEditor.ClassBranch> classBranches(
+            DomainModel domain, String baseType) {
+        if (domain == null || baseType == null) {
+            return List.of();
+        }
+        List<objectview.viewconfig.ViewConfigEditor.ClassBranch> branches = new ArrayList<>();
+        for (String subtype : domain.subtypesOf(baseType)) {
+            Set<String> additional = domain.additionalFields(subtype);
+            if (additional.isEmpty()) {
+                continue;
+            }
+            objectview.viewconfig.ViewConfig config = new objectview.viewconfig.ViewConfig();
+            config.setAllFields(false);
+            for (String field : additional) {
+                config.addField(field, objectview.viewconfig.ViewConfig.leaf());
+            }
+            objectview.Viewable sample = domain.representativeSample(subtype);
+            @SuppressWarnings("unchecked")
+            Class<? extends objectview.Viewable> cls = sample == null
+                    ? objectview.Viewable.class
+                    : (Class<? extends objectview.Viewable>) sample.getClass();
+            branches.add(new objectview.viewconfig.ViewConfigEditor.ClassBranch(
+                    subtype, domain.baseType(subtype), cls,
+                    onlyFields(domain.fieldTypes(subtype), additional), config));
+        }
+        return List.copyOf(branches);
+    }
+
+    private static FieldTypeSource onlyFields(FieldTypeSource source, Set<String> fields) {
+        Set<String> included = fields == null ? Set.of()
+                : java.util.Collections.unmodifiableSet(new LinkedHashSet<>(fields));
+        return new FieldTypeSource() {
+            @Override public FieldTypeInfo field(String name) {
+                return included.contains(name) && source != null ? source.field(name) : null;
+            }
+            @Override public List<String> fieldNames() {
+                return List.copyOf(included);
+            }
+        };
+    }
+
     /** Schema for a flat derived class described by its operation fields. */
     public static FieldSchema flatSchema(List<DomainField> fields) {
         List<FieldRef> refs = new ArrayList<>();

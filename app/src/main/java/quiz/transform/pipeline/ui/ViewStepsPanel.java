@@ -188,6 +188,10 @@ public final class ViewStepsPanel extends JPanel {
                     sample,
                     controller.fieldTypes(type),
                     controller.structuralFields(type));
+            // Subclass-aware, like the coverage picker: show a subtype's OWN fields
+            // (e.g. USState.admissionDate) under its heading, so Filter can target them.
+            fieldPicker.setClassBranches(
+                    quiz.transform.ui.DomainSchemas.classBranches(controller.domain(), type));
         }
         onFieldSelectionChanged();
     }

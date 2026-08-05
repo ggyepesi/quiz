@@ -346,7 +346,7 @@ public final class ValidationPanel extends JPanel {
                 sample,
                 type == null ? null : domain.fieldTypes(type),
                 type == null ? Set.of() : domain.structuralFields(type));
-        coverage.setClassBranches(classBranches(type));
+        coverage.setClassBranches(DomainSchemas.classBranches(domain, type));
         status.setText("   " + instances.size() + " " + (type == null ? "" : type)
                 + " instance(s)");
         updateIdentityStatus();
@@ -598,49 +598,6 @@ public final class ValidationPanel extends JPanel {
             if (domain.isInstanceOf(q, scoped.type())) n++;
         }
         return n;
-    }
-
-    /** Build the same virtual subtype branches used by the main search/sort/view
-     * editors. Only fields introduced by the subtype occur under its heading; base
-     * fields remain in the base branch and therefore cover the full class family. */
-    private List<ViewConfigEditor.ClassBranch> classBranches(String baseType) {
-        if (baseType == null) return List.of();
-        List<ViewConfigEditor.ClassBranch> branches = new ArrayList<>();
-        for (String subtype : domain.subtypesOf(baseType)) {
-            Set<String> additional = domain.additionalFields(subtype);
-            if (additional.isEmpty()) continue;
-            ViewConfig config = new ViewConfig();
-            config.setAllFields(false);
-            for (String field : additional) {
-                config.addField(field, ViewConfig.leaf());
-            }
-            Viewable sample = domain.representativeSample(subtype);
-            @SuppressWarnings("unchecked")
-            Class<? extends Viewable> cls = sample == null
-                    ? Viewable.class
-                    : (Class<? extends Viewable>) sample.getClass();
-            branches.add(new ViewConfigEditor.ClassBranch(
-                    subtype, domain.baseType(subtype), cls,
-                    onlyFields(domain.fieldTypes(subtype), additional), config));
-        }
-        return List.copyOf(branches);
-    }
-
-    private static objectview.viewconfig.FieldTypeSource onlyFields(
-            objectview.viewconfig.FieldTypeSource source, Set<String> fields) {
-        Set<String> included = fields == null ? Set.of()
-                : java.util.Collections.unmodifiableSet(
-                        new java.util.LinkedHashSet<>(fields));
-        return new objectview.viewconfig.FieldTypeSource() {
-            @Override public FieldTypeInfo field(String name) {
-                return included.contains(name) && source != null
-                        ? source.field(name) : null;
-            }
-
-            @Override public List<String> fieldNames() {
-                return List.copyOf(included);
-            }
-        };
     }
 
     private record ScopedField(String type, String path) { }
