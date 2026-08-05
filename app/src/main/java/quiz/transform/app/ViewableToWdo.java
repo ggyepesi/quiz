@@ -244,10 +244,12 @@ public final class ViewableToWdo {
                 set = new objectview.field.SchemaFieldSet(set, declared);
             }
             for (objectview.field.FieldRef ref : set.fields()) {
-                // Identity/display are the Viewable contract (getIdentifier /
-                // getDisplayName), not data — never store the virtual contract fields.
-                if (objectview.field.ViewableContractFieldSet.IDENTITY_KEY.equals(ref.name())
-                        || objectview.field.ViewableContractFieldSet.DISPLAY_KEY.equals(ref.name())) {
+                // Skip the by-contract computed fields — the rendered return values of
+                // getIdentifier()/getDisplayName(), not stored data. Recognized by ROLE
+                // (what they ARE), never by the fabricated key name: a real stored field
+                // that happens to reuse the key has role NONE and is kept as data.
+                if (ref.role() == objectview.field.FieldRole.IDENTITY
+                        || ref.role() == objectview.field.FieldRole.DISPLAY) {
                     continue;
                 }
                 Object cv = convert(set.read(ref.name()), seen, schema);
