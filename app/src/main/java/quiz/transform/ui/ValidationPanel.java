@@ -190,8 +190,10 @@ public final class ValidationPanel extends JPanel {
             }
         }
 
+        // this.instances (the FIELD onType() fills with the selected type's members),
+        // NOT the constructor parameter — which "Curate data" passes as null.
         coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null,
-                new FieldCoverageColumns(domain, () -> type, () -> instances));
+                new FieldCoverageColumns(domain, () -> type, () -> this.instances));
         coverage.setChangeListener(this::onFieldSelected);
 
         checkButton.addActionListener(e -> onCheck());
