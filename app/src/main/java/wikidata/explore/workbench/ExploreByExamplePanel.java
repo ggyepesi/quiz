@@ -218,8 +218,9 @@ public class ExploreByExamplePanel extends JPanel {
 
     /** Explore mode 2 — find a PROPERTY of the caller-supplied entity and RETURN the
      *  selection. The caller provides {@code seedQid} (the entity to inspect); Explore
-     *  shows its relations, the user picks one, and (pid, label) is delivered to
-     *  {@code onSelected}. Explore does not sample. */
+     *  presents it ready and the user clicks Explore to load its relations, picks one,
+     *  and (pid, label) is delivered to {@code onSelected}. Explore does not sample, and
+     *  fires no query until the user asks. */
     public static void findProperty(
             Component parent, SwingQueryRunner runner,
             String seedQid, String seedLabel,
@@ -240,7 +241,7 @@ public class ExploreByExamplePanel extends JPanel {
         dialog.pack();
         dialog.setLocationRelativeTo(parent);
         if (seedQid != null && !seedQid.isBlank()) {
-            SwingUtilities.invokeLater(() -> explorer.exploreQid(seedQid, seedLabel));
+            SwingUtilities.invokeLater(() -> explorer.presentSeed(seedQid, seedLabel));
         }
         dialog.setVisible(true);
     }
@@ -427,7 +428,9 @@ public class ExploreByExamplePanel extends JPanel {
     private void updateButtons() {
         boolean haveCandidate = candidates.hasSelection();
         boolean haveProbe = probeTable.getSelectedRow() >= 0;
-        exploreButton.setEnabled(haveCandidate && queryRunner != null);
+        // A pre-loaded seed (presentSeed) enables Explore even without a search candidate.
+        exploreButton.setEnabled(
+                (haveCandidate || WikidataIds.isQid(pendingQid)) && queryRunner != null);
         useSourceButton.setEnabled(haveCandidate || WikidataIds.isQid(exploredQid));
         showMembersButton.setEnabled(haveProbe);
         addTargetsButton.setEnabled(haveProbe);
@@ -466,6 +469,23 @@ public class ExploreByExamplePanel extends JPanel {
         }
         history.clear();
         exploreEntity(qid, label, false);
+    }
+
+    /** Pre-load a seed entity for property exploration <em>without</em> firing the probe:
+     *  the user reviews it and clicks Explore to run. Keeps Explore passive about its input
+     *  (the counterpart to returning — rather than acting on — its result), and is the seam
+     *  where a caller-supplied or user-added qid is confirmed before the query goes out. */
+    public void presentSeed(String qid, String label) {
+        if (qid == null || !WikidataIds.isQid(qid)) {
+            return;
+        }
+        history.clear();
+        pendingQid = qid;
+        pendingLabel = label == null || label.isBlank() ? qid : label;
+        currentLabel.setText("Ready to explore: " + pendingLabel + " (" + qid + ")");
+        probeModel.setRows(List.of());
+        status.setText("Click Explore to load properties of " + pendingLabel + ".");
+        updateButtons();
     }
 
     // Explore an arbitrary entity (following a relation's member), pushing the
