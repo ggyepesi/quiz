@@ -50,6 +50,18 @@ public record DomainField(String type, FieldPath fieldPath,
         return type + "." + fieldPath.dotted();
     }
 
+    /** {@code Type.field} for display: reserved contract keys (e.g. {@code @view:display})
+     *  are shown by their human label ("Name"), so filter/group descriptions read naturally
+     *  instead of leaking the raw key. */
+    public String displayPath() {
+        StringBuilder sb = new StringBuilder(type);
+        for (String segment : fieldPath.dotted().split("\\.")) {
+            sb.append('.').append(
+                    objectview.field.ViewableContractFieldSet.label(segment));
+        }
+        return sb.toString();
+    }
+
     @Override
     public String toString() {
         String shape = reference ? (collection ? "ref[]" : "ref")

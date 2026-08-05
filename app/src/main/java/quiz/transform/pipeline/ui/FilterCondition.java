@@ -14,7 +14,7 @@ public record FilterCondition(
 
     @Override
     public String toString() {
-        String f = field == null ? "?" : field.path();
+        String f = field == null ? "?" : field.displayPath();
 
         return switch (operator) {
             case IS_TRUE, IS_FALSE, IS_EMPTY, IS_NOT_EMPTY ->

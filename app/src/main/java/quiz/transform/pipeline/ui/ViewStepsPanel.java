@@ -341,7 +341,7 @@ public final class ViewStepsPanel extends JPanel {
 
         FilterCondition c = new FilterCondition(f, op, v1, v2);
         String name = JOptionPane.showInputDialog(this,
-                "Name the new filter group:", "Filtered " + f.path());
+                "Name the new filter group:", "Filtered " + f.displayPath());
         if (name == null || name.isBlank()) return;
         if (filterGroupCreator != null) {
             filterGroupCreator.accept(name.trim(), c);
