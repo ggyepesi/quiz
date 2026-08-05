@@ -132,9 +132,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (controller.canSave()) {
             top.add(button("Save as domain…", this::saveAsDomain));
         }
-        top.add(button("New field…", this::addNewField));
         top.add(button("Explore…", this::showExplorer));
-        top.add(button("Validate…", this::showValidation));
         top.add(button("Query logs…", () -> queries.showLogs(this)));
         queries.runner().registerCancelButton(cancelQueryButton);
         queries.runner().cancelAction(requestClient::cancelCurrentQuery);
@@ -148,6 +146,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             curationActions.add(new JLabel("Curation:"));
             curationActions.add(button("Curate data…",
                     () -> openCuration(null)));
+            curationActions.add(button("New field…", this::addNewField));
             curationActions.add(button("Merge duplicates…",
                     () -> openMerge(c.curation())));
             curationActions.add(button("Overview…",
@@ -526,25 +525,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         return ProcessInputHandler.unsupported().request(request, cancellation);
     }
 
-    /** Consistency validation over the full working schema (base + derived + facets):
-     *  per-field coverage; drill a gap into the members missing it. Front of curate. */
-    private void showValidation() {
-        RenderedScope scope = renderedScope;
-        if (scope == null) {
-            JOptionPane.showMessageDialog(this, "Wait for the current view to finish rendering.");
-            return;
-        }
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
-                "Validate — consistency / coverage", Dialog.ModalityType.MODELESS);
-        dialog.setLayout(new BorderLayout());
-        // Validate the SHOWN view — the filtered + grouped members of the selected class —
-        // not the whole pool.
-        dialog.add(new ValidationPanel(controller.domain(), scope.members(),
-                queries.runner(), this::render, this::resolveIdentities), BorderLayout.CENTER);
-        dialog.setSize(1080, 620);
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-    }
 
     /** Curate data on the full-population ValidationPanel — the single surface for
      * validation, identity, manual edits and Find Data. Coverage % is over ALL instances
