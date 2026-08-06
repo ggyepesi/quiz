@@ -9,7 +9,6 @@ import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
-import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -44,8 +43,12 @@ public class ExploreByExamplePanel extends JPanel {
     private final JButton exploreButton = new JButton("Explore relations");
     private final JButton useSourceButton = new JButton("Use as class type (P31)");
 
-    private final RelationModel probeModel = new RelationModel();
-    private final JTable probeTable = new JTable(probeModel);
+    // Relations render as Viewables through objectview's SearchableCardView, so they get the
+    // same search / per-field sort / filter (incl. by Kind) as every other card view — no
+    // bespoke table. The holder swaps in a fresh card view each time the relation set changes.
+    private final JPanel relationHolder = new JPanel(new BorderLayout());
+    private List<RelationView> relations = List.of();
+    private RelationView selectedRelationView;
     private final JButton showMembersButton = new JButton("Show members");
     private final JButton addTargetsButton = new JButton("Add as relation targets");
     private final JButton addSeedsButton = new JButton("Add as Seed QIDs");
@@ -56,6 +59,9 @@ public class ExploreByExamplePanel extends JPanel {
                     + "<b>follow</b> it and explore further), or <b>add members as "
                     + "Seed QIDs</b>. <b>◀ Back</b> retraces your path.</html>");
     private boolean explorationOnly;
+    // Property-picker mode explores only the seed's OWN properties (outgoing); the incoming
+    // scan is slow and irrelevant when the goal is to pick a field's Wikidata property.
+    private boolean outgoingOnly;
     // The entity whose relations are shown — used to fetch a relation's members.
     private String exploredQid = "";
     private String exploredLabel = "";
@@ -71,7 +77,11 @@ public class ExploreByExamplePanel extends JPanel {
     private String pendingLabel = "";
 
     private final JLabel status = new JLabel(" ");
-    private JSplitPane mainSplit;
+    // Entity search and the relation list are TABS (like the identity resolver's
+    // Confident/Ambiguous/Unresolved), not a vertical split — so each gets the full height
+    // and the relations always have room to render and scroll.
+    private JTabbedPane tabs;
+    private JComponent entityPanel;
     private JComponent relationPanel;
 
     public ExploreByExamplePanel() {
@@ -134,8 +144,9 @@ public class ExploreByExamplePanel extends JPanel {
     /** Configure the panel to PICK A PROPERTY of a given entity (mode 2 of Explore): its
      *  relations are shown, the entity-mutating actions are hidden, and choosing a relation
      *  returns its (pid, label) via {@link #onUseProperty}. The caller supplies the entity
-     *  (via {@link #exploreQid}) — Explore does not sample. */
+     *  (via {@link #presentSeed}) — Explore does not sample. */
     public void propertyPicker(String useButtonLabel) {
+        outgoingOnly = true;
         useSourceButton.setVisible(false);
         addTargetsButton.setVisible(false);
         addSeedsButton.setVisible(false);
@@ -189,12 +200,25 @@ public class ExploreByExamplePanel extends JPanel {
 
     private void showRelationPanel(boolean visible) {
         exploreButton.setVisible(visible);
-        if (mainSplit == null) return;
-        mainSplit.setBottomComponent(visible ? relationPanel : null);
-        mainSplit.setDividerSize(visible ? UIManager.getInt("SplitPane.dividerSize") : 0);
-        mainSplit.setResizeWeight(visible ? 0.5 : 1.0);
+        if (tabs == null) return;
+        int idx = tabs.indexOfComponent(relationPanel);
+        if (visible && idx < 0) {
+            tabs.addTab("Relations", relationPanel);
+        } else if (!visible && idx >= 0) {
+            tabs.removeTabAt(idx);
+        }
         revalidate();
         repaint();
+    }
+
+    private void selectTab(JComponent tab) {
+        if (tabs == null) {
+            return;
+        }
+        int idx = tabs.indexOfComponent(tab);
+        if (idx >= 0) {
+            tabs.setSelectedIndex(idx);
+        }
     }
 
     /** Pre-seed the search box and run it — e.g. the instance name when opening the picker.
@@ -289,13 +313,6 @@ public class ExploreByExamplePanel extends JPanel {
         midRow.add(exploreButton);
         midRow.add(useSourceButton);
 
-        probeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        probeTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        probeTable.getColumnModel().getColumn(0).setPreferredWidth(55);
-        probeTable.getColumnModel().getColumn(1).setPreferredWidth(220);
-        probeTable.getColumnModel().getColumn(2).setPreferredWidth(60);
-        probeTable.getColumnModel().getColumn(3).setPreferredWidth(360);
-
         JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         actionRow.add(showMembersButton);
         addTargetsButton.setToolTipText("Add the relation's members to the selected "
@@ -307,36 +324,43 @@ public class ExploreByExamplePanel extends JPanel {
 
         hint.setFont(hint.getFont().deriveFont(Font.ITALIC));
 
-        JPanel top = new JPanel(new BorderLayout(4, 2));
-        top.add(searchRow, BorderLayout.NORTH);
-        top.add(candidates, BorderLayout.CENTER);
-        top.add(midRow, BorderLayout.SOUTH);
-
         useSourceButton.setToolTipText("Make the selected entity the selected "
                 + "class's membership type (instance-of / P31).");
 
+        // Entity tab: search / pick the entity, then Explore. currentLabel shows what will be
+        // (or is being) explored, right next to the Explore button.
+        JPanel entitySouth = new JPanel(new BorderLayout(4, 2));
+        entitySouth.add(midRow, BorderLayout.NORTH);
+        entitySouth.add(currentLabel, BorderLayout.SOUTH);
+        JPanel top = new JPanel(new BorderLayout(4, 2));
+        top.add(searchRow, BorderLayout.NORTH);
+        top.add(candidates, BorderLayout.CENTER);
+        top.add(entitySouth, BorderLayout.SOUTH);
+        entityPanel = top;
+
+        // Relations tab: Back navigation, the relation cards (own scroll), actions + hint.
         JPanel navRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         backButton.setEnabled(false);
         backButton.setToolTipText("Back to the previously explored entity");
         navRow.add(backButton);
-        navRow.add(currentLabel);
 
         JPanel bottom = new JPanel(new BorderLayout(4, 2));
         bottom.add(navRow, BorderLayout.NORTH);
-        bottom.add(new JScrollPane(probeTable), BorderLayout.CENTER);
+        bottom.add(relationHolder, BorderLayout.CENTER);
         JPanel bottomSouth = new JPanel(new BorderLayout());
         bottomSouth.add(actionRow, BorderLayout.NORTH);
         bottomSouth.add(hint, BorderLayout.SOUTH);
         bottom.add(bottomSouth, BorderLayout.SOUTH);
-
         relationPanel = bottom;
-        mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, bottom);
-        mainSplit.setResizeWeight(0.5);
-        add(mainSplit, BorderLayout.CENTER);
+
+        tabs = new JTabbedPane();
+        tabs.addTab("Entity", entityPanel);
+        tabs.addTab("Relations", relationPanel);
+        add(tabs, BorderLayout.CENTER);
 
         searchField.addActionListener(e -> searchButton.doClick());
         candidates.onSelectionChanged(this::updateButtons);
-        probeTable.getSelectionModel().addListSelectionListener(e -> updateButtons());
+        showRelations(List.of());
 
         exploreButton.addActionListener(e -> { /* wired via queryRunner */ });
         backButton.addActionListener(e -> {
@@ -356,10 +380,9 @@ public class ExploreByExamplePanel extends JPanel {
         });
         usePropertyButton.setVisible(false);
         usePropertyButton.addActionListener(e -> {
-            int r = probeTable.getSelectedRow();
-            if (r >= 0) {
-                RelationRow rel = probeModel.row(r);
-                onUseProperty.accept(rel.pid(), rel.label());
+            RelationView rel = selectedRelationView;
+            if (rel != null) {
+                onUseProperty.accept(rel.pid(), rel.relationLabel());
                 status.setText("Used " + rel.pid() + ".");
             }
         });
@@ -425,9 +448,36 @@ public class ExploreByExamplePanel extends JPanel {
         return null;
     }
 
+    /** Render {@code rels} as cards through objectview's SearchableCardView — search, sort,
+     *  filter (incl. by Kind) come from the shared card view. Single-card selection sets the
+     *  picked relation for the actions. A fresh view is built per relation set. */
+    private void showRelations(List<RelationView> rels) {
+        relations = rels == null ? List.of() : rels;
+        selectedRelationView = null;
+        relationHolder.removeAll();
+        if (relations.isEmpty()) {
+            relationHolder.add(new JLabel("   No relations."), BorderLayout.NORTH);
+        } else {
+            JComponent cards = objectview.search.SearchableCardView.builder(relations)
+                    .sample(relations.get(0))
+                    .hiddenFields(java.util.Set.of("label"))
+                    .collapsible(true)
+                    .selectionListener(o -> {
+                        selectedRelationView =
+                                o instanceof RelationView rv ? rv : null;
+                        updateButtons();
+                    })
+                    .build();
+            relationHolder.add(cards, BorderLayout.CENTER);
+        }
+        relationHolder.revalidate();
+        relationHolder.repaint();
+        updateButtons();
+    }
+
     private void updateButtons() {
         boolean haveCandidate = candidates.hasSelection();
-        boolean haveProbe = probeTable.getSelectedRow() >= 0;
+        boolean haveProbe = selectedRelationView != null;
         // A pre-loaded seed (presentSeed) enables Explore even without a search candidate.
         exploreButton.setEnabled(
                 (haveCandidate || WikidataIds.isQid(pendingQid)) && queryRunner != null);
@@ -445,7 +495,7 @@ public class ExploreByExamplePanel extends JPanel {
         }
         status.setText("Searching…");
         candidates.setRows(List.of());
-        probeModel.setRows(List.of());
+        showRelations(List.of());
         return new ClassSearchQuery(text, ClassSearchQuery.Mode.API, 20);
     }
 
@@ -480,11 +530,17 @@ public class ExploreByExamplePanel extends JPanel {
             return;
         }
         history.clear();
+        candidates.setRows(List.of());
+        exploredQid = "";
+        exploredLabel = "";
         pendingQid = qid;
         pendingLabel = label == null || label.isBlank() ? qid : label;
+        qidField.setText(qid);
         currentLabel.setText("Ready to explore: " + pendingLabel + " (" + qid + ")");
-        probeModel.setRows(List.of());
+        showRelations(List.of());
+        backButton.setEnabled(false);
         status.setText("Click Explore to load properties of " + pendingLabel + ".");
+        selectTab(entityPanel);   // the Explore button lives on the Entity tab
         updateButtons();
     }
 
@@ -527,40 +583,41 @@ public class ExploreByExamplePanel extends JPanel {
         currentLabel.setText("Relations of: " + exploredLabel + " (" + qid + ")");
         backButton.setEnabled(!history.isEmpty());
         status.setText("Exploring relations of " + exploredLabel + "…");
-        probeModel.setRows(List.of());
-        return new ExploreEntityQuery(qid, 200);
+        showRelations(List.of());
+        return new ExploreEntityQuery(qid, 200, outgoingOnly);
     }
 
-    // Rows are (Direction, PID, Relation, Count, Example) — one per relation.
+    // Rows are (Direction, PID, Relation, Count, Example, Kind) — one per relation.
     private void acceptProbes(TableQueryResult result) {
         List<List<Object>> rows = result == null ? List.of() : result.rows();
-        List<RelationRow> relations = new ArrayList<>();
+        List<RelationView> found = new ArrayList<>();
         for (List<Object> row : rows) {
             String dir = str(row, 0);
             String pid = str(row, 1);
             if (!WikidataIds.isPid(pid)) {
                 continue;
             }
-            relations.add(new RelationRow(
-                    dir, pid, str(row, 2), num(str(row, 3)), str(row, 4)));
+            found.add(new RelationView(
+                    dir, pid, str(row, 2), num(str(row, 3)), str(row, 4), str(row, 5)));
         }
         SwingUtilities.invokeLater(() -> {
-            probeModel.setRows(relations);
-            status.setText(relations.isEmpty()
+            showRelations(found);
+            if (!found.isEmpty()) {
+                selectTab(relationPanel);   // jump to the results
+            }
+            status.setText(found.isEmpty()
                     ? "No relations found."
-                    : relations.size() + " relation(s) — pick one to "
+                    : found.size() + " relation(s) — pick one to "
                             + (explorationOnly ? "inspect its members."
                                     : "add its members as seeds."));
-            updateButtons();
         });
     }
 
     private RelationMembersQuery buildMembersQuery() {
-        int r = probeTable.getSelectedRow();
-        if (r < 0 || !WikidataIds.isQid(exploredQid)) {
+        RelationView rel = selectedRelationView;
+        if (rel == null || !WikidataIds.isQid(exploredQid)) {
             return null;
         }
-        RelationRow rel = probeModel.row(r);
         status.setText("Fetching members of " + rel.pid() + "…");
         return new RelationMembersQuery(exploredQid, rel.pid(), rel.incoming(), 5000);
     }
@@ -660,41 +717,6 @@ public class ExploreByExamplePanel extends JPanel {
             return Integer.parseInt(s.trim());
         } catch (Exception e) {
             return 0;
-        }
-    }
-
-    // ------------------------------------------------------------------
-
-    // One relation of the explored entity: direction, property, count, example.
-    private record RelationRow(
-            String dir, String pid, String label, int count, String example) {
-        boolean incoming() { return dir != null && dir.startsWith("←"); }
-        String relation() { return label + " (" + pid + ")"; }
-    }
-
-    private static final class RelationModel extends AbstractTableModel {
-        private final String[] cols = {"Dir", "Relation", "Count", "Example"};
-        private List<RelationRow> rows = new ArrayList<>();
-
-        void setRows(List<RelationRow> r) {
-            rows = r == null ? new ArrayList<>() : r;
-            fireTableDataChanged();
-        }
-
-        RelationRow row(int r) { return rows.get(r); }
-
-        @Override public int getRowCount() { return rows.size(); }
-        @Override public int getColumnCount() { return cols.length; }
-        @Override public String getColumnName(int c) { return cols[c]; }
-        @Override public Object getValueAt(int r, int c) {
-            RelationRow row = rows.get(r);
-            return switch (c) {
-                case 0 -> row.dir();
-                case 1 -> row.relation();
-                case 2 -> row.count();
-                case 3 -> row.example();
-                default -> "";
-            };
         }
     }
 
