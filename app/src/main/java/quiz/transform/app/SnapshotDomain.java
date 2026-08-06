@@ -52,7 +52,8 @@ public final class SnapshotDomain implements DomainModel {
                 ? java.util.Set.of() : statementTypes;
     }
 
-    @Override public List<String> types() { return fieldGraph.memberTypes(); }
+    @Override public List<String> types() { return fieldGraph.allTypes(); }
+    @Override public List<String> servedTypes() { return fieldGraph.memberTypes(); }
     @Override public String baseType(String type) { return fieldGraph.baseType(type); }
 
     @Override public java.util.Set<String> structuralFields(String type) {

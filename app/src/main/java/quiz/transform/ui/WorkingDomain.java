@@ -206,6 +206,10 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return t;
     }
 
+    // Serving is decided by the underlying domain; an in-progress derived/subclass type
+    // is curatable (above) but not published until it is saved as a member root.
+    @Override public List<String> servedTypes() { return base.servedTypes(); }
+
     @Override public String baseType(String type) {
         if (subclassBases.containsKey(type)) return subclassBases.get(type);
         return derived.containsKey(type) ? null : base.baseType(type);

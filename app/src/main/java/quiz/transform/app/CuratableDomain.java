@@ -62,6 +62,7 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
     }
 
     @Override public List<String> types() { return base.types(); }
+    @Override public List<String> servedTypes() { return base.servedTypes(); }
     @Override public String baseType(String type) { return base.baseType(type); }
     @Override public FieldSchema fieldSchema(String type) {
         java.util.Map<String, objectview.field.FieldRef> combined =

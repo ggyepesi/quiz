@@ -159,6 +159,14 @@ public final class ReflectionDomain implements DomainModel {
         }
     }
 
+    // Every class REPRESENTED BY INSTANCES in the reachable graph — the concrete
+    // instance classes plus their Viewable superclasses and any referenced (field-only)
+    // class that instances actually populate (e.g. Language via State.languages). This
+    // is discovered by reflection during construction (the reference-closure walk +
+    // addMemberClassHierarchy), so a field-only class is curatable without a special
+    // path. Framework interfaces reached only via a field's declared type never enter
+    // here, since nothing is directly an instance of them. servedTypes() defaults to
+    // this: a built-in domain serves what it represents.
     @Override public List<String> types() { return List.copyOf(memberTypes); }
     @Override public String baseType(String type) { return baseTypes.get(type); }
     @Override public FieldSchema fieldSchema(String type) {

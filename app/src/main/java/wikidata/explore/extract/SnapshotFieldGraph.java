@@ -79,6 +79,23 @@ public final class SnapshotFieldGraph {
         return new Builder();
     }
 
+    /** Every class the snapshot actually represents — carried by, or referenced from,
+     *  its instances. The CURATABLE set: a field-only class such as {@code Language} is
+     *  here (its instances are type-stamped), independent of whether it is served. The
+     *  {@code member} bit only distinguishes {@link #memberTypes()} (served on the quiz
+     *  web UI) from the referenced classes; it does not gate what exists. */
+    public List<String> allTypes() {
+        List<String> result = new ArrayList<>();
+        for (TypeShape type : types.values()) {
+            if (hasSubstance(type)) {
+                result.add(type.name);
+            }
+        }
+        return result;
+    }
+
+    /** The subset of {@link #allTypes()} served on the quiz web UI — the explicit
+     *  member roots supplied at save (see {@code markMembers}). */
     public List<String> memberTypes() {
         List<String> result = new ArrayList<>();
         for (TypeShape type : types.values()) {

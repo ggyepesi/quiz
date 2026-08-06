@@ -16,7 +16,20 @@ import java.util.List;
  */
 public interface DomainModel {
 
+    /** Every class represented in the domain — one uniform set derived the same way
+     *  for built-in and snapshot backings: the classes carried by (or referenced from)
+     *  the domain's instances. Built-in domains discover these by reflection (walking
+     *  declared field types); snapshot domains from the type stamps observed on the
+     *  pool. This is the CURATABLE set — a field-only class such as {@code Language}
+     *  belongs here even though nothing serves it. {@link #servedTypes()} is the subset
+     *  shown on the quiz web UI. */
     List<String> types();
+
+    /** The subset of {@link #types()} served on the quiz web UI (the "domain class"
+     *  bit). A snapshot serves its explicit member roots; a built-in domain serves the
+     *  same classes it exposes by default. Web-facing sources enumerate THIS, never
+     *  {@link #types()}, so curation can reach every class without publishing it. */
+    default List<String> servedTypes() { return types(); }
 
     /** Explicit base class, or null for a root class. */
     default String baseType(String type) { return null; }

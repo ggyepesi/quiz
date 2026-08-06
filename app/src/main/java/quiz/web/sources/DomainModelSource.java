@@ -82,9 +82,12 @@ public final class DomainModelSource implements ViewableSource {
         return cached;
     }
 
-    /** Register one source per type of an ALREADY-LOADED domain (shared instance). */
+    /** Register one source per type SERVED on the quiz web UI (an already-loaded,
+     *  shared domain). Uses {@link DomainModel#servedTypes()}, not the wider curatable
+     *  {@link DomainModel#types()}, so a field-only class (e.g. Language) can be curated
+     *  without being published. */
     public static void register(ViewableStore store, DomainModel domain) {
-        for (String t : domain.types()) {
+        for (String t : domain.servedTypes()) {
             store.register(new DomainModelSource(t, () -> domain));
         }
     }
