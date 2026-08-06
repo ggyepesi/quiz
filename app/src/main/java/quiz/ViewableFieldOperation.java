@@ -1,7 +1,6 @@
 package quiz;
 
-import java.util.ArrayList;
-import java.util.List;
+import objectview.field.FieldPath;
 
 public class ViewableFieldOperation {
     public enum Kind {
@@ -16,20 +15,17 @@ public class ViewableFieldOperation {
         LESS_OR_EQUAL
     }
 
-    private final List<String> path = new ArrayList<>();
+    private final FieldPath path;
     private Kind kind = Kind.EXISTS;
     private String argument;
 
-    public ViewableFieldOperation(List<String> path, Kind kind, String argument) {
-        if (path != null) {
-            this.path.addAll(path);
-        }
-
+    public ViewableFieldOperation(FieldPath path, Kind kind, String argument) {
+        this.path = path == null ? FieldPath.ROOT : path;
         this.kind = kind == null ? Kind.EXISTS : kind;
         this.argument = argument;
     }
 
-    public List<String> getPath() {
+    public FieldPath getPath() {
         return path;
     }
 
@@ -43,7 +39,7 @@ public class ViewableFieldOperation {
 
     @Override
     public String toString() {
-        return String.join(".", path)
+        return path.dotted()
                 + " "
                 + kind
                 + (argument == null ? "" : " " + argument);

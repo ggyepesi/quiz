@@ -169,7 +169,8 @@ public final class CategorizedReviewPanel<T> extends JPanel {
 
         // Two rows so a crowded footer never clips the primary Close/Apply — which live on
         // their own bottom row (always visible), with selection + extra actions above.
-        JPanel helpers = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        // Both rows right-aligned so they stay lined up as the window resizes.
+        JPanel helpers = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         helpers.add(all);
         helpers.add(none);
         // Extra side-effect actions (e.g. Save / Forget): run, then close via the same

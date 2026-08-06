@@ -1,6 +1,6 @@
 package quiz.transform.ui;
 
-import objectview.field.ViewableFieldPaths.FieldPath;
+import objectview.field.FieldPath;
 import objectview.field.FieldKind;
 
 /**
@@ -27,13 +27,13 @@ public record DomainField(String type, FieldPath fieldPath,
 
     /** Convenience: a field from a dotted path string (shape-defaulted kind). */
     public DomainField(String type, String dottedPath, boolean reference, boolean collection) {
-        this(type, FieldPath.of(dottedPath), reference, collection);
+        this(type, FieldPath.parse(dottedPath), reference, collection);
     }
 
     /** Convenience: a dotted path with an explicit value {@code kind}. */
     public DomainField(String type, String dottedPath, boolean reference,
                        boolean collection, FieldKind kind) {
-        this(type, FieldPath.of(dottedPath), reference, collection, kind);
+        this(type, FieldPath.parse(dottedPath), reference, collection, kind);
     }
 
     /** The dotted access path, e.g. {@code nominee.name} — used by FieldAccess/facets. */
@@ -55,7 +55,7 @@ public record DomainField(String type, FieldPath fieldPath,
      *  instead of leaking the raw key. */
     public String displayPath() {
         StringBuilder sb = new StringBuilder(type);
-        for (String segment : fieldPath.dotted().split("\\.")) {
+        for (String segment : fieldPath.segments()) {
             sb.append('.').append(
                     objectview.field.ViewableContractFieldSet.label(segment));
         }

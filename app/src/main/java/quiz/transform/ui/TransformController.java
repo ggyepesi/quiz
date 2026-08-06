@@ -3,6 +3,7 @@ package quiz.transform.ui;
 import objectview.Viewable;
 import objectview.viewconfig.FieldTypeSource;
 import objectview.field.FieldSchema;
+import objectview.field.FieldPath;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +29,7 @@ public final class TransformController {
     // Per member type, a lazily-built map from field path -> a representative
     // non-null value — so field-shape inference is ONE pass over the instances per
     // type (built on first use), not a fresh scan on every field selection.
-    private final Map<String, Map<String, Object>> fieldValueCache = new HashMap<>();
+    private final Map<String, Map<FieldPath, Object>> fieldValueCache = new HashMap<>();
 
     public TransformController(DomainModel base, DomainWriter writer) {
         this.domain = new WorkingDomain(base);
@@ -161,7 +162,7 @@ public final class TransformController {
      *  infer a field's shape when the first instance's value happens to be null (a
      *  common case, e.g. Star.apparentMagnitude). Reads the per-type value map,
      *  built once (see {@link #fieldValues}). */
-    public Object sampleFieldValue(String type, String path) {
+    public Object sampleFieldValue(String type, FieldPath path) {
         if (type == null || path == null) {
             return null;
         }
@@ -174,7 +175,7 @@ public final class TransformController {
      *  (numbers, dates, references) so the filter falls back to free-text entry. Lets
      *  the value input offer a picker for enum/categorical fields — e.g. a domain enum
      *  like NobelPrize.Domain or a low-cardinality vocabulary — instead of a blank box. */
-    public List<String> candidateValues(String type, String path) {
+    public List<String> candidateValues(String type, FieldPath path) {
         if (type == null || path == null) {
             return List.of();
         }
@@ -221,20 +222,20 @@ public final class TransformController {
 
     /** The per-type {@code path -> representative non-null value} map, built in ONE
      *  pass over the instances (stopping once every field is resolved) and cached. */
-    private Map<String, Object> fieldValues(String type) {
+    private Map<FieldPath, Object> fieldValues(String type) {
         return fieldValueCache.computeIfAbsent(type, t -> {
-            List<String> paths = new ArrayList<>();
+            List<FieldPath> paths = new ArrayList<>();
             for (DomainField f : domain.fields(t)) {
-                paths.add(f.field());
+                paths.add(f.fieldPath());
             }
-            Map<String, Object> values = new HashMap<>();
+            Map<FieldPath, Object> values = new HashMap<>();
             int scanned = 0;
             for (Viewable q : domain.instances()) {
                 if (q == null || !domain.isInstanceOf(q, t)) {
                     continue;
                 }
                 boolean complete = true;
-                for (String p : paths) {
+                for (FieldPath p : paths) {
                     if (values.containsKey(p)) {
                         continue;
                     }
@@ -254,9 +255,9 @@ public final class TransformController {
     }
 
     /** A DomainField for a dotted path — shape from the domain (else scalar). */
-    public DomainField field(String type, String path) {
+    public DomainField field(String type, FieldPath path) {
         for (DomainField df : domain.fields(type)) {
-            if (df.field().equals(path)) {
+            if (df.fieldPath().equals(path)) {
                 return df;
             }
         }
@@ -264,9 +265,9 @@ public final class TransformController {
     }
 
     /** Resolve the checked dotted paths to typed DomainFields of {@code type}. */
-    public List<DomainField> resolveFields(String type, List<String> paths) {
+    public List<DomainField> resolveFields(String type, List<FieldPath> paths) {
         List<DomainField> out = new ArrayList<>();
-        for (String p : paths) {
+        for (FieldPath p : paths) {
             out.add(field(type, p));
         }
         return out;

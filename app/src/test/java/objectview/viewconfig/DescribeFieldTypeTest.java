@@ -25,7 +25,7 @@ class DescribeFieldTypeTest {
         List<FieldRow> rows = ConfigFieldRowSource.INSTANCE.rows(new FieldRowContext(
                 ViewConfig.all(cls), null, false, false, Set.of(), null));
         return rows.stream()
-                .filter(r -> field.equals(r.path()))
+                .filter(r -> field.equals(r.path().dotted()))
                 .map(FieldRow::typeLabel)
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("no row for " + field + " in " + rows));

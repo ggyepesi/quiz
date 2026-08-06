@@ -51,7 +51,7 @@ class ConfigFieldRowSourceSchemaTest {
 
     private static FieldRow row(List<FieldRow> rows, String path) {
         return rows.stream()
-                .filter(r -> path.equals(r.path()))
+                .filter(r -> path.equals(r.path().dotted()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("no row for " + path + " in " + rows));
     }
@@ -87,7 +87,7 @@ class ConfigFieldRowSourceSchemaTest {
     }
 
     private static boolean hasPath(List<FieldRow> rows, String path) {
-        return rows.stream().anyMatch(r -> path.equals(r.path()));
+        return rows.stream().anyMatch(r -> path.equals(r.path().dotted()));
     }
 
     @Test void schemaMinorDynamicFieldIsHiddenFromTheTable() {
@@ -110,14 +110,14 @@ class ConfigFieldRowSourceSchemaTest {
                 true, false, Set.of(), minorSchema());
         List<FieldRow> liveRows = ConfigFieldRowSource.INSTANCE.rows(live);
         assertEquals(List.of("isoCode"),
-                liveRows.stream().map(FieldRow::path).toList());
+                liveRows.stream().map(r -> r.path().dotted()).toList());
 
         FieldRowContext schemaOnly = new FieldRowContext(
                 ViewConfig.all(DynamicViewable.class), null,
                 true, false, Set.of(), minorSchema());
         List<FieldRow> schemaRows = ConfigFieldRowSource.INSTANCE.rows(schemaOnly);
         assertEquals(List.of("isoCode"),
-                schemaRows.stream().map(FieldRow::path).toList());
+                schemaRows.stream().map(r -> r.path().dotted()).toList());
     }
 
     @Test void hasMinorFieldsDetectsDynamicMinor() {
@@ -154,7 +154,8 @@ class ConfigFieldRowSourceSchemaTest {
                 ViewConfig.all(nested.type()), nested.sample(),
                 false, false, Set.of(), nested.fieldTypes());
         List<FieldRow> childRows = ConfigFieldRowSource.INSTANCE.rows(childCtx);
-        assertTrue(childRows.stream().anyMatch(r -> "year".equals(r.path())),
+        assertTrue(childRows.stream().anyMatch(
+                        r -> "year".equals(r.path().dotted())),
                 "schema children must enumerate with no sample, was " + childRows);
     }
 }

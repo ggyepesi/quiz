@@ -173,14 +173,16 @@ class ViewConfigEditorTreeConfigTest {
 
         ViewConfigEditor editor = new ViewConfigEditor(topConfig(), prize);
 
-        String motivationPath =
-                "laureatesWithMotivation.motivation.action";
+        objectview.field.FieldPath motivationPath =
+                objectview.field.FieldPath.parse(
+                        "laureatesWithMotivation.motivation.action");
         editor.setSelectedPath(motivationPath);
         assertEquals(motivationPath, editor.selectedPath(),
                 "Motivation fields must be discovered recursively");
 
-        String laureatePath =
-                "laureatesWithMotivation.laureates.portrait";
+        objectview.field.FieldPath laureatePath =
+                objectview.field.FieldPath.parse(
+                        "laureatesWithMotivation.laureates.portrait");
         editor.setSelectedPath(laureatePath);
         assertEquals(laureatePath, editor.selectedPath(),
                 "Laureate fields must be discovered recursively");

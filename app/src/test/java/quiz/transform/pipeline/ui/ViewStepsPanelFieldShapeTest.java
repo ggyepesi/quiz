@@ -2,6 +2,7 @@ package quiz.transform.pipeline.ui;
 
 import objectview.field.FieldKind;
 import objectview.viewconfig.FieldRow;
+import objectview.field.FieldPath;
 import flag.State;
 import flag.USState;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,8 @@ class ViewStepsPanelFieldShapeTest {
         controller.selectType("State");
 
         FieldRow row = FieldRow.path(
-                "admissionDate", "@subtype:USState.admissionDate",
+                "admissionDate", FieldPath.parse(
+                        "@subtype:USState.admissionDate"),
                 1, false, "FlexibleDate");
         var field = ViewStepsPanel.domainFieldForRow(controller, "State", row);
 

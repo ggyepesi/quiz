@@ -3,6 +3,7 @@ package quiz.data;
 import objectview.Viewable;
 import objectview.ViewableAdapter;
 import objectview.field.FieldSet;
+import objectview.field.FieldPath;
 import objectview.field.ViewableFieldPaths;
 import objectview.viewconfig.ViewConfig;
 
@@ -23,9 +24,9 @@ import java.util.Set;
  */
 public final class ViewableKeyExtractor {
 
-    public List<List<String>> paths(ViewConfig config) {
+    public List<FieldPath> paths(ViewConfig config) {
         return ViewableFieldPaths.collect(config, ViewableFieldPaths.ALL_FIELDS)
-                .stream().map(ViewableFieldPaths.FieldPath::path).toList();
+                .stream().map(ViewableFieldPaths.PathInfo::path).toList();
     }
 
     public List<List<Object>> combinations(Viewable viewable, ViewConfig config) {
@@ -33,13 +34,13 @@ public final class ViewableKeyExtractor {
     }
 
     public List<List<Object>> combinations(
-            Viewable viewable, List<List<String>> paths) {
+            Viewable viewable, List<FieldPath> paths) {
         if (viewable == null || paths == null || paths.isEmpty()) {
             return List.of();
         }
 
         List<List<Object>> alternativesPerPath = new ArrayList<>();
-        for (List<String> path : paths) {
+        for (FieldPath path : paths) {
             List<Object> alternatives = alternatives(viewable, path);
             alternatives.removeIf(ViewableKeyExtractor::isEmptyValue);
             if (alternatives.isEmpty()) {
@@ -62,15 +63,15 @@ public final class ViewableKeyExtractor {
         if (dottedPath == null || dottedPath.isBlank()) {
             return null;
         }
-        return value(viewable, List.of(dottedPath.split("\\.")));
+        return value(viewable, FieldPath.parse(dottedPath));
     }
 
-    public Object value(Viewable viewable, List<String> path) {
-        if (viewable == null || path == null || path.isEmpty()) {
+    public Object value(Viewable viewable, FieldPath path) {
+        if (viewable == null || path == null || path.isRoot()) {
             return null;
         }
         return extractPathValueRecursive(
-                viewable, path, 0,
+                viewable, path.segments(), 0,
                 Collections.newSetFromMap(new IdentityHashMap<>()));
     }
 
@@ -78,10 +79,10 @@ public final class ViewableKeyExtractor {
         if (dottedPath == null || dottedPath.isBlank()) {
             return List.of();
         }
-        return alternatives(viewable, List.of(dottedPath.split("\\.")));
+        return alternatives(viewable, FieldPath.parse(dottedPath));
     }
 
-    public List<Object> alternatives(Viewable viewable, List<String> path) {
+    public List<Object> alternatives(Viewable viewable, FieldPath path) {
         Object raw = value(viewable, path);
         List<Object> out = new ArrayList<>();
         flattenAlternatives(raw, out);

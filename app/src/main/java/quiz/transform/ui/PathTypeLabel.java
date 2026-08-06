@@ -1,10 +1,9 @@
 package quiz.transform.ui;
 
 import objectview.field.FieldKind;
-import objectview.media.ImagePane;
+import objectview.field.FieldPath;
 import objectview.viewconfig.FieldTypeSource;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -25,10 +24,10 @@ public final class PathTypeLabel {
 
     private PathTypeLabel() { }
 
-    public static Function<String, String> of(Map<String, DomainField> byPath,
+    public static Function<FieldPath, String> of(Map<FieldPath, DomainField> byPath,
                                               FieldTypeSource types) {
         return path -> {
-            String modelled = walk(types, path.split("\\."));
+            String modelled = walk(types, path);
             if (modelled != null && !modelled.isBlank()) {
                 return modelled;
             }
@@ -40,26 +39,22 @@ public final class PathTypeLabel {
             if (kind != null) {
                 return kind;
             }
-            Field leaf = f.fieldPath().leafField();
-            if (leaf != null && ImagePane.class.isAssignableFrom(leaf.getType())) {
-                return "Image";
-            }
             if (f.reference()) {
                 return f.collection() ? "ref[]" : "ref";
             }
             if (f.collection()) {
                 return "[]";
             }
-            return leaf != null ? leaf.getType().getSimpleName() : null;
+            return null;
         };
     }
 
     /** Walk the nested type sources down {@code seg} to the field's type label, or null
      *  when no compiled type info resolves (a reflection domain). */
-    private static String walk(FieldTypeSource types, String[] seg) {
+    private static String walk(FieldTypeSource types, FieldPath path) {
         FieldTypeSource level = types;
         FieldTypeSource.FieldTypeInfo info = null;
-        for (String s : seg) {
+        for (String s : path.segments()) {
             if (level == null) {
                 return null;
             }

@@ -2,6 +2,7 @@ package quiz.transform.ui;
 
 import objectview.Viewable;
 import objectview.field.FieldSet;
+import objectview.field.FieldPath;
 import objectview.viewconfig.FieldRow;
 import objectview.viewconfig.FieldTableContributor;
 import quiz.curation.ScopeFilter;
@@ -29,7 +30,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
 
     /** The owning type + plain field path a (possibly {@code @subtype:}-scoped) path
      *  resolves to. */
-    public record Scoped(String type, String path) { }
+    public record Scoped(String type, FieldPath path) { }
 
     /** One consistent coverage calculation shared by every column and by the explicit
      *  All / Missing / Present controls beside the table. */
@@ -51,7 +52,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
     // JTable asks for the same cell values repeatedly while painting. Cache one complete
     // calculation per path for the current immutable working-set list instead of scanning
     // every member separately for Coverage, Present and Missing on every repaint.
-    private final Map<String, Coverage> cache = new LinkedHashMap<>();
+    private final Map<FieldPath, Coverage> cache = new LinkedHashMap<>();
     private String cachedBaseType;
     private Collection<? extends Viewable> cachedMembers;
 
@@ -89,7 +90,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
         cache.clear();
     }
 
-    public Coverage coverage(String path) {
+    public Coverage coverage(FieldPath path) {
         String currentType = baseType.get();
         Collection<? extends Viewable> currentMembers = members();
         if (currentMembers != cachedMembers || !Objects.equals(currentType, cachedBaseType)) {
@@ -103,7 +104,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
     private Coverage calculate(
             String currentType,
             Collection<? extends Viewable> currentMembers,
-            String path) {
+            FieldPath path) {
         Scoped scoped = scoped(currentType, path);
         if (scoped == null || domain == null) {
             return new Coverage(0, 0);
@@ -123,7 +124,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
 
     /** Resolve a picker path (which may carry {@code @subtype:X} segments) to its owning
      *  type + plain field path, defaulting to {@code baseType}. */
-    public static Scoped scoped(String baseType, String rawPath) {
+    public static Scoped scoped(String baseType, FieldPath rawPath) {
         objectview.viewconfig.ViewConfigEditor.ResolvedFieldPath resolved =
                 objectview.viewconfig.ViewConfigEditor.resolveFieldPath(baseType, rawPath);
         return resolved == null ? null : new Scoped(resolved.owner(), resolved.path());
@@ -131,10 +132,10 @@ public final class FieldCoverageColumns implements FieldTableContributor {
 
     /** Whether {@code q} has a non-empty value at the dotted {@code path} (descending
      *  through collection intermediates). */
-    public static boolean hasValue(Viewable q, String path) {
+    public static boolean hasValue(Viewable q, FieldPath path) {
         List<Object> current = new ArrayList<>();
         current.add(q);
-        for (String seg : path.split("\\.")) {
+        for (String seg : path.segments()) {
             List<Object> next = new ArrayList<>();
             for (Object o : current) {
                 if (o instanceof Viewable v) {
@@ -169,7 +170,8 @@ public final class FieldCoverageColumns implements FieldTableContributor {
     }
 
     private static Object readPlain(Object owner, String segment) {
-        return owner == null ? null : objectview.field.FieldAccess.getPath(owner, segment);
+        return owner == null ? null : objectview.field.FieldAccess.getPath(
+                owner, FieldPath.of(segment));
     }
 
     /** Collections, maps and arrays are all multi-valued intermediates in a field path.
@@ -200,7 +202,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
             DomainModel domain,
             Collection<? extends Viewable> source,
             String ownerType,
-            String path,
+            FieldPath path,
             ScopeFilter filter) {
         if (domain == null || source == null || ownerType == null
                 || path == null || filter == null) {
@@ -219,7 +221,8 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                 .toList();
     }
 
-    private static ExtraColumn column(String header, int width, Function<String, Object> value) {
+    private static ExtraColumn column(
+            String header, int width, Function<FieldPath, Object> value) {
         return new ExtraColumn() {
             @Override public String header() { return header; }
             @Override public int width() { return width; }

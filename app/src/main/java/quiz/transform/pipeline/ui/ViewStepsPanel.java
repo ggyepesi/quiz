@@ -1,6 +1,7 @@
 package quiz.transform.pipeline.ui;
 
 import objectview.Viewable;
+import objectview.field.FieldPath;
 import objectview.viewconfig.FieldRow;
 import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfig;
@@ -275,11 +276,11 @@ public final class ViewStepsPanel extends JPanel {
         // receive the real owning class and its plain field path, never @subtype:... .
         FieldCoverageColumns.Scoped scoped = FieldCoverageColumns.scoped(type, row.path());
         String ownerType = scoped == null ? type : scoped.type();
-        String fieldPath = scoped == null ? row.path() : scoped.path();
+        FieldPath fieldPath = scoped == null ? row.path() : scoped.path();
 
         if (controller != null && ownerType != null) {
             for (DomainField field : controller.fields(ownerType)) {
-                if (field.field().equals(fieldPath)) {
+                if (field.fieldPath().equals(fieldPath)) {
                     return field;
                 }
             }
@@ -371,7 +372,7 @@ public final class ViewStepsPanel extends JPanel {
     private void populateValueChoices(DomainField f) {
         List<String> choices = f == null
                 ? List.of()
-                : controller.candidateValues(f.type(), f.field());
+                : controller.candidateValues(f.type(), f.fieldPath());
         filterValue.setModel(new DefaultComboBoxModel<>(choices.toArray(new String[0])));
         filterValue.setSelectedItem("");
     }
@@ -393,7 +394,7 @@ public final class ViewStepsPanel extends JPanel {
             return f.kind();
         }
         return FieldKind.ofValue(
-                controller.sampleFieldValue(f.type(), f.field()));
+                controller.sampleFieldValue(f.type(), f.fieldPath()));
     }
 
     /** Repopulate the operator combo with only the operators applicable to {@code
@@ -459,7 +460,7 @@ public final class ViewStepsPanel extends JPanel {
         // programmatic row selection fires its normal change notification.
         scopeFilter = ScopeFilter.ALL;
         allScope.setSelected(true);
-        fieldPicker.setSelectedPath(path);
+        fieldPicker.setSelectedPath(FieldPath.parse(path));
         selectScope(filter);
     }
 

@@ -35,14 +35,14 @@ class DynamicSearchConfigTest {
         return cfg;
     }
 
-    private static List<ViewableFieldPaths.FieldPath> paths(
+    private static List<ViewableFieldPaths.PathInfo> paths(
             Viewable sample, ViewConfig config) {
         return ViewableFieldPaths.collectFromSample(
                 sample, config, ViewableFieldPaths.NOT_MEDIA_FIELDS);
     }
 
     @Test void configNamedDynamicFieldYieldsAPath() {
-        List<ViewableFieldPaths.FieldPath> paths =
+        List<ViewableFieldPaths.PathInfo> paths =
                 ViewableFieldPaths.collect(explicit("won"));
         assertTrue(paths.stream().anyMatch(p -> p.dotted().equals("won")),
                 paths.toString());
@@ -82,7 +82,7 @@ class DynamicSearchConfigTest {
         a.put("year", 2001);
         b.put("year", 1999);
 
-        List<ViewableFieldPaths.FieldPath> sortPaths =
+        List<ViewableFieldPaths.PathInfo> sortPaths =
                 ViewableFieldPaths.collect(explicit("year"));
         List<Viewable> sorted = new SearchAndSort()
                 .sortViewables(List.of(a, b), sortPaths);

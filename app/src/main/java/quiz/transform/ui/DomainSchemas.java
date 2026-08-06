@@ -1,6 +1,7 @@
 package quiz.transform.ui;
 
 import objectview.field.FieldKind;
+import objectview.field.FieldPath;
 import objectview.field.FieldRef;
 import objectview.field.FieldSchema;
 import objectview.viewconfig.FieldTypeSource;
@@ -35,13 +36,14 @@ public final class DomainSchemas {
     /** Dotted operation fields projected recursively from canonical schemas. */
     public static List<DomainField> fields(DomainModel domain, String type) {
         List<DomainField> out = new ArrayList<>();
-        collectFields(domain, type, type, "", new LinkedHashSet<>(), 0, out);
+        collectFields(domain, type, type, FieldPath.ROOT,
+                new LinkedHashSet<>(), 0, out);
         return out;
     }
 
     private static void collectFields(
             DomainModel domain, String topType, String currentType,
-            String prefix, Set<String> chain, int depth,
+            FieldPath prefix, Set<String> chain, int depth,
             List<DomainField> out) {
         if (currentType == null || currentType.isBlank()) {
             return;
@@ -70,8 +72,7 @@ public final class DomainSchemas {
                 // structural = reify/back-ref plumbing, not a domain data field.
                 continue;
             }
-            String path = prefix.isEmpty()
-                    ? field.name() : prefix + "." + field.name();
+            FieldPath path = prefix.append(field.name());
             out.add(new DomainField(topType, path, field.reference(),
                     field.collection(), field.kind()));
             if (field.reference() && field.targetType() != null
@@ -182,19 +183,23 @@ public final class DomainSchemas {
     /** Resolve one dotted path to its canonical leaf description. */
     public static FieldRef resolve(
             DomainModel domain, String type, String dottedPath) {
-        if (domain == null || type == null || dottedPath == null
-                || dottedPath.isBlank()) {
+        return resolve(domain, type, FieldPath.parse(dottedPath));
+    }
+
+    public static FieldRef resolve(
+            DomainModel domain, String type, FieldPath path) {
+        if (domain == null || type == null || path == null || path.isRoot()) {
             return null;
         }
         String currentType = type;
-        String[] parts = dottedPath.split("\\.");
+        List<String> parts = path.segments();
         FieldRef current = null;
-        for (int i = 0; i < parts.length; i++) {
-            String part = parts[i];
+        for (int i = 0; i < parts.size(); i++) {
+            String part = parts.get(i);
             FieldSchema schema = domain.fieldSchema(currentType);
             current = schema == null ? null : schema.field(part);
             if (current != null) {
-                if (i < parts.length - 1) {
+                if (i < parts.size() - 1) {
                     currentType = current.targetType();
                     if (currentType == null || currentType.isBlank()) return null;
                 }
@@ -204,7 +209,7 @@ public final class DomainSchemas {
                     .filter(field -> field.name().equals(part))
                     .findFirst().orElse(null);
             if (contract != null) {
-                return i == parts.length - 1 ? contract : null;
+                return i == parts.size() - 1 ? contract : null;
             }
             return null;
         }
@@ -302,8 +307,16 @@ public final class DomainSchemas {
         @Override public List<String> fieldNames() {
             FieldSchema schema = domain.fieldSchema(type);
             java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
-            objectview.field.ViewableContractFieldSet.fieldRefs().stream()
-                    .map(FieldRef::name).forEach(names::add);
+            // Same rule as the rendering path (ViewableContractFieldSet.overlay): the
+            // synthetic display field is offered ONLY when no real field is bound to
+            // DISPLAY, so a @DisplayField type doesn't show both "Display label" and its
+            // real name field in config.
+            boolean hasDisplayField = schema != null && schema.fields().stream()
+                    .anyMatch(f -> f.role() == objectview.field.FieldRole.DISPLAY);
+            if (!hasDisplayField) {
+                objectview.field.ViewableContractFieldSet.fieldRefs().stream()
+                        .map(FieldRef::name).forEach(names::add);
+            }
             if (schema != null) schema.fields().stream().map(FieldRef::name).forEach(names::add);
             return List.copyOf(names);
         }

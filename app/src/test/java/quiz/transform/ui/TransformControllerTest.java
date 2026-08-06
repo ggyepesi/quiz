@@ -2,6 +2,7 @@ package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
 import objectview.Viewable;
+import objectview.field.FieldPath;
 
 import java.util.Collection;
 import java.util.List;
@@ -38,7 +39,8 @@ class TransformControllerTest {
         quiz.transform.EditableGroup root =
                 (quiz.transform.EditableGroup) c.groupRoot("City");
         quiz.transform.FacetGroup facet =
-                c.addFacetGroup("City", root, "Regions", c.field("City", "region"));
+                c.addFacetGroup("City", root, "Regions",
+                        c.field("City", FieldPath.of("region")));
         assertNotNull(facet.getChild("region").getChild("Europe"));
         assertNull(facet.getChild("region").getChild("Africa"));
 
@@ -83,7 +85,8 @@ class TransformControllerTest {
         assertEquals(3, root.getMembers().size());
 
         quiz.transform.FacetGroup facet = c.addFacetGroup(
-                "City", root, "Regions", c.field("City", "region"));
+                "City", root, "Regions",
+                c.field("City", FieldPath.of("region")));
         quiz.transform.EditableGroup europe = (quiz.transform.EditableGroup)
                 facet.getChild("region").getChild("Europe");
         quiz.transform.OperationGroup filtered = c.addFilterGroup(

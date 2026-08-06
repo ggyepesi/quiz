@@ -27,7 +27,7 @@ class ViewableFieldPathsSampleTest {
 
         Set<String> paths = ViewableFieldPaths.collectFromSample(
                                                       nomination, ViewableFieldPaths.ALL_FIELDS).stream()
-                                              .map(p -> String.join(".", p.path()))
+                                              .map(p -> p.path().dotted())
                                               .collect(Collectors.toSet());
 
         assertTrue(paths.contains("year"), paths.toString());          // dynamic scalar

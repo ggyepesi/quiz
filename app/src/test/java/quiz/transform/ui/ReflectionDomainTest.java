@@ -80,7 +80,7 @@ class ReflectionDomainTest {
         assertTrue(ConfigFieldRowSource.INSTANCE.rows(new FieldRowContext(
                         ViewConfig.all(Country.class), c, false, false, Set.of(),
                         domain.fieldTypes("Country"))).stream()
-                .anyMatch(row -> "group".equals(row.path())),
+                .anyMatch(row -> "group".equals(row.path().dotted())),
                 "group references must appear in field configuration");
     }
 

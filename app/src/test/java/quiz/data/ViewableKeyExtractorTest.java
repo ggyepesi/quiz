@@ -20,7 +20,9 @@ class ViewableKeyExtractorTest {
         Item item = new Item("one", List.of("t1", "t2"),
                 List.of("en", "hu"), null, Map.of());
 
-        assertEquals(List.of(List.of("tags"), List.of("languages")),
+        assertEquals(List.of(
+                        objectview.field.FieldPath.of("tags"),
+                        objectview.field.FieldPath.of("languages")),
                 extractor.paths(config));
         assertEquals(List.of(
                 List.of("t1", "en"),

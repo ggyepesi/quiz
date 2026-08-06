@@ -2,6 +2,7 @@ package quiz.ui;
 
 import objectview.render.Card;
 import objectview.render.RenderContext;
+import objectview.field.FieldPath;
 import objectview.viewconfig.ViewConfig;
 import objectview.Viewable;
 
@@ -65,7 +66,7 @@ public final class QuizCardFactory {
                 viewable,
                 config,
                 presentation.fill(),
-                new ArrayList<>());
+                FieldPath.ROOT);
     }
 
     /**

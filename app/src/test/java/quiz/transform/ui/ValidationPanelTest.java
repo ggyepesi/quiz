@@ -1,5 +1,6 @@
 package quiz.transform.ui;
 
+import objectview.field.FieldPath;
 import org.junit.jupiter.api.Test;
 import quiz.curation.ScopeFilter;
 import quiz.transform.app.SnapshotDomain;
@@ -91,7 +92,8 @@ class ValidationPanelTest {
                 domain, () -> "State",
                 () -> List.of(state, usStateWithDate, usStateWithoutDate));
         FieldCoverageColumns.Coverage coverage =
-                columns.coverage("@subtype:USState.admissionDate");
+                columns.coverage(FieldPath.parse(
+                        "@subtype:USState.admissionDate"));
 
         assertEquals(2, coverage.eligible());
         assertEquals(1, coverage.present());
@@ -117,9 +119,11 @@ class ValidationPanelTest {
         root.put("array", new WikidataDynamicObject[] {first});
 
         org.junit.jupiter.api.Assertions.assertTrue(
-                FieldCoverageColumns.hasValue(root, "mapped.value"));
+                FieldCoverageColumns.hasValue(
+                        root, FieldPath.parse("mapped.value")));
         org.junit.jupiter.api.Assertions.assertTrue(
-                FieldCoverageColumns.hasValue(root, "array.value"));
+                FieldCoverageColumns.hasValue(
+                        root, FieldPath.parse("array.value")));
     }
 
     @Test void coverageCanBeInvalidatedAfterInPlaceCuration() {
@@ -129,11 +133,11 @@ class ValidationPanelTest {
         FieldCoverageColumns columns = new FieldCoverageColumns(
                 domain, () -> "State", () -> members);
 
-        assertEquals(0, columns.coverage("capital").present());
+        assertEquals(0, columns.coverage(FieldPath.of("capital")).present());
         state.put("capital", "Example");
-        assertEquals(0, columns.coverage("capital").present());
+        assertEquals(0, columns.coverage(FieldPath.of("capital")).present());
         columns.invalidate();
-        assertEquals(1, columns.coverage("capital").present());
+        assertEquals(1, columns.coverage(FieldPath.of("capital")).present());
     }
 
     private static WikidataDynamicObject object(String id, String type) {

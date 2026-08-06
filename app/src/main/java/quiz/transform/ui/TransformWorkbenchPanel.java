@@ -712,7 +712,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return members;
         }
         return FieldCoverageColumns.select(controller.domain(), members,
-                selectedField.type(), selectedField.field(), fieldScope);
+                selectedField.type(), selectedField.fieldPath(), fieldScope);
     }
 
     private String instanceTitle(objectview.group.ViewableGroup<?> group) {

@@ -1,6 +1,7 @@
 package quiz.transform.ui;
 
 import objectview.Viewable;
+import objectview.field.FieldPath;
 import objectview.field.FieldSet;
 import objectview.search.SearchPanel;
 import objectview.viewconfig.FieldRow;
@@ -305,7 +306,7 @@ public final class ValidationPanel extends JPanel {
         scopeFilter = filter;
         scopeCombo.setSelectedItem(filter);
         selectType(type);
-        coverage.setSelectedPath(field);
+        coverage.setSelectedPath(FieldPath.parse(field));
     }
 
     /** Turn this panel into the action half of curation for a target selected elsewhere.
@@ -540,7 +541,7 @@ public final class ValidationPanel extends JPanel {
             String path,
             ScopeFilter filter) {
         return FieldCoverageColumns.select(
-                domain, source, ownerType, path, filter);
+                domain, source, ownerType, FieldPath.parse(path), filter);
     }
 
 
@@ -552,9 +553,9 @@ public final class ValidationPanel extends JPanel {
     /** ViewConfigEditor represents a subtype heading with an internal path segment
      * such as {@code @subtype:USState.admissionDate}. Strip those presentation-only
      * segments and retain the deepest subtype as the field's coverage scope. */
-    private ScopedField scopedField(String rawPath) {
+    private ScopedField scopedField(FieldPath rawPath) {
         FieldCoverageColumns.Scoped s = FieldCoverageColumns.scoped(type, rawPath);
-        return s == null ? null : new ScopedField(s.type(), s.path());
+        return s == null ? null : new ScopedField(s.type(), s.path().dotted());
     }
 
     @SuppressWarnings("unchecked")
@@ -1165,6 +1166,6 @@ public final class ValidationPanel extends JPanel {
     }
 
     private static boolean has(Viewable q, String path) {
-        return FieldCoverageColumns.hasValue(q, path);
+        return FieldCoverageColumns.hasValue(q, FieldPath.parse(path));
     }
 }
