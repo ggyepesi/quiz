@@ -284,9 +284,17 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                         CategorizedReviewPanel.Cell.of(name),
                         CategorizedReviewPanel.Cell.stretch(IdentityChip.of(qid))));
             } else {
+                // Manual fallback beside the batch resolve: pick the exact Wikidata entity
+                // by hand via Explore when the automated resolve finds nothing (or the wrong
+                // thing). Stages the approved identity through the same in-memory path.
+                JButton explore = new JButton("Explore…");
+                explore.setToolTipText(
+                        "Manually find and approve the Wikidata entity for this instance");
+                explore.addActionListener(e -> exploreIdentityManually(member));
                 unresolved.add(new CategorizedReviewPanel.Row<>(
                         member, new JCheckBox("", true),
-                        CategorizedReviewPanel.Cell.stretch(name)));
+                        CategorizedReviewPanel.Cell.stretch(name),
+                        CategorizedReviewPanel.Cell.of(explore)));
             }
         }
         List<CategorizedReviewPanel.Section<Viewable>> sections = List.of(
@@ -315,6 +323,37 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     if (!checked.isEmpty()) {
                         resolveIdentities(checked, type + " selected unresolved");
                     }
+                });
+    }
+
+    /** Manually resolve ONE instance's identity: open Explore, and stage the approved
+     *  QID through the same in-memory pending path the batch resolve uses (Save / Forget
+     *  still apply). The manual fallback for an unresolved entry the automated resolve
+     *  can't place. */
+    private void exploreIdentityManually(Viewable member) {
+        quiz.curation.ManualCuration curation = curation();
+        if (curation == null) {
+            JOptionPane.showMessageDialog(this,
+                    "This domain has no curation store to record identities.");
+            return;
+        }
+        String targetId = member.getIdentifier();
+        if (targetId == null || targetId.isBlank()) {
+            JOptionPane.showMessageDialog(this,
+                    "This instance has no stable identifier, so its identity cannot be saved.");
+            return;
+        }
+        String memberType = member.typeName();
+        wikidata.explore.workbench.ExploreByExamplePanel.showPicker(
+                this, queries.runner(), member.getDisplayName(), false,
+                (qid, label) -> {
+                    if (!quiz.source.WikidataSource.isQid(qid)) return;
+                    String name = label == null || label.isBlank()
+                            ? member.getDisplayName() : label.trim();
+                    applyResolvedIdentities(curation,
+                            new quiz.enrichment.ResolveIdentitiesDecision(List.of(
+                                    new quiz.enrichment.ResolveIdentitiesDecision.Resolved(
+                                            memberType, targetId, qid, name))));
                 });
     }
 
