@@ -87,6 +87,7 @@ public final class ValidationPanel extends JPanel {
     // + re-parented per drill — so drilling many fields doesn't leak run-button registrations.
     private final JButton checkButton = new JButton();
     private final JButton fieldSourceButton = new JButton("Choose Wikidata source…");
+    private final JButton fieldSourceDbpediaButton = new JButton("Choose Wikipedia source…");
     private final JButton exploreIdentityButton = new JButton("Explore Wikidata…");
     private final JButton cancelProcessButton = new JButton("Cancel Find Data");
     private final JButton resolveMissingButton = new JButton("Resolve identities…");
@@ -191,6 +192,10 @@ public final class ValidationPanel extends JPanel {
 
         checkButton.addActionListener(e -> onCheck());
         fieldSourceButton.addActionListener(e -> chooseSourceForSelected(false));
+        fieldSourceDbpediaButton.setToolTipText(
+                "Pick a Wikipedia infobox (DBpedia) property from a sample member — "
+                        + "the fallback source for values Wikidata lacks");
+        fieldSourceDbpediaButton.addActionListener(e -> chooseDbpediaSourceForSelected());
         queryRunner.registerRunButton(checkButton);
         findDataRunner.registerRunButton(checkButton);
         exploreIdentityButton.addActionListener(e -> exploreIdentity());
@@ -599,7 +604,7 @@ public final class ValidationPanel extends JPanel {
                 DomainField field = selectedDomainField();
                 if (field != null && field.kind() != objectview.field.FieldKind.MEDIA) {
                     updateFieldSourceButton();
-                    target.add(headerLine(fieldSourceButton));
+                    target.add(headerLine(fieldSourceButton, fieldSourceDbpediaButton));
                 }
                 checkButton.setText("Find data ↗");
                 checkButton.setToolTipText(
@@ -713,6 +718,34 @@ public final class ValidationPanel extends JPanel {
                 });
     }
 
+    /** Pick a Wikipedia-infobox (DBpedia) property from a sample member and set it as the
+     *  selected field's source — the Wikipedia counterpart of {@link #chooseFieldSource},
+     *  reusing the same passive picker pattern. */
+    private void chooseDbpediaSourceForSelected() {
+        if (selectedFieldType == null || selectedFieldPath == null) {
+            return;
+        }
+        ExploreSeed seed = sampleForSourceDiscovery(curationStore());
+        if (seed == null) {
+            JOptionPane.showMessageDialog(this,
+                    "No member in this scope has a Wikidata identity to sample.");
+            return;
+        }
+        FieldKey key = new FieldKey(selectedFieldType, selectedFieldPath);
+        wikidata.explore.workbench.DbpediaPropertyPicker.findProperty(
+                this, queryRunner, List.of(seed.qid()),
+                (property, example) -> {
+                    if (property == null || property.isBlank()) return;
+                    FieldSourceMapping source = new FieldSourceMapping();
+                    source.sourceType(FieldSourceType.DBPEDIA);
+                    source.propertyPid(property);
+                    source.propertyLabel("DBpedia infobox property");
+                    source.productionKind(FieldProductionKind.AUTO);
+                    fieldSources.put(key, source);
+                    updateFieldSourceButton();
+                });
+    }
+
     private FieldSourceMapping sourceFor(FieldKey key) {
         return key == null ? null : fieldSources.get(key);
     }
@@ -720,17 +753,23 @@ public final class ValidationPanel extends JPanel {
     private void updateFieldSourceButton() {
         FieldSourceMapping source = sourceFor(
                 new FieldKey(selectedFieldType, selectedFieldPath));
+        // Reset both to their "choose" state, then mark whichever datasource is actually set.
+        fieldSourceButton.setText("Choose Wikidata source…");
+        fieldSourceButton.setToolTipText(
+                "Choose a property from a sample member's real Wikidata claims");
+        fieldSourceDbpediaButton.setText("Choose Wikipedia source…");
         if (source == null || source.propertyPid().isBlank()) {
-            fieldSourceButton.setText("Choose Wikidata source…");
-            fieldSourceButton.setToolTipText(
-                    "Choose a property from a sample member's real Wikidata claims");
             return;
         }
         String label = source.propertyLabel().isBlank()
                 ? source.propertyPid() : source.propertyLabel();
-        fieldSourceButton.setText("Source: " + label + " ("
-                + source.propertyPid() + ")…");
-        fieldSourceButton.setToolTipText("Change this field's source rule");
+        if (source.sourceType() == FieldSourceType.DBPEDIA) {
+            fieldSourceDbpediaButton.setText("Source: " + source.propertyPid() + " (Wikipedia)…");
+            fieldSourceDbpediaButton.setToolTipText("Change this field's source rule");
+        } else {
+            fieldSourceButton.setText("Source: " + label + " (" + source.propertyPid() + ")…");
+            fieldSourceButton.setToolTipText("Change this field's source rule");
+        }
     }
 
     /** The first missing member that carries (or resolves to) a QID — the sample entity

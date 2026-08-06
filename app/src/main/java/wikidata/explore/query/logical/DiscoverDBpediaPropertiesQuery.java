@@ -27,10 +27,22 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
 
     private final String typeQid;
     private final int sampleSize;
+    // When set, these instance QIDs are inspected directly and the P31 sampling is skipped —
+    // for a caller that already has the instances (e.g. curate's sample member), the way
+    // Explore's property picker inspects one supplied seed rather than sampling.
+    private final List<String> instanceQids;
 
     public DiscoverDBpediaPropertiesQuery(String typeQid, int sampleSize) {
         this.typeQid = typeQid == null ? "" : typeQid.trim();
         this.sampleSize = Math.max(1, sampleSize);
+        this.instanceQids = null;
+    }
+
+    /** Inspect the given instances directly (no P31 sampling). */
+    public DiscoverDBpediaPropertiesQuery(List<String> instanceQids) {
+        this.typeQid = "";
+        this.sampleSize = 0;
+        this.instanceQids = instanceQids == null ? List.of() : List.copyOf(instanceQids);
     }
 
     @Override
@@ -53,7 +65,7 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
 
     @Override
     public TableQueryResult execute(QueryContext context) throws Exception {
-        List<String> qids = sampleInstances(context);
+        List<String> qids = instanceQids != null ? instanceQids : sampleInstances(context);
         if (qids.isEmpty()) {
             context.message("Discover DBpedia: no sample instances found.\n");
             return new TableQueryResult(
