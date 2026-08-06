@@ -28,6 +28,11 @@ public class FieldSourcePanel extends JPanel {
     private SwingQueryRunner queryRunner;
 
     private final JButton discoverDbpediaButton = new JButton("Discover properties");
+    // Optional Wikipedia (DBpedia) fallback for this field — used per instance only when the
+    // primary source has no usable value (persisted on the field model).
+    private final JButton fallbackButton = new JButton("Set Wikipedia fallback…");
+    private final JButton clearFallbackButton = new JButton("Clear");
+    private final JLabel fallbackLabel = new JLabel("none");
     private final JButton examplesButton = new JButton("Examples…");
     private final JLabel applyStatusLabel = new JLabel(" ");
 
@@ -246,6 +251,40 @@ public class FieldSourcePanel extends JPanel {
     }
 
     private void discoverDbpediaProperties() {
+        String typeQid = classTypeQid();
+        if (typeQid == null) return;
+        DbpediaPropertyPicker.findPropertyByType(this, queryRunner, typeQid, 8,
+                (property, example) -> {
+                    propertyPidField.setText(property);
+                    propertyLabel.setText("(DBpedia infobox property)");
+                });
+    }
+
+    /** Pick a DBpedia property as this field's fallback source and persist it on the model. */
+    private void chooseFallback() {
+        if (field == null) return;
+        String typeQid = classTypeQid();
+        if (typeQid == null) return;
+        DbpediaPropertyPicker.findPropertyByType(this, queryRunner, typeQid, 8,
+                (property, example) -> {
+                    if (property == null || property.isBlank()) return;
+                    FieldSourceMapping fallback = field.ensureFallbackMapping();
+                    fallback.sourceType(FieldSourceType.DBPEDIA);
+                    fallback.propertyPid(property);
+                    fallback.propertyLabel("DBpedia infobox property");
+                    refreshFallbackLabel();
+                });
+    }
+
+    private void refreshFallbackLabel() {
+        FieldSourceMapping fallback = field == null ? null : field.fallbackMapping();
+        boolean set = fallback != null && !fallback.propertyPid().isBlank();
+        fallbackLabel.setText(set ? fallback.propertyPid() + " (Wikipedia)" : "none");
+        clearFallbackButton.setEnabled(set);
+    }
+
+    /** The owning class's Wikidata type QID, or null (with a prompt) if unset. */
+    private String classTypeQid() {
         GeneratedClassModel owner = ownerClass();
         String typeQid = owner == null || owner.instanceMapping() == null
                 ? "" : owner.instanceMapping().sourceQid();
@@ -253,13 +292,9 @@ public class FieldSourcePanel extends JPanel {
             JOptionPane.showMessageDialog(this,
                     "Set the owning class's Wikidata type first.",
                     "No class type", JOptionPane.INFORMATION_MESSAGE);
-            return;
+            return null;
         }
-        DbpediaPropertyPicker.findPropertyByType(this, queryRunner, typeQid, 8,
-                (property, example) -> {
-                    propertyPidField.setText(property);
-                    propertyLabel.setText("(DBpedia infobox property)");
-                });
+        return typeQid;
     }
 
     public void onSampleRequested(Runnable r) {
@@ -314,6 +349,7 @@ public class FieldSourcePanel extends JPanel {
         limitSpinner.setValue(Math.max(1, m.limit()));
 
         refreshCompanionRows();
+        refreshFallbackLabel();
         updateRecommendation();
         updateSampleButtonState();
     }
@@ -428,6 +464,20 @@ public class FieldSourcePanel extends JPanel {
         discoverDbpediaButton.setVisible(false);
         propRow.add(discoverDbpediaButton);
         GridBagUtils.labeledRow(form, c, y++, "Property:", propRow);
+
+        JPanel fallbackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        fallbackLabel.setForeground(new java.awt.Color(90, 90, 90));
+        fallbackRow.add(fallbackLabel);
+        fallbackButton.setToolTipText("Pick a DBpedia (Wikipedia infobox) property used only "
+                + "when the primary source has no value for an instance.");
+        fallbackButton.addActionListener(e -> chooseFallback());
+        clearFallbackButton.addActionListener(e -> {
+            if (field != null) field.fallbackMapping(null);
+            refreshFallbackLabel();
+        });
+        fallbackRow.add(fallbackButton);
+        fallbackRow.add(clearFallbackButton);
+        GridBagUtils.labeledRow(form, c, y++, "Wikipedia fallback:", fallbackRow);
         qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
                                                  + "reification</b> class (the class \"Reifies statements of\" "
                                                  + "another): the <b>qualifier</b> PID this field draws from "

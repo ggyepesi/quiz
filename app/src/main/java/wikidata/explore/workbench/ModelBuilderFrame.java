@@ -403,7 +403,8 @@ public class ModelBuilderFrame extends JFrame {
                     obj.typeName(), obj.getIdentifier(), qid, obj.getDisplayName());
             for (GeneratedFieldModel field : cls.effectiveFields(model)) {
                 if (field.name() == null || field.name().isBlank()) continue;
-                EnrichmentRoute route = FieldEnrichmentRoutes.from(field.mapping(), null);
+                EnrichmentRoute route = FieldEnrichmentRoutes.from(
+                        field.mapping(), field.fallbackMapping());
                 if (route.isEmpty()) continue;   // field has no Wikidata/Wikipedia source
                 boolean collection = field.cardinality() != null
                         && field.cardinality().isCollection();

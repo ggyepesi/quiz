@@ -52,6 +52,13 @@ public class GeneratedFieldModel {
     private String unit = "";
 
     private final FieldSourceMapping mapping = new FieldSourceMapping();
+    // Optional fallback source, consulted per instance only when the primary yields no
+    // usable value (a true Wikidata→DBpedia route for enrichment). Null (not an empty
+    // mapping) when unset, and @JsonInclude(NON_NULL), so existing snapshots that predate
+    // it stay byte-identical until a field opts in.
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private FieldSourceMapping fallbackMapping;
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
 
     // For deserialization (GeneratedProjectModelStore).
@@ -196,6 +203,10 @@ public class GeneratedFieldModel {
         c.sortDescending = sortDescending;
         c.unit = unit;
         c.mapping.copyFrom(mapping);
+        if (fallbackMapping != null) {
+            c.fallbackMapping = new FieldSourceMapping();
+            c.fallbackMapping.copyFrom(fallbackMapping);
+        }
 
         for (GeneratedFieldModel f : fields) {
             if (f != null) {
@@ -207,6 +218,21 @@ public class GeneratedFieldModel {
     }
 
     public FieldSourceMapping mapping() { return mapping; }
+
+    /** The fallback source, or null when none is configured. */
+    public FieldSourceMapping fallbackMapping() { return fallbackMapping; }
+
+    public void fallbackMapping(FieldSourceMapping fallback) {
+        this.fallbackMapping = fallback;
+    }
+
+    /** The fallback mapping, creating an empty one to configure if absent. */
+    public FieldSourceMapping ensureFallbackMapping() {
+        if (fallbackMapping == null) {
+            fallbackMapping = new FieldSourceMapping();
+        }
+        return fallbackMapping;
+    }
 
     public List<GeneratedFieldModel> fields() { return fields; }
 
