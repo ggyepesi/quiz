@@ -815,6 +815,12 @@ public final class ValidationPanel extends JPanel {
             boolean media, String qid, String path) {
         if (!media) {
             FieldSourceMapping source = sourceFor(new FieldKey(selectedFieldType, path));
+            // A DBpedia (Wikipedia infobox) source fills from DBpedia; otherwise it's a
+            // Wikidata SPARQL source. Each provider rejects the other's source type, so the
+            // right one runs — e.g. a new officialName field sourced from Wikipedia.
+            if (source != null && source.sourceType() == FieldSourceType.DBPEDIA) {
+                return List.of(new DBpediaFieldEnrichmentProvider(source));
+            }
             return List.of(new WikimediaFieldEnrichmentProvider(source));
         }
         List<quiz.enrichment.EnrichmentProvider> providers = new ArrayList<>();
