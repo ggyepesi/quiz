@@ -1,6 +1,7 @@
 package wikidata.explore.query.logical;
 
 import wikidata.WikidataBinding;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.template.sparql.SparqlQueries;
@@ -41,7 +42,7 @@ public class EntityLabelQuery implements Query<String> {
     public String execute(QueryContext context) throws Exception {
         String sparql = SparqlQueries.entityLabel(qid, "en");
 
-        for (WikidataBinding b : context.sparql().query(sparql)) {
+        for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
             return b.value("label");
         }
 

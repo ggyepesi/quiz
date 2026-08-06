@@ -4,10 +4,9 @@ import wikidata.WikidataSparqlClient;
 
 /**
  * A SPARQL datasource a query is generated for — its endpoint and dialect. Making a
- * query declare its datasource ({@link Query#datasource()}) and having the executor
- * route by it ({@link QueryContext#sparql(Datasource)}) means a Wikidata query can
- * never be sent to DBpedia (or vice-versa): the binding is explicit, not left to
- * whoever configured the runner.
+ * query operation request its client through {@link QueryContext#sparql(Datasource)}
+ * means a Wikidata operation cannot silently fall through to DBpedia (or vice-versa):
+ * the binding is explicit, not left to whoever configured the runner.
  */
 public enum Datasource {
     /** Wikidata Query Service — the {@code wd:}/{@code wikibase:} prefixes are predefined. */

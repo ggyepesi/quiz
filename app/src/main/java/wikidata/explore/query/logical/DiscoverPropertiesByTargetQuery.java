@@ -3,6 +3,7 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
@@ -100,7 +101,7 @@ public class DiscoverPropertiesByTargetQuery implements Query<TableQueryResult> 
                             s1, null);
 
                     StringBuilder pairs = new StringBuilder();
-                    for (WikidataBinding b : context.sparql().query(s1)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(s1)) {
                         String t = b.qid("target");
                         String insts = b.value("insts");
                         if (t == null || !WikidataIds.isQid(t) || insts == null) {
@@ -138,7 +139,7 @@ public class DiscoverPropertiesByTargetQuery implements Query<TableQueryResult> 
                     step.subquery("profile per target (no external IDs)", s2, null);
 
                     List<List<Object>> rows = new ArrayList<>();
-                    for (WikidataBinding b : context.sparql().query(s2)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(s2)) {
                         String prop = b.qid("prop");
                         String tQid = b.qid("target");
                         rows.add(List.of(

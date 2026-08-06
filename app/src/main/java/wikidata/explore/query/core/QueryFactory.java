@@ -8,17 +8,16 @@ import java.util.Map;
 
 /**
  * The single authority on which {@link Datasource}s exist and how each maps to a
- * live endpoint client. Queries only carry a datasource <em>tag</em>
- * ({@link Query#datasource()}); this factory stamps every datasource's client
- * into the {@link QueryContext}s it mints, and the context routes each query to
- * the endpoint its tag names. Callers therefore never hand-wire — nor forget to
- * bind — a datasource: they take a fully-wired context from {@link #newContext()}.
+ * live endpoint client. The factory stamps every datasource's client into the
+ * {@link QueryContext}s it mints; each SPARQL operation then names the datasource
+ * it needs. This also supports workflows that intentionally use more than one
+ * datasource, such as sampling QIDs on Wikidata before querying DBpedia.
  *
  * <p>The primary WIKIDATA (WDQS) client is <em>adopted</em> from the caller (it is
  * often used for other things too, e.g. cancel wiring), so the factory does not
  * close it. The datasource-dependent clients the factory creates (DBpedia) it
  * owns and closes in {@link #close()}. Adding a new datasource is a one-line
- * change here — no caller has to learn about it.
+ * addition to {@link Datasource}; no caller has to learn about it.
  */
 public final class QueryFactory implements AutoCloseable {
 
@@ -26,6 +25,7 @@ public final class QueryFactory implements AutoCloseable {
     private final WikidataApiClient api;
     private final Map<Datasource, WikidataSparqlClient> owned =
             new EnumMap<>(Datasource.class);
+    private boolean closed;
 
     /**
      * @param wikidata  the WDQS (default {@link Datasource#WIKIDATA}) client, owned by
@@ -38,13 +38,21 @@ public final class QueryFactory implements AutoCloseable {
 
         this.wikidata = wikidata;
         this.api = api;
-        // The datasource-dependent endpoints the factory owns. One line per datasource.
-        owned.put(Datasource.DBPEDIA, new WikidataSparqlClient(
-                userAgent, 2, WikidataSparqlClient.DBPEDIA_ENDPOINT));
+        // WIKIDATA is adopted from the caller. Every other enum value is factory-owned,
+        // making Datasource the single endpoint registry.
+        for (Datasource datasource : Datasource.values()) {
+            if (datasource != Datasource.WIKIDATA) {
+                owned.put(datasource,
+                        new WikidataSparqlClient(userAgent, 2, datasource.endpoint()));
+            }
+        }
     }
 
     /** A context with every datasource bound: WIKIDATA (default) plus the owned ones. */
-    public QueryContext newContext() {
+    public synchronized QueryContext newContext() {
+        if (closed) {
+            throw new IllegalStateException("QueryFactory is closed");
+        }
         QueryContext context = new QueryContext(wikidata, api);
         for (Map.Entry<Datasource, WikidataSparqlClient> e : owned.entrySet()) {
             context = context.withDatasource(e.getKey(), e.getValue());
@@ -53,7 +61,11 @@ public final class QueryFactory implements AutoCloseable {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
+        if (closed) {
+            return;
+        }
+        closed = true;
         owned.values().forEach(WikidataSparqlClient::close);
     }
 }

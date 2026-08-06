@@ -167,6 +167,7 @@ public class ModelBuilderFrame extends JFrame {
     private final SwingQuerySession querySession;
     private final WorkflowLogWindow logWindow;
     private final SwingProcessRunner processRunner;
+    private final QueryFactory queryFactory;
 
     public ModelBuilderFrame(WikidataSparqlClient client) {
         super("Wikidata Viewable Model Builder");
@@ -174,8 +175,9 @@ public class ModelBuilderFrame extends JFrame {
         this.client = client;
         // The factory owns the datasource↔endpoint bindings; we take a context with every
         // datasource wired (WDQS default + DBpedia). client stays the WDQS primary.
-        QueryContext queryContext = new QueryFactory(
-                client, apiClient, "quiz-modelbuilder (ggyepesi@gmail.com)").newContext();
+        this.queryFactory = new QueryFactory(
+                client, apiClient, "quiz-modelbuilder (ggyepesi@gmail.com)");
+        QueryContext queryContext = queryFactory.newContext();
         this.querySession = new SwingQuerySession(queryContext);
         this.logWindow = querySession.logs();
         this.processRunner = new SwingProcessRunner(
@@ -190,8 +192,21 @@ public class ModelBuilderFrame extends JFrame {
         refreshDomainBox();
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                queryFactory.close();
+            }
+        });
         setSize(1750, 950);
         setLocationByPlatform(true);
+    }
+
+    /** Release the datasource clients owned by this frame. The primary WDQS client remains
+     *  caller-owned, matching QueryFactory's ownership contract. */
+    @Override
+    public void dispose() {
+        queryFactory.close();
+        super.dispose();
     }
 
     private void buildUi() {

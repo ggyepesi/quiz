@@ -1,5 +1,6 @@
 package wikidata.explore.query.logical;
 
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.wikiproject.WikiProjectArticle;
@@ -118,7 +119,7 @@ public class WikiProjectSeedQuery
                                 + " pages...\n");
 
         if (!articles.isEmpty()) {
-            new WikiProjectQidResolver(context.sparql())
+            new WikiProjectQidResolver(context.sparql(Datasource.WIKIDATA))
                     .attachQids(articles);
         }
 

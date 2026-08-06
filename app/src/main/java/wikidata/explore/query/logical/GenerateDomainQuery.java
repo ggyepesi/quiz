@@ -12,6 +12,7 @@ import wikidata.explore.generation.GenerationRun;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.rule.RuleNode;
@@ -119,7 +120,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // Resolve each quantity field's unit once (the truthy value
                     // drops it), so the mapper can render "1538 K". Before building
                     // the runtime, so it holds fully-resolved field models.
-                    pipeline.resolveUnits(project, context.sparql(), genLog);
+                    pipeline.resolveUnits(project, context.sparql(Datasource.WIKIDATA), genLog);
 
                     GeneratedViewableRuntime runtime = pipeline.buildRuntime(project);
 
@@ -138,7 +139,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 + "\" (depth " + cls.generationDepth() + ") ===\n");
 
                         List<WikidataDynamicObject> roots = pipeline.extract(
-                                context.sparql(), plan, cls.generationDepth(),
+                                context.sparql(Datasource.WIKIDATA), plan, cls.generationDepth(),
                                 genLog, shared);
                         genLog.message("  -> " + roots.size() + " "
                                 + cls.className() + "\n");
@@ -165,7 +166,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.compiled.CompiledProjectModel compiledProject =
                             wikidata.explore.compiled.ProjectModelCompiler.compile(project);
                     wikidata.explore.transform.ModelStatementReifications.enrich(
-                            compiledProject, reifyPool, context.sparql(), genLog);
+                            compiledProject, reifyPool, context.sparql(Datasource.WIKIDATA), genLog);
                     // A source-class-less reify DISCOVERS its subjects, which enrich
                     // added to reifyPool but not to the shared registry. Fold them in
                     // (same instances) so they flow through every transform below and
@@ -221,7 +222,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     java.util.Map<String, java.util.Set<java.util.List<String>>>
                             companionSets =
                             wikidata.explore.transform.CompanionMatch.loadSets(
-                                    compiledProject, reified, context.sparql(), genLog);
+                                    compiledProject, reified, context.sparql(Datasource.WIKIDATA), genLog);
                     wikidata.explore.transform.CompanionMatch.applyWithSets(
                             compiledProject, reified, companionSets, genLog);
 

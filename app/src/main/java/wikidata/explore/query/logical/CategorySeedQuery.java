@@ -2,6 +2,7 @@ package wikidata.explore.query.logical;
 
 import wikidata.WikidataIds;
 
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.wikiproject.WikiProjectArticle;
@@ -64,7 +65,7 @@ public class CategorySeedQuery implements Query<List<WikiProjectArticle>> {
                     if (!articles.isEmpty()) {
                         context.message("Resolving Wikidata QIDs for "
                                 + articles.size() + " pages…\n");
-                        new WikiProjectQidResolver(context.sparql()).attachQids(articles);
+                        new WikiProjectQidResolver(context.sparql(Datasource.WIKIDATA)).attachQids(articles);
                     }
                     long resolved = articles.stream()
                             .filter(a -> a != null && a.qid() != null

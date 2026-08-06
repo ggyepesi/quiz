@@ -4,6 +4,7 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
@@ -70,12 +71,7 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
                     step.request(dbSparql);
 
                     List<List<Object>> rows = new ArrayList<>();
-                    WikidataSparqlClient dbpedia =
-                            context.sparql(wikidata.explore.query.core.Datasource.DBPEDIA);
-                    if (dbpedia == null) {
-                        throw new IllegalStateException(
-                                "No DBpedia SPARQL client configured");
-                    }
+                    WikidataSparqlClient dbpedia = context.sparql(Datasource.DBPEDIA);
                     for (WikidataBinding b : dbpedia.query(dbSparql)) {
                         String prop = localName(b.value("p"));
                         if (prop.isEmpty()) {
@@ -107,7 +103,7 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
                 step -> {
                     step.request(sparql);
                     List<String> qids = new ArrayList<>();
-                    for (WikidataBinding b : context.sparql().query(sparql)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
                         String qid = b.qid("item");
                         if (qid != null && WikidataIds.isQid(qid)) {
                             qids.add(qid);

@@ -3,6 +3,7 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.DiscoveredProperty;
@@ -114,13 +115,13 @@ public class DiscoverClassPropertiesQuery
                                 + "\n");
 
         CompletableFuture<List<DiscoveredProperty>> outgoing =
-                context.sparql()
+                context.sparql(Datasource.WIKIDATA)
                        .queryAsync(outgoingSparql)
                        .thenApply(rows ->
                                           parseBindings(rows, qids.size(), "outgoing"));
 
         CompletableFuture<List<DiscoveredProperty>> incoming =
-                context.sparql()
+                context.sparql(Datasource.WIKIDATA)
                        .queryAsync(incomingSparql)
                        .thenApply(rows ->
                                           parseBindings(rows, qids.size(), "incoming"));
@@ -189,7 +190,7 @@ public class DiscoverClassPropertiesQuery
 
                     List<String> qids = new ArrayList<>();
 
-                    for (WikidataBinding b : context.sparql().query(sampleSparql)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sampleSparql)) {
                         String qid = b.qid(sampleVar);
 
                         if (qid != null && WikidataIds.isQid(qid)) {

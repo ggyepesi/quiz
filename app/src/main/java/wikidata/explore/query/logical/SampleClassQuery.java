@@ -3,6 +3,7 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
@@ -63,7 +64,7 @@ public class SampleClassQuery implements Query<TableQueryResult> {
 
                     List<List<Object>> rows = new ArrayList<>();
 
-                    for (WikidataBinding b : context.sparql().query(sparql)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
                         String qid = b.qid("value");
                         String label = b.label("value");
 

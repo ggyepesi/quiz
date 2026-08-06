@@ -1,6 +1,7 @@
 package wikidata.explore.query.logical;
 
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.generation.GenerationPipeline;
@@ -84,7 +85,7 @@ public class GenerateInstancesQuery
                             pipeline.fullRun(
                                     projectModel,
                                     depth,
-                                    context.sparql(),
+                                    context.sparql(Datasource.WIKIDATA),
                                     genLog);
 
                     step.summary(run.size() + " objects");

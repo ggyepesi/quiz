@@ -68,14 +68,14 @@ public class QueryContext {
         return new QueryContext(sparqlClients, apiClient, recorder, processParent);
     }
 
-    /** The WIKIDATA SPARQL client (the default datasource). */
-    public WikidataSparqlClient sparql() {
-        return sparql(Datasource.WIKIDATA);
-    }
-
-    /** The SPARQL client bound to {@code datasource}, or null if none is bound. */
+    /** The SPARQL client explicitly bound to {@code datasource}. Missing bindings fail here,
+     *  before a query can accidentally fall through to some default endpoint. */
     public WikidataSparqlClient sparql(Datasource datasource) {
-        return sparqlClients.get(datasource);
+        WikidataSparqlClient client = sparqlClients.get(datasource);
+        if (client == null) {
+            throw new IllegalStateException("No SPARQL client configured for " + datasource);
+        }
+        return client;
     }
 
     public WikidataApiClient api() {

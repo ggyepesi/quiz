@@ -4,6 +4,7 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.explore.model.RuleDirection;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
@@ -103,7 +104,7 @@ public class DiscoverQualifiersQuery implements Query<TableQueryResult> {
                     step.request(sparql);
 
                     List<List<Object>> rows = new ArrayList<>();
-                    for (WikidataBinding b : context.sparql().query(sparql)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
                         String qual = b.qid("qual");
                         if (qual == null || !WikidataIds.isPid(qual)) {
                             continue;

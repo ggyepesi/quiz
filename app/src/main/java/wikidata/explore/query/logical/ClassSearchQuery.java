@@ -4,6 +4,7 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.api.WikidataApiClient;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
@@ -157,7 +158,7 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
 
                     List<Row> out = new ArrayList<>();
 
-                    for (WikidataBinding b : context.sparql().query(sparql)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
                         String qid = b.qid("item");
                         String label = b.label("item");
                         String desc = b.value("itemDescription");

@@ -130,15 +130,8 @@ final class DBpediaLookup {
                 return parameters;
             }
 
-            @Override public Datasource datasource() {
-                return Datasource.DBPEDIA;
-            }
-
             @Override public List<T> execute(QueryContext context) throws Exception {
-                WikidataSparqlClient client = context.sparql(datasource());
-                if (client == null) {
-                    throw new IllegalStateException("No DBpedia SPARQL client configured");
-                }
+                WikidataSparqlClient client = context.sparql(Datasource.DBPEDIA);
                 return context.step(
                         description,
                         "DBpedia SPARQL",

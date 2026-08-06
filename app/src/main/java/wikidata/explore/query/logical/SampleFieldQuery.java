@@ -8,6 +8,7 @@ import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleIncludedField;
 import wikidata.explore.rule.RuleNode;
 import wikidata.WikidataBinding;
+import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
@@ -100,7 +101,7 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
 
                     List<Parent> result = new ArrayList<>();
 
-                    for (WikidataBinding b : context.sparql().query(parentSparql)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(parentSparql)) {
                         String qid = b.qid("value");
                         String label = b.label("value");
 
@@ -157,7 +158,7 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
 
                     List<List<Object>> result = new ArrayList<>();
 
-                    for (WikidataBinding b : context.sparql().query(sparql)) {
+                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
                         String parentQid = b.qid("parent");
                         Parent parent = parentByQid.get(parentQid);
 
