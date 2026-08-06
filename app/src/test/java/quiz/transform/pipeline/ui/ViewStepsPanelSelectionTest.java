@@ -26,7 +26,8 @@ class ViewStepsPanelSelectionTest {
                 (field, filter) -> {
                     selected.set(field);
                     scope.set(filter);
-                });
+                },
+                () -> { });
 
         selected.set(null);
         scope.set(null);

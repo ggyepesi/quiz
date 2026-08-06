@@ -10,6 +10,7 @@ import process.swing.SwingProcessInput;
 import process.swing.SwingProcessRunner;
 import objectview.Viewable;
 import quiz.ViewableGroup;
+import quiz.enrichment.ui.CategorizedReviewPanel;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
 import quiz.curation.ScopeFilter;
 import wikidata.WikidataSparqlClient;
@@ -45,12 +46,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JPanel renderHolder = new JPanel(new BorderLayout());
     private final JLabel scopeStatus = new JLabel("No rendered scope");
     private final JButton curateFieldButton = new JButton("Curate field…");
-    private final JButton resolveButton = new JButton("Resolve identities…");
-    // Applying resolved identities only mutates the in-memory curation; "Save identities"
-    // persists it. So the user can inspect / fetch field data for the newly-identified
-    // instances before committing, and a re-run isn't forced through a disk write.
-    private final JButton saveIdentitiesButton = new JButton("Save identities");
-    private final JButton forgetResultButton = new JButton("Forget result");
+    // One header button opens the Identities panel — a CategorizedReviewPanel over the visible
+    // scope (Identified + Unresolved rows) whose Apply resolves the checked unresolved and
+    // whose Save/Forget footer actions manage the pending (applied-in-memory) result. Applying
+    // a resolve only mutates the in-memory curation; Save persists it, Forget reverts it.
+    private final JButton identitiesButton = new JButton("Identities…");
     private JPanel instanceScopeHeader;
     private quiz.transform.EditableGroup selectedGroup;
     // The group changes the instance scope, not the user's field choices. Dynamic
@@ -147,8 +147,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (controller.domain() instanceof SchemaView) {
             top.add(button("Schema…", this::showSchema));
         }
-        top.add(button("New field…", this::addNewField));
-        top.add(button("Create subclass from group…", this::createSubclassFromSelection));
+        // "New field…" now sits next to the Class selector (it acts on that class), and
+        // "Create subclass from group…" is a group-tree control (it acts on a group) — so the
+        // toolbar stays narrow enough that Query logs stays visible on a laptop screen.
         if (controller.canSave()) {
             top.add(button("Save as domain…", this::saveAsDomain));
         }
@@ -177,52 +178,33 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 controller, this::render, this::addFilterGroup,
                 () -> renderedScope == null
                         ? java.util.List.of() : renderedScope.baseMembers(),
-                this::applyFieldScope);
+                this::applyFieldScope, this::addNewField);
         left.add(viewStepsPanel, BorderLayout.CENTER);
 
         return left;
     }
 
-    /** The right header describes the visible instances and hosts the actions that operate on
-     *  them — curate the selected field (in-pane) and resolve/save/forget identities. No
-     *  separate curation window: the left panel picks field + scope, the header acts on it. */
+    /** The right header describes the visible instances and hosts two actions on them: curate
+     *  the selected field (in-pane) and an Identities button (which opens a small panel with
+     *  resolve / save / forget). The left panel picks field + scope; the header acts on it. */
     private JComponent buildRight() {
         JPanel right = new JPanel(new BorderLayout(4, 4));
         JPanel scope = new JPanel(new BorderLayout(8, 2));
         scope.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
         scope.add(scopeStatus, BorderLayout.CENTER);
-        resolveButton.addActionListener(e -> {
-            if (resolveRunner.isRunning()) {
-                resolveButton.setText("Cancelling identity resolution…");
-                resolveButton.setEnabled(false);
-                resolveRunner.cancel();
-            } else if (!lastReviewItems.isEmpty()) {
-                recallLastResult();   // a result is pending — show it, don't re-resolve
-            } else {
-                resolveCuratedIdentities();
-            }
-        });
-        resolveButton.setToolTipText(
-                "Resolve unresolved Wikidata identities for the visible instances");
-        resolveButton.setEnabled(false);
-        saveIdentitiesButton.setToolTipText(
-                "Persist the pending identities to the curation store");
-        saveIdentitiesButton.setEnabled(false);
-        saveIdentitiesButton.addActionListener(e -> saveIdentities());
-        forgetResultButton.setToolTipText(
-                "Revert the pending identities (remove the links applied in memory)");
-        forgetResultButton.setEnabled(false);
-        forgetResultButton.addActionListener(e -> forgetLastResult());
         curateFieldButton.setToolTipText(
                 "Fill the field selected on the left for the visible instances (in this pane)");
         curateFieldButton.setEnabled(false);
         curateFieldButton.addActionListener(e -> openFieldCuration());
-        // All actions operate on the visible scope; they live in the header, not a window.
+        identitiesButton.setToolTipText(
+                "Resolve / save / revert Wikidata identities for the visible instances");
+        identitiesButton.setEnabled(false);
+        identitiesButton.addActionListener(e -> openIdentityActions());
+        // The header carries just two actions on the visible scope; identity resolve/save/
+        // forget live inside the Identities panel this button opens.
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         actions.add(curateFieldButton);
-        actions.add(resolveButton);
-        actions.add(saveIdentitiesButton);
-        actions.add(forgetResultButton);
+        actions.add(identitiesButton);
         scope.add(actions, BorderLayout.EAST);
         instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
@@ -279,26 +261,61 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
 
-    /** Resolve identities for the instances currently visible in the right pane. */
-    private void resolveCuratedIdentities() {
+    /** Open the Identities panel for the visible scope: the shared CategorizedReviewPanel
+     *  showing Identified (with QID) + Unresolved rows — the same result panel identity
+     *  resolution uses. Apply resolves the checked unresolved; Save / Forget footer actions
+     *  manage the pending in-memory result (shown per state). */
+    private void openIdentityActions() {
         RenderedScope scope = renderedScope;
         if (scope == null || scope.visibleMembers().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No visible instances to resolve.");
+            JOptionPane.showMessageDialog(this, "No visible instances.");
             return;
         }
-        // Resolve only the UNRESOLVED members, not every visible one — so the count and the
-        // work match what the button offers (already-identified instances are skipped).
         quiz.curation.ManualCuration curation = curation();
-        List<Viewable> unresolved = scope.visibleMembers().stream()
-                .filter(m -> currentQid(curation, m.typeName(), m) == null)
-                .toList();
-        if (unresolved.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "All visible instances are already identified.");
-            return;
+        List<CategorizedReviewPanel.Row<Viewable>> identified = new ArrayList<>();
+        List<CategorizedReviewPanel.Row<Viewable>> unresolved = new ArrayList<>();
+        for (Viewable member : scope.visibleMembers()) {
+            String qid = currentQid(curation, member.typeName(), member);
+            JLabel name = new JLabel(member.getDisplayName());
+            if (qid != null) {
+                JCheckBox done = new JCheckBox("", false);
+                done.setEnabled(false);   // already identified — nothing to select
+                identified.add(new CategorizedReviewPanel.Row<>(member, done,
+                        CategorizedReviewPanel.Cell.of(name),
+                        CategorizedReviewPanel.Cell.stretch(IdentityChip.of(qid))));
+            } else {
+                unresolved.add(new CategorizedReviewPanel.Row<>(
+                        member, new JCheckBox("", true),
+                        CategorizedReviewPanel.Cell.stretch(name)));
+            }
         }
-        resolveIdentities(unresolved,
-                (scope.selectedType() == null ? "View" : scope.selectedType())
-                        + " unresolved instances");
+        List<CategorizedReviewPanel.Section<Viewable>> sections = List.of(
+                new CategorizedReviewPanel.Section<>("Identified",
+                        "Instances with a Wikidata identity", identified),
+                new CategorizedReviewPanel.Section<>("Unresolved",
+                        "Select which to resolve, then Apply selected", unresolved));
+
+        List<CategorizedReviewPanel.FooterAction> extra = new ArrayList<>();
+        if (!lastReviewItems.isEmpty()) {
+            extra.add(new CategorizedReviewPanel.FooterAction(
+                    identitiesDirty ? "Show pending result" : "Continue review",
+                    true, this::recallLastResult));
+        }
+        extra.add(new CategorizedReviewPanel.FooterAction(
+                "Save identities", identitiesDirty, this::saveIdentities));
+        extra.add(new CategorizedReviewPanel.FooterAction(
+                "Forget", !lastReviewItems.isEmpty(), this::forgetLastResult));
+
+        String type = scope.selectedType() == null ? "View" : scope.selectedType();
+        String prompt = type + " · " + identified.size() + " identified · "
+                + unresolved.size() + " unresolved";
+        CategorizedReviewPanel.showModeless(this, "Identities", prompt, sections, extra,
+                new Dimension(720, 560),
+                checked -> {
+                    if (!checked.isEmpty()) {
+                        resolveIdentities(checked, type + " selected unresolved");
+                    }
+                });
     }
 
     /** Resolve an explicit immutable list. Callers may be the rendered view, Validate's
@@ -353,8 +370,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (running) {
             scopeStatus.setText("Resolving identities · " + size + " in " + scopeLabel
                     + " · Query logs remain available");
-            resolveButton.setText("Cancel identity resolution");
-            resolveButton.setEnabled(true);
         } else {
             updateScopeStatus();
         }
@@ -480,8 +495,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         identitiesDirty = false;
         lastReviewItems = List.of();
         lastApplied = List.of();
-        saveIdentitiesButton.setEnabled(false);
-        forgetResultButton.setEnabled(false);
         updateScopeStatus();
     }
 
@@ -517,7 +530,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             identitiesDirty = false;
             lastApplied = List.of();
             lastReviewItems = keepReview ? List.copyOf(unresolvedReview) : List.of();
-            saveIdentitiesButton.setEnabled(false);
             updateScopeStatus();
             JOptionPane.showMessageDialog(this, keepReview
                     ? "Identities saved. " + unresolvedReview.size()
@@ -639,13 +651,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         final String type = controller.selectedType();
         rightMode = RightMode.CARDS;
         renderedScope = null;
-        if (resolveRunner.isRunning()) {
-            resolveButton.setText("Cancel identity resolution");
-            resolveButton.setEnabled(true);
-        } else {
+        if (!resolveRunner.isRunning()) {
             scopeStatus.setText("Rendering " + (type == null ? "view" : type) + "…");
-            resolveButton.setEnabled(false);
         }
+        identitiesButton.setEnabled(false);
 
         renderHolder.removeAll();
         renderHolder.add(new JLabel("  Rendering…"), BorderLayout.NORTH);
@@ -670,7 +679,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 } catch (Exception ex) {
                     renderedScope = null;
                     scopeStatus.setText("Render failed");
-                    resolveButton.setEnabled(false);
+                    identitiesButton.setEnabled(false);
                     renderHolder.removeAll();
                     renderHolder.add(new JLabel("  Render failed: " + ex.getMessage()),
                             BorderLayout.NORTH);
@@ -732,11 +741,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         RenderedScope scope = renderedScope;
         if (scope == null) {
             curateFieldButton.setEnabled(false);
-            if (!resolveRunner.isRunning()) {
-                resolveButton.setEnabled(false);
-                saveIdentitiesButton.setEnabled(false);
-                forgetResultButton.setEnabled(!lastReviewItems.isEmpty());
-            }
+            identitiesButton.setEnabled(false);
             return;
         }
         quiz.curation.ManualCuration curation =
@@ -757,25 +762,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 : "Curate " + selectedField.displayPath() + "…");
         curateFieldButton.setEnabled(selectedField != null && !scope.visibleMembers().isEmpty());
 
-        // Identity actions operate on this same visible scope. While the resolve process is
-        // active it owns the button text (setResolveRunning), so don't clobber it here.
-        if (!resolveRunner.isRunning()) {
-            resolveButton.setText(unresolved == 0
-                    ? "All identified" : "Resolve " + unresolved + " identities…");
-            resolveButton.setEnabled(curation != null && unresolved > 0);
-            // A retained review takes over the button: saving accepted rows does not
-            // silently discard ambiguous / No match work.
-            if (!lastReviewItems.isEmpty()) {
-                resolveButton.setText(identitiesDirty
-                        ? "Show pending result…"
-                        : "Continue unresolved review (" + lastReviewItems.size() + ")…");
-                resolveButton.setEnabled(true);
-            }
-            saveIdentitiesButton.setEnabled(identitiesDirty);
-            forgetResultButton.setText(identitiesDirty
-                    ? "Forget result" : "Forget unresolved review");
-            forgetResultButton.setEnabled(!lastReviewItems.isEmpty());
-        }
+        // The Identities panel (opened from this button) hosts resolve/save/forget; the
+        // button is enabled whenever there's a curatable scope, or a pending result to manage.
+        identitiesButton.setEnabled(curation != null
+                && (!scope.visibleMembers().isEmpty() || !lastReviewItems.isEmpty()));
     }
 
     /** A flat result: members grouped by type — a single searchable instance view
@@ -898,6 +888,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
         groups.addControl("Add filter group", viewStepsPanel::requestAddFilterGroup);
         groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
+        groups.addControl("Create subclass from group", this::createSubclassFromSelection);
         groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));
         groups.getTree().setSelectionRow(0);
         selectedGroup = root instanceof quiz.transform.EditableGroup editable

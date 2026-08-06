@@ -32,6 +32,8 @@ public final class ViewStepsPanel extends JPanel {
     private final java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged;
     private final java.util.function.Supplier<
             ? extends java.util.Collection<? extends Viewable>> workingSet;
+    // Declaring a new field acts on the selected class, so its button sits by the Class row.
+    private final Runnable onNewField;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private boolean refreshingTypes;
@@ -75,13 +77,15 @@ public final class ViewStepsPanel extends JPanel {
             java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
             java.util.function.Supplier<
                     ? extends java.util.Collection<? extends Viewable>> workingSet,
-            java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged) {
+            java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
+            Runnable onNewField) {
         this.controller = controller;
         this.listener = listener;
         this.filterGroupCreator = filterGroupCreator;
         this.workingSet = workingSet == null ? List::of : workingSet;
         this.onSelectionChanged = onSelectionChanged == null
                 ? (f, s) -> { } : onSelectionChanged;
+        this.onNewField = onNewField == null ? () -> { } : onNewField;
         // The same coverage contributor is used here and in curation. It describes the
         // current group; it does not decide which part of that group is visible.
         this.coverageColumns = new FieldCoverageColumns(
@@ -171,6 +175,10 @@ public final class ViewStepsPanel extends JPanel {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         p.add(new JLabel("Class:"));
         p.add(memberTypeCombo);
+        // "New field…" sits with the class it declares a field on.
+        JButton newField = new JButton("New field…");
+        newField.addActionListener(e -> onNewField.run());
+        p.add(newField);
         return p;
     }
 
