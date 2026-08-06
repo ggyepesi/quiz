@@ -91,8 +91,9 @@ final class DBpediaFieldEnrichmentProvider implements EnrichmentProvider {
                         List.of("Joined to DBpedia by Wikidata identifier " + qid));
 
         List<EnrichmentProposal.FieldCandidate> fields = new ArrayList<>();
-        String value = values == null || values.isEmpty() ? null : values.get(0);
-        if (value != null && !value.isBlank()) {
+        String lexical = values == null || values.isEmpty() ? null : values.get(0);
+        if (lexical != null && !lexical.isBlank()) {
+            Object value = typedValue(request, lexical);
             String incompatibility = FieldValueCompatibility.problem(request.targetSchema(), value);
             fields.add(new EnrichmentProposal.FieldCandidate(
                     "dbpedia-" + propertyName.toLowerCase(Locale.ROOT),
@@ -104,13 +105,37 @@ final class DBpediaFieldEnrichmentProvider implements EnrichmentProvider {
                     incompatibility == null && request.collection()
                             ? EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
                             : incompatibility == null && request.currentValue() != null
-                            ? EnrichmentProposal.ReviewAction.REPLACE
-                            : incompatibility == null
-                            ? EnrichmentProposal.ReviewAction.FILL_IF_EMPTY
-                            : EnrichmentProposal.ReviewAction.IGNORE,
+                              ? EnrichmentProposal.ReviewAction.REPLACE
+                              : incompatibility == null
+                                ? EnrichmentProposal.ReviewAction.FILL_IF_EMPTY
+                                : EnrichmentProposal.ReviewAction.IGNORE,
                     incompatibility,
                     request.collection()));
         }
         return new EnrichmentProposal(request.subject(), List.of(identity), fields, List.of());
+    }
+
+    /** Preserve numeric fields as numbers instead of storing a DBpedia literal such as
+     *  population as text. Other ordered values (notably ISO dates) remain strings. */
+    static Object typedValue(EnrichmentRequest request, String lexical) {
+        if (lexical == null || request == null || request.targetSchema() == null) {
+            return lexical;
+        }
+        objectview.field.FieldKind expected = request.targetSchema().collection()
+                ? request.targetSchema().valueKind() : request.targetSchema().kind();
+        if (expected != objectview.field.FieldKind.ORDERED
+                || !lexical.trim().matches("[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?")) {
+            return lexical;
+        }
+        try {
+            java.math.BigDecimal number = new java.math.BigDecimal(lexical.trim());
+            try {
+                return number.longValueExact();
+            } catch (ArithmeticException notWholeOrTooLarge) {
+                return number.doubleValue();
+            }
+        } catch (NumberFormatException invalidNumber) {
+            return lexical;
+        }
     }
 }

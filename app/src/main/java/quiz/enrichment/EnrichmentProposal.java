@@ -19,6 +19,26 @@ public record EnrichmentProposal(
     }
 
     /**
+     * Whether this proposal can actually satisfy the requested field. Identity metadata
+     * alone does not stop fallback routing, nor does a schema-incompatible/ignored value.
+     */
+    public boolean hasUsableCandidate(String targetField) {
+        boolean usableField = fields.stream()
+                                    .filter(FieldCandidate::compatible)
+                                    .filter(candidate -> candidate.suggestedAction() != ReviewAction.IGNORE)
+                                    .anyMatch(candidate -> sameField(targetField, candidate.field()));
+        if (usableField) {
+            return true;
+        }
+        return media.stream().anyMatch(candidate -> sameField(targetField, candidate.field()));
+    }
+
+    private static boolean sameField(String requested, String candidate) {
+        return requested == null || requested.isBlank()
+                || java.util.Objects.equals(requested, candidate);
+    }
+
+    /**
      * The domain object and the external lookup identity are deliberately separate:
      * {@code targetId} is where accepted corrections are written; {@code id} is the
      * provider identifier (usually a resolved Wikidata QID).
@@ -74,8 +94,8 @@ public record EnrichmentProposal(
                               String field, Object currentValue, Object proposedValue,
                               SourceRef source, ReviewAction suggestedAction) {
             this(candidateId, identityCandidateId, field, currentValue, proposedValue,
-                    source, suggestedAction, null,
-                    currentValue instanceof java.util.Collection<?>);
+                 source, suggestedAction, null,
+                 currentValue instanceof java.util.Collection<?>);
         }
 
         public FieldCandidate(String candidateId, String identityCandidateId,
@@ -83,8 +103,8 @@ public record EnrichmentProposal(
                               SourceRef source, ReviewAction suggestedAction,
                               String compatibilityError) {
             this(candidateId, identityCandidateId, field, currentValue, proposedValue,
-                    source, suggestedAction, compatibilityError,
-                    currentValue instanceof java.util.Collection<?>);
+                 source, suggestedAction, compatibilityError,
+                 currentValue instanceof java.util.Collection<?>);
         }
 
         public boolean compatible() {

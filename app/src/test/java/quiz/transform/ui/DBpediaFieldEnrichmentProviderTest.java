@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The DBpedia field provider serves only DBpedia-sourced fields (the mirror of the Wikidata
@@ -32,7 +33,7 @@ class DBpediaFieldEnrichmentProviderTest {
     @Test
     void supportsADBpediaSourcedFieldWithAQid() {
         assertTrue(new DBpediaFieldEnrichmentProvider(dbpediaSource("longName"))
-                .supports(request("Q142")));
+                           .supports(request("Q142")));
     }
 
     @Test
@@ -46,6 +47,36 @@ class DBpediaFieldEnrichmentProviderTest {
     @Test
     void rejectsWhenTheSubjectHasNoQid() {
         assertFalse(new DBpediaFieldEnrichmentProvider(dbpediaSource("longName"))
-                .supports(request(null)));
+                            .supports(request(null)));
+    }
+
+    @Test
+    void convertsNumericPopulationLiteralToANumberForAnOrderedField() {
+        objectview.field.FieldRef population = objectview.field.FieldRef.described(
+                "population", objectview.field.FieldKind.ORDERED,
+                objectview.field.FieldKind.ORDERED, "Ordered",
+                false, false, null, false, false,
+                false, false, "", false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "france", "Q142", "France"),
+                "population", false, List.of(), population);
+
+        assertEquals(68_373_433L,
+                     DBpediaFieldEnrichmentProvider.typedValue(request, "68373433"));
+    }
+
+    @Test
+    void leavesNonNumericOrderedLiteralUnchanged() {
+        objectview.field.FieldRef date = objectview.field.FieldRef.described(
+                "date", objectview.field.FieldKind.ORDERED,
+                objectview.field.FieldKind.ORDERED, "Ordered",
+                false, false, null, false, false,
+                false, false, "", false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "france", "Q142", "France"),
+                "date", false, List.of(), date);
+
+        assertEquals("2026-08-06",
+                     DBpediaFieldEnrichmentProvider.typedValue(request, "2026-08-06"));
     }
 }

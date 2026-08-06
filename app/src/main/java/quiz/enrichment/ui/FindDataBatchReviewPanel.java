@@ -29,15 +29,15 @@ public final class FindDataBatchReviewPanel {
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone) {
         CategorizedReviewPanel.showDialog(owner, title, prompt,
-                sections(proposals), new Dimension(720, 560), accepted -> onDone.accept(decision(accepted)));
+                                          sections(proposals), new Dimension(720, 560), accepted -> onDone.accept(decision(accepted)));
     }
 
     public static JDialog showModeless(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone) {
         return CategorizedReviewPanel.showModeless(owner, title, prompt,
-                sections(proposals), new Dimension(720, 560),
-                accepted -> onDone.accept(decision(accepted)));
+                                                   sections(proposals), new Dimension(720, 560),
+                                                   accepted -> onDone.accept(decision(accepted)));
     }
 
     private static List<CategorizedReviewPanel.Section<EnrichmentProposal>> sections(
@@ -54,9 +54,9 @@ public final class FindDataBatchReviewPanel {
         }
         return List.of(
                 new CategorizedReviewPanel.Section<>("Found",
-                        "Found values — accepted; uncheck any you don't want", found),
+                                                     "Found values — accepted; uncheck any you don't want", found),
                 new CategorizedReviewPanel.Section<>("Not found",
-                        "No value found (or rejected by field type) — curate manually", notFound));
+                                                     "No value found (or rejected by field type) — curate manually", notFound));
     }
 
     private static CategorizedReviewPanel.Row<EnrichmentProposal> row(
@@ -71,8 +71,8 @@ public final class FindDataBatchReviewPanel {
                 selectable && !overwrite);
         accept.setEnabled(selectable);
         accept.setToolTipText(overwrite
-                ? label + " — would replace the current value; check to apply"
-                : label);
+                                      ? label + " — would replace the current value; check to apply"
+                                      : label);
         return new CategorizedReviewPanel.Row<>(proposal, accept);
     }
 
@@ -95,16 +95,35 @@ public final class FindDataBatchReviewPanel {
 
     private static String rowLabel(EnrichmentProposal proposal) {
         String detail;
-        if (!proposal.fields().isEmpty()) {
-            EnrichmentProposal.FieldCandidate field = proposal.fields().get(0);
-            detail = field.compatible()
-                    ? field.field() + " = " + field.proposedValue()
-                    : field.field() + " rejected: " + field.compatibilityError();
+        EnrichmentDecision accepted = EnrichmentDecision.acceptDefault(proposal);
+        if (accepted != null && !accepted.fields().isEmpty()) {
+            // A routed proposal may retain an incompatible primary candidate before a
+            // usable fallback candidate. Show the candidate that will actually be applied,
+            // together with its provenance, rather than misleadingly showing the rejected
+            // primary value in the Found tab.
+            EnrichmentProposal.FieldCandidate field =
+                    accepted.fields().get(0).candidate();
+            detail = field.field() + " = " + field.proposedValue()
+                    + sourceSuffix(field.source());
         } else if (!proposal.media().isEmpty()) {
-            detail = proposal.media().get(0).field() + ": image";
+            EnrichmentProposal.MediaCandidate media = proposal.media().get(0);
+            detail = media.field() + ": image" + sourceSuffix(media.source());
+        } else if (!proposal.fields().isEmpty()) {
+            EnrichmentProposal.FieldCandidate field = proposal.fields().get(0);
+            detail = field.field() + " rejected: " + field.compatibilityError()
+                    + sourceSuffix(field.source());
         } else {
             detail = "(no value)";
         }
         return proposal.subject().displayName() + "  —  " + detail;
+    }
+
+    private static String sourceSuffix(EnrichmentProposal.SourceRef source) {
+        if (source == null || source.kind() == null || source.kind().isBlank()) {
+            return "";
+        }
+        String property = source.propertyId() == null || source.propertyId().isBlank()
+                ? "" : ", " + source.propertyId();
+        return "  [" + source.kind() + property + "]";
     }
 }

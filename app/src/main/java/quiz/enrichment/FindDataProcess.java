@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public final class FindDataProcess implements Process<FindDataResult> {
     private final EnrichmentRequest request;
-    private final List<EnrichmentProvider> providers;
+    private final EnrichmentRoute route;
     private final boolean requestReview;
     private final ProcessPlan plan;
 
@@ -26,22 +26,28 @@ public final class FindDataProcess implements Process<FindDataResult> {
             EnrichmentRequest request,
             List<EnrichmentProvider> providers,
             boolean requestReview) {
+        this(request, EnrichmentRoute.all(providers), requestReview);
+    }
+
+    public FindDataProcess(
+            EnrichmentRequest request,
+            EnrichmentRoute route,
+            boolean requestReview) {
         this.request = request;
-        this.providers = providers == null ? List.of() : providers.stream()
-                .filter(provider -> provider.supports(request)).toList();
+        this.route = (route == null ? EnrichmentRoute.all(List.of()) : route)
+                .applicableTo(request);
         this.requestReview = requestReview;
-        if (this.providers.isEmpty()) {
+        if (this.route.isEmpty()) {
             throw new IllegalArgumentException("No enrichment provider supports this subject");
         }
         this.plan = new ProcessPlan(
                 "Find data — " + request.subject().displayName(),
-                "Discover, combine and review data without losing completed provider results",
+                "Route, combine and review data without losing completed provider results",
                 Map.of("subject", request.subject().displayName(),
-                        "field", request.targetField()),
-                this.providers.stream()
-                        .map(provider -> new ProcessPlan(
-                                provider.name(), "Discover candidates", Map.of()))
-                        .toList());
+                       "field", request.targetField(),
+                       "primary", providerNames(this.route.primary()),
+                       "fallback", providerNames(this.route.fallback())),
+                routePlans(this.route));
     }
 
     @Override public ProcessPlan plan() {
@@ -55,9 +61,14 @@ public final class FindDataProcess implements Process<FindDataResult> {
         List<EnrichmentProposal.MediaCandidate> media = new ArrayList<>();
         Throwable firstProblem = null;
         int completed = 0;
+        int attempted = 0;
 
-        for (EnrichmentProvider provider : providers) {
+        // Primary sources retain the old combine-all behaviour: this is important for
+        // image discovery, where Wikimedia and an originating record page may each add
+        // useful candidates.
+        for (EnrichmentProvider provider : route.primary()) {
             if (context.cancellation().isCancelled()) break;
+            attempted++;
             ProcessOutcome<EnrichmentProposal> outcome =
                     context.run(new QuerySubprocess<>(provider.discover(request)));
             if (outcome.usefulResult().isPresent()) {
@@ -74,13 +85,38 @@ public final class FindDataProcess implements Process<FindDataResult> {
             }
         }
 
-        EnrichmentProposal proposal = deduplicate(new EnrichmentProposal(
-                request.subject(), identities, fields, media));
+        // Only gaps proceed to fallback sources. An incompatible or ignored primary value
+        // is still a gap, while identity metadata by itself must not suppress field routing.
+        EnrichmentProposal routed = proposal(identities, fields, media);
+        for (EnrichmentProvider provider : route.fallback()) {
+            if (context.cancellation().isCancelled()
+                    || routed.hasUsableCandidate(request.targetField())) {
+                break;
+            }
+            attempted++;
+            ProcessOutcome<EnrichmentProposal> outcome =
+                    context.run(new QuerySubprocess<>(provider.discover(request)));
+            if (outcome.usefulResult().isPresent()) {
+                EnrichmentProposal discovered = outcome.usefulResult().get();
+                identities.addAll(discovered.identities());
+                fields.addAll(discovered.fields());
+                media.addAll(discovered.media());
+                routed = proposal(identities, fields, media);
+            }
+            if (outcome.status() == ProcessStatus.SUCCEEDED
+                    || outcome.status() == ProcessStatus.PARTIAL) {
+                completed++;
+            } else if (firstProblem == null) {
+                firstProblem = outcome.error();
+            }
+        }
+
+        EnrichmentProposal proposal = proposal(identities, fields, media);
         FindDataResult discovered = new FindDataResult(proposal, null);
 
         if (context.cancellation().isCancelled()) {
             return ProcessOutcome.cancelled(discovered,
-                    summary(proposal, "cancelled; completed results preserved"));
+                                            summary(proposal, "cancelled; completed results preserved"));
         }
         if (completed == 0 && firstProblem != null) {
             return ProcessOutcome.failed(firstProblem);
@@ -94,11 +130,12 @@ public final class FindDataProcess implements Process<FindDataResult> {
                     proposal));
         }
         FindDataResult result = new FindDataResult(proposal, accepted);
-        if (firstProblem != null || completed < providers.size()) {
+        if (firstProblem != null || completed < attempted) {
             return ProcessOutcome.partial(result, firstProblem,
-                    summary(proposal, "partial; completed results preserved"));
+                                          summary(proposal, routeState(attempted, "partial; completed results preserved")));
         }
-        return ProcessOutcome.succeeded(result, summary(proposal, "complete"));
+        return ProcessOutcome.succeeded(result,
+                                        summary(proposal, routeState(attempted, "complete")));
     }
 
     private static boolean hasCandidates(EnrichmentProposal proposal) {
@@ -111,6 +148,35 @@ public final class FindDataProcess implements Process<FindDataResult> {
         int count = proposal.identities().size()
                 + proposal.fields().size() + proposal.media().size();
         return count + " candidate(s), " + state;
+    }
+
+    private String routeState(int attempted, String state) {
+        int skipped = route.allProviders().size() - attempted;
+        return state + (skipped <= 0 ? "" : "; " + skipped + " fallback source(s) skipped");
+    }
+
+    private EnrichmentProposal proposal(
+            List<EnrichmentProposal.IdentityCandidate> identities,
+            List<EnrichmentProposal.FieldCandidate> fields,
+            List<EnrichmentProposal.MediaCandidate> media) {
+        return deduplicate(new EnrichmentProposal(
+                request.subject(), identities, fields, media));
+    }
+
+    private static String providerNames(List<EnrichmentProvider> providers) {
+        return String.join(", ", providers.stream().map(EnrichmentProvider::name).toList());
+    }
+
+    private static List<ProcessPlan> routePlans(EnrichmentRoute route) {
+        List<ProcessPlan> plans = new ArrayList<>();
+        for (EnrichmentProvider provider : route.primary()) {
+            plans.add(new ProcessPlan(provider.name(), "Discover primary candidates", Map.of()));
+        }
+        for (EnrichmentProvider provider : route.fallback()) {
+            plans.add(new ProcessPlan(provider.name(),
+                                      "Discover only if earlier sources found no usable value", Map.of()));
+        }
+        return List.copyOf(plans);
     }
 
     private static EnrichmentProposal deduplicate(EnrichmentProposal proposal) {

@@ -12,10 +12,88 @@ import wikidata.explore.query.core.QueryContext;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class FindDataProcessTest {
+
+    @Test
+    void skipsFallbackWhenPrimaryFindsAUsableFieldValue() {
+        EnrichmentRequest request = populationRequest();
+        AtomicInteger fallbackCalls = new AtomicInteger();
+        EnrichmentProvider wikidata = provider("Wikidata", context ->
+                fieldProposal(request, "Wikidata", "P1082", 10L, null));
+        EnrichmentProvider dbpedia = provider("DBpedia", context -> {
+            fallbackCalls.incrementAndGet();
+            return fieldProposal(request, "DBpedia", "populationTotal", 11L, null);
+        });
+
+        ProcessOutcome<FindDataResult> outcome = run(request,
+                                                     EnrichmentRoute.of(List.of(wikidata), List.of(dbpedia)));
+
+        assertEquals(ProcessStatus.SUCCEEDED, outcome.status());
+        assertEquals(0, fallbackCalls.get());
+        assertEquals("Wikidata",
+                     outcome.result().proposal().fields().get(0).source().kind());
+    }
+
+    @Test
+    void consultsFallbackWhenPrimaryFindsNoValue() {
+        EnrichmentRequest request = populationRequest();
+        AtomicInteger fallbackCalls = new AtomicInteger();
+        EnrichmentProvider wikidata = provider("Wikidata", context ->
+                new EnrichmentProposal(request.subject(), List.of(), List.of(), List.of()));
+        EnrichmentProvider dbpedia = provider("DBpedia", context -> {
+            fallbackCalls.incrementAndGet();
+            return fieldProposal(request, "DBpedia", "populationTotal", 11L, null);
+        });
+
+        ProcessOutcome<FindDataResult> outcome = run(request,
+                                                     EnrichmentRoute.of(List.of(wikidata), List.of(dbpedia)));
+
+        assertEquals(ProcessStatus.SUCCEEDED, outcome.status());
+        assertEquals(1, fallbackCalls.get());
+        assertEquals(11L, outcome.result().proposal().fields().get(0).proposedValue());
+        assertEquals("DBpedia",
+                     outcome.result().proposal().fields().get(0).source().kind());
+    }
+
+    @Test
+    void incompatiblePrimaryValueDoesNotBlockFallback() {
+        EnrichmentRequest request = populationRequest();
+        EnrichmentProvider wikidata = provider("Wikidata", context ->
+                fieldProposal(request, "Wikidata", "P1082", "not numeric",
+                              "String is incompatible with population"));
+        EnrichmentProvider dbpedia = provider("DBpedia", context ->
+                fieldProposal(request, "DBpedia", "populationTotal", 11L, null));
+
+        ProcessOutcome<FindDataResult> outcome = run(request,
+                                                     EnrichmentRoute.of(List.of(wikidata), List.of(dbpedia)));
+
+        assertEquals(ProcessStatus.SUCCEEDED, outcome.status());
+        assertEquals(2, outcome.result().proposal().fields().size());
+        assertFalse(outcome.result().proposal().fields().get(0).compatible());
+        assertEquals("DBpedia",
+                     outcome.result().proposal().fields().get(1).source().kind());
+    }
+
+    @Test
+    void fallbackCanRecoverAValueAfterPrimaryFailure() {
+        EnrichmentRequest request = populationRequest();
+        EnrichmentProvider wikidata = provider("Wikidata", context -> {
+            throw new IllegalStateException("Wikidata unavailable");
+        });
+        EnrichmentProvider dbpedia = provider("DBpedia", context ->
+                fieldProposal(request, "DBpedia", "populationTotal", 11L, null));
+
+        ProcessOutcome<FindDataResult> outcome = run(request,
+                                                     EnrichmentRoute.of(List.of(wikidata), List.of(dbpedia)));
+
+        assertEquals(ProcessStatus.PARTIAL, outcome.status());
+        assertNotNull(outcome.result());
+        assertEquals(11L, outcome.result().proposal().fields().get(0).proposedValue());
+    }
 
     @Test
     void keepsCompletedProviderCandidatesWhenAnotherProviderFails() {
@@ -39,7 +117,7 @@ class FindDataProcessTest {
         ProcessOutcome<FindDataResult> outcome = new ProcessRunner(
                 new QueryContext(null, null), null, ProcessInputHandler.unsupported())
                 .run(new FindDataProcess(request, List.of(succeeds, fails), false),
-                        new CancellationToken());
+                     new CancellationToken());
 
         assertEquals(ProcessStatus.PARTIAL, outcome.status());
         assertNotNull(outcome.result());
@@ -71,16 +149,16 @@ class FindDataProcessTest {
         ProcessOutcome<FindDataBatchResult> outcome = new ProcessRunner(
                 new QueryContext(null, null), null, acceptNothing)
                 .run(new FindDataBatchProcess(List.of(
-                                new FindDataProcess(firstRequest, List.of(succeeds), false),
-                                new FindDataProcess(secondRequest, List.of(fails), false)),
-                                0, "population"),
-                        new CancellationToken());
+                             new FindDataProcess(firstRequest, List.of(succeeds), false),
+                             new FindDataProcess(secondRequest, List.of(fails), false)),
+                                              0, "population"),
+                     new CancellationToken());
 
         assertEquals(ProcessStatus.PARTIAL, outcome.status());
         assertNotNull(outcome.result());
         assertEquals(1, outcome.result().results().size());
         assertEquals("one",
-                outcome.result().results().get(0).proposal().subject().targetId());
+                     outcome.result().results().get(0).proposal().subject().targetId());
     }
 
     @Test
@@ -98,7 +176,7 @@ class FindDataProcessTest {
                 source, EnrichmentProposal.ReviewAction.FILL_IF_EMPTY);
         EnrichmentProvider provider = provider("Wikimedia", context ->
                 new EnrichmentProposal(request.subject(),
-                        List.of(identity), List.of(value), List.of()));
+                                       List.of(identity), List.of(value), List.of()));
 
         // A single batch input pause is answered by accepting every proposal — no
         // per-member review is ever requested.
@@ -109,9 +187,9 @@ class FindDataProcessTest {
                 reviews[0]++;
                 FindDataBatchReviewRequest batch = (FindDataBatchReviewRequest) req;
                 List<EnrichmentDecision> accepted = batch.proposals().stream()
-                        .map(EnrichmentDecision::acceptDefault)
-                        .filter(java.util.Objects::nonNull)
-                        .toList();
+                                                         .map(EnrichmentDecision::acceptDefault)
+                                                         .filter(java.util.Objects::nonNull)
+                                                         .toList();
                 return req.responseType().cast(new BatchReviewDecision(accepted));
             }
         };
@@ -119,9 +197,9 @@ class FindDataProcessTest {
         ProcessOutcome<FindDataBatchResult> outcome = new ProcessRunner(
                 new QueryContext(null, null), null, acceptAll)
                 .run(new FindDataBatchProcess(List.of(
-                                new FindDataProcess(request, List.of(provider), false)),
-                                0, "population"),
-                        new CancellationToken());
+                             new FindDataProcess(request, List.of(provider), false)),
+                                              0, "population"),
+                     new CancellationToken());
 
         assertEquals(ProcessStatus.SUCCEEDED, outcome.status());
         assertEquals(1, reviews[0]);   // exactly ONE review for the whole batch
@@ -150,6 +228,43 @@ class FindDataProcessTest {
                 };
             }
         };
+    }
+
+    private static EnrichmentRequest populationRequest() {
+        return new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "local-1", "Q1", "One"),
+                "population", false, List.of());
+    }
+
+    private static EnrichmentProposal fieldProposal(
+            EnrichmentRequest request,
+            String sourceKind,
+            String property,
+            Object value,
+            String incompatibility) {
+        String identityId = sourceKind.toLowerCase();
+        EnrichmentProposal.SourceRef source = new EnrichmentProposal.SourceRef(
+                sourceKind, request.subject().id(), "url", property);
+        EnrichmentProposal.IdentityCandidate identity =
+                new EnrichmentProposal.IdentityCandidate(
+                        identityId, request.subject().displayName(), List.of(), "",
+                        source, 1.0, List.of());
+        EnrichmentProposal.FieldCandidate field = new EnrichmentProposal.FieldCandidate(
+                sourceKind + "-value", identityId, request.targetField(),
+                request.currentValue(), value, source,
+                incompatibility == null
+                        ? EnrichmentProposal.ReviewAction.FILL_IF_EMPTY
+                        : EnrichmentProposal.ReviewAction.IGNORE,
+                incompatibility, false);
+        return new EnrichmentProposal(
+                request.subject(), List.of(identity), List.of(field), List.of());
+    }
+
+    private static ProcessOutcome<FindDataResult> run(
+            EnrichmentRequest request, EnrichmentRoute route) {
+        return new ProcessRunner(
+                new QueryContext(null, null), null, ProcessInputHandler.unsupported())
+                .run(new FindDataProcess(request, route, false), new CancellationToken());
     }
 
     @FunctionalInterface
