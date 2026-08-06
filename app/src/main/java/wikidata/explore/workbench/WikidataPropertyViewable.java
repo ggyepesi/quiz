@@ -1,10 +1,11 @@
 package wikidata.explore.workbench;
 
 import objectview.ViewableAdapter;
+import objectview.annotations.DisplayField;
 import wikidata.explore.WikidataProperty;
 
 public class WikidataPropertyViewable extends ViewableAdapter {
-    private final String name;
+    @DisplayField private final String name;
     private final String pid;
     private final String description;
 

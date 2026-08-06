@@ -1,6 +1,7 @@
 package quiz.source;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import objectview.annotations.DisplayField;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
@@ -23,8 +24,7 @@ public final class WikidataStatementSource extends ViewableAdapter
     private final String statement;
     @Hidden
     private final String property;
-    @Hidden
-    private final String name;
+    @DisplayField private final String name;
 
     @JsonCreator
     public WikidataStatementSource(

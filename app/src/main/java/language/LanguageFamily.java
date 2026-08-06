@@ -1,13 +1,14 @@
 package language;
 
 import objectview.annotations.Reference;
+import objectview.annotations.DisplayField;
 import quiz.source.ManualEntity;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class LanguageFamily extends ManualEntity {
-    private final String name;
+    @DisplayField private final String name;
     @Reference
     private LanguageFamily parent;
 

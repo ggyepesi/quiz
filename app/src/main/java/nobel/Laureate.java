@@ -1,10 +1,11 @@
 package nobel;
 
 import objectview.media.ImagePane;
+import objectview.annotations.DisplayField;
 import quiz.source.ManualEntity;
 
 class Laureate extends ManualEntity {
-    private String name;
+    @DisplayField private String name;
     private ImagePane portrait;
 
     public ImagePane getPortrait() {

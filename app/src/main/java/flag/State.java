@@ -1,6 +1,7 @@
 package flag;
 
 import java.util.ArrayList;
+import objectview.annotations.DisplayField;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -15,8 +16,7 @@ import objectview.media.ImagePane;
 import quiz.source.ManualEntity;
 
 public class State extends ManualEntity {
-    @Hidden
-    private final String name;
+    @DisplayField private final String name;
     private final List<ImagePane> flagVersions = new ArrayList<>();
     private final List<ImagePane> armsVersions = new ArrayList<>();
     private final List<ImagePane> shapeVersions = new ArrayList<>();

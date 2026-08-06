@@ -1,11 +1,12 @@
 package flag;
 
 import objectview.media.ImagePane;
+import objectview.annotations.DisplayField;
 import quiz.source.ManualEntity;
 
 // seemingly unused fields are used via reflection
 public class SportTeam extends ManualEntity {
-    private String name = null;
+    @DisplayField private String name = null;
     @SuppressWarnings("unused")
     private String league = null;
     @SuppressWarnings("unused")

@@ -1,5 +1,6 @@
 package nobel;
 import java.util.ArrayList;
+import objectview.annotations.DisplayField;
 import java.util.List;
 
 import quiz.source.ManualEntity;
@@ -15,7 +16,7 @@ public class NobelPrize extends ManualEntity {
          NONE
     }
     
-    private String name = "";
+    @DisplayField private String name = "";
     private int year;
     private Domain domain;
     private final List<LaureatesWithMotivation> laureatesWithMotivation = new ArrayList<>();

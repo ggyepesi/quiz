@@ -31,12 +31,10 @@ class ViewableFieldPathsSampleTest {
                                               .collect(Collectors.toSet());
 
         assertTrue(paths.contains("year"), paths.toString());          // dynamic scalar
-        assertTrue(paths.contains("category."
-                + objectview.field.ViewableContractFieldSet.DISPLAY_KEY),
-                paths.toString()); // reference display
+        // DynamicViewable binds its display to the real @DisplayField "name", so the display
+        // path is that field (not the synthetic @view:display key), nested and top-level.
+        assertTrue(paths.contains("category.name"), paths.toString()); // reference display
         assertTrue(paths.contains("category.edition"), paths.toString()); // NESTED dynamic field
-        assertTrue(paths.contains(
-                objectview.field.ViewableContractFieldSet.DISPLAY_KEY),
-                paths.toString());          // identity/display
+        assertTrue(paths.contains("name"), paths.toString());          // display
     }
 }

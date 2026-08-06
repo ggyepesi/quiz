@@ -1,6 +1,7 @@
 package wikidata.explore.workbench;
 
 import objectview.Viewable;
+import objectview.annotations.DisplayField;
 import objectview.field.FieldSet;
 
 /**
@@ -21,7 +22,7 @@ public final class RelationView implements Viewable {
     private final String example;
     private final String direction;
     private final String pid;
-    private final String label;
+    @DisplayField private final String label;
 
     public RelationView(
             String direction, String pid, String label,

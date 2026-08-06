@@ -1,6 +1,7 @@
 package mythology;
 
 import java.awt.Component;
+import objectview.annotations.DisplayField;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import javax.swing.JPanel;
 import quiz.source.ManualEntity;
 
 public  class NamedEntity extends ManualEntity implements MythologyEntity {
-    private String name;
+    @DisplayField private String name;
 
     protected NamedEntity() {}
 

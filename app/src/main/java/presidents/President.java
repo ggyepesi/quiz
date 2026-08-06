@@ -1,6 +1,7 @@
 package presidents;
 
 import java.util.ArrayList;
+import objectview.annotations.DisplayField;
 import java.util.List;
 
 import aux.FlexibleDate;
@@ -79,7 +80,7 @@ enum CauseOfDeath {
 
 @SuppressWarnings("unused")
 class Person extends ManualEntity {
-    private String name;
+    @DisplayField private String name;
 
     private ImagePane portrait;
     private FlexibleDate born;

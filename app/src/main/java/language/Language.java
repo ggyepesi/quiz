@@ -1,6 +1,7 @@
 package language;
 
 import objectview.annotations.Minor;
+import objectview.annotations.DisplayField;
 import quiz.source.ManualEntity;
 import objectview.annotations.Reference;
 
@@ -8,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Language extends ManualEntity {
-    private final String name;
+    @DisplayField private final String name;
 
     private String nativeName;
     @Minor

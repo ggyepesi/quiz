@@ -1,6 +1,7 @@
 package quiz.transform;
 
 import objectview.annotations.Hidden;
+import objectview.annotations.DisplayField;
 import objectview.field.DynamicFields;
 import objectview.ViewableAdapter;
 
@@ -17,8 +18,7 @@ public class DynamicViewable extends ViewableAdapter implements DynamicFields {
 
     @Hidden
     private final String id;
-    @Hidden
-    private final String name;
+    @DisplayField private final String name;
 
     private String type;
     private final Map<String, Object> fields = new LinkedHashMap<>();
