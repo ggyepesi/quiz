@@ -29,7 +29,7 @@ public final class ViewStepsPanel extends JPanel {
     // Field selection and value scope are deliberately independent. Selecting a row says
     // which field subsequent actions refer to; only these explicit All/Missing/Present
     // controls change the instances shown on the right.
-    private final java.util.function.BiConsumer<DomainField, ScopeFilter> onScopeChanged;
+    private final java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged;
     private final java.util.function.Supplier<
             ? extends java.util.Collection<? extends Viewable>> workingSet;
 
@@ -75,12 +75,13 @@ public final class ViewStepsPanel extends JPanel {
             java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
             java.util.function.Supplier<
                     ? extends java.util.Collection<? extends Viewable>> workingSet,
-            java.util.function.BiConsumer<DomainField, ScopeFilter> onScopeChanged) {
+            java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged) {
         this.controller = controller;
         this.listener = listener;
         this.filterGroupCreator = filterGroupCreator;
         this.workingSet = workingSet == null ? List::of : workingSet;
-        this.onScopeChanged = onScopeChanged == null ? (f, s) -> { } : onScopeChanged;
+        this.onSelectionChanged = onSelectionChanged == null
+                ? (f, s) -> { } : onSelectionChanged;
         // The same coverage contributor is used here and in curation. It describes the
         // current group; it does not decide which part of that group is visible.
         this.coverageColumns = new FieldCoverageColumns(
@@ -312,14 +313,13 @@ public final class ViewStepsPanel extends JPanel {
         reloadOperators(kindOf(f));
         populateValueChoices(f);
         updateScopeLabels();
-        // If the user explicitly chose Missing/Present, that mode naturally follows a new
-        // selected field. Merely selecting a field while All is active changes no scope.
-        if (scopeFilter != ScopeFilter.ALL) {
-            if (f == null) {
-                selectScope(ScopeFilter.ALL);
-            } else {
-                onScopeChanged.accept(f, scopeFilter);
-            }
+        // Field selection and value scope are separate pieces of state, but the parent needs
+        // both on every change: field actions still target the selected field while All is
+        // active. Missing/Present cannot survive clearing the field selection.
+        if (f == null && scopeFilter != ScopeFilter.ALL) {
+            selectScope(ScopeFilter.ALL);
+        } else {
+            onSelectionChanged.accept(f, scopeFilter);
         }
     }
 
@@ -333,7 +333,7 @@ public final class ViewStepsPanel extends JPanel {
         missingScope.setSelected(scopeFilter == ScopeFilter.MISSING);
         presentScope.setSelected(scopeFilter == ScopeFilter.PRESENT);
         updateScopeLabels();
-        onScopeChanged.accept(field, scopeFilter);
+        onSelectionChanged.accept(field, scopeFilter);
     }
 
     /** Recompute coverage after a group switch or in-place curation and refresh the labels

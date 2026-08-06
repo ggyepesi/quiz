@@ -21,7 +21,8 @@ final class IdentityChip {
     /** A chip for {@code qid}: a clickable QID link when present, else an "unidentified" mark. */
     static JComponent of(String qid) {
         if (qid != null && !qid.isBlank()) {
-            JComponent link = WikidataLinks.pane(WikidataLinks.linkHtml(qid, qid));
+            JLabel link = new JLabel(qid);
+            WikidataLinks.linkify(link, () -> qid);
             link.setToolTipText("Wikidata identity");
             return link;
         }

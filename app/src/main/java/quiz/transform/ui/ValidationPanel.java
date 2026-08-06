@@ -26,9 +26,6 @@ import quiz.curation.CurationStaging;
 import quiz.curation.IdentityLink;
 import quiz.curation.ScopeFilter;
 
-import wikidata.WikidataSparqlClient;
-import wikidata.api.WikidataApiClient;
-import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldSourceMapping;
@@ -134,9 +131,9 @@ public final class ValidationPanel extends JPanel {
     private ScopeFilter scopeFilter = ScopeFilter.MISSING;
     private long identityLabelRequest;
 
-    public ValidationPanel(DomainModel domain) {
-        this(domain, null, null, null, null);
-    }
+    /** The concrete member used to discover a field source. Keep its readable name beside
+     *  the QID so Explore makes the probe target unambiguous. */
+    private record ExploreSeed(String qid, String label) {}
 
     public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner) {
         this(domain, null, queryRunner, null, null);
@@ -166,14 +163,10 @@ public final class ValidationPanel extends JPanel {
         this.onCurated = onCurated == null ? () -> { } : onCurated;
         this.identityResolver = identityResolver;
         this.staging = CurationStaging.forCuration(curationStore());
-        this.queryRunner = queryRunner == null
-                ? new SwingQueryRunner(
-                        new QueryFactory(
-                                new WikidataSparqlClient("QuizProject/1.0 (ggyepesi@gmail.com)", 2),
-                                new WikidataApiClient("QuizProject/1.0"),
-                                "QuizProject/1.0 (ggyepesi@gmail.com)").newContext(),
-                        null)
-                : queryRunner;
+        // Query clients have application lifetime and explicit ownership. A panel must use
+        // its owner's runner rather than constructing endpoint clients it cannot close.
+        this.queryRunner = java.util.Objects.requireNonNull(
+                queryRunner, "ValidationPanel requires an application-owned query runner");
         this.findDataRunner = new SwingProcessRunner(
                 this.queryRunner.context(),
                 this.queryRunner.logListener(),
@@ -685,25 +678,25 @@ public final class ValidationPanel extends JPanel {
     /** Starts source discovery; true means a picker was opened asynchronously. */
     private boolean chooseSourceForSelected(boolean produceAfterChoice) {
         if (selectedFieldType == null || selectedFieldPath == null) return false;
-        String sampleQid = sampleQidFor(selectedFieldPath, curationStore());
-        if (sampleQid == null) {
+        ExploreSeed seed = sampleForSourceDiscovery(curationStore());
+        if (seed == null) {
             if (!produceAfterChoice) {
                 JOptionPane.showMessageDialog(this,
                         "No member in this scope has a Wikidata identity to sample.");
             }
             return false;
         }
-        chooseFieldSource(sampleQid,
+        chooseFieldSource(seed,
                 new FieldKey(selectedFieldType, selectedFieldPath), produceAfterChoice);
         return true;
     }
 
     private void chooseFieldSource(
-            String sampleQid, FieldKey key, boolean produceAfterChoice) {
+            ExploreSeed seed, FieldKey key, boolean produceAfterChoice) {
         // Explore mode 2: pick a property of the resolved sample entity and RETURN it —
         // the caller (here) sets the field source. No bespoke property-picker path.
         wikidata.explore.workbench.ExploreByExamplePanel.findProperty(
-                this, queryRunner, sampleQid, null,
+                this, queryRunner, seed.qid(), seed.label(),
                 (pid, label) -> {
                     if (pid == null || pid.isBlank()) return;
                     FieldSourceMapping source = new FieldSourceMapping();
@@ -742,12 +735,12 @@ public final class ValidationPanel extends JPanel {
 
     /** The first missing member that carries (or resolves to) a QID — the sample entity
      *  whose properties the picker lists. */
-    private String sampleQidFor(String path, quiz.curation.ManualCuration curation) {
+    private ExploreSeed sampleForSourceDiscovery(quiz.curation.ManualCuration curation) {
         for (Viewable member : drilledInstances) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
             String qid = resolvedQid(member,
                     EnrichmentSources.collect(member, concreteType(member), curation));
-            if (qid != null) return qid;
+            if (qid != null) return new ExploreSeed(qid, member.getDisplayName());
         }
         return null;
     }

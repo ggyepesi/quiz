@@ -69,8 +69,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private java.util.List<quiz.enrichment.ResolveIdentitiesDecision.Resolved>
             lastApplied = List.of();
     // Primary datasource is WDQS (Wikidata queries + Explore); the factory owns the
-    // DBpedia binding (enrichment joins), so each query routes to the endpoint it was
-    // generated for. requestClient is the WDQS primary, closed by this panel.
+    // DBpedia binding (enrichment joins), and each SPARQL operation explicitly requests
+    // its datasource from the shared context. requestClient is closed by this panel.
     private final WikidataSparqlClient requestClient = new WikidataSparqlClient(
             "QuizProject/1.0 (ggyepesi@gmail.com)", 2);
     private final QueryFactory queryFactory = new QueryFactory(
@@ -91,10 +91,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     // newer one that finished first.
     private int renderGeneration;
     private RenderedScope renderedScope;
-    // The selected field is not a filter by itself. These two values represent the explicit
-    // All/Missing/Present choice made below the field table.
-    private DomainField scopeField;
+    // The selected field is an action target even while the value scope is All. Keep it
+    // separate from the optional Missing/Present restriction applied to visible instances.
+    private DomainField selectedField;
     private ScopeFilter fieldScope = ScopeFilter.ALL;
+    private enum RightMode { CARDS, CURATING_FIELD }
+    private RightMode rightMode = RightMode.CARDS;
     private java.util.function.Consumer<objectview.group.ViewableGroup<?>> activeShow;
     private objectview.group.ViewableGroup<?> activeGroup;
     private boolean closed;
@@ -284,9 +286,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JOptionPane.showMessageDialog(this, "No visible instances to resolve.");
             return;
         }
-        resolveIdentities(scope.visibleMembers(),
+        // Resolve only the UNRESOLVED members, not every visible one — so the count and the
+        // work match what the button offers (already-identified instances are skipped).
+        quiz.curation.ManualCuration curation = curation();
+        List<Viewable> unresolved = scope.visibleMembers().stream()
+                .filter(m -> currentQid(curation, m.typeName(), m) == null)
+                .toList();
+        if (unresolved.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "All visible instances are already identified.");
+            return;
+        }
+        resolveIdentities(unresolved,
                 (scope.selectedType() == null ? "View" : scope.selectedType())
-                        + " visible instances");
+                        + " unresolved instances");
     }
 
     /** Resolve an explicit immutable list. Callers may be the rendered view, Validate's
@@ -368,16 +380,18 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 .findFirst().orElse(null);
     }
 
-    /** The card-header identity chip for a member: its Wikidata QID as a link when known, else
-     *  an "unidentified" marker so curation gaps show at a glance. Resolution stays here
-     *  (outside the renderer). Returns null for a non-curatable domain, where identity isn't
-     *  a concept. */
+    /** The card-header identity chip for a member: its native or curated Wikidata QID as a
+     *  link when known, else an "unidentified" marker. Identity exists independently of
+     *  whether the domain has a curation sidecar; only resolved identity links require one. */
     private JComponent identityChip(Viewable member) {
         quiz.curation.ManualCuration curation = curation();
-        if (member == null || curation == null) {
+        if (member == null) {
             return null;
         }
-        return IdentityChip.of(currentQid(curation, member.typeName(), member));
+        String qid = currentQid(curation, member.typeName(), member);
+        // A native QID needs no curation sidecar. Conversely, do not label every member of a
+        // non-curatable, non-Wikidata domain "unidentified" when identity is not actionable.
+        return qid == null && curation == null ? null : IdentityChip.of(qid);
     }
 
     private void applyResolvedIdentities(
@@ -550,7 +564,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      *  No window — "Back to cards" re-renders. The left panel already established field +
      *  scope, so this never re-asks class/field/scope. */
     private void openFieldCuration() {
-        DomainField field = scopeField;
+        DomainField field = selectedField;
         RenderedScope scope = renderedScope;
         if (field == null) {
             JOptionPane.showMessageDialog(this, "Select a field on the left to curate.");
@@ -580,6 +594,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         renderHolder.removeAll();
         renderHolder.add(bar, BorderLayout.NORTH);
         renderHolder.add(panel, BorderLayout.CENTER);
+        rightMode = RightMode.CURATING_FIELD;
         renderHolder.revalidate();
         renderHolder.repaint();
     }
@@ -622,6 +637,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // it's being mutated.
         final int generation = ++renderGeneration;
         final String type = controller.selectedType();
+        rightMode = RightMode.CARDS;
         renderedScope = null;
         if (resolveRunner.isRunning()) {
             resolveButton.setText("Cancel identity resolution");
@@ -665,11 +681,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }.execute();
     }
 
-    /** Apply the explicit value scope chosen below the field table. Merely selecting a
-     *  field while All is active does not call this with a restrictive mode. */
+    /** Record both independent selections: the field targeted by actions and the optional
+     *  All/Missing/Present restriction. Changing either invalidates a fixed curation target,
+     *  so return to the card view before applying the new selection. */
     private void applyFieldScope(DomainField field, ScopeFilter filter) {
-        scopeField = field;
+        selectedField = field;
         fieldScope = field == null || filter == null ? ScopeFilter.ALL : filter;
+        if (rightMode == RightMode.CURATING_FIELD) {
+            render();
+            return;
+        }
         if (activeShow != null && activeGroup != null) {
             activeShow.accept(activeGroup);
         }
@@ -678,19 +699,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     /** Apply the explicit value mode and, for a subtype-owned field, restrict eligibility
      *  to that subtype. A USState field must never classify every ordinary State as missing. */
     private List<Viewable> applyFieldScope(List<Viewable> members) {
-        if (scopeField == null || fieldScope == ScopeFilter.ALL) {
+        if (selectedField == null || fieldScope == ScopeFilter.ALL) {
             return members;
         }
         return FieldCoverageColumns.select(controller.domain(), members,
-                scopeField.type(), scopeField.field(), fieldScope);
+                selectedField.type(), selectedField.field(), fieldScope);
     }
 
     private String instanceTitle(objectview.group.ViewableGroup<?> group) {
         String title = "Members of " + group.getDisplayName();
-        if (scopeField == null || fieldScope == ScopeFilter.ALL) {
+        if (selectedField == null || fieldScope == ScopeFilter.ALL) {
             return title;
         }
-        return title + " · " + scopeField.displayPath() + " "
+        return title + " · " + selectedField.displayPath() + " "
                 + (fieldScope == ScopeFilter.MISSING ? "missing" : "present");
     }
 
@@ -720,7 +741,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
         quiz.curation.ManualCuration curation =
                 controller.domain() instanceof quiz.curation.Curatable c ? c.curation() : null;
-        long identified = curation == null ? 0 : scope.visibleMembers().stream()
+        long identified = scope.visibleMembers().stream()
                 .filter(member -> currentQid(curation, member.typeName(), member) != null)
                 .count();
         long unresolved = scope.visibleMembers().size() - identified;
@@ -732,9 +753,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 + " · " + count + " · "
                 + identified + " identified · " + unresolved + " unresolved");
 
-        curateFieldButton.setText(scopeField == null ? "Curate field…"
-                : "Curate " + scopeField.displayPath() + "…");
-        curateFieldButton.setEnabled(scopeField != null && !scope.visibleMembers().isEmpty());
+        curateFieldButton.setText(selectedField == null ? "Curate field…"
+                : "Curate " + selectedField.displayPath() + "…");
+        curateFieldButton.setEnabled(selectedField != null && !scope.visibleMembers().isEmpty());
 
         // Identity actions operate on this same visible scope. While the resolve process is
         // active it owns the button text (setResolveRunning), so don't clobber it here.
