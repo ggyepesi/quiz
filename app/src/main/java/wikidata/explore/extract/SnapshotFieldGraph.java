@@ -4,6 +4,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import objectview.field.FieldKind;
 import objectview.field.FieldRef;
+import objectview.field.FieldRole;
 import objectview.field.FieldSchema;
 import objectview.Viewable;
 import quiz.transform.ui.DomainModel;
@@ -134,8 +135,14 @@ public final class SnapshotFieldGraph {
         for (FieldShape field : type.fields.values()) {
             FieldKind valueKind = field.reference
                     ? FieldKind.REFERENCE : field.scalarKind();
+            // Carry the persisted DISPLAY designation back onto the schema so a loaded
+            // snapshot marks its display field the same way reflection does — the config
+            // guard then suppresses the synthetic "Display label" and rendering consumes
+            // the field as the title instead of a duplicate row.
             refs.add(FieldRef.described(
-                    field.name, field.domainKind(), valueKind,
+                    field.name, field.name,
+                    field.display ? FieldRole.DISPLAY : FieldRole.NONE,
+                    field.domainKind(), valueKind,
                     field.typeLabel(), field.reference, field.collection,
                     field.primaryTargetType(),
                     field.structural || extra.contains(field.name),
@@ -369,6 +376,10 @@ public final class SnapshotFieldGraph {
         public boolean link;
         public String linkText = "";
         public boolean annotatedReference;
+        // This field is the type's DISPLAY field (a @DisplayField in the source model).
+        // Persisted so a loaded snapshot knows which field backs getDisplayName(), instead
+        // of losing that designation and showing the synthetic "Display label" alongside it.
+        public boolean display;
         public String scalarKind = FieldKind.UNKNOWN.name();
         public String scalarTypeLabel = "";
         public List<String> targetTypes = new ArrayList<>();
@@ -393,6 +404,10 @@ public final class SnapshotFieldGraph {
                 linkText = field.linkText();
             }
             annotatedReference |= field.annotatedReference();
+            // Recognized by ROLE, never by the field name: a real @DisplayField field is
+            // DISPLAY-role, while the synthetic contract alias uses the reserved key.
+            display |= field.role() == FieldRole.DISPLAY
+                    && !objectview.field.ViewableContractFieldSet.DISPLAY_KEY.equals(field.name());
             String target = field.targetType();
             if (target != null && !target.isBlank()
                     && !targetTypes.contains(target)) {
