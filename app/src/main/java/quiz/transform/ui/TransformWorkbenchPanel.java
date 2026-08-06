@@ -310,7 +310,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         String prompt = type + " · " + identified.size() + " identified · "
                 + unresolved.size() + " unresolved";
         CategorizedReviewPanel.showModeless(this, "Identities", prompt, sections, extra,
-                new Dimension(720, 560),
+                "Resolve selected", new Dimension(720, 560),
                 checked -> {
                     if (!checked.isEmpty()) {
                         resolveIdentities(checked, type + " selected unresolved");

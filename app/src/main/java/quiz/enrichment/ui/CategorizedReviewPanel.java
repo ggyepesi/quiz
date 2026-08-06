@@ -82,18 +82,28 @@ public final class CategorizedReviewPanel<T> extends JPanel {
     private final JTabbedPane groups = new JTabbedPane();
 
     private CategorizedReviewPanel(
-            String prompt, List<Section<T>> sections,
-            List<FooterAction> extraActions, Consumer<List<T>> onApply) {
+            String prompt, List<Section<T>> sections, List<FooterAction> extraActions,
+            String applyLabel, Consumer<List<T>> onApply) {
         super(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         add(new JLabel("<html>" + html(prompt) + "</html>"), BorderLayout.NORTH);
-        for (Section<T> section : sections) {
+        int firstNonEmpty = -1;
+        for (int i = 0; i < sections.size(); i++) {
+            Section<T> section = sections.get(i);
             groups.addTab(section.title() + " (" + section.rows().size() + ")",
                     sectionPanel(section));
+            if (firstNonEmpty < 0 && !section.rows().isEmpty()) {
+                firstNonEmpty = i;
+            }
+        }
+        // Open on the first tab that actually has rows, so an empty leading tab (e.g. no
+        // identified instances) doesn't make it look like there's nothing to act on.
+        if (firstNonEmpty >= 0) {
+            groups.setSelectedIndex(firstNonEmpty);
         }
         add(groups, BorderLayout.CENTER);
-        add(buttons(extraActions, onApply), BorderLayout.SOUTH);
+        add(buttons(extraActions, applyLabel, onApply), BorderLayout.SOUTH);
     }
 
     private JComponent sectionPanel(Section<T> section) {
@@ -144,7 +154,8 @@ public final class CategorizedReviewPanel<T> extends JPanel {
         }
     }
 
-    private JComponent buttons(List<FooterAction> extraActions, Consumer<List<T>> onApply) {
+    private JComponent buttons(
+            List<FooterAction> extraActions, String applyLabel, Consumer<List<T>> onApply) {
         JButton all = new JButton("Select all in tab");
         all.addActionListener(e -> currentTabRows().forEach(
                 r -> { if (r.accept.isEnabled()) r.accept.setSelected(true); }));
@@ -152,12 +163,15 @@ public final class CategorizedReviewPanel<T> extends JPanel {
         none.addActionListener(e -> currentTabRows().forEach(r -> r.accept.setSelected(false)));
         JButton cancel = new JButton("Close without applying");
         cancel.addActionListener(e -> onApply.accept(List.of()));
-        JButton apply = new JButton("Apply selected");
+        JButton apply = new JButton(
+                applyLabel == null || applyLabel.isBlank() ? "Apply selected" : applyLabel);
         apply.addActionListener(e -> onApply.accept(accepted()));
 
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        panel.add(all);
-        panel.add(none);
+        // Two rows so a crowded footer never clips the primary Close/Apply — which live on
+        // their own bottom row (always visible), with selection + extra actions above.
+        JPanel helpers = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        helpers.add(all);
+        helpers.add(none);
         // Extra side-effect actions (e.g. Save / Forget): run, then close via the same
         // one-shot completion (with no accepted rows, so Apply's handler is not triggered).
         for (FooterAction action : extraActions == null ? List.<FooterAction>of() : extraActions) {
@@ -167,12 +181,16 @@ public final class CategorizedReviewPanel<T> extends JPanel {
                 action.onClick().run();
                 onApply.accept(List.of());
             });
-            panel.add(button);
+            helpers.add(button);
         }
-        panel.add(Box.createHorizontalStrut(12));
-        panel.add(cancel);
-        panel.add(apply);
-        return panel;
+        JPanel primary = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        primary.add(cancel);
+        primary.add(apply);
+
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.add(helpers, BorderLayout.NORTH);
+        footer.add(primary, BorderLayout.SOUTH);
+        return footer;
     }
 
     /** Rows of the currently visible tab — the scope of "Select all/none in tab".
@@ -215,7 +233,7 @@ public final class CategorizedReviewPanel<T> extends JPanel {
     public static <T> void showDialog(
             Component owner, String title, String prompt,
             List<Section<T>> sections, Dimension size, Consumer<List<T>> onAccepted) {
-        createDialog(owner, title, prompt, sections, List.of(), size, onAccepted,
+        createDialog(owner, title, prompt, sections, List.of(), null, size, onAccepted,
                 Dialog.ModalityType.APPLICATION_MODAL).setVisible(true);
     }
 
@@ -223,29 +241,31 @@ public final class CategorizedReviewPanel<T> extends JPanel {
     public static <T> JDialog showModeless(
             Component owner, String title, String prompt,
             List<Section<T>> sections, Dimension size, Consumer<List<T>> onAccepted) {
-        return showModeless(owner, title, prompt, sections, List.of(), size, onAccepted);
+        return showModeless(owner, title, prompt, sections, List.of(), null, size, onAccepted);
     }
 
-    /** As {@link #showModeless}, with extra footer actions (e.g. Save / Forget). */
+    /** As {@link #showModeless}, with extra footer actions (e.g. Save / Forget) and a custom
+     *  label for the primary apply button ({@code null} → "Apply selected"). */
     public static <T> JDialog showModeless(
             Component owner, String title, String prompt,
             List<Section<T>> sections, List<FooterAction> extraActions,
-            Dimension size, Consumer<List<T>> onAccepted) {
-        JDialog dialog = createDialog(owner, title, prompt, sections, extraActions, size,
-                onAccepted, Dialog.ModalityType.MODELESS);
+            String applyLabel, Dimension size, Consumer<List<T>> onAccepted) {
+        JDialog dialog = createDialog(owner, title, prompt, sections, extraActions, applyLabel,
+                size, onAccepted, Dialog.ModalityType.MODELESS);
         dialog.setVisible(true);
         return dialog;
     }
 
     private static <T> JDialog createDialog(
             Component owner, String title, String prompt,
-            List<Section<T>> sections, List<FooterAction> extraActions,
+            List<Section<T>> sections, List<FooterAction> extraActions, String applyLabel,
             Dimension size, Consumer<List<T>> onAccepted, Dialog.ModalityType modality) {
         Window window = quiz.ui.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
         quiz.ui.Dialogs.raiseOnOpen(dialog);
         Consumer<List<T>> finish = quiz.ui.Dialogs.completion(dialog, onAccepted);
-        dialog.add(new CategorizedReviewPanel<>(prompt, sections, extraActions, finish));
+        dialog.add(new CategorizedReviewPanel<>(
+                prompt, sections, extraActions, applyLabel, finish));
         quiz.ui.Dialogs.completeOnClose(dialog, finish, List::of);
         dialog.setSize(size);
         dialog.setLocationRelativeTo(owner);
