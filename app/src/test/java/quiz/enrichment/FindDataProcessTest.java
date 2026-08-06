@@ -60,8 +60,16 @@ class FindDataProcessTest {
             throw new IllegalStateException("provider down");
         });
 
+        // The batch now reviews every member (so not-found ones are shown), so answer the
+        // one review pause by accepting nothing — the point here is member-failure resilience.
+        ProcessInputHandler acceptNothing = new ProcessInputHandler() {
+            @Override public <T> T request(
+                    ProcessInputRequest<T> req, CancellationToken cancellation) {
+                return req.responseType().cast(new BatchReviewDecision(List.of()));
+            }
+        };
         ProcessOutcome<FindDataBatchResult> outcome = new ProcessRunner(
-                new QueryContext(null, null), null, ProcessInputHandler.unsupported())
+                new QueryContext(null, null), null, acceptNothing)
                 .run(new FindDataBatchProcess(List.of(
                                 new FindDataProcess(firstRequest, List.of(succeeds), false),
                                 new FindDataProcess(secondRequest, List.of(fails), false)),

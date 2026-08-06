@@ -57,9 +57,10 @@ public final class FindDataBatchProcess implements Process<FindDataBatchResult> 
             if (outcome.usefulResult().isPresent()) {
                 FindDataResult memberResult = outcome.usefulResult().get();
                 results.add(memberResult);
-                if (hasCandidates(memberResult.proposal())) {
-                    reviewable.add(memberResult.proposal());
-                }
+                // Review EVERY member — with a value and without — so the not-found members
+                // surface in the review's "Not found" section (the shared review panel that
+                // identity resolution's "No match" also uses) instead of silently vanishing.
+                reviewable.add(memberResult.proposal());
             }
             if (outcome.status() != ProcessStatus.SUCCEEDED) {
                 incomplete++;
@@ -105,9 +106,5 @@ public final class FindDataBatchProcess implements Process<FindDataBatchResult> 
             return ProcessOutcome.partial(result, firstProblem, summary);
         }
         return ProcessOutcome.succeeded(result, summary);
-    }
-
-    private static boolean hasCandidates(EnrichmentProposal proposal) {
-        return !proposal.fields().isEmpty() || !proposal.media().isEmpty();
     }
 }
