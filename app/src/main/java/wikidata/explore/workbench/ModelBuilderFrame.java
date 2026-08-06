@@ -19,7 +19,15 @@ import wikidata.explore.generation.GenerateDomainProcess;
 import process.ProcessStatus;
 import process.swing.SwingProcessInputHandler;
 import process.swing.SwingProcessRunner;
+import quiz.enrichment.EnrichmentProposal;
+import quiz.enrichment.EnrichmentRequest;
+import quiz.enrichment.EnrichmentRoute;
+import quiz.enrichment.FindDataBatchProcess;
+import quiz.enrichment.FindDataBatchResult;
+import quiz.enrichment.FindDataProcess;
+import quiz.transform.ui.FieldEnrichmentRoutes;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.model.Selection;
@@ -41,6 +49,7 @@ import wikidata.explore.rule.RuleTreeSerializer;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ModelBuilderFrame extends JFrame {
@@ -93,6 +102,11 @@ public class ModelBuilderFrame extends JFrame {
 
     private final JButton showInstancesButton =
             new JButton("Show instances");
+    // Per-entity routed enrichment over the generated instances: fills each field from its
+    // configured source (Wikidata/Wikipedia) via the shared Find Data review, applied in
+    // memory to the shown instances. Reuses the curate routing verbatim.
+    private final JButton enrichButton =
+            new JButton("Enrich instances…");
 
     private final JButton showStatementsButton =
             new JButton("Statements…");
@@ -284,6 +298,10 @@ public class ModelBuilderFrame extends JFrame {
 
         JPanel runRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow2.add(showInstancesButton);
+        enrichButton.setToolTipText("Fill the generated instances' fields per entity from "
+                + "each field's configured source (Wikidata/Wikipedia), reviewed and applied "
+                + "in memory.");
+        runRow2.add(enrichButton);
         showStatementsButton.setToolTipText("Sample the selected class and show its "
                 + "instances' statements — property → values with qualifiers nested, "
                 + "plus coverage badges (example-first field discovery, #91).");
@@ -349,6 +367,85 @@ public class ModelBuilderFrame extends JFrame {
         instancesWindow.setTitle(instancesTitle());
         instancesWindow.setVisible(true);
         instancesWindow.toFront();
+    }
+
+    /** Per-entity routed enrichment over the generated instances: for each instance with a
+     *  QID and each of its class's fields that has a configured source, run the shared routed
+     *  Find Data (the curate machinery, verbatim), review once, and apply accepted values in
+     *  memory to the shown instances. The route is currently primary-per-field (a persisted
+     *  fallback would make it a true Wikidata→DBpedia route). */
+    private void enrichInstances() {
+        GenerationRun run = lastRun;
+        if (run == null || run.dynamicObjects() == null || run.dynamicObjects().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Generate instances first.");
+            return;
+        }
+        GeneratedProjectModel model = run.modelSnapshot() != null
+                ? run.modelSnapshot() : projectModel;
+        java.util.Map<String, GeneratedClassModel> classByName = new java.util.HashMap<>();
+        if (model.rootClass() != null) {
+            classByName.put(model.rootClass().className(), model.rootClass());
+        }
+        for (GeneratedClassModel c : model.classes()) {
+            if (c != null && c.className() != null) classByName.putIfAbsent(c.className(), c);
+        }
+
+        List<FindDataProcess> jobs = new ArrayList<>();
+        int skipped = 0;
+        for (WikidataDynamicObject obj : run.dynamicObjects()) {
+            String qid = obj.qid();
+            GeneratedClassModel cls = classByName.get(obj.typeName());
+            if (qid == null || !WikidataIds.isQid(qid) || cls == null) {
+                skipped++;
+                continue;
+            }
+            EnrichmentProposal.Subject subject = new EnrichmentProposal.Subject(
+                    obj.typeName(), obj.getIdentifier(), qid, obj.getDisplayName());
+            for (GeneratedFieldModel field : cls.effectiveFields(model)) {
+                if (field.name() == null || field.name().isBlank()) continue;
+                EnrichmentRoute route = FieldEnrichmentRoutes.from(field.mapping(), null);
+                if (route.isEmpty()) continue;   // field has no Wikidata/Wikipedia source
+                boolean collection = field.cardinality() != null
+                        && field.cardinality().isCollection();
+                EnrichmentRequest request = new EnrichmentRequest(
+                        subject, field.name(), collection, List.of(), null,
+                        obj.dynamicFieldValues().get(field.name()));
+                EnrichmentRoute applicable = route.applicableTo(request);
+                if (!applicable.isEmpty()) {
+                    jobs.add(new FindDataProcess(request, applicable, false));
+                }
+            }
+        }
+        if (jobs.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No generated instance has a field with a Wikidata/Wikipedia source "
+                            + "and a QID to enrich.");
+            return;
+        }
+
+        processRunner.run(
+                new FindDataBatchProcess(jobs, skipped, ""),
+                outcome -> SwingUtilities.invokeLater(() -> {
+                    FindDataBatchResult result = outcome.result();
+                    int applied = result == null ? 0 : applyEnriched(run, result);
+                    if (applied > 0) {
+                        instancesPanel.accept(run.objectResult());
+                        showInstancesWindow();
+                    }
+                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
+                        JOptionPane.showMessageDialog(this,
+                                "Enrich failed: " + outcome.error().getMessage());
+                    }
+                }),
+                ex -> SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+                        this, "Enrich failed: " + ex.getMessage())));
+    }
+
+    /** Write accepted field values onto the shown (materialized) instances, keyed by the
+     *  domain identifier. Returns how many values were applied. */
+    private int applyEnriched(GenerationRun run, FindDataBatchResult result) {
+        return quiz.enrichment.EnrichmentApply.toDynamicInstances(
+                run.instances(), result.acceptedDecisions());
     }
 
     // Lazily-created window hosting the discovery tools moved out of the main
@@ -646,6 +743,7 @@ public class ModelBuilderFrame extends JFrame {
                 this::reportGenerationError);
 
         showInstancesButton.addActionListener(e -> showInstancesWindow());
+        enrichButton.addActionListener(e -> enrichInstances());
         showStatementsButton.addActionListener(e -> showStatementsWindow(queryRunner));
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());

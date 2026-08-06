@@ -6,12 +6,13 @@ import wikidata.explore.model.FieldSourceMapping;
 
 import java.util.List;
 
-/** Builds a routed Find Data plan from the field-source mappings already used by the UI. */
-final class FieldEnrichmentRoutes {
+/** Builds a routed Find Data plan from the field-source mappings already used by the UI.
+ *  Shared by curate and ModelBuilder so both derive a route the same way. */
+public final class FieldEnrichmentRoutes {
 
     private FieldEnrichmentRoutes() { }
 
-    static EnrichmentRoute from(
+    public static EnrichmentRoute from(
             FieldSourceMapping primary,
             FieldSourceMapping fallback) {
         EnrichmentProvider primaryProvider = provider(primary);
