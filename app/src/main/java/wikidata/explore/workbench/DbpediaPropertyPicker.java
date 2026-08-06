@@ -38,10 +38,28 @@ public final class DbpediaPropertyPicker {
     public static void findProperty(
             Component parent, SwingQueryRunner runner,
             List<String> seedQids, BiConsumer<String, String> onSelected) {
-        if (runner == null || seedQids == null || seedQids.isEmpty()) {
+        if (seedQids == null || seedQids.isEmpty()) {
             return;
         }
-        runner.run(new DiscoverDBpediaPropertiesQuery(seedQids),
+        run(parent, runner, new DiscoverDBpediaPropertiesQuery(seedQids), onSelected);
+    }
+
+    /** Sample {@code sampleSize} instances of the class {@code typeQid}, then pick from their
+     *  DBpedia infobox properties — for a caller (e.g. the source panel) that has the class
+     *  type rather than specific instances. */
+    public static void findPropertyByType(
+            Component parent, SwingQueryRunner runner,
+            String typeQid, int sampleSize, BiConsumer<String, String> onSelected) {
+        run(parent, runner, new DiscoverDBpediaPropertiesQuery(typeQid, sampleSize), onSelected);
+    }
+
+    private static void run(
+            Component parent, SwingQueryRunner runner,
+            DiscoverDBpediaPropertiesQuery query, BiConsumer<String, String> onSelected) {
+        if (runner == null) {
+            return;
+        }
+        runner.run(query,
                 result -> SwingUtilities.invokeLater(
                         () -> showPicker(parent, result, onSelected)),
                 ex -> SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(

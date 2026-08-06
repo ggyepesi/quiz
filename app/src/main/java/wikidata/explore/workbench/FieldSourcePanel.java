@@ -9,8 +9,6 @@ import wikidata.explore.rule.RuleNode;
 import wikidata.explore.WikidataProperty;
 import wikidata.explore.WikidataPropertyScore;
 import wikidata.explore.model.*;
-import wikidata.explore.query.logical.DiscoverDBpediaPropertiesQuery;
-import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
@@ -242,15 +240,26 @@ public class FieldSourcePanel extends JPanel {
 
     public void setQueryRunner(SwingQueryRunner queryRunner) {
         this.queryRunner = queryRunner;
-        queryRunner.wireButton(
-                discoverDbpediaButton,
-                this::acceptDbpediaProps,
-                this::buildDbpediaPropsQuery,
-                ex -> JOptionPane.showMessageDialog(
-                        this,
-                        "Discover DBpedia properties failed:\n" + ex.getMessage(),
-                        "Discover failed",
-                        JOptionPane.ERROR_MESSAGE));
+        // Discovery + the pick dialog live in the shared DbpediaPropertyPicker (the same one
+        // curate uses), so the two source-config flows can't drift apart.
+        discoverDbpediaButton.addActionListener(e -> discoverDbpediaProperties());
+    }
+
+    private void discoverDbpediaProperties() {
+        GeneratedClassModel owner = ownerClass();
+        String typeQid = owner == null || owner.instanceMapping() == null
+                ? "" : owner.instanceMapping().sourceQid();
+        if (typeQid == null || !WikidataIds.isQid(typeQid)) {
+            JOptionPane.showMessageDialog(this,
+                    "Set the owning class's Wikidata type first.",
+                    "No class type", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        DbpediaPropertyPicker.findPropertyByType(this, queryRunner, typeQid, 8,
+                (property, example) -> {
+                    propertyPidField.setText(property);
+                    propertyLabel.setText("(DBpedia infobox property)");
+                });
     }
 
     public void onSampleRequested(Runnable r) {
@@ -990,92 +999,6 @@ public class FieldSourcePanel extends JPanel {
                         : "<html>Available only for scalar ENTITY qualifier "
                           + "fields of a StatementClass loaded with "
                           + "Auto production.</html>");
-    }
-
-    private DiscoverDBpediaPropertiesQuery buildDbpediaPropsQuery() {
-        GeneratedClassModel owner = ownerClass();
-        String typeQid = owner == null || owner.instanceMapping() == null
-                ? "" : owner.instanceMapping().sourceQid();
-        if (typeQid == null || !WikidataIds.isQid(typeQid)) {
-            JOptionPane.showMessageDialog(this,
-                                          "Set the owning class's Wikidata type first.",
-                                          "No class type", JOptionPane.INFORMATION_MESSAGE);
-            return null;
-        }
-        return new DiscoverDBpediaPropertiesQuery(typeQid, 8);
-    }
-
-    private void acceptDbpediaProps(TableQueryResult result) {
-        List<List<Object>> rows = result == null ? List.of() : result.rows();
-        SwingUtilities.invokeLater(() -> showDbpediaPropsDialog(rows));
-    }
-
-    // Each row: a DBpedia infobox property, how many sampled instances have it,
-    // and an example. Clicking "Use" fills the Property field.
-    private void showDbpediaPropsDialog(List<List<Object>> rows) {
-        if (rows.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                                          "No DBpedia infobox properties found for this class.",
-                                          "Discover properties", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        String[] cols = {"Property", "Have", "Example"};
-        Object[][] data = new Object[rows.size()][3];
-        for (int i = 0; i < rows.size(); i++) {
-            List<Object> r = rows.get(i);
-            for (int j = 0; j < 3; j++) {
-                data[i][j] = j < r.size() ? r.get(j) : "";
-            }
-        }
-
-        DefaultTableModel model = new DefaultTableModel(data, cols) {
-            @Override public boolean isCellEditable(int r, int col) { return false; }
-        };
-        JTable table = new JTable(model);
-        table.setRowHeight(22);
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        table.getColumnModel().getColumn(0).setPreferredWidth(220);
-        table.getColumnModel().getColumn(1).setPreferredWidth(50);
-        table.getColumnModel().getColumn(2).setPreferredWidth(320);
-
-        JScrollPane sp = new JScrollPane(table);
-        sp.setPreferredSize(new Dimension(660, 320));
-
-        JButton useButton = new JButton("Use selected property");
-        useButton.setEnabled(false);
-        table.getSelectionModel().addListSelectionListener(e ->
-                                                                   useButton.setEnabled(table.getSelectedRow() >= 0));
-
-        JDialog dialog = new JDialog(
-                SwingUtilities.getWindowAncestor(this),
-                "DBpedia infobox properties",
-                Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setLayout(new BorderLayout(0, 6));
-        dialog.add(new JLabel(
-                           "  \"Have\" = how many sampled instances carry the property."),
-                   BorderLayout.NORTH);
-        dialog.add(sp, BorderLayout.CENTER);
-
-        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
-        JButton closeButton = new JButton("Close");
-        south.add(useButton);
-        south.add(closeButton);
-        dialog.add(south, BorderLayout.SOUTH);
-
-        useButton.addActionListener(ev -> {
-            int row = table.getSelectedRow();
-            if (row >= 0) {
-                propertyPidField.setText(String.valueOf(table.getValueAt(row, 0)));
-                propertyLabel.setText("(DBpedia infobox property)");
-                dialog.dispose();
-            }
-        });
-        closeButton.addActionListener(ev -> dialog.dispose());
-
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
     }
 
     private void updateRecommendation() {
