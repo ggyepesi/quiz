@@ -458,17 +458,17 @@ public class ExploreByExamplePanel extends JPanel {
         if (relations.isEmpty()) {
             relationHolder.add(new JLabel("   No relations."), BorderLayout.NORTH);
         } else {
-            JComponent cards = objectview.search.SearchableCardView.builder(relations)
+            // Table-style rendering (trialling the new objectview table view): one relation
+            // per row, one field per column, same search/sort/selection as the card view.
+            JComponent table = objectview.table.SearchableTableView.builder(relations)
                     .sample(relations.get(0))
-                    .hiddenFields(java.util.Set.of("label"))
-                    .collapsible(true)
                     .selectionListener(o -> {
                         selectedRelationView =
                                 o instanceof RelationView rv ? rv : null;
                         updateButtons();
                     })
                     .build();
-            relationHolder.add(cards, BorderLayout.CENTER);
+            relationHolder.add(table, BorderLayout.CENTER);
         }
         relationHolder.revalidate();
         relationHolder.repaint();
