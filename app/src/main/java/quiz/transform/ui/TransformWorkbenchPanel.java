@@ -289,6 +289,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private void openIdentityActions(List<Viewable> members, String type) {
         quiz.curation.ManualCuration curation = curation();
+        // Set once the modeless panel is shown, so an in-panel manual resolve can enable
+        // "Save identities" live instead of forcing a reopen.
+        java.util.concurrent.atomic.AtomicReference<CategorizedReviewPanel<Viewable>> panelRef =
+                new java.util.concurrent.atomic.AtomicReference<>();
         List<CategorizedReviewPanel.Row<Viewable>> identified = new ArrayList<>();
         List<CategorizedReviewPanel.Row<Viewable>> unresolved = new ArrayList<>();
         for (Viewable member : members) {
@@ -320,6 +324,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     explore.setText("Change…");
                     pick.setSelected(false);
                     pick.setEnabled(false);   // resolved — no longer a pending selection
+                    CategorizedReviewPanel<Viewable> open = panelRef.get();
+                    if (open != null) {
+                        open.setFooterEnabled("Save identities", true);   // now saveable, live
+                    }
                 }));
                 unresolved.add(new CategorizedReviewPanel.Row<>(
                         member, pick,
@@ -347,13 +355,15 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         String prompt = type + " · " + identified.size() + " identified · "
                 + unresolved.size() + " unresolved";
-        CategorizedReviewPanel.showModeless(this, "Identities", prompt, sections, extra,
+        javax.swing.JDialog dialog = CategorizedReviewPanel.showModeless(
+                this, "Wikidata identities", prompt, sections, extra,
                 "Resolve selected", new Dimension(720, 560),
                 checked -> {
                     if (!checked.isEmpty()) {
                         resolveIdentities(checked, type + " selected unresolved");
                     }
                 });
+        panelRef.set(CategorizedReviewPanel.panelOf(dialog));
     }
 
     /** Manually resolve ONE instance's identity: open Explore, and stage the approved
@@ -578,6 +588,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (curation == null) {
             return true;
         }
+        int savedCount = lastApplied.size();   // reset after save, so capture it for the dialog
         java.util.Set<String> appliedKeys = lastApplied.stream()
                 .map(resolved -> identityKey(resolved.type(), resolved.targetId()))
                 .collect(java.util.stream.Collectors.toSet());
@@ -604,10 +615,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             lastApplied = List.of();
             lastReviewItems = keepReview ? List.copyOf(unresolvedReview) : List.of();
             updateScopeStatus();
-            JOptionPane.showMessageDialog(this, keepReview
-                    ? "Identities saved. " + unresolvedReview.size()
-                            + " unresolved review item(s) retained."
-                    : "Identities saved.");
+            String where = curation.file() == null
+                    ? "the curation sidecar" : curation.file().getPath();
+            JOptionPane.showMessageDialog(this,
+                    savedCount + (savedCount == 1 ? " identity" : " identities")
+                            + " saved to\n" + where
+                            + (keepReview ? "\n\n" + unresolvedReview.size()
+                                    + " unresolved review item(s) retained." : ""),
+                    "Identities saved", JOptionPane.INFORMATION_MESSAGE);
             return true;
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());

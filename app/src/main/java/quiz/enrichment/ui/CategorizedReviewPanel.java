@@ -80,6 +80,9 @@ public final class CategorizedReviewPanel<T> extends JPanel {
     // a flat select-all across e.g. Confident + Ambiguous is exactly the surprise to avoid.
     private final Map<Component, List<Row<T>>> rowsByTab = new LinkedHashMap<>();
     private final JTabbedPane groups = new JTabbedPane();
+    // Footer action buttons by label, so a caller can enable one after creation (e.g. enable
+    // Save once an in-panel resolve makes the pending result saveable).
+    private final Map<String, JButton> footerButtons = new LinkedHashMap<>();
 
     private CategorizedReviewPanel(
             String prompt, List<Section<T>> sections, List<FooterAction> extraActions,
@@ -161,6 +164,19 @@ public final class CategorizedReviewPanel<T> extends JPanel {
                 r -> { if (r.accept.isEnabled()) r.accept.setSelected(true); }));
         JButton none = new JButton("Select none in tab");
         none.addActionListener(e -> currentTabRows().forEach(r -> r.accept.setSelected(false)));
+        // Invert: flip each selectable row in the tab — the quick way to "all but a few".
+        JButton invert = new JButton("Invert in tab");
+        invert.addActionListener(e -> currentTabRows().forEach(
+                r -> { if (r.accept.isEnabled()) r.accept.setSelected(!r.accept.isSelected()); }));
+        // A tab with no selectable rows (e.g. already-Identified instances) offers nothing to
+        // select, so the select buttons disable there rather than looking active-but-inert.
+        List<JButton> tabSelect = List.of(all, none, invert);
+        Runnable syncTabSelect = () -> {
+            boolean any = currentTabRows().stream().anyMatch(r -> r.accept.isEnabled());
+            tabSelect.forEach(b -> b.setEnabled(any));
+        };
+        groups.addChangeListener(e -> syncTabSelect.run());
+        javax.swing.SwingUtilities.invokeLater(syncTabSelect);
         JButton cancel = new JButton("Close without applying");
         cancel.addActionListener(e -> onApply.accept(List.of()));
         JButton apply = new JButton(
@@ -173,6 +189,7 @@ public final class CategorizedReviewPanel<T> extends JPanel {
         JPanel helpers = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         helpers.add(all);
         helpers.add(none);
+        helpers.add(invert);
         // Extra side-effect actions (e.g. Save / Forget): run, then close via the same
         // one-shot completion (with no accepted rows, so Apply's handler is not triggered).
         for (FooterAction action : extraActions == null ? List.<FooterAction>of() : extraActions) {
@@ -183,6 +200,7 @@ public final class CategorizedReviewPanel<T> extends JPanel {
                 onApply.accept(List.of());
             });
             helpers.add(button);
+            footerButtons.put(action.label(), button);
         }
         JPanel primary = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         primary.add(cancel);
@@ -192,6 +210,28 @@ public final class CategorizedReviewPanel<T> extends JPanel {
         footer.add(helpers, BorderLayout.NORTH);
         footer.add(primary, BorderLayout.SOUTH);
         return footer;
+    }
+
+    /** Enable/disable a footer action button after the panel is shown — e.g. enable "Save
+     *  identities" once an in-panel manual resolve makes the pending result saveable.
+     *  No-op for an unknown label. */
+    public void setFooterEnabled(String label, boolean enabled) {
+        JButton button = footerButtons.get(label);
+        if (button != null) {
+            button.setEnabled(enabled);
+        }
+    }
+
+    private static final String PANEL_KEY = "categorizedReviewPanel";
+
+    /** The panel inside a dialog created by {@link #showModeless}, so a caller can reach it
+     *  (e.g. to {@link #setFooterEnabled}) after showing it. */
+    @SuppressWarnings("unchecked")
+    public static <T> CategorizedReviewPanel<T> panelOf(JDialog dialog) {
+        Object panel = dialog == null ? null
+                : dialog.getRootPane().getClientProperty(PANEL_KEY);
+        return panel instanceof CategorizedReviewPanel<?>
+                ? (CategorizedReviewPanel<T>) panel : null;
     }
 
     /** Rows of the currently visible tab — the scope of "Select all/none in tab".
@@ -265,8 +305,10 @@ public final class CategorizedReviewPanel<T> extends JPanel {
         JDialog dialog = new JDialog(window, title, modality);
         quiz.ui.Dialogs.raiseOnOpen(dialog);
         Consumer<List<T>> finish = quiz.ui.Dialogs.completion(dialog, onAccepted);
-        dialog.add(new CategorizedReviewPanel<>(
-                prompt, sections, extraActions, applyLabel, finish));
+        CategorizedReviewPanel<T> panel = new CategorizedReviewPanel<>(
+                prompt, sections, extraActions, applyLabel, finish);
+        dialog.add(panel);
+        dialog.getRootPane().putClientProperty(PANEL_KEY, panel);
         quiz.ui.Dialogs.completeOnClose(dialog, finish, List::of);
         dialog.setSize(size);
         dialog.setLocationRelativeTo(owner);
