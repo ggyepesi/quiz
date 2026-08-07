@@ -876,7 +876,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                         controller.fieldTypes(subtype), additional,
                         member -> controller.isInstanceOf(member, subtype)));
             }
-            return objectview.search.SearchableCardView.builder(members)
+            return objectview.view.SearchableView.builder(members)
                     .sample(sample)
                     .hiddenFields(controller.structuralFields(type))
                     .fieldTypes(controller.fieldTypes(type))
@@ -901,7 +901,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             String renderedType = byType.isEmpty()
                     ? type : byType.keySet().iterator().next();
             Viewable sample = controller.configSample(renderedType);
-            return objectview.search.SearchableCardView.builder(members)
+            return objectview.view.SearchableView.builder(members)
                     .sample(sample)
                     .hiddenFields(controller.structuralFields(renderedType))
                     .fieldTypes(controller.fieldTypes(renderedType))
