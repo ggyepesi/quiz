@@ -14,6 +14,22 @@ public class WikipediaLanguageReader {
 
     private static final Map<String, String> TITLE_ALIASES = Map.ofEntries(Map.entry("Assyrian", "Assyrian Neo-Aramaic"), Map.entry("Baniwa", "Baniwa"), Map.entry("Benshangul", "Berta language"), Map.entry("Central Thai", "Thai language"), Map.entry("Chácobo", "Chácobo language"), Map.entry("Fala", "Fala language"), Map.entry("Gilbertese", "Gilbertese language"), Map.entry("Gulmancema", "Gurma language"), Map.entry("Ibanag", "Ibanag language"), Map.entry("Iraqi Turkmen", "Iraqi Turkmen dialect"), Map.entry("Kriol", "Belizean Creole"), Map.entry("Lemko", "Lemko language"), Map.entry("Maninke", "Maninka language"), Map.entry("Moquoit", "Mocoví language"), Map.entry("Ndebele", "Northern Ndebele language"), Map.entry("SA Sign Language", "South African Sign Language"), Map.entry("Tati", "Tati language (Iran)"), Map.entry("Tonga", "Tonga language (Zambia and Zimbabwe)"), Map.entry("Tongan", "Tongan language"), Map.entry("Turkmeni", "Turkmen language"), Map.entry("Ulster-Scots", "Ulster Scots dialect"), Map.entry("Upper Sorbian", "Upper Sorbian language"), Map.entry("Wolof", "Wolof language"), Map.entry("Kom", "Kom language (India)"));
 
+    // A Wikipedia "speakers" infobox value often leads with a language-use label — the
+    // resolved wikilink [[first language|L1]] (native speakers) or [[second language|L2]] —
+    // e.g. "L1: 74 million" or "L1 and L2: 80% of China". Strip that leading label so the
+    // value leads with the count itself (readable, and the leading number is sortable). A
+    // value with no such label (or a label with no colon, i.e. free prose) is left as-is.
+    private static final java.util.regex.Pattern SPEAKER_USE_LABEL =
+            java.util.regex.Pattern.compile(
+                    "(?i)^L[12](?:\\s*(?:and|,|&|/)\\s*L[12])*\\s*:\\s*");
+
+    static String cleanSpeakers(String value) {
+        if (value == null) {
+            return null;
+        }
+        return SPEAKER_USE_LABEL.matcher(value).replaceFirst("");
+    }
+
     private static List<List<String>> buildFamilyPaths(Map<String, String> fields) {
         List<String> levels = WikiTemplateFields.numberedCleanFields(fields, "fam");
 
@@ -132,7 +148,7 @@ public class WikipediaLanguageReader {
 
         language.setEthnicity(WikiTemplateFields.firstClean(fields, "ethnicity"));
 
-        language.setSpeakers(WikiTemplateFields.firstClean(fields, "speakers"));
+        language.setSpeakers(cleanSpeakers(WikiTemplateFields.firstClean(fields, "speakers")));
 
         language.setIso6391(WikiTemplateFields.firstClean(fields, "iso1"));
 
