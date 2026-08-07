@@ -290,11 +290,25 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 JButton explore = new JButton("Explore…");
                 explore.setToolTipText(
                         "Manually find and approve the Wikidata entity for this instance");
-                explore.addActionListener(e -> exploreIdentityManually(member));
+                JCheckBox pick = new JCheckBox("", true);
+                // A slot that fills with the resolved QID chip in place, so a manual pick
+                // shows as "done" in this modeless panel without a full reopen.
+                JPanel chipSlot = new JPanel(new BorderLayout());
+                chipSlot.setOpaque(false);
+                explore.addActionListener(e -> exploreIdentityManually(member, resolvedQid -> {
+                    chipSlot.removeAll();
+                    chipSlot.add(IdentityChip.of(resolvedQid), BorderLayout.WEST);
+                    chipSlot.revalidate();
+                    chipSlot.repaint();
+                    explore.setText("Change…");
+                    pick.setSelected(false);
+                    pick.setEnabled(false);   // resolved — no longer a pending selection
+                }));
                 unresolved.add(new CategorizedReviewPanel.Row<>(
-                        member, new JCheckBox("", true),
+                        member, pick,
                         CategorizedReviewPanel.Cell.stretch(name),
-                        CategorizedReviewPanel.Cell.of(explore)));
+                        CategorizedReviewPanel.Cell.of(explore),
+                        CategorizedReviewPanel.Cell.of(chipSlot)));
             }
         }
         List<CategorizedReviewPanel.Section<Viewable>> sections = List.of(
@@ -330,7 +344,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      *  QID through the same in-memory pending path the batch resolve uses (Save / Forget
      *  still apply). The manual fallback for an unresolved entry the automated resolve
      *  can't place. */
-    private void exploreIdentityManually(Viewable member) {
+    private void exploreIdentityManually(Viewable member,
+            java.util.function.Consumer<String> onResolved) {
         quiz.curation.ManualCuration curation = curation();
         if (curation == null) {
             JOptionPane.showMessageDialog(this,
@@ -354,6 +369,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                             new quiz.enrichment.ResolveIdentitiesDecision(List.of(
                                     new quiz.enrichment.ResolveIdentitiesDecision.Resolved(
                                             memberType, targetId, qid, name))));
+                    if (onResolved != null) {
+                        onResolved.accept(qid);
+                    }
                 });
     }
 
