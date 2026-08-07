@@ -76,7 +76,9 @@ class StateLanguagesTest {
                                 value.getDisplayName()))
                         .findFirst().orElseThrow();
         assertEquals("français", loadedFrench.get("nativeName"));
-        assertEquals("L1: 74.170080 million",
+        // The L1/L2 use-label is stripped at read time (WikipediaLanguageReader), so the
+        // stored count leads. See WikipediaLanguageReaderTest.
+        assertEquals("74.170080 million",
                 loadedFrench.get("speakers"));
         assertFalse(((List<?>) loadedFrench.get("countries")).isEmpty());
         assertFalse(((List<?>) loadedFrench.get("leafFamilies")).isEmpty());

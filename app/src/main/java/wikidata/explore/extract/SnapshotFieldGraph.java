@@ -415,6 +415,13 @@ public final class SnapshotFieldGraph {
             }
             if (!field.reference()) {
                 declareKind(field.valueKind());
+                // A declared ORDERED (a @Numeric field) is authoritative over the kind
+                // OBSERVED from values: "300 million"/"100" observe as TEXT, but the
+                // declaration says it's a number. Without this the annotation is lost
+                // whenever observe() ran first, and the field would sort as text.
+                if (field.valueKind() == FieldKind.ORDERED) {
+                    scalarKind = FieldKind.ORDERED.name();
+                }
                 String label = elementTypeLabel(field.typeLabel() == null
                         ? "" : field.typeLabel().trim());
                 if (!label.isBlank()) {

@@ -36,12 +36,16 @@ public final class OrderValue implements Comparable<OrderValue> {
                 yield new OrderValue(type, date, date.format());
             }
             case NUMBER -> {
-                try {
-                    BigDecimal number = new BigDecimal(text.replace(",", ""));
-                    yield new OrderValue(type, number, text);
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Not a number: " + raw, e);
+                // ONE numeric reading shared with sort/filters: scales "300 million",
+                // takes a range's midpoint, skips a percent. A present-but-unparseable
+                // value throws (the generator counts it invalid); a blank/absent value
+                // returned null above (counted missing). The original text stays the label.
+                java.util.OptionalDouble number =
+                        objectview.field.NumericValues.parse(text);
+                if (number.isEmpty()) {
+                    throw new IllegalArgumentException("Not a number: " + raw);
                 }
+                yield new OrderValue(type, BigDecimal.valueOf(number.getAsDouble()), text);
             }
             // Deterministic case-insensitive ordering, not linguistic
             // collation. A configurable Collator is the future upgrade for
