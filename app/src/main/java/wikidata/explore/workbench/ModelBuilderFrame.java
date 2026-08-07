@@ -122,8 +122,9 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton showRuleTreeButton =
             new JButton("Show rule tree");
 
+    // Same label + header placement as TransformApp's "Query logs…", so the two apps agree.
     private final JButton showQueryLogsButton =
-            new JButton("Show query logs");
+            new JButton("Query logs…");
 
     private final JButton showExplorerButton =
             new JButton("Explorer tools");
@@ -306,7 +307,8 @@ public class ModelBuilderFrame extends JFrame {
                 + "instances' statements — property → values with qualifiers nested, "
                 + "plus coverage badges (example-first field discovery, #91).");
         runRow2.add(showStatementsButton);
-        runRow2.add(showQueryLogsButton);
+        // Query logs moved up to the config header (with the other window-openers), to match
+        // TransformApp's top-toolbar placement.
 
         JPanel runSection = new JPanel(new GridLayout(0, 1, 0, 0));
         runSection.add(runRow1);
@@ -334,6 +336,7 @@ public class ModelBuilderFrame extends JFrame {
         showGuideButton.setToolTipText("Guided build steps for the selected class: "
                 + "what's done, what's next, the tool for it, and the hint");
         header.add(showGuideButton);
+        header.add(showQueryLogsButton);
 
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.add(header, BorderLayout.NORTH);

@@ -2,6 +2,7 @@ package language;
 
 import objectview.annotations.Minor;
 import objectview.annotations.DisplayField;
+import objectview.annotations.Numeric;
 import quiz.source.ManualEntity;
 import objectview.annotations.Reference;
 
@@ -17,6 +18,7 @@ public class Language extends ManualEntity {
     @Minor
     private String region;
     private String ethnicity;
+    @Numeric
     private String speakers;
 
     @Minor
