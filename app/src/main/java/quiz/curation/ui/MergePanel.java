@@ -378,7 +378,7 @@ public final class MergePanel extends JPanel {
 
     private JComponent instancesView(List<Viewable> items, String type) {
         Viewable sample = items.isEmpty() ? null : items.get(0);
-        return objectview.search.SearchableCardView.builder(items)
+        return objectview.view.SearchableView.builder(items)
                 .sample(sample)
                 .hiddenFields(domain.structuralFields(type))
                 .fieldTypes(domain.fieldTypes(type))

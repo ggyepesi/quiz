@@ -43,7 +43,7 @@ public class ExploreByExamplePanel extends JPanel {
     private final JButton exploreButton = new JButton("Explore relations");
     private final JButton useSourceButton = new JButton("Use as class type (P31)");
 
-    // Relations render as Viewables through objectview's SearchableCardView, so they get the
+    // Relations render as Viewables through objectview's SearchableView, so they get the
     // same search / per-field sort / filter (incl. by Kind) as every other card view — no
     // bespoke table. The holder swaps in a fresh card view each time the relation set changes.
     private final JPanel relationHolder = new JPanel(new BorderLayout());
@@ -448,7 +448,7 @@ public class ExploreByExamplePanel extends JPanel {
         return null;
     }
 
-    /** Render {@code rels} as cards through objectview's SearchableCardView — search, sort,
+    /** Render {@code rels} as cards through objectview's SearchableView — search, sort,
      *  filter (incl. by Kind) come from the shared card view. Single-card selection sets the
      *  picked relation for the actions. A fresh view is built per relation set. */
     private void showRelations(List<RelationView> rels) {
@@ -460,7 +460,8 @@ public class ExploreByExamplePanel extends JPanel {
         } else {
             // Table-style rendering (trialling the new objectview table view): one relation
             // per row, one field per column, same search/sort/selection as the card view.
-            JComponent table = objectview.table.SearchableTableView.builder(relations)
+            JComponent table = objectview.view.SearchableView.builder(relations)
+                    .mode(objectview.render.RenderingMode.TABLE)
                     .sample(relations.get(0))
                     .selectionListener(o -> {
                         selectedRelationView =

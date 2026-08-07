@@ -196,8 +196,8 @@ public class QueryObjectResultPanel
 
         Viewable first =
                 shown.getFirst();
-        objectview.search.SearchableCardView browser =
-                objectview.search.SearchableCardView.builder(shown)
+        objectview.view.SearchableView browser =
+                objectview.view.SearchableView.builder(shown)
                         .sample(first)
                         .build();
         activeContext = browser.renderContext();

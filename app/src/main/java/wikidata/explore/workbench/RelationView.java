@@ -6,7 +6,7 @@ import objectview.field.FieldSet;
 
 /**
  * One relation of an explored entity, modelled as a {@link Viewable} so the Explore panel can
- * render the relation battery through the shared {@code SearchableCardView} — getting search,
+ * render the relation battery through the shared {@code SearchableView} — getting search,
  * per-field sort and filter (including by {@link #kind}) for free, exactly like every other
  * card view, instead of a bespoke {@code JTable}. Reflection over the declared fields drives
  * the card; {@code label} is hidden by the caller because it is shown as the card title.
