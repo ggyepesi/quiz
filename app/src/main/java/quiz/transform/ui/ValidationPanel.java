@@ -628,8 +628,10 @@ public final class ValidationPanel extends JPanel {
             // Wikipedia (DBpedia) fallback: consulted only where Wikidata has no value.
             JPanel fallback = titledBlock("Wikipedia fallback");
             fallback.add(headerLine(new JLabel("Infobox property"), fieldSourceDbpediaButton));
-            JLabel why = new JLabel(
-                    "Used only where Wikidata has no value — pick an infobox property from a sample.");
+            JLabel why = new JLabel("<html>Samples a member's Wikipedia infobox (reached via its "
+                    + "Wikidata <i>sameAs</i>) and lists its properties; pick the one that holds "
+                    + "<b>" + selectedFieldType + "." + selectedFieldPath + "</b>. Consulted only "
+                    + "for members Wikidata leaves empty.</html>");
             why.setEnabled(false);
             fallback.add(headerLine(why));
             target.add(fallback);

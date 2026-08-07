@@ -72,7 +72,9 @@ public final class DbpediaPropertyPicker {
         List<List<Object>> rows = result == null ? List.of() : result.rows();
         if (rows.isEmpty()) {
             JOptionPane.showMessageDialog(parent,
-                    "No DBpedia infobox properties found for the sampled instance(s).",
+                    "No Wikipedia-infobox (DBpedia) properties for the sampled instance(s) — "
+                            + "the sample may have no Wikidata sameAs link to DBpedia, or its "
+                            + "Wikipedia article has no infobox.",
                     "Discover properties", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -106,8 +108,11 @@ public final class DbpediaPropertyPicker {
         JDialog dialog = new JDialog(quiz.ui.Dialogs.owner(parent),
                 "DBpedia infobox properties", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setLayout(new BorderLayout(0, 6));
-        dialog.add(new JLabel(
-                        "  \"Have\" = how many inspected instances carry the property."),
+        dialog.add(new JLabel("<html>&nbsp;Wikipedia-infobox (DBpedia) properties of the "
+                        + "sampled instance(s), reached via their Wikidata <i>sameAs</i>. "
+                        + "<b>Have</b> = how many of the sampled instances carry it; "
+                        + "<b>Example</b> = a sample value. Pick the one holding the field "
+                        + "you want.</html>"),
                 BorderLayout.NORTH);
         dialog.add(scroll, BorderLayout.CENTER);
 
