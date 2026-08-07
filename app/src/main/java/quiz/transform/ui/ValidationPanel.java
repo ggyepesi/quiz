@@ -626,6 +626,8 @@ public final class ValidationPanel extends JPanel {
 
         if (!media) {
             // Wikipedia (DBpedia) fallback: consulted only where Wikidata has no value.
+            // Media has no text-property fallback (an image comes from P18, not an infobox
+            // property you pick), so the fallback block is data-only.
             JPanel fallback = titledBlock("Wikipedia fallback");
             fallback.add(headerLine(new JLabel("Infobox property"), fieldSourceDbpediaButton));
             JLabel why = new JLabel("<html>Samples a member's Wikipedia infobox (reached via its "
@@ -635,13 +637,15 @@ public final class ValidationPanel extends JPanel {
             why.setEnabled(false);
             fallback.add(headerLine(why));
             target.add(fallback);
-
-            // One trigger once the sources above are configured.
-            checkButton.setText("Load values ↗");
-            checkButton.setToolTipText(
-                    "Fetch values for these members from the configured source(s)");
-            target.add(headerLine(checkButton));
         }
+
+        // Load is available for MEDIA too: findData fetches images per entity from their
+        // media provider (no property to pick), so an image field is fillable, not inert.
+        checkButton.setText("Load values ↗");
+        checkButton.setToolTipText(media
+                ? "Fetch images for these members from Wikidata (P18) / Wikimedia Commons"
+                : "Fetch values for these members from the configured source(s)");
+        target.add(headerLine(checkButton));
 
         // The by-hand path, kept visually separate from the source-driven load.
         JPanel manual = titledBlock("Or set one manually");

@@ -268,8 +268,16 @@ public final class SnapshotFieldGraph {
                     }
                     FieldRef declared = quiz.transform.ui.FieldDefinitions.toFieldRef(
                             generatedField.definition());
-                    type.fields.computeIfAbsent(
-                            generatedField.name(), FieldShape::new).declare(declared);
+                    FieldShape shape = type.fields.computeIfAbsent(
+                            generatedField.name(), FieldShape::new);
+                    shape.declare(declared);
+                    // The generated model's name field IS the class's display (like a
+                    // @DisplayField on a reflection class), so persist it as DISPLAY —
+                    // otherwise a generated snapshot shows the synthetic "Display label"
+                    // instead of its name, unlike a re-exported reflection domain.
+                    if (generatedField.isNameField()) {
+                        shape.display = true;
+                    }
                     if (declared != null && declared.targetType() != null
                             && !declared.targetType().isBlank()) {
                         graph.types.computeIfAbsent(
