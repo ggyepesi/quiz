@@ -571,12 +571,8 @@ public final class ValidationPanel extends JPanel {
         h.add(headerLine(new JLabel(count + " " + scopeDescription(scopeFilter)
                                             + " for " + fieldType + "." + path)));
         if (count == 0) return h;
-        if (identityResolver != null) {
-            resolveMissingButton.setText("Resolve identities for " + count + " member(s)…");
-            h.add(headerLine(resolveMissingButton));
-        }
-
-        h.add(headerLine(new JLabel("Curate " + fieldType + "." + path + ":")));
+        // Identity is no longer a stray "Resolve identities" line here — it lives inside
+        // the Wikidata block below, where it belongs (identity is a Wikidata-source fact).
         populateCurateActions(h);
         return h;
     }
@@ -596,39 +592,74 @@ public final class ValidationPanel extends JPanel {
         };
     }
 
-    /** Actions are gated by the selected target field's kind:
-     *   reference → out of scope; identity (source.*) → Explore identity only, never Find
-     *   Data; data (scalar / media) → Find Data + manual value. */
+    /** Curate actions ORGANISED BY DATA SOURCE: what to fetch is configured per source
+     *  (Wikidata: its identity + the property; Wikipedia: the fallback infobox property),
+     *  then one "Load values" triggers the fetch. Manual entry is a separate by-hand path.
+     *  A reference field is out of scope for now. */
     private void populateCurateActions(JPanel target) {
-        CurateType ct = curateTypeOf(selectedFieldType, selectedFieldPath);
-        if (ct == CurateType.REFERENCE) {
+        if (curateTypeOf(selectedFieldType, selectedFieldPath) == CurateType.REFERENCE) {
             JLabel note = new JLabel("— reference-field curation isn't supported yet");
             note.setEnabled(false);
             target.add(headerLine(note));
-        } else {
-            if (ct == CurateType.DATA) {
-                DomainField field = selectedDomainField();
-                if (field != null && field.kind() != objectview.field.FieldKind.MEDIA) {
-                    updateFieldSourceButton();
-                    target.add(headerLine(fieldSourceButton, fieldSourceDbpediaButton));
-                }
-                checkButton.setText("Find data ↗");
-                checkButton.setToolTipText(
-                        "Find and review values for the members in this task");
-            }
-            updateIdentityButton();
-            target.add(ct == CurateType.DATA
-                               ? headerLine(checkButton, exploreIdentityButton)
-                               : headerLine(exploreIdentityButton));
-            target.add(headerLine(new JLabel("Selected:"), selectedLabel));
-            if (ct == CurateType.DATA) {
-                DomainField field = selectedDomainField();
-                addValueButton.setVisible(field != null && field.collection());
-                target.add(headerLine(manualValue, setValueButton, addValueButton));
-            }
+            target.revalidate();
+            target.repaint();
+            return;
         }
+        DomainField field = selectedDomainField();
+        boolean media = field != null && field.kind() == objectview.field.FieldKind.MEDIA;
+
+        // Wikidata: identity is datasource-dependent, so it sits with the Wikidata source;
+        // the property is what yields this field's value.
+        JPanel wikidata = titledBlock("Wikidata");
+        if (identityResolver != null) {
+            resolveMissingButton.setText("Identities…");
+            resolveMissingButton.setToolTipText(
+                    "Resolve or change the Wikidata identity of these instances "
+                            + "(needed before a value can be fetched)");
+            wikidata.add(headerLine(new JLabel("Identity"), resolveMissingButton));
+        }
+        if (!media) {
+            updateFieldSourceButton();   // "Source: population (P1082)…" or "Choose Wikidata source…"
+            wikidata.add(headerLine(new JLabel("Property"), fieldSourceButton));
+        }
+        target.add(wikidata);
+
+        if (!media) {
+            // Wikipedia (DBpedia) fallback: consulted only where Wikidata has no value.
+            JPanel fallback = titledBlock("Wikipedia fallback");
+            fallback.add(headerLine(new JLabel("Infobox property"), fieldSourceDbpediaButton));
+            JLabel why = new JLabel(
+                    "Used only where Wikidata has no value — pick an infobox property from a sample.");
+            why.setEnabled(false);
+            fallback.add(headerLine(why));
+            target.add(fallback);
+
+            // One trigger once the sources above are configured.
+            checkButton.setText("Load values ↗");
+            checkButton.setToolTipText(
+                    "Fetch values for these members from the configured source(s)");
+            target.add(headerLine(checkButton));
+        }
+
+        // The by-hand path, kept visually separate from the source-driven load.
+        JPanel manual = titledBlock("Or set one manually");
+        manual.add(headerLine(new JLabel("Selected:"), selectedLabel));
+        if (!media) {
+            addValueButton.setVisible(field != null && field.collection());
+            manual.add(headerLine(manualValue, setValueButton, addValueButton));
+        }
+        target.add(manual);
+
         target.revalidate();
         target.repaint();
+    }
+
+    private static JPanel titledBlock(String title) {
+        JPanel panel = new JPanel();
+        panel.setLayout(new javax.swing.BoxLayout(panel, javax.swing.BoxLayout.Y_AXIS));
+        panel.setBorder(javax.swing.BorderFactory.createTitledBorder(title));
+        panel.setAlignmentX(LEFT_ALIGNMENT);
+        return panel;
     }
 
     /** How a chosen field is curated: provenance identity → Explore, an ordinary

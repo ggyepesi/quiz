@@ -265,16 +265,33 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      *  showing Identified (with QID) + Unresolved rows — the same result panel identity
      *  resolution uses. Apply resolves the checked unresolved; Save / Forget footer actions
      *  manage the pending in-memory result (shown per state). */
-    private void openIdentityActions() {
+    private void openIdentityActions() {   // header: the whole visible view
         RenderedScope scope = renderedScope;
         if (scope == null || scope.visibleMembers().isEmpty()) {
             JOptionPane.showMessageDialog(this, "No visible instances.");
             return;
         }
+        openIdentityActions(scope.visibleMembers(),
+                scope.selectedType() == null ? "View" : scope.selectedType());
+    }
+
+    /** Identity resolution RESTRICTED to an explicit scope (e.g. a curation drill's
+     *  instances) — the same panel as the header action, just a narrower member set. This
+     *  is the one identity UI; there is no separate per-member flow. */
+    private void openScopedIdentities(List<Viewable> instances, String scopeLabel) {
+        if (instances == null || instances.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No instances in this scope.");
+            return;
+        }
+        String type = instances.get(0).typeName();
+        openIdentityActions(List.copyOf(instances), type == null ? "View" : type);
+    }
+
+    private void openIdentityActions(List<Viewable> members, String type) {
         quiz.curation.ManualCuration curation = curation();
         List<CategorizedReviewPanel.Row<Viewable>> identified = new ArrayList<>();
         List<CategorizedReviewPanel.Row<Viewable>> unresolved = new ArrayList<>();
-        for (Viewable member : scope.visibleMembers()) {
+        for (Viewable member : members) {
             String qid = currentQid(curation, member.typeName(), member);
             JLabel name = new JLabel(member.getDisplayName());
             if (qid != null) {
@@ -328,7 +345,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         extra.add(new CategorizedReviewPanel.FooterAction(
                 "Forget", !lastReviewItems.isEmpty(), this::forgetLastResult));
 
-        String type = scope.selectedType() == null ? "View" : scope.selectedType();
         String prompt = type + " · " + identified.size() + " identified · "
                 + unresolved.size() + " unresolved";
         CategorizedReviewPanel.showModeless(this, "Identities", prompt, sections, extra,
@@ -648,7 +664,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         ValidationPanel panel = new ValidationPanel(controller.domain(), scope.visibleMembers(),
                 queries.runner(),
                 () -> { if (viewStepsPanel != null) viewStepsPanel.refreshWorkingSet(); },
-                this::resolveIdentities);
+                // Identity from the curation drill opens the ONE identity panel, scoped to
+                // the drilled instances — not a direct batch run.
+                this::openScopedIdentities);
         String scopeLabel = scope.visibleMembers().size() + " selected "
                 + (scope.visibleMembers().size() == 1 ? "instance" : "instances")
                 + " · " + fieldScope;
