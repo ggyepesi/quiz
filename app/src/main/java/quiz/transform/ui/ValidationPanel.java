@@ -678,7 +678,7 @@ public final class ValidationPanel extends JPanel {
         boolean media = drilled == null || drilled.kind() == objectview.field.FieldKind.MEDIA;
 
         FieldKey key = new FieldKey(selectedFieldType, path);
-        if (!media && !fieldSources.containsKey(key)
+        if (!media && sourceFor(key) == null
                 && !fallbackFieldSources.containsKey(key)) {
             if (chooseSourceForSelected(true)) return;
             // No route is configured and no member resolves to a Wikidata entity yet —
@@ -754,7 +754,70 @@ public final class ValidationPanel extends JPanel {
     }
 
     private FieldSourceMapping sourceFor(FieldKey key) {
+        if (key != null && !fieldSources.containsKey(key)) {
+            seedFieldSourceFromCuration(key);
+        }
         return key == null ? null : fieldSources.get(key);
+    }
+
+    /** Reuse a property already recorded for this field rather than re-discovering it: every
+     *  filled value in the curation sidecar carries the source ({@code propertyId}) that
+     *  produced it, so a field curated before (e.g. population -> P1082) is seeded from that
+     *  provenance. The most-used property wins when several appear. */
+    private void seedFieldSourceFromCuration(FieldKey key) {
+        quiz.curation.ManualCuration curation = curationStore();
+        if (key == null || curation == null) {
+            return;
+        }
+        FieldSourceMapping reused = reusableSource(
+                curation.corrections(), key.type(), key.path());
+        if (reused != null) {
+            fieldSources.put(key, reused);
+        }
+    }
+
+    /** The primary (Wikidata) source to reuse for {@code type.field}, rebuilt from the
+     *  provenance already recorded on that field's filled values — the most-used property
+     *  when several appear — or null when nothing was ever sourced for it. */
+    static FieldSourceMapping reusableSource(
+            List<Correction> corrections, String type, String field) {
+        java.util.Map<String, quiz.curation.ValueSource> byPid = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Integer> counts = new java.util.HashMap<>();
+        for (Correction c : corrections == null ? List.<Correction>of() : corrections) {
+            if (!type.equals(c.type()) || !field.equals(c.field())) {
+                continue;
+            }
+            quiz.curation.ValueSource s = c.source();
+            // Primary (Wikidata) provenance only; the DBpedia fallback is a separate slot.
+            if (s == null || s.propertyId() == null || s.propertyId().isBlank()
+                    || !"Wikidata".equalsIgnoreCase(s.kind())) {
+                continue;
+            }
+            byPid.putIfAbsent(s.propertyId(), s);
+            counts.merge(s.propertyId(), 1, Integer::sum);
+        }
+        if (byPid.isEmpty()) {
+            return null;
+        }
+        quiz.curation.ValueSource best = byPid.get(counts.entrySet().stream()
+                .max(java.util.Map.Entry.comparingByValue())
+                .map(java.util.Map.Entry::getKey).orElseThrow());
+        FieldSourceMapping mapping = new FieldSourceMapping();
+        mapping.sourceType(FieldSourceType.SPARQL);
+        mapping.propertyPid(best.propertyId());
+        mapping.propertyLabel(best.propertyLabel() == null ? "" : best.propertyLabel());
+        mapping.direction(directionOf(best.direction()));
+        mapping.productionKind(FieldProductionKind.AUTO);
+        return mapping;
+    }
+
+    private static RuleDirection directionOf(String direction) {
+        try {
+            return direction == null ? RuleDirection.ROOT_TO_ITEM
+                    : RuleDirection.valueOf(direction);
+        } catch (IllegalArgumentException e) {
+            return RuleDirection.ROOT_TO_ITEM;
+        }
     }
 
     private FieldSourceMapping fallbackSourceFor(FieldKey key) {
