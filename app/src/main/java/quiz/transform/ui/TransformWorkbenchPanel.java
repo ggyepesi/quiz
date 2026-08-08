@@ -17,6 +17,7 @@ import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.swing.SwingQuerySession;
+import wikidata.explore.workbench.IdentityChip;
 
 import javax.swing.*;
 import java.awt.*;

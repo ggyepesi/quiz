@@ -1,10 +1,12 @@
 package wikidata.explore.query.swing;
 
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.workbench.IdentityChip;
 
 import objectview.demo.MultiView;
 import objectview.render.RenderContext;
 import objectview.Viewable;
+import quiz.source.WikidataSource;
 import wikidata.explore.query.core.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -199,6 +201,10 @@ public class QueryObjectResultPanel
         objectview.view.SearchableView browser =
                 objectview.view.SearchableView.builder(shown)
                         .sample(first)
+                        // Stamp each instance with its Wikidata identity chip — same
+                        // presentation the transform/curation views use, resolved here from the
+                        // instance's native id (ModelBuilder has no curation sidecar).
+                        .cardDecorator(QueryObjectResultPanel::identityChip)
                         .build();
         activeContext = browser.renderContext();
 
@@ -210,6 +216,13 @@ public class QueryObjectResultPanel
         wrapped.add(browser, BorderLayout.CENTER);
 
         return wrapped;
+    }
+
+    /** The instance's Wikidata identity as a header chip, or none for a non-Wikidata id.
+     *  Scoped to non-null so a non-Wikidata instance stays undecorated. */
+    private static JComponent identityChip(Viewable member) {
+        String id = member == null ? null : member.getIdentifier();
+        return WikidataSource.isQid(id) ? IdentityChip.of(id) : null;
     }
 
     private static List<Viewable> capped(List<Viewable> objects) {

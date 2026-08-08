@@ -1,4 +1,4 @@
-package quiz.transform.ui;
+package wikidata.explore.workbench;
 
 import org.junit.jupiter.api.Test;
 

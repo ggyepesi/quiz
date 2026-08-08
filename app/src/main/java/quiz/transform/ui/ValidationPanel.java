@@ -28,6 +28,7 @@ import quiz.curation.IdentityLink;
 import quiz.curation.ScopeFilter;
 
 import wikidata.explore.query.swing.SwingQueryRunner;
+import wikidata.explore.workbench.IdentityChip;
 import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
