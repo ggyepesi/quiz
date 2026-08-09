@@ -229,7 +229,16 @@ public class GeneratedClassModel {
         return base.effectiveInstanceMapping(project);
     }
 
+    /** Never null. A persisted model can carry an explicit {@code "canonical": null}
+     *  (Jackson writes the field directly, bypassing the setter's guard), and every
+     *  consumer — validation, canonicalization, codegen — requires the spec. The
+     *  model repairs it here, once, instead of each caller null-checking; the default
+     *  is identity-by-qid with a label display, which is what a class without an
+     *  explicit spec means. */
     public CanonicalSpec canonical() {
+        if (canonical == null) {
+            canonical = new CanonicalSpec();
+        }
         return canonical;
     }
 
@@ -253,8 +262,7 @@ public class GeneratedClassModel {
                         : statementSource.copy();
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.seedQids.addAll(seedQids);
-        copy.canonical =
-                canonical == null ? null : canonical.copy();
+        copy.canonical = canonical().copy();   // never null — see canonical()
 
         for (GeneratedFieldModel field : fields) {
             if (field != null && !field.isNameField()) {
