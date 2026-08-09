@@ -749,6 +749,48 @@ public final class RuleNodeQueryBuilder {
                 .replace("wd:Q0", "/* parent QIDs */");
     }
 
+    /**
+     * The residual (scalar/media) fields for an ALREADY-KNOWN set of members,
+     * bounded by {@code VALUES ?value}. The whole-class form scans the class to
+     * rediscover members the backbone has already produced, which is the shape
+     * that soft-times-out on a large membership; here the members are given, so
+     * the engine only looks up each one's properties.
+     *
+     * <p>Selects the same shape as {@link #valuesQuery} — {@code ?value},
+     * {@code ?valueLabel} and one variable per field — so the caller maps the
+     * rows with the ordinary value-query mapping, unchanged.
+     */
+    public static String memberBoundedValuesQuery(
+            RuleNode node, List<String> memberQids) {
+
+        WikidataQueryBuilder q = new WikidataQueryBuilder();
+
+        q.select("value", "valueLabel");
+        appendValueFilterSelects(q, node);
+        appendIncludedFieldSelects(q, node, List.of(), false);
+
+        // Bind the members FIRST, then look up each one's predicates. Without the
+        // hint Blazegraph may scan a hyper-common predicate's whole index before
+        // applying VALUES — the same trap memberFieldBatchQuery documents.
+        q.rawWhere("hint:Query hint:optimizer \"None\" .");
+        q.valuesQids("value", memberQids);
+
+        appendValueFilterPatterns(q, node);
+
+        StringBuilder patterns = new StringBuilder();
+        RuleIncludedFieldSparql.appendWherePatterns(
+                patterns, node.includedFields(), false);
+        if (patterns.length() > 0) {
+            q.rawWhere(patterns.toString());
+        }
+
+        // Labels via the SERVICE (never inline, hence withLabels=false above): it
+        // labels only the matched rows instead of forcing a label scan.
+        q.serviceLabel(labelLanguage(node));
+
+        return q.build();
+    }
+
     public static String batchedValuesQuery(
             RuleNode node, List<String> parentQids) {
 

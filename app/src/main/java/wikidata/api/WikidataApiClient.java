@@ -374,7 +374,7 @@ public class WikidataApiClient {
         if (qids == null) return out;
         List<String> pids = claimPids == null ? List.of() : claimPids;
         runBatched(qids, !pids.isEmpty(), batchLog,
-                root -> parseEntities(root, pids, out));
+                   root -> parseEntities(root, pids, out));
         return out;
     }
 
@@ -396,7 +396,7 @@ public class WikidataApiClient {
         }
         List<String> quals = qualifierPids == null ? List.of() : qualifierPids;
         runBatched(entityQids, true, batchLog,
-                root -> parseStatements(root, statementPid, quals, out));
+                   root -> parseStatements(root, statementPid, quals, out));
         return out;
     }
 
@@ -404,17 +404,18 @@ public class WikidataApiClient {
      * Fans the 50-QID batches out over a small pool (the action API tolerates modest
      * concurrency far better than WDQS did) and lets {@code handle} parse each
      * response into a thread-safe accumulator, returning that batch's parsed count
-     * for the log. Per-batch best-effort with a short retry: a transient failure
-     * drops only that batch, never the whole pass.
+     * for the log. Each batch has a short retry; after all submitted work has been
+     * joined, any failed batch fails the whole call. Returning a partial map would
+     * make callers unable to distinguish an absent claim from an unavailable batch.
      */
     private void runBatched(
             List<String> qids, boolean withClaims, BatchLog batchLog,
             java.util.function.ToIntFunction<JsonNode> handle) throws Exception {
 
         List<String> clean = qids.stream()
-                .filter(q -> q != null && WikidataIds.isQid(q))
-                .distinct()
-                .toList();
+                                 .filter(q -> q != null && WikidataIds.isQid(q))
+                                 .distinct()
+                                 .toList();
         if (clean.isEmpty()) return;
 
         List<List<String>> batches = new ArrayList<>();
@@ -438,32 +439,38 @@ public class WikidataApiClient {
                         int n = handle.applyAsInt(root);
                         if (batchLog != null) {
                             batchLog.logged("wbgetentities " + done.incrementAndGet()
-                                    + "/" + total, url, n + "/" + batch.size()
-                                    + " entities (" + ms(t0) + " ms)");
+                                                    + "/" + total, url, n + "/" + batch.size()
+                                                    + " entities (" + ms(t0) + " ms)");
                         }
                     } catch (Exception e) {
                         if (batchLog != null) {
                             batchLog.logged("wbgetentities " + done.incrementAndGet()
-                                    + "/" + total, url, "FAILED: " + e.getMessage()
-                                    + " (" + ms(t0) + " ms)");
+                                                    + "/" + total, url, "FAILED: " + e.getMessage()
+                                                    + " (" + ms(t0) + " ms)");
                         }
                         throw e;
                     }
                     return null;
                 }));
             }
+            Exception firstFailure = null;
             for (Future<?> f : futures) {
                 try {
                     f.get();
                 } catch (InterruptedException e) {
                     pool.shutdownNow();
                     Thread.currentThread().interrupt();
-                    return;
+                    throw e;
                 } catch (ExecutionException e) {
-                    log.accept("[API] wbgetentities batch failed: "
-                            + e.getCause().getMessage() + "\n");
+                    Throwable cause = e.getCause();
+                    String message = cause == null ? e.getMessage() : cause.getMessage();
+                    log.accept("[API] wbgetentities batch failed: " + message + "\n");
+                    if (firstFailure == null) {
+                        firstFailure = cause instanceof Exception ex ? ex : e;
+                    }
                 }
             }
+            if (firstFailure != null) throw firstFailure;
         } finally {
             pool.shutdown();
         }

@@ -193,9 +193,9 @@ public class RuleTreeExtractor {
             // (member -> membership root). Those edges are materialized as fields
             // without repeating the expensive relation in a later enrichment query.
             //
-            // Keeping membership discovery separate from enrichment makes the served
-            // roots deterministic: a soft timeout in a heavy field query can leave
-            // fields unfilled, but it can no longer drop members.
+            // Keeping membership discovery separate from field capture makes the
+            // served roots deterministic without confusing a failed capture with a
+            // genuinely missing value. Any field-capture failure aborts generation.
             boolean largeMembership =
                     rootNode.additionalSourceQids().size() > membershipTargetBatchSize;
             List<RuleIncludedField> membershipTargets = largeMembership
@@ -206,7 +206,7 @@ public class RuleTreeExtractor {
                     runBackbone(rootNode, membershipTargets, progress);
             List<WikidataDynamicObject> members = backbone.members();
             progress.message("wbgetentities will fetch for " + members.size()
-                    + " member entities (plus any QID-only label refs).\n");
+                                     + " member entities (plus any QID-only label refs).\n");
             if (!membershipTargets.isEmpty()) {
                 materializeMembershipTargets(
                         members, membershipTargets, backbone.edges());
@@ -222,22 +222,20 @@ public class RuleTreeExtractor {
             // INCOMING fields have no corresponding claim on the member itself, so
             // they remain on the member-batched SPARQL path.
             List<RuleIncludedField> directEntityFields = new ArrayList<>();
-            if (largeMembership) {
-                for (RuleIncludedField f : inlinedFields) {
-                    if (!membershipTargets.contains(f)) directEntityFields.add(f);
-                }
-                List<RuleIncludedField> outgoing = new ArrayList<>();
-                List<RuleIncludedField> incoming = new ArrayList<>();
-                for (RuleIncludedField f : directEntityFields) {
-                    if (f.direction() == RuleDirection.ROOT_TO_ITEM) outgoing.add(f);
-                    else incoming.add(f);
-                }
-                if (!outgoing.isEmpty()) {
-                    captureOutgoingFieldsViaApi(members, outgoing, progress);
-                }
-                if (!incoming.isEmpty()) {
-                    captureMemberFields(members, incoming, progress);
-                }
+            for (RuleIncludedField f : inlinedFields) {
+                if (!membershipTargets.contains(f)) directEntityFields.add(f);
+            }
+            List<RuleIncludedField> outgoing = new ArrayList<>();
+            List<RuleIncludedField> incoming = new ArrayList<>();
+            for (RuleIncludedField f : directEntityFields) {
+                if (f.direction() == RuleDirection.ROOT_TO_ITEM) outgoing.add(f);
+                else incoming.add(f);
+            }
+            if (!outgoing.isEmpty()) {
+                captureOutgoingFieldsViaApi(members, outgoing, progress);
+            }
+            if (!incoming.isEmpty()) {
+                captureMemberFields(members, incoming, progress);
             }
 
             // Residual enrichment handles only fields not covered by Stage 1 or
@@ -256,52 +254,25 @@ public class RuleTreeExtractor {
                 enrichFields = RuleNodeQueryBuilder.simpleInlinedFields(enrichNode);
             }
 
-            List<WikidataDynamicObject> enriched;
-            if (enrichFields.isEmpty()) {
-                // Every requested inlined field was assigned to Stage 1 or Stage 2,
-                // so the heavy fieldOptimizedValuesQuery is unnecessary.
-                enriched = new ArrayList<>();
-                // A large membership with leftover NON-inlined (scalar) fields would
-                // need the heavy valuesQuery (the original timeout); those have no
-                // member-batched path yet. No model class hits this today.
-                if (largeMembership && enrichNode != rootNode
-                        && !enrichNode.includedFields().isEmpty()) {
-                    progress.message("WARNING: " + enrichNode.includedFields().size()
-                                             + " non-entity field(s) on a large membership have no "
-                                             + "member-batched path yet and were left unfilled.\n");
-                }
-            } else {
-                final RuleNode qNode = enrichNode;
-                final List<RuleIncludedField> qFields = enrichFields;
-                String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(qNode);
-                String title = "Root enrichment (+" + qFields.size()
-                        + " inlined field" + (qFields.size() == 1 ? "" : "s") + ")";
-                try {
-                    enriched = runRootQuery(title, sparql, progress,
-                                            () -> runFieldOptimizedQuery(qNode, qFields, sparql));
-                } catch (Exception e) {
-                    // Best-effort: the backbone already holds the COMPLETE, type-stamped
-                    // member set, so a failed enrichment must NOT fail the run — that is
-                    // the "a partial enrichment never drops a member" guarantee the union
-                    // below relies on. The heavy inline-GROUP_CONCAT query soft-times-out
-                    // on WDQS (60s → HTTP 200 with a truncated body → JSON parse error),
-                    // which used to abort the whole generation. Now the members survive;
-                    // the inlined fields are just unfilled this pass.
-                    if (e instanceof InterruptedException
-                            || Thread.currentThread().isInterrupted()) {
-                        throw e;   // a cancel is not a soft failure
-                    }
-                    progress.message("WARNING: root enrichment failed ("
-                                             + e.getMessage() + ") — members are COMPLETE from the "
-                                             + "backbone, but the " + qFields.size()
-                                             + " inlined field(s) are unfilled this run. Re-run to fill "
-                                             + "them (the enrichment query is over the WDQS timeout).\n");
-                    enriched = new ArrayList<>();
-                }
+            // Stage 2 captures EVERY entity-list field, so no inlined field can
+            // reach the residual: the heavy fieldOptimizedValuesQuery — the shape
+            // that soft-timed-out on a large membership — is unreachable by
+            // construction and no longer called here.
+            if (!enrichFields.isEmpty()) {
+                throw new IllegalStateException(
+                        "entity-list field(s) " + enrichFields.stream()
+                                .map(RuleIncludedField::fieldName).toList()
+                                + " reached the residual query; Stage 2 must capture them");
             }
 
-            // Union by qid (both share registry instances): a member either query
-            // found is a root, so a partial enrichment never drops a member.
+            // Scalar/media fields still need a query, but bounded by the members the
+            // backbone already found rather than re-scanning the class.
+            List<WikidataDynamicObject> enriched =
+                    captureResidualFields(enrichNode, rootNode, members, progress);
+
+            // Union by qid (both paths share registry instances). Enrichment errors
+            // propagate before this point, so an incomplete field set is never
+            // published as a successful result.
             LinkedHashMap<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
             for (WikidataDynamicObject o : members) byQid.put(o.qid(), o);
             for (WikidataDynamicObject o : enriched) byQid.putIfAbsent(o.qid(), o);
@@ -348,15 +319,16 @@ public class RuleTreeExtractor {
                 RuleNodeQueryBuilder.simpleInlinedFields(rootNode);
         List<RuleEdge> complex = complexEdges(rootNode);
 
-        // Mirror load(): a large fixed multi-QID membership captures its target
-        // field from the membership backbone and drops it from the enrichment.
+        // Mirror load(): every direct entity-list field is captured over the bounded
+        // member set; a large fixed multi-QID membership can additionally capture
+        // an equivalent target field from the backbone itself.
         boolean largeMembership =
                 rootNode.additionalSourceQids().size() > membershipTargetBatchSize;
         List<RuleIncludedField> membershipTargets = largeMembership
                 ? RuleNodeQueryBuilder.membershipTargetFields(rootNode)
                 : List.of();
 
-        if (largeMembership) {
+        if (!inlinedFields.isEmpty() && largeMembership) {
             // Stage 1 – show the actual physical membership queries that load()
             // executes. Previewing the original node would misleadingly display one
             // large VALUES query even though runBackbone() partitions the roots.
@@ -389,6 +361,15 @@ public class RuleTreeExtractor {
                                     + captured + ":\n" + sparql);
             }
 
+        } else if (!inlinedFields.isEmpty()) {
+            // Single-root class: Stage 1 is the membership backbone alone — there is
+            // no membership-target field to capture from it.
+            RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
+            queries.add("# Root membership (backbone):\n"
+                                + RuleNodeQueryBuilder.valuesQuery(backbone));
+        }
+
+        if (!inlinedFields.isEmpty()) {
             // Stage 2 – each remaining inlined entity-list field. OUTGOING fields go
             // via wbgetentities (claims); INCOMING fields via a member-batched query.
             for (RuleIncludedField f : inlinedFields) {
@@ -397,7 +378,7 @@ public class RuleTreeExtractor {
                     queries.add("# Field \"" + f.fieldName() + "\" via wbgetentities "
                                         + "claims (props=labels|claims, ids batched by 50): each "
                                         + "member's " + RuleNode.cleanPid(f.propertyPid())
-                                        + " values — not SPARQL (P31 full-scans + times out).");
+                                        + " values — not SPARQL.");
                 } else {
                     queries.add("# Member field \"" + f.fieldName() + "\" (batched by "
                                         + memberFieldBatchSize + " members):\n"
@@ -409,17 +390,20 @@ public class RuleTreeExtractor {
 
             queries.add("# Labels for QID-only refs via wbgetentities "
                                 + "(props=labels, ids batched by 50).");
+            queries.add("# (no whole-class field query: every entity-list field is "
+                                + "captured over the bounded member set above.)");
 
-            if (!inlinedFields.isEmpty()) {
-                queries.add("# (fieldOptimizedValuesQuery skipped — every inlined "
-                                    + "entity-list field is covered by Stage 1 or Stage 2.)");
+            RuleNode residual = rootNode.sampleCopy(rootNode.limit());
+            for (RuleIncludedField f : rootNode.includedFields()) {
+                if (!inlinedFields.contains(f)) residual.addIncludedField(f);
             }
-        } else if (!inlinedFields.isEmpty()) {
-            queries.add("# Root + inlined entity-list fields: "
-                                + inlinedFields.stream().map(RuleIncludedField::fieldName)
-                                               .reduce((a, b) -> a + ", " + b).orElse("")
-                                + "\n"
-                                + RuleNodeQueryBuilder.fieldOptimizedValuesQuery(rootNode));
+            if (!residual.includedFields().isEmpty()) {
+                queries.add("# Residual scalar/media fields (batched by "
+                                    + memberFieldBatchSize + " members):\n"
+                                    + RuleNodeQueryBuilder
+                        .memberBoundedValuesQuery(residual, List.of("Q0"))
+                        .replace("wd:Q0", "<member batch>"));
+            }
         } else {
             queries.add(RuleNodeQueryBuilder.valuesQuery(rootNode));
         }
@@ -659,9 +643,9 @@ public class RuleTreeExtractor {
     /**
      * Stage 2 – Member field capture. Fetch each remaining multivalued direct
      * with its own MEMBER-batched row query instead of an inline GROUP_CONCAT over
-     * the whole class. Best-effort per batch: a failed batch is warned and skipped —
-     * the members are already COMPLETE from the backbone, so a partial field capture
-     * must never fail the run (it only leaves that field thinner).
+     * the whole class. A failed batch aborts generation: returning the complete
+     * membership with that batch empty would turn an extraction error into false
+     * "missing field" results.
      */
     private void captureMemberFields(
             List<WikidataDynamicObject> members,
@@ -686,20 +670,11 @@ public class RuleTreeExtractor {
                 String sparql =
                         RuleNodeQueryBuilder.memberFieldBatchQuery(field, batch);
                 final int bn = ++n;
-                try {
-                    runRootQuery(
-                            "Member field \"" + field.fieldName()
-                                    + "\" (" + bn + "/" + total + ")",
-                            sparql, progress,
-                            () -> applyMemberField(field, sparql));
-                } catch (InterruptedException e) {
-                    throw e;
-                } catch (Exception e) {
-                    progress.message("WARNING: member field \"" + field.fieldName()
-                                             + "\" batch " + bn + "/" + total + " failed ("
-                                             + e.getMessage() + ") — members are COMPLETE; that "
-                                             + "batch's values are unfilled this run.\n");
-                }
+                runRootQuery(
+                        "Member field \"" + field.fieldName()
+                                + "\" (" + bn + "/" + total + ")",
+                        sparql, progress,
+                        () -> applyMemberField(field, sparql));
             }
         }
     }
@@ -710,6 +685,56 @@ public class RuleTreeExtractor {
      * duplicate guard (dedup + insertion order). Returns the members it touched so
      * the log shows a row count.
      */
+    /**
+     * Residual (scalar/media) field capture, bounded by the members the backbone
+     * already found and batched like every other Stage-2 query.
+     *
+     * <p>The whole-class form re-scans the class to rediscover those members — the
+     * shape that soft-times-out on a large membership, and the one that used to
+     * leave fields silently unfilled. Failures propagate: an unfilled scalar is
+     * indistinguishable from a genuinely absent value once the run is saved.
+     */
+    private List<WikidataDynamicObject> captureResidualFields(
+            RuleNode enrichNode,
+            RuleNode rootNode,
+            List<WikidataDynamicObject> members,
+            GenerationLog progress) throws Exception {
+
+        if (enrichNode == rootNode || enrichNode.includedFields().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<String> memberQids = members.stream()
+                                         .map(WikidataDynamicObject::qid)
+                                         .filter(q -> q != null && WikidataIds.isQid(q))
+                                         .toList();
+        if (memberQids.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        int fields = enrichNode.includedFields().size();
+        int total = (memberQids.size() + memberFieldBatchSize - 1) / memberFieldBatchSize;
+        Map<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
+
+        for (int i = 0, n = 0; i < memberQids.size(); i += memberFieldBatchSize) {
+            List<String> batch = memberQids.subList(
+                    i, Math.min(i + memberFieldBatchSize, memberQids.size()));
+            String sparql =
+                    RuleNodeQueryBuilder.memberBoundedValuesQuery(enrichNode, batch);
+            final int bn = ++n;
+            List<WikidataDynamicObject> rows = runRootQuery(
+                    "Residual field" + (fields == 1 ? "" : "s") + " (+" + fields
+                            + ", batch " + bn + "/" + total + ")",
+                    sparql, progress,
+                    () -> runValueQuery(enrichNode, sparql));
+            for (WikidataDynamicObject o : rows) {
+                byQid.putIfAbsent(o.qid(), o);
+            }
+        }
+
+        return new ArrayList<>(byQid.values());
+    }
+
     private List<WikidataDynamicObject> applyMemberField(
             RuleIncludedField field, String sparql) throws Exception {
 
@@ -732,14 +757,14 @@ public class RuleTreeExtractor {
      * Stage 2 – Fetch OUTGOING direct entity fields (the member's own claims, e.g.
      * type = P31) from the reliable wbgetentities API instead of the SPARQL query
      * engine (P31 full-scans and times out there). One batched claims pass over the
-     * members; best-effort — a failure warns and leaves those fields unfilled
-     * (members stay COMPLETE from the backbone). Also fills any blank member label
-     * the API returns.
+     * members. A failed API batch aborts generation so the UI cannot present a
+     * partially fetched claim set as genuinely missing data. Also fills any blank
+     * member label the API returns.
      */
     private void captureOutgoingFieldsViaApi(
             List<WikidataDynamicObject> members,
             List<RuleIncludedField> outgoingFields,
-            GenerationLog progress) {
+            GenerationLog progress) throws Exception {
 
         List<String> memberQids = members.stream()
                                          .map(WikidataDynamicObject::qid)
@@ -757,17 +782,12 @@ public class RuleTreeExtractor {
         int batches = (memberQids.size() + 49) / 50;
         try (GenerationLog.Group g = progress.group("wbgetentities FIELDS [" + names + "] — "
                                                             + memberQids.size() + " members, " + batches
-                                                            + " batches (P31 type + outgoing entity claims)")) {
+                                                            + " batches (outgoing entity claims)")) {
             Map<String, WikidataApiClient.ApiEntity> details =
                     api().getEntities(memberQids, pids, g::subquery);
             int filled = applyEntityClaims(members, outgoingFields, details);
             g.message("Fetched field(s) [" + names + "] for " + filled + "/"
                               + memberQids.size() + " members via wbgetentities.\n");
-        } catch (Exception e) {
-            if (Thread.currentThread().isInterrupted()) return;
-            progress.message("WARNING: wbgetentities fetch of field(s) [" + names
-                                     + "] failed (" + e.getMessage() + ") — members are COMPLETE; "
-                                     + "those fields are unfilled this run.\n");
         }
     }
 
