@@ -45,3 +45,9 @@ data/wikidata/**/charts/
 
 ### OCR-miss staging (regenerable by ChartBlurTool)
 data/masks/needs-mask/
+
+### Local run state — follows whatever snapshots this machine happens to have
+# The registry the app rewrites on every save; its entries point at snapshots
+# that are themselves untracked, so in git it only ever conflicts.
+data/wikidata/datasets.json
+data/query-log*.txt
