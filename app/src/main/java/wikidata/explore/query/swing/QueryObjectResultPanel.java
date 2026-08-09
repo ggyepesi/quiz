@@ -204,7 +204,7 @@ public class QueryObjectResultPanel
                         // Stamp each instance with its Wikidata identity chip — same
                         // presentation the transform/curation views use, resolved here from the
                         // instance's native id (ModelBuilder has no curation sidecar).
-                        .cardDecorator(QueryObjectResultPanel::identityChip)
+                        .cardDecorator(IdentityChip::ofInstance)
                         .build();
         activeContext = browser.renderContext();
 
@@ -216,13 +216,6 @@ public class QueryObjectResultPanel
         wrapped.add(browser, BorderLayout.CENTER);
 
         return wrapped;
-    }
-
-    /** The instance's Wikidata identity as a header chip, or none for a non-Wikidata id.
-     *  Scoped to non-null so a non-Wikidata instance stays undecorated. */
-    private static JComponent identityChip(Viewable member) {
-        String id = member == null ? null : member.getIdentifier();
-        return WikidataSource.isQid(id) ? IdentityChip.of(id) : null;
     }
 
     private static List<Viewable> capped(List<Viewable> objects) {

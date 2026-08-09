@@ -996,10 +996,17 @@ public class ModelBuilderFrame extends JFrame {
         // entity navigates to (focuses + scrolls to) its card in the instances
         // window instead of opening a detached copy.
         RenderContext shared = instancesPanel.activeRenderContext();
+        RenderContext context = shared != null ? shared : new RenderContext();
+        view.setRenderContext(context);
         if (shared != null) {
-            view.setRenderContext(shared);
             view.setInPlaceNavigation(true);
         }
+        // The whole point of this window is telling apart entities that share a
+        // name, so each colliding entity must show WHICH entity it is: stamp the
+        // same Wikidata QID chip the instances browser uses. Set on a context we
+        // are sure exists — inheriting it only works once instances have rendered,
+        // and until then the window opened with no chips at all.
+        context.setCardDecorator(IdentityChip::ofInstance);
         for (NameCollision c : lastCollisions) {
             view.addViewable(c);
         }
