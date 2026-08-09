@@ -20,6 +20,52 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RuleTreeExtractorBatchedFieldTest {
 
+    /**
+     * A REQUIRED field has to narrow membership at the point membership is decided.
+     * The backbone query is that point — the value itself arrives later, over the
+     * members — so its triple must appear there, non-OPTIONAL, and the class
+     * ranking (which decides WHICH `limit` instances are kept) must survive too.
+     * Both were dropped by sampleCopy, so 20,000 films were selected unranked and
+     * 40% of them had no narrative location at all.
+     */
+    @Test
+    void theBackboneRequiresTheRequiredFieldAndKeepsTheRanking() {
+        RuleNode node = moviesWithLocations();
+        node.includedFields().getFirst().optional(false);   // Required
+        node.rankBySitelinks(true);
+        node.requireSitelink(true);
+
+        String backbone = new RuleTreeExtractor(null).previewQueries(node, 0).stream()
+                .filter(q -> q.contains("Root membership (backbone)"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no backbone query in plan"));
+
+        assertTrue(backbone.contains("wdt:P840"),
+                   "the required field must constrain membership: " + backbone);
+        assertFalse(backbone.contains("OPTIONAL"),
+                    "a required field is not optional: " + backbone);
+        assertTrue(backbone.contains("wikibase:sitelinks"),
+                   "the ranking must survive into the backbone: " + backbone);
+        assertTrue(backbone.contains("ORDER BY DESC"), backbone);
+        // Constraint only: selecting a multi-valued property would make the LIMIT
+        // count value-pairs instead of films.
+        assertFalse(backbone.contains("?locations"),
+                    "the required field is a constraint, not a selected value: " + backbone);
+    }
+
+    /** An OPTIONAL field must NOT narrow membership — instances lacking it are
+     *  legitimate members whose value is simply absent. */
+    @Test
+    void anOptionalFieldDoesNotConstrainMembership() {
+        String backbone = new RuleTreeExtractor(null)
+                .previewQueries(moviesWithLocations(), 0).stream()
+                .filter(q -> q.contains("Root membership (backbone)"))
+                .findFirst().orElseThrow();
+
+        assertFalse(backbone.contains("wdt:P840"),
+                    "an optional field must not filter the member set: " + backbone);
+    }
+
     private static RuleNode moviesWithLocations() {
         RuleNode node = new RuleNode("Movies", "movies");
         node.sourceQid("Q11424");

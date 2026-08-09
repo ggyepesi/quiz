@@ -407,6 +407,7 @@ public final class RuleNodeQueryBuilder {
         }
         appendMembershipFilter(q, node);
         appendSitelinkRequirement(q, node);
+        appendMembershipConstraints(q, node);
 
         appendAllowedQids(q, node);
         appendExcludedQids(q, node);
@@ -946,6 +947,27 @@ public final class RuleNodeQueryBuilder {
     // "Notable only": require an English Wikipedia article. A selective entry
     // that bounds a huge class (Q523 ~3M) to its ~2886 notable members, so the
     // scan completes and returns famous entities. See SPARQL rules R10.
+
+    /**
+     * Required fields as membership CONSTRAINTS: one non-OPTIONAL triple each, into
+     * a throwaway variable that is never selected. Selecting them would put a
+     * multi-valued property in the row shape, and the LIMIT would then count
+     * value-pairs instead of instances; the values themselves are captured later
+     * over the bounded member set.
+     */
+    private static void appendMembershipConstraints(
+            WikidataQueryBuilder q, RuleNode node) {
+
+        int i = 0;
+        for (RuleIncludedField f : node.membershipConstraints()) {
+            if (f == null) continue;
+            String pid = RuleNode.cleanPid(f.propertyPid());
+            if (!WikidataIds.isPid(pid)) continue;
+            q.rawWhere(f.direction().triplePattern("?value", "?required" + i, pid));
+            i++;
+        }
+    }
+
     private static void appendSitelinkRequirement(WikidataQueryBuilder q, RuleNode node) {
         if (node.requireSitelink()) {
             q.rawWhere("?value_article schema:about ?value ; "

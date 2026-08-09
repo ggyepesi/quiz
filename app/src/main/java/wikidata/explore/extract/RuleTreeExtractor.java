@@ -340,7 +340,7 @@ public class RuleTreeExtractor {
                 List<String> batch = new ArrayList<>(targets.subList(
                         from,
                         Math.min(from + membershipTargetBatchSize, targets.size())));
-                RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
+                RuleNode backbone = rootNode.backboneCopy(rootNode.limit());
                 backbone.additionalSourceQids().clear();
                 batch.forEach(backbone::addAdditionalSourceQid);
 
@@ -364,7 +364,7 @@ public class RuleTreeExtractor {
         } else if (!inlinedFields.isEmpty()) {
             // Single-root class: Stage 1 is the membership backbone alone — there is
             // no membership-target field to capture from it.
-            RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
+            RuleNode backbone = rootNode.backboneCopy(rootNode.limit());
             queries.add("# Root membership (backbone):\n"
                                 + RuleNodeQueryBuilder.valuesQuery(backbone));
         }
@@ -505,7 +505,7 @@ public class RuleTreeExtractor {
 
         List<String> targets = new ArrayList<>(rootNode.additionalSourceQids());
         if (targets.size() <= membershipTargetBatchSize) {
-            RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
+            RuleNode backbone = rootNode.backboneCopy(rootNode.limit());
             String sparql = RuleNodeQueryBuilder.valuesQuery(backbone);
             List<WikidataDynamicObject> members = runRootQuery(
                     "Root membership (backbone)", sparql, progress,
@@ -526,7 +526,7 @@ public class RuleTreeExtractor {
             }
             List<String> batch = new ArrayList<>(targets.subList(
                     from, Math.min(from + membershipTargetBatchSize, targets.size())));
-            RuleNode backbone = rootNode.sampleCopy(rootNode.limit());
+            RuleNode backbone = rootNode.backboneCopy(rootNode.limit());
             backbone.additionalSourceQids().clear();
             batch.forEach(backbone::addAdditionalSourceQid);
             String sparql = capture

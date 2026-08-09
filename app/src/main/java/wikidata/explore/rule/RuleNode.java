@@ -87,6 +87,26 @@ public class RuleNode {
      * Copy of this node without child edges or included fields, with the
      * given limit — used to sample a node's instances cheaply.
      */
+    /**
+     * The membership copy used to discover members: a {@link #sampleCopy} that also
+     * carries what membership actually depends on — the class RANKING (which decides
+     * WHICH {@code limit} instances are kept) and every REQUIRED field, as a
+     * constraint. sampleCopy alone drops both, which silently produced an unranked
+     * slice whose members need not have the required property at all.
+     */
+    public RuleNode backboneCopy(int limit) {
+        RuleNode s = sampleCopy(limit);
+        s.rankBySitelinks(rankBySitelinks());
+        s.rankPropertyPid(rankPropertyPid());
+        s.rankDescending(rankDescending());
+        for (RuleIncludedField f : includedFields()) {
+            if (f != null && !f.optional()) {
+                s.addMembershipConstraint(f);
+            }
+        }
+        return s;
+    }
+
     public RuleNode sampleCopy(int limit) {
         RuleNode s = new RuleNode(name, itemVar);
 
@@ -207,6 +227,24 @@ public class RuleNode {
     // -----------------------------------------------------------------
     // Accessors — included fields
     // -----------------------------------------------------------------
+
+    // Fields the MEMBERSHIP query must satisfy, as constraints only: their triple
+    // is emitted non-OPTIONAL and nothing is selected from them. A required field
+    // has to narrow membership at the point membership is decided — the value
+    // itself is fetched later, over the members, by the batched field capture.
+    // Kept apart from includedFields precisely so it contributes no SELECT: a
+    // multi-valued property in the select list yields one row per value, and the
+    // LIMIT then counts pairs instead of instances (R11/R13).
+    private final List<RuleIncludedField> membershipConstraints = new ArrayList<>();
+
+    public List<RuleIncludedField> membershipConstraints() {
+        return membershipConstraints;
+    }
+
+    public RuleNode addMembershipConstraint(RuleIncludedField field) {
+        if (field != null) membershipConstraints.add(field);
+        return this;
+    }
 
     public List<RuleIncludedField> includedFields() { return includedFields; }
 
