@@ -63,8 +63,8 @@ public final class RuleTreeCompiler {
         }
         node.propertyPid(m.propertyPid().isBlank() ? "P31" : m.propertyPid());
         node.propertyLabel(m.propertyLabel().isBlank()
-                ? "instance of"
-                : m.propertyLabel());
+                                   ? "instance of"
+                                   : m.propertyLabel());
         node.direction(RuleDirection.ITEM_TO_ROOT);
         node.limit(m.limit());
         node.requireSitelink(m.requireSitelink());
@@ -139,21 +139,9 @@ public final class RuleTreeCompiler {
         // is nonsensical and silently matches nothing (a date field left at the
         // ITEM_TO_ROOT default returns zero rows, no warning), so force outgoing
         // regardless of the configured direction.
-        included.direction(isLiteral(field)
-                ? RuleDirection.ROOT_TO_ITEM
-                : m.direction());
+        included.direction(FieldSemantics.effectiveDirection(field));
 
         return included;
-    }
-
-    /** A scalar literal field (never an entity reference), so its property is
-     *  always outgoing. */
-    private static boolean isLiteral(GeneratedFieldModel field) {
-        if (field.collection()) {
-            return false;
-        }
-        FieldType t = field.type();
-        return t == FieldType.STRING || t == FieldType.NUMBER || t == FieldType.DATE;
     }
 
     private static void compileFieldIntoNode(
@@ -237,7 +225,7 @@ public final class RuleTreeCompiler {
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
                         && cm != null && !cm.sourceQid().isBlank()) {
                     child.membershipPid(cm.propertyPid().isBlank()
-                            ? "P31" : cm.propertyPid());
+                                                ? "P31" : cm.propertyPid());
                     child.membershipQid(cm.sourceQid());
                 }
                 // "Notable only" is a notability axis (independent of membership):
@@ -279,7 +267,7 @@ public final class RuleTreeCompiler {
                     FieldSourceMapping cm = refClass.effectiveInstanceMapping(project);
                     if (cm != null && !cm.sourceQid().isBlank()) {
                         included.membershipPid(cm.propertyPid().isBlank()
-                                ? "P31" : cm.propertyPid());
+                                                       ? "P31" : cm.propertyPid());
                         included.membershipQid(cm.sourceQid());
                     }
                 }
@@ -360,8 +348,8 @@ public final class RuleTreeCompiler {
         }
         node.propertyPid(m.propertyPid().isBlank() ? "P31" : m.propertyPid());
         node.propertyLabel(m.propertyLabel().isBlank()
-                ? "instance of"
-                : m.propertyLabel());
+                                   ? "instance of"
+                                   : m.propertyLabel());
         node.direction(RuleDirection.ITEM_TO_ROOT);
         node.limit(m.limit());
         node.requireSitelink(m.requireSitelink());
@@ -414,19 +402,10 @@ public final class RuleTreeCompiler {
                 !field.required());
 
         included.collection(field.collection());
-        included.direction(isLiteral(field)
-                ? RuleDirection.ROOT_TO_ITEM
-                : m.direction());
+        included.direction(FieldSemantics.effectiveDirection(
+                field.type(), field.cardinality(), m.direction()));
 
         return included;
-    }
-
-    private static boolean isLiteral(CompiledField field) {
-        if (field.collection()) {
-            return false;
-        }
-        FieldType t = field.type();
-        return t == FieldType.STRING || t == FieldType.NUMBER || t == FieldType.DATE;
     }
 
     private static void compileFieldIntoNode(
@@ -483,7 +462,7 @@ public final class RuleTreeCompiler {
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
                         && !cm.sourceQid().isBlank()) {
                     child.membershipPid(cm.propertyPid().isBlank()
-                            ? "P31" : cm.propertyPid());
+                                                ? "P31" : cm.propertyPid());
                     child.membershipQid(cm.sourceQid());
                 }
                 child.requireSitelink(cm.requireSitelink());
@@ -513,7 +492,7 @@ public final class RuleTreeCompiler {
                     CompiledFieldSource cm = refClass.sourceMapping();
                     if (!cm.sourceQid().isBlank()) {
                         included.membershipPid(cm.propertyPid().isBlank()
-                                ? "P31" : cm.propertyPid());
+                                                       ? "P31" : cm.propertyPid());
                         included.membershipQid(cm.sourceQid());
                     }
                 }

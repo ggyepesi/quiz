@@ -18,7 +18,15 @@ import wikidata.explore.transform.TransformConfig;
 public record DecisionContext(
         GeneratedProjectModel project,
         GeneratedClassModel clazz,
+        GeneratedFieldModel field,
         TransformConfig transform) {
+
+    public DecisionContext(
+            GeneratedProjectModel project,
+            GeneratedClassModel clazz,
+            TransformConfig transform) {
+        this(project, clazz, null, transform);
+    }
 
     public MembershipPattern pattern() {
         return MembershipPattern.of(clazz);
@@ -99,9 +107,9 @@ public record DecisionContext(
             return false;
         }
         return transform.qualifierLoads.stream().anyMatch(q ->
-                relationPid().equals(cleanPid(q.propertyPid()))
-                        && (q.entityType() == null
-                            || q.entityType().equals(clazz.className())));
+                                                                  relationPid().equals(cleanPid(q.propertyPid()))
+                                                                          && (q.entityType() == null
+                                                                          || q.entityType().equals(clazz.className())));
     }
 
     public boolean reified() {
