@@ -19,19 +19,7 @@ import wikidata.explore.generation.GenerateDomainProcess;
 import process.ProcessStatus;
 import process.swing.SwingProcessInputHandler;
 import process.swing.SwingProcessRunner;
-import quiz.enrichment.EnrichmentProposal;
-import quiz.enrichment.EnrichmentRequest;
-import quiz.enrichment.EnrichmentRoute;
-import quiz.enrichment.FindDataBatchProcess;
-import quiz.enrichment.FindDataBatchResult;
-import quiz.enrichment.FindDataProcess;
-import quiz.transform.ui.FieldEnrichmentRoutes;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedFieldModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.GeneratedProjectModelStore;
-import wikidata.explore.model.Selection;
-import wikidata.explore.model.VocabularySelection;
+import wikidata.explore.model.*;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
@@ -49,7 +37,6 @@ import wikidata.explore.rule.RuleTreeSerializer;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 public class ModelBuilderFrame extends JFrame {
@@ -102,11 +89,6 @@ public class ModelBuilderFrame extends JFrame {
 
     private final JButton showInstancesButton =
             new JButton("Show instances");
-    // Per-entity routed enrichment over the generated instances: fills each field from its
-    // configured source (Wikidata/Wikipedia) via the shared Find Data review, applied in
-    // memory to the shown instances. Reuses the curate routing verbatim.
-    private final JButton enrichButton =
-            new JButton("Enrich instances…");
 
     private final JButton showStatementsButton =
             new JButton("Statements…");
@@ -122,9 +104,8 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton showRuleTreeButton =
             new JButton("Show rule tree");
 
-    // Same label + header placement as TransformApp's "Query logs…", so the two apps agree.
     private final JButton showQueryLogsButton =
-            new JButton("Query logs…");
+            new JButton("Show query logs");
 
     private final JButton showExplorerButton =
             new JButton("Explorer tools");
@@ -250,9 +231,9 @@ public class ModelBuilderFrame extends JFrame {
     private JPanel buildDomainClassPanel() {
         // Domain section (top): selector + domain-level actions.
         domainBox.setToolTipText("The domain (project) being edited. Every class "
-                + "below belongs to it. Switch to load another saved domain.");
+                                         + "below belongs to it. Switch to load another saved domain.");
         saveEverythingButton.setToolTipText("Save this domain — its model, rule "
-                + "tree and generated instances — together.");
+                                                    + "tree and generated instances — together.");
 
         JPanel domainPick = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         domainPick.add(new JLabel("Domain:"));
@@ -285,13 +266,13 @@ public class ModelBuilderFrame extends JFrame {
         // narrower panel: generate/depth on top, the result viewers below.
         generateButton.setToolTipText("Generate the SELECTED class only.");
         generateDomainButton.setToolTipText("Generate EVERY class in the domain "
-                + "into one snapshot — each served as its own quiz type.");
+                                                    + "into one snapshot — each served as its own quiz type.");
         JPanel runRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow1.add(generateButton);
         runRow1.add(generateDomainButton);
         remapButton.setToolTipText("Re-materialize the last download with the "
-                + "current model — applies display-name / canonicalization / mapping "
-                + "edits without re-fetching from Wikidata.");
+                                           + "current model — applies display-name / canonicalization / mapping "
+                                           + "edits without re-fetching from Wikidata.");
         runRow1.add(remapButton);
         runRow1.add(cancelButton);
         runRow1.add(depthLabel);
@@ -299,16 +280,11 @@ public class ModelBuilderFrame extends JFrame {
 
         JPanel runRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow2.add(showInstancesButton);
-        enrichButton.setToolTipText("Fill the generated instances' fields per entity from "
-                + "each field's configured source (Wikidata/Wikipedia), reviewed and applied "
-                + "in memory.");
-        runRow2.add(enrichButton);
         showStatementsButton.setToolTipText("Sample the selected class and show its "
-                + "instances' statements — property → values with qualifiers nested, "
-                + "plus coverage badges (example-first field discovery, #91).");
+                                                    + "instances' statements — property → values with qualifiers nested, "
+                                                    + "plus coverage badges (example-first field discovery, #91).");
         runRow2.add(showStatementsButton);
-        // Query logs moved up to the config header (with the other window-openers), to match
-        // TransformApp's top-toolbar placement.
+        runRow2.add(showQueryLogsButton);
 
         JPanel runSection = new JPanel(new GridLayout(0, 1, 0, 0));
         runSection.add(runRow1);
@@ -330,13 +306,12 @@ public class ModelBuilderFrame extends JFrame {
         header.add(showExplorerButton);
         header.add(showGraphButton);
         showSelectionsButton.setToolTipText("Browse the domain's Selections — named "
-                + "vocabularies/populations referenced but never served; declare a "
-                + "vocabulary and inspect its members");
+                                                    + "vocabularies/populations referenced but never served; declare a "
+                                                    + "vocabulary and inspect its members");
         header.add(showSelectionsButton);
         showGuideButton.setToolTipText("Guided build steps for the selected class: "
-                + "what's done, what's next, the tool for it, and the hint");
+                                               + "what's done, what's next, the tool for it, and the hint");
         header.add(showGuideButton);
-        header.add(showQueryLogsButton);
 
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.add(header, BorderLayout.NORTH);
@@ -372,86 +347,6 @@ public class ModelBuilderFrame extends JFrame {
         instancesWindow.toFront();
     }
 
-    /** Per-entity routed enrichment over the generated instances: for each instance with a
-     *  QID and each of its class's fields that has a configured source, run the shared routed
-     *  Find Data (the curate machinery, verbatim), review once, and apply accepted values in
-     *  memory to the shown instances. The route is currently primary-per-field (a persisted
-     *  fallback would make it a true Wikidata→DBpedia route). */
-    private void enrichInstances() {
-        GenerationRun run = lastRun;
-        if (run == null || run.dynamicObjects() == null || run.dynamicObjects().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Generate instances first.");
-            return;
-        }
-        GeneratedProjectModel model = run.modelSnapshot() != null
-                ? run.modelSnapshot() : projectModel;
-        java.util.Map<String, GeneratedClassModel> classByName = new java.util.HashMap<>();
-        if (model.rootClass() != null) {
-            classByName.put(model.rootClass().className(), model.rootClass());
-        }
-        for (GeneratedClassModel c : model.classes()) {
-            if (c != null && c.className() != null) classByName.putIfAbsent(c.className(), c);
-        }
-
-        List<FindDataProcess> jobs = new ArrayList<>();
-        int skipped = 0;
-        for (WikidataDynamicObject obj : run.dynamicObjects()) {
-            String qid = obj.qid();
-            GeneratedClassModel cls = classByName.get(obj.typeName());
-            if (qid == null || !WikidataIds.isQid(qid) || cls == null) {
-                skipped++;
-                continue;
-            }
-            EnrichmentProposal.Subject subject = new EnrichmentProposal.Subject(
-                    obj.typeName(), obj.getIdentifier(), qid, obj.getDisplayName());
-            for (GeneratedFieldModel field : cls.effectiveFields(model)) {
-                if (field.name() == null || field.name().isBlank()) continue;
-                EnrichmentRoute route = FieldEnrichmentRoutes.from(
-                        field.mapping(), field.fallbackMapping());
-                if (route.isEmpty()) continue;   // field has no Wikidata/Wikipedia source
-                boolean collection = field.cardinality() != null
-                        && field.cardinality().isCollection();
-                EnrichmentRequest request = new EnrichmentRequest(
-                        subject, field.name(), collection, List.of(), null,
-                        obj.dynamicFieldValues().get(field.name()));
-                EnrichmentRoute applicable = route.applicableTo(request);
-                if (!applicable.isEmpty()) {
-                    jobs.add(new FindDataProcess(request, applicable, false));
-                }
-            }
-        }
-        if (jobs.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No generated instance has a field with a Wikidata/Wikipedia source "
-                            + "and a QID to enrich.");
-            return;
-        }
-
-        processRunner.run(
-                new FindDataBatchProcess(jobs, skipped, ""),
-                outcome -> SwingUtilities.invokeLater(() -> {
-                    FindDataBatchResult result = outcome.result();
-                    int applied = result == null ? 0 : applyEnriched(run, result);
-                    if (applied > 0) {
-                        instancesPanel.accept(run.objectResult());
-                        showInstancesWindow();
-                    }
-                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
-                        JOptionPane.showMessageDialog(this,
-                                "Enrich failed: " + outcome.error().getMessage());
-                    }
-                }),
-                ex -> SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
-                        this, "Enrich failed: " + ex.getMessage())));
-    }
-
-    /** Write accepted field values onto the shown (materialized) instances, keyed by the
-     *  domain identifier. Returns how many values were applied. */
-    private int applyEnriched(GenerationRun run, FindDataBatchResult result) {
-        return quiz.enrichment.EnrichmentApply.toDynamicInstances(
-                run.instances(), result.acceptedDecisions());
-    }
-
     // Lazily-created window hosting the discovery tools moved out of the main
     // frame, so the main window stays focused on domain + configuration.
     // Sample the selected class, then open the statement view on those instances.
@@ -483,10 +378,10 @@ public class ModelBuilderFrame extends JFrame {
             // path as Discover: a property → a field, a qualifier → a qualifier
             // field, both on the selected class, opened pre-filled in the editor.
             statementsPanel.onConfigureField((pid, label) ->
-                    sourceWorkbench.useProperty(pid, label,
-                            wikidata.explore.model.RuleDirection.ROOT_TO_ITEM));
+                                                     sourceWorkbench.useProperty(pid, label,
+                                                                                 wikidata.explore.model.RuleDirection.ROOT_TO_ITEM));
             statementsPanel.onConfigureQualifier((pid, label) ->
-                    sourceWorkbench.useQualifier(pid, label));
+                                                         sourceWorkbench.useQualifier(pid, label));
             statementsWindow = new JFrame("Statements — example-first (#91)");
             statementsWindow.add(statementsPanel);
             statementsWindow.setSize(780, 720);
@@ -548,6 +443,16 @@ public class ModelBuilderFrame extends JFrame {
                     classModelPanel.selectClass(c); // fires the tree listener
                 }
             });
+            graphPanel.onFieldSelected((className, fieldName) -> {
+                GeneratedClassModel c = classByName(className);
+                if (c == null) {
+                    return;
+                }
+                c.fields().stream()
+                 .filter(f -> f != null && fieldName.equals(f.name()))
+                 .findFirst()
+                 .ifPresent(classModelPanel::selectField);
+            });
             // Double-click a node → jump into live Explore of that class's
             // membership target (its Wikidata type/award), unifying the model
             // graph with the navigation canvas.
@@ -559,7 +464,7 @@ public class ModelBuilderFrame extends JFrame {
                 String qid = c.effectiveInstanceMapping(projectModel).sourceQid();
                 if (qid == null || !WikidataIds.isQid(qid)) {
                     logWindow.info("Class \"" + name + "\" has no membership target "
-                            + "QID to explore — set a Relation target first.");
+                                           + "QID to explore — set a Relation target first.");
                     return;
                 }
                 showExplorerWindow();
@@ -606,9 +511,9 @@ public class ModelBuilderFrame extends JFrame {
         }
         int total = qidsByType.values().stream().mapToInt(java.util.Set::size).sum();
         String breakdown = qidsByType.entrySet().stream()
-                .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
-                .map(e -> e.getKey() + " " + e.getValue().size())
-                .collect(java.util.stream.Collectors.joining(", "));
+                                     .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+                                     .map(e -> e.getKey() + " " + e.getValue().size())
+                                     .collect(java.util.stream.Collectors.joining(", "));
         return "Generated instances — " + breakdown
                 + "  (" + total + " distinct)";
     }
@@ -625,16 +530,10 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.setQueryRunner(queryRunner);
         sourceWorkbench.log(logWindow::info);
 
-        sourceWorkbench.afterChange(v -> {
-            classModelPanel.refresh();
-            // Keep the (possibly open) model graph in sync with edits.
-            if (graphWindow != null && graphWindow.isVisible()) {
-                graphPanel.setModel(projectModel);
-            }
-        });
+        sourceWorkbench.afterChange(v -> modelChanged());
 
         sourceWorkbench.afterApplyField(f -> {
-            classModelPanel.refresh();
+            modelChanged();
             classModelPanel.selectField(f);
             sourceWorkbench.edit(f);
         });
@@ -646,8 +545,8 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.onFieldAddedFromTool(f -> {
             GeneratedClassModel owner = activeClass();
             logWindow.info("Added field \"" + f.name() + "\""
-                    + (owner == null ? "" : " on class \"" + owner.className() + "\"")
-                    + " — shown in the main window.");
+                                   + (owner == null ? "" : " on class \"" + owner.className() + "\"")
+                                   + " — shown in the main window.");
             toFront();
             requestFocus();
         });
@@ -659,6 +558,9 @@ public class ModelBuilderFrame extends JFrame {
             // Mirror the selection onto the graph (the two-way "connection").
             GeneratedClassModel sel = activeClass();
             graphPanel.setSelectedClass(sel == null ? "" : sel.className());
+            if (guidePanel != null && guideWindow != null && guideWindow.isVisible()) {
+                guidePanel.refresh();
+            }
         });
 
         // Store depth edits onto the currently-selected class.
@@ -692,37 +594,37 @@ public class ModelBuilderFrame extends JFrame {
                 return;
             }
             try {
-                    sourceWorkbench.applyEdits();
-                    // Per-class depth (saved on each class) is used; sync the
-                    // active class's spinner value first.
-                    GeneratedClassModel active = activeClass();
-                    if (active != null) {
-                        active.generationDepth(
-                                ((Number) depthSpinner.getValue()).intValue());
-                    }
-                    // If NO class can be populated, say so instead of opening an
-                    // empty instances panel.
-                    boolean anyGeneratable = projectModel.classes().stream()
-                            .anyMatch(c -> membershipProblem(c) == null);
-                    if (!anyGeneratable) {
-                        warnNothingToGenerate(membershipProblem(
-                                projectModel.rootClass()));
-                        return;
-                    }
-                    processRunner.run(
-                            new GenerateDomainProcess(projectModel.copy()),
-                            outcome -> {
-                                if (outcome.usefulResult().isPresent()) {
-                                    acceptGenerationRun(outcome.usefulResult().get());
-                                }
-                                if (outcome.status() == ProcessStatus.FAILED
-                                        && outcome.error() instanceof Exception ex) {
-                                    reportGenerationError(ex);
-                                }
-                            },
-                            error -> reportGenerationError(
-                                    error instanceof Exception ex
-                                            ? ex : new RuntimeException(error)));
+                sourceWorkbench.applyEdits();
+                // Per-class depth (saved on each class) is used; sync the
+                // active class's spinner value first.
+                GeneratedClassModel active = activeClass();
+                if (active != null) {
+                    active.generationDepth(
+                            ((Number) depthSpinner.getValue()).intValue());
+                }
+                // If NO class can be populated, say so instead of opening an
+                // empty instances panel.
+                boolean anyGeneratable = projectModel.classes().stream()
+                                                     .anyMatch(c -> membershipProblem(c) == null);
+                if (!anyGeneratable) {
+                    warnNothingToGenerate(membershipProblem(
+                            projectModel.rootClass()));
+                    return;
+                }
+                processRunner.run(
+                        new GenerateDomainProcess(projectModel.copy()),
+                        outcome -> {
+                            if (outcome.usefulResult().isPresent()) {
+                                acceptGenerationRun(outcome.usefulResult().get());
+                            }
+                            if (outcome.status() == ProcessStatus.FAILED
+                                    && outcome.error() instanceof Exception ex) {
+                                reportGenerationError(ex);
+                            }
+                        },
+                        error -> reportGenerationError(
+                                error instanceof Exception ex
+                                        ? ex : new RuntimeException(error)));
             } catch (Exception ex) {
                 reportGenerationError(ex);
             }
@@ -747,7 +649,6 @@ public class ModelBuilderFrame extends JFrame {
                 this::reportGenerationError);
 
         showInstancesButton.addActionListener(e -> showInstancesWindow());
-        enrichButton.addActionListener(e -> enrichInstances());
         showStatementsButton.addActionListener(e -> showStatementsWindow(queryRunner));
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());
@@ -821,17 +722,17 @@ public class ModelBuilderFrame extends JFrame {
                 // vocabularies (e.g. OscarCategories).
                 int filledVocabs = mergeBuiltVocabularies(run.modelSnapshot());
                 if (filledVocabs > 0) {
-                    classModelPanel.refresh();
+                    modelChanged();
                     logWindow.info(filledVocabs + " vocabulary(ies) filled from the "
-                            + "generated data — use \"Save domain\" to persist them.");
+                                           + "generated data — use \"Save domain\" to persist them.");
                 }
                 // Do NOT auto-save: generating used to silently overwrite the
                 // project snapshot (a greekmyth run clobbered constellations).
                 // The run is held in memory + shown here; persisting is explicit
                 // and confirmed via "Save domain".
                 logWindow.info("Generated " + run.size()
-                        + " objects (in memory — use \"Save domain\" to persist "
-                        + "to " + snapshotFile().getName() + ").");
+                                       + " objects (in memory — use \"Save domain\" to persist "
+                                       + "to " + snapshotFile().getName() + ").");
                 reportNameCollisions(run);
                 showInstancesWindow(); // pop the results window on a fresh run
             } else {
@@ -916,10 +817,10 @@ public class ModelBuilderFrame extends JFrame {
         }
         java.util.List<java.util.Map.Entry<String, java.util.LinkedHashSet<String>>> collisions =
                 byName.entrySet().stream()
-                        .filter(e -> e.getValue().size() > 1)
-                        .sorted((a, b) -> Integer.compare(
-                                b.getValue().size(), a.getValue().size()))
-                        .toList();
+                      .filter(e -> e.getValue().size() > 1)
+                      .sorted((a, b) -> Integer.compare(
+                              b.getValue().size(), a.getValue().size()))
+                      .toList();
         if (collisions.isEmpty()) {
             return;
         }
@@ -996,17 +897,10 @@ public class ModelBuilderFrame extends JFrame {
         // entity navigates to (focuses + scrolls to) its card in the instances
         // window instead of opening a detached copy.
         RenderContext shared = instancesPanel.activeRenderContext();
-        RenderContext context = shared != null ? shared : new RenderContext();
-        view.setRenderContext(context);
         if (shared != null) {
+            view.setRenderContext(shared);
             view.setInPlaceNavigation(true);
         }
-        // The whole point of this window is telling apart entities that share a
-        // name, so each colliding entity must show WHICH entity it is: stamp the
-        // same Wikidata QID chip the instances browser uses. Set on a context we
-        // are sure exists — inheriting it only works once instances have rendered,
-        // and until then the window opened with no chips at all.
-        context.setCardDecorator(IdentityChip::ofInstance);
         for (NameCollision c : lastCollisions) {
             view.addViewable(c);
         }
@@ -1066,6 +960,24 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     // Guided build-steps for the active class: the model-builder explaining itself.
+    /**
+     * The model changed — re-render EVERY view of it. The class tree is only one:
+     * the model graph and the build guide draw from the same model and silently
+     * went stale whenever a caller remembered the tree and forgot them, which is
+     * why a domain switch or a generation run left them describing the previous
+     * model. One call, so a new mutation site cannot refresh some views and not
+     * others. Selection changes are NOT model changes and stay separate.
+     */
+    private void modelChanged() {
+        classModelPanel.refresh();
+        if (graphWindow != null && graphWindow.isVisible()) {
+            graphPanel.setModel(projectModel);
+        }
+        if (guidePanel != null && guideWindow != null && guideWindow.isVisible()) {
+            guidePanel.refresh();
+        }
+    }
+
     private void showGuide() {
         if (guideWindow == null) {
             guidePanel = new ModelingGuidePanel(this::guideContext);
@@ -1080,12 +992,16 @@ public class ModelBuilderFrame extends JFrame {
         guideWindow.toFront();
     }
 
-    // The decision context = current project + active class. (Reify/invert constructs
-    // now live on the model + compiled pipeline, so there is no separate transform.)
+    // The context follows the exact tree selection: domain, class or field.
     private wikidata.explore.advisor.DecisionContext guideContext() {
-        GeneratedClassModel active = activeClass();
+        Object selected = classModelPanel.selectedUserObject();
+        GeneratedFieldModel field = selected instanceof GeneratedFieldModel f ? f : null;
+        GeneratedClassModel active = selected instanceof GeneratedClassModel c
+                ? c
+                : field == null ? null : activeClass();
         return new wikidata.explore.advisor.DecisionContext(
-                projectModel, active, new wikidata.explore.transform.TransformConfig());
+                projectModel, active, field,
+                new wikidata.explore.transform.TransformConfig());
     }
 
     // Surfaces a generation failure visibly (a dialog plus the log) rather than
@@ -1105,9 +1021,9 @@ public class ModelBuilderFrame extends JFrame {
         String body = message + (hint.isBlank() ? "" : "\n\n" + hint);
 
         SwingUtilities.invokeLater(() ->
-                JOptionPane.showMessageDialog(
-                        this, body, "Generation failed",
-                        JOptionPane.ERROR_MESSAGE));
+                                           JOptionPane.showMessageDialog(
+                                                   this, body, "Generation failed",
+                                                   JOptionPane.ERROR_MESSAGE));
     }
 
     private static String hintFor(String message) {
@@ -1154,7 +1070,12 @@ public class ModelBuilderFrame extends JFrame {
             try {
                 for (quiz.DatasetRegistry.Dataset d
                         : quiz.DatasetRegistry.load().datasets()) {
-                    if (d.name() != null && !d.name().isBlank()) {
+                    // Only MODEL-backed domains: a dataset saved from a TransformApp
+                    // working set has no model or rule tree, so ModelBuilder could
+                    // neither open nor regenerate it — listing it only offered a
+                    // switch that lands on a model file that does not exist.
+                    if (d.isModelBacked()
+                            && d.name() != null && !d.name().isBlank()) {
                         names.add(d.name());
                     }
                 }
@@ -1209,9 +1130,9 @@ public class ModelBuilderFrame extends JFrame {
         File model = domainModelFile(name);
         if (model == null || !model.isFile()) {
             JOptionPane.showMessageDialog(this,
-                    "No saved model for domain \"" + name + "\" at\n"
-                            + (model == null ? "(unknown)" : model.getPath()),
-                    "Cannot switch domain", JOptionPane.WARNING_MESSAGE);
+                                          "No saved model for domain \"" + name + "\" at\n"
+                                                  + (model == null ? "(unknown)" : model.getPath()),
+                                          "Cannot switch domain", JOptionPane.WARNING_MESSAGE);
             refreshDomainBox();
             return;
         }
@@ -1231,7 +1152,7 @@ public class ModelBuilderFrame extends JFrame {
                     new GeneratedProjectModelStore().load(model));
             lastRun = null;
             instancesPanel.clear();
-            classModelPanel.refresh();
+            modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
             logWindow.info("Loaded domain \"" + projectModel.name() + "\".");
@@ -1253,8 +1174,8 @@ public class ModelBuilderFrame extends JFrame {
         }
         if (findDataset(name) != null) {
             int c = JOptionPane.showConfirmDialog(this,
-                    "A domain \"" + name + "\" already exists. Switch to it?",
-                    "Domain exists", JOptionPane.OK_CANCEL_OPTION);
+                                                  "A domain \"" + name + "\" already exists. Switch to it?",
+                                                  "Domain exists", JOptionPane.OK_CANCEL_OPTION);
             if (c == JOptionPane.OK_OPTION) {
                 switchToDomain(name);
             } else {
@@ -1275,12 +1196,12 @@ public class ModelBuilderFrame extends JFrame {
         projectModel.copyContentsFrom(fresh);
         lastRun = null;
         instancesPanel.clear();
-        classModelPanel.refresh();
+        modelChanged();
         sourceWorkbench.edit(projectModel.rootClass());
         syncDepthSpinnerToActiveClass();
         refreshDomainBox();
         logWindow.info("Created new domain \"" + name + "\". Configure its "
-                + "classes, then \"Save domain\" to persist + register it.");
+                               + "classes, then \"Save domain\" to persist + register it.");
     }
 
     // Rename in place: move the domain folder and re-key the files inside, then
@@ -1304,9 +1225,9 @@ public class ModelBuilderFrame extends JFrame {
         File newDir = new File(Constants.wikidataDataDirectory + newKey + "/");
         if (!newKey.equals(oldKey) && newDir.exists()) {
             JOptionPane.showMessageDialog(this,
-                    "A domain folder already exists at\n" + newDir.getPath()
-                            + "\nChoose a different name.",
-                    "Rename domain", JOptionPane.WARNING_MESSAGE);
+                                          "A domain folder already exists at\n" + newDir.getPath()
+                                                  + "\nChoose a different name.",
+                                          "Rename domain", JOptionPane.WARNING_MESSAGE);
             return;
         }
         try {
@@ -1323,7 +1244,7 @@ public class ModelBuilderFrame extends JFrame {
             }
             projectModel.name(name); // projectKey()/file paths now use newKey
             rekeyRegistry(oldKey);
-            classModelPanel.refresh();
+            modelChanged();
             refreshDomainBox();
             logWindow.info("Renamed domain \"" + oldName + "\" -> \"" + name + "\".");
         } catch (Exception ex) {
@@ -1358,11 +1279,11 @@ public class ModelBuilderFrame extends JFrame {
         String key = projectKey();
         File dir = projectDataDir();
         int c = JOptionPane.showConfirmDialog(this,
-                "Delete domain \"" + name + "\"?\n\n"
-                        + "Removes it from the registry and deletes:\n"
-                        + dir.getPath() + "\n\nThis cannot be undone.",
-                "Delete domain",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+                                              "Delete domain \"" + name + "\"?\n\n"
+                                                      + "Removes it from the registry and deletes:\n"
+                                                      + dir.getPath() + "\n\nThis cannot be undone.",
+                                              "Delete domain",
+                                              JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
         if (c != JOptionPane.OK_OPTION) {
             refreshDomainBox();
             return;
@@ -1395,7 +1316,7 @@ public class ModelBuilderFrame extends JFrame {
             projectModel.copyContentsFrom(GeneratedProjectModel.constellationDemo());
             lastRun = null;
             instancesPanel.clear();
-            classModelPanel.refresh();
+            modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
         }
@@ -1421,11 +1342,11 @@ public class ModelBuilderFrame extends JFrame {
         }
         try {
             projectModel.copyContentsFrom(new GeneratedProjectModelStore().load(f));
-            classModelPanel.refresh();
+            modelChanged();
             syncDepthSpinnerToActiveClass();
         } catch (Exception ex) {
             System.err.println("Could not load saved model " + f.getPath()
-                    + ": " + ex.getMessage());
+                                       + ": " + ex.getMessage());
         }
     }
 
@@ -1480,14 +1401,14 @@ public class ModelBuilderFrame extends JFrame {
         File model = findInDir(dir, ".model.json");
         if (model == null) {
             JOptionPane.showMessageDialog(this,
-                    "No *.model.json found in\n" + dir.getPath(),
-                    "Load domain", JOptionPane.WARNING_MESSAGE);
+                                          "No *.model.json found in\n" + dir.getPath(),
+                                          "Load domain", JOptionPane.WARNING_MESSAGE);
             return;
         }
         try {
             projectModel.copyContentsFrom(
                     new GeneratedProjectModelStore().load(model));
-            classModelPanel.refresh();
+            modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
             refreshDomainBox();
@@ -1505,9 +1426,9 @@ public class ModelBuilderFrame extends JFrame {
         File file = findInDir(dir, ".snapshot.json");
         if (file == null) {
             JOptionPane.showMessageDialog(this,
-                    "No *.snapshot.json found in\n" + dir.getPath()
-                            + "\n(generate + save the domain first)",
-                    "Load saved", JOptionPane.WARNING_MESSAGE);
+                                          "No *.snapshot.json found in\n" + dir.getPath()
+                                                  + "\n(generate + save the domain first)",
+                                          "Load saved", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -1520,10 +1441,10 @@ public class ModelBuilderFrame extends JFrame {
             if (ds != null && !ds.modelSignature().isEmpty()
                     && !ds.modelSignature().equals(modelSignature(projectModel))) {
                 JOptionPane.showMessageDialog(this,
-                        "These saved instances were generated from a DIFFERENT model\n"
-                        + "version than the current model. Fields may not match —\n"
-                        + "\"Generate instances\" to refresh them.",
-                        "Instances may be stale", JOptionPane.WARNING_MESSAGE);
+                                              "These saved instances were generated from a DIFFERENT model\n"
+                                                      + "version than the current model. Fields may not match —\n"
+                                                      + "\"Generate instances\" to refresh them.",
+                                              "Instances may be stale", JOptionPane.WARNING_MESSAGE);
             }
 
             GeneratedProjectModel snapshot = projectModel.copy();
@@ -1534,13 +1455,13 @@ public class ModelBuilderFrame extends JFrame {
             // display-name spec set/edited after this snapshot was saved takes
             // effect on load (e.g. a Nomination shows its nominee) — no re-download.
             wikidata.explore.transform.Canonicalization.apply(snapshot, objects,
-                    wikidata.explore.extract.GenerationLog.of(logWindow::info));
+                                                              wikidata.explore.extract.GenerationLog.of(logWindow::info));
 
             // Derive the descriptive vocabularies (NomineeType, WorkGenre) from the
             // loaded pool — they are not persisted, so load is where they come back.
             // acceptGenerationRun then folds them into the live model for display.
             wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, objects,
-                    wikidata.explore.extract.GenerationLog.of(logWindow::info));
+                                                                        wikidata.explore.extract.GenerationLog.of(logWindow::info));
 
             GenerationPipeline pipeline = new GenerationPipeline();
             RuleNode plan = pipeline.plan(snapshot);
@@ -1570,9 +1491,9 @@ public class ModelBuilderFrame extends JFrame {
         c.instanceMapping().sourceQid(qid);
         c.instanceMapping().sourceLabel(label == null ? "" : label);
         sourceWorkbench.edit(c);
-        classModelPanel.refresh();
+        modelChanged();
         logWindow.info("Set source of \"" + c.className() + "\" to "
-                + qid + (label == null ? "" : " (" + label + ")") + ".");
+                               + qid + (label == null ? "" : " (" + label + ")") + ".");
     }
 
     // Fill the selected class's seed-QID set (these entities become its
@@ -1590,11 +1511,11 @@ public class ModelBuilderFrame extends JFrame {
             }
         }
         sourceWorkbench.edit(c);
-        classModelPanel.refresh();
+        modelChanged();
         logWindow.info((replace ? "Replaced" : "Added") + " seed QIDs on \""
-                + c.className() + "\": " + added + " (total "
-                + c.seedQids().size() + "). Empty the Wikidata type to use only "
-                + "these as instances.");
+                               + c.className() + "\": " + added + " (total "
+                               + c.seedQids().size() + "). Empty the Wikidata type to use only "
+                               + "these as instances.");
     }
 
     // Add explored members to the active class's membership-relation targets
@@ -1611,11 +1532,11 @@ public class ModelBuilderFrame extends JFrame {
             }
         }
         sourceWorkbench.edit(c);
-        classModelPanel.refresh();
+        modelChanged();
         logWindow.info("Added " + added + " relation target(s) to \""
-                + c.className() + "\" (total " + targets.size()
-                + "). They join the membership relation (" + c.instanceMapping()
-                .propertyPid() + ") as additional targets.");
+                               + c.className() + "\" (total " + targets.size()
+                               + "). They join the membership relation (" + c.instanceMapping()
+                                                                             .propertyPid() + ") as additional targets.");
     }
 
     // The class the toolbar actions operate on: the one selected in the class
@@ -1700,9 +1621,9 @@ public class ModelBuilderFrame extends JFrame {
         try {
             RuleNode root = RuleTreeCompiler.compileProject(model);
             String json = new RuleTreeSerializer().mapper()
-                    .writeValueAsString(RuleTreeConfig.of(root));
+                                                  .writeValueAsString(RuleTreeConfig.of(root));
             byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                                     .digest(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) {
                 sb.append(String.format("%02x", b));
@@ -1762,12 +1683,12 @@ public class ModelBuilderFrame extends JFrame {
         if (haveInstances && !runSig.isEmpty()
                 && !runSig.equals(modelSignature(projectModel))) {
             int d = JOptionPane.showConfirmDialog(this,
-                    "The model has changed since these instances were generated.\n"
-                    + "The saved snapshot will be STALE (not match the saved model).\n\n"
-                    + "Regenerate (Cancel, then \"Generate instances\") before saving,\n"
-                    + "or save anyway?",
-                    "Model changed since generation",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+                                                  "The model has changed since these instances were generated.\n"
+                                                          + "The saved snapshot will be STALE (not match the saved model).\n\n"
+                                                          + "Regenerate (Cancel, then \"Generate instances\") before saving,\n"
+                                                          + "or save anyway?",
+                                                  "Model changed since generation",
+                                                  JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
             if (d != JOptionPane.OK_OPTION) {
                 return;
             }
@@ -1783,13 +1704,13 @@ public class ModelBuilderFrame extends JFrame {
             dropped.removeAll(runTypes);
             if (!dropped.isEmpty()) {
                 int d = JOptionPane.showConfirmDialog(this,
-                        "This run produced only: "
-                        + String.join(", ", runTypes) + ".\n"
-                        + "Saving will OVERWRITE the snapshot and DROP these "
-                        + "existing types: " + String.join(", ", dropped) + ".\n\n"
-                        + "Use \"Generate domain\" to keep every class. Save anyway?",
-                        "Overwriting a multi-class snapshot",
-                        JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+                                                      "This run produced only: "
+                                                              + String.join(", ", runTypes) + ".\n"
+                                                              + "Saving will OVERWRITE the snapshot and DROP these "
+                                                              + "existing types: " + String.join(", ", dropped) + ".\n\n"
+                                                              + "Use \"Generate domain\" to keep every class. Save anyway?",
+                                                      "Overwriting a multi-class snapshot",
+                                                      JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
                 if (d != JOptionPane.OK_OPTION) {
                     return;
                 }
@@ -1801,8 +1722,8 @@ public class ModelBuilderFrame extends JFrame {
                 + "Config:    " + modelFile().getPath() + "\n"
                 + "Rule tree: " + ruleTreeFile().getPath() + "\n"
                 + "Instances: " + (haveInstances
-                        ? lastRun.dynamicObjects().size() + " -> " + snapshotFile().getPath()
-                        : "(none generated yet — will be skipped)");
+                ? lastRun.dynamicObjects().size() + " -> " + snapshotFile().getPath()
+                : "(none generated yet — will be skipped)");
         int choice = JOptionPane.showConfirmDialog(
                 this, plan, "Save domain",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
@@ -1863,9 +1784,9 @@ public class ModelBuilderFrame extends JFrame {
                 report.append("Counts:    ").append(counts.getPath()).append('\n');
             } else {
                 report.append("Instances: (none generated yet — run "
-                                       + "\"Generate instances\" first; not "
-                                       + "registered until model + snapshot are "
-                                       + "saved together)\n");
+                                      + "\"Generate instances\" first; not "
+                                      + "registered until model + snapshot are "
+                                      + "saved together)\n");
             }
 
             logWindow.info("Saved domain \"" + projectModel.name() + "\":\n" + report);
@@ -1885,7 +1806,7 @@ public class ModelBuilderFrame extends JFrame {
     private File countsFile() {
         File snap = snapshotFile();
         return new File(snap.getParentFile(),
-                snap.getName().replaceFirst("\\.snapshot\\.json$", "") + ".counts.tsv");
+                        snap.getName().replaceFirst("\\.snapshot\\.json$", "") + ".counts.tsv");
     }
 
     // Appends ONE timestamped per-class row (distinct-qid counts) per save, so runs
@@ -1922,7 +1843,7 @@ public class ModelBuilderFrame extends JFrame {
             try (java.io.FileWriter w = new java.io.FileWriter(file, true)) {
                 if (fresh) {
                     w.write("# " + projectModel.name()
-                            + " — per-class distinct-qid counts, one row per save\n");
+                                    + " — per-class distinct-qid counts, one row per save\n");
                 }
                 w.write(row.toString());
             }
@@ -1940,7 +1861,7 @@ public class ModelBuilderFrame extends JFrame {
             d.name(projectModel.name());
             d.key(projectKey());
             d.rootClass(projectModel.rootClass() == null
-                    ? "" : projectModel.rootClass().className());
+                                ? "" : projectModel.rootClass().className());
             d.modelPath(modelFile().getPath());
             d.ruletreePath(ruleTreeFile().getPath());
             d.snapshotPath(snapshotFile().getPath());
@@ -1988,7 +1909,7 @@ public class ModelBuilderFrame extends JFrame {
                 && lastRun.modelSnapshot().rootClass().className().equals(cls.className());
         boolean modelUnchanged = runMatchesClass
                 && modelSignature(projectModel)
-                        .equals(modelSignature(lastRun.modelSnapshot()));
+                .equals(modelSignature(lastRun.modelSnapshot()));
 
         if (modelUnchanged) {
             source = lastRun.runtime().source();
@@ -2000,8 +1921,8 @@ public class ModelBuilderFrame extends JFrame {
             source = gen.sourceFor(cls, projectModel);
             title = gen.qualifiedClassName(cls)
                     + (runMatchesClass
-                            ? "  (preview — model changed since last generate)"
-                            : "  (preview - not yet compiled)");
+                    ? "  (preview — model changed since last generate)"
+                    : "  (preview - not yet compiled)");
         }
 
         JTextArea area = new JTextArea(source, 40, 120);
@@ -2033,7 +1954,7 @@ public class ModelBuilderFrame extends JFrame {
             RuleNode root = RuleTreeCompiler.compileClass(activeClass(), projectModel);
             readable = RuleTreeExplainer.explain(root);
             json = new RuleTreeSerializer().mapper()
-                    .writeValueAsString(RuleTreeConfig.of(root));
+                                           .writeValueAsString(RuleTreeConfig.of(root));
         } catch (Exception ex) {
             reportGenerationError(ex);
             return;

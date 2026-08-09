@@ -38,6 +38,20 @@ public final class DatasetRegistry {
 
         public Dataset() {}
 
+        /**
+         * Whether this dataset was built from a MODEL — a ModelBuilder domain with a
+         * saved model + rule tree — as opposed to assembled directly from a working
+         * set and saved as a snapshot (a TransformApp save, which leaves the model
+         * fields blank on purpose: there is no model behind it).
+         *
+         * <p>The distinction is the data's own, not a flag bolted on: only a
+         * model-backed dataset can be reopened, regenerated or signature-checked, so
+         * ModelBuilder lists these and nothing else.
+         */
+        public boolean isModelBacked() {
+            return !modelPath.isBlank();
+        }
+
         public String name() { return name; }
         public void name(String v) { name = v == null ? "" : v; }
         public String key() { return key; }
