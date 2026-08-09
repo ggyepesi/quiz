@@ -131,7 +131,7 @@ public class ModelBuilderFrame extends JFrame {
 
     // Graph view of the model (classes = nodes, reference fields = edges).
     private JFrame graphWindow;
-    private final RuleTreeGraphPanel graphPanel = new RuleTreeGraphPanel();
+    private final ModelGraphPanel graphPanel = new ModelGraphPanel();
 
     // Domain = the whole project (name + its classes), keyed by name. The combo
     // lists every domain in the dataset registry; New/Rename/Delete manage them.

@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -30,33 +31,45 @@ import java.util.function.Consumer;
  * the workbench — the graph is a map + selector, not an editor (the class/field
  * panels stay where they are).
  */
-public class RuleTreeGraphPanel extends JPanel {
+public class ModelGraphPanel extends JPanel {
 
-    private static final int NODE_W = 170;
+    private static final int NODE_W = 230;
     private static final int H_GAP = 60;
     private static final int V_GAP = 70;
     private static final int MARGIN = 30;
     private static final int LINE_H = 15;
-    private static final int HEAD_H = 26;
+    private static final int HEAD_H = 41;
 
     private record Edge(String from, String to, String field) {}
+    private record FieldLine(String name, String display) {}
+    private record FieldKey(String className, String fieldName) {}
 
     private final Map<String, GeneratedClassModel> classes = new LinkedHashMap<>();
     private final Map<String, Rectangle> nodeRects = new HashMap<>();
     private final List<Edge> edges = new ArrayList<>();
-    private final Map<String, List<String>> scalarFields = new HashMap<>();
+    private final Map<String, List<FieldLine>> scalarFields = new HashMap<>();
+    private final Map<String, String> classCues = new HashMap<>();
+    private final Map<FieldKey, Rectangle> fieldRects = new LinkedHashMap<>();
 
     private String selected = "";
     private Consumer<String> onClassSelected = c -> {};
     private Consumer<String> onClassExplore = c -> {};
+    private BiConsumer<String, String> onFieldSelected = (c, f) -> {};
     private Dimension size = new Dimension(400, 200);
 
-    public RuleTreeGraphPanel() {
+    public ModelGraphPanel() {
         setBackground(Color.WHITE);
         setToolTipText("Click a class to select it; double-click to explore its "
-                + "Wikidata type's relations");
+                               + "Wikidata type's relations");
         addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
+                FieldKey field = fieldAt(e.getPoint());
+                if (field != null) {
+                    selected = field.className();
+                    repaint();
+                    onFieldSelected.accept(field.className(), field.fieldName());
+                    return;
+                }
                 String hit = nodeAt(e.getPoint());
                 if (hit == null) {
                     return;
@@ -72,6 +85,15 @@ public class RuleTreeGraphPanel extends JPanel {
         });
     }
 
+    private FieldKey fieldAt(Point p) {
+        for (Map.Entry<FieldKey, Rectangle> en : fieldRects.entrySet()) {
+            if (en.getValue().contains(p)) {
+                return en.getKey();
+            }
+        }
+        return null;
+    }
+
     private String nodeAt(Point p) {
         for (Map.Entry<String, Rectangle> en : nodeRects.entrySet()) {
             if (en.getValue().contains(p)) {
@@ -83,6 +105,11 @@ public class RuleTreeGraphPanel extends JPanel {
 
     public void onClassSelected(Consumer<String> handler) {
         this.onClassSelected = handler == null ? c -> {} : handler;
+    }
+
+    /** Clicking a scalar field selects that exact field in the workbench. */
+    public void onFieldSelected(BiConsumer<String, String> handler) {
+        this.onFieldSelected = handler == null ? (c, f) -> {} : handler;
     }
 
     /** Fired on double-click — host opens the Explorer on the class's type. */
@@ -100,6 +127,8 @@ public class RuleTreeGraphPanel extends JPanel {
         classes.clear();
         edges.clear();
         scalarFields.clear();
+        classCues.clear();
+        fieldRects.clear();
         nodeRects.clear();
         if (model == null) {
             size = new Dimension(400, 120);
@@ -114,7 +143,8 @@ public class RuleTreeGraphPanel extends JPanel {
             }
         }
         for (GeneratedClassModel c : classes.values()) {
-            List<String> scalars = new ArrayList<>();
+            classCues.put(c.className(), classSourceCue(c, model));
+            List<FieldLine> scalars = new ArrayList<>();
             for (GeneratedFieldModel f : c.fields()) {
                 if (f == null || f.name() == null || f.name().isBlank()) {
                     continue;
@@ -123,9 +153,10 @@ public class RuleTreeGraphPanel extends JPanel {
                 if (target != null && !target.isBlank() && classes.containsKey(target)) {
                     boolean coll = f.cardinality() == FieldCardinality.COLLECTION;
                     edges.add(new Edge(c.className(), target,
-                            f.name() + (coll ? " [*]" : "")));
+                                       f.name() + (coll ? " [*]" : "")
+                                               + " · " + sourceCue(f)));
                 } else {
-                    scalars.add(f.name());
+                    scalars.add(new FieldLine(f.name(), f.name() + "  " + sourceCue(f)));
                 }
             }
             scalarFields.put(c.className(), scalars);
@@ -178,7 +209,7 @@ public class RuleTreeGraphPanel extends JPanel {
             maxW = Math.max(maxW, x);
         }
         int maxY = nodeRects.values().stream()
-                .mapToInt(r -> r.y + r.height).max().orElse(200);
+                            .mapToInt(r -> r.y + r.height).max().orElse(200);
         size = new Dimension(maxW + MARGIN, maxY + MARGIN);
     }
 
@@ -198,9 +229,10 @@ public class RuleTreeGraphPanel extends JPanel {
         super.paintComponent(g0);
         Graphics2D g = (Graphics2D) g0;
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                RenderingHints.VALUE_ANTIALIAS_ON);
+                           RenderingHints.VALUE_ANTIALIAS_ON);
 
         // Edges first, under the nodes.
+        fieldRects.clear();
         for (Edge e : edges) {
             Rectangle a = nodeRects.get(e.from());
             Rectangle b = nodeRects.get(e.to());
@@ -237,10 +269,15 @@ public class RuleTreeGraphPanel extends JPanel {
             g.drawString(name, r.x + 8, r.y + 17);
             g.setFont(base.deriveFont(Font.PLAIN, 11f));
             g.setColor(new Color(0x55, 0x55, 0x55));
+            g.drawString(fit(g, classCues.getOrDefault(name, "membership: ?"),
+                             r.width - 16), r.x + 8, r.y + 32);
             int fy = r.y + HEAD_H + 4;
-            List<String> sc = scalarFields.getOrDefault(name, List.of());
+            List<FieldLine> sc = scalarFields.getOrDefault(name, List.of());
             for (int i = 0; i < Math.min(sc.size(), 6); i++) {
-                g.drawString("· " + sc.get(i), r.x + 8, fy);
+                FieldLine line = sc.get(i);
+                fieldRects.put(new FieldKey(name, line.name()),
+                               new Rectangle(r.x + 4, fy - LINE_H + 3, r.width - 8, LINE_H));
+                g.drawString(fit(g, "· " + line.display(), r.width - 16), r.x + 8, fy);
                 fy += LINE_H;
             }
             if (sc.size() > 6) {
@@ -248,6 +285,54 @@ public class RuleTreeGraphPanel extends JPanel {
             }
             g.setFont(base);
         }
+    }
+
+    private static String sourceCue(GeneratedFieldModel field) {
+        String source = switch (field.mapping().sourceType()) {
+            case SPARQL -> "WD";
+            case DBPEDIA -> "DB";
+            case WIKIDATA_API -> "WD-API";
+            case BACKLINKS -> "backlinks";
+            case WIKIPEDIA_CATEGORY -> "category";
+            case WIKIPROJECT -> "project";
+            case COMMONS -> "Commons";
+            case MANUAL -> "manual";
+        };
+        String property = field.mapping().propertyPid().isBlank()
+                ? "?" : field.mapping().propertyPid();
+        String direction = wikidata.explore.model.FieldSemantics.effectiveDirection(field)
+                == wikidata.explore.model.RuleDirection.ROOT_TO_ITEM ? "→" : "←";
+        return source + ":" + property + " " + direction;
+    }
+
+    private static String classSourceCue(
+            GeneratedClassModel clazz,
+            GeneratedProjectModel project) {
+        var mapping = clazz.effectiveInstanceMapping(project);
+        if (mapping.propertyPid().isBlank()) {
+            return clazz.seedQids().isEmpty()
+                    ? "membership: ?"
+                    : "membership: " + clazz.seedQids().size() + " seed QID"
+                      + (clazz.seedQids().size() == 1 ? "" : "s");
+        }
+        String target = mapping.sourceQid().isBlank()
+                ? "?" : mapping.sourceQid();
+        String direction = mapping.direction()
+                == wikidata.explore.model.RuleDirection.ROOT_TO_ITEM ? "→" : "←";
+        return "members: WD:" + mapping.propertyPid() + " " + direction + " " + target;
+    }
+
+    private static String fit(Graphics2D g, String text, int width) {
+        if (g.getFontMetrics().stringWidth(text) <= width) {
+            return text;
+        }
+        String suffix = "…";
+        int end = text.length();
+        while (end > 0
+                && g.getFontMetrics().stringWidth(text.substring(0, end) + suffix) > width) {
+            end--;
+        }
+        return text.substring(0, end) + suffix;
     }
 
     private static void drawArrowHead(Graphics2D g, int x1, int y1, int x2, int y2) {
