@@ -279,12 +279,31 @@ public class WikidataSparqlClient implements AutoCloseable {
      * from (a 4xx other than 429) is a client error not worth repeating. A 429 or
      * 5xx, or a bare network error, is retried until attempts run out.
      */
+    /**
+     * A truncated partial-200 IS retried. Measured: a residual field batch (100
+     * members, two OPTIONAL scalars, label SERVICE) truncated mid-run and then
+     * returned 317 rows in 1-2s, twice, byte-identical — the truncation was
+     * transient pressure on WDQS, not a query that cannot finish. The bodies stop
+     * on buffer boundaries (32 KiB, 448 KiB observed), i.e. the response stream is
+     * closed early rather than the query timing out.
+     *
+     * <p>A query that genuinely cannot finish fails the same way every attempt and
+     * simply exhausts the budget — costing two extra requests, which is the right
+     * price for telling the two apart. Narrowing such a query is the caller's job,
+     * not the transport's: a smaller query is a different query.
+     *
+     * <p>A client-side {@link java.net.http.HttpTimeoutException} stays
+     * non-retryable — there the 60s wall was actually hit, so a verbatim re-issue
+     * burns another 60s for the same result.
+     */
     static boolean shouldRetry(Throwable error, int attemptsLeft) {
         if (attemptsLeft <= 1
                 || isCancellation(error)
-                || isTimeout(error)
-                || isTruncated(error)) {   // soft-timeout: same query overruns again
+                || isTimeout(error)) {
             return false;
+        }
+        if (isTruncated(error)) {
+            return true;
         }
         SparqlHttpException http = httpError(error);
         return http == null || isRetryableStatus(http.statusCode());
@@ -409,17 +428,18 @@ public class WikidataSparqlClient implements AutoCloseable {
             // Mirror to the console so it's copyable even when the UI dialog isn't.
             System.err.println("[SPARQL parse] " + msg);
 
-            // A truncated partial-200 means the query overran WDQS's timeout;
-            // re-issuing the same too-slow query just times out again, so mark it
-            // non-retryable and let the caller fall back immediately.
+            // Distinguished from an ordinary parse failure so the retry policy can
+            // re-issue it (see shouldRetry): a truncated body is usually transient
+            // pressure on WDQS, not an unfinishable query.
             throw truncated
                     ? new TruncatedResponseException(msg, e)
                     : new RuntimeException(msg, e);
         }
     }
 
-    /** A partial/truncated 200 response body (WDQS soft-timeout). Not retryable —
-     *  the same query would overrun again. */
+    /** A partial/truncated 200 response body: HTTP 200 whose JSON stops mid-object,
+     *  because WDQS closed the response stream early. Retried — see
+     *  {@link #shouldRetry} for the evidence and for the case it does not cover. */
     public static final class TruncatedResponseException
             extends RuntimeException {
         public TruncatedResponseException(String message, Throwable cause) {

@@ -54,13 +54,30 @@ class WikidataSparqlClientRetryTest {
     }
 
     @Test
-    void aTruncatedPartial200IsNotRetried() {
-        // A soft-timeout (truncated body) would just overrun again on retry.
-        assertFalse(WikidataSparqlClient.shouldRetry(
+    void aTruncatedPartial200IsRetried() {
+        // Measured: a batch that truncated mid-run returned 317 rows in 1-2s when
+        // re-issued verbatim, twice. A truncated body is WDQS closing the response
+        // stream early under pressure, not a query that cannot finish — and one
+        // that cannot finish fails identically each attempt and exhausts the budget.
+        assertTrue(WikidataSparqlClient.shouldRetry(
                 new WikidataSparqlClient.TruncatedResponseException("truncated", null), 3));
-        assertFalse(WikidataSparqlClient.shouldRetry(
+        assertTrue(WikidataSparqlClient.shouldRetry(
                 new CompletionException(
                         new WikidataSparqlClient.TruncatedResponseException("t", null)), 3));
+    }
+
+    @Test
+    void aTruncatedPartial200StillStopsAtTheLastAttempt() {
+        assertFalse(WikidataSparqlClient.shouldRetry(
+                new WikidataSparqlClient.TruncatedResponseException("truncated", null), 1));
+    }
+
+    @Test
+    void aClientSideTimeoutIsStillNotRetried() {
+        // Here the 60s wall was actually hit, so a verbatim re-issue burns another
+        // 60s for the same result — unlike a truncation, which returns in seconds.
+        assertFalse(WikidataSparqlClient.shouldRetry(
+                new java.net.http.HttpTimeoutException("request timed out"), 3));
     }
 
     @Test
