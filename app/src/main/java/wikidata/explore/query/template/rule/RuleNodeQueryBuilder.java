@@ -74,11 +74,18 @@ public final class RuleNodeQueryBuilder {
         q.rawWhere(node.direction().triplePattern("?root", "?value", pid));
         appendMembershipFilter(q, node);
         appendSitelinkRequirement(q, node);
+        appendMembershipConstraints(q, node);
         appendAllowedQids(q, node);
         appendExcludedQids(q, node);
         appendPredicateObjectExclusions(q, node);
         appendValueFilterPatterns(q, node, sharedVars);
-        q.limit(node.limit());
+        // The batched backbone decides membership exactly as the single-query one
+        // does: a required field constrains it, and the ranking decides WHICH
+        // `limit` members are kept. Omitting either silently produced an unranked
+        // slice whose members need not carry the required property.
+        if (!appendRankAndLimit(q, node)) {
+            q.limit(node.limit());
+        }
         return q.build();
     }
 
@@ -429,22 +436,8 @@ public final class RuleNodeQueryBuilder {
         if (!useService && !serviceValueLabel && !emptyResult && !skipValueLabel)
             appendLabelPattern(q, node);
 
-        if (node.hasRank()) {
-            // Class-level importance ranking: keep the top `limit` by a measure.
-            // ORDER BY goes INSIDE the limited subquery (R11) so the LIMIT picks
-            // the top-N, not an arbitrary N. Group so a multi-valued measure
-            // aggregates to one row per entity.
-            if (node.rankBySitelinks()) {
-                q.rawWhere("?value wikibase:sitelinks ?rankMeasure .");
-            } else {
-                q.rawWhere("OPTIONAL { ?value wdt:"
-                        + RuleNode.cleanPid(node.rankPropertyPid())
-                        + " ?rankMeasure . }");
-            }
-            q.groupByNonAggregateSelects();
-            q.orderByRaw((node.rankDescending() ? "DESC" : "ASC")
-                    + "(MAX(?rankMeasure))");
-            q.limit(node.limit());
+        if (appendRankAndLimit(q, node)) {
+            // ranked: appendRankAndLimit applied the ORDER BY and the LIMIT
         } else if (inlinedFields.isEmpty()) {
             q.limit(node.limit());
         } else {
@@ -955,6 +948,35 @@ public final class RuleNodeQueryBuilder {
      * value-pairs instead of instances; the values themselves are captured later
      * over the bounded member set.
      */
+
+    /**
+     * Class-level importance ranking plus the LIMIT it governs — THE one place this
+     * is emitted, because every query that decides WHICH instances to keep needs the
+     * identical shape. Returns false when the node has no ranking, leaving the caller
+     * to apply its own LIMIT.
+     *
+     * <p>ORDER BY goes INSIDE the limited subquery (R11) so the LIMIT picks the top-N
+     * rather than an arbitrary N, and the GROUP BY collapses a multi-valued measure to
+     * one row per entity — without it the LIMIT counts measure-rows, not instances.
+     */
+    private static boolean appendRankAndLimit(WikidataQueryBuilder q, RuleNode node) {
+        if (!node.hasRank()) {
+            return false;
+        }
+        if (node.rankBySitelinks()) {
+            q.rawWhere("?value wikibase:sitelinks ?rankMeasure .");
+        } else {
+            q.rawWhere("OPTIONAL { ?value wdt:"
+                    + RuleNode.cleanPid(node.rankPropertyPid())
+                    + " ?rankMeasure . }");
+        }
+        q.groupByNonAggregateSelects();
+        q.orderByRaw((node.rankDescending() ? "DESC" : "ASC")
+                + "(MAX(?rankMeasure))");
+        q.limit(node.limit());
+        return true;
+    }
+
     private static void appendMembershipConstraints(
             WikidataQueryBuilder q, RuleNode node) {
 
