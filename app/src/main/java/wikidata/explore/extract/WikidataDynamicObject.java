@@ -64,6 +64,13 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @JsonIgnore
     private transient Map<String, FieldOrigin> fieldOrigins;
 
+    // Set only when wbgetentities explicitly returns {"missing":""}. A blank/QID
+    // label is not evidence of a dead entity: the label request may have been
+    // rate-limited or interrupted while the reference itself is perfectly valid.
+    @Hidden
+    @JsonIgnore
+    private transient boolean wikidataEntityMissing;
+
     public WikidataDynamicObject() { }
 
     public WikidataDynamicObject(String qid, String name) {
@@ -122,6 +129,12 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     }
 
     public String getQid() { return qid(); }
+
+    public boolean isWikidataEntityMissing() { return wikidataEntityMissing; }
+
+    public void wikidataEntityMissing(boolean missing) {
+        this.wikidataEntityMissing = missing;
+    }
 
     public String getUrl() { return wikidataUrl(); }
 

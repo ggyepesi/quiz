@@ -55,7 +55,7 @@ class WbGetEntitiesParseTest {
     void extractsLabelsAndClaimEntityQidsSkippingDeprecatedAndMissing() throws Exception {
         Map<String, WikidataApiClient.ApiEntity> out = parse(List.of("P31"));
 
-        assertFalse(out.containsKey("Q33"), "missing entity is dropped");
+        assertTrue(out.get("Q33").missing(), "explicit missing entity is retained as evidence");
         assertEquals("First nominee", out.get("Q11").label());
 
         // both id and numeric-id forms resolve; deprecated is skipped, in order.

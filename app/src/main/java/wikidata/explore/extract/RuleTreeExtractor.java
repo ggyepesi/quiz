@@ -971,30 +971,41 @@ public class RuleTreeExtractor {
      * placeholder name (the qid), including references created by Stage 1
      * membership-target capture and Stage 2 member-field capture. One shared
      * best-effort wbgetentities pass (labels only) over the distinct placeholder
-     * qids; a failure warns and leaves the placeholders (names stay the qid).
+     * qids, resolved best-effort: a throttled batch leaves only its own placeholders
+     * named by QID instead of discarding the labels every other batch returned.
+     * That isolation lives in the API client, so the batches still fan out.
      * No-op when nothing is unlabeled (e.g. a small membership whose SERVICE labels
      * already named everything).
      */
-    private void resolveLabels(GenerationLog progress) {
+    void resolveLabels(GenerationLog progress) {
         List<WikidataDynamicObject> placeholders = new ArrayList<>();
         for (WikidataDynamicObject o : registry.values()) {
             if (isPlaceholderLabel(o)) placeholders.add(o);
         }
         if (placeholders.isEmpty()) return;
 
+        // isPlaceholderLabel already required a valid QID, so this is every
+        // placeholder — no index-parallel pairing to keep aligned.
         List<String> qids = placeholders.stream()
                                         .map(WikidataDynamicObject::qid)
-                                        .filter(q -> q != null && WikidataIds.isQid(q))
                                         .toList();
+        int totalBatches = (qids.size() + BATCH_SIZE - 1) / BATCH_SIZE;
         try (GenerationLog.Group g = progress.group("wbgetentities LABELS — "
-                                                            + qids.size() + " refs, " + ((qids.size() + 49) / 50)
+                                                            + qids.size() + " refs, " + totalBatches
                                                             + " batches (names for QID-only references)")) {
-            Map<String, WikidataApiClient.ApiEntity> details =
-                    api().getEntities(qids, List.of(), g::subquery);   // labels only
-            int filled = applyLabels(placeholders, details);
+            // ONE call, so the batches still fan out over the client's pool. Batching
+            // here to isolate a throttled batch would have made the pass serial.
+            WikidataApiClient.PartialEntities resolved =
+                    api().getEntitiesBestEffort(qids, List.of(), g::subquery);
+            int filled = applyLabels(placeholders, resolved.entities());
             g.message("Resolved " + filled + "/" + placeholders.size()
-                              + " entity label(s) via wbgetentities.\n");
+                              + " entity label(s) via wbgetentities"
+                              + (resolved.failedBatches() == 0 ? ".\n"
+                                      : "; " + resolved.failedBatches()
+                                              + " batch(es) failed and keep their QIDs.\n"));
         } catch (Exception e) {
+            // Only interruption and a fatal setup error reach here now; a throttled
+            // batch is absorbed above and costs only its own labels.
             if (Thread.currentThread().isInterrupted()) return;
             progress.message("WARNING: label resolution via wbgetentities failed ("
                                      + e.getMessage() + ") — " + placeholders.size()
@@ -1013,7 +1024,9 @@ public class RuleTreeExtractor {
         for (WikidataDynamicObject o : objects) {
             if (!isPlaceholderLabel(o)) continue;
             WikidataApiClient.ApiEntity e = details.get(o.qid());
-            if (e != null && !e.label().isBlank()) {
+            if (e != null && e.missing()) {
+                o.wikidataEntityMissing(true);
+            } else if (e != null && !e.label().isBlank()) {
                 o.name(e.label());
                 filled++;
             }

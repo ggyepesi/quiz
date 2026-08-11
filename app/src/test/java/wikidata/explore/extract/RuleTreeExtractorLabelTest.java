@@ -8,7 +8,9 @@ import wikidata.explore.model.RuleDirection;
 import wikidata.explore.rule.RuleIncludedField;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -88,5 +90,58 @@ class RuleTreeExtractorLabelTest {
 
         assertEquals(0, filled);
         assertEquals("Q999999", orphan.getDisplayName());
+    }
+
+    @Test
+    void anExplicitMissingResponseMarksAReferenceForDeadStubPruning() {
+        WikidataObjectRegistry registry = new WikidataObjectRegistry();
+        RuleTreeExtractor extractor = new RuleTreeExtractor(null, registry);
+        WikidataDynamicObject orphan = registry.getOrCreate("Q999999", "Q999999");
+
+        extractor.applyLabels(List.of(orphan), Map.of(
+                "Q999999", new WikidataApiClient.ApiEntity(
+                        "Q999999", "", Map.of(), true)));
+
+        assertEquals(true, orphan.isWikidataEntityMissing());
+    }
+
+    /**
+     * A partly-resolved pass applies what came back and leaves the rest as QIDs.
+     *
+     * <p>The isolation itself lives in the API client (see BestEffortEntitiesTest) so
+     * the batches keep fanning out; what this pins is the caller's half — one call,
+     * and every label it did receive is applied rather than discarded with the batch
+     * that failed.
+     */
+    @Test
+    void appliesTheLabelsThatCameBackAndLeavesTheRestAsQids() {
+        WikidataObjectRegistry registry = new WikidataObjectRegistry();
+        AtomicInteger calls = new AtomicInteger();
+        WikidataApiClient api = new WikidataApiClient("test") {
+            @Override
+            public PartialEntities getEntitiesBestEffort(
+                    List<String> qids, List<String> claimPids, BatchLog queryLog) {
+                calls.incrementAndGet();
+                Map<String, ApiEntity> result = new LinkedHashMap<>();
+                for (String qid : qids) {
+                    // Stands in for the batch the endpoint refused: Q51..Q100 absent.
+                    int n = Integer.parseInt(qid.substring(1));
+                    if (n < 51 || n > 100) result.put(qid, entity(qid, "Label " + qid));
+                }
+                return new PartialEntities(result, 1);
+            }
+        };
+        RuleTreeExtractor extractor = new RuleTreeExtractor(null, registry).api(api);
+        for (int i = 1; i <= 101; i++) {
+            registry.getOrCreate("Q" + i, "Q" + i);
+        }
+
+        extractor.resolveLabels(GenerationLog.NOOP);
+
+        assertEquals(1, calls.get(),
+                     "one call — batching here would serialise the client's fan-out");
+        assertEquals("Label Q1", registry.get("Q1").getDisplayName());
+        assertEquals("Q51", registry.get("Q51").getDisplayName());
+        assertEquals("Label Q101", registry.get("Q101").getDisplayName());
     }
 }

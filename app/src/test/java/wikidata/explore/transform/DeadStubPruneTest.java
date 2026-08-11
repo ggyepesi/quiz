@@ -13,13 +13,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DeadStubPruneTest {
 
-    /** A dead-QID node: label never resolved (name == qid) and no fields. */
+    /** A dead-QID node: explicitly reported missing and no fields. */
     private static WikidataDynamicObject deadStub(String qid) {
-        return new WikidataDynamicObject(qid, null);   // name blank -> getDisplayName() == qid
+        WikidataDynamicObject dead = new WikidataDynamicObject(qid, null);
+        dead.wikidataEntityMissing(true);
+        return dead;
     }
 
     @Test void identifiesUnlabelledFieldlessNodeAsDead() {
         assertTrue(DeadStubPrune.isDeadStub(deadStub("Q61283808")));
+    }
+
+    @Test void keepsQidOnlyReferenceWhenLabelLookupDidNotConfirmMissing() {
+        WikidataDynamicObject unresolved = new WikidataDynamicObject("Q1044", null);
+        assertFalse(DeadStubPrune.isDeadStub(unresolved));
     }
 
     @Test void keepsBareReferenceThatResolvedALabel() {

@@ -11,9 +11,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Prunes DEAD STUB entities from a pool: a node whose label never resolved
- * (getDisplayName falls back to the raw {@code qid}) AND that carries no fields —
- * i.e. a QID some statement still points at whose Wikidata page is gone
+ * Prunes DEAD STUB entities from a pool: a node that the Wikidata API explicitly
+ * reported missing and that carries no fields —
  * (deleted/merged/redirected, "no such page"). Left in, such a node surfaces as a
  * ghost value — e.g. an unnamed {@code type} Q61283808 that isn't a real page and
  * inflates the distinct-type count at generation while the snapshot (deduped,
@@ -78,8 +77,8 @@ public final class DeadStubPrune {
         return dead;
     }
 
-    /** A node with a real qid, no fields, and no resolved label (getDisplayName
-     *  returns the qid). */
+    /** A fieldless node explicitly reported missing by Wikidata. A QID-only label
+     *  is deliberately insufficient: label resolution may have failed transiently. */
     static boolean isDeadStub(WikidataDynamicObject o) {
         if (o == null) {
             return false;
@@ -88,6 +87,6 @@ public final class DeadStubPrune {
         if (qid == null || qid.isBlank()) {
             return false;
         }
-        return o.dynamicFields().isEmpty() && qid.equals(o.getDisplayName());
+        return o.dynamicFields().isEmpty() && o.isWikidataEntityMissing();
     }
 }

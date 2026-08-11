@@ -336,7 +336,15 @@ public class WikidataApiClient {
     public record ApiEntity(
             String qid,
             String label,
-            Map<String, List<String>> claimEntityQids) {
+            Map<String, List<String>> claimEntityQids,
+            boolean missing) {
+
+        public ApiEntity(
+                String qid,
+                String label,
+                Map<String, List<String>> claimEntityQids) {
+            this(qid, label, claimEntityQids, false);
+        }
 
         /** The entity-QID values for a claim PID (empty if absent). */
         public List<String> claim(String pid) {
@@ -373,9 +381,40 @@ public class WikidataApiClient {
         Map<String, ApiEntity> out = new ConcurrentHashMap<>();
         if (qids == null) return out;
         List<String> pids = claimPids == null ? List.of() : claimPids;
-        runBatched(qids, !pids.isEmpty(), batchLog,
+        runBatched(qids, !pids.isEmpty(), batchLog, false,
                    root -> parseEntities(root, pids, out));
         return out;
+    }
+
+    /** What a best-effort resolve came back with, and how many 50-QID batches did
+     *  not. A caller that can live without some of the answers needs both: the
+     *  entities to use, and the count to say honestly what is missing. */
+    public record PartialEntities(
+            Map<String, ApiEntity> entities, int failedBatches) {}
+
+    /**
+     * Like {@link #getEntities} but keeps what the successful batches returned
+     * instead of failing the call.
+     *
+     * <p>Only for callers whose result is genuinely optional — label resolution is
+     * the case: an unresolved reference keeps its QID as its name, which is a
+     * degraded label, not a wrong answer. It is NOT for claims. A missing claim is
+     * indistinguishable from an absent one, and treating a throttled batch as "this
+     * entity has no P840" is how a fetch failure becomes false data.
+     *
+     * <p>The isolation lives here rather than in the caller so the batches still fan
+     * out: batching the call site to isolate its failures would serialise it.
+     */
+    public PartialEntities getEntitiesBestEffort(
+            List<String> qids, List<String> claimPids, BatchLog batchLog)
+            throws Exception {
+
+        Map<String, ApiEntity> out = new ConcurrentHashMap<>();
+        if (qids == null) return new PartialEntities(out, 0);
+        List<String> pids = claimPids == null ? List.of() : claimPids;
+        int failed = runBatched(qids, !pids.isEmpty(), batchLog, true,
+                                root -> parseEntities(root, pids, out));
+        return new PartialEntities(out, failed);
     }
 
     /**
@@ -395,7 +434,7 @@ public class WikidataApiClient {
             return out;
         }
         List<String> quals = qualifierPids == null ? List.of() : qualifierPids;
-        runBatched(entityQids, true, batchLog,
+        runBatched(entityQids, true, batchLog, false,
                    root -> parseStatements(root, statementPid, quals, out));
         return out;
     }
@@ -405,18 +444,26 @@ public class WikidataApiClient {
      * concurrency far better than WDQS did) and lets {@code handle} parse each
      * response into a thread-safe accumulator, returning that batch's parsed count
      * for the log. Each batch has a short retry; after all submitted work has been
-     * joined, any failed batch fails the whole call. Returning a partial map would
+     * joined, any failed batch fails the whole call — returning a partial map would
      * make callers unable to distinguish an absent claim from an unavailable batch.
+     *
+     * <p>{@code bestEffort} inverts that for the callers who can live with less: the
+     * accumulator keeps what the successful batches parsed, and the failed count is
+     * returned instead of thrown. Interruption always propagates either way — a
+     * cancelled run is not a partial result.
+     *
+     * @return the number of batches that failed (always 0 unless {@code bestEffort})
      */
-    private void runBatched(
+    private int runBatched(
             List<String> qids, boolean withClaims, BatchLog batchLog,
+            boolean bestEffort,
             java.util.function.ToIntFunction<JsonNode> handle) throws Exception {
 
         List<String> clean = qids.stream()
                                  .filter(q -> q != null && WikidataIds.isQid(q))
                                  .distinct()
                                  .toList();
-        if (clean.isEmpty()) return;
+        if (clean.isEmpty()) return 0;
 
         List<List<String>> batches = new ArrayList<>();
         for (int i = 0; i < clean.size(); i += 50) {
@@ -454,6 +501,7 @@ public class WikidataApiClient {
                 }));
             }
             Exception firstFailure = null;
+            int failed = 0;
             for (Future<?> f : futures) {
                 try {
                     f.get();
@@ -465,12 +513,14 @@ public class WikidataApiClient {
                     Throwable cause = e.getCause();
                     String message = cause == null ? e.getMessage() : cause.getMessage();
                     log.accept("[API] wbgetentities batch failed: " + message + "\n");
+                    failed++;
                     if (firstFailure == null) {
                         firstFailure = cause instanceof Exception ex ? ex : e;
                     }
                 }
             }
-            if (firstFailure != null) throw firstFailure;
+            if (firstFailure != null && !bestEffort) throw firstFailure;
+            return failed;
         } finally {
             pool.shutdown();
         }
@@ -489,7 +539,10 @@ public class WikidataApiClient {
 
     private static final int GET_ENTITIES_CONCURRENCY = 6;
 
-    private JsonNode getEntitiesBatchWithRetry(
+    /** One physical batch, with the transport's own short retry. Overridable so a test
+     *  can fail a single batch and exercise the real fan-out around it — there is no
+     *  other seam below the HTTP call. */
+    protected JsonNode getEntitiesBatchWithRetry(
             List<String> qids, boolean withClaims) throws Exception {
         Exception last = null;
         for (int attempt = 1; attempt <= 3; attempt++) {
@@ -531,9 +584,14 @@ public class WikidataApiClient {
         int[] parsed = {0};
         root.path("entities").fields().forEachRemaining(entry -> {
             JsonNode entity = entry.getValue();
-            if (entity.has("missing")) return;
-            String qid = entity.path("id").asText("");
+            String qid = entity.path("id").asText(entry.getKey());
             if (!WikidataIds.isQid(qid)) return;
+
+            if (entity.has("missing")) {
+                out.put(qid, new ApiEntity(qid, "", Map.of(), true));
+                parsed[0]++;
+                return;
+            }
 
             String label = entity.path("labels").path("en").path("value").asText("");
             if (label.isBlank()) {
