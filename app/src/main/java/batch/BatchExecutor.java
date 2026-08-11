@@ -17,10 +17,11 @@ import java.util.Set;
  * request can help. Execution and publication are deliberately separate: a failed attempt
  * cannot leave a partially mutated registry or result collection behind.
  *
- * <p>The durable checkpoint is the current pending leaf queue, including split depth. This
- * preserves adaptive splits exactly across restarts. A successful result is committed before
- * its unit is removed from that queue, so {@link ResultCommitter} must be idempotent for a
- * descriptor key to cover a stop between commit and checkpoint save.
+ * <p>The checkpoint journal records the initial roots once, then appends one SPLIT or
+ * COMPLETE event per state transition. This preserves adaptive splits exactly without
+ * rewriting the growing frontier. A successful result is committed before COMPLETE is
+ * appended, so {@link ResultCommitter} must be idempotent for a descriptor key to cover a
+ * stop in that small commit/checkpoint window.
  */
 public final class BatchExecutor<R> {
     private final BatchPolicy policy;
@@ -89,19 +90,20 @@ public final class BatchExecutor<R> {
         cancellation.throwIfCancelled();
 
         Deque<Attempt<R>> pending = new ArrayDeque<>();
-        Set<String> completed = new LinkedHashSet<>();
+        Set<String> knownKeys = new LinkedHashSet<>();
         Optional<BatchCheckpoint> saved = persistent && policy.resume()
-                ? checkpoints.load(runKey)
+                ? checkpoints.recover(runKey)
                 : Optional.empty();
 
         if (saved.isPresent()) {
-            restore(saved.orElseThrow(), restorer, pending, completed);
+            restore(saved.orElseThrow(), restorer, pending, knownKeys);
             progress.message("Resuming \"" + runKey + "\" with " + pending.size()
                     + " pending unit(s)\n");
         } else {
             initialise(initialUnits, pending);
+            pending.forEach(attempt -> knownKeys.add(attempt.unit().key()));
             if (persistent) {
-                save(runKey, pending, completed);
+                checkpoints.start(runKey, pendingSnapshot(pending));
             }
         }
 
@@ -111,36 +113,41 @@ public final class BatchExecutor<R> {
             RunResult<R> result = runOrSplit(attempt, committer);
 
             if (result.completed()) {
+                if (persistent) {
+                    try {
+                        checkpoints.complete(runKey, attempt.unit().key());
+                    } catch (Exception checkpointError) {
+                        result.running().failed(
+                                "CHECKPOINT: " + message(checkpointError));
+                        throw checkpointError;
+                    }
+                }
                 pending.removeFirst();
-                completed.add(attempt.unit().key());
+                result.running().done(result.summary());
             } else {
                 List<WorkUnit<R>> parts = validateSplit(
-                        attempt, result.parts(), pending, completed);
+                        attempt, result.parts(), knownKeys);
+                if (persistent) {
+                    checkpoints.split(
+                            runKey,
+                            attempt.unit().key(),
+                            parts.stream()
+                                    .map(part -> new BatchCheckpoint.PendingWork(
+                                            part.descriptor(), attempt.depth() + 1))
+                                    .toList());
+                }
                 pending.removeFirst();
                 for (int i = parts.size() - 1; i >= 0; i--) {
                     pending.addFirst(new Attempt<>(parts.get(i), attempt.depth() + 1));
                 }
+                parts.forEach(part -> knownKeys.add(part.key()));
                 progress.message("Splitting \"" + attempt.unit().title() + "\" into "
                         + parts.size() + " (depth " + (attempt.depth() + 1) + ")\n");
-            }
-
-            if (persistent) {
-                try {
-                    save(runKey, pending, completed);
-                } catch (Exception checkpointError) {
-                    if (result.completed()) {
-                        result.running().failed("CHECKPOINT: " + message(checkpointError));
-                    }
-                    throw checkpointError;
-                }
-            }
-            if (result.completed()) {
-                result.running().done(result.summary());
             }
         }
 
         if (persistent) {
-            checkpoints.delete(runKey);
+            checkpoints.finish(runKey);
         }
     }
 
@@ -233,11 +240,15 @@ public final class BatchExecutor<R> {
             BatchCheckpoint checkpoint,
             WorkUnitFactory<R> restorer,
             Deque<Attempt<R>> pending,
-            Set<String> completed) throws Exception {
-        completed.addAll(checkpoint.completedKeys());
-        Set<String> keys = new HashSet<>(completed);
+            Set<String> knownKeys) throws Exception {
+        knownKeys.addAll(checkpoint.knownKeys());
+        Set<String> keys = new HashSet<>();
         List<Attempt<R>> restored = new ArrayList<>();
         for (BatchCheckpoint.PendingWork saved : checkpoint.pending()) {
+            if (!knownKeys.contains(saved.descriptor().key())) {
+                throw new IllegalStateException("Checkpoint does not know pending key: "
+                        + saved.descriptor().key());
+            }
             WorkUnit<R> unit = Objects.requireNonNull(restorer.restore(saved.descriptor()),
                     "WorkUnitFactory returned null for " + saved.descriptor().key());
             if (!saved.descriptor().equals(unit.descriptor())) {
@@ -255,15 +266,8 @@ public final class BatchExecutor<R> {
     private List<WorkUnit<R>> validateSplit(
             Attempt<R> parent,
             List<? extends WorkUnit<R>> rawParts,
-            Deque<Attempt<R>> pending,
-            Set<String> completed) {
-        Set<String> keys = new HashSet<>(completed);
-        for (Attempt<R> existing : pending) {
-            if (existing != parent) {
-                keys.add(existing.unit().key());
-            }
-        }
-        keys.add(parent.unit().key());
+            Set<String> knownKeys) {
+        Set<String> keys = new HashSet<>(knownKeys);
 
         List<WorkUnit<R>> parts = new ArrayList<>(rawParts.size());
         for (WorkUnit<R> part : rawParts) {
@@ -288,14 +292,11 @@ public final class BatchExecutor<R> {
         }
     }
 
-    private void save(
-            String runKey,
-            Deque<Attempt<R>> pending,
-            Set<String> completed) throws Exception {
-        List<BatchCheckpoint.PendingWork> savedPending = pending.stream()
+    private static <R> List<BatchCheckpoint.PendingWork> pendingSnapshot(
+            Deque<Attempt<R>> pending) {
+        return pending.stream()
                 .map(a -> new BatchCheckpoint.PendingWork(a.unit().descriptor(), a.depth()))
                 .toList();
-        checkpoints.save(new BatchCheckpoint(runKey, savedPending, completed));
     }
 
     private static void pause(long millis) throws InterruptedException {

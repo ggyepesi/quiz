@@ -53,6 +53,16 @@ public class RuleTreeExtractor {
     private final WikidataSparqlClient client;
     private GenerationLog log = GenerationLog.NOOP;
 
+    // How the batched stages retry and narrow. Run-scoped, never part of the model:
+    // with correct partitioning the result is identical whatever the batch size.
+    private batch.BatchPolicy batchPolicy = batch.BatchPolicy.defaults().withResume(false);
+
+    public RuleTreeExtractor batchPolicy(batch.BatchPolicy policy) {
+        this.batchPolicy = policy == null
+                ? batch.BatchPolicy.defaults().withResume(false) : policy;
+        return this;
+    }
+
     // The action-API client for wbgetentities (labels + outgoing entity claims) —
     // the reliable, non-SPARQL path. Lazily created with the project user agent;
     // override via api(...) to share one / inject logging.
@@ -657,26 +667,56 @@ public class RuleTreeExtractor {
                                          .filter(q -> q != null && WikidataIds.isQid(q))
                                          .toList();
         if (memberQids.isEmpty()) return;
-        int total = (memberQids.size() + memberFieldBatchSize - 1) / memberFieldBatchSize;
 
+        List<batch.WorkUnit<Map<String, List<String>>>> units = new ArrayList<>();
         for (RuleIncludedField field : fields) {
-            int n = 0;
             for (int from = 0; from < memberQids.size(); from += memberFieldBatchSize) {
-                if (Thread.currentThread().isInterrupted()) {
-                    throw new InterruptedException();
-                }
-                List<String> batch = memberQids.subList(
-                        from, Math.min(from + memberFieldBatchSize, memberQids.size()));
-                String sparql =
-                        RuleNodeQueryBuilder.memberFieldBatchQuery(field, batch);
-                final int bn = ++n;
-                runRootQuery(
-                        "Member field \"" + field.fieldName()
-                                + "\" (" + bn + "/" + total + ")",
-                        sparql, progress,
-                        () -> applyMemberField(field, sparql));
+                units.add(new MemberFieldWorkUnit(
+                        field,
+                        memberQids.subList(
+                                from,
+                                Math.min(from + memberFieldBatchSize, memberQids.size())),
+                        client));
             }
         }
+
+        // The executor owns retrying, narrowing a batch the endpoint refuses, and
+        // failing the run rather than leaving a field half-filled. Publication happens
+        // here, once per successful batch, so a retried attempt cannot merge twice.
+        new batch.BatchExecutor<Map<String, List<String>>>(
+                batchPolicy,
+                batchProgress(progress),
+                wikidata.WikidataBatchFailureClassifier.INSTANCE,
+                new process.CancellationToken(),
+                batch.BatchCheckpointStore.NONE)
+                .run(units, (descriptor, values) -> mergeMemberField(descriptor, values));
+    }
+
+    /** Publishes one member-field batch onto the registry-shared backbone members.
+     *  merge() is the final duplicate guard, so replaying a committed batch is safe. */
+    private void mergeMemberField(
+            batch.WorkDescriptor descriptor, Map<String, List<String>> values) {
+        String fieldName = descriptor.parameters().get("field");
+        values.forEach((memberQid, fieldValueQids) -> {
+            WikidataDynamicObject member = registry.get(memberQid);
+            if (member == null) {
+                return;   // not a backbone member
+            }
+            for (String fieldValueQid : fieldValueQids) {
+                member.merge(fieldName, registry.getOrCreate(fieldValueQid, fieldValueQid));
+            }
+        });
+    }
+
+    /** Adapts the extraction log to the executor's progress seam. */
+    private static batch.BatchProgress batchProgress(GenerationLog progress) {
+        return (title, detail) -> {
+            GenerationLog.Running running = progress.subqueryStarted(title, detail);
+            return new batch.BatchProgress.Running() {
+                @Override public void done(String summary) { running.done(summary); }
+                @Override public void failed(String error) { running.failed(error); }
+            };
+        };
     }
 
     /**
@@ -733,24 +773,6 @@ public class RuleTreeExtractor {
         }
 
         return new ArrayList<>(byQid.values());
-    }
-
-    private List<WikidataDynamicObject> applyMemberField(
-            RuleIncludedField field, String sparql) throws Exception {
-
-        Map<String, WikidataDynamicObject> touched = new LinkedHashMap<>();
-        for (WikidataBinding b : client.query(sparql)) {
-            String valueQid = b.qid("value");
-            String fieldValueQid = b.qid("fieldValue");
-            if (valueQid == null || !WikidataIds.isQid(valueQid)) continue;
-            if (fieldValueQid == null || !WikidataIds.isQid(fieldValueQid)) continue;
-            WikidataDynamicObject member = registry.get(valueQid);
-            if (member == null) continue;   // not a backbone member
-            member.merge(field.fieldName(),
-                         registry.getOrCreate(fieldValueQid, fieldValueQid));
-            touched.put(valueQid, member);
-        }
-        return new ArrayList<>(touched.values());
     }
 
     /**

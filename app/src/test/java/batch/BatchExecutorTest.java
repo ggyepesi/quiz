@@ -367,7 +367,7 @@ class BatchExecutorTest {
         assertEquals(1, aRuns.get(), "the completed leaf is not replayed");
         assertEquals(2, bRuns.get());
         assertEquals(Map.of("a", 1, "b", 1), commits);
-        assertTrue(checkpoints.deleted);
+        assertTrue(checkpoints.finished);
     }
 
     @Test
@@ -388,7 +388,7 @@ class BatchExecutorTest {
         assertThrows(java.io.IOException.class,
                 () -> first.run("commit-window", List.of(unit), ignored -> unit, committer));
 
-        checkpoints.failOnSave = -1;
+        checkpoints.failOnEvent = -1;
         BatchExecutor<String> second = new BatchExecutor<>(
                 new BatchPolicy(1, 7, 0, true), BatchProgress.NOOP,
                 CLASSIFIER, new CancellationToken(), checkpoints);
@@ -424,43 +424,121 @@ class BatchExecutorTest {
 
     private static final class MemoryCheckpointStore implements BatchCheckpointStore {
         BatchCheckpoint checkpoint;
-        boolean deleted;
+        boolean finished;
 
-        @Override public Optional<BatchCheckpoint> load(String runKey) {
+        @Override public Optional<BatchCheckpoint> recover(String runKey) {
             return Optional.ofNullable(checkpoint);
         }
-        @Override public void save(BatchCheckpoint checkpoint) {
-            this.checkpoint = checkpoint;
+
+        @Override public void start(
+                String runKey,
+                List<BatchCheckpoint.PendingWork> roots) {
+            checkpoint = new BatchCheckpoint(runKey, roots, java.util.Set.of());
         }
-        @Override public void delete(String runKey) {
-            deleted = true;
+
+        @Override public void split(
+                String runKey,
+                String parentKey,
+                List<BatchCheckpoint.PendingWork> children) {
+            List<BatchCheckpoint.PendingWork> pending =
+                    new ArrayList<>(checkpoint.pending());
+            int index = indexOf(pending, parentKey);
+            pending.remove(index);
+            pending.addAll(index, children);
+            java.util.Set<String> known =
+                    new java.util.LinkedHashSet<>(checkpoint.knownKeys());
+            children.forEach(child -> known.add(child.descriptor().key()));
+            checkpoint = new BatchCheckpoint(
+                    runKey, pending, checkpoint.completedKeys(), known);
+        }
+
+        @Override public void complete(String runKey, String workKey) {
+            List<BatchCheckpoint.PendingWork> pending =
+                    new ArrayList<>(checkpoint.pending());
+            pending.remove(indexOf(pending, workKey));
+            java.util.Set<String> completed =
+                    new java.util.LinkedHashSet<>(checkpoint.completedKeys());
+            completed.add(workKey);
+            checkpoint = new BatchCheckpoint(
+                    runKey, pending, completed, checkpoint.knownKeys());
+        }
+
+        @Override public void finish(String runKey) {
+            finished = true;
             checkpoint = null;
         }
     }
 
     private static final class FailingCheckpointStore implements BatchCheckpointStore {
         BatchCheckpoint checkpoint;
-        int saveCalls;
-        int failOnSave;
+        int events;
+        int failOnEvent;
 
-        FailingCheckpointStore(int failOnSave) {
-            this.failOnSave = failOnSave;
+        FailingCheckpointStore(int failOnEvent) {
+            this.failOnEvent = failOnEvent;
         }
 
-        @Override public Optional<BatchCheckpoint> load(String runKey) {
+        @Override public Optional<BatchCheckpoint> recover(String runKey) {
             return Optional.ofNullable(checkpoint);
         }
 
-        @Override public void save(BatchCheckpoint checkpoint) throws Exception {
-            saveCalls++;
-            if (saveCalls == failOnSave) {
-                throw new java.io.IOException("simulated stop before checkpoint replace");
-            }
-            this.checkpoint = checkpoint;
+        @Override public void start(
+                String runKey,
+                List<BatchCheckpoint.PendingWork> roots) throws Exception {
+            beforeEvent();
+            checkpoint = new BatchCheckpoint(runKey, roots, java.util.Set.of());
         }
 
-        @Override public void delete(String runKey) {
+        @Override public void split(
+                String runKey,
+                String parentKey,
+                List<BatchCheckpoint.PendingWork> children) throws Exception {
+            beforeEvent();
+            List<BatchCheckpoint.PendingWork> pending =
+                    new ArrayList<>(checkpoint.pending());
+            int index = indexOf(pending, parentKey);
+            pending.remove(index);
+            pending.addAll(index, children);
+            java.util.Set<String> known =
+                    new java.util.LinkedHashSet<>(checkpoint.knownKeys());
+            children.forEach(child -> known.add(child.descriptor().key()));
+            checkpoint = new BatchCheckpoint(
+                    runKey, pending, checkpoint.completedKeys(), known);
+        }
+
+        @Override public void complete(String runKey, String workKey) throws Exception {
+            beforeEvent();
+            List<BatchCheckpoint.PendingWork> pending =
+                    new ArrayList<>(checkpoint.pending());
+            pending.remove(indexOf(pending, workKey));
+            java.util.Set<String> completed =
+                    new java.util.LinkedHashSet<>(checkpoint.completedKeys());
+            completed.add(workKey);
+            checkpoint = new BatchCheckpoint(
+                    runKey, pending, completed, checkpoint.knownKeys());
+        }
+
+        @Override public void finish(String runKey) throws Exception {
+            beforeEvent();
             checkpoint = null;
         }
+
+        private void beforeEvent() throws java.io.IOException {
+            events++;
+            if (events == failOnEvent) {
+                throw new java.io.IOException("simulated stop before checkpoint append");
+            }
+        }
+    }
+
+    private static int indexOf(
+            List<BatchCheckpoint.PendingWork> pending,
+            String key) {
+        for (int i = 0; i < pending.size(); i++) {
+            if (pending.get(i).descriptor().key().equals(key)) {
+                return i;
+            }
+        }
+        throw new IllegalArgumentException("No pending work: " + key);
     }
 }

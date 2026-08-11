@@ -5,23 +5,16 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Durable execution frontier. Saving the pending leaf descriptors preserves adaptive
- * splits exactly; a resumed run never has to guess how a completed parent was divided.
- *
- * <p><b>Write cost is quadratic in the number of units.</b> The whole checkpoint —
- * including {@code completedKeys}, which only grows — is rewritten after every unit, so a
- * run of N units writes on the order of N²/2 key entries in total. That is deliberate:
- * saving after each unit is what bounds replay to a single unit, and the alternative
- * (saving every k units) trades that guarantee away. It is comfortable into the low
- * thousands of units; a partitioner that ever produced a unit per MEMBER (tens of
- * thousands) would need the frontier persisted less often, or completed keys stored
- * incrementally, and should not simply inherit this.
+ * Recovered execution frontier. The store derives this view by replaying its append-only
+ * START/SPLIT/COMPLETE journal, so each successful unit adds one small record instead of
+ * rewriting this whole structure.
  */
 public record BatchCheckpoint(
         int version,
         String runKey,
         List<PendingWork> pending,
-        Set<String> completedKeys) {
+        Set<String> completedKeys,
+        Set<String> knownKeys) {
 
     public static final int CURRENT_VERSION = 1;
 
@@ -36,10 +29,30 @@ public record BatchCheckpoint(
         completedKeys = completedKeys == null
                 ? Set.of()
                 : Set.copyOf(new LinkedHashSet<>(completedKeys));
+        for (PendingWork work : pending) {
+            if (completedKeys.contains(work.descriptor().key())) {
+                throw new IllegalArgumentException(
+                        "Pending work is already completed: " + work.descriptor().key());
+            }
+        }
+        LinkedHashSet<String> allKnown = knownKeys == null
+                ? new LinkedHashSet<>()
+                : new LinkedHashSet<>(knownKeys);
+        allKnown.addAll(completedKeys);
+        pending.forEach(work -> allKnown.add(work.descriptor().key()));
+        knownKeys = Set.copyOf(allKnown);
     }
 
     public BatchCheckpoint(String runKey, List<PendingWork> pending, Set<String> completedKeys) {
-        this(CURRENT_VERSION, runKey, pending, completedKeys);
+        this(CURRENT_VERSION, runKey, pending, completedKeys, null);
+    }
+
+    public BatchCheckpoint(
+            String runKey,
+            List<PendingWork> pending,
+            Set<String> completedKeys,
+            Set<String> knownKeys) {
+        this(CURRENT_VERSION, runKey, pending, completedKeys, knownKeys);
     }
 
     public record PendingWork(WorkDescriptor descriptor, int splitDepth) {
