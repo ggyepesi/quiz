@@ -676,18 +676,26 @@ public class RuleTreeExtractor {
         int limit = rootNode.limit();
         LinkedHashMap<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
 
-        for (RankBandWorkUnit band
-                : RankBandWorkUnit.descendingBands(rootNode, client, TOP_RANK_BAND)) {
-            if (byQid.size() >= limit) {
-                progress.message("Reached the limit of " + limit
-                                         + " members; lower-ranked bands are not scanned.\n");
-                break;
-            }
-            executor(progress).run(List.of(band), (descriptor, rows) -> {
-                for (WikidataDynamicObject member : mapValueRows(rootNode, rows)) {
-                    byQid.putIfAbsent(member.qid(), member);
+        String measure = rootNode.rankBySitelinks()
+                ? "sitelinks" : RuleNode.cleanPid(rootNode.rankPropertyPid());
+        String goal = "Find the top " + limit + " " + rootNode.name() + " by " + measure
+                + " — scanned in descending bands, stopping at the limit "
+                + "(one request over the whole class exceeds the endpoint's ceiling)";
+
+        try (GenerationLog.Group group = progress.group(goal)) {
+            for (RankBandWorkUnit band
+                    : RankBandWorkUnit.descendingBands(rootNode, client, TOP_RANK_BAND)) {
+                if (byQid.size() >= limit) {
+                    group.message("Reached the limit of " + limit
+                                          + " members; lower-ranked bands are not scanned.\n");
+                    break;
                 }
-            });
+                executor(group).run(List.of(band), (descriptor, rows) -> {
+                    for (WikidataDynamicObject member : mapValueRows(rootNode, rows)) {
+                        byQid.putIfAbsent(member.qid(), member);
+                    }
+                });
+            }
         }
 
         // The limit is logical, over the DISTINCT union: each band carries it only as a
@@ -771,8 +779,13 @@ public class RuleTreeExtractor {
         // The executor owns retrying, narrowing a batch the endpoint refuses, and
         // failing the run rather than leaving a field half-filled. Publication happens
         // here, once per successful batch, so a retried attempt cannot merge twice.
-        executor(progress).run(units,
-                (descriptor, rows) -> mergeMemberField(descriptor, rows));
+        String goal = "Fill " + fieldList(fields) + " for " + memberQids.size()
+                + " members — " + units.size() + " batches of " + memberFieldBatchSize
+                + " (incoming references, one query per batch)";
+        try (GenerationLog.Group group = progress.group(goal)) {
+            executor(group).run(units,
+                    (descriptor, rows) -> mergeMemberField(descriptor, rows));
+        }
     }
 
     /** Publishes one member-field batch onto the registry-shared backbone members.
@@ -789,6 +802,15 @@ public class RuleTreeExtractor {
             if (member == null) continue;   // not a backbone member
             member.merge(fieldName, registry.getOrCreate(fieldValueQid, fieldValueQid));
         }
+    }
+
+    /** The fields a stage is filling, named — {@code [locations, director]}. A stage
+     *  that reports only how MANY fields it carries leaves a reader of a failed batch
+     *  with no way to tell what went unfilled. */
+    private static String fieldList(List<RuleIncludedField> fields) {
+        return fields.stream()
+                     .map(RuleIncludedField::fieldName)
+                     .collect(java.util.stream.Collectors.joining(", ", "[", "]"));
     }
 
     /** The executor every batched stage runs on. */
@@ -845,14 +867,16 @@ public class RuleTreeExtractor {
             return new ArrayList<>();
         }
 
-        int fields = enrichNode.includedFields().size();
+        String names = fieldList(enrichNode.includedFields());
         Map<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
 
         List<batch.WorkUnit<List<WikidataBinding>>> units = new ArrayList<>();
         for (int i = 0; i < memberQids.size(); i += memberFieldBatchSize) {
             units.add(new MemberBatchQueryUnit(
                     "wikidata.residualFields",
-                    "Residual field" + (fields == 1 ? "" : "s") + " (+" + fields + ")",
+                    // Named, not counted: "(+2)" said how many fields a batch carried
+                    // but never which, so a failure gave no clue what went unfilled.
+                    "Residual fields " + names,
                     memberQids.subList(
                             i, Math.min(i + memberFieldBatchSize, memberQids.size())),
                     qids -> RuleNodeQueryBuilder.memberBoundedValuesQuery(enrichNode, qids),
@@ -860,11 +884,16 @@ public class RuleTreeExtractor {
                     Map.of()));
         }
 
-        executor(progress).run(units, (descriptor, rows) -> {
-            for (WikidataDynamicObject o : mapValueRows(enrichNode, rows)) {
-                byQid.putIfAbsent(o.qid(), o);
-            }
-        });
+        String goal = "Fill " + names + " for " + memberQids.size() + " members — "
+                + units.size() + " batches of " + memberFieldBatchSize
+                + " (scalar/media values, bounded by the members already found)";
+        try (GenerationLog.Group group = progress.group(goal)) {
+            executor(group).run(units, (descriptor, rows) -> {
+                for (WikidataDynamicObject o : mapValueRows(enrichNode, rows)) {
+                    byQid.putIfAbsent(o.qid(), o);
+                }
+            });
+        }
 
         return new ArrayList<>(byQid.values());
     }
@@ -893,12 +922,12 @@ public class RuleTreeExtractor {
                                           .filter(p -> WikidataIds.isPid(p))
                                           .toList();
 
-        String names = outgoingFields.stream().map(RuleIncludedField::fieldName)
-                                     .reduce((a, b) -> a + ", " + b).orElse("");
+        String names = fieldList(outgoingFields);
         int batches = (memberQids.size() + 49) / 50;
-        try (GenerationLog.Group g = progress.group("wbgetentities FIELDS [" + names + "] — "
-                                                            + memberQids.size() + " members, " + batches
-                                                            + " batches (outgoing entity claims)")) {
+        try (GenerationLog.Group g = progress.group(
+                "Fill " + names + " for " + memberQids.size() + " members — "
+                        + batches + " batches of 50 (the members' own claims, fetched "
+                        + "via wbgetentities: these properties full-scan in SPARQL)")) {
             Map<String, WikidataApiClient.ApiEntity> details =
                     api().getEntities(memberQids, pids, g::subquery);
             int filled = applyEntityClaims(members, outgoingFields, details);

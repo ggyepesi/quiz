@@ -60,10 +60,17 @@ public interface GenerationLog {
     /**
      * Opens a {@link Group} titled {@code title}. Default: no nesting — a
      * pass-through that logs onto {@code this} and closes as a no-op, so text
-     * sinks and NOOP are unaffected.
+     * sinks and NOOP are unaffected in structure.
+     *
+     * <p>The title is still emitted as a message. It states what the group's
+     * requests are FOR, and a sink that cannot nest would otherwise show a run of
+     * batches with nothing saying what they were filling.
      */
     default Group group(String title) {
         GenerationLog self = this;
+        if (title != null && !title.isBlank()) {
+            self.message(title + "\n");
+        }
         return new Group() {
             @Override public void message(String t) { self.message(t); }
             @Override public void subquery(String ti, String r, String s) {
