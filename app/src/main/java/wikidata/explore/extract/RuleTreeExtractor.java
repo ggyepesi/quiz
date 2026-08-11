@@ -43,6 +43,9 @@ public class RuleTreeExtractor {
     private final WikidataObjectRegistry registry;
 
     private static final int BATCH_SIZE = 50;
+    // Where the open top band starts. Bands below it halve down to zero, so this only
+    // sets how finely the notable tail is cut, not what is covered.
+    private static final long TOP_RANK_BAND = 64;
     private static final int POOL_SIZE  = 3;
     // Concurrent per-parent child queries within one edge (kept modest so we
     // don't hammer the SPARQL endpoint).
@@ -515,11 +518,12 @@ public class RuleTreeExtractor {
 
         List<String> targets = new ArrayList<>(rootNode.additionalSourceQids());
         if (targets.size() <= membershipTargetBatchSize) {
-            RuleNode backbone = rootNode.backboneCopy(rootNode.limit());
-            String sparql = RuleNodeQueryBuilder.valuesQuery(backbone);
-            List<WikidataDynamicObject> members = runRootQuery(
-                    "Root membership (backbone)", sparql, progress,
-                    () -> runValueQuery(backbone, sparql));
+            // A ranked class is scanned in bands: one request over the whole class is
+            // what exceeds the endpoint's ceiling, and the ranking measure is the only
+            // per-entity quantity available before the members are known.
+            List<WikidataDynamicObject> members = rootNode.hasRank()
+                    ? runBandedBackbone(rootNode, progress)
+                    : runSingleBackbone(rootNode, progress);
             return new MembershipBackbone(members, new LinkedHashMap<>());
         }
 
@@ -648,6 +652,51 @@ public class RuleTreeExtractor {
                 }
             }
         }
+    }
+
+    /** An unranked class has no measure to band on, so it stays one request. */
+    private List<WikidataDynamicObject> runSingleBackbone(
+            RuleNode rootNode, GenerationLog progress) throws Exception {
+        RuleNode backbone = rootNode.backboneCopy(rootNode.limit());
+        String sparql = RuleNodeQueryBuilder.valuesQuery(backbone);
+        return runRootQuery("Root membership (backbone)", sparql, progress,
+                            () -> runValueQuery(backbone, sparql));
+    }
+
+    /**
+     * Membership discovered band by band, most notable first, stopping as soon as the
+     * configured limit is reached.
+     *
+     * <p>Stopping early is the point of descending order: the limit asks for the top N by
+     * the ranking measure, so once N distinct members are in hand every remaining band
+     * holds only lower-ranked ones. For the movies case that turns a scan of 47,639
+     * candidates into the first few bands. Each band runs through the executor, so one
+     * the endpoint refuses is retried and then bisected rather than failing the run.
+     */
+    private List<WikidataDynamicObject> runBandedBackbone(
+            RuleNode rootNode, GenerationLog progress) throws Exception {
+
+        int limit = rootNode.limit();
+        Map<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
+
+        for (RankBandWorkUnit band
+                : RankBandWorkUnit.descendingBands(rootNode, client, TOP_RANK_BAND)) {
+            if (byQid.size() >= limit) {
+                progress.message("Reached the limit of " + limit
+                                         + " members; lower-ranked bands are not scanned.\n");
+                break;
+            }
+            executor(progress).run(List.of(band), (descriptor, rows) -> {
+                for (WikidataDynamicObject member : mapValueRows(rootNode, rows)) {
+                    byQid.putIfAbsent(member.qid(), member);
+                }
+            });
+        }
+
+        // The limit is logical, over the DISTINCT union: each band carries it only as a
+        // defensive per-request cap, so the last band can carry the total past it.
+        List<WikidataDynamicObject> members = new ArrayList<>(byQid.values());
+        return members.size() <= limit ? members : members.subList(0, limit);
     }
 
     /**
