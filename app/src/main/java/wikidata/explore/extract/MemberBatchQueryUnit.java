@@ -71,9 +71,16 @@ public final class MemberBatchQueryUnit implements WorkUnit<List<WikidataBinding
                 parameters);
     }
 
+    /** Built by the same call {@link #execute()} makes, so the log links to exactly the
+     *  query that ran rather than a reconstruction of it. */
+    @Override
+    public String request() {
+        return queryFor.apply(memberQids);
+    }
+
     @Override
     public List<WikidataBinding> execute() throws Exception {
-        return client.query(queryFor.apply(memberQids));
+        return client.query(request());
     }
 
     @Override

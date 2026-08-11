@@ -51,6 +51,23 @@ class MemberBatchQueryUnitTest {
         }
     }
 
+    /** The log links {@code request()} as the query, so it has to BE the query that ran.
+     *  Built by the same call, not reconstructed alongside it — a second construction is
+     *  a second thing to drift. */
+    @Test void theRequestIsExactlyTheQueryExecuteIssues() throws Exception {
+        List<String> issued = new ArrayList<>();
+        try (WikidataSparqlClient client = recordingClient(issued)) {
+            MemberBatchQueryUnit unit = unit(List.of("Q1", "Q2"), client);
+            String request = unit.request();
+
+            unit.execute();
+
+            assertEquals(List.of(request), issued);
+            assertNotEquals(request, unit.key(),
+                            "the key identifies the batch; it is not something WDQS can run");
+        }
+    }
+
     @Test void splittingCoversTheParentExactly() throws Exception {
         List<String> issued = new ArrayList<>();
         try (WikidataSparqlClient client = recordingClient(issued)) {

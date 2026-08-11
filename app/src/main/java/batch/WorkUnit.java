@@ -29,6 +29,19 @@ public interface WorkUnit<R> {
     }
 
     /**
+     * The request this unit issues — the SPARQL text, the API URL — for the log to show
+     * and link to. It is DISPLAY only: reconstruction after a restart goes through
+     * {@link #descriptor()}, whose parameters are what a {@link WorkUnitFactory} needs.
+     *
+     * <p>Empty by default. A unit whose work has no request text (a pure computation)
+     * leaves it empty and the log simply shows no request — which is what a key placed
+     * in this slot used to imitate, producing an unusable "query" link.
+     */
+    default String request() {
+        return "";
+    }
+
+    /**
      * Computes this unit's result without mutating the shared registry, graph or caller's
      * result collection. The executor publishes the returned value only after this method
      * completes successfully, so a failed attempt can be retried without duplicating a

@@ -18,11 +18,17 @@ public interface BatchProgress {
         void failed(String error);
     }
 
-    Running started(String title, String detail);
+    /**
+     * Opens a unit. {@code request} is the text the unit will ISSUE — SPARQL, an API URL
+     * — which a log renders as the clickable request; it is empty for a unit that has
+     * none. It is not an identifier: passing the unit's key here produced a "query" link
+     * that opened the checkpoint key in WDQS.
+     */
+    Running started(String title, String request);
 
     default void message(String text) { }
 
-    BatchProgress NOOP = (title, detail) -> new Running() {
+    BatchProgress NOOP = (title, request) -> new Running() {
         @Override public void done(String summary) { }
         @Override public void failed(String error) { }
     };

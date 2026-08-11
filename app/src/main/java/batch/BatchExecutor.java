@@ -163,7 +163,7 @@ public final class BatchExecutor<R> {
         for (int tries = 1; tries <= maxTries; tries++) {
             cancellation.throwIfCancelled();
             BatchProgress.Running running = Objects.requireNonNull(
-                    progress.started(attempt.unit().title(), attempt.unit().key()),
+                    progress.started(attempt.unit().title(), attempt.unit().request()),
                     "BatchProgress.started returned null");
             R value;
             try {

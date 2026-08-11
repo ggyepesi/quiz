@@ -121,12 +121,18 @@ class RankBandWorkUnitTest {
     @Test void theBandReachesTheQueryAsAFilterOnTheRankMeasure() throws Exception {
         List<String> issued = new ArrayList<>();
         try (WikidataSparqlClient client = recording(issued)) {
-            new RankBandWorkUnit(films(), 20, 40, client).execute();
+            RankBandWorkUnit unit = new RankBandWorkUnit(films(), 20, 40, client);
+            String request = unit.request();
+
+            unit.execute();
 
             String query = issued.get(0);
             assertTrue(query.contains("?value wikibase:sitelinks ?rankMeasure"), query);
             assertTrue(query.contains("?rankMeasure >= 20"), query);
             assertTrue(query.contains("?rankMeasure < 40"), query);
+            // The band FILTER is the whole difference between sibling units, so a log
+            // showing anything but this query cannot tell them apart.
+            assertEquals(query, request);
         }
     }
 

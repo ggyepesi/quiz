@@ -83,9 +83,16 @@ public final class RankBandWorkUnit implements WorkUnit<List<WikidataBinding>> {
                 Map.of(P_FROM, String.valueOf(from), P_UNTIL, String.valueOf(until)));
     }
 
+    /** The banded query, built the same way {@link #execute()} builds it — the band
+     *  FILTER is the whole difference between sibling units, so the log has to show it. */
+    @Override
+    public String request() {
+        return RuleNodeQueryBuilder.valuesQuery(banded());
+    }
+
     @Override
     public List<WikidataBinding> execute() throws Exception {
-        return client.query(RuleNodeQueryBuilder.valuesQuery(banded()));
+        return client.query(request());
     }
 
     /** The node restricted to this band. Copied, so sibling bands never see each other's

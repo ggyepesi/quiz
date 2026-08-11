@@ -769,8 +769,8 @@ public class RuleTreeExtractor {
 
     /** Adapts the extraction log to the executor's progress seam. */
     private static batch.BatchProgress batchProgress(GenerationLog progress) {
-        return (title, detail) -> {
-            GenerationLog.Running running = progress.subqueryStarted(title, detail);
+        return (title, request) -> {
+            GenerationLog.Running running = progress.subqueryStarted(title, request);
             return new batch.BatchProgress.Running() {
                 @Override public void done(String summary) { running.done(summary); }
                 @Override public void failed(String error) { running.failed(error); }
