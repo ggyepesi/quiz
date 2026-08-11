@@ -99,6 +99,7 @@ public class RuleNode {
         s.rankBySitelinks(rankBySitelinks());
         s.rankPropertyPid(rankPropertyPid());
         s.rankDescending(rankDescending());
+        s.rankBand(rankFrom(), rankUntil());
         for (RuleIncludedField f : includedFields()) {
             if (f != null && !f.optional()) {
                 s.addMembershipConstraint(f);
@@ -206,6 +207,29 @@ public class RuleNode {
     public boolean rankDescending() { return rankDescending; }
     public void    rankDescending(boolean d) { this.rankDescending = d; }
     public boolean hasRank() { return rankBySitelinks || !rankPropertyPid().isBlank(); }
+
+    // A half-open band [rankFrom, rankUntil) on the ranking measure, used to partition a
+    // membership scan the endpoint will not complete in one request. UNBOUNDED = absent.
+    // The measure is monotone, so descending bands visit the most notable members first
+    // and the scan can stop as soon as `limit` of them have been collected.
+    public static final long UNBOUNDED = -1;
+    private long rankFrom = UNBOUNDED;
+    private long rankUntil = UNBOUNDED;
+
+    public long rankFrom() { return rankFrom; }
+    public long rankUntil() { return rankUntil; }
+    public boolean hasRankBand() { return rankFrom != UNBOUNDED || rankUntil != UNBOUNDED; }
+
+    /** Restricts this node to one band of the ranking measure. */
+    public RuleNode rankBand(long from, long until) {
+        if (from != UNBOUNDED && until != UNBOUNDED && from >= until) {
+            throw new IllegalArgumentException(
+                    "Empty rank band [" + from + ", " + until + ")");
+        }
+        this.rankFrom = from;
+        this.rankUntil = until;
+        return this;
+    }
 
     public boolean hasMembershipFilter() {
         return membershipPid != null && !membershipPid.isBlank()

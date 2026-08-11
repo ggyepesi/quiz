@@ -970,11 +970,35 @@ public final class RuleNodeQueryBuilder {
                     + RuleNode.cleanPid(node.rankPropertyPid())
                     + " ?rankMeasure . }");
         }
+        appendRankBand(q, node);
         q.groupByNonAggregateSelects();
         q.orderByRaw((node.rankDescending() ? "DESC" : "ASC")
                 + "(MAX(?rankMeasure))");
         q.limit(node.limit());
         return true;
+    }
+
+    /**
+     * The half-open band [from, until) that restricts this query to one slice of the
+     * ranking measure. Bands are how a membership scan too large for one request is
+     * partitioned: the measure is per-entity and monotone, so the bands are disjoint,
+     * cover the range exactly, and can be walked most-notable-first.
+     */
+    private static void appendRankBand(WikidataQueryBuilder q, RuleNode node) {
+        if (!node.hasRankBand()) {
+            return;
+        }
+        StringBuilder filter = new StringBuilder("FILTER(");
+        if (node.rankFrom() != RuleNode.UNBOUNDED) {
+            filter.append("?rankMeasure >= ").append(node.rankFrom());
+        }
+        if (node.rankUntil() != RuleNode.UNBOUNDED) {
+            if (node.rankFrom() != RuleNode.UNBOUNDED) {
+                filter.append(" && ");
+            }
+            filter.append("?rankMeasure < ").append(node.rankUntil());
+        }
+        q.rawWhere(filter.append(")").toString());
     }
 
     private static void appendMembershipConstraints(
