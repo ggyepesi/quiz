@@ -17,6 +17,7 @@ import wikidata.explore.CommonsMedia;
 import wikidata.explore.filter.WikidataValueFilter;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -516,13 +517,17 @@ public class RuleTreeExtractor {
             List<RuleIncludedField> targetFields,
             GenerationLog progress) throws Exception {
 
+        // Taken before discovery starts, so a rejected candidate can be told apart
+        // from an object another class run already put in the shared pool.
+        Set<String> pooledBefore = registry.qids();
+
         List<String> targets = new ArrayList<>(rootNode.additionalSourceQids());
         if (targets.size() <= membershipTargetBatchSize) {
             // A ranked class is scanned in bands: one request over the whole class is
             // what exceeds the endpoint's ceiling, and the ranking measure is the only
             // per-entity quantity available before the members are known.
             List<WikidataDynamicObject> members = rootNode.hasRank()
-                    ? runBandedBackbone(rootNode, progress)
+                    ? runBandedBackbone(rootNode, pooledBefore, progress)
                     : runSingleBackbone(rootNode, progress);
             return new MembershipBackbone(members, new LinkedHashMap<>());
         }
@@ -561,17 +566,8 @@ public class RuleTreeExtractor {
         // are retained can still collect membership edges from later categories,
         // then truncate the insertion-ordered union and discard edges for members
         // outside that final set.
-        int logicalLimit = rootNode.limit();
-        if (logicalLimit > 0 && byQid.size() > logicalLimit) {
-            LinkedHashMap<String, WikidataDynamicObject> limited =
-                    new LinkedHashMap<>();
-            for (Map.Entry<String, WikidataDynamicObject> entry : byQid.entrySet()) {
-                if (limited.size() >= logicalLimit) break;
-                limited.put(entry.getKey(), entry.getValue());
-            }
-            byQid = limited;
-            edges.keySet().retainAll(byQid.keySet());
-        }
+        keepTopMembers(byQid, rootNode.limit(), pooledBefore);
+        edges.keySet().retainAll(byQid.keySet());
 
         // Per-root member counts as a distinct, copy-pasteable log entry: the member
         // count each membership root contributed, sorted by root QID so two runs'
@@ -674,10 +670,11 @@ public class RuleTreeExtractor {
      * the endpoint refuses is retried and then bisected rather than failing the run.
      */
     private List<WikidataDynamicObject> runBandedBackbone(
-            RuleNode rootNode, GenerationLog progress) throws Exception {
+            RuleNode rootNode, Set<String> pooledBefore, GenerationLog progress)
+            throws Exception {
 
         int limit = rootNode.limit();
-        Map<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
+        LinkedHashMap<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
 
         for (RankBandWorkUnit band
                 : RankBandWorkUnit.descendingBands(rootNode, client, TOP_RANK_BAND)) {
@@ -694,9 +691,46 @@ public class RuleTreeExtractor {
         }
 
         // The limit is logical, over the DISTINCT union: each band carries it only as a
-        // defensive per-request cap, so the last band can carry the total past it.
-        List<WikidataDynamicObject> members = new ArrayList<>(byQid.values());
-        return members.size() <= limit ? members : members.subList(0, limit);
+        // defensive per-request cap, so the band that crosses the limit takes the total
+        // past it — for movies, five bands found 31,630 candidates for a limit of 20,000.
+        keepTopMembers(byQid, limit, pooledBefore);
+        return new ArrayList<>(byQid.values());
+    }
+
+    /**
+     * Truncates a discovered union to the node's limit — in the pool as well as in the
+     * returned list.
+     *
+     * <p>Discovery over-produces on both batched paths: a rank band returns everything
+     * in it, and a multi-root union counts each root's members. Dropping the excess from
+     * the returned list is not enough, because every candidate was created in the shared
+     * registry and the SAVE writes the registry, not the returned list. The rejected
+     * candidates were therefore persisted as field-less instances — 11,634 of them in a
+     * 20,000-limit movies run, indistinguishable in the pool from real members whose
+     * fields genuinely failed to load.
+     *
+     * <p>Only candidates this pass created are removed. The pool is shared across class
+     * runs, so an object that was already there belongs to another run.
+     */
+    private void keepTopMembers(
+            LinkedHashMap<String, WikidataDynamicObject> byQid,
+            int limit,
+            Set<String> pooledBefore) {
+
+        if (limit <= 0 || byQid.size() <= limit) {
+            return;
+        }
+        Iterator<Map.Entry<String, WikidataDynamicObject>> entries =
+                byQid.entrySet().iterator();
+        int position = 0;
+        while (entries.hasNext()) {
+            String qid = entries.next().getKey();
+            if (position++ < limit) continue;   // insertion order IS rank order
+            entries.remove();
+            if (!pooledBefore.contains(qid)) {
+                registry.remove(qid);
+            }
+        }
     }
 
     /**

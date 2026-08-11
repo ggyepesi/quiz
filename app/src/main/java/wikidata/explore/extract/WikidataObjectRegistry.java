@@ -4,7 +4,9 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class WikidataObjectRegistry {
 
@@ -51,6 +53,28 @@ public class WikidataObjectRegistry {
 
     public Collection<WikidataDynamicObject> values() {
         return byQid.values();
+    }
+
+    /** The QIDs currently pooled. A caller that must later tell ITS OWN additions
+     *  apart from what was already here takes this before it starts. */
+    public Set<String> qids() {
+        return new LinkedHashSet<>(byQid.keySet());
+    }
+
+    /**
+     * Drops a QID from the pool. For a candidate that a discovery pass created and
+     * then rejected: the pool — not the caller's returned list — is what gets saved,
+     * so a rejected candidate left here is persisted as a field-less instance.
+     *
+     * <p>Only ever call this for an object the caller itself created. The pool is
+     * shared across class runs, and removing one another run owns would delete a
+     * live instance out from under it.
+     */
+    public void remove(String qid) {
+        String key = cleanQid(qid);
+        if (!key.isBlank()) {
+            byQid.remove(key);
+        }
     }
 
     private static String cleanQid(String qid) {
