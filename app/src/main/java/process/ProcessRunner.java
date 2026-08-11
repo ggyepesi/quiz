@@ -30,7 +30,8 @@ public final class ProcessRunner {
         ProcessContext context = new ProcessContext(
                 queries, recorder, root, cancellation, inputs);
         ProcessOutcome<R> outcome;
-        try {
+        try (CancellationToken.Registration ignored =
+                     cancellation.onCancel(queries::cancelActiveQueries)) {
             cancellation.throwIfCancelled();
             outcome = process.execute(context);
             if (outcome == null) {

@@ -10,6 +10,7 @@ public final class CancellationToken {
     private final CancellationToken parent;
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private final List<CancellationToken> children = new CopyOnWriteArrayList<>();
+    private final List<Runnable> listeners = new CopyOnWriteArrayList<>();
 
     public CancellationToken() {
         this(null);
@@ -30,8 +31,34 @@ public final class CancellationToken {
 
     public void cancel() {
         if (cancelled.compareAndSet(false, true)) {
+            List<Runnable> toNotify;
+            synchronized (listeners) {
+                toNotify = List.copyOf(listeners);
+                listeners.clear();
+            }
+            toNotify.forEach(CancellationToken::runCancellationListener);
             children.forEach(CancellationToken::cancel);
         }
+    }
+
+    /**
+     * Registers active-I/O cleanup (for example SPARQL future cancellation). The returned
+     * registration should be closed when the run ends. Registration is race-safe: an action
+     * added after cancellation has started is invoked immediately.
+     */
+    public Registration onCancel(Runnable action) {
+        if (action == null) {
+            throw new IllegalArgumentException("action must not be null");
+        }
+        synchronized (listeners) {
+            if (!isCancelled()) {
+                listeners.add(action);
+                return () -> listeners.remove(action);
+            }
+        }
+        // Run outside the monitor: transport cancellation may invoke arbitrary callbacks.
+        runCancellationListener(action);
+        return () -> { };
     }
 
     public boolean isCancelled() {
@@ -42,5 +69,19 @@ public final class CancellationToken {
         if (isCancelled() || Thread.currentThread().isInterrupted()) {
             throw new CancellationException("Process cancelled");
         }
+    }
+
+    private static void runCancellationListener(Runnable listener) {
+        try {
+            listener.run();
+        } catch (RuntimeException ignored) {
+            // Cancellation is best-effort cleanup; one transport must not prevent the
+            // remaining transports and child processes from being cancelled.
+        }
+    }
+
+    @FunctionalInterface
+    public interface Registration extends AutoCloseable {
+        @Override void close();
     }
 }

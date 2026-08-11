@@ -11,21 +11,30 @@ import java.util.List;
  * be divided further returns an empty split, and the executor then has nowhere left to
  * escalate.
  *
- * <p>Implementations accumulate their results wherever the caller wants them (the way
- * {@code CompanionLoader.loadWithSplit} collected into a set); the executor is concerned
- * only with getting every unit to complete, not with what they produce.
+ * <p>Implementations return detached results. The executor hands a result to its
+ * {@link ResultCommitter} only after the whole unit succeeds; registry/graph mutation is
+ * therefore single-threaded and never performed by an attempt that may be retried.
  */
-public interface WorkUnit {
+public interface WorkUnit<R> {
 
-    /** Stable identity, used for checkpointing and for the log. Must be reproducible
-     *  across runs: a resumed run recognises completed work by this key. */
-    String key();
+    /** Durable identity and reconstruction data for this exact partition of the work. */
+    WorkDescriptor descriptor();
 
-    /** Human-readable title for the progress log, e.g. "members 200-299". */
-    String title();
+    default String key() {
+        return descriptor().key();
+    }
 
-    /** Performs the work. Throwing hands the failure to the executor to classify. */
-    void run() throws Exception;
+    default String title() {
+        return descriptor().title();
+    }
+
+    /**
+     * Computes this unit's result without mutating the shared registry, graph or caller's
+     * result collection. The executor publishes the returned value only after this method
+     * completes successfully, so a failed attempt can be retried without duplicating a
+     * partially applied result.
+     */
+    R execute() throws Exception;
 
     /**
      * This unit divided into smaller ones, or an empty list when it cannot be divided
@@ -33,5 +42,5 @@ public interface WorkUnit {
      * the executor treats the parts as replacing the whole, so anything the parts do not
      * cover is silently lost.
      */
-    List<WorkUnit> split();
+    List<? extends WorkUnit<R>> split();
 }

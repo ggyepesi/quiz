@@ -1,138 +1,368 @@
 package batch;
 
+import process.CancellationToken;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 /**
- * Runs a list of {@link WorkUnit}s to completion, narrowing any that prove too heavy.
+ * Runs durable work partitions to completion, narrowing only failures for which a smaller
+ * request can help. Execution and publication are deliberately separate: a failed attempt
+ * cannot leave a partially mutated registry or result collection behind.
  *
- * <p>The escalation, and why it is in this order:
- * <ol>
- *   <li>{@link BatchFailure#TRANSIENT} — retry the unit unchanged, up to
- *       {@code maxAttempts}. A truncated response is usually the endpoint closing a
- *       stream early under load; the identical request then succeeds in seconds.</li>
- *   <li>{@link BatchFailure#TOO_HEAVY}, or a transient failure that outlived its
- *       attempts — SPLIT and run the parts. Retrying an unfinishable request only
- *       spends the same wall-clock again.</li>
- *   <li>Nothing left to split, or {@code maxSplitDepth} reached — the run FAILS.</li>
- * </ol>
- *
- * <p>It fails rather than returning what it managed to collect. A half-filled result is
- * indistinguishable from real data once saved, and the point of batching is to finish the
- * work, not to make partial work look complete. What succeeded is not thrown away — it is
- * the caller's, and (Phase 2) the checkpoint's.
- *
- * <p>Cancellation is thread interruption, the same signal the extraction stages already
- * observe, so no cooperation from the caller's framework is required.
+ * <p>The durable checkpoint is the current pending leaf queue, including split depth. This
+ * preserves adaptive splits exactly across restarts. A successful result is committed before
+ * its unit is removed from that queue, so {@link ResultCommitter} must be idempotent for a
+ * descriptor key to cover a stop between commit and checkpoint save.
  */
-public final class BatchExecutor {
-
+public final class BatchExecutor<R> {
     private final BatchPolicy policy;
     private final BatchProgress progress;
+    private final FailureClassifier failureClassifier;
+    private final CancellationToken cancellation;
+    private final BatchCheckpointStore checkpoints;
 
     public BatchExecutor(BatchPolicy policy, BatchProgress progress) {
-        this.policy = policy == null ? BatchPolicy.defaults() : policy;
-        this.progress = progress == null ? BatchProgress.NOOP : progress;
+        this(policy, progress, FailureClassifier.standard(),
+                new CancellationToken(), BatchCheckpointStore.NONE);
     }
 
-    /** Runs every unit, or throws. Units execute in order; a split's parts run next,
-     *  before the units that followed the one that split. */
-    public void run(List<WorkUnit> units) throws Exception {
-        if (units == null || units.isEmpty()) {
-            return;
-        }
-        Deque<Attempt> pending = new ArrayDeque<>();
-        for (int i = units.size() - 1; i >= 0; i--) {
-            pending.push(new Attempt(units.get(i), 0));
-        }
+    public BatchExecutor(
+            BatchPolicy policy,
+            BatchProgress progress,
+            FailureClassifier failureClassifier,
+            CancellationToken cancellation,
+            BatchCheckpointStore checkpoints) {
+        this.policy = policy == null ? BatchPolicy.defaults() : policy;
+        this.progress = progress == null ? BatchProgress.NOOP : progress;
+        this.failureClassifier = Objects.requireNonNull(failureClassifier, "failureClassifier");
+        this.cancellation = Objects.requireNonNull(cancellation, "cancellation");
+        this.checkpoints = checkpoints == null ? BatchCheckpointStore.NONE : checkpoints;
+    }
 
-        while (!pending.isEmpty()) {
-            throwIfCancelled();
-            Attempt attempt = pending.pop();
-            List<WorkUnit> parts = runOrSplit(attempt);
-            if (parts != null) {
-                for (int i = parts.size() - 1; i >= 0; i--) {
-                    pending.push(new Attempt(parts.get(i), attempt.depth + 1));
-                }
-            }
+    /** Runs without persistence and discards successfully computed result values. */
+    public void run(List<? extends WorkUnit<R>> units) throws Exception {
+        run(units, ResultCommitter.noOp());
+    }
+
+    /** Runs without persistence, publishing only complete unit results. */
+    public void run(
+            List<? extends WorkUnit<R>> units,
+            ResultCommitter<R> committer) throws Exception {
+        if (checkpoints != BatchCheckpointStore.NONE) {
+            throw new IllegalStateException(
+                    "A runKey and WorkUnitFactory are required when checkpointing is enabled");
         }
+        execute("uncheckpointed", units, null, committer, false);
     }
 
     /**
-     * Runs one unit, retrying transient failures.
-     *
-     * @return null when the unit completed; otherwise the parts it must be replaced by.
+     * Starts or resumes a named run. When a checkpoint exists and resume is enabled, the
+     * persisted leaf queue is authoritative; {@code initialUnits} are not replayed.
      */
-    private List<WorkUnit> runOrSplit(Attempt attempt) throws Exception {
-        Exception last = null;
+    public void run(
+            String runKey,
+            List<? extends WorkUnit<R>> initialUnits,
+            WorkUnitFactory<R> restorer,
+            ResultCommitter<R> committer) throws Exception {
+        if (runKey == null || runKey.isBlank()) {
+            throw new IllegalArgumentException("runKey must not be blank");
+        }
+        execute(runKey, initialUnits, Objects.requireNonNull(restorer, "restorer"),
+                committer, true);
+    }
 
-        for (int tries = 1; tries <= policy.maxAttempts(); tries++) {
-            throwIfCancelled();
-            BatchProgress.Running running =
-                    progress.started(attempt.unit.title(), attempt.unit.key());
-            try {
-                attempt.unit.run();
-                running.done(tries == 1 ? "ok" : "ok (attempt " + tries + ")");
-                return null;
-            } catch (Exception e) {
-                BatchFailure failure = BatchFailure.classify(e);
-                running.failed(failure + ": " + message(e));
-                if (failure == BatchFailure.CANCELLED) {
-                    Thread.currentThread().interrupt();
-                    throw e;
-                }
-                last = e;
-                if (failure != BatchFailure.TRANSIENT) {
-                    break;   // repeating it cannot help — escalate to a split now
-                }
-                if (tries < policy.maxAttempts()) {
-                    pause(policy.retryBackoffMillis() * tries);
-                }
+    private void execute(
+            String runKey,
+            List<? extends WorkUnit<R>> initialUnits,
+            WorkUnitFactory<R> restorer,
+            ResultCommitter<R> committer,
+            boolean persistent) throws Exception {
+        Objects.requireNonNull(committer, "committer");
+        cancellation.throwIfCancelled();
+
+        Deque<Attempt<R>> pending = new ArrayDeque<>();
+        Set<String> completed = new LinkedHashSet<>();
+        Optional<BatchCheckpoint> saved = persistent && policy.resume()
+                ? checkpoints.load(runKey)
+                : Optional.empty();
+
+        if (saved.isPresent()) {
+            restore(saved.orElseThrow(), restorer, pending, completed);
+            progress.message("Resuming \"" + runKey + "\" with " + pending.size()
+                    + " pending unit(s)\n");
+        } else {
+            initialise(initialUnits, pending);
+            if (persistent) {
+                save(runKey, pending, completed);
             }
         }
 
-        List<WorkUnit> parts = attempt.depth < policy.maxSplitDepth()
-                ? attempt.unit.split()
-                : List.of();
-        if (parts == null || parts.isEmpty()) {
-            throw new BatchFailedException(
-                    "Batch \"" + attempt.unit.title() + "\" failed and cannot be "
-                            + (attempt.depth < policy.maxSplitDepth()
-                                    ? "split further"
-                                    : "split again (depth " + attempt.depth + ")")
-                            + ": " + message(last),
-                    last);
+        while (!pending.isEmpty()) {
+            cancellation.throwIfCancelled();
+            Attempt<R> attempt = pending.peekFirst();
+            RunResult<R> result = runOrSplit(attempt, committer);
+
+            if (result.completed()) {
+                pending.removeFirst();
+                completed.add(attempt.unit().key());
+            } else {
+                List<WorkUnit<R>> parts = validateSplit(
+                        attempt, result.parts(), pending, completed);
+                pending.removeFirst();
+                for (int i = parts.size() - 1; i >= 0; i--) {
+                    pending.addFirst(new Attempt<>(parts.get(i), attempt.depth() + 1));
+                }
+                progress.message("Splitting \"" + attempt.unit().title() + "\" into "
+                        + parts.size() + " (depth " + (attempt.depth() + 1) + ")\n");
+            }
+
+            if (persistent) {
+                try {
+                    save(runKey, pending, completed);
+                } catch (Exception checkpointError) {
+                    if (result.completed()) {
+                        result.running().failed("CHECKPOINT: " + message(checkpointError));
+                    }
+                    throw checkpointError;
+                }
+            }
+            if (result.completed()) {
+                result.running().done(result.summary());
+            }
         }
-        progress.message("Splitting \"" + attempt.unit.title() + "\" into "
-                                 + parts.size() + " (depth " + (attempt.depth + 1) + ")\n");
-        return new ArrayList<>(parts);
+
+        if (persistent) {
+            checkpoints.delete(runKey);
+        }
     }
 
-    private static void throwIfCancelled() throws InterruptedException {
-        if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedException("Batch execution was cancelled.");
+    private RunResult<R> runOrSplit(
+            Attempt<R> attempt,
+            ResultCommitter<R> committer) throws Exception {
+        Exception last = null;
+
+        // The loop bound is the largest budget any kind could claim; each failure then
+        // checks its OWN budget, because UNAVAILABLE deliberately gets fewer attempts
+        // than TRANSIENT (see BatchPolicy: retries here stack on the transport's).
+        int maxTries = Math.max(policy.maxAttempts(), policy.maxUnavailableAttempts());
+        for (int tries = 1; tries <= maxTries; tries++) {
+            cancellation.throwIfCancelled();
+            BatchProgress.Running running = Objects.requireNonNull(
+                    progress.started(attempt.unit().title(), attempt.unit().key()),
+                    "BatchProgress.started returned null");
+            R value;
+            try {
+                value = attempt.unit().execute();
+            } catch (Exception error) {
+                FailureDecision decision = Objects.requireNonNull(
+                        failureClassifier.classify(error),
+                        "FailureClassifier returned null");
+                BatchFailure failure = decision.failure();
+                running.failed(failure + ": " + message(error));
+                if (failure == BatchFailure.CANCELLED) {
+                    restoreInterruptIfNeeded(error);
+                    throw error;
+                }
+                if (failure == BatchFailure.FATAL) {
+                    throw failed(attempt, "encountered a fatal error", error);
+                }
+                last = error;
+                boolean retryable = failure == BatchFailure.TRANSIENT
+                        || failure == BatchFailure.UNAVAILABLE;
+                if (retryable && tries < policy.attemptsFor(failure)) {
+                    long policyDelay = multiplyWithoutOverflow(
+                            policy.retryBackoffMillis(), tries);
+                    pause(Math.max(policyDelay, decision.retryAfterMillis()));
+                    continue;
+                }
+                if (failure == BatchFailure.UNAVAILABLE) {
+                    throw failed(attempt, "remained unavailable after " + tries
+                            + " attempt(s)", error);
+                }
+                break; // TOO_HEAVY, or TRANSIENT with an exhausted retry budget
+            }
+
+            try {
+                committer.commit(attempt.unit().descriptor(), value);
+            } catch (Exception commitError) {
+                running.failed("COMMIT: " + message(commitError));
+                throw failed(attempt, "computed successfully but could not be committed",
+                        commitError);
+            }
+            return RunResult.completed(running,
+                    tries == 1 ? "ok" : "ok (attempt " + tries + ")");
         }
+
+        if (attempt.depth() >= policy.maxSplitDepth()) {
+            throw failed(attempt,
+                    "failed and cannot be split again (depth " + attempt.depth() + ")", last);
+        }
+        List<? extends WorkUnit<R>> parts = attempt.unit().split();
+        if (parts == null || parts.isEmpty()) {
+            throw failed(attempt, "failed and cannot be split further", last);
+        }
+        return RunResult.split(parts);
+    }
+
+    private void initialise(
+            List<? extends WorkUnit<R>> units,
+            Deque<Attempt<R>> pending) {
+        if (units == null || units.isEmpty()) {
+            return;
+        }
+        Set<String> keys = new HashSet<>();
+        List<WorkUnit<R>> checked = new ArrayList<>(units.size());
+        for (WorkUnit<R> unit : units) {
+            validateUnit(unit, keys, "initial work");
+            checked.add(unit);
+        }
+        for (int i = checked.size() - 1; i >= 0; i--) {
+            pending.addFirst(new Attempt<>(checked.get(i), 0));
+        }
+    }
+
+    private void restore(
+            BatchCheckpoint checkpoint,
+            WorkUnitFactory<R> restorer,
+            Deque<Attempt<R>> pending,
+            Set<String> completed) throws Exception {
+        completed.addAll(checkpoint.completedKeys());
+        Set<String> keys = new HashSet<>(completed);
+        List<Attempt<R>> restored = new ArrayList<>();
+        for (BatchCheckpoint.PendingWork saved : checkpoint.pending()) {
+            WorkUnit<R> unit = Objects.requireNonNull(restorer.restore(saved.descriptor()),
+                    "WorkUnitFactory returned null for " + saved.descriptor().key());
+            if (!saved.descriptor().equals(unit.descriptor())) {
+                throw new IllegalStateException("Restored descriptor differs from checkpoint for "
+                        + saved.descriptor().key());
+            }
+            validateUnit(unit, keys, "checkpoint");
+            restored.add(new Attempt<>(unit, saved.splitDepth()));
+        }
+        for (int i = restored.size() - 1; i >= 0; i--) {
+            pending.addFirst(restored.get(i));
+        }
+    }
+
+    private List<WorkUnit<R>> validateSplit(
+            Attempt<R> parent,
+            List<? extends WorkUnit<R>> rawParts,
+            Deque<Attempt<R>> pending,
+            Set<String> completed) {
+        Set<String> keys = new HashSet<>(completed);
+        for (Attempt<R> existing : pending) {
+            if (existing != parent) {
+                keys.add(existing.unit().key());
+            }
+        }
+        keys.add(parent.unit().key());
+
+        List<WorkUnit<R>> parts = new ArrayList<>(rawParts.size());
+        for (WorkUnit<R> part : rawParts) {
+            validateUnit(part, keys, "split of " + parent.unit().key());
+            parts.add(part);
+        }
+        return parts;
+    }
+
+    private static <R> void validateUnit(
+            WorkUnit<R> unit,
+            Set<String> knownKeys,
+            String source) {
+        if (unit == null) {
+            throw new IllegalArgumentException(source + " contains a null work unit");
+        }
+        WorkDescriptor descriptor = Objects.requireNonNull(
+                unit.descriptor(), source + " contains a unit with no descriptor");
+        if (!knownKeys.add(descriptor.key())) {
+            throw new IllegalArgumentException(
+                    source + " contains duplicate work key: " + descriptor.key());
+        }
+    }
+
+    private void save(
+            String runKey,
+            Deque<Attempt<R>> pending,
+            Set<String> completed) throws Exception {
+        List<BatchCheckpoint.PendingWork> savedPending = pending.stream()
+                .map(a -> new BatchCheckpoint.PendingWork(a.unit().descriptor(), a.depth()))
+                .toList();
+        checkpoints.save(new BatchCheckpoint(runKey, savedPending, completed));
     }
 
     private static void pause(long millis) throws InterruptedException {
-        if (millis > 0) {
+        if (millis <= 0) {
+            return;
+        }
+        try {
             Thread.sleep(millis);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         }
     }
 
-    private static String message(Throwable e) {
-        if (e == null) {
+    private static long multiplyWithoutOverflow(long value, int multiplier) {
+        try {
+            return Math.multiplyExact(value, multiplier);
+        } catch (ArithmeticException overflow) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static void restoreInterruptIfNeeded(Throwable error) {
+        for (Throwable t = error; t != null; t = t.getCause()) {
+            if (t instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
+    private static String message(Throwable error) {
+        if (error == null) {
             return "no error recorded";
         }
-        String m = e.getMessage();
-        return m == null || m.isBlank() ? e.getClass().getSimpleName() : m;
+        String text = error.getMessage();
+        return text == null || text.isBlank()
+                ? error.getClass().getSimpleName()
+                : text;
     }
 
-    private record Attempt(WorkUnit unit, int depth) { }
+    private static <R> BatchFailedException failed(
+            Attempt<R> attempt,
+            String reason,
+            Throwable cause) {
+        return new BatchFailedException(
+                "Batch \"" + attempt.unit().title() + "\" " + reason + ": "
+                        + message(cause), cause);
+    }
 
-    /** A unit that could not be completed even after retries and splitting. */
+    private record Attempt<R>(WorkUnit<R> unit, int depth) { }
+
+    private record RunResult<R>(
+            boolean completed,
+            List<? extends WorkUnit<R>> parts,
+            BatchProgress.Running running,
+            String summary) {
+        static <R> RunResult<R> completed(BatchProgress.Running running, String summary) {
+            return new RunResult<>(true, List.of(), running, summary);
+        }
+
+        static <R> RunResult<R> split(List<? extends WorkUnit<R>> parts) {
+            return new RunResult<>(false, parts, null, null);
+        }
+    }
+
+    /** A unit that could not be completed without making partial work look complete. */
     public static final class BatchFailedException extends Exception {
         public BatchFailedException(String message, Throwable cause) {
             super(message, cause);

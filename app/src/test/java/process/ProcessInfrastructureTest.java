@@ -6,6 +6,7 @@ import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.log.LogNode;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,6 +24,21 @@ class ProcessInfrastructureTest {
         assertTrue(first.isCancelled());
         assertFalse(parent.isCancelled());
         assertFalse(second.isCancelled());
+    }
+
+    @Test
+    void cancellationListenersAreRaceSafeAndCanBeDetached() {
+        CancellationToken token = new CancellationToken();
+        AtomicInteger calls = new AtomicInteger();
+        CancellationToken.Registration detached = token.onCancel(calls::incrementAndGet);
+        detached.close();
+        token.onCancel(calls::incrementAndGet);
+
+        token.cancel();
+        token.onCancel(calls::incrementAndGet);
+
+        assertEquals(2, calls.get(),
+                "one attached listener and one late listener run exactly once");
     }
 
     @Test

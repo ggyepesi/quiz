@@ -82,6 +82,13 @@ public class QueryContext {
         return apiClient;
     }
 
+    /** Cancels every distinct active SPARQL transport owned by this context. */
+    public void cancelActiveQueries() {
+        sparqlClients.values().stream()
+                .distinct()
+                .forEach(WikidataSparqlClient::cancelCurrentQuery);
+    }
+
     /**
      * Runs {@code body} inside a log step nested under the current
      * workflow. The step is opened before the body runs and completed
