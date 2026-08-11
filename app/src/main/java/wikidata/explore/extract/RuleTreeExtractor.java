@@ -668,44 +668,54 @@ public class RuleTreeExtractor {
                                          .toList();
         if (memberQids.isEmpty()) return;
 
-        List<batch.WorkUnit<Map<String, List<String>>>> units = new ArrayList<>();
+        List<batch.WorkUnit<List<WikidataBinding>>> units = new ArrayList<>();
+        Map<String, RuleIncludedField> fieldsByName = new LinkedHashMap<>();
         for (RuleIncludedField field : fields) {
+            fieldsByName.put(field.fieldName(), field);
             for (int from = 0; from < memberQids.size(); from += memberFieldBatchSize) {
-                units.add(new MemberFieldWorkUnit(
-                        field,
-                        memberQids.subList(
-                                from,
-                                Math.min(from + memberFieldBatchSize, memberQids.size())),
-                        client));
+                List<String> batchQids = memberQids.subList(
+                        from, Math.min(from + memberFieldBatchSize, memberQids.size()));
+                units.add(new MemberBatchQueryUnit(
+                        "wikidata.memberField",
+                        "Member field \"" + field.fieldName() + "\"",
+                        batchQids,
+                        qids -> RuleNodeQueryBuilder.memberFieldBatchQuery(field, qids),
+                        client,
+                        Map.of("field", field.fieldName())));
             }
         }
 
         // The executor owns retrying, narrowing a batch the endpoint refuses, and
         // failing the run rather than leaving a field half-filled. Publication happens
         // here, once per successful batch, so a retried attempt cannot merge twice.
-        new batch.BatchExecutor<Map<String, List<String>>>(
-                batchPolicy,
-                batchProgress(progress),
-                wikidata.WikidataBatchFailureClassifier.INSTANCE,
-                new process.CancellationToken(),
-                batch.BatchCheckpointStore.NONE)
-                .run(units, (descriptor, values) -> mergeMemberField(descriptor, values));
+        executor(progress).run(units,
+                (descriptor, rows) -> mergeMemberField(descriptor, rows));
     }
 
     /** Publishes one member-field batch onto the registry-shared backbone members.
      *  merge() is the final duplicate guard, so replaying a committed batch is safe. */
     private void mergeMemberField(
-            batch.WorkDescriptor descriptor, Map<String, List<String>> values) {
+            batch.WorkDescriptor descriptor, List<WikidataBinding> rows) {
         String fieldName = descriptor.parameters().get("field");
-        values.forEach((memberQid, fieldValueQids) -> {
+        for (WikidataBinding row : rows) {
+            String memberQid = row.qid("value");
+            String fieldValueQid = row.qid("fieldValue");
+            if (memberQid == null || !WikidataIds.isQid(memberQid)) continue;
+            if (fieldValueQid == null || !WikidataIds.isQid(fieldValueQid)) continue;
             WikidataDynamicObject member = registry.get(memberQid);
-            if (member == null) {
-                return;   // not a backbone member
-            }
-            for (String fieldValueQid : fieldValueQids) {
-                member.merge(fieldName, registry.getOrCreate(fieldValueQid, fieldValueQid));
-            }
-        });
+            if (member == null) continue;   // not a backbone member
+            member.merge(fieldName, registry.getOrCreate(fieldValueQid, fieldValueQid));
+        }
+    }
+
+    /** The executor every batched stage runs on. */
+    private batch.BatchExecutor<List<WikidataBinding>> executor(GenerationLog progress) {
+        return new batch.BatchExecutor<>(
+                batchPolicy,
+                batchProgress(progress),
+                wikidata.WikidataBatchFailureClassifier.INSTANCE,
+                new process.CancellationToken(),
+                batch.BatchCheckpointStore.NONE);
     }
 
     /** Adapts the extraction log to the executor's progress seam. */
@@ -753,24 +763,25 @@ public class RuleTreeExtractor {
         }
 
         int fields = enrichNode.includedFields().size();
-        int total = (memberQids.size() + memberFieldBatchSize - 1) / memberFieldBatchSize;
         Map<String, WikidataDynamicObject> byQid = new LinkedHashMap<>();
 
-        for (int i = 0, n = 0; i < memberQids.size(); i += memberFieldBatchSize) {
-            List<String> batch = memberQids.subList(
-                    i, Math.min(i + memberFieldBatchSize, memberQids.size()));
-            String sparql =
-                    RuleNodeQueryBuilder.memberBoundedValuesQuery(enrichNode, batch);
-            final int bn = ++n;
-            List<WikidataDynamicObject> rows = runRootQuery(
-                    "Residual field" + (fields == 1 ? "" : "s") + " (+" + fields
-                            + ", batch " + bn + "/" + total + ")",
-                    sparql, progress,
-                    () -> runValueQuery(enrichNode, sparql));
-            for (WikidataDynamicObject o : rows) {
+        List<batch.WorkUnit<List<WikidataBinding>>> units = new ArrayList<>();
+        for (int i = 0; i < memberQids.size(); i += memberFieldBatchSize) {
+            units.add(new MemberBatchQueryUnit(
+                    "wikidata.residualFields",
+                    "Residual field" + (fields == 1 ? "" : "s") + " (+" + fields + ")",
+                    memberQids.subList(
+                            i, Math.min(i + memberFieldBatchSize, memberQids.size())),
+                    qids -> RuleNodeQueryBuilder.memberBoundedValuesQuery(enrichNode, qids),
+                    client,
+                    Map.of()));
+        }
+
+        executor(progress).run(units, (descriptor, rows) -> {
+            for (WikidataDynamicObject o : mapValueRows(enrichNode, rows)) {
                 byQid.putIfAbsent(o.qid(), o);
             }
-        }
+        });
 
         return new ArrayList<>(byQid.values());
     }
@@ -1193,10 +1204,20 @@ public class RuleTreeExtractor {
 
     private List<WikidataDynamicObject> runValueQuery(
             RuleNode node, String sparql) throws Exception {
+        return mapValueRows(node, client.query(sparql));
+    }
+
+    /**
+     * Maps value rows onto registry objects — this IS the publication step, so it runs
+     * only after a batch has fully succeeded. Shared by the batched stages (through a
+     * committer) and by the queries not yet converted, so there is one mapping.
+     */
+    private List<WikidataDynamicObject> mapValueRows(
+            RuleNode node, List<WikidataBinding> rows) {
 
         Map<String, WikidataDynamicObject> rowsByQid = new LinkedHashMap<>();
 
-        for (WikidataBinding b : client.query(sparql)) {
+        for (WikidataBinding b : rows) {
             String qid   = b.qid("value");
             String label = b.label("value");
             if (qid == null || !WikidataIds.isQid(qid)) continue;

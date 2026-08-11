@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonFileBatchCheckpointStoreTest {
@@ -82,6 +84,51 @@ class JsonFileBatchCheckpointStoreTest {
         store.complete("torn-tail", "a");
         assertTrue(store.recover("torn-tail").orElseThrow().pending().isEmpty(),
                 "recovery must remove the torn tail before another event is appended");
+    }
+
+    /**
+     * A torn tail and a corrupted record mean opposite things and must be treated
+     * oppositely. A short trailing frame is a process that stopped mid-append: the
+     * records before it are durable, so recovery drops it and continues. A frame whose
+     * payload no longer matches its checksum is damage to history — resuming from it
+     * would silently re-run completed work or, worse, skip work that never ran. The
+     * checksum exists precisely to tell those apart, so it must refuse.
+     */
+    @Test
+    void refusesACorruptedRecordInsteadOfSilentlyTruncatingHistory() throws Exception {
+        JsonFileBatchCheckpointStore store = new JsonFileBatchCheckpointStore(directory);
+        store.start("damaged", List.of(work("a", 0), work("b", 0)));
+        store.complete("damaged", "a");
+        long size = Files.size(journal());
+
+        // Flip a byte inside the FIRST record's payload — a complete frame, so nothing
+        // about its length betrays the damage; only the checksum does.
+        byte[] bytes = Files.readAllBytes(journal());
+        int payloadStart = 12;   // magic + length + crc
+        bytes[payloadStart + 5] ^= 0x40;
+        Files.write(journal(), bytes);
+
+        IOException failure = assertThrows(IOException.class,
+                () -> store.recover("damaged"));
+        assertTrue(failure.getMessage().contains("checksum mismatch"), failure.getMessage());
+        assertEquals(size, Files.size(journal()),
+                "a refused journal is left intact for inspection, not truncated");
+    }
+
+    /** A journal that does not begin with a frame at all is unusable: recovering
+     *  "nothing pending" would look like a finished run and skip the whole batch. */
+    @Test
+    void refusesAJournalWhoseFramingIsUnrecognisable() throws Exception {
+        JsonFileBatchCheckpointStore store = new JsonFileBatchCheckpointStore(directory);
+        store.start("garbled", List.of(work("a", 0)));
+        byte[] bytes = Files.readAllBytes(journal());
+        bytes[0] ^= 0x7f;
+        Files.write(journal(), bytes);
+
+        IOException failure = assertThrows(IOException.class,
+                () -> store.recover("garbled"));
+        assertTrue(failure.getMessage().contains("Invalid checkpoint frame"),
+                failure.getMessage());
     }
 
     @Test
