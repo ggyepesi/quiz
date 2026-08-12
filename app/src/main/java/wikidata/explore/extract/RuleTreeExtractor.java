@@ -1001,11 +1001,20 @@ public class RuleTreeExtractor {
         try (GenerationLog.Group g = progress.group("wbgetentities LABELS — "
                                                             + qids.size() + " refs, " + totalBatches
                                                             + " batches (names for QID-only references)")) {
-            // ONE call, so the batches still fan out over the client's pool. Batching
-            // here to isolate a throttled batch would have made the pass serial.
-            WikidataApiClient.PartialEntities resolved =
-                    api().getEntitiesBestEffort(qids, List.of(), g.batchSink());
-            int filled = applyLabels(placeholders, resolved.entities());
+            // The shared resolver owns label semantics for both generation and the
+            // TransformApp repair flow. Generation selects its bounded-parallel mode;
+            // interactive repair selects sequential mode to avoid a user-triggered burst.
+            wikidata.api.WikidataEntityLabelResolver.Result resolved =
+                    new wikidata.api.WikidataEntityLabelResolver(api()).resolve(
+                            qids,
+                            wikidata.api.WikidataEntityLabelResolver.Execution.BOUNDED_PARALLEL,
+                            g.batchSink());
+            Map<String, WikidataApiClient.ApiEntity> details = new LinkedHashMap<>();
+            resolved.labels().forEach((qid, label) -> details.put(
+                    qid, new WikidataApiClient.ApiEntity(qid, label, Map.of())));
+            resolved.missing().forEach(qid -> details.put(
+                    qid, new WikidataApiClient.ApiEntity(qid, "", Map.of(), true)));
+            int filled = applyLabels(placeholders, details);
             g.message("Resolved " + filled + "/" + placeholders.size()
                               + " entity label(s) via wbgetentities"
                               + (resolved.failedBatches() == 0 ? ".\n"

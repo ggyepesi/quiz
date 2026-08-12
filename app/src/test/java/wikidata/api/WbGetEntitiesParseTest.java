@@ -35,7 +35,7 @@ class WbGetEntitiesParseTest {
             },
             "Q22": {
               "id": "Q22",
-              "labels": { "en": { "language": "en", "value": "Second nominee" } },
+              "labels": { "mul": { "language": "mul", "value": "Second nominee" } },
               "claims": {}
             },
             "Q33": { "missing": "" }
@@ -57,6 +57,8 @@ class WbGetEntitiesParseTest {
 
         assertTrue(out.get("Q33").missing(), "explicit missing entity is retained as evidence");
         assertEquals("First nominee", out.get("Q11").label());
+        assertEquals("Second nominee", out.get("Q22").label(),
+                "multilingual label is the fallback when English is absent");
 
         // both id and numeric-id forms resolve; deprecated is skipped, in order.
         assertEquals(List.of("Q5", "Q215627"), out.get("Q11").claim("P31"));

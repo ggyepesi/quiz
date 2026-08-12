@@ -848,16 +848,23 @@ public final class ValidationPanel extends JPanel {
                 JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {
             return;
         }
-        List<String> qids = List.copyOf(unnamed.keySet());
-        // In 50-QID requests, the API's own batch size; the shared runner keeps this off
-        // the EDT and logs each one like every other query.
-        for (int from = 0; from < qids.size(); from += 50) {
-            List<String> batch = qids.subList(from, Math.min(from + 50, qids.size()));
-            queryRunner.runQuiet(new quiz.enrichment.WikimediaEntityLookup().labels(batch),
-                    labels -> SwingUtilities.invokeLater(() -> stageNames(unnamed, labels)),
-                    error -> SwingUtilities.invokeLater(() ->
-                            status.setText("Name lookup failed: " + error.getMessage())));
-        }
+        resolveNamesButton.setEnabled(false);
+        status.setText("Resolving " + unnamed.size() + " reference name(s)…");
+        queryRunner.runQuiet(
+                new quiz.enrichment.ResolveReferenceLabelsQuery(unnamed.keySet()),
+                result -> SwingUtilities.invokeLater(() -> {
+                    stageNames(unnamed, result.labels());
+                    resolveNamesButton.setEnabled(true);
+                    if (result.failedBatches() > 0) {
+                        status.setText("Staged " + result.labels().size()
+                                + " name(s); " + result.failedBatches()
+                                + " batch(es) failed. Apply to write resolved names.");
+                    }
+                }),
+                error -> SwingUtilities.invokeLater(() -> {
+                    resolveNamesButton.setEnabled(true);
+                    status.setText("Name lookup failed: " + error.getMessage());
+                }));
     }
 
     /** Every QID-named target reachable from the drilled members' selected field. */
@@ -888,10 +895,7 @@ public final class ValidationPanel extends JPanel {
                     || label.equals(entry.getKey())) {
                 continue;
             }
-            staging.stage(new Correction(
-                    concreteType(target), entry.getKey(),
-                    objectview.field.ViewableContractFieldSet.DISPLAY_KEY, label,
-                    "wikidata", null, CorrectionPolicy.REPLACE, null));
+            staging.stage(Correction.entityLabel(entry.getKey(), label, "wikidata"));
             staged++;
         }
         status.setText("Staged " + staged + " name(s); Apply to write them.");

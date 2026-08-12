@@ -30,11 +30,18 @@ public final class Corrections {
             return 0;
         }
         Map<TargetKey, Viewable> byKey = new HashMap<>();
-        Map<String, Viewable> legacyByQid = new HashMap<>();
+        // EVERY instance per qid, not the first: identity is <typeKey, qid>, so one QID
+        // can be pooled under two type keys (the State / Group "France" case). A
+        // type-less correction is a statement about the ENTITY, so it must reach all of
+        // them — keeping only the first renamed one instance and left the other a bare
+        // QID, picked by pool iteration order.
+        Map<String, List<Viewable>> byQid = new HashMap<>();
+        Map<String, Viewable> firstByQid = new HashMap<>();
         for (Viewable q : pool) {
             if (q != null && q.getIdentifier() != null) {
                 byKey.putIfAbsent(new TargetKey(q.typeName(), q.getIdentifier()), q);
-                legacyByQid.putIfAbsent(q.getIdentifier(), q);
+                byQid.computeIfAbsent(q.getIdentifier(), k -> new ArrayList<>()).add(q);
+                firstByQid.putIfAbsent(q.getIdentifier(), q);
             }
         }
 
@@ -52,7 +59,9 @@ public final class Corrections {
         // A reference correction stores a QID; it resolves against THIS pool, so a
         // curated reference lands on the same instance every other field pointing at
         // that entity already uses.
-        REFERENCE_POOL.set(legacyByQid);
+        // A reference resolves to ONE instance — the value of a field is a single
+        // object — so the reference pool keeps first-wins.
+        REFERENCE_POOL.set(firstByQid);
         try {
 
         // Pass 1 — authoritative reviewed values override or extend the base.
@@ -60,13 +69,15 @@ public final class Corrections {
             if (!c.authoritative()) {
                 continue;
             }
-            Viewable target = target(c, byKey, legacyByQid);
-            if (target == null) {
+            List<Viewable> targets = targets(c, byKey, byQid);
+            if (targets.isEmpty()) {
                 continue;
             }
-            applyCorrection(target, c, sampleByField.get(sampleKey(c)));
+            for (Viewable target : targets) {
+                applyCorrection(target, c, sampleByField.get(sampleKey(c)));
+                applied++;
+            }
             manualKeys.add(key(c));
-            applied++;
         }
 
         // Pass 2 — rules / external sources only fill a field that's still a GAP: absent,
@@ -77,14 +88,14 @@ public final class Corrections {
             if (c.authoritative() || manualKeys.contains(key(c))) {
                 continue;
             }
-            Viewable target = target(c, byKey, legacyByQid);
-            if (target == null
-                    || objectview.ViewableAdapter.isValidQuizValue(
-                            FieldAccess.getPath(target, c.field()))) {
-                continue;
+            for (Viewable target : targets(c, byKey, byQid)) {
+                if (objectview.ViewableAdapter.isValidQuizValue(
+                        FieldAccess.getPath(target, c.field()))) {
+                    continue;   // this instance already has a value; the next may not
+                }
+                applyCorrection(target, c, sampleByField.get(sampleKey(c)));
+                applied++;
             }
-            applyCorrection(target, c, sampleByField.get(sampleKey(c)));
-            applied++;
         }
 
         return applied;
@@ -351,12 +362,22 @@ public final class Corrections {
         }
     }
 
-    private static Viewable target(Correction correction,
-                                   Map<TargetKey, Viewable> byKey,
-                                   Map<String, Viewable> legacyByQid) {
-        return correction.type() == null
-                ? legacyByQid.get(correction.qid())
-                : byKey.get(new TargetKey(correction.type(), correction.qid()));
+    /**
+     * The instances a correction applies to.
+     *
+     * <p>A typed correction names one instance: ⟨typeKey, qid⟩ IS the identity. An
+     * untyped one is a statement about the entity behind the QID — a resolved label
+     * belongs to the person, not to whichever class happens to reference her — so it
+     * reaches every instance carrying that QID.
+     */
+    private static List<Viewable> targets(Correction correction,
+                                          Map<TargetKey, Viewable> byKey,
+                                          Map<String, List<Viewable>> byQid) {
+        if (correction.type() == null) {
+            return byQid.getOrDefault(correction.qid(), List.of());
+        }
+        Viewable typed = byKey.get(new TargetKey(correction.type(), correction.qid()));
+        return typed == null ? List.of() : List.of(typed);
     }
 
     private static SampleKey sampleKey(Correction correction) {

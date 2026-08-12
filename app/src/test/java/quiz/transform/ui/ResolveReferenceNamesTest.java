@@ -3,7 +3,6 @@ package quiz.transform.ui;
 import objectview.field.FieldPath;
 import org.junit.jupiter.api.Test;
 import quiz.curation.Correction;
-import quiz.curation.CorrectionPolicy;
 import quiz.curation.CorrectionSource;
 import quiz.curation.Corrections;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -26,12 +25,9 @@ class ResolveReferenceNamesTest {
     @Test void aNameCorrectionRenamesTheEntityItself() {
         WikidataDynamicObject composer =
                 new WikidataDynamicObject("Q95709545", "Q95709545");
-        composer.type("Person");
 
-        Corrections.apply(List.of(composer), List.of(source(new Correction(
-                "Person", "Q95709545",
-                objectview.field.ViewableContractFieldSet.DISPLAY_KEY, "Mary Ramos",
-                "wikidata", null, CorrectionPolicy.REPLACE, null))));
+        Corrections.apply(List.of(composer), List.of(source(
+                Correction.entityLabel("Q95709545", "Mary Ramos", "wikidata"))));
 
         assertEquals("Mary Ramos", composer.getDisplayName());
     }
@@ -40,23 +36,61 @@ class ResolveReferenceNamesTest {
     @Test void everyReferenceToThatEntityShowsTheNewName() {
         WikidataDynamicObject composer =
                 new WikidataDynamicObject("Q95709545", "Q95709545");
-        composer.type("Person");
         WikidataDynamicObject filmA = film("Q1", "Django Unchained", composer);
         WikidataDynamicObject filmB = film("Q2", "Kill Bill", composer);
 
         assertTrue(FieldCoverageColumns.hasUnnamedReference(
                 filmA, FieldPath.parse("composer")), "unnamed before");
 
-        Corrections.apply(List.of(composer, filmA, filmB), List.of(source(new Correction(
-                "Person", "Q95709545",
-                objectview.field.ViewableContractFieldSet.DISPLAY_KEY, "Mary Ramos",
-                "wikidata", null, CorrectionPolicy.REPLACE, null))));
+        Corrections.apply(List.of(composer, filmA, filmB), List.of(source(
+                Correction.entityLabel("Q95709545", "Mary Ramos", "wikidata"))));
 
         assertFalse(FieldCoverageColumns.hasUnnamedReference(
                 filmA, FieldPath.parse("composer")));
         assertFalse(FieldCoverageColumns.hasUnnamedReference(
                 filmB, FieldPath.parse("composer")),
                     "the second film was never curated, and is fixed anyway");
+    }
+
+    /**
+     * Identity is ⟨typeKey, qid⟩, so one QID can be pooled under two type keys — the
+     * same entity stamped as a class by one run and left an untyped leaf by another. A
+     * label is a statement about the ENTITY, so it must reach both; keeping only the
+     * first renamed one and left the other a bare QID, chosen by iteration order.
+     */
+    @Test void anUntypedLabelReachesEveryInstanceSharingTheQid() {
+        WikidataDynamicObject stamped =
+                new WikidataDynamicObject("Q95709545", "Q95709545");
+        stamped.type("Person");
+        WikidataDynamicObject leaf =
+                new WikidataDynamicObject("Q95709545", "Q95709545");
+
+        Corrections.apply(List.of(stamped, leaf), List.of(source(
+                Correction.entityLabel("Q95709545", "Mary Ramos", "wikidata"))));
+
+        assertEquals("Mary Ramos", stamped.getDisplayName());
+        assertEquals("Mary Ramos", leaf.getDisplayName(),
+                     "the second instance of the same entity must not stay a bare QID");
+    }
+
+    /** A TYPED correction still names exactly one instance: ⟨typeKey, qid⟩ is the
+     *  identity, and widening that would let one class's value overwrite another's. */
+    @Test void aTypedCorrectionStillReachesOnlyItsOwnInstance() {
+        WikidataDynamicObject person =
+                new WikidataDynamicObject("Q95709545", "Q95709545");
+        person.type("Person");
+        WikidataDynamicObject other =
+                new WikidataDynamicObject("Q95709545", "Q95709545");
+        other.type("Organisation");
+
+        Corrections.apply(List.of(person, other), List.of(source(new Correction(
+                "Person", "Q95709545",
+                objectview.field.ViewableContractFieldSet.DISPLAY_KEY, "Mary Ramos",
+                "wikidata", null, quiz.curation.CorrectionPolicy.REPLACE, null))));
+
+        assertEquals("Mary Ramos", person.getDisplayName());
+        assertEquals("Q95709545", other.getDisplayName(),
+                     "a correction scoped to a type must not touch another type");
     }
 
     /** The coverage column counts members whose reference is unnamed, so a field full of

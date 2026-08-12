@@ -27,6 +27,14 @@ public record Correction(String type, String qid, String field, Object value,
     public static final String REFERENCE = "reference";
     public static final String REFERENCE_COLLECTION = "reference[]";
 
+    /** A human label belongs to the external entity identity, not to whichever domain
+     *  class happened to reference it. Null type deliberately selects QID-wide replay. */
+    public static Correction entityLabel(String qid, String label, String origin) {
+        return new Correction(
+                null, qid, objectview.field.ViewableContractFieldSet.DISPLAY_KEY,
+                label, origin, null, CorrectionPolicy.REPLACE, null);
+    }
+
     /** Backward-compatible shape used by generated and legacy sidecars. */
     public Correction(String qid, String field, Object value, String origin) {
         this(null, qid, field, value, origin, null, null, null);
