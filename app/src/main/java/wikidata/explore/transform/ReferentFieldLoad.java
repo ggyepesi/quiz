@@ -262,46 +262,11 @@ public final class ReferentFieldLoad {
         return loaded;
     }
 
-    /** All distinct (by identity) {@link WikidataDynamicObject}s reachable from the
-     *  roots through entity field values — flattens nested referents into one list so
-     *  a qualifier-only referent (never a top-level pool entry) is still indexed. */
+    /** Delegates to the one graph walk the snapshot writer also uses, so a field load
+     *  sees exactly the objects that will be saved. */
     private static List<WikidataDynamicObject> collectReachable(
             Collection<WikidataDynamicObject> roots) {
-        Set<WikidataDynamicObject> seen =
-                Collections.newSetFromMap(new IdentityHashMap<>());
-        Deque<WikidataDynamicObject> queue = new ArrayDeque<>();
-        for (WikidataDynamicObject r : roots) {
-            if (r != null && seen.add(r)) {
-                queue.addLast(r);
-            }
-        }
-        List<WikidataDynamicObject> out = new ArrayList<>(seen.size());
-        while (!queue.isEmpty()) {
-            WikidataDynamicObject o = queue.pollFirst();   // FIFO: preserve root order
-            out.add(o);
-            for (Object v : o.dynamicFieldValues().values()) {
-                pushReachable(v, seen, queue);
-            }
-        }
-        return out;
-    }
-
-    private static void pushReachable(
-            Object v, Set<WikidataDynamicObject> seen,
-            Deque<WikidataDynamicObject> queue) {
-        if (v instanceof WikidataDynamicObject w) {
-            if (seen.add(w)) {
-                queue.addLast(w);
-            }
-        } else if (v instanceof Collection<?> c) {
-            for (Object item : c) {
-                pushReachable(item, seen, queue);
-            }
-        } else if (v instanceof Map<?, ?> m) {
-            for (Object item : m.values()) {
-                pushReachable(item, seen, queue);
-            }
-        }
+        return wikidata.explore.extract.WikidataObjectGraph.reachable(roots);
     }
 
     private static String clean(String s) {

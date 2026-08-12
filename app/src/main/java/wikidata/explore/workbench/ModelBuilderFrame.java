@@ -1870,43 +1870,26 @@ public class ModelBuilderFrame extends JFrame {
                         snap.getName().replaceFirst("\\.snapshot\\.json$", "") + ".counts.tsv");
     }
 
-    // Appends ONE timestamped per-class row (distinct-qid counts) per save, so runs
-    // can be diffed over time — the stable "perfect" counts vs a drift. Reified records
-    // key by their unique statement id, so a class like Nomination counts correctly.
-    private void appendCountsRecord(File file, List<WikidataDynamicObject> pool) {
-        java.util.Map<String, java.util.Set<String>> byType = new java.util.TreeMap<>();
-        for (WikidataDynamicObject o : pool) {
-            if (o == null) {
-                continue;
-            }
-            String t = o.typeName();
-            String qid = o.qid();
-            if (t == null || t.isBlank() || "WikidataDynamicObject".equals(t)
-                    || qid == null || qid.isBlank()) {
-                continue;
-            }
-            byType.computeIfAbsent(t, k -> new java.util.HashSet<>()).add(qid);
-        }
-        List<java.util.Map.Entry<String, java.util.Set<String>>> sorted =
-                new java.util.ArrayList<>(byType.entrySet());
-        sorted.sort((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()));
-        int total = sorted.stream().mapToInt(e -> e.getValue().size()).sum();
-
-        StringBuilder row = new StringBuilder(
-                java.time.LocalDateTime.now().withNano(0).toString());
-        row.append("\ttotal=").append(total);
-        for (java.util.Map.Entry<String, java.util.Set<String>> e : sorted) {
-            row.append('\t').append(e.getKey()).append('=').append(e.getValue().size());
-        }
-        row.append('\n');
+    // Appends ONE timestamped per-class row per save, so runs can be diffed over time —
+    // the stable "perfect" counts vs a drift. What it counts lives in DomainCounts; the
+    // earlier rows in an existing file answered a different question, so the format note
+    // is written once where the meaning changes rather than silently reinterpreting them.
+    private void appendCountsRecord(File file, List<WikidataDynamicObject> roots) {
+        String row = java.time.LocalDateTime.now().withNano(0)
+                + "\t" + DomainCounts.row(roots) + "\n";
         try {
             boolean fresh = !file.isFile();
+            boolean noted = !fresh && java.nio.file.Files
+                    .readString(file.toPath()).contains(DomainCounts.FORMAT_NOTE);
             try (java.io.FileWriter w = new java.io.FileWriter(file, true)) {
                 if (fresh) {
                     w.write("# " + projectModel.name()
-                                    + " — per-class distinct-qid counts, one row per save\n");
+                                    + " — per-class counts, one row per save\n");
                 }
-                w.write(row.toString());
+                if (!noted) {
+                    w.write(DomainCounts.FORMAT_NOTE + "\n");
+                }
+                w.write(row);
             }
         } catch (Exception ex) {
             logWindow.info("Could not write counts file: " + ex.getMessage());
