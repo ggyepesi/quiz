@@ -33,6 +33,18 @@ public final class IdentityChip {
         return none;
     }
 
+    /** A reified Wikidata statement is already anchored, but is not an entity whose
+     * label can be identity-resolved. Keep it visibly distinct from "unidentified". */
+    public static JComponent statement() {
+        JLabel statement = new JLabel("statement");
+        statement.setForeground(Color.GRAY);
+        statement.setFont(statement.getFont().deriveFont(
+                Font.ITALIC, statement.getFont().getSize2D() - 1f));
+        statement.setToolTipText(
+                "Wikidata statement — already anchored; no entity identity to resolve");
+        return statement;
+    }
+
     /**
      * The card decorator for instances identified by their NATIVE id — the model
      * builder's case, where there is no curation sidecar to consult. A non-Wikidata
@@ -44,6 +56,7 @@ public final class IdentityChip {
      */
     public static JComponent ofInstance(objectview.Viewable instance) {
         String id = instance == null ? null : instance.getIdentifier();
+        if (wikidata.WikidataIds.isStatementId(id)) return statement();
         return quiz.source.WikidataSource.isQid(id) ? of(id) : null;
     }
 }

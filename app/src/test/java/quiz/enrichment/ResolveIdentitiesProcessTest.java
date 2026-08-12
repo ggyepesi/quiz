@@ -11,9 +11,19 @@ import wikidata.explore.query.core.QueryContext;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ResolveIdentitiesProcessTest {
+
+    @Test void rejectsStatementSubjectsBeforeAnySearchCanRun() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ResolveIdentitiesProcess(List.of(
+                        new ResolveIdentitiesProcess.Subject(
+                                "Nomination",
+                                "Q72717$67ADCA97-2FF9-43AD-A4DC-0349086680AC",
+                                "Elia Kazan", null)), 12));
+    }
 
     @Test
     void keepsAcceptedIdentityWithoutSearchingOrReviewing() {

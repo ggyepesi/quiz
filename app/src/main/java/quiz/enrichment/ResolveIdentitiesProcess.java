@@ -44,6 +44,11 @@ public final class ResolveIdentitiesProcess
         if (this.subjects.isEmpty()) {
             throw new IllegalArgumentException("No instances to resolve");
         }
+        if (this.subjects.stream().anyMatch(subject ->
+                wikidata.WikidataIds.isStatementId(subject.targetId()))) {
+            throw new IllegalArgumentException(
+                    "Wikidata statements are already anchored and cannot be identity-resolved");
+        }
         this.plan = new ProcessPlan(
                 "Resolve identities",
                 "Search Wikidata for each instance, then review and assign the matches",
