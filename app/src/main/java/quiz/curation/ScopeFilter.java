@@ -8,7 +8,18 @@ package quiz.curation;
 public enum ScopeFilter {
     MISSING("Missing / unresolved"),
     PRESENT("Existing / resolved"),
-    ALL("All");
+    ALL("All"),
+
+    /**
+     * The value is there, but what it points at has no name — a reference still showing
+     * its own identifier. A gap the other three cannot express: such a member counts as
+     * PRESENT, so it never appears in a worklist even though the field reads as a bare
+     * QID everywhere it is rendered.
+     *
+     * <p>Field tasks only. An identity is not a reference, so this scope is not offered
+     * for one; see {@code ValidationPanel.scopeChoices}.
+     */
+    UNNAMED_REFERENCE("Present, but the reference has no name");
 
     private final String label;
 

@@ -137,6 +137,9 @@ public final class ValidationPanel extends JPanel {
     private Boolean identityDrill;
     private boolean identityTask;
     private ScopeFilter scopeFilter = ScopeFilter.MISSING;
+    // Set while the scope dropdown's model is being rebuilt, so repopulating it
+    // does not fire the listener and re-run the drill mid-switch.
+    private boolean syncingScopeChoices;
     private long identityLabelRequest;
 
     /** The concrete member used to discover a field source. Keep its readable name beside
@@ -234,6 +237,7 @@ public final class ValidationPanel extends JPanel {
         typeCombo.addActionListener(e -> onType());
         scopeCombo.setSelectedItem(scopeFilter);
         scopeCombo.addActionListener(e -> {
+            if (syncingScopeChoices) return;
             ScopeFilter chosen = (ScopeFilter) scopeCombo.getSelectedItem();
             if (chosen != null && chosen != scopeFilter) {
                 scopeFilter = chosen;
@@ -348,8 +352,39 @@ public final class ValidationPanel extends JPanel {
         return filter == ScopeFilter.ALL ? null : filter == ScopeFilter.PRESENT;
     }
 
+    /** The scopes a task can be filtered by. An identity is not a reference, so the
+     *  unnamed-reference scope is a field-task scope only — offered there, and absent
+     *  from the identity drill rather than silently coerced into "unresolved". */
+    static ScopeFilter[] scopeChoices(boolean identityTask) {
+        return identityTask
+                ? new ScopeFilter[] {
+                        ScopeFilter.MISSING, ScopeFilter.PRESENT, ScopeFilter.ALL }
+                : ScopeFilter.values();
+    }
+
+    /** Rebuilds the scope dropdown for the current task, keeping the selection when it
+     *  survives the change. Guarded so re-populating the model does not fire the
+     *  listener and re-run the drill mid-switch. */
+    private void syncScopeChoices() {
+        ScopeFilter[] choices = scopeChoices(identityTask);
+        if (scopeCombo.getItemCount() == choices.length) {
+            return;
+        }
+        ScopeFilter keep = scopeFilter;
+        syncingScopeChoices = true;
+        try {
+            scopeCombo.setModel(new javax.swing.DefaultComboBoxModel<>(choices));
+            boolean stillOffered = java.util.Arrays.asList(choices).contains(keep);
+            scopeFilter = stillOffered ? keep : ScopeFilter.MISSING;
+            scopeCombo.setSelectedItem(scopeFilter);
+        } finally {
+            syncingScopeChoices = false;
+        }
+    }
+
     private void showIdentityScope(ScopeFilter filter) {
         identityTask = true;
+        syncScopeChoices();
         scopeFilter = filter;
         scopeCombo.setSelectedItem(filter);
         showIdentityMembers(identityScope(filter));
@@ -362,6 +397,7 @@ public final class ValidationPanel extends JPanel {
         drilledInstances = List.of();
         identityDrill = null;
         identityTask = false;
+        syncScopeChoices();
         selectedFieldType = null;
         selectedFieldPath = null;
 
@@ -589,6 +625,7 @@ public final class ValidationPanel extends JPanel {
         return switch (filter) {
             case MISSING -> "instance(s) with a missing value";
             case PRESENT -> "instance(s) with an existing value";
+            case UNNAMED_REFERENCE -> "instance(s) whose reference has no name";
             case ALL -> "instance(s)";
         };
     }

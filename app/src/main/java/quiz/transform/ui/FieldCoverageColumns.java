@@ -133,6 +133,52 @@ public final class FieldCoverageColumns implements FieldTableContributor {
     /** Whether {@code q} has a non-empty value at the dotted {@code path} (descending
      *  through collection intermediates). */
     public static boolean hasValue(Viewable q, FieldPath path) {
+        for (Object leaf : leaves(q, path)) {
+            if (leaf == null) {
+                continue;
+            }
+            if (leaf instanceof String s && s.isBlank()) {
+                continue;
+            }
+            if (leaf instanceof Collection<?> c && c.isEmpty()) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Whether any value at {@code path} is a reference whose target has no name — it
+     * still displays its own identifier.
+     *
+     * <p>Shares one traversal with {@link #hasValue}: two questions about the same
+     * leaves, so a path that resolves one way for coverage cannot resolve another way
+     * here.
+     */
+    public static boolean hasUnnamedReference(Viewable q, FieldPath path) {
+        for (Object leaf : leaves(q, path)) {
+            if (leaf instanceof Viewable target && isUnnamed(target)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A target showing its identifier (or nothing) where its name belongs. That is
+     *  what an unresolved label looks like once it reaches a card. */
+    private static boolean isUnnamed(Viewable target) {
+        String name = target.getDisplayName();
+        if (name == null || name.isBlank()) {
+            return true;
+        }
+        String id = target.getIdentifier();
+        return id != null && !id.isBlank() && name.equals(id);
+    }
+
+    /** The values a field path resolves to, with collections, maps and arrays fanned
+     *  out — the shared walk behind every field-scope question. */
+    private static List<Object> leaves(Viewable q, FieldPath path) {
         List<Object> current = new ArrayList<>();
         current.add(q);
         for (String seg : path.segments()) {
@@ -154,19 +200,7 @@ public final class FieldCoverageColumns implements FieldTableContributor {
             }
             current = next;
         }
-        for (Object o : current) {
-            if (o == null) {
-                continue;
-            }
-            if (o instanceof String s && s.isBlank()) {
-                continue;
-            }
-            if (o instanceof Collection<?> c && c.isEmpty()) {
-                continue;
-            }
-            return true;
-        }
-        return false;
+        return current;
     }
 
     private static Object readPlain(Object owner, String segment) {
@@ -213,9 +247,15 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                 .filter(member -> domain.isInstanceOf(member, ownerType))
                 .filter(member -> {
                     boolean present = hasValue(member, path);
-                    return filter == ScopeFilter.ALL
-                            || filter == ScopeFilter.PRESENT && present
-                            || filter == ScopeFilter.MISSING && !present;
+                    return switch (filter) {
+                        case ALL -> true;
+                        case PRESENT -> present;
+                        case MISSING -> !present;
+                        // A named-but-unresolved reference is a subset of PRESENT, so it
+                        // needs the value to be there before the name can be missing.
+                        case UNNAMED_REFERENCE ->
+                                present && hasUnnamedReference(member, path);
+                    };
                 })
                 .map(Viewable.class::cast)
                 .toList();
