@@ -6,6 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ProcessWorkflowStateTest {
+    @Test void planCanExplicitlyRepresentNoWork() {
+        ProcessWorkflowPlan plan = new ProcessWorkflowPlan(
+                "Identity plan", "Inspect existing identities", java.util.List.of(),
+                false, "All instances are already identified");
+
+        assertEquals(false, plan.executable());
+        assertEquals("All instances are already identified", plan.noWorkMessage());
+    }
+
     @Test void followsTheOnlySupportedLifecycle() {
         ProcessWorkflowState state = new ProcessWorkflowState();
         assertEquals(ProcessWorkflowState.Stage.PLAN, state.stage());

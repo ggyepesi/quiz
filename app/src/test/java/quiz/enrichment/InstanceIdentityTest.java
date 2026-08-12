@@ -1,4 +1,4 @@
-package quiz.enrichment.ui;
+package quiz.enrichment;
 
 import org.junit.jupiter.api.Test;
 import quiz.enrichment.ResolveIdentitiesReviewRequest.IdentityMatch;
@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** The confident pick is the top-ranked exact-label hit, not demoted by homonyms. */
-class ResolveIdentitiesReviewPanelTest {
+class InstanceIdentityTest {
 
     @Test void exactMatchPrefersTheTopRankedHitDespiteHomonyms() {
         // "India" search: Q668 (the country) ranks first, but "India" also labels a given
@@ -20,7 +20,7 @@ class ResolveIdentitiesReviewPanelTest {
                 new IdentityMatch("Q11703", "India", "given name"),
                 new IdentityMatch("Q1471888", "Indication", "")));
 
-        assertEquals("Q668", ResolveIdentitiesReviewPanel.exactMatch(india).qid());
+        assertEquals("Q668", india.exactMatch().qid());
     }
 
     @Test void exactMatchIsNullWhenNoLabelEqualsTheName() {
@@ -28,6 +28,6 @@ class ResolveIdentitiesReviewPanelTest {
                 new IdentityMatch("Q1", "Poland", ""),
                 new IdentityMatch("Q2", "Slovakia", "")));
 
-        assertNull(ResolveIdentitiesReviewPanel.exactMatch(x));
+        assertNull(x.exactMatch());
     }
 }

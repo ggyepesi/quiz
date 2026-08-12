@@ -60,7 +60,9 @@ public final class SwingProcessWorkflow {
             JPanel panel = page("1 · Plan", plan.description());
             panel.add(tabs(plan.tabs()), BorderLayout.CENTER);
             JButton cancel = new JButton("Cancel");
-            JButton execute = new JButton("Execute");
+            JButton execute = new JButton(plan.executable()
+                    ? "Execute" : plan.noWorkMessage());
+            execute.setEnabled(plan.executable());
             cancel.addActionListener(e -> dialog.dispose());
             execute.addActionListener(e -> execute());
             panel.add(buttons(cancel, execute), BorderLayout.SOUTH);
@@ -68,6 +70,7 @@ public final class SwingProcessWorkflow {
         }
 
         void execute() {
+            if (!action.plan().executable()) return;
             state.execute();
             JPanel panel = page("2 · Running", action.process().plan().description());
             JLabel status = new JLabel("Queries are running. Progress is recorded in Query logs.");

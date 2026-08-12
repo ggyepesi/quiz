@@ -36,6 +36,26 @@ public record ResolveIdentitiesReviewRequest(
         public InstanceIdentity {
             candidates = candidates == null ? List.of() : List.copyOf(candidates);
         }
+
+        /**
+         * The confident pick: the FIRST exact-label match, or null when none matches.
+         *
+         * <p>Candidates come back in Wikidata relevance order, so the top exact hit is the
+         * canonical entity ("India" → Q668). Homonyms sharing the label no longer demote it
+         * to ambiguous — ranking decides.</p>
+         *
+         * <p>This is the classification the review surface groups by, so it belongs to the
+         * data rather than to whichever panel renders it.</p>
+         */
+        public IdentityMatch exactMatch() {
+            for (IdentityMatch match : candidates) {
+                if (match.label() != null && name != null
+                        && match.label().equalsIgnoreCase(name)) {
+                    return match;
+                }
+            }
+            return null;
+        }
     }
 
     /** A Wikidata entity candidate for an instance. */

@@ -5,12 +5,10 @@ import objectview.render.GroupTreeView;
 import process.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessInputRequest;
-import process.ProcessStatus;
 import process.swing.SwingProcessInput;
 import process.swing.SwingProcessRunner;
 import objectview.Viewable;
 import quiz.ViewableGroup;
-import quiz.enrichment.ui.CategorizedReviewPanel;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
 import quiz.curation.ScopeFilter;
 import wikidata.WikidataSparqlClient;
@@ -47,28 +45,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JPanel renderHolder = new JPanel(new BorderLayout());
     private final JLabel scopeStatus = new JLabel("No rendered scope");
     private final JButton curateFieldButton = new JButton("Curate field…");
-    // One header button opens the Identities panel — a CategorizedReviewPanel over the visible
-    // scope (Identified + Unresolved rows) whose Apply resolves the checked unresolved and
-    // whose Save/Forget footer actions manage the pending (applied-in-memory) result. Applying
-    // a resolve only mutates the in-memory curation; Save persists it, Forget reverts it.
+    // One header button runs identity resolution on the shared Plan → Run → Results → Apply
+    // host; its Apply STAGES the accepted assignments. The two buttons beside it are the
+    // staging controls: Save writes them to the sidecar, Forget discards them. They appear
+    // only while something is staged, so "nothing pending" needs no reading.
     private final JButton identitiesButton = new JButton("Identities…");
+    private final JButton saveIdentitiesButton = new JButton("Save staged identities");
+    private final JButton forgetIdentitiesButton = new JButton("Forget staged");
     private JPanel instanceScopeHeader;
     private quiz.transform.EditableGroup selectedGroup;
     // The group changes the instance scope, not the user's field choices. Dynamic
     // classes share a Java implementation, so the domain type name is the right key.
     private final java.util.Map<String, objectview.search.SearchPanel.ConfigState>
             instanceConfigsByType = new java.util.HashMap<>();
-    // Single-result convention: after a resolve, its result is PENDING (applied in memory)
-    // until the user saves or forgets it. While pending, the resolve button re-opens the
-    // retained review instead of starting a new resolve; save persists it, forget reverts.
-    private boolean identitiesDirty;
-    private java.util.List<
-            quiz.enrichment.ResolveIdentitiesReviewRequest.InstanceIdentity>
-            lastReviewItems = List.of();
-    private String lastReviewTitle = "Resolve identities";
-    private String lastReviewPrompt = "";
-    private java.util.List<quiz.enrichment.ResolveIdentitiesDecision.Resolved>
-            lastApplied = List.of();
     // Primary datasource is WDQS (Wikidata queries + Explore); the factory owns the
     // DBpedia binding (enrichment joins), and each SPARQL operation explicitly requests
     // its datasource from the shared context. requestClient is closed by this panel.
@@ -201,14 +190,22 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         curateFieldButton.setEnabled(false);
         curateFieldButton.addActionListener(e -> openFieldCuration());
         identitiesButton.setToolTipText(
-                "Resolve / save / revert Wikidata identities for the visible instances");
+                "Resolve Wikidata identities for the visible instances");
         identitiesButton.setEnabled(false);
         identitiesButton.addActionListener(e -> openIdentityActions());
-        // The header carries just two actions on the visible scope; identity resolve/save/
-        // forget live inside the Identities panel this button opens.
+        saveIdentitiesButton.setToolTipText(
+                "Write the staged identities to the curation sidecar");
+        saveIdentitiesButton.addActionListener(e -> saveIdentities());
+        saveIdentitiesButton.setVisible(false);
+        forgetIdentitiesButton.setToolTipText(
+                "Discard the staged identities — nothing has been written yet");
+        forgetIdentitiesButton.addActionListener(e -> forgetStagedIdentities());
+        forgetIdentitiesButton.setVisible(false);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         actions.add(curateFieldButton);
         actions.add(identitiesButton);
+        actions.add(forgetIdentitiesButton);
+        actions.add(saveIdentitiesButton);
         scope.add(actions, BorderLayout.EAST);
         instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
@@ -265,10 +262,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
 
-    /** Open the Identities panel for the visible scope: the shared CategorizedReviewPanel
-     *  showing Identified (with QID) + Unresolved rows — the same result panel identity
-     *  resolution uses. Apply resolves the checked unresolved; Save / Forget footer actions
-     *  manage the pending in-memory result (shown per state). */
+    /** Open identity resolution for the visible scope on the shared Plan → Run → Results →
+     *  Apply host: the plan shows which instances are already identified and which will be
+     *  searched, the results stage the accepted assignments, and the header's Save is what
+     *  writes them. */
     private void openIdentityActions() {   // header: the whole visible view
         RenderedScope scope = renderedScope;
         if (scope == null || scope.visibleMembers().isEmpty()) {
@@ -280,8 +277,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     /** Identity resolution RESTRICTED to an explicit scope (e.g. a curation drill's
-     *  instances) — the same panel as the header action, just a narrower member set. This
-     *  is the one identity UI; there is no separate per-member flow. */
+     *  instances) — the same workflow as the header action, just a narrower member set.
+     *  This is the one identity UI; there is no separate per-member flow. */
     private void openScopedIdentities(List<Viewable> instances, String scopeLabel) {
         if (instances == null || instances.isEmpty()) {
             JOptionPane.showMessageDialog(this, "No instances in this scope.");
@@ -293,79 +290,24 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private void openIdentityActions(List<Viewable> members, String type) {
         quiz.curation.ManualCuration curation = curation();
-        quiz.enrichment.IdentityResolutionPlan plan =
-                quiz.enrichment.IdentityResolutionPlan.inspect(
-                        type, members,
-                        member -> currentQid(curation, member.typeName(), member));
-        quiz.enrichment.ui.IdentityResolutionPlanPanel.showModeless(
-                this, plan,
-                unresolved -> resolveIdentities(unresolved,
-                        type + " unresolved from " + members.size() + " inspected"),
-                stagedIdentityCount(curation), this::saveIdentities, this::forgetLastResult);
-    }
-
-    private static int stagedIdentityCount(quiz.curation.ManualCuration curation) {
-        quiz.curation.CurationStaging staging =
-                quiz.curation.CurationStaging.forCuration(curation);
-        return staging == null ? 0 : staging.identityLinks().size();
-    }
-
-
-    /** Manually resolve ONE instance's identity: open Explore, and stage the approved
-     *  QID through the same in-memory pending path the batch resolve uses (Save / Forget
-     *  still apply). The manual fallback for an unresolved entry the automated resolve
-     *  can't place. */
-    private void exploreIdentityManually(Viewable member,
-            java.util.function.Consumer<String> onResolved) {
-        quiz.curation.ManualCuration curation = curation();
         if (curation == null) {
             JOptionPane.showMessageDialog(this,
                     "This domain has no curation store to record identities.");
             return;
         }
-        String targetId = member.getIdentifier();
-        if (targetId == null || targetId.isBlank()) {
-            JOptionPane.showMessageDialog(this,
-                    "This instance has no stable identifier, so its identity cannot be saved.");
-            return;
-        }
-        String memberType = member.typeName();
-        wikidata.explore.workbench.ExploreByExamplePanel.showPicker(
-                this, queries.runner(), member.getDisplayName(), false,
-                (qid, label) -> {
-                    if (!quiz.source.WikidataSource.isQid(qid)) return;
-                    String name = label == null || label.isBlank()
-                            ? member.getDisplayName() : label.trim();
-                    applyResolvedIdentities(curation,
-                            new quiz.enrichment.ResolveIdentitiesDecision(List.of(
-                                    new quiz.enrichment.ResolveIdentitiesDecision.Resolved(
-                                            memberType, targetId, qid, name))));
-                    if (onResolved != null) {
-                        onResolved.accept(qid);
-                    }
-                });
-    }
-
-    /** Resolve an explicit immutable list. Callers may be the rendered view, Validate's
-     *  current gap, a filtered/grouped result, or a future manual selection. */
-    private void resolveIdentities(List<Viewable> requested, String scopeLabel) {
         if (resolveRunner.isRunning()) {
             JOptionPane.showMessageDialog(this,
                     "An identity resolution is already running. Cancel it from its "
                             + "curation window before starting another.");
             return;
         }
-        quiz.curation.ManualCuration curation = curation();
-        if (curation == null) {
-            JOptionPane.showMessageDialog(this,
-                    "This domain has no curation store to record identities.");
-            return;
-        }
-        List<Viewable> members = List.copyOf(requested == null ? List.of() : requested);
-        if (members.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No instances are currently shown.");
-            return;
-        }
+        quiz.enrichment.IdentityResolutionPlan plan =
+                quiz.enrichment.IdentityResolutionPlan.inspect(
+                        type, members,
+                        member -> currentQid(curation, member.typeName(), member));
+        // Every member is a subject: the process skips the ones that already carry an
+        // identity (an accepted identity is authoritative), so the scope needs no
+        // pre-filtering and an all-identified scope still opens for inspection.
         List<quiz.enrichment.ResolveIdentitiesProcess.Subject> subjects = new ArrayList<>();
         for (Viewable member : members) {
             String memberType = member.typeName();
@@ -373,45 +315,61 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     memberType, member.getIdentifier(), member.getDisplayName(),
                     currentQid(curation, memberType, member)));
         }
-        setResolveRunning(true, scopeLabel, members.size());
-        resolveRunner.run(
-                new quiz.enrichment.ResolveIdentitiesProcess(subjects, 12),
-                outcome -> SwingUtilities.invokeLater(() -> {
-                    setResolveRunning(false, scopeLabel, members.size());
-                    quiz.enrichment.ResolveIdentitiesProcess.Result result = outcome.result();
-                    if (result != null && !result.instances().isEmpty()) {
-                        lastReviewItems = result.instances();
-                        lastReviewTitle = "Resolve identities";
-                        lastReviewPrompt = "Confirm the Wikidata entity for each instance.";
-                        quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showModeless(
-                                this, lastReviewTitle, lastReviewPrompt, result.instances(),
-                                decision -> {
-                                    if (decision == null || decision.resolved().isEmpty()) return;
-                                    applyResolvedIdentities(curation, decision);
-                                    String type = members.get(0).typeName();
-                                    openIdentityActions(members,
-                                            type == null ? "View" : type);
-                                });
+        quiz.enrichment.ResolveIdentitiesProcess search =
+                new quiz.enrichment.ResolveIdentitiesProcess(subjects, 12);
+        process.swing.workflow.ProcessWorkflowAction<
+                quiz.enrichment.ResolveIdentitiesProcess.Result,
+                quiz.enrichment.ResolveIdentitiesDecision.Resolved> action =
+                new process.swing.workflow.ProcessWorkflowAction<>() {
+                    @Override public String id() { return "resolve-identities"; }
+                    @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
+                        return new process.swing.workflow.ProcessWorkflowPlan(
+                                "Wikidata identities — " + plan.scope(),
+                                plan.identified().size() + " instance(s) already have a Wikidata "
+                                        + "identity and will not be searched or changed; "
+                                        + plan.unresolved().size()
+                                        + " unresolved instance(s) will be searched, one "
+                                        + "request each. Nothing is written: the results are "
+                                        + "staged for review and saved separately.",
+                                List.of(new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                                "Already identified",
+                                                entries(plan.identified()),
+                                                TransformWorkbenchPanel.this::identityChip),
+                                        new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                                "Will search", entries(plan.unresolved()))),
+                                !plan.unresolved().isEmpty(),
+                                "All instances are already identified");
                     }
-                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
-                        JOptionPane.showMessageDialog(TransformWorkbenchPanel.this,
-                                "Resolve failed: " + outcome.error().getMessage());
+                    @Override public process.Process<
+                            quiz.enrichment.ResolveIdentitiesProcess.Result> process() {
+                        return search;
                     }
-                }),
-                ex -> SwingUtilities.invokeLater(() -> {
-                    setResolveRunning(false, scopeLabel, members.size());
-                    JOptionPane.showMessageDialog(this,
-                            "Resolve failed: " + ex.getMessage());
-                }));
+                    @Override public process.swing.workflow.ProcessWorkflowResults<
+                            quiz.enrichment.ResolveIdentitiesDecision.Resolved> results(
+                                    process.ProcessOutcome<
+                                            quiz.enrichment.ResolveIdentitiesProcess.Result>
+                                            outcome) {
+                        return quiz.enrichment.ui.IdentityResultCards.of(
+                                outcome.result(), outcome.summary());
+                    }
+                    @Override public void apply(
+                            List<quiz.enrichment.ResolveIdentitiesDecision.Resolved> decisions) {
+                        applyResolvedIdentities(curation,
+                                new quiz.enrichment.ResolveIdentitiesDecision(decisions));
+                    }
+                };
+        process.swing.workflow.SwingProcessWorkflow.start(this, resolveRunner, action);
     }
 
-    private void setResolveRunning(boolean running, String scopeLabel, int size) {
-        if (running) {
-            scopeStatus.setText("Resolving identities · " + size + " in " + scopeLabel
-                    + " · Query logs remain available");
-        } else {
-            updateScopeStatus();
-        }
+    private static List<Viewable> entries(
+            List<quiz.enrichment.IdentityResolutionPlan.Entry> entries) {
+        return entries.stream().map(quiz.enrichment.IdentityResolutionPlan.Entry::member).toList();
+    }
+
+    private static int stagedIdentityCount(quiz.curation.ManualCuration curation) {
+        quiz.curation.CurationStaging staging =
+                quiz.curation.CurationStaging.forCuration(curation);
+        return staging == null ? 0 : staging.identityLinks().size();
     }
 
     /** The instance's current qid: its own id when it IS a qid, else an approved Wikidata
@@ -457,18 +415,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         return qid == null && curation == null ? null : IdentityChip.of(qid);
     }
 
+    /** Stage the accepted assignments in memory. The staging session is the one record of
+     *  what is pending, so re-staging an assignment it already holds is a no-op and the
+     *  header's Save reads its count directly. The workflow host reports the outcome. */
     private void applyResolvedIdentities(
             quiz.curation.ManualCuration curation, quiz.enrichment.ResolveIdentitiesDecision decision) {
-        if (decision.resolved().isEmpty()) {
-            return;
-        }
-        // In-memory only — the user inspects / fetches data for the newly identified
-        // instances and then persists explicitly via "Save identities".
-        java.util.Map<String, quiz.enrichment.ResolveIdentitiesDecision.Resolved> pending =
-                new java.util.LinkedHashMap<>();
-        for (quiz.enrichment.ResolveIdentitiesDecision.Resolved applied : lastApplied) {
-            pending.put(identityKey(applied.type(), applied.targetId()), applied);
-        }
         int changed = 0;
         for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : decision.resolved()) {
             if (hasIdentityLink(curation, r)) {
@@ -478,20 +429,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     r.type(), r.targetId(), "Wikidata", r.qid(),
                     "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata");
             quiz.curation.CurationStaging.forCuration(curation).stage(link);
-            pending.put(identityKey(r.type(), r.targetId()), r);
             changed++;
         }
         if (changed == 0) {
-            // Re-applying the retained, already-applied rows is a no-op. In
-            // particular, a review containing only No match rows creates no dirty state.
             return;
         }
-        lastApplied = List.copyOf(pending.values());
-        identitiesDirty = !lastApplied.isEmpty();
         updateScopeStatus();   // pending state on the scope buttons, immediately
         render();
-        JOptionPane.showMessageDialog(this,
-                changed + " identity(ies) staged — inspect them, then Apply changes or Forget.");
     }
 
     private static boolean hasIdentityLink(
@@ -512,87 +456,35 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                         && java.util.Objects.equals(link.sourceId(), resolved.qid()));
     }
 
-    private static String identityKey(String type, String targetId) {
-        return String.valueOf(type) + '\u0000' + targetId;
-    }
-
-    /** Re-open the pending result's review so the user can inspect / re-decide it.
-     *  Applying again updates the in-memory identities; it does not persist. */
-    private void recallLastResult() {
-        if (lastReviewItems.isEmpty()) {
+    /** Forget the staged identities. A staged assignment is by definition unsaved, so
+     *  discarding restores the state from before the resolve. */
+    private void forgetStagedIdentities() {
+        quiz.curation.ManualCuration curation = curation();
+        if (stagedIdentityCount(curation) == 0) {
             return;
         }
-        quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showModeless(
-                this, lastReviewTitle, lastReviewPrompt, lastReviewItems, lastApplied,
-                decision -> {
-                    quiz.curation.ManualCuration curation = curation();
-                    if (curation != null && decision != null
-                            && !decision.resolved().isEmpty()) {
-                        applyResolvedIdentities(curation, decision);
-                    }
-                });
-    }
-
-    /** Forget the pending result: remove the links it applied in memory. Since a pending
-     *  result is by definition unsaved, this restores the pre-resolve state. */
-    private void forgetLastResult() {
-        quiz.curation.ManualCuration curation = curation();
-        if (identitiesDirty && curation != null)
-            quiz.curation.CurationStaging.forCuration(curation).discardIdentityLinks();
-        clearPendingResult();
+        quiz.curation.CurationStaging.forCuration(curation).discardIdentityLinks();
+        updateScopeStatus();
         render();
     }
 
-    private void clearPendingResult() {
-        identitiesDirty = false;
-        lastReviewItems = List.of();
-        lastApplied = List.of();
-        updateScopeStatus();
-    }
-
-    /** Persist the in-memory curation (identities applied since the last save).
-     *  Returns false if the write failed, so the close flow can keep the window open. */
+    /** Write the staged identities to the curation sidecar — the only control on this
+     *  panel that persists anything. Returns false if the write failed, so the close flow
+     *  can keep the window open. */
     private boolean saveIdentities() {
         quiz.curation.ManualCuration curation = curation();
-        if (curation == null) {
+        int savedCount = stagedIdentityCount(curation);
+        if (savedCount == 0) {
             return true;
         }
-        quiz.curation.CurationStaging stagedSession =
-                quiz.curation.CurationStaging.forCuration(curation);
-        int savedCount = stagedSession == null ? 0 : stagedSession.identityLinks().size();
-        java.util.Set<String> appliedKeys = lastApplied.stream()
-                .map(resolved -> identityKey(resolved.type(), resolved.targetId()))
-                .collect(java.util.stream.Collectors.toSet());
-        List<quiz.enrichment.ResolveIdentitiesReviewRequest.InstanceIdentity> unresolvedReview =
-                lastReviewItems.stream()
-                        .filter(item -> !appliedKeys.contains(
-                                identityKey(item.type(), item.targetId())))
-                        .toList();
-        boolean keepReview = false;
-        if (!unresolvedReview.isEmpty()) {
-            Object[] options = {"Keep unresolved review", "Forget unresolved review", "Cancel"};
-            int choice = JOptionPane.showOptionDialog(this,
-                    lastApplied.size() + " applied identity(ies) will be saved.\n"
-                            + unresolvedReview.size() + " unresolved review item(s) remain.\n\n"
-                            + "Keep their candidates and No match results for continued review?",
-                    "Save identities", JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
-            if (choice < 0 || choice == 2) return false;
-            keepReview = choice == 0;
-        }
         try {
-            stagedSession.applyIdentityLinks();
-            identitiesDirty = false;
-            lastApplied = List.of();
-            lastReviewItems = keepReview ? List.copyOf(unresolvedReview) : List.of();
+            quiz.curation.CurationStaging.forCuration(curation).applyIdentityLinks();
             updateScopeStatus();
             String where = curation.file() == null
                     ? "the curation sidecar" : curation.file().getPath();
             JOptionPane.showMessageDialog(this,
                     savedCount + (savedCount == 1 ? " identity" : " identities")
-                            + " saved to\n" + where
-                            + (keepReview ? "\n\n" + unresolvedReview.size()
-                                    + " unresolved review item(s) retained." : ""),
+                            + " saved to\n" + where,
                     "Identities saved", JOptionPane.INFORMATION_MESSAGE);
             return true;
         } catch (Exception ex) {
@@ -606,9 +498,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 ? c.curation() : null;
     }
 
-    /** True while identities have been applied in memory but not yet saved. */
+    /** True while identities are staged but not yet written. The staging session is the
+     *  single record of what is pending, so nothing else needs to track it. */
     public boolean hasUnsavedIdentities() {
-        return identitiesDirty && !lastApplied.isEmpty();
+        return stagedIdentityCount(curation()) > 0;
     }
 
 
@@ -695,9 +588,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         final String type = controller.selectedType();
         rightMode = RightMode.CARDS;
         renderedScope = null;
-        if (!resolveRunner.isRunning()) {
-            scopeStatus.setText("Rendering " + (type == null ? "view" : type) + "…");
-        }
+        // A running resolve reports itself in its own workflow window, so this line is free
+        // to describe the render.
+        scopeStatus.setText("Rendering " + (type == null ? "view" : type) + "…");
         identitiesButton.setEnabled(false);
 
         renderHolder.removeAll();
@@ -782,14 +675,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     private void updateScopeStatus() {
+        quiz.curation.ManualCuration curation = curation();
+        updateStagedIdentityButtons(curation);
         RenderedScope scope = renderedScope;
         if (scope == null) {
             curateFieldButton.setEnabled(false);
             identitiesButton.setEnabled(false);
             return;
         }
-        quiz.curation.ManualCuration curation =
-                controller.domain() instanceof quiz.curation.Curatable c ? c.curation() : null;
         long identified = scope.visibleMembers().stream()
                 .filter(member -> currentQid(curation, member.typeName(), member) != null)
                 .count();
@@ -806,10 +699,23 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 : "Curate " + selectedField.displayPath() + "…");
         curateFieldButton.setEnabled(selectedField != null && !scope.visibleMembers().isEmpty());
 
-        // The Identities panel (opened from this button) hosts resolve/save/forget; the
-        // button is enabled whenever there's a curatable scope, or a pending result to manage.
-        identitiesButton.setEnabled(curation != null
-                && (!scope.visibleMembers().isEmpty() || !lastReviewItems.isEmpty()));
+        // Resolution acts on the visible scope, so it needs one; the staging controls beside
+        // it stay available even when the scope is empty (they act on what is already staged).
+        identitiesButton.setEnabled(curation != null && !scope.visibleMembers().isEmpty());
+    }
+
+    /** The staging controls read the staging session directly — it is the single record of
+     *  what is pending, shared with every other curation surface over the same sidecar. */
+    private void updateStagedIdentityButtons(quiz.curation.ManualCuration curation) {
+        int staged = stagedIdentityCount(curation);
+        saveIdentitiesButton.setText("Save " + staged + " staged identity"
+                + (staged == 1 ? "" : "s"));
+        saveIdentitiesButton.setVisible(staged > 0);
+        forgetIdentitiesButton.setVisible(staged > 0);
+        if (instanceScopeHeader != null) {
+            instanceScopeHeader.revalidate();
+            instanceScopeHeader.repaint();
+        }
     }
 
     /** A flat result: members grouped by type — a single searchable instance view
@@ -1141,7 +1047,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
                 if (panel.hasUnsavedIdentities()) {
                     int choice = JOptionPane.showConfirmDialog(f,
-                            "Identities have been applied in memory but not saved.\n"
+                            "Identities are staged but have not been saved.\n"
                                     + "Save them before closing?",
                             "Unsaved identities", JOptionPane.YES_NO_CANCEL_OPTION);
                     if (choice == JOptionPane.CANCEL_OPTION
