@@ -180,16 +180,16 @@ public class USPresidents implements DomainViews {
         return new FlexibleDate(Integer.parseInt(s[2]), s[0], Integer.parseInt(s[1]));
     }
 
-    private Person parseNameAndBirthDeathDates(String s) {
+    Person parseNameAndBirthDeathDates(String s) {
         Person person = null;
         Matcher matcher = NAME_DATE_PATTERN.matcher(s);
         if (matcher.matches()) {
+            // The table already gives the canonical "John Adams". It used to be inverted to
+            // "Adams John" for surname sorting, but this one string is also the identifier,
+            // the display name and the Wikidata search term — and "Martin Van Buren" shows
+            // the last token is not the family name anyway. Sort order belongs to a name
+            // model, not to the stored value.
             String name = matcher.group(1).trim();
-            int i = name.lastIndexOf(' ');
-
-            name = (i == -1)
-                    ? name
-                    : name.substring(i + 1) + " " + name.substring(0, i);
 
             String birthYearStr = matcher.group(2);
             String deathYearStr = matcher.group(3); // This will be null if no death year is present
