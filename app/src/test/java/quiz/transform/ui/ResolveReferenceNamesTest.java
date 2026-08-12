@@ -39,15 +39,15 @@ class ResolveReferenceNamesTest {
         WikidataDynamicObject filmA = film("Q1", "Django Unchained", composer);
         WikidataDynamicObject filmB = film("Q2", "Kill Bill", composer);
 
-        assertTrue(FieldCoverageColumns.hasUnnamedReference(
+        assertTrue(FieldCoverageColumns.hasUnnamedReferenceInstance(
                 filmA, FieldPath.parse("composer")), "unnamed before");
 
         Corrections.apply(List.of(composer, filmA, filmB), List.of(source(
                 Correction.entityLabel("Q95709545", "Mary Ramos", "wikidata"))));
 
-        assertFalse(FieldCoverageColumns.hasUnnamedReference(
+        assertFalse(FieldCoverageColumns.hasUnnamedReferenceInstance(
                 filmA, FieldPath.parse("composer")));
-        assertFalse(FieldCoverageColumns.hasUnnamedReference(
+        assertFalse(FieldCoverageColumns.hasUnnamedReferenceInstance(
                 filmB, FieldPath.parse("composer")),
                     "the second film was never curated, and is fixed anyway");
     }
@@ -91,6 +91,41 @@ class ResolveReferenceNamesTest {
         assertEquals("Mary Ramos", person.getDisplayName());
         assertEquals("Q95709545", other.getDisplayName(),
                      "a correction scoped to a type must not touch another type");
+    }
+
+    /**
+     * After the product compiler a bare reference is no longer an instance: with no
+     * class in the model and no fields of its own it collapses to its DISPLAY NAME, so
+     * an entity that never got a label collapses to the QID that stood in for one. The
+     * detection has to see that shape too, or it reports zero on exactly the domain the
+     * curation UI opens — which is what it did.
+     */
+    @Test void aCollapsedReferenceIsRecognisedByItsQidShapedValue() {
+        WikidataDynamicObject film = new WikidataDynamicObject("Q1", "12 Angry Men");
+        film.type("Movies");
+        film.merge("composer", "Q592174");           // collapsed, never labelled
+
+        WikidataDynamicObject named = new WikidataDynamicObject("Q2", "The Fellowship");
+        named.type("Movies");
+        named.merge("composer", "Howard Shore");     // collapsed, labelled
+
+        assertTrue(FieldCoverageColumns.hasUnnamedReference(
+                film, FieldPath.parse("composer"), true));
+        assertFalse(FieldCoverageColumns.hasUnnamedReferenceInstance(
+                named, FieldPath.parse("composer")),
+                    "a real label is not a QID, so it must not be flagged");
+        assertEquals(java.util.Set.of("Q592174"),
+                     FieldCoverageColumns.unnamedReferences(
+                             film, FieldPath.parse("composer"), true),
+                     "the QID is what a label correction is recorded against");
+    }
+
+    @Test void aQidShapedOrdinaryStringIsNotAnUnnamedReference() {
+        WikidataDynamicObject record = new WikidataDynamicObject("Q1", "Record");
+        record.merge("catalogCode", "Q592174");
+
+        assertFalse(FieldCoverageColumns.hasUnnamedReference(
+                record, FieldPath.parse("catalogCode"), false));
     }
 
     /** The coverage column counts members whose reference is unnamed, so a field full of

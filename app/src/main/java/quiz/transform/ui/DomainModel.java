@@ -121,6 +121,13 @@ public interface DomainModel {
         return DomainSchemas.fields(this, type);
     }
 
+    /** Whether a field originated as an entity-valued declaration, even if compilation
+     *  collapsed its runtime value to a display-name String. */
+    default boolean entityOrigin(String type, objectview.field.FieldPath path) {
+        objectview.field.FieldRef field = DomainSchemas.resolve(this, type, path);
+        return field != null && field.reference();
+    }
+
     /**
      * The canonical immutable top-level schema for {@code type} — the single source of
      * truth for field structure (names, shapes, reference targets, structural roles).

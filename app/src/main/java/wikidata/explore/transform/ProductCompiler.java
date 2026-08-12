@@ -169,7 +169,8 @@ public final class ProductCompiler {
 
         String label = label(model, type, target, reference, collection);
         String nested = reference ? target : null;
-        return new ProductField(f.name(), label, reference, collection, nested, false);
+        return new ProductField(f.name(), label, reference, collection, nested, false,
+                type == FieldType.ENTITY);
     }
 
     private static String label(GeneratedProjectModel model, FieldType type,

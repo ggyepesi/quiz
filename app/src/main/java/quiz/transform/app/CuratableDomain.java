@@ -89,6 +89,9 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
     }
     @Override public Viewable representativeSample(String type) { return base.representativeSample(type); }
     @Override public Collection<? extends Viewable> instances() { return base.instances(); }
+    @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
+        return base.entityOrigin(type, path);
+    }
     @Override public Collection<? extends Viewable> memberRoots() { return memberRoots; }
     @Override public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
         return DomainModel.super.groupRoots();

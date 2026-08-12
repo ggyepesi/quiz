@@ -834,7 +834,7 @@ public final class ValidationPanel extends JPanel {
      * still leave the entity unnamed anywhere else it appears.
      */
     private void resolveReferenceNames() {
-        java.util.LinkedHashMap<String, Viewable> unnamed = unnamedTargets();
+        java.util.LinkedHashSet<String> unnamed = unnamedTargets();
         if (unnamed.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Every reference in this scope has a name.");
             return;
@@ -851,9 +851,9 @@ public final class ValidationPanel extends JPanel {
         resolveNamesButton.setEnabled(false);
         status.setText("Resolving " + unnamed.size() + " reference name(s)…");
         queryRunner.runQuiet(
-                new quiz.enrichment.ResolveReferenceLabelsQuery(unnamed.keySet()),
+                new quiz.enrichment.ResolveReferenceLabelsQuery(unnamed),
                 result -> SwingUtilities.invokeLater(() -> {
-                    stageNames(unnamed, result.labels());
+                    stageNames(result.labels());
                     resolveNamesButton.setEnabled(true);
                     if (result.failedBatches() > 0) {
                         status.setText("Staged " + result.labels().size()
@@ -867,32 +867,26 @@ public final class ValidationPanel extends JPanel {
                 }));
     }
 
-    /** Every QID-named target reachable from the drilled members' selected field. */
-    private java.util.LinkedHashMap<String, Viewable> unnamedTargets() {
-        java.util.LinkedHashMap<String, Viewable> out = new java.util.LinkedHashMap<>();
+    /** Every QID the drilled members' selected field still shows instead of a name.
+     *  QIDs, not instances: after the product compiler a collapsed reference IS a
+     *  string, and the label is recorded against the entity's QID either way. */
+    private java.util.LinkedHashSet<String> unnamedTargets() {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
         if (selectedFieldPath == null) return out;
         FieldPath path = FieldPath.parse(selectedFieldPath);
+        boolean entityOrigin = domain.entityOrigin(selectedFieldType, path);
         for (Viewable member : drilledInstances) {
-            for (Object leaf : FieldCoverageColumns.leafValues(member, path)) {
-                if (!(leaf instanceof Viewable ref)) continue;
-                String id = ref.getIdentifier();
-                if (id != null && !id.isBlank() && id.equals(ref.getDisplayName())) {
-                    out.putIfAbsent(id, ref);
-                }
-            }
+            out.addAll(FieldCoverageColumns.unnamedReferences(member, path, entityOrigin));
         }
         return out;
     }
 
-    private void stageNames(
-            Map<String, Viewable> targets, Map<String, String> labels) {
+    private void stageNames(Map<String, String> labels) {
         if (staging == null || labels == null) return;
         int staged = 0;
         for (Map.Entry<String, String> entry : labels.entrySet()) {
-            Viewable target = targets.get(entry.getKey());
             String label = entry.getValue();
-            if (target == null || label == null || label.isBlank()
-                    || label.equals(entry.getKey())) {
+            if (label == null || label.isBlank() || label.equals(entry.getKey())) {
                 continue;
             }
             staging.stage(Correction.entityLabel(entry.getKey(), label, "wikidata"));

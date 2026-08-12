@@ -64,6 +64,29 @@ public final class ProductDomain implements DomainModel, SchemaView {
         return productClass == null ? null : productClass.asFieldSchema();
     }
 
+    @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
+        if (type == null || path == null || path.isRoot()) return false;
+        String currentType = type;
+        List<String> segments = path.segments();
+        for (int i = 0; i < segments.size(); i++) {
+            ProductClass owner = schema.get(currentType);
+            if (owner == null) return false;
+            ProductField field = null;
+            String segment = segments.get(i);
+            for (ProductField candidate : owner.fields()) {
+                if (segment.equals(candidate.name())) {
+                    field = candidate;
+                    break;
+                }
+            }
+            if (field == null) return false;
+            if (i == segments.size() - 1) return field.entityOrigin();
+            currentType = field.nestedClassName();
+            if (currentType == null || currentType.isBlank()) return false;
+        }
+        return false;
+    }
+
     /** Authoritative field types for the config editor's dynamic sample of {@code
      *  type} — labels, structural-ness and nested sources straight from the model. */
     @Override public FieldTypeSource fieldTypes(String type) {

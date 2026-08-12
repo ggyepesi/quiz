@@ -3,6 +3,9 @@ package wikidata.explore.transform;
 import org.junit.jupiter.api.Test;
 import quiz.transform.app.ProductDomain;
 import quiz.transform.ui.DomainField;
+import quiz.curation.Correction;
+import quiz.curation.Corrections;
+import objectview.field.FieldPath;
 import objectview.viewconfig.FieldTypeSource;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
@@ -130,6 +133,43 @@ class ProductCompilerTest {
         WikidataDynamicObject nom = pool.stream()
                 .filter(o -> "Nomination".equals(o.typeName())).findFirst().orElseThrow();
         assertEquals("Schindler's List", nom.dynamicFieldValues().get("forWork"));
+        assertTrue(d.entityOrigin("Nomination", FieldPath.parse("forWork")),
+                "collapsed String retains its entity-field provenance");
+    }
+
+    @Test void ordinaryScalarDoesNotAcquireEntityProvenance() {
+        ProductDomain d = ProductCompiler.compile(model(), pool());
+        assertFalse(d.entityOrigin("Nomination", FieldPath.parse("won")));
+    }
+
+    @Test void qidScopedLabelRepairSurvivesCollapseOnTheNextLoad() {
+        List<WikidataDynamicObject> first = unresolvedWorkPool();
+        ProductCompiler.compile(model(), first);
+        assertEquals("Q95709545", nomination(first).get("forWork"));
+
+        // A new load starts from the snapshot graph again. Curation applies before
+        // ProductCompiler, so collapse now sees the repaired entity display label.
+        List<WikidataDynamicObject> reloaded = unresolvedWorkPool();
+        Corrections.apply(reloaded, List.of(() -> List.of(
+                Correction.entityLabel("Q95709545", "Mary Ramos", "wikidata"))));
+        ProductCompiler.compile(model(), reloaded);
+
+        assertEquals("Mary Ramos", nomination(reloaded).get("forWork"));
+    }
+
+    private static List<WikidataDynamicObject> unresolvedWorkPool() {
+        WikidataDynamicObject work =
+                new WikidataDynamicObject("Q95709545", "Q95709545");
+        WikidataDynamicObject nomination =
+                new WikidataDynamicObject("Q4-test", "Nomination");
+        nomination.type("Nomination");
+        nomination.put("forWork", work);
+        return new java.util.ArrayList<>(List.of(nomination, work));
+    }
+
+    private static WikidataDynamicObject nomination(List<WikidataDynamicObject> pool) {
+        return pool.stream().filter(o -> "Nomination".equals(o.typeName()))
+                .findFirst().orElseThrow();
     }
 
     @Test void cardinalityComesFromTheModel() {

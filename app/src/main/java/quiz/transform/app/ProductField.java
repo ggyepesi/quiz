@@ -17,10 +17,16 @@ public record ProductField(String name,
                            boolean reference,
                            boolean collection,
                            String nestedClassName,
-                           boolean structural) {
+                           boolean structural,
+                           boolean entityOrigin) {
+
+    public ProductField(String name, String typeLabel, boolean reference,
+                        boolean collection, String nestedClassName, boolean structural) {
+        this(name, typeLabel, reference, collection, nestedClassName, structural, reference);
+    }
 
     /** A structural (hidden) marker field — plumbing the pickers skip. */
     public static ProductField structural(String name) {
-        return new ProductField(name, "", false, false, null, true);
+        return new ProductField(name, "", false, false, null, true, false);
     }
 }

@@ -128,7 +128,8 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                 eligible++;
                 if (hasValue(q, scoped.path())) {
                     present++;
-                    if (hasUnnamedReference(q, scoped.path())) {
+                    if (hasUnnamedReference(q, scoped.path(),
+                            domain.entityOrigin(scoped.type(), scoped.path()))) {
                         unnamed++;
                     }
                 }
@@ -171,13 +172,71 @@ public final class FieldCoverageColumns implements FieldTableContributor {
      * leaves, so a path that resolves one way for coverage cannot resolve another way
      * here.
      */
-    public static boolean hasUnnamedReference(Viewable q, FieldPath path) {
+    /**
+     * The instances-only form: a reference still held AS an object, displaying its own
+     * QID. It deliberately ignores collapsed strings, so it answers only for a pool the
+     * product compiler has not run over.
+     *
+     * <p>Named apart from the general form because reaching for the shorter signature in
+     * a compiled domain returns a confident zero — every reference there is a string —
+     * and a zero is exactly what a broken count looks like.
+     */
+    public static boolean hasUnnamedReferenceInstance(Viewable q, FieldPath path) {
+        return hasUnnamedReference(q, path, false);
+    }
+
+    /**
+     * Whether any value at {@code path} is an unresolved reference.
+     *
+     * @param collapsedStringsCount whether a QID-shaped STRING counts too. True only
+     *        where the model says the field originated as an entity declaration: a bare
+     *        reference collapses to its display name, but an ordinary field may hold
+     *        QID-shaped text of its own (a catalogue code), and repairing that would
+     *        stage a label against an unrelated entity.
+     */
+    static boolean hasUnnamedReference(
+            Viewable q, FieldPath path, boolean collapsedStringsCount) {
         for (Object leaf : leaves(q, path)) {
-            if (leaf instanceof Viewable target && isUnnamed(target)) {
+            if (unnamedReference(leaf, collapsedStringsCount) != null) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * The QID a value stands for when that value is an unresolved name, else null.
+     *
+     * <p>Two shapes, because a reference reaches this point in two states. Before the
+     * product compiler runs it is still an instance, and an unresolved one displays its
+     * own identifier. After the compiler it is a plain string: a bare reference — no
+     * class in the model, no fields of its own — collapses to its DISPLAY NAME, so an
+     * entity that never got a label collapses to the QID that stood in for one.
+     *
+     * <p>Recognising a QID-shaped display name is sound precisely because the collapse
+     * produces display names: no real label is a QID.
+     */
+    static String unnamedReference(Object leaf, boolean collapsedStringsCount) {
+        if (leaf instanceof Viewable target) {
+            String id = target.getIdentifier();
+            return isUnnamed(target) && wikidata.WikidataIds.isQid(id) ? id : null;
+        }
+        if (collapsedStringsCount && leaf instanceof CharSequence text
+                && wikidata.WikidataIds.isQid(text.toString().trim())) {
+            return text.toString().trim();
+        }
+        return null;
+    }
+
+    /** Every QID a member's field still shows instead of a name. */
+    public static java.util.Set<String> unnamedReferences(
+            Viewable q, FieldPath path, boolean collapsedStringsCount) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        for (Object leaf : leaves(q, path)) {
+            String qid = unnamedReference(leaf, collapsedStringsCount);
+            if (qid != null) out.add(qid);
+        }
+        return out;
     }
 
     /** What the source said about this field's emptiness, or null when it said nothing.
@@ -289,7 +348,8 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                         // A named-but-unresolved reference is a subset of PRESENT, so it
                         // needs the value to be there before the name can be missing.
                         case UNNAMED_REFERENCE ->
-                                present && hasUnnamedReference(member, path);
+                                present && hasUnnamedReference(member, path,
+                                        domain.entityOrigin(ownerType, path));
                     };
                 })
                 .map(Viewable.class::cast)

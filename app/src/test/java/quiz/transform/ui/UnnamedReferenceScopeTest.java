@@ -40,16 +40,16 @@ class UnnamedReferenceScopeTest {
     }
 
     @Test void aReferenceShowingItsOwnIdentifierCountsAsUnnamed() {
-        assertTrue(FieldCoverageColumns.hasUnnamedReference(
+        assertTrue(FieldCoverageColumns.hasUnnamedReferenceInstance(
                 film("12 Monkeys", unnamed("Q60")), FieldPath.parse("locations")));
-        assertFalse(FieldCoverageColumns.hasUnnamedReference(
+        assertFalse(FieldCoverageColumns.hasUnnamedReferenceInstance(
                 film("Fargo", named("Q60", "New York City")), FieldPath.parse("locations")));
     }
 
     /** A collection is a gap if ANY of its targets is unnamed — otherwise a film with
      *  four good locations and one bare QID would never be offered for curation. */
     @Test void oneUnnamedTargetAmongSeveralIsStillAGap() {
-        assertTrue(FieldCoverageColumns.hasUnnamedReference(
+        assertTrue(FieldCoverageColumns.hasUnnamedReferenceInstance(
                 film("Heat", named("Q65", "Los Angeles"), unnamed("Q1297")),
                 FieldPath.parse("locations")));
     }
@@ -57,9 +57,16 @@ class UnnamedReferenceScopeTest {
     @Test void anEmptyReferenceIsMissing_notUnnamed() {
         Film empty = film("Untitled");
 
-        assertFalse(FieldCoverageColumns.hasUnnamedReference(
+        assertFalse(FieldCoverageColumns.hasUnnamedReferenceInstance(
                 empty, FieldPath.parse("locations")),
                     "nothing to name — that is the MISSING scope's business");
+    }
+
+    @Test void aNonWikidataUnnamedViewableIsNotOfferedForWikidataRepair() {
+        Place local = unnamed("local-42");
+
+        assertFalse(FieldCoverageColumns.hasUnnamedReferenceInstance(
+                film("Local", local), FieldPath.parse("locations")));
     }
 
     /**
