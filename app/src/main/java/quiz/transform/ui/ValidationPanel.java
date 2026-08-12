@@ -99,6 +99,7 @@ public final class ValidationPanel extends JPanel {
     private final JButton setValueButton = new JButton("Set / replace");
     private final JButton addValueButton = new JButton("Add to collection");
     private final JButton resolveNamesButton = new JButton("Resolve names…");
+    private final JButton showUnnamedButton = new JButton("Show unnamed");
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     // Horizontal, NOT vertical: the coverage table's preferred HEIGHT grows with the
@@ -231,6 +232,19 @@ public final class ValidationPanel extends JPanel {
                                   + selectedFieldPath);
             }
         });
+        // A button beside the identity ones, because that is how a scope is already
+        // reached here. The dropdown carries the same choice, but a control nobody
+        // finds is a control that does not exist.
+        showUnnamedButton.setToolTipText(
+                "Show the members whose reference shows a QID instead of a name");
+        showUnnamedButton.addActionListener(e -> {
+            if (selectedFieldPath == null) {
+                JOptionPane.showMessageDialog(this,
+                        "Select a field first — its Unnamed count says how many.");
+                return;
+            }
+            showUnnamedReferences(FieldPath.parse(selectedFieldPath));
+        });
         showIdentifiedButton.addActionListener(e -> showIdentityScope(ScopeFilter.PRESENT));
         showUnresolvedButton.addActionListener(e -> showIdentityScope(ScopeFilter.MISSING));
         setValueButton.addActionListener(e -> saveManualValue(CorrectionPolicy.REPLACE));
@@ -269,6 +283,7 @@ public final class ValidationPanel extends JPanel {
         bar.add(identityStatus);
         bar.add(showIdentifiedButton);
         bar.add(showUnresolvedButton);
+        bar.add(showUnnamedButton);
         // Apply is a transaction-level action, not an action of the currently visible
         // field drill. Keep it reachable even when a filter has zero rows or the user
         // navigates to another type after staging an edit.
@@ -644,6 +659,8 @@ public final class ValidationPanel extends JPanel {
             case PRESENT -> "instance(s) with an existing value";
             case UNNAMED_REFERENCE -> "instance(s) whose reference has no name";
             case ASSERTED_EMPTY -> "instance(s) the source reports unknown / none";
+            case OVERFILLED_SINGLE ->
+                    "instance(s) holding several values in a single-valued field";
             case ALL -> "instance(s)";
         };
     }
