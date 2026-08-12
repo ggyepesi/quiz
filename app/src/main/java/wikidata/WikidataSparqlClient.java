@@ -330,11 +330,7 @@ public class WikidataSparqlClient implements AutoCloseable {
     }
 
     static boolean isRetryableStatus(int status) {
-        return status == 429
-                || status == 500
-                || status == 502
-                || status == 503
-                || status == 504;
+        return RetryAfter.isRetryableStatus(status);
     }
 
     private static SparqlHttpException httpError(Throwable t) {

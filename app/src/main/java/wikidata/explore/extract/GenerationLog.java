@@ -48,6 +48,26 @@ public interface GenerationLog {
     }
 
     /**
+     * This log as a wbgetentities batch sink.
+     *
+     * <p>Exists so a refused batch records through {@link #subqueryFailed} instead of
+     * {@link #subquery}: passing {@code this::subquery} as the sink — which every
+     * caller did — filed failures as OK entries whose text merely began with "FAILED",
+     * and a run with 54 refused batches then read as clean.
+     */
+    default wikidata.api.WikidataApiClient.BatchLog batchSink() {
+        GenerationLog self = this;
+        return new wikidata.api.WikidataApiClient.BatchLog() {
+            @Override public void logged(String title, String request, String summary) {
+                self.subquery(title, request, summary);
+            }
+            @Override public void failed(String title, String request, String error) {
+                self.subqueryFailed(title, request, error);
+            }
+        };
+    }
+
+    /**
      * A named, collapsible group of sub-entries: sub-queries/messages logged on it
      * nest under one parent node, so a batched load (Qualifier load 1/8, 2/8, …)
      * reads as one expandable top-level item instead of N flat rows. Close it

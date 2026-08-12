@@ -1,5 +1,6 @@
 package wikidata.api;
 
+import objectview.utils.RetryAfter;
 import wikidata.WikidataIds;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -367,6 +368,19 @@ public class WikidataApiClient {
     @FunctionalInterface
     public interface BatchLog {
         void logged(String title, String request, String summary);
+
+        /**
+         * A batch the server refused. Separate from {@link #logged} because a sink
+         * records STATUS, not just text: routed through logged(), a failed batch
+         * became an OK entry whose summary happened to start with "FAILED", so a run
+         * with 54 refused batches read as clean unless someone grepped the text.
+         *
+         * <p>Defaults to {@code logged} so a sink that does not distinguish the two
+         * behaves as before rather than losing the entry.
+         */
+        default void failed(String title, String request, String error) {
+            logged(title, request, error);
+        }
     }
 
     public Map<String, ApiEntity> getEntities(
@@ -491,7 +505,7 @@ public class WikidataApiClient {
                         }
                     } catch (Exception e) {
                         if (batchLog != null) {
-                            batchLog.logged("wbgetentities " + done.incrementAndGet()
+                            batchLog.failed("wbgetentities " + done.incrementAndGet()
                                                     + "/" + total, url, "FAILED: " + e.getMessage()
                                                     + " (" + ms(t0) + " ms)");
                         }
@@ -545,14 +559,22 @@ public class WikidataApiClient {
     protected JsonNode getEntitiesBatchWithRetry(
             List<String> qids, boolean withClaims) throws Exception {
         Exception last = null;
-        for (int attempt = 1; attempt <= 3; attempt++) {
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 return getEntitiesBatch(qids, withClaims);
             } catch (Exception e) {
                 last = e;
                 if (Thread.currentThread().isInterrupted()) throw e;
+                // A status the server will not change its mind about (404, 400) is
+                // not worth five attempts, and retrying it only lengthens a run that
+                // is going to fail anyway.
+                if (e instanceof ApiHttpException http
+                        && !RetryAfter.isRetryableStatus(http.status())) {
+                    throw e;
+                }
+                if (attempt == MAX_ATTEMPTS) break;
                 try {
-                    Thread.sleep(500L * attempt);
+                    Thread.sleep(retryWaitMillis(e, attempt));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw ie;
@@ -561,6 +583,26 @@ public class WikidataApiClient {
         }
         throw last;
     }
+
+    /**
+     * How long to wait before the next attempt: what the server asked for, else an
+     * exponential 1s, 2s, 4s, 8s.
+     *
+     * <p>The old fixed 500ms×attempt spent its whole budget inside three seconds. A
+     * Wikimedia throttling window outlasts that comfortably — the one that cost 54
+     * batches ran across dozens of requests — so the backoff has to be able to sit
+     * out a window, not just a hiccup.
+     */
+    static long retryWaitMillis(Exception error, int attempt) {
+        if (error instanceof ApiHttpException http && http.retryAfterMillis() > 0) {
+            return http.retryAfterMillis();
+        }
+        return 1000L << Math.min(attempt - 1, 3);
+    }
+
+    /** Enough attempts, with the backoff above, to sit out a throttling window
+     *  (~15s of waiting) rather than only a momentary blip. */
+    private static final int MAX_ATTEMPTS = 5;
 
     private JsonNode getEntitiesBatch(
             List<String> qids, boolean withClaims) throws Exception {
@@ -754,8 +796,8 @@ public class WikidataApiClient {
 
         log.accept("\n[API " + id + "] GET " + url + "\n");
 
-        java.net.URLConnection conn =
-                new java.net.URL(url).openConnection();
+        java.net.HttpURLConnection conn =
+                (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
         conn.setRequestProperty("User-Agent", userAgent);
         conn.setRequestProperty("Accept",     "application/json");
         conn.setConnectTimeout(10_000);
@@ -776,9 +818,27 @@ public class WikidataApiClient {
                                + (System.nanoTime() - started) / 1_000_000
                                + "\n");
 
-            // Include URL in message for easier debugging
-            throw new IOException(
-                    e.getMessage() + " | URL: " + url, e);
+            // A refused request carries the two facts that decide what to do next: the
+            // status, and how long the server asked us to wait. Collapsing them into a
+            // bare IOException is what left the retry unable to tell throttling from a
+            // permanent error, so it waited half a second and gave up on a 429.
+            int status = statusOf(conn);
+            if (status > 0) {
+                throw new ApiHttpException(
+                        status,
+                        RetryAfter.millis(conn.getHeaderField("Retry-After"), -1),
+                        e.getMessage() + " | URL: " + url,
+                        e);
+            }
+            throw new IOException(e.getMessage() + " | URL: " + url, e);
+        }
+    }
+
+    private static int statusOf(java.net.HttpURLConnection conn) {
+        try {
+            return conn.getResponseCode();
+        } catch (IOException unavailable) {
+            return -1;   // connection-level failure: there is no status to read
         }
     }
 

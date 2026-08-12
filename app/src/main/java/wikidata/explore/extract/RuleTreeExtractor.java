@@ -929,7 +929,7 @@ public class RuleTreeExtractor {
                         + batches + " batches of 50 (the members' own claims, fetched "
                         + "via wbgetentities: these properties full-scan in SPARQL)")) {
             Map<String, WikidataApiClient.ApiEntity> details =
-                    api().getEntities(memberQids, pids, g::subquery);
+                    api().getEntities(memberQids, pids, g.batchSink());
             int filled = applyEntityClaims(members, outgoingFields, details);
             g.message("Fetched field(s) [" + names + "] for " + filled + "/"
                               + memberQids.size() + " members via wbgetentities.\n");
@@ -996,7 +996,7 @@ public class RuleTreeExtractor {
             // ONE call, so the batches still fan out over the client's pool. Batching
             // here to isolate a throttled batch would have made the pass serial.
             WikidataApiClient.PartialEntities resolved =
-                    api().getEntitiesBestEffort(qids, List.of(), g::subquery);
+                    api().getEntitiesBestEffort(qids, List.of(), g.batchSink());
             int filled = applyLabels(placeholders, resolved.entities());
             g.message("Resolved " + filled + "/" + placeholders.size()
                               + " entity label(s) via wbgetentities"

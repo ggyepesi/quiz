@@ -138,7 +138,7 @@ public final class ReferentFieldLoad {
 
         Map<String, List<WikidataApiClient.ApiStatement>> stmts;
         try {
-            stmts = api.getStatements(qids, pid, List.of(), log::subquery);
+            stmts = api.getStatements(qids, pid, List.of(), log.batchSink());
         } catch (Exception ex) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
@@ -196,7 +196,7 @@ public final class ReferentFieldLoad {
 
         Map<String, WikidataApiClient.ApiEntity> details;
         try {
-            details = api.getEntities(qids, List.of(pid), log::subquery);
+            details = api.getEntities(qids, List.of(pid), log.batchSink());
         } catch (Exception ex) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
@@ -219,7 +219,7 @@ public final class ReferentFieldLoad {
         try {
             labels = valueQids.isEmpty()
                     ? Map.of()
-                    : api.getEntities(new ArrayList<>(valueQids), List.of(), log::subquery);
+                    : api.getEntities(new ArrayList<>(valueQids), List.of(), log.batchSink());
         } catch (Exception ex) {
             labels = Map.of();
         }

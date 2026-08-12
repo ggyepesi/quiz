@@ -156,7 +156,7 @@ public class QualifierLoader {
             Map<String, List<WikidataApiClient.ApiStatement>> statements;
             try {
                 statements = api().getStatements(new ArrayList<>(byQid.keySet()),
-                        cfg.propertyPid(), qualifierPids, g::subquery);
+                        cfg.propertyPid(), qualifierPids, g.batchSink());
             } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
                     Thread.currentThread().interrupt();
@@ -287,7 +287,7 @@ public class QualifierLoader {
         try {
             Map<String, WikidataApiClient.ApiEntity> details =
                     api().getEntities(qids, List.of(),
-                            log == null ? null : log::subquery);
+                            log == null ? null : log.batchSink());
             for (WikidataDynamicObject o : refCache.values()) {
                 WikidataApiClient.ApiEntity e = details.get(o.qid());
                 if (e != null && !e.label().isBlank()

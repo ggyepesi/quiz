@@ -119,7 +119,7 @@ public final class DisambiguationPrune {
             Map<String, WikidataApiClient.ApiEntity> details;
             try {
                 details = api.getEntities(
-                        new ArrayList<>(needFetch), List.of("P31"), sink::subquery);
+                        new ArrayList<>(needFetch), List.of("P31"), sink.batchSink());
             } catch (Exception ex) {
                 if (Thread.currentThread().isInterrupted()) {
                     Thread.currentThread().interrupt();
