@@ -271,6 +271,25 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return DomainSchemas.structuralFields(fieldSchema(type));
     }
 
+    /**
+     * Delegated, not inherited. The interface default answers from the runtime FieldRef
+     * — {@code reference()} — and a collapsed reference is no longer one, so the default
+     * says "not an entity field" for exactly the fields that were. Only the compiled
+     * domain still knows what a field was DECLARED as. A derived class has no model
+     * behind it, so it keeps the default.
+     */
+    @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
+        return derived.containsKey(type)
+                ? DomainModel.super.entityOrigin(type, path)
+                : base.entityOrigin(baseTypeOrSelf(type), path);
+    }
+
+    /** A subclass is served by its base class's model declaration. */
+    private String baseTypeOrSelf(String type) {
+        String declared = subclassBases.get(type);
+        return declared == null ? type : declared;
+    }
+
     @Override public FieldTypeSource fieldTypes(String type) {
         return DomainSchemas.fieldTypes(this, type);
     }

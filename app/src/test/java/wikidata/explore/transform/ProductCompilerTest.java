@@ -137,6 +137,23 @@ class ProductCompilerTest {
                 "collapsed String retains its entity-field provenance");
     }
 
+    /**
+     * The panel is never handed the compiled domain directly — the workbench wraps it in
+     * a WorkingDomain (base + derived classes). A wrapper that does not FORWARD this
+     * question inherits the interface default, which answers from the runtime FieldRef;
+     * a collapsed reference is no longer one, so the default says "not an entity field"
+     * for exactly the fields that were, and every Unnamed count reads zero.
+     */
+    @Test void entityProvenanceSurvivesTheWorkingDomainWrapper() {
+        ProductDomain compiled = ProductCompiler.compile(model(), pool());
+        quiz.transform.ui.DomainModel working =
+                new quiz.transform.ui.WorkingDomain(compiled);
+
+        assertTrue(working.entityOrigin("Nomination", FieldPath.parse("forWork")),
+                "a wrapper that drops this reports zero unnamed references everywhere");
+        assertFalse(working.entityOrigin("Nomination", FieldPath.parse("won")));
+    }
+
     @Test void ordinaryScalarDoesNotAcquireEntityProvenance() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
         assertFalse(d.entityOrigin("Nomination", FieldPath.parse("won")));
