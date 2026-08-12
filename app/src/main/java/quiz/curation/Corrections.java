@@ -95,6 +95,18 @@ public final class Corrections {
 
     private static void applyCorrection(Viewable target, Correction correction,
                                         Object sample) {
+        // The display label is a COMPUTED field — projected from getDisplayName(), with
+        // no setter to write through — so renaming an instance cannot go through
+        // FieldAccess like an ordinary value. Keyed on the reserved DISPLAY role rather
+        // than on a field called "name", so it is a declared contract and not a guess
+        // about what a field means from its spelling.
+        if (objectview.field.ViewableContractFieldSet.DISPLAY_KEY.equals(correction.field())
+                && correction.value() instanceof String label && !label.isBlank()) {
+            if (target instanceof WikidataDynamicObject wdo) {
+                wdo.name(label);
+            }
+            return;
+        }
         Object reviewed = coerceCorrection(correction, target, sample);
         CorrectionPolicy policy = correction.effectivePolicy();
         if (policy == CorrectionPolicy.ADD_TO_COLLECTION) {

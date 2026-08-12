@@ -34,7 +34,11 @@ public final class FieldCoverageColumns implements FieldTableContributor {
 
     /** One consistent coverage calculation shared by every column and by the explicit
      *  All / Missing / Present controls beside the table. */
-    public record Coverage(int eligible, int present) {
+    public record Coverage(int eligible, int present, int unnamed) {
+        public Coverage(int eligible, int present) {
+            this(eligible, present, 0);
+        }
+
         public int missing() {
             return eligible - present;
         }
@@ -73,7 +77,14 @@ public final class FieldCoverageColumns implements FieldTableContributor {
         return List.of(
                 column("Coverage", 80, p -> coverage(p).percentage()),
                 column("Present", 64, p -> String.valueOf(coverage(p).present())),
-                column("Missing", 64, p -> String.valueOf(coverage(p).missing())));
+                column("Missing", 64, p -> String.valueOf(coverage(p).missing())),
+                // Which fields hold references that render as a bare QID. Present, so
+                // invisible in every other column — you would otherwise have to drill
+                // each field in turn to discover that composer has 700 of them.
+                column("Unnamed", 72, p -> {
+                    int unnamed = coverage(p).unnamed();
+                    return unnamed == 0 ? "" : String.valueOf(unnamed);
+                }));
     }
 
     /** The working set, never null — a supplier may return null before the first render. */
@@ -111,15 +122,19 @@ public final class FieldCoverageColumns implements FieldTableContributor {
         }
         int eligible = 0;
         int present = 0;
+        int unnamed = 0;
         for (Viewable q : currentMembers) {
             if (domain.isInstanceOf(q, scoped.type())) {
                 eligible++;
                 if (hasValue(q, scoped.path())) {
                     present++;
+                    if (hasUnnamedReference(q, scoped.path())) {
+                        unnamed++;
+                    }
                 }
             }
         }
-        return new Coverage(eligible, present);
+        return new Coverage(eligible, present, unnamed);
     }
 
     /** Resolve a picker path (which may carry {@code @subtype:X} segments) to its owning
@@ -184,6 +199,12 @@ public final class FieldCoverageColumns implements FieldTableContributor {
         }
         String id = target.getIdentifier();
         return id != null && !id.isBlank() && name.equals(id);
+    }
+
+    /** The values a field path resolves to — the same walk every field-scope question
+     *  uses, so a caller inspecting the targets sees exactly what coverage counted. */
+    public static List<Object> leafValues(Viewable q, FieldPath path) {
+        return leaves(q, path);
     }
 
     /** The values a field path resolves to, with collections, maps and arrays fanned

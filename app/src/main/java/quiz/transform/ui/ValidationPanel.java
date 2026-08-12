@@ -98,6 +98,7 @@ public final class ValidationPanel extends JPanel {
     private final JTextField manualValue = new JTextField(18);
     private final JButton setValueButton = new JButton("Set / replace");
     private final JButton addValueButton = new JButton("Add to collection");
+    private final JButton resolveNamesButton = new JButton("Resolve names…");
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     // Horizontal, NOT vertical: the coverage table's preferred HEIGHT grows with the
@@ -205,6 +206,7 @@ public final class ValidationPanel extends JPanel {
 
         checkButton.addActionListener(e -> onCheck());
         fieldSourceButton.addActionListener(e -> chooseSourceForSelected(false));
+        resolveNamesButton.addActionListener(e -> resolveReferenceNames());
         fieldSourceDbpediaButton.setToolTipText(
                 "Pick a Wikipedia infobox (DBpedia) property from a sample member — "
                         + "the fallback source for values Wikidata lacks");
@@ -676,6 +678,18 @@ public final class ValidationPanel extends JPanel {
             target.add(fallback);
         }
 
+        // Repairing a reference's NAME is not the same job as filling the field: the
+        // value is already right, only its target has no label. Offered exactly where
+        // that is the gap being looked at.
+        if (scopeFilter == ScopeFilter.UNNAMED_REFERENCE) {
+            JPanel names = titledBlock("Names");
+            resolveNamesButton.setToolTipText(
+                    "Fetch the missing labels for the referenced entities in this scope");
+            names.add(headerLine(new JLabel("These references show a QID:"),
+                                 resolveNamesButton));
+            target.add(names);
+        }
+
         // Load is available for MEDIA too: findData fetches images per entity from their
         // media provider (no property to pick), so an image field is fillable, not inert.
         checkButton.setText("Load values ↗");
@@ -808,6 +822,80 @@ public final class ValidationPanel extends JPanel {
         String direction = source.direction() == RuleDirection.ITEM_TO_ROOT
                 ? " (incoming)" : "";
         return label + "(" + source.propertyPid() + ")" + direction;
+    }
+
+    /**
+     * Fetches the missing labels for the references in the current drill and stages one
+     * correction per named entity.
+     *
+     * <p>The correction lands on the TARGET, not on the film that points at it: the name
+     * belongs to the location, and one label fixes it for every instance referring to it.
+     * Writing it per referring instance would store the same fact hundreds of times and
+     * still leave the entity unnamed anywhere else it appears.
+     */
+    private void resolveReferenceNames() {
+        java.util.LinkedHashMap<String, Viewable> unnamed = unnamedTargets();
+        if (unnamed.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Every reference in this scope has a name.");
+            return;
+        }
+        if (JOptionPane.showConfirmDialog(this,
+                new JLabel("<html>Fetch names for <b>" + unnamed.size()
+                        + "</b> referenced entities showing a QID.<br><br>"
+                        + "Each resolved name is staged as a correction on the entity "
+                        + "itself, so it applies everywhere that entity appears.</html>"),
+                "Resolve names", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {
+            return;
+        }
+        List<String> qids = List.copyOf(unnamed.keySet());
+        // In 50-QID requests, the API's own batch size; the shared runner keeps this off
+        // the EDT and logs each one like every other query.
+        for (int from = 0; from < qids.size(); from += 50) {
+            List<String> batch = qids.subList(from, Math.min(from + 50, qids.size()));
+            queryRunner.runQuiet(new quiz.enrichment.WikimediaEntityLookup().labels(batch),
+                    labels -> SwingUtilities.invokeLater(() -> stageNames(unnamed, labels)),
+                    error -> SwingUtilities.invokeLater(() ->
+                            status.setText("Name lookup failed: " + error.getMessage())));
+        }
+    }
+
+    /** Every QID-named target reachable from the drilled members' selected field. */
+    private java.util.LinkedHashMap<String, Viewable> unnamedTargets() {
+        java.util.LinkedHashMap<String, Viewable> out = new java.util.LinkedHashMap<>();
+        if (selectedFieldPath == null) return out;
+        FieldPath path = FieldPath.parse(selectedFieldPath);
+        for (Viewable member : drilledInstances) {
+            for (Object leaf : FieldCoverageColumns.leafValues(member, path)) {
+                if (!(leaf instanceof Viewable ref)) continue;
+                String id = ref.getIdentifier();
+                if (id != null && !id.isBlank() && id.equals(ref.getDisplayName())) {
+                    out.putIfAbsent(id, ref);
+                }
+            }
+        }
+        return out;
+    }
+
+    private void stageNames(
+            Map<String, Viewable> targets, Map<String, String> labels) {
+        if (staging == null || labels == null) return;
+        int staged = 0;
+        for (Map.Entry<String, String> entry : labels.entrySet()) {
+            Viewable target = targets.get(entry.getKey());
+            String label = entry.getValue();
+            if (target == null || label == null || label.isBlank()
+                    || label.equals(entry.getKey())) {
+                continue;
+            }
+            staging.stage(new Correction(
+                    concreteType(target), entry.getKey(),
+                    objectview.field.ViewableContractFieldSet.DISPLAY_KEY, label,
+                    "wikidata", null, CorrectionPolicy.REPLACE, null));
+            staged++;
+        }
+        status.setText("Staged " + staged + " name(s); Apply to write them.");
+        updateApplyButton();
     }
 
     /** Starts source discovery; true means a picker was opened asynchronously. */
