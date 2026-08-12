@@ -115,6 +115,8 @@ public class ModelBuilderFrame extends JFrame {
 
     private final JButton showSelectionsButton =
             new JButton("Selections");
+    private final JButton showEntityKindsButton =
+            new JButton("Entity kinds");
 
     private final JButton showGuideButton =
             new JButton("Guide…");
@@ -124,6 +126,7 @@ public class ModelBuilderFrame extends JFrame {
 
     private JFrame selectionsWindow;
     private SelectionViewerPanel selectionsPanel;
+    private JFrame entityKindsWindow;
 
     // Companion window holding the discovery tools (Explore/Sample/Discover/
     // WikiProject/Properties), like the instances + logs windows.
@@ -309,6 +312,9 @@ public class ModelBuilderFrame extends JFrame {
                                                     + "vocabularies/populations referenced but never served; declare a "
                                                     + "vocabulary and inspect its members");
         header.add(showSelectionsButton);
+        showEntityKindsButton.setToolTipText(
+                "Map Wikidata evidence such as P31 values to modeled entity kinds");
+        header.add(showEntityKindsButton);
         showGuideButton.setToolTipText("Guided build steps for the selected class: "
                                                + "what's done, what's next, the tool for it, and the hint");
         header.add(showGuideButton);
@@ -427,6 +433,16 @@ public class ModelBuilderFrame extends JFrame {
         selectionsPanel.refreshSelections();
         selectionsWindow.setVisible(true);
         selectionsWindow.toFront();
+    }
+
+    private void showEntityKindsWindow() {
+        if (entityKindsWindow != null) entityKindsWindow.dispose();
+        entityKindsWindow = new JFrame("Evidence-derived entity kinds");
+        entityKindsWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        entityKindsWindow.add(new EntityKindRulesPanel(projectModel, this::modelChanged));
+        entityKindsWindow.setSize(700, 420);
+        entityKindsWindow.setLocationByPlatform(true);
+        entityKindsWindow.setVisible(true);
     }
 
     private void showGraphWindow() {
@@ -698,6 +714,7 @@ public class ModelBuilderFrame extends JFrame {
         showExplorerButton.addActionListener(e -> showExplorerWindow());
         showGraphButton.addActionListener(e -> showGraphWindow());
         showSelectionsButton.addActionListener(e -> showSelectionsWindow());
+        showEntityKindsButton.addActionListener(e -> showEntityKindsWindow());
 
         // Wire the WikiProject seed panel to the selected class: pick one entity
         // as the membership type, or add/replace the class's seed-QID set.

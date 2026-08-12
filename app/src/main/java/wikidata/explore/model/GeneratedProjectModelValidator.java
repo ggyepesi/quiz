@@ -32,6 +32,7 @@ public final class GeneratedProjectModelValidator {
         }
 
         validateUniqueClassNames(project, problems);
+        validateSelectionsAndKindRules(project, problems);
 
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) {
@@ -51,6 +52,38 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    private static void validateSelectionsAndKindRules(
+            GeneratedProjectModel project, List<Problem> problems) {
+        for (Selection selection : project.selections()) {
+            if (!(selection instanceof RoleSelection role)) continue;
+            GeneratedClassModel owner = project.findClass(role.ownerClassName());
+            if (owner == null) {
+                problems.add(Problem.error(role.name(), "Role owner class '"
+                        + role.ownerClassName() + "' does not exist."));
+                continue;
+            }
+            GeneratedFieldModel field = owner.fields().stream()
+                    .filter(value -> value != null
+                            && role.fieldName().equals(value.name()))
+                    .findFirst().orElse(null);
+            if (field == null) {
+                problems.add(Problem.error(role.name(), "Role field '"
+                        + role.ownerClassName() + "." + role.fieldName()
+                        + "' does not exist."));
+            } else if (field.type() != FieldType.ENTITY) {
+                problems.add(Problem.error(role.name(), "Role field must be entity-valued."));
+            }
+        }
+        for (EntityKindRule rule : project.entityKindRules()) {
+            if (rule == null || !rule.isConfigured()) {
+                problems.add(Problem.error("Entity kinds", "Kind rule is incomplete."));
+            } else if (project.findClass(rule.className()) == null) {
+                problems.add(Problem.error("Entity kinds", "Kind class '"
+                        + rule.className() + "' does not exist."));
+            }
+        }
     }
 
     private static void validateUniqueClassNames(

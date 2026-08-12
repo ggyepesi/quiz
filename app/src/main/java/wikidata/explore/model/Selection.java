@@ -23,7 +23,9 @@ import java.util.List;
  *       Oscar categories);</li>
  *   <li>{@link PopulationSelection} ({@link Kind#POPULATION}) — a subject set defined
  *       by a membership relation (e.g. the entities with P1411 into those categories)
- *       that a reify draws its subjects from.</li>
+ *       that a reify draws its subjects from;</li>
+ *   <li>{@link RoleSelection} ({@link Kind#ROLE}) — the canonical entity values reached
+ *       through a field of a produced class (e.g. Nomination.nominee).</li>
  * </ul>
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
@@ -34,7 +36,9 @@ public class Selection {
         /** A value domain: allowed field values (explicit QIDs and/or a P31 type). */
         VOCABULARY,
         /** A subject set: entities matching a membership relation, for a reify. */
-        POPULATION
+        POPULATION,
+        /** Entity values occupying a field role in generated records. */
+        ROLE
     }
 
     private String name = "";

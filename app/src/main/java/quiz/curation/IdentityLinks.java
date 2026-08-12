@@ -15,6 +15,10 @@ import java.util.Set;
  * matching. Nothing errors when that happens; the instance just reads as unidentified
  * again, which is silent data loss.</p>
  *
+ * <p>Lifecycle invariant: evidence-derived kinds must be settled before staging identity
+ * links. Classification intentionally re-keys a legacy role carrier (Nominee) to its real
+ * kind (Person); identity work begun before that boundary belongs to the old model.</p>
+ *
  * <p>Reading is deliberately more forgiving than writing: a link already recorded under a
  * subclass ({@code USState} rather than {@code State}) or under a role the instance carries
  * still matches, so sidecars written before this rule keep working without a migration.</p>
@@ -31,14 +35,25 @@ public final class IdentityLinks {
         if (member == null) {
             return null;
         }
+        if (member instanceof wikidata.explore.extract.WikidataDynamicObject dynamic
+                && !dynamic.hasTypeStamp()) {
+            return null;
+        }
         String stable = member.identityTypeName();
-        return stable == null || stable.isBlank() ? member.typeName() : stable;
+        String fallback = member.typeName();
+        String result = stable == null || stable.isBlank() ? fallback : stable;
+        return result == null || result.isBlank()
+                || "WikidataDynamicObject".equals(result) ? null : result;
     }
 
     /** Every type an existing link for {@code member} may legitimately carry. */
     public static Set<String> matchableTypes(Viewable member) {
         Set<String> types = new LinkedHashSet<>();
         if (member == null) {
+            return types;
+        }
+        if (member instanceof wikidata.explore.extract.WikidataDynamicObject dynamic
+                && !dynamic.hasTypeStamp()) {
             return types;
         }
         add(types, stableType(member));

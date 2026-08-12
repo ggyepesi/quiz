@@ -112,6 +112,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
 
                     GenerationPipeline pipeline = new GenerationPipeline();
                     WikidataObjectRegistry shared = new WikidataObjectRegistry();
+                    wikidata.api.WikidataApiClient entityApi =
+                            new wikidata.api.WikidataApiClient(
+                                    wikidata.api.WikidataApiClient.DEFAULT_USER_AGENT)
+                                    .cancellation(context.cancellation());
 
                     // ONE runtime for the whole domain — every class compiled
                     // together in one package/loader, so typed cross-references
@@ -311,8 +315,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     int loadedReferentFields =
                             wikidata.explore.transform.ReferentFieldLoad.apply(
                                     project, referentLoadRoots,
-                                    new wikidata.api.WikidataApiClient(
-                                            "QuizProject/1.0 (ggyepesi@gmail.com)"),
+                                    entityApi,
                                     genLog);
                     if (loadedReferentFields > 0) {
                         genLog.message("Loaded " + loadedReferentFields
@@ -331,6 +334,19 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     pool.addAll(reified);
 
+                    wikidata.explore.transform.ReferentKindClassifier.Result kindResult =
+                            wikidata.explore.transform.ReferentKindClassifier.apply(
+                                    project, pool,
+                                    entityApi,
+                                    genLog);
+                    if (kindResult.classified() > 0 || kindResult.unknown() > 0
+                            || kindResult.unavailable() > 0) {
+                        genLog.message("Evidence-classified " + kindResult.classified()
+                                + " role member(s); " + kindResult.unknown()
+                                + " remain of unknown kind; " + kindResult.unavailable()
+                                + " could not be checked.\n");
+                    }
+
                     // Drop Wikimedia-internal non-entities (a disambiguation / duplicated
                     // / category page that slipped in as a wrong statement or qualifier
                     // value, e.g. a P805 ceremony pointing at the "1968 Academy Awards"
@@ -341,8 +357,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     java.util.Set<WikidataDynamicObject> disambig =
                             wikidata.explore.transform.DisambiguationPrune.apply(
                                     project, pool,
-                                    new wikidata.api.WikidataApiClient(
-                                            "QuizProject/1.0 (ggyepesi@gmail.com)"),
+                                    entityApi,
                                     genLog);
                     if (!disambig.isEmpty()) {
                         pool.removeIf(disambig::contains);

@@ -237,12 +237,15 @@ public final class SnapshotFieldGraph {
                 return;
             }
             for (String typeName : domain.types()) {
-                if (typeName == null || typeName.isBlank()) {
+                if (typeName == null || typeName.isBlank()
+                        || WikidataDynamicObject.isInternalClassName(typeName)) {
                     continue;
                 }
                 TypeShape type = graph.types.computeIfAbsent(
                         typeName, TypeShape::new);
-                type.baseType = domain.baseType(typeName);
+                String baseType = domain.baseType(typeName);
+                type.baseType = WikidataDynamicObject.isInternalClassName(baseType)
+                        ? null : baseType;
                 declareType(typeName, domain, new LinkedHashSet<>());
             }
         }
@@ -259,12 +262,16 @@ public final class SnapshotFieldGraph {
             Set<String> seen = new LinkedHashSet<>();
             for (GeneratedClassModel generatedClass : model.classes()) {
                 if (generatedClass == null
+                        || WikidataDynamicObject.isInternalClassName(
+                                generatedClass.className())
                         || !seen.add(generatedClass.className())) {
                     continue;
                 }
                 TypeShape type = graph.types.computeIfAbsent(
                         generatedClass.className(), TypeShape::new);
-                type.baseType = generatedClass.baseClassName();
+                String baseType = generatedClass.baseClassName();
+                type.baseType = WikidataDynamicObject.isInternalClassName(baseType)
+                        ? null : baseType;
                 for (GeneratedFieldModel generatedField
                         : generatedClass.effectiveFields(model)) {
                     if (generatedField == null || generatedField.name() == null
@@ -284,7 +291,9 @@ public final class SnapshotFieldGraph {
                         shape.display = true;
                     }
                     if (declared != null && declared.targetType() != null
-                            && !declared.targetType().isBlank()) {
+                            && !declared.targetType().isBlank()
+                            && !WikidataDynamicObject.isInternalClassName(
+                                    declared.targetType())) {
                         graph.types.computeIfAbsent(
                                 declared.targetType(), TypeShape::new);
                     }
@@ -333,13 +342,18 @@ public final class SnapshotFieldGraph {
 
         private void declareType(String typeName, DomainModel domain,
                                  Set<String> chain) {
+            if (WikidataDynamicObject.isInternalClassName(typeName)) {
+                return;
+            }
             FieldSchema schema = domain.fieldSchema(typeName);
             if (schema == null || !chain.add(typeName)) {
                 return;
             }
             TypeShape type = graph.types.computeIfAbsent(
                     typeName, TypeShape::new);
-            type.baseType = domain.baseType(typeName);
+            String baseType = domain.baseType(typeName);
+            type.baseType = WikidataDynamicObject.isInternalClassName(baseType)
+                    ? null : baseType;
             for (FieldRef declared : schema.fields()) {
                 if (declared == null || declared.name() == null
                         || declared.name().isBlank()) {
@@ -350,7 +364,8 @@ public final class SnapshotFieldGraph {
                 field.declare(declared);
                 String target = declared.targetType();
                 if (!declared.structural() && target != null
-                        && !target.isBlank()) {
+                        && !target.isBlank()
+                        && !WikidataDynamicObject.isInternalClassName(target)) {
                     graph.types.computeIfAbsent(
                             target, TypeShape::new);
                     declareType(target, domain,

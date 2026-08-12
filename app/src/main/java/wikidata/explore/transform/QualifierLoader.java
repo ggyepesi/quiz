@@ -46,7 +46,7 @@ public class QualifierLoader {
 
     private WikidataApiClient api() {
         if (api == null) {
-            api = new WikidataApiClient("QuizProject/1.0 (ggyepesi@gmail.com)");
+            api = new WikidataApiClient(WikidataApiClient.DEFAULT_USER_AGENT);
         }
         return api;
     }
@@ -163,8 +163,9 @@ public class QualifierLoader {
                     return created;
                 }
                 g.message("WARNING: qualifier load via wbgetentities failed ("
-                        + e.getMessage() + ") — no statements reified this run.\n");
-                return created;
+                        + e.getMessage() + ") — generation cannot safely continue.\n");
+                throw new IllegalStateException(
+                        "Required qualifier statements could not be loaded completely", e);
             }
 
             // One statement object per claim: its value + qualifiers.

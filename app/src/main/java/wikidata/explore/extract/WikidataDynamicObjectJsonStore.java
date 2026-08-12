@@ -139,7 +139,8 @@ public class WikidataDynamicObjectJsonStore {
             throws IOException {
         return saveWithGroupRootBindingsInternal(
                 objects, List.of(), file,
-                builder -> builder.declare(schema));
+                builder -> builder.declare(schema),
+                wikidata.explore.transform.RoleSelections.materialize(schema, objects));
     }
 
     public SnapshotFieldGraph saveWithGroupRootBindings(
@@ -151,14 +152,15 @@ public class WikidataDynamicObjectJsonStore {
 
         return saveWithGroupRootBindingsInternal(
                 memberRoots, groupRootBindings, file,
-                builder -> builder.declare(schema));
+                builder -> builder.declare(schema), selectionMap(schema));
     }
 
     private SnapshotFieldGraph saveWithGroupRootBindingsInternal(
             List<WikidataDynamicObject> memberRoots,
             List<GroupRootBinding> groupRootBindings,
             File file,
-            java.util.function.Consumer<SnapshotFieldGraph.Builder> declareSchema)
+            java.util.function.Consumer<SnapshotFieldGraph.Builder> declareSchema,
+            Map<String, ? extends List<? extends objectview.Viewable>> selections)
             throws IOException {
 
         if (memberRoots == null) memberRoots = List.of();
@@ -217,6 +219,22 @@ public class WikidataDynamicObjectJsonStore {
                         new GroupRootRef(binding.memberType(), k));
             }
         }
+        if (selections != null) {
+            for (Map.Entry<String, ? extends List<? extends objectview.Viewable>> entry
+                    : selections.entrySet()) {
+                RoleSelectionRef role = new RoleSelectionRef();
+                role.name = entry.getKey();
+                java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<>();
+                for (objectview.Viewable member : entry.getValue()) {
+                    if (member instanceof WikidataDynamicObject w) {
+                        String key = poolKey(w);
+                        if (key != null) refs.add(key);
+                    }
+                }
+                role.members.addAll(refs);
+                snapshot.roleSelections.add(role);
+            }
+        }
         // One qid can now yield SEVERAL entities — one per distinct real type — so a State
         // "France" and a ViewableGroup "France" stay separate ⟨type, qid⟩ objects instead
         // of merging. An untyped reference copy is absorbed into the single stamped entity.
@@ -226,6 +244,15 @@ public class WikidataDynamicObjectJsonStore {
 
         mapper.writeValue(file, snapshot);
         return snapshot.fieldGraph;
+    }
+
+    private static Map<String, List<objectview.Viewable>> selectionMap(DomainModel domain) {
+        if (domain == null) return Map.of();
+        LinkedHashMap<String, List<objectview.Viewable>> result = new LinkedHashMap<>();
+        for (String name : domain.selectionNames()) {
+            result.put(name, domain.selectionMembers(name));
+        }
+        return result;
     }
 
     private void collect(
@@ -455,7 +482,20 @@ public class WikidataDynamicObjectJsonStore {
                 snapshot.groupRoots, entities);
         return new LoadedSnapshot(objects, snapshot.fieldGraph,
                 resolveRoots(snapshot.roots, entities), groups,
-                resolveGroupRootBindings(snapshot, entities));
+                resolveGroupRootBindings(snapshot, entities),
+                resolveRoleSelections(snapshot, entities));
+    }
+
+    private static Map<String, List<WikidataDynamicObject>> resolveRoleSelections(
+            FlatSnapshot snapshot, Map<String, WikidataDynamicObject> entities)
+            throws IOException {
+        LinkedHashMap<String, List<WikidataDynamicObject>> result = new LinkedHashMap<>();
+        if (snapshot.roleSelections == null) return result;
+        for (RoleSelectionRef role : snapshot.roleSelections) {
+            if (role == null || role.name == null || role.name.isBlank()) continue;
+            result.put(role.name, resolveRoots(role.members, entities));
+        }
+        return java.util.Collections.unmodifiableMap(result);
     }
 
     private static List<LoadedGroupRoot> resolveGroupRootBindings(
@@ -725,6 +765,7 @@ public class WikidataDynamicObjectJsonStore {
         public List<String> roots = new ArrayList<>();
         public List<String> groupRoots = new ArrayList<>();
         public List<GroupRootRef> groupRootBindings = new ArrayList<>();
+        public List<RoleSelectionRef> roleSelections = new ArrayList<>();
         public List<Entity> entities = new ArrayList<>();
         public SnapshotFieldGraph fieldGraph;
     }
@@ -734,7 +775,8 @@ public class WikidataDynamicObjectJsonStore {
             SnapshotFieldGraph fieldGraph,
             List<WikidataDynamicObject> memberRoots,
             List<WikidataDynamicObject> groupRoots,
-            List<LoadedGroupRoot> groupRootBindings) {}
+            List<LoadedGroupRoot> groupRootBindings,
+            Map<String, List<WikidataDynamicObject>> roleSelections) {}
 
     public record GroupRootBinding(String memberType, WikidataDynamicObject root) {}
     public record LoadedGroupRoot(String memberType, WikidataDynamicObject root) {}
@@ -748,6 +790,11 @@ public class WikidataDynamicObjectJsonStore {
             this.memberType = memberType;
             this.root = root;
         }
+    }
+
+    public static class RoleSelectionRef {
+        public String name;
+        public List<String> members = new ArrayList<>();
     }
 
 }

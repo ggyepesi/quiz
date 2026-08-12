@@ -7,6 +7,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -78,5 +79,12 @@ class IdentityLinksTest {
 
         assertFalse(IdentityLinks.matches(dbpedia, state, IdentityLinks.WIKIDATA));
         assertTrue(IdentityLinks.matches(dbpedia, state), "any-source matching finds it");
+    }
+
+    @Test void anUntypedDynamicObjectNeverUsesItsJavaImplementationAsIdentityType() {
+        var unknown = new wikidata.explore.extract.WikidataDynamicObject("local", "Unknown");
+        assertNull(IdentityLinks.stableType(unknown));
+        assertFalse(IdentityLinks.matchableTypes(unknown)
+                .contains("WikidataDynamicObject"));
     }
 }

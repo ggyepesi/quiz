@@ -37,6 +37,8 @@ public final class ViewStepsPanel extends JPanel {
     private final Runnable onNewField;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
+    private final JComboBox<String> selectionCombo = new JComboBox<>();
+    private final JComboBox<String> secondSelectionCombo = new JComboBox<>();
     private boolean refreshingTypes;
 
     // The single-select field picker: the shared field-config table in SINGLE mode over
@@ -100,6 +102,24 @@ public final class ViewStepsPanel extends JPanel {
         for (String t : controller.types()) {
             memberTypeCombo.addItem(t);
         }
+        selectionCombo.addItem("All");
+        secondSelectionCombo.addItem("None");
+        controller.domain().selectionNames().forEach(selectionCombo::addItem);
+        controller.domain().selectionNames().forEach(secondSelectionCombo::addItem);
+        selectionCombo.setToolTipText(
+                "Restrict the selected class to a named semantic selection");
+        selectionCombo.addActionListener(e -> fireChanged());
+        secondSelectionCombo.addActionListener(e -> fireChanged());
+        DefaultListCellRenderer selectionRenderer = new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(
+                    JList<?> list, Object value, int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value != null) setText(selectionDisplayName(value.toString()));
+                return this;
+            }
+        };
+        selectionCombo.setRenderer(selectionRenderer);
+        secondSelectionCombo.setRenderer(selectionRenderer);
         // Show the instance count beside each type (display only — the item value stays
         // the plain type name, which selectType and the pipeline rely on).
         memberTypeCombo.setRenderer(new DefaultListCellRenderer() {
@@ -180,11 +200,33 @@ public final class ViewStepsPanel extends JPanel {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         p.add(new JLabel("Class:"));
         p.add(memberTypeCombo);
+        if (selectionCombo.getItemCount() > 1) {
+            p.add(new JLabel("Selection:"));
+            p.add(selectionCombo);
+            p.add(new JLabel("∩"));
+            p.add(secondSelectionCombo);
+        }
         // "New field…" sits with the class it declares a field on.
         JButton newField = new JButton("New field…");
         newField.addActionListener(e -> onNewField.run());
         p.add(newField);
         return p;
+    }
+
+    public String selectedSelection() {
+        Object selected = selectionCombo.getSelectedItem();
+        return selected == null || "All".equals(selected) ? null : selected.toString();
+    }
+
+    public String secondSelectedSelection() {
+        Object selected = secondSelectionCombo.getSelectedItem();
+        return selected == null || "None".equals(selected) ? null : selected.toString();
+    }
+
+    public static String selectionDisplayName(String key) {
+        if (key == null) return "";
+        int suffix = key.lastIndexOf(" [");
+        return suffix < 0 ? key : key.substring(0, suffix);
     }
 
     private JComponent fieldBlock() {

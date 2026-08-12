@@ -309,17 +309,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         List<Viewable> statements = members.stream()
                 .filter(member -> wikidata.WikidataIds.isStatementId(member.getIdentifier()))
                 .toList();
+        List<Viewable> untyped = members.stream()
+                .filter(member -> !wikidata.WikidataIds.isStatementId(member.getIdentifier()))
+                .filter(member -> quiz.curation.IdentityLinks.stableType(member) == null)
+                .toList();
         List<Viewable> resolvable = members.stream()
                 .filter(member -> !wikidata.WikidataIds.isStatementId(member.getIdentifier()))
+                .filter(member -> quiz.curation.IdentityLinks.stableType(member) != null)
                 .toList();
         if (resolvable.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    statements.size() + " instance(s) in this scope are Wikidata STATEMENTS "
-                            + "(their ids are statement ids, e.g.\n"
-                            + statements.get(0).getIdentifier() + ").\n\n"
-                            + "A statement is already anchored and has no label of its own, "
-                            + "so there is no identity to resolve here.\n"
-                            + "Select the referenced entity's class to work on its identities.",
+                    statements.size() + " statement(s) are already anchored; "
+                            + untyped.size() + " untyped instance(s) have no stable "
+                            + "identity class. There is no identity to resolve in this scope.",
                     "Nothing to resolve", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -358,7 +360,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                                         + "staged for review and saved separately."
                                         + (statements.isEmpty() ? "" : " " + statements.size()
                                                 + " statement(s) are anchored already and "
-                                                + "cannot be searched at all."),
+                                                + "cannot be searched at all.")
+                                        + (untyped.isEmpty() ? "" : " " + untyped.size()
+                                                + " untyped instance(s) need a stable kind "
+                                                + "before identity resolution."),
                                 List.of(new process.swing.workflow.ProcessWorkflowPlan.Tab(
                                                 "Already identified",
                                                 entries(plan.identified()),
@@ -368,7 +373,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                                         // Shown, not hidden: a scope that silently dropped
                                         // members would make the counts unexplainable.
                                         new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                                "Statements (nothing to resolve)", statements)),
+                                                "Statements (nothing to resolve)", statements),
+                                        new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                                "Untyped (needs a kind)", untyped)),
                                 !plan.unresolved().isEmpty(),
                                 "All instances are already identified");
                     }
@@ -655,6 +662,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private String instanceTitle(objectview.group.ViewableGroup<?> group) {
         String title = "Members of " + group.getDisplayName();
+        String selection = viewStepsPanel == null ? null : viewStepsPanel.selectedSelection();
+        if (selection != null) title += " ∩ "
+                + quiz.transform.pipeline.ui.ViewStepsPanel.selectionDisplayName(selection);
+        String second = viewStepsPanel == null
+                ? null : viewStepsPanel.secondSelectedSelection();
+        if (second != null) title += " ∩ "
+                + quiz.transform.pipeline.ui.ViewStepsPanel.selectionDisplayName(second);
         if (selectedField == null || fieldScope == ScopeFilter.ALL) {
             return title;
         }
@@ -673,6 +687,21 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 .filter(java.util.Objects::nonNull)
                 .map(Viewable.class::cast)
                 .toList();
+    }
+
+    private List<Viewable> applySelectionScope(List<Viewable> members) {
+        String selection = viewStepsPanel == null ? null : viewStepsPanel.selectedSelection();
+        List<Viewable> result = members;
+        if (selection != null) {
+            java.util.Set<Viewable> selected = new java.util.LinkedHashSet<>(
+                    controller.domain().selectionMembers(selection));
+            result = result.stream().filter(selected::contains).toList();
+        }
+        String second = viewStepsPanel.secondSelectedSelection();
+        if (second == null) return result;
+        java.util.Set<Viewable> also = new java.util.LinkedHashSet<>(
+                controller.domain().selectionMembers(second));
+        return result.stream().filter(also::contains).toList();
     }
 
     private void updateScopeStatus() {
@@ -694,6 +723,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 .filter(member -> currentQid(curation, member.typeName(), member) != null)
                 .count();
         long unresolved = scope.visibleMembers().size() - statements - identified;
+        java.util.Set<String> roleNames = new java.util.LinkedHashSet<>(
+                controller.domain().selectionNames());
+        long unknownKind = scope.visibleMembers().stream()
+                .filter(member -> !wikidata.WikidataIds.isStatementId(member.getIdentifier()))
+                .filter(member -> member.directClassNames().stream()
+                        .noneMatch(direct -> !roleNames.contains(direct)))
+                .count();
         String count = scope.visibleMembers().size() == scope.baseMembers().size()
                 ? scope.visibleMembers().size() + " shown"
                 : scope.visibleMembers().size() + " shown of "
@@ -701,7 +737,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         scopeStatus.setText((scope.selectedType() == null ? "View" : scope.selectedType())
                 + " · " + count + " · "
                 + identified + " identified · " + unresolved + " unresolved"
-                + (statements == 0 ? "" : " · " + statements + " statements"));
+                + (statements == 0 ? "" : " · " + statements + " statements")
+                + (unknownKind == 0 ? "" : " · " + unknownKind + " unknown kind"));
 
         curateFieldButton.setText(selectedField == null ? "Curate field…"
                 : "Curate " + selectedField.displayPath() + "…");
@@ -824,7 +861,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         java.util.function.Consumer<objectview.group.ViewableGroup<?>> show = group -> {
             activeGroup = group;
-            List<Viewable> members = explicitMembers(group);
+            List<Viewable> members = applySelectionScope(explicitMembers(group));
             List<Viewable> shown = applyFieldScope(members);
             renderedScope = new RenderedScope(generation, selectedType, members, shown);
             if (viewStepsPanel != null) {

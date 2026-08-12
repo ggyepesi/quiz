@@ -88,6 +88,16 @@ public interface DomainModel {
                 .map(Viewable.class::cast).toList();
     }
 
+    /** Named semantic subsets (roles, saved searches, vocabularies) over canonical
+     * entities. They are intentionally separate from class/kind membership. */
+    default List<String> selectionNames() { return List.of(); }
+
+    default List<Viewable> selectionMembers(String selectionName) { return List.of(); }
+
+    /** Whether this backing has a meaningful canonical entity pool that can be
+     * browsed independently of class membership. */
+    default boolean exposesEntityUniverse() { return false; }
+
     default List<String> subtypesOf(String type) {
         return types().stream().filter(candidate -> !candidate.equals(type)
                 && isSubclassOf(candidate, type)).toList();

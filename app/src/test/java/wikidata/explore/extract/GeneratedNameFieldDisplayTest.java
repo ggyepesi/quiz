@@ -13,6 +13,8 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * A generated model's name field IS the class's display, so a generated snapshot must
@@ -44,5 +46,24 @@ class GeneratedNameFieldDisplayTest {
                 "the model's name field must be the DISPLAY field");
         assertEquals(FieldRole.NONE, roleOf(schema, "apparentMagnitude"),
                 "an ordinary field is not the display");
+    }
+
+    @Test void generatedDeclarationCannotLeakInternalTypesIntoTheFieldGraph() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel internal = new GeneratedClassModel("__subject_Nomination");
+        project.addClass(internal);
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        nominee.baseClassName("__subject_Nomination");
+        nominee.addField("plumbing", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("__subject_Nomination");
+        project.addClass(nominee);
+
+        SnapshotFieldGraph.Builder builder = SnapshotFieldGraph.builder();
+        builder.declare(project);
+        SnapshotFieldGraph graph = builder.build();
+
+        assertFalse(graph.types.containsKey("__subject_Nomination"));
+        assertNull(graph.types.get("Nominee").baseType,
+                "an internal base name must not survive as a second leak path");
     }
 }

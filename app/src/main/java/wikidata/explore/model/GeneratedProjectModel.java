@@ -21,6 +21,7 @@ public class GeneratedProjectModel {
     // for every existing model; a domain opts into them as roles are pulled out of
     // "class" overloading.
     private final List<Selection> selections = new ArrayList<>();
+    private final List<EntityKindRule> entityKindRules = new ArrayList<>();
 
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
@@ -158,6 +159,20 @@ public class GeneratedProjectModel {
         return null;
     }
 
+    public List<EntityKindRule> entityKindRules() {
+        return Collections.unmodifiableList(entityKindRules);
+    }
+
+    public void addEntityKindRule(EntityKindRule rule) {
+        if (rule != null) entityKindRules.add(rule);
+    }
+
+    public void entityKindRules(List<EntityKindRule> rules) {
+        entityKindRules.clear();
+        if (rules != null) rules.stream().filter(java.util.Objects::nonNull)
+                .map(EntityKindRule::copy).forEach(entityKindRules::add);
+    }
+
     /** Replaces this model's contents (name + classes) with another's, in
      *  place — so references held to this instance (the workbench panels) keep
      *  pointing at the same object after loading a saved model. */
@@ -171,6 +186,8 @@ public class GeneratedProjectModel {
         this.classes.addAll(other.classes);
         this.selections.clear();
         this.selections.addAll(other.selections);
+        this.entityKindRules.clear();
+        this.entityKindRules.addAll(other.entityKindRules);
 
         // Serialization has no object identity, so the root is written both as
         // `rootClass` and inside `classes` and deserializes as two separate
@@ -288,6 +305,9 @@ public class GeneratedProjectModel {
             if (s != null) {
                 c.selections.add(s.copy());
             }
+        }
+        for (EntityKindRule rule : entityKindRules) {
+            if (rule != null) c.entityKindRules.add(rule.copy());
         }
 
         return c;

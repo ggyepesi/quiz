@@ -31,13 +31,22 @@ public final class ProductDomain implements DomainModel, SchemaView {
     // Lazily builds the ModelClass↔ProductClass inspector; supplied by the compiler
     // (which holds the declared model). Null = no schema view.
     private final SchemaView schemaView;
+    private final java.util.Map<String, List<Viewable>> selections;
 
     public ProductDomain(ProductSchema schema, Collection<? extends Viewable> pool,
                          Class<? extends Viewable> universe, SchemaView schemaView) {
+        this(schema, pool, universe, schemaView, java.util.Map.of());
+    }
+
+    public ProductDomain(ProductSchema schema, Collection<? extends Viewable> pool,
+                         Class<? extends Viewable> universe, SchemaView schemaView,
+                         java.util.Map<String, List<Viewable>> selections) {
         this.schema = schema;
         this.pool = pool;
         this.universe = universe;
         this.schemaView = schemaView;
+        this.selections = selections == null ? java.util.Map.of()
+                : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(selections));
     }
 
     @Override public javax.swing.JComponent schemaView() {
@@ -94,5 +103,10 @@ public final class ProductDomain implements DomainModel, SchemaView {
     }
 
     @Override public Collection<? extends Viewable> instances() { return pool; }
+    @Override public List<String> selectionNames() { return List.copyOf(selections.keySet()); }
+    @Override public List<Viewable> selectionMembers(String name) {
+        return selections.getOrDefault(name, List.of());
+    }
+    @Override public boolean exposesEntityUniverse() { return true; }
     @Override public Class<? extends Viewable> universe() { return universe; }
 }

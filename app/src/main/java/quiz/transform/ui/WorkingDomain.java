@@ -45,6 +45,12 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         this.base = base;
     }
 
+    @Override public List<String> selectionNames() { return base.selectionNames(); }
+    @Override public List<Viewable> selectionMembers(String name) {
+        return base.selectionMembers(name);
+    }
+    @Override public boolean exposesEntityUniverse() { return base.exposesEntityUniverse(); }
+
     /** Declare a new empty field on a base class so it appears in the field pool and at
      *  0% coverage — independent of how it is later filled. Supported only for dynamic
      *  (snapshot-backed) samples whose shape can carry it; returns false otherwise. */

@@ -30,7 +30,8 @@ public final class ProcessContext {
     }
 
     public QueryContext queries() {
-        return recorder == null ? queries : queries.withRecorder(recorder, logNode);
+        QueryContext bound = recorder == null ? queries : queries.withRecorder(recorder, logNode);
+        return bound.withCancellation(cancellation);
     }
 
     public CancellationToken cancellation() {

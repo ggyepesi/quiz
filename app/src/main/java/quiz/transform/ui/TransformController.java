@@ -22,6 +22,8 @@ import java.util.Set;
  */
 public final class TransformController {
 
+    public static final String ALL_ENTITIES = "All entities";
+
     private final WorkingDomain domain;
     private final DomainWriter writer;
     private String selectedType;
@@ -42,8 +44,16 @@ public final class TransformController {
      *  SchemaView}. No Swing here; the view does the instanceof + rendering. */
     public DomainModel domain() { return domain; }
 
-    public List<String> types() { return domain.types(); }
-    public List<DomainField> fields(String type) { return domain.fields(type); }
+    public List<String> types() {
+        if (!domain.exposesEntityUniverse()) return domain.types();
+        ArrayList<String> result = new ArrayList<>();
+        result.addAll(domain.types());
+        result.add(ALL_ENTITIES);
+        return result;
+    }
+    public List<DomainField> fields(String type) {
+        return ALL_ENTITIES.equals(type) ? List.of() : domain.fields(type);
+    }
 
     /** Declare a new empty scalar/media field on {@code type} — a schema act that surfaces
      *  it in the field pool + at 0% coverage, to be filled later (e.g. via Find Data).
@@ -64,9 +74,15 @@ public final class TransformController {
     public boolean addField(String type, objectview.field.FieldRef field) {
         return domain.addField(type, field);
     }
-    public Set<String> structuralFields(String type) { return domain.structuralFields(type); }
-    public FieldTypeSource fieldTypes(String type) { return domain.fieldTypes(type); }
-    public FieldSchema fieldSchema(String type) { return domain.fieldSchema(type); }
+    public Set<String> structuralFields(String type) {
+        return ALL_ENTITIES.equals(type) ? Set.of() : domain.structuralFields(type);
+    }
+    public FieldTypeSource fieldTypes(String type) {
+        return ALL_ENTITIES.equals(type) ? name -> null : domain.fieldTypes(type);
+    }
+    public FieldSchema fieldSchema(String type) {
+        return ALL_ENTITIES.equals(type) ? null : domain.fieldSchema(type);
+    }
     public String baseType(String type) { return domain.baseType(type); }
     public List<String> subtypesOf(String type) { return domain.subtypesOf(type); }
     public boolean isInstanceOf(Viewable instance, String type) {
@@ -85,6 +101,11 @@ public final class TransformController {
 
     /** The explicit group root paired with the selected member type. */
     public objectview.group.ViewableGroup<?> groupRoot(String type) {
+        if (ALL_ENTITIES.equals(type)) {
+            quiz.transform.EditableGroup root = new quiz.transform.EditableGroup(ALL_ENTITIES);
+            root.replaceMembers(domain.instances().stream().map(Viewable.class::cast).toList());
+            return root;
+        }
         return domain.editableGroupRoot(type);
     }
 
@@ -148,13 +169,15 @@ public final class TransformController {
         if (type == null) {
             return 0;
         }
-        return domain.instancesOf(type).size();
+        return ALL_ENTITIES.equals(type) ? domain.instances().size()
+                : domain.instancesOf(type).size();
     }
 
     /** The sample a field-config table enumerates from — null for a schema-backed type so
      *  its structure comes straight from the schema (see {@link DomainModel#configSample}),
      *  which cannot drift and needs no synthetic shape. */
     public Viewable configSample(String type) {
+        if (ALL_ENTITIES.equals(type)) return null;
         return domain.configSample(type);
     }
 

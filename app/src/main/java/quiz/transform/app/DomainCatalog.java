@@ -70,7 +70,7 @@ public final class DomainCatalog {
                 pool, curation.merges(), loaded.fieldGraph()::baseType);
 
         quiz.transform.ui.DomainModel base =
-                compile(model, pool, loaded.fieldGraph());
+                compile(model, pool, loaded.fieldGraph(), loaded.roleSelections());
         // Carry the curation store so the workbench can offer a "Curate…" action.
         java.util.List<objectview.viewconfig.DomainGroupRoot> groupRoots =
                 loaded.groupRootBindings().stream()
@@ -91,12 +91,15 @@ public final class DomainCatalog {
     private static quiz.transform.ui.DomainModel compile(
             File model,
             java.util.List<wikidata.explore.extract.WikidataDynamicObject> pool,
-            wikidata.explore.extract.SnapshotFieldGraph fieldGraph) throws Exception {
+            wikidata.explore.extract.SnapshotFieldGraph fieldGraph,
+            java.util.Map<String, java.util.List<wikidata.explore.extract.WikidataDynamicObject>>
+                    roleSelections) throws Exception {
         if (model != null && model.isFile()) {
             var project = new wikidata.explore.model.GeneratedProjectModelStore()
                     .load(model);
-            return wikidata.explore.transform.ProductCompiler.compile(project, pool);
+            return wikidata.explore.transform.ProductCompiler.compile(
+                    project, pool, roleSelections);
         }
-        return new SnapshotDomain(pool, fieldGraph);
+        return new SnapshotDomain(pool, fieldGraph, java.util.Set.of(), roleSelections);
     }
 }

@@ -22,6 +22,7 @@ public final class SnapshotDomain implements DomainModel {
     // field is the auto-created reify back-reference — provenance, not an
     // argument — so the field pickers skip it.
     private final java.util.Set<String> statementTypes;
+    private final java.util.Map<String, List<Viewable>> selections;
 
     public SnapshotDomain(List<WikidataDynamicObject> pool) {
         this(pool, null, java.util.Set.of());
@@ -40,6 +41,13 @@ public final class SnapshotDomain implements DomainModel {
     public SnapshotDomain(List<WikidataDynamicObject> pool,
                           SnapshotFieldGraph fieldGraph,
                           java.util.Set<String> statementTypes) {
+        this(pool, fieldGraph, statementTypes, java.util.Map.of());
+    }
+
+    public SnapshotDomain(List<WikidataDynamicObject> pool,
+                          SnapshotFieldGraph fieldGraph,
+                          java.util.Set<String> statementTypes,
+                          java.util.Map<String, ? extends List<? extends Viewable>> selections) {
         // A bare reference (unstamped, no substance — e.g. the type values
         // "film", "song") reads as its display-name String, not an object chip.
         wikidata.explore.transform.BareReferenceCollapse.apply(pool);
@@ -50,6 +58,11 @@ public final class SnapshotDomain implements DomainModel {
                 ? SnapshotFieldGraph.derive(pool) : fieldGraph;
         this.statementTypes = statementTypes == null
                 ? java.util.Set.of() : statementTypes;
+        java.util.LinkedHashMap<String, List<Viewable>> copied = new java.util.LinkedHashMap<>();
+        if (selections != null) {
+            selections.forEach((name, members) -> copied.put(name, List.copyOf(members)));
+        }
+        this.selections = java.util.Collections.unmodifiableMap(copied);
     }
 
     @Override public List<String> types() { return fieldGraph.allTypes(); }
@@ -90,5 +103,10 @@ public final class SnapshotDomain implements DomainModel {
     }
 
     @Override public Collection<? extends Viewable> instances() { return pool; }
+    @Override public List<String> selectionNames() { return List.copyOf(selections.keySet()); }
+    @Override public List<Viewable> selectionMembers(String name) {
+        return selections.getOrDefault(name, List.of());
+    }
+    @Override public boolean exposesEntityUniverse() { return true; }
     @Override public Class<? extends Viewable> universe() { return WikidataDynamicObject.class; }
 }

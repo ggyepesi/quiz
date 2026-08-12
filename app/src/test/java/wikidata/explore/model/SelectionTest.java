@@ -64,14 +64,19 @@ class SelectionTest {
         assertTrue(pop.isConfigured());
     }
 
-    @Test void bothKindsRoundTripThroughTheStore(@TempDir Path dir) throws Exception {
+    @Test void allKindsRoundTripThroughTheStore(@TempDir Path dir) throws Exception {
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass().className("Nomination");
+        p.rootClass().addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
         p.addSelection(oscarCategories());
         PopulationSelection pop = new PopulationSelection("OscarNominees");
         pop.relationPid("P1411");
         pop.targetQids(List.of("Q102427", "Q106301"));
         p.addSelection(pop);
+        p.addSelection(new RoleSelection("Nominee", "Nomination", "nominee"));
+        p.addClass(new GeneratedClassModel("Person"));
+        p.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
 
         GeneratedProjectModelStore store = new GeneratedProjectModelStore();
         File f = dir.resolve("m.model.json").toFile();
@@ -89,5 +94,12 @@ class SelectionTest {
         assertEquals(Selection.Kind.POPULATION, pop2.kind());
         assertEquals("P1411", pop2.relationPid());
         assertEquals(List.of("Q102427", "Q106301"), pop2.targetQids());
+
+        RoleSelection role = (RoleSelection) loaded.findSelection("Nominee");
+        assertEquals(Selection.Kind.ROLE, role.kind());
+        assertEquals("Nomination", role.ownerClassName());
+        assertEquals("nominee", role.fieldName());
+        assertEquals("Person", loaded.entityKindRules().get(0).className());
+        assertEquals(List.of("Q5"), loaded.entityKindRules().get(0).evidenceQids());
     }
 }

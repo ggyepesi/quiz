@@ -44,6 +44,30 @@ public final class ProductCompiler {
 
     public static ProductDomain compile(GeneratedProjectModel model,
                                         List<WikidataDynamicObject> pool) {
+        return compile(model, pool, Map.of());
+    }
+
+    public static ProductDomain compile(
+            GeneratedProjectModel model, List<WikidataDynamicObject> pool,
+            Map<String, ? extends List<? extends Viewable>> persistedRoleSelections) {
+        // Capture semantic field roles while references are still canonical objects;
+        // convention resolution below may collapse non-member references to labels.
+        Map<String, List<Viewable>> roleSelections = new LinkedHashMap<>();
+        Map<String, List<Viewable>> derivedRoleSelections =
+                RoleSelections.materialize(model, pool);
+        // Persisted membership describes the exact saved pool and wins while the role
+        // definitions are unchanged. A changed/added/removed model role changes the key
+        // set (keys are owner.field based), so re-materialize instead of silently using
+        // stale snapshot semantics until the next regeneration.
+        boolean definitionsMatch = persistedRoleSelections != null
+                && !persistedRoleSelections.isEmpty()
+                && persistedRoleSelections.keySet().equals(derivedRoleSelections.keySet());
+        if (definitionsMatch) {
+            persistedRoleSelections.forEach((name, members) ->
+                    roleSelections.put(name, List.copyOf(members)));
+        } else {
+            roleSelections.putAll(derivedRoleSelections);
+        }
         // 1. Drop Wikimedia-meta noise (e.g. "Wikimedia list article", a Wikinews
         //    article) from references before collapse — an entity's P31 `type` picks
         //    up such non-domain values, and they'd otherwise become bogus strings.
@@ -91,7 +115,8 @@ public final class ProductCompiler {
         // the declared model so it can show ModelClass ↔ ProductClass side by side.
         // ProductDomain is generic — the wikidata universe is supplied here.
         return new ProductDomain(schema, pool, WikidataDynamicObject.class,
-                () -> new quiz.transform.app.ProductSchemaInspector(model, schema));
+                () -> new quiz.transform.app.ProductSchemaInspector(model, schema),
+                roleSelections);
     }
 
     /** Reorder each stamped instance's fields to its ProductClass's field order —
@@ -263,7 +288,7 @@ public final class ProductCompiler {
         for (WikidataDynamicObject o : pool) {
             if (o != null && o.hasTypeStamp()
                     && o.dynamicFieldValues().containsKey("wikidata")) {
-                out.add(o.typeName());
+                out.addAll(o.directClassNames());
             }
         }
         return out;
@@ -391,7 +416,7 @@ public final class ProductCompiler {
         Set<String> stamped = new LinkedHashSet<>();
         for (WikidataDynamicObject o : pool) {
             if (o != null && o.hasTypeStamp()) {
-                stamped.add(o.typeName());
+                stamped.addAll(o.directClassNames());
             }
         }
         List<String> out = new ArrayList<>();
