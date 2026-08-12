@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -89,6 +90,42 @@ class BatchExecutorTest {
     private static BatchExecutor<List<String>> executor(BatchPolicy policy) {
         return new BatchExecutor<>(policy, BatchProgress.NOOP, CLASSIFIER,
                 new CancellationToken(), BatchCheckpointStore.NONE);
+    }
+
+    @Test
+    void boundedParallelismRunsAttemptsTogetherButCommitsOnCoordinator() throws Exception {
+        CyclicBarrier bothRunning = new CyclicBarrier(2);
+        AtomicInteger activeCommits = new AtomicInteger();
+        AtomicInteger maxActiveCommits = new AtomicInteger();
+        List<String> committed = new ArrayList<>();
+        List<WorkUnit<String>> units = List.of(
+                concurrentUnit("a", bothRunning), concurrentUnit("b", bothRunning));
+        BatchExecutor<String> executor = new BatchExecutor<>(
+                new BatchPolicy(1, 0, 0, false), BatchProgress.NOOP, CLASSIFIER,
+                new CancellationToken(), BatchCheckpointStore.NONE, 2);
+
+        executor.run(units, (descriptor, value) -> {
+            int active = activeCommits.incrementAndGet();
+            maxActiveCommits.accumulateAndGet(active, Math::max);
+            committed.add(value);
+            activeCommits.decrementAndGet();
+        });
+
+        assertEquals(List.of("a", "b"), committed);
+        assertEquals(1, maxActiveCommits.get(), "commits remain serialized");
+    }
+
+    private static WorkUnit<String> concurrentUnit(String key, CyclicBarrier barrier) {
+        return new WorkUnit<>() {
+            @Override public WorkDescriptor descriptor() {
+                return new WorkDescriptor("test", key, key);
+            }
+            @Override public String execute() throws Exception {
+                barrier.await();
+                return key;
+            }
+            @Override public List<? extends WorkUnit<String>> split() { return List.of(); }
+        };
     }
 
     @Test

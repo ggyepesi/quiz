@@ -117,9 +117,11 @@ public final class DisambiguationPrune {
 
         if (!needFetch.isEmpty()) {
             Map<String, WikidataApiClient.ApiEntity> details;
-            try {
+            try (GenerationLog.Group group = sink.group(
+                    "Check " + needFetch.size()
+                            + " modeled entity(ies) for Wikimedia internal types")) {
                 details = api.getEntities(
-                        new ArrayList<>(needFetch), List.of("P31"), sink.batchSink());
+                        new ArrayList<>(needFetch), List.of("P31"), group.batchSink());
             } catch (Exception ex) {
                 if (Thread.currentThread().isInterrupted()) {
                     Thread.currentThread().interrupt();

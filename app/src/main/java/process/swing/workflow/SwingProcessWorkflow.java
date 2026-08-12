@@ -79,11 +79,13 @@ public final class SwingProcessWorkflow {
             cancel.addActionListener(e -> runner.cancel());
             panel.add(buttons(cancel), BorderLayout.SOUTH);
             install(action.process().plan().title(), panel);
-            runner.run(action.process(), outcome -> SwingUtilities.invokeLater(
-                    () -> completed(outcome)), error -> SwingUtilities.invokeLater(() -> {
+            // SwingProcessRunner.done() already invokes both callbacks on the EDT.
+            // Re-queueing completion detached exceptions from the runner's guard and
+            // could strand a completed result behind the stale Running page forever.
+            runner.run(action.process(), this::completed, error -> {
                         JOptionPane.showMessageDialog(owner, "Process failed: " + error.getMessage());
                         dialog.dispose();
-                    }));
+                    });
         }
 
         void completed(ProcessOutcome<R> outcome) {
@@ -95,7 +97,38 @@ public final class SwingProcessWorkflow {
                 return;
             }
             state.results();
-            showResults(action.results(outcome), outcome.status());
+            ProcessWorkflowResults<D> results;
+            try {
+                results = action.results(outcome);
+            } catch (Throwable resultFailure) {
+                showFallbackResults(outcome.summary(), resultFailure, null);
+                return;
+            }
+            try {
+                showResults(results, outcome.status());
+            } catch (Throwable renderingFailure) {
+                showFallbackResults(outcome.summary(), renderingFailure, results);
+            }
+        }
+
+        /** Never leave a completed process looking RUNNING because its rich result
+         * page failed. Actions with one safe result (generation) can still be accepted. */
+        void showFallbackResults(String summary, Throwable failure,
+                                 ProcessWorkflowResults<D> results) {
+            JPanel panel = page("3 · Results", summary);
+            JLabel message = new JLabel("<html>The detailed result preview could not be "
+                    + "rendered.<br>" + html(failure.getMessage()) + "</html>");
+            panel.add(message, BorderLayout.CENTER);
+            JButton close = new JButton("Close without applying");
+            JButton accept = new JButton("Accept completed result");
+            close.addActionListener(e -> dialog.dispose());
+            List<ProcessWorkflowResults.Card<D>> safe = results == null ? List.of()
+                    : results.tabs().stream().flatMap(tab -> tab.cards().stream())
+                            .filter(ProcessWorkflowResults.Card::includeInApplyAll).toList();
+            accept.setEnabled(!safe.isEmpty());
+            accept.addActionListener(e -> apply(safe));
+            panel.add(buttons(close, accept), BorderLayout.SOUTH);
+            install(action.plan().title() + " — results", panel);
         }
 
         void showResults(ProcessWorkflowResults<D> results, ProcessStatus status) {
@@ -110,23 +143,29 @@ public final class SwingProcessWorkflow {
                     .filter(ProcessWorkflowResults.Card::includeInApplyAll).toList();
             JTabbedPane tabs = new JTabbedPane();
             for (ProcessWorkflowResults.Tab<D> tab : results.tabs()) {
-                List<Viewable> views = tab.cards().stream().map(ProcessWorkflowResults.Card::view).toList();
-                java.util.Map<Viewable, ProcessWorkflowResults.Card<D>> cards =
-                        new java.util.IdentityHashMap<>();
-                tab.cards().forEach(card -> cards.put(card.view(), card));
-                JComponent content = views.isEmpty() ? new JLabel("  (none)")
-                        : SearchableView.builder(views).sample(views.get(0))
-                                .mode(RenderingMode.CARD).collapsible(false).columns(2)
-                                .cardDecorator(view -> cards.get(view).decoration().get())
-                                .selectionListener(value -> {
-                                    ProcessWorkflowResults.Card<D> card = value instanceof Viewable view
-                                            ? cards.get(view) : null;
-                                    selected.set(card);
-                                    applySelected.setEnabled(card != null
-                                            && card.decision().get() != null);
-                                }).build();
-                tabs.addTab(tab.title() + " (" + views.size() + ")", content);
+                // Large result tabs (20k+ cards are normal) stay lazy. Building and
+                // search-indexing every tab here blocks the EDT after the process has
+                // completed, leaving the stale Running page and Cancel button visible.
+                JPanel placeholder = new JPanel(new BorderLayout());
+                placeholder.add(new JLabel("  Open this tab to render its results"),
+                        BorderLayout.NORTH);
+                tabs.addTab(tab.title() + " (" + tab.cards().size() + ")", placeholder);
             }
+            java.util.Set<Integer> builtTabs = new java.util.HashSet<>();
+            Runnable buildSelectedTab = () -> {
+                int index = tabs.getSelectedIndex();
+                if (index < 0 || !builtTabs.add(index)) return;
+                ProcessWorkflowResults.Tab<D> tab = results.tabs().get(index);
+                try {
+                    tabs.setComponentAt(index, resultTab(tab, selected, applySelected));
+                } catch (Throwable failure) {
+                    tabs.setComponentAt(index, new JLabel("  Could not render this tab: "
+                            + (failure.getMessage() == null
+                            ? failure.getClass().getSimpleName() : failure.getMessage())));
+                }
+            };
+            tabs.addChangeListener(e -> buildSelectedTab.run());
+            buildSelectedTab.run(); // Summary is normally first and intentionally small.
             panel.add(tabs, BorderLayout.CENTER);
             JButton close = new JButton("Close without applying");
             JButton applyAll = new JButton(
@@ -137,6 +176,33 @@ public final class SwingProcessWorkflow {
             applyAll.addActionListener(e -> apply(bulk));
             panel.add(buttons(close, applySelected, applyAll), BorderLayout.SOUTH);
             install(results.title(), panel);
+        }
+
+        private JComponent resultTab(
+                ProcessWorkflowResults.Tab<D> tab,
+                AtomicReference<ProcessWorkflowResults.Card<D>> selected,
+                JButton applySelected) {
+            List<Viewable> views = tab.cards().stream()
+                    .map(ProcessWorkflowResults.Card::view).toList();
+            if (views.isEmpty()) return new JLabel("  (none)");
+            java.util.Map<Viewable, ProcessWorkflowResults.Card<D>> cards =
+                    new java.util.IdentityHashMap<>();
+            tab.cards().forEach(card -> cards.put(card.view(), card));
+            return SearchableView.builder(views).sample(views.get(0))
+                    .mode(RenderingMode.CARD).collapsible(false).columns(2)
+                    // RenderContext also asks about nested referenced Viewables.
+                    // Only top-level result cards have workflow decorations.
+                    .cardDecorator(view -> {
+                        ProcessWorkflowResults.Card<D> card = cards.get(view);
+                        return card == null ? null : card.decoration().get();
+                    })
+                    .selectionListener(value -> {
+                        ProcessWorkflowResults.Card<D> card = value instanceof Viewable view
+                                ? cards.get(view) : null;
+                        selected.set(card);
+                        applySelected.setEnabled(card != null
+                                && card.decision().get() != null);
+                    }).build();
         }
 
         void apply(List<ProcessWorkflowResults.Card<D>> cards) {

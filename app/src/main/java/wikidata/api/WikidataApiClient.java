@@ -1,7 +1,13 @@
 package wikidata.api;
 
+import batch.BatchExecutor;
+import batch.BatchPolicy;
+import batch.BatchProgress;
+import batch.WorkDescriptor;
+import batch.WorkUnit;
 import objectview.utils.RetryAfter;
 import wikidata.WikidataIds;
+import wikidata.WikidataBatchFailureClassifier;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,11 +19,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +36,9 @@ import java.util.stream.Collectors;
  */
 public class WikidataApiClient {
 
+    public static final String DEFAULT_USER_AGENT =
+            "QuizProject/1.0 (ggyepesi@gmail.com)";
+
     private static final String WIKIDATA_API =
             "https://www.wikidata.org/w/api.php";
     private static final String WIKIPEDIA_API =
@@ -42,6 +46,7 @@ public class WikidataApiClient {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final String userAgent;
+    private process.CancellationToken cancellation = new process.CancellationToken();
 
     private java.util.function.Consumer<String> log = s -> {};
     private final java.util.concurrent.atomic.AtomicLong requestSeq =
@@ -75,6 +80,11 @@ public class WikidataApiClient {
 
     public void log(java.util.function.Consumer<String> log) {
         this.log = log == null ? s -> {} : log;
+    }
+
+    public WikidataApiClient cancellation(process.CancellationToken token) {
+        cancellation = token == null ? new process.CancellationToken() : token;
+        return this;
     }
     /**
      * Searches for Wikidata entities matching a natural language expression.
@@ -391,7 +401,8 @@ public class WikidataApiClient {
     /** Per-batch log hook so a caller (e.g. the generation query log) can show each
      *  wbgetentities request as a structured entry. All three args are the request
      *  title, the request URL, and a completion summary ("N entities (ms)"/"FAILED…").
-     *  Invoked from the fan-out threads — the sink must tolerate concurrency. */
+     *  Attempts fan out, while completed results are reported by the executor's
+     *  coordinating thread in stable commit order. */
     @FunctionalInterface
     public interface BatchLog {
         void logged(String title, String request, String summary);
@@ -419,19 +430,30 @@ public class WikidataApiClient {
             List<String> qids, List<String> claimPids, BatchLog batchLog)
             throws Exception {
 
-        Map<String, ApiEntity> out = new ConcurrentHashMap<>();
+        Map<String, ApiEntity> out = new LinkedHashMap<>();
         if (qids == null) return out;
         List<String> pids = claimPids == null ? List.of() : claimPids;
-        runBatched(qids, !pids.isEmpty(), batchLog, false,
-                   root -> parseEntities(root, pids, out));
+        List<WorkUnit<Map<String, ApiEntity>>> roots = entityUnits(qids, pids);
+        entityExecutor(batchLog).run(roots,
+                (descriptor, entities) -> out.putAll(entities));
         return out;
     }
 
-    /** What a best-effort resolve came back with, and how many 50-QID batches did
-     *  not. A caller that can live without some of the answers needs both: the
+    /** What a best-effort resolve came back with, and how many adaptively narrowed
+     *  leaf batches did not. A caller that can live without some answers needs both: the
      *  entities to use, and the count to say honestly what is missing. */
     public record PartialEntities(
-            Map<String, ApiEntity> entities, int failedBatches) {}
+            Map<String, ApiEntity> entities,
+            int failedBatches,
+            List<String> unavailableQids) {
+        public PartialEntities(Map<String, ApiEntity> entities, int failedBatches) {
+            this(entities, failedBatches, List.of());
+        }
+        public PartialEntities {
+            unavailableQids = unavailableQids == null
+                    ? List.of() : List.copyOf(unavailableQids);
+        }
+    }
 
     /**
      * Like {@link #getEntities} but keeps what the successful batches returned
@@ -443,19 +465,87 @@ public class WikidataApiClient {
      * indistinguishable from an absent one, and treating a throttled batch as "this
      * entity has no P840" is how a fetch failure becomes false data.
      *
-     * <p>The isolation lives here rather than in the caller so the batches still fan
-     * out: batching the call site to isolate its failures would serialise it.
+     * <p>The isolation lives here rather than in the caller so the shared executor can
+     * fan batches out, retry them consistently, and narrow oversized failures.
      */
     public PartialEntities getEntitiesBestEffort(
             List<String> qids, List<String> claimPids, BatchLog batchLog)
             throws Exception {
 
-        Map<String, ApiEntity> out = new ConcurrentHashMap<>();
+        Map<String, ApiEntity> out = new LinkedHashMap<>();
         if (qids == null) return new PartialEntities(out, 0);
         List<String> pids = claimPids == null ? List.of() : claimPids;
-        int failed = runBatched(qids, !pids.isEmpty(), batchLog, true,
-                                root -> parseEntities(root, pids, out));
-        return new PartialEntities(out, failed);
+        List<WorkDescriptor> failed = entityExecutor(batchLog).runBestEffort(
+                entityUnits(qids, pids),
+                (descriptor, entities) -> out.putAll(entities));
+        return new PartialEntities(out, failed.size(), unavailableQids(failed));
+    }
+
+    /** Partial CLAIM lookup for callers that preserve the previous state of every
+     * entity absent from the result. Unlike an optional-label caller, such a caller
+     * must report unavailable entities separately and must never interpret absence as
+     * "the claim is absent". Evidence classification uses exactly that contract. */
+    public PartialEntities getEntityClaimsPartial(
+            List<String> qids, List<String> claimPids, BatchLog batchLog)
+            throws Exception {
+        Map<String, ApiEntity> out = new LinkedHashMap<>();
+        if (qids == null) return new PartialEntities(out, 0);
+        List<String> pids = claimPids == null ? List.of() : claimPids;
+        List<WorkUnit<Map<String, ApiEntity>>> roots = entityUnits(qids, pids);
+        BatchExecutor<Map<String, ApiEntity>> executor = entityExecutor(batchLog);
+        List<WorkDescriptor> failed = executor.runBestEffort(roots,
+                (descriptor, entities) -> out.putAll(entities));
+        return new PartialEntities(out, failed.size(), unavailableQids(failed));
+    }
+
+    private List<WorkUnit<Map<String, ApiEntity>>> entityUnits(
+            List<String> qids, List<String> pids) {
+        List<String> clean = qids.stream()
+                .filter(q -> q != null && WikidataIds.isQid(q)).distinct().toList();
+        List<WorkUnit<Map<String, ApiEntity>>> roots = new ArrayList<>();
+        for (int i = 0; i < clean.size(); i += 50) {
+            roots.add(entityUnit(List.copyOf(clean.subList(i,
+                    Math.min(i + 50, clean.size()))), pids));
+        }
+        return roots;
+    }
+
+    private BatchExecutor<Map<String, ApiEntity>> entityExecutor(BatchLog batchLog) {
+        return new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
+                batchProgress(batchLog), WikidataBatchFailureClassifier.INSTANCE,
+                cancellation, batch.BatchCheckpointStore.NONE, GET_ENTITIES_CONCURRENCY);
+    }
+
+    private WorkUnit<Map<String, ApiEntity>> entityUnit(
+            List<String> qids, List<String> pids) {
+        boolean withClaims = !pids.isEmpty();
+        return new WorkUnit<>() {
+            @Override public WorkDescriptor descriptor() {
+                String ids = String.join(",", qids);
+                String mode = withClaims ? "claims" : "labels";
+                return new WorkDescriptor("wbgetentities-" + mode, mode + ":" + ids,
+                        "wbgetentities " + qids.size() + " entities",
+                        Map.of("ids", ids, "claims", String.join(",", pids)));
+            }
+            @Override public String request() { return entitiesUrl(qids, withClaims); }
+            @Override public Map<String, ApiEntity> execute() throws Exception {
+                Map<String, ApiEntity> result = new LinkedHashMap<>();
+                parseEntities(getEntitiesBatchWithRetry(qids, withClaims), pids, result);
+                return result;
+            }
+            @Override public List<? extends WorkUnit<Map<String, ApiEntity>>> split() {
+                if (qids.size() < 2) return List.of();
+                int middle = qids.size() / 2;
+                return List.of(entityUnit(qids.subList(0, middle), pids),
+                        entityUnit(qids.subList(middle, qids.size()), pids));
+            }
+        };
+    }
+
+    private static List<String> unavailableQids(List<WorkDescriptor> failed) {
+        return failed.stream().flatMap(descriptor -> java.util.Arrays.stream(
+                        descriptor.parameters().getOrDefault("ids", "").split(",")))
+                .filter(WikidataIds::isQid).distinct().toList();
     }
 
     /**
@@ -470,101 +560,74 @@ public class WikidataApiClient {
             List<String> entityQids, String statementPid,
             List<String> qualifierPids, BatchLog batchLog) throws Exception {
 
-        Map<String, List<ApiStatement>> out = new ConcurrentHashMap<>();
+        Map<String, List<ApiStatement>> out = new LinkedHashMap<>();
         if (entityQids == null || statementPid == null || statementPid.isBlank()) {
             return out;
         }
         List<String> quals = qualifierPids == null ? List.of() : qualifierPids;
-        runBatched(entityQids, true, batchLog, false,
-                   root -> parseStatements(root, statementPid, quals, out));
+        List<String> clean = entityQids.stream()
+                .filter(q -> q != null && WikidataIds.isQid(q)).distinct().toList();
+        List<WorkUnit<Map<String, List<ApiStatement>>>> roots = new ArrayList<>();
+        for (int i = 0; i < clean.size(); i += 50) {
+            roots.add(statementUnit(List.copyOf(clean.subList(i,
+                    Math.min(i + 50, clean.size()))), statementPid, quals));
+        }
+        BatchExecutor<Map<String, List<ApiStatement>>> executor = new BatchExecutor<>(
+                BatchPolicy.defaults().withResume(false), batchProgress(batchLog),
+                WikidataBatchFailureClassifier.INSTANCE,
+                cancellation, batch.BatchCheckpointStore.NONE,
+                GET_ENTITIES_CONCURRENCY);
+        executor.run(roots, (descriptor, statements) -> out.putAll(statements));
         return out;
     }
 
-    /**
-     * Fans the 50-QID batches out over a small pool (the action API tolerates modest
-     * concurrency far better than WDQS did) and lets {@code handle} parse each
-     * response into a thread-safe accumulator, returning that batch's parsed count
-     * for the log. Each batch has a short retry; after all submitted work has been
-     * joined, any failed batch fails the whole call — returning a partial map would
-     * make callers unable to distinguish an absent claim from an unavailable batch.
-     *
-     * <p>{@code bestEffort} inverts that for the callers who can live with less: the
-     * accumulator keeps what the successful batches parsed, and the failed count is
-     * returned instead of thrown. Interruption always propagates either way — a
-     * cancelled run is not a partial result.
-     *
-     * @return the number of batches that failed (always 0 unless {@code bestEffort})
-     */
-    private int runBatched(
-            List<String> qids, boolean withClaims, BatchLog batchLog,
-            boolean bestEffort,
-            java.util.function.ToIntFunction<JsonNode> handle) throws Exception {
-
-        List<String> clean = qids.stream()
-                                 .filter(q -> q != null && WikidataIds.isQid(q))
-                                 .distinct()
-                                 .toList();
-        if (clean.isEmpty()) return 0;
-
-        List<List<String>> batches = new ArrayList<>();
-        for (int i = 0; i < clean.size(); i += 50) {
-            batches.add(clean.subList(i, Math.min(i + 50, clean.size())));
-        }
-        int total = batches.size();
-        java.util.concurrent.atomic.AtomicInteger done =
-                new java.util.concurrent.atomic.AtomicInteger();
-
-        ExecutorService pool = Executors.newFixedThreadPool(
-                Math.min(GET_ENTITIES_CONCURRENCY, batches.size()));
-        try {
-            List<Future<?>> futures = new ArrayList<>();
-            for (List<String> batch : batches) {
-                futures.add(pool.submit(() -> {
-                    String url = entitiesUrl(batch, withClaims);
-                    long t0 = System.nanoTime();
-                    try {
-                        JsonNode root = getEntitiesBatchWithRetry(batch, withClaims);
-                        int n = handle.applyAsInt(root);
-                        if (batchLog != null) {
-                            batchLog.logged("wbgetentities " + done.incrementAndGet()
-                                                    + "/" + total, url, n + "/" + batch.size()
-                                                    + " entities (" + ms(t0) + " ms)");
-                        }
-                    } catch (Exception e) {
-                        if (batchLog != null) {
-                            batchLog.failed("wbgetentities " + done.incrementAndGet()
-                                                    + "/" + total, url, "FAILED: " + e.getMessage()
-                                                    + " (" + ms(t0) + " ms)");
-                        }
-                        throw e;
-                    }
-                    return null;
-                }));
+    private WorkUnit<Map<String, List<ApiStatement>>> statementUnit(
+            List<String> qids, String statementPid, List<String> qualifierPids) {
+        return new WorkUnit<>() {
+            @Override public WorkDescriptor descriptor() {
+                String ids = String.join(",", qids);
+                return new WorkDescriptor("wbgetentities-statements",
+                        "statements:" + statementPid + ":" + ids,
+                        "wbgetentities " + qids.size() + " entities",
+                        Map.of("ids", ids, "statement", statementPid,
+                                "qualifiers", String.join(",", qualifierPids)));
             }
-            Exception firstFailure = null;
-            int failed = 0;
-            for (Future<?> f : futures) {
-                try {
-                    f.get();
-                } catch (InterruptedException e) {
-                    pool.shutdownNow();
-                    Thread.currentThread().interrupt();
-                    throw e;
-                } catch (ExecutionException e) {
-                    Throwable cause = e.getCause();
-                    String message = cause == null ? e.getMessage() : cause.getMessage();
-                    log.accept("[API] wbgetentities batch failed: " + message + "\n");
-                    failed++;
-                    if (firstFailure == null) {
-                        firstFailure = cause instanceof Exception ex ? ex : e;
-                    }
-                }
+            @Override public String request() { return entitiesUrl(qids, true); }
+            @Override public Map<String, List<ApiStatement>> execute() throws Exception {
+                Map<String, List<ApiStatement>> result = new LinkedHashMap<>();
+                parseStatements(getEntitiesBatchWithRetry(qids, true), statementPid,
+                        qualifierPids, result);
+                return result;
             }
-            if (firstFailure != null && !bestEffort) throw firstFailure;
-            return failed;
-        } finally {
-            pool.shutdown();
-        }
+            @Override public List<? extends WorkUnit<Map<String, List<ApiStatement>>>> split() {
+                if (qids.size() < 2) return List.of();
+                int middle = qids.size() / 2;
+                return List.of(statementUnit(qids.subList(0, middle), statementPid,
+                                qualifierPids),
+                        statementUnit(qids.subList(middle, qids.size()), statementPid,
+                                qualifierPids));
+            }
+        };
+    }
+
+    private static BatchProgress batchProgress(BatchLog batchLog) {
+        if (batchLog == null) return BatchProgress.NOOP;
+        return (title, request) -> new BatchProgress.Running() {
+            private final long started = System.nanoTime();
+            private final List<String> details = new ArrayList<>();
+            @Override public void detail(String text) { details.add(text); }
+            @Override public void done(String summary) {
+                String prefix = details.isEmpty() ? ""
+                        : String.join("\n", details) + "\n";
+                batchLog.logged(title, request, prefix + summary
+                        + " (" + ms(started) + " ms)");
+            }
+            @Override public void failed(String error) {
+                String suffix = details.isEmpty() ? "" : "\n" + String.join("\n", details);
+                batchLog.failed(title, request, error + suffix
+                        + " (" + ms(started) + " ms)");
+            }
+        };
     }
 
     private static long ms(long startNanos) {

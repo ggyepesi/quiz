@@ -71,6 +71,12 @@ public class FakeWikidataApiClient extends WikidataApiClient {
     }
 
     @Override
+    public PartialEntities getEntityClaimsPartial(
+            List<String> qids, List<String> claimPids, BatchLog batchLog) {
+        return new PartialEntities(getEntities(qids, claimPids, batchLog), 0);
+    }
+
+    @Override
     public Map<String, List<ApiStatement>> getStatements(
             List<String> entityQids, String statementPid,
             List<String> qualifierPids, BatchLog batchLog) {

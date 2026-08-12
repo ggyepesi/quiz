@@ -139,8 +139,10 @@ public final class ReferentFieldLoad {
         }
 
         Map<String, List<WikidataApiClient.ApiStatement>> stmts;
-        try {
-            stmts = api.getStatements(qids, pid, List.of(), log.batchSink());
+        try (GenerationLog.Group group = log.group("Load referent field "
+                + className + "." + field.name() + " (" + pid + ") for "
+                + qids.size() + " entities")) {
+            stmts = api.getStatements(qids, pid, List.of(), group.batchSink());
         } catch (Exception ex) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
@@ -197,8 +199,10 @@ public final class ReferentFieldLoad {
         }
 
         Map<String, WikidataApiClient.ApiEntity> details;
-        try {
-            details = api.getEntities(qids, List.of(pid), log.batchSink());
+        try (GenerationLog.Group group = log.group("Load referent field "
+                + className + "." + field.name() + " (" + pid + ") for "
+                + qids.size() + " entities")) {
+            details = api.getEntities(qids, List.of(pid), group.batchSink());
         } catch (Exception ex) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
@@ -218,10 +222,11 @@ public final class ReferentFieldLoad {
             }
         }
         Map<String, WikidataApiClient.ApiEntity> labels;
-        try {
+        try (GenerationLog.Group group = log.group("Resolve " + valueQids.size()
+                + " value label(s) for " + className + "." + field.name())) {
             labels = valueQids.isEmpty()
                     ? Map.of()
-                    : api.getEntities(new ArrayList<>(valueQids), List.of(), log.batchSink());
+                    : api.getEntities(new ArrayList<>(valueQids), List.of(), group.batchSink());
         } catch (Exception ex) {
             labels = Map.of();
         }

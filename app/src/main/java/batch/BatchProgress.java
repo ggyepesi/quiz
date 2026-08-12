@@ -14,6 +14,10 @@ public interface BatchProgress {
 
     /** An opened unit, finished exactly once by {@link #done} or {@link #failed}. */
     interface Running {
+        /** Detail retained with this attempt (for example its retry decision). */
+        default void detail(String text) { }
+        /** The original request was replaced by smaller work; it did not terminally fail. */
+        default void adapted(String summary) { done(summary); }
         void done(String summary);
         void failed(String error);
     }

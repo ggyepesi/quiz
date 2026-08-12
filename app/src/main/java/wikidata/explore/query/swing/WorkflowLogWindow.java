@@ -57,6 +57,9 @@ public class WorkflowLogWindow implements LogListener {
                         SwingUtilities.invokeLater(() -> bar.setValue(bar.getMaximum()));
                     }
                 } else {
+                    // Keep cheap mutable titles such as "steps (N)" live while the
+                    // full card rebuild is deferred to protect selection/scroll.
+                    view.refreshInlineCollectionCounts(root);
                     deferredUpdates = true;
                 }
             }

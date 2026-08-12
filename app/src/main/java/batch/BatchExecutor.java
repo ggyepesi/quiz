@@ -11,6 +11,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Runs durable work partitions to completion, narrowing only failures for which a smaller
@@ -29,10 +34,11 @@ public final class BatchExecutor<R> {
     private final FailureClassifier failureClassifier;
     private final CancellationToken cancellation;
     private final BatchCheckpointStore checkpoints;
+    private final int parallelism;
 
     public BatchExecutor(BatchPolicy policy, BatchProgress progress) {
         this(policy, progress, FailureClassifier.standard(),
-                new CancellationToken(), BatchCheckpointStore.NONE);
+                new CancellationToken(), BatchCheckpointStore.NONE, 1);
     }
 
     public BatchExecutor(
@@ -41,11 +47,25 @@ public final class BatchExecutor<R> {
             FailureClassifier failureClassifier,
             CancellationToken cancellation,
             BatchCheckpointStore checkpoints) {
+        this(policy, progress, failureClassifier, cancellation, checkpoints, 1);
+    }
+
+    public BatchExecutor(
+            BatchPolicy policy,
+            BatchProgress progress,
+            FailureClassifier failureClassifier,
+            CancellationToken cancellation,
+            BatchCheckpointStore checkpoints,
+            int parallelism) {
         this.policy = policy == null ? BatchPolicy.defaults() : policy;
         this.progress = progress == null ? BatchProgress.NOOP : progress;
         this.failureClassifier = Objects.requireNonNull(failureClassifier, "failureClassifier");
         this.cancellation = Objects.requireNonNull(cancellation, "cancellation");
         this.checkpoints = checkpoints == null ? BatchCheckpointStore.NONE : checkpoints;
+        if (parallelism < 1) {
+            throw new IllegalArgumentException("parallelism must be >= 1");
+        }
+        this.parallelism = parallelism;
     }
 
     /** Runs without persistence and discards successfully computed result values. */
@@ -62,6 +82,25 @@ public final class BatchExecutor<R> {
                     "A runKey and WorkUnitFactory are required when checkpointing is enabled");
         }
         execute("uncheckpointed", units, null, committer, false);
+    }
+
+    /**
+     * Runs every recoverable leaf it can and returns descriptors for leaves that
+     * remained unavailable or could not be split further. Fatal and cancellation
+     * failures still abort. This is deliberately uncheckpointed: the journal has no
+     * terminal FAILED event, so pretending an abandoned leaf was complete would make
+     * resume dishonest.
+     */
+    public List<WorkDescriptor> runBestEffort(
+            List<? extends WorkUnit<R>> units,
+            ResultCommitter<R> committer) throws Exception {
+        if (checkpoints != BatchCheckpointStore.NONE) {
+            throw new IllegalStateException(
+                    "Best-effort execution cannot use checkpointing");
+        }
+        List<WorkDescriptor> failed = new ArrayList<>();
+        execute("uncheckpointed", units, null, committer, false, failed);
+        return List.copyOf(failed);
     }
 
     /**
@@ -86,6 +125,16 @@ public final class BatchExecutor<R> {
             WorkUnitFactory<R> restorer,
             ResultCommitter<R> committer,
             boolean persistent) throws Exception {
+        execute(runKey, initialUnits, restorer, committer, persistent, null);
+    }
+
+    private void execute(
+            String runKey,
+            List<? extends WorkUnit<R>> initialUnits,
+            WorkUnitFactory<R> restorer,
+            ResultCommitter<R> committer,
+            boolean persistent,
+            List<WorkDescriptor> toleratedFailures) throws Exception {
         Objects.requireNonNull(committer, "committer");
         cancellation.throwIfCancelled();
 
@@ -107,43 +156,54 @@ public final class BatchExecutor<R> {
             }
         }
 
-        while (!pending.isEmpty()) {
-            cancellation.throwIfCancelled();
-            Attempt<R> attempt = pending.peekFirst();
-            RunResult<R> result = runOrSplit(attempt, committer);
-
-            if (result.completed()) {
-                if (persistent) {
+        ExecutorService workers = Executors.newFixedThreadPool(parallelism);
+        try {
+            while (!pending.isEmpty()) {
+                cancellation.throwIfCancelled();
+                List<Attempt<R>> wave = new ArrayList<>(parallelism);
+                for (int i = 0; i < parallelism && !pending.isEmpty(); i++) {
+                    wave.add(pending.removeFirst());
+                }
+                List<Future<AttemptResult<R>>> futures = new ArrayList<>(wave.size());
+                for (Attempt<R> attempt : wave) {
+                    futures.add(workers.submit(() -> new AttemptResult<>(
+                            attempt, runOrSplit(attempt))));
+                }
+                for (int i = 0; i < futures.size(); i++) {
+                    Attempt<R> attempt = wave.get(i);
+                    RunResult<R> result;
                     try {
-                        checkpoints.complete(runKey, attempt.unit().key());
-                    } catch (Exception checkpointError) {
-                        result.running().failed(
-                                "CHECKPOINT: " + message(checkpointError));
-                        throw checkpointError;
+                        result = futures.get(i).get().result();
+                    } catch (InterruptedException interrupted) {
+                        futures.forEach(f -> f.cancel(true));
+                        Thread.currentThread().interrupt();
+                        throw interrupted;
+                    } catch (ExecutionException wrapped) {
+                        Throwable cause = wrapped.getCause();
+                        BatchFailedException failure = cause instanceof BatchFailedException b
+                                ? b : failed(attempt, "could not execute", cause);
+                        BatchFailure kind = failureClassifier.classify(failure).failure();
+                        if (kind == BatchFailure.CANCELLED && cause instanceof Exception error) {
+                            futures.forEach(f -> f.cancel(true));
+                            restoreInterruptIfNeeded(error);
+                            throw error;
+                        }
+                        if (toleratedFailures == null || kind == BatchFailure.FATAL
+                                || kind == BatchFailure.CANCELLED) {
+                            futures.forEach(f -> f.cancel(true));
+                            throw failure;
+                        }
+                        toleratedFailures.add(attempt.unit().descriptor());
+                        progress.message("Continuing after exhausted batch \""
+                                + attempt.unit().title() + "\"\n");
+                        continue;
                     }
+                    applyResult(runKey, persistent, committer, pending, knownKeys,
+                            attempt, result);
                 }
-                pending.removeFirst();
-                result.running().done(result.summary());
-            } else {
-                List<WorkUnit<R>> parts = validateSplit(
-                        attempt, result.parts(), knownKeys);
-                if (persistent) {
-                    checkpoints.split(
-                            runKey,
-                            attempt.unit().key(),
-                            parts.stream()
-                                    .map(part -> new BatchCheckpoint.PendingWork(
-                                            part.descriptor(), attempt.depth() + 1))
-                                    .toList());
-                }
-                pending.removeFirst();
-                for (int i = parts.size() - 1; i >= 0; i--) {
-                    pending.addFirst(new Attempt<>(parts.get(i), attempt.depth() + 1));
-                }
-                parts.forEach(part -> knownKeys.add(part.key()));
-                progress.message("Splitting \"" + attempt.unit().title() + "\" into "
-                        + parts.size() + " (depth " + (attempt.depth() + 1) + ")\n");
             }
+        } finally {
+            workers.shutdownNow();
         }
 
         if (persistent) {
@@ -151,10 +211,48 @@ public final class BatchExecutor<R> {
         }
     }
 
-    private RunResult<R> runOrSplit(
-            Attempt<R> attempt,
-            ResultCommitter<R> committer) throws Exception {
+    private void applyResult(
+            String runKey, boolean persistent, ResultCommitter<R> committer,
+            Deque<Attempt<R>> pending, Set<String> knownKeys,
+            Attempt<R> attempt, RunResult<R> result) throws Exception {
+        if (result.completed()) {
+            try {
+                committer.commit(attempt.unit().descriptor(), result.value());
+            } catch (Exception commitError) {
+                result.running().failed("COMMIT: " + message(commitError));
+                throw failed(attempt, "computed successfully but could not be committed",
+                        commitError);
+            }
+            if (persistent) {
+                try {
+                    checkpoints.complete(runKey, attempt.unit().key());
+                } catch (Exception checkpointError) {
+                    result.running().failed("CHECKPOINT: " + message(checkpointError));
+                    throw checkpointError;
+                }
+            }
+            result.running().done(result.summary());
+            return;
+        }
+        List<WorkUnit<R>> parts = validateSplit(attempt, result.parts(), knownKeys);
+        if (persistent) {
+            checkpoints.split(runKey, attempt.unit().key(), parts.stream()
+                    .map(part -> new BatchCheckpoint.PendingWork(
+                            part.descriptor(), attempt.depth() + 1)).toList());
+        }
+        for (int i = parts.size() - 1; i >= 0; i--) {
+            pending.addFirst(new Attempt<>(parts.get(i), attempt.depth() + 1));
+        }
+        parts.forEach(part -> knownKeys.add(part.key()));
+        progress.message("Splitting \"" + attempt.unit().title() + "\" into "
+                + parts.size() + " (depth " + (attempt.depth() + 1) + ")\n");
+    }
+
+    private RunResult<R> runOrSplit(Attempt<R> attempt) throws Exception {
         Exception last = null;
+        BatchProgress.Running running = Objects.requireNonNull(
+                progress.started(attempt.unit().title(), attempt.unit().request()),
+                "BatchProgress.started returned null");
 
         // The loop bound is the largest budget any kind could claim; each failure then
         // checks its OWN budget, because UNAVAILABLE deliberately gets fewer attempts
@@ -162,9 +260,6 @@ public final class BatchExecutor<R> {
         int maxTries = Math.max(policy.maxAttempts(), policy.maxUnavailableAttempts());
         for (int tries = 1; tries <= maxTries; tries++) {
             cancellation.throwIfCancelled();
-            BatchProgress.Running running = Objects.requireNonNull(
-                    progress.started(attempt.unit().title(), attempt.unit().request()),
-                    "BatchProgress.started returned null");
             R value;
             try {
                 value = attempt.unit().execute();
@@ -173,49 +268,61 @@ public final class BatchExecutor<R> {
                         failureClassifier.classify(error),
                         "FailureClassifier returned null");
                 BatchFailure failure = decision.failure();
-                running.failed(failure + ": " + message(error));
+                int budget = policy.attemptsFor(failure);
+                running.detail("Attempt " + tries + "/" + budget + " failed: "
+                        + failure + ": " + message(error));
+                if ((failure == BatchFailure.TRANSIENT
+                        || failure == BatchFailure.UNAVAILABLE) && tries < budget) {
+                    running.detail("Retrying unchanged: attempt " + (tries + 1)
+                            + "/" + budget);
+                } else if (failure == BatchFailure.TOO_HEAVY
+                        || failure == BatchFailure.TRANSIENT) {
+                    running.detail("Retry budget exhausted; splitting into smaller batches");
+                } else if (failure == BatchFailure.UNAVAILABLE) {
+                    running.detail("Unavailable retry budget exhausted; preserving as unavailable");
+                }
                 if (failure == BatchFailure.CANCELLED) {
+                    running.failed(failure + ": " + message(error));
                     restoreInterruptIfNeeded(error);
                     throw error;
                 }
                 if (failure == BatchFailure.FATAL) {
+                    running.failed(failure + ": " + message(error));
                     throw failed(attempt, "encountered a fatal error", error);
                 }
                 last = error;
                 boolean retryable = failure == BatchFailure.TRANSIENT
                         || failure == BatchFailure.UNAVAILABLE;
-                if (retryable && tries < policy.attemptsFor(failure)) {
+                if (retryable && tries < budget) {
                     long policyDelay = multiplyWithoutOverflow(
                             policy.retryBackoffMillis(), tries);
                     pause(Math.max(policyDelay, decision.retryAfterMillis()));
                     continue;
                 }
                 if (failure == BatchFailure.UNAVAILABLE) {
+                    running.failed(failure + ": " + message(error));
                     throw failed(attempt, "remained unavailable after " + tries
                             + " attempt(s)", error);
                 }
                 break; // TOO_HEAVY, or TRANSIENT with an exhausted retry budget
             }
 
-            try {
-                committer.commit(attempt.unit().descriptor(), value);
-            } catch (Exception commitError) {
-                running.failed("COMMIT: " + message(commitError));
-                throw failed(attempt, "computed successfully but could not be committed",
-                        commitError);
-            }
-            return RunResult.completed(running,
+            return RunResult.completed(value, running,
                     tries == 1 ? "ok" : "ok (attempt " + tries + ")");
         }
 
         if (attempt.depth() >= policy.maxSplitDepth()) {
+            running.failed("Failed at maximum split depth: " + message(last));
             throw failed(attempt,
                     "failed and cannot be split again (depth " + attempt.depth() + ")", last);
         }
         List<? extends WorkUnit<R>> parts = attempt.unit().split();
         if (parts == null || parts.isEmpty()) {
+            running.failed("Failed and cannot be split further: " + message(last));
             throw failed(attempt, "failed and cannot be split further", last);
         }
+        running.adapted("Adapted into " + parts.size() + " smaller batch(es): "
+                + message(last));
         return RunResult.split(parts);
     }
 
@@ -349,17 +456,21 @@ public final class BatchExecutor<R> {
 
     private record Attempt<R>(WorkUnit<R> unit, int depth) { }
 
+    private record AttemptResult<R>(Attempt<R> attempt, RunResult<R> result) { }
+
     private record RunResult<R>(
             boolean completed,
             List<? extends WorkUnit<R>> parts,
+            R value,
             BatchProgress.Running running,
             String summary) {
-        static <R> RunResult<R> completed(BatchProgress.Running running, String summary) {
-            return new RunResult<>(true, List.of(), running, summary);
+        static <R> RunResult<R> completed(R value, BatchProgress.Running running,
+                                          String summary) {
+            return new RunResult<>(true, List.of(), value, running, summary);
         }
 
         static <R> RunResult<R> split(List<? extends WorkUnit<R>> parts) {
-            return new RunResult<>(false, parts, null, null);
+            return new RunResult<>(false, parts, null, null, null);
         }
     }
 
