@@ -301,15 +301,37 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                             + "curation window before starting another.");
             return;
         }
+        // A reified statement (a Nomination, a held position) is already anchored in
+        // Wikidata by its statement id, and it is not a thing with a label — so no search
+        // can find it, while its display name is borrowed from the entity the statement is
+        // ABOUT. Searching by that name would confidently link the statement to that
+        // entity, which is wrong by construction. Such members are never subjects.
+        List<Viewable> statements = members.stream()
+                .filter(member -> wikidata.WikidataIds.isStatementId(member.getIdentifier()))
+                .toList();
+        List<Viewable> resolvable = members.stream()
+                .filter(member -> !wikidata.WikidataIds.isStatementId(member.getIdentifier()))
+                .toList();
+        if (resolvable.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    statements.size() + " instance(s) in this scope are Wikidata STATEMENTS "
+                            + "(their ids are statement ids, e.g.\n"
+                            + statements.get(0).getIdentifier() + ").\n\n"
+                            + "A statement is already anchored and has no label of its own, "
+                            + "so there is no identity to resolve here.\n"
+                            + "Select the referenced entity's class to work on its identities.",
+                    "Nothing to resolve", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         quiz.enrichment.IdentityResolutionPlan plan =
                 quiz.enrichment.IdentityResolutionPlan.inspect(
-                        type, members,
+                        type, resolvable,
                         member -> currentQid(curation, member.typeName(), member));
-        // Every member is a subject: the process skips the ones that already carry an
-        // identity (an accepted identity is authoritative), so the scope needs no
-        // pre-filtering and an all-identified scope still opens for inspection.
+        // Every resolvable member is a subject: the process skips the ones that already
+        // carry an identity (an accepted identity is authoritative), so the scope needs no
+        // further pre-filtering and an all-identified scope still opens for inspection.
         List<quiz.enrichment.ResolveIdentitiesProcess.Subject> subjects = new ArrayList<>();
-        for (Viewable member : members) {
+        for (Viewable member : resolvable) {
             String memberType = member.typeName();
             subjects.add(new quiz.enrichment.ResolveIdentitiesProcess.Subject(
                     memberType, member.getIdentifier(), member.getDisplayName(),
@@ -330,13 +352,20 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                                         + plan.unresolved().size()
                                         + " unresolved instance(s) will be searched, one "
                                         + "request each. Nothing is written: the results are "
-                                        + "staged for review and saved separately.",
+                                        + "staged for review and saved separately."
+                                        + (statements.isEmpty() ? "" : " " + statements.size()
+                                                + " statement(s) are anchored already and "
+                                                + "cannot be searched at all."),
                                 List.of(new process.swing.workflow.ProcessWorkflowPlan.Tab(
                                                 "Already identified",
                                                 entries(plan.identified()),
                                                 TransformWorkbenchPanel.this::identityChip),
                                         new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                                "Will search", entries(plan.unresolved()))),
+                                                "Will search", entries(plan.unresolved())),
+                                        // Shown, not hidden: a scope that silently dropped
+                                        // members would make the counts unexplainable.
+                                        new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                                "Statements (nothing to resolve)", statements)),
                                 !plan.unresolved().isEmpty(),
                                 "All instances are already identified");
                     }
