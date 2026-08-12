@@ -70,6 +70,27 @@ class UnnamedReferenceScopeTest {
     }
 
     /**
+     * A model that declares ONE value against data holding several. Not damage —
+     * nothing failed to fetch — so it is reported apart from the gaps curation fills:
+     * the fix is the declaration, and repairing instances would paper over a rule that
+     * keeps producing it. 9,904 films carry several publication dates against a model
+     * that says one.
+     */
+    @Test void severalValuesInASingleValuedFieldAreDetected() {
+        Film one = film("Fargo", named("Q60", "New York City"));
+        Film several = film("Heat", named("Q65", "Los Angeles"), named("Q1297", "Chicago"));
+
+        assertTrue(FieldCoverageColumns.holdsSeveral(
+                several, FieldPath.parse("locations")));
+        assertFalse(FieldCoverageColumns.holdsSeveral(
+                one, FieldPath.parse("locations")),
+                    "one value is what the declaration promised");
+        assertFalse(FieldCoverageColumns.holdsSeveral(
+                film("Untitled"), FieldPath.parse("locations")),
+                    "empty is a gap, not a contradiction");
+    }
+
+    /**
      * The scope's whole point: these members are PRESENT, so only the new filter
      * surfaces them.
      */

@@ -34,9 +34,13 @@ public final class FieldCoverageColumns implements FieldTableContributor {
 
     /** One consistent coverage calculation shared by every column and by the explicit
      *  All / Missing / Present controls beside the table. */
-    public record Coverage(int eligible, int present, int unnamed) {
+    public record Coverage(int eligible, int present, int unnamed, int overfilled) {
         public Coverage(int eligible, int present) {
-            this(eligible, present, 0);
+            this(eligible, present, 0, 0);
+        }
+
+        public Coverage(int eligible, int present, int unnamed) {
+            this(eligible, present, unnamed, 0);
         }
 
         public int missing() {
@@ -112,7 +116,11 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                 // Always a number, never blank: a blank cell cannot be told from a
                 // column that is not computing at all, which is exactly how a genuine
                 // zero and a broken count came to look the same.
-                column("Unnamed", 72, p -> String.valueOf(coverage(p).unnamed())));
+                column("Unnamed", 72, p -> String.valueOf(coverage(p).unnamed())),
+                // The model says one value; how many members hold several. A declaration
+                // the data contradicts is fixed in the MODEL, so it is reported apart
+                // from the gaps that curation fills.
+                column("Overfilled", 78, p -> String.valueOf(coverage(p).overfilled())));
     }
 
     /** The working set, never null — a supplier may return null before the first render. */
@@ -151,19 +159,24 @@ public final class FieldCoverageColumns implements FieldTableContributor {
         int eligible = 0;
         int present = 0;
         int unnamed = 0;
+        int overfilled = 0;
+        boolean entityOrigin = domain.entityOrigin(scoped.type(), scoped.path());
+        boolean single = declaredSingle(domain, scoped.type(), scoped.path());
         for (Viewable q : currentMembers) {
             if (domain.isInstanceOf(q, scoped.type())) {
                 eligible++;
                 if (hasValue(q, scoped.path())) {
                     present++;
-                    if (hasUnnamedReference(q, scoped.path(),
-                            domain.entityOrigin(scoped.type(), scoped.path()))) {
+                    if (hasUnnamedReference(q, scoped.path(), entityOrigin)) {
                         unnamed++;
+                    }
+                    if (single && holdsSeveral(q, scoped.path())) {
+                        overfilled++;
                     }
                 }
             }
         }
-        return new Coverage(eligible, present, unnamed);
+        return new Coverage(eligible, present, unnamed, overfilled);
     }
 
     /** Resolve a picker path (which may carry {@code @subtype:X} segments) to its owning
@@ -265,6 +278,24 @@ public final class FieldCoverageColumns implements FieldTableContributor {
             if (qid != null) out.add(qid);
         }
         return out;
+    }
+
+    /** Whether the schema declares this field to hold ONE value. */
+    static boolean declaredSingle(DomainModel domain, String type, FieldPath path) {
+        objectview.field.FieldRef field = DomainSchemas.resolve(domain, type, path);
+        return field != null && !field.collection();
+    }
+
+    /** Whether the instance holds more than one value at {@code path} — asked only of a
+     *  field the schema declares single, where it is a contradiction rather than data. */
+    public static boolean holdsSeveral(Viewable q, FieldPath path) {
+        int count = 0;
+        for (Object leaf : leaves(q, path)) {
+            if (leaf == null) continue;
+            if (leaf instanceof CharSequence text && text.toString().isBlank()) continue;
+            if (++count > 1) return true;
+        }
+        return false;
     }
 
     /** What the source said about this field's emptiness, or null when it said nothing.
@@ -378,6 +409,9 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                         case UNNAMED_REFERENCE ->
                                 present && hasUnnamedReference(member, path,
                                         domain.entityOrigin(ownerType, path));
+                        case OVERFILLED_SINGLE ->
+                                present && declaredSingle(domain, ownerType, path)
+                                        && holdsSeveral(member, path);
                     };
                 })
                 .map(Viewable.class::cast)

@@ -26,7 +26,18 @@ public enum ScopeFilter {
      * because nobody has looked. Not a gap: no fetch will ever fill it, so it is kept
      * out of MISSING and listed on its own instead of sitting in the worklist forever.
      */
-    ASSERTED_EMPTY("Empty — the source says unknown / none");
+    ASSERTED_EMPTY("Empty — the source says unknown / none"),
+
+    /**
+     * The model declares one value, the instance holds several.
+     *
+     * <p>Not damage: nothing failed to fetch. It is the declaration and the data
+     * disagreeing, so it is fixed by correcting the model and regenerating — repairing
+     * the instances would paper over a rule that keeps producing it. Kept out of every
+     * other scope because such a member is PRESENT and perfectly ordinary until you ask
+     * how many values it has.
+     */
+    OVERFILLED_SINGLE("Single-valued, but holds several");
 
     private final String label;
 
