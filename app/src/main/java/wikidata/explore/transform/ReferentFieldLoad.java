@@ -78,7 +78,7 @@ public final class ReferentFieldLoad {
             return 0;
         }
 
-        // Index the referents by their stamped class. Walk the WHOLE reachable
+        // Index the referents by every direct class membership. Walk the WHOLE reachable
         // graph (entity field values), not just the top-level pool: a referent can
         // exist ONLY nested inside another record — e.g. a Ceremony is a qualifier
         // value (P805) of a Nomination, never an extraction subject, so it never
@@ -89,8 +89,10 @@ public final class ReferentFieldLoad {
             if (o == null || o.qid() == null || !WikidataIds.isQid(o.qid())) {
                 continue;
             }
-            if (byClass.containsKey(o.typeName())) {
-                referents.computeIfAbsent(o.typeName(), k -> new ArrayList<>()).add(o);
+            for (String className : o.directClassNames()) {
+                if (byClass.containsKey(className)) {
+                    referents.computeIfAbsent(className, k -> new ArrayList<>()).add(o);
+                }
             }
         }
 

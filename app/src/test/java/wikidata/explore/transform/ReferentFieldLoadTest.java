@@ -18,6 +18,41 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ReferentFieldLoadTest {
 
+    @Test void loadsFieldsForEveryDirectRoleOfASharedReferent() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("ForWork");
+        model.addClass(nomination);
+
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        nominee.addField("occupation", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P106");
+        model.addClass(nominee);
+        GeneratedClassModel forWork = new GeneratedClassModel("ForWork");
+        forWork.addField("genre", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P136");
+        model.addClass(forWork);
+        model.rootClass(nomination);
+
+        WikidataDynamicObject shared = new WikidataDynamicObject("Q42", "Shared entity");
+        shared.type("Nominee");
+        shared.assignClass("ForWork");
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .entity("Q42", "Shared entity", Map.of(
+                        "P106", List.of("Q33999"), "P136", List.of("Q130232")))
+                .entity("Q33999", "actor")
+                .entity("Q130232", "drama film");
+
+        assertEquals(2, ReferentFieldLoad.apply(model, List.of(shared), api, null));
+        assertEquals("actor", ((WikidataDynamicObject)
+                ((List<?>) shared.get("occupation")).get(0)).getDisplayName());
+        assertEquals("drama film", ((WikidataDynamicObject)
+                ((List<?>) shared.get("genre")).get(0)).getDisplayName());
+    }
+
     /** ForWork is referenced-only (Nomination.forWork targets it) with a declared
      *  genre (P136) field; a ForWork referent gets its genre loaded from P136. */
     @Test void loadsDeclaredPropertyFieldOntoReferencedClassReferents() {

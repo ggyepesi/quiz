@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReferentClassStampTest {
 
@@ -89,7 +90,7 @@ class ReferentClassStampTest {
         assertEquals("Nominee", b.typeName());
     }
 
-    @Test void doesNotRestampAnAlreadyTypedReferent() {
+    @Test void addsTheDeclaredRoleWithoutReplacingAnExistingType() {
         GeneratedProjectModel model = model();
 
         WikidataDynamicObject nomination =
@@ -103,7 +104,63 @@ class ReferentClassStampTest {
 
         int stamped = ReferentClassStamp.apply(model, List.of(nomination));
 
-        assertEquals(0, stamped);
+        assertEquals(1, stamped);
         assertEquals("Person", nominee.typeName(), "an existing type is preserved");
+        assertEquals(java.util.Set.of("Person", "Nominee"), nominee.directClassNames());
+    }
+
+    @Test void sameEntityCanBelongToBothStatementFieldRoles() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nominationClass = new GeneratedClassModel("Nomination");
+        entityField(nominationClass, "nominee", "Nominee");
+        entityField(nominationClass, "forWork", "ForWork");
+        model.addClass(nominationClass);
+        model.addClass(new GeneratedClassModel("Nominee"));
+        model.addClass(new GeneratedClassModel("ForWork"));
+        model.rootClass(nominationClass);
+
+        WikidataDynamicObject shared = new WikidataDynamicObject("Q42", "Shared entity");
+        WikidataDynamicObject nomination = new WikidataDynamicObject("Q1", "Nomination");
+        nomination.type("Nomination");
+        nomination.put("nominee", shared);
+        nomination.put("forWork", shared);
+
+        assertEquals(2, ReferentClassStamp.apply(model, List.of(nomination)));
+        assertEquals("ForWork", shared.typeName(),
+                "the carrier type is deterministic, not whichever field was visited first");
+        assertEquals("ForWork", shared.typeKey());
+        assertEquals(java.util.Set.of("Nominee", "ForWork"), shared.directClassNames());
+        assertTrue(shared.hasTypeStamp());
+    }
+
+    /**
+     * Alphabetical order only breaks ties. A role that IS a subclass of another still
+     * wins, because the save path picks the deepest class — and an in-memory carrier
+     * chosen by a different rule than the persisted type is a difference nobody would
+     * notice until the two disagreed.
+     */
+    @Test void aSubclassRoleOutranksItsBaseWhateverTheirNames() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nominationClass = new GeneratedClassModel("Nomination");
+        entityField(nominationClass, "nominee", "Zeta");
+        entityField(nominationClass, "director", "Alpha");
+        model.addClass(nominationClass);
+        model.addClass(new GeneratedClassModel("Alpha"));
+        GeneratedClassModel zeta = new GeneratedClassModel("Zeta");
+        zeta.baseClassName("Alpha");          // Zeta extends Alpha, but sorts last
+        model.addClass(zeta);
+        model.rootClass(nominationClass);
+
+        WikidataDynamicObject shared = new WikidataDynamicObject("Q42", "Shared entity");
+        WikidataDynamicObject nomination = new WikidataDynamicObject("Q1", "Nomination");
+        nomination.type("Nomination");
+        nomination.put("nominee", shared);
+        nomination.put("director", shared);
+
+        ReferentClassStamp.apply(model, List.of(nomination));
+
+        assertEquals("Zeta", shared.typeName(), "the deeper class carries, not the earlier name");
+        assertEquals("Zeta", shared.typeKey());
+        assertEquals(java.util.Set.of("Alpha", "Zeta"), shared.directClassNames());
     }
 }

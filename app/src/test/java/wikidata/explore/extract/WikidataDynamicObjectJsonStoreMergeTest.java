@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -122,5 +123,82 @@ class WikidataDynamicObjectJsonStoreMergeTest {
         assertNotEquals(state, group);
         assertEquals(2, new java.util.LinkedHashSet<>(
                 List.of(state, group)).size());
+    }
+
+    /**
+     * A reify's internal subject load type is plumbing that the generation un-stamps. It
+     * escaped anyway — 6,807 Nominees in the oscarnominations pool were saved carrying
+     * {@code __subject_Nomination} as their most-specific class, which split one class into
+     * two tabs and made the class the pool keyed on unstable. The save boundary now drops
+     * such names whatever the generation did, since a saved pool is the wrong place to
+     * discover that a path was missed.
+     */
+    @Test void aSavedPoolNeverCarriesAnInternalLoadType(@TempDir Path dir) throws Exception {
+        WikidataDynamicObject nominee = new WikidataDynamicObject("Q72717", "Elia Kazan");
+        nominee.type("__subject_Nomination");
+        nominee.assignClass("Nominee");
+        nominee.put("occupation", "director");
+
+        File file = dir.resolve("leaked-plumbing.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(List.of(nominee), file);
+
+        // The schema graph counted too: it recorded a TypeShape per class name, so the
+        // plumbing reappeared as a type even once the entity itself was clean.
+        assertFalse(java.nio.file.Files.readString(file.toPath()).contains("__subject_"),
+                "no internal load type may reach the file — pool, classes or schema");
+        WikidataDynamicObject loaded = store.loadAll(file).stream()
+                .filter(o -> "Q72717".equals(o.getIdentifier())).findFirst().orElseThrow();
+        assertEquals("Nominee", loaded.typeName(), "the real class becomes the carrier");
+        assertEquals(java.util.Set.of("Nominee"), loaded.directClassNames());
+        assertEquals("director", loaded.get("occupation"), "its fields survive");
+    }
+
+    /** Retracting a class is the only way back: type(null) leaves the name as a membership. */
+    @Test void retractingAClassClearsTheCarrierAndTheMembership() {
+        WikidataDynamicObject subject = new WikidataDynamicObject("Q72717", "Elia Kazan");
+        subject.type("__subject_Nomination");
+        subject.assignClass("Nominee");
+
+        subject.type(null);
+        assertTrue(subject.directClassNames().contains("__subject_Nomination"),
+                "clearing the carrier alone leaves the membership behind");
+
+        subject.removeClass("__subject_Nomination");
+        assertEquals(java.util.Set.of("Nominee"), subject.directClassNames());
+        assertEquals("Nominee", subject.typeName());
+    }
+
+    @Test void oneEntityWithTwoUnrelatedRolesRoundTripsOnce(@TempDir Path dir)
+            throws Exception {
+        WikidataDynamicObject shared = new WikidataDynamicObject("Q42", "Shared entity");
+        shared.type("Nominee");
+        shared.assignClass("ForWork");
+        shared.put("occupation", "actor");
+        shared.put("genre", "drama film");
+
+        WikidataDynamicObject nomination = new WikidataDynamicObject("Q1$stmt", "Nomination");
+        nomination.type("Nomination");
+        nomination.put("nominee", shared);
+        nomination.put("forWork", shared);
+
+        File file = dir.resolve("overlapping-roles.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(List.of(nomination), file);
+
+        List<WikidataDynamicObject> loaded = store.loadAll(file);
+        List<WikidataDynamicObject> q42s = loaded.stream()
+                .filter(o -> "Q42".equals(o.getIdentifier())).toList();
+        assertEquals(1, q42s.size(), "semantic roles must not create duplicate entities");
+        WikidataDynamicObject restored = q42s.get(0);
+        assertEquals("Nominee", restored.typeKey(), "the stable storage identity survives");
+        assertEquals(java.util.Set.of("Nominee", "ForWork"), restored.directClassNames());
+        assertEquals("actor", restored.get("occupation"));
+        assertEquals("drama film", restored.get("genre"));
+
+        WikidataDynamicObject restoredNomination = loaded.stream()
+                .filter(o -> "Q1$stmt".equals(o.getIdentifier())).findFirst().orElseThrow();
+        assertTrue(restoredNomination.get("nominee") == restoredNomination.get("forWork"),
+                "both contextual roles must resolve to the same canonical object");
     }
 }

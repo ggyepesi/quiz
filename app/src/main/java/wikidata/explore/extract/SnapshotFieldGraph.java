@@ -211,6 +211,11 @@ public final class SnapshotFieldGraph {
             java.util.Set<String> classes = object.directClassNames();
             if (classes.isEmpty()) classes = java.util.Set.of(object.typeName());
             for (String className : classes) {
+                // Plumbing is not schema: a reify's internal subject load type must not
+                // become a type in the graph the apps read their classes from.
+                if (WikidataDynamicObject.isInternalClassName(className)) {
+                    continue;
+                }
                 TypeShape type = graph.types.computeIfAbsent(className, TypeShape::new);
                 type.member |= !object.isValueObject();
                 type.valueObject |= object.isValueObject();
@@ -318,7 +323,8 @@ public final class SnapshotFieldGraph {
         private void markMemberAndBases(String className) {
             java.util.Set<String> seen = new java.util.HashSet<>();
             String current = className;
-            while (current != null && !current.isBlank() && seen.add(current)) {
+            while (current != null && !current.isBlank() && seen.add(current)
+                    && !WikidataDynamicObject.isInternalClassName(current)) {
                 TypeShape type = graph.types.computeIfAbsent(current, TypeShape::new);
                 type.member = true;
                 current = type.baseType;

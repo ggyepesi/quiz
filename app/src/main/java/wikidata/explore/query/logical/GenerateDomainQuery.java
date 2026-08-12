@@ -252,9 +252,14 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         if (o == null) {
                             continue;
                         }
-                        if (o.typeName() != null
-                                && o.typeName().startsWith("__subject_")) {
-                            o.type(null);
+                        // RETRACT, not clear: type(null) leaves the internal name behind
+                        // as a membership, and the save path then reads it back as the
+                        // object's most-specific class.
+                        java.util.List<String> internalTypes = o.directClassNames().stream()
+                                .filter(wikidata.explore.extract.WikidataDynamicObject::isInternalClassName)
+                                .toList();
+                        for (String internal : internalTypes) {
+                            o.removeClass(internal);
                             unstampedSubjects++;
                         }
                         java.util.List<String> internal = new java.util.ArrayList<>();

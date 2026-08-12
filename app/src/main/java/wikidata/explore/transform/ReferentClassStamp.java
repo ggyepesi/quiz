@@ -9,7 +9,9 @@ import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.Collection;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -26,16 +28,21 @@ import java.util.Map;
  * category -> OscarCategories}, where the closed category vocabulary IS the
  * referent's type). Only stamps when the target actually EXISTS as one of those,
  * so a dangling {@code entityClassName} (a typo, or a target since removed) is
- * left as an untyped label rather than conjuring a phantom type. An already
- * type-stamped referent (e.g. a served class member) is never re-stamped. The
- * referents are shared pool instances (QID identity), so a single stamp types the
- * entity everywhere it is referenced.
+ * left as an untyped label rather than conjuring a phantom type. Membership is
+ * additive: when the same pooled entity is reached through fields declaring
+ * different targets, it carries every declared role (for example both Nominee
+ * and ForWork). For a previously untyped referent the legacy singular carrier
+ * type/storage key is selected deterministically from the complete role set, not
+ * from whichever field happened to be visited first. Existing real types are
+ * preserved. Roles remain semantic memberships, not separate copies. The referents
+ * are shared pool instances (QID identity), so the accumulated memberships are
+ * visible everywhere the entity is referenced.
  */
 public final class ReferentClassStamp {
 
     private ReferentClassStamp() {}
 
-    /** @return the number of referent objects newly stamped. */
+    /** @return the number of new referent class memberships assigned. */
     public static int apply(
             GeneratedProjectModel model,
             Collection<WikidataDynamicObject> instances) {
@@ -73,6 +80,7 @@ public final class ReferentClassStamp {
         }
 
         int stamped = 0;
+        Map<WikidataDynamicObject, Boolean> originallyTyped = new IdentityHashMap<>();
         for (WikidataDynamicObject o : instances) {
             if (o == null || o.typeName() == null) {
                 continue;
@@ -82,17 +90,61 @@ public final class ReferentClassStamp {
                 continue;
             }
             for (Map.Entry<String, String> e : byField.entrySet()) {
-                stamped += stamp(o.get(e.getKey()), e.getValue());
+                stamped += stamp(o.get(e.getKey()), e.getValue(), originallyTyped);
             }
         }
+        // Unrelated role classes have no "most specific" winner. Normalize their
+        // carrier type independently of model/field/query traversal order; callers
+        // must still use the complete directClasses set for membership and a selected
+        // class for contextual rendering. The rule matches the save path's
+        // (deepest-first, then alphabetical), so a role that IS a subclass of another
+        // still wins — otherwise the in-memory carrier and the persisted type would
+        // disagree the moment the model grows a hierarchy.
+        originallyTyped.forEach((referent, hadType) -> {
+            if (hadType) return;
+            List<String> classes = referent.directClassNames().stream().sorted().toList();
+            if (classes.isEmpty()) return;
+            String carrier = mostSpecific(classes, model);
+            referent.directClasses(new LinkedHashSet<>(classes));
+            referent.type(carrier);
+            referent.typeKey(carrier);
+        });
         return stamped;
     }
 
-    private static int stamp(Object value, String className) {
+    /** The deepest class in the model's hierarchy, ties broken alphabetically — the rule
+     *  {@code WikidataDynamicObjectJsonStore.mostSpecificClass} applies when it persists
+     *  the same object, restated here against the generated model. */
+    private static String mostSpecific(List<String> classes, GeneratedProjectModel model) {
+        String best = null;
+        int bestDepth = -1;
+        for (String candidate : classes) {
+            int depth = 0;
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (String current = candidate; current != null && seen.add(current);) {
+                depth++;
+                GeneratedClassModel c = model.findClass(current);
+                String base = c == null ? null : c.baseClassName();
+                current = base == null || base.isBlank() ? null : base;
+            }
+            if (depth > bestDepth
+                    || (depth == bestDepth && candidate.compareTo(best) < 0)) {
+                best = candidate;
+                bestDepth = depth;
+            }
+        }
+        return best;
+    }
+
+    private static int stamp(Object value, String className,
+                             Map<WikidataDynamicObject, Boolean> originallyTyped) {
         if (value instanceof WikidataDynamicObject w) {
-            if (!w.hasTypeStamp()
-                    && w.qid() != null && WikidataIds.isQid(w.qid())) {
-                w.type(className);
+            if (w.qid() != null && WikidataIds.isQid(w.qid())) {
+                originallyTyped.putIfAbsent(w, w.hasTypeStamp());
+            }
+            if (w.qid() != null && WikidataIds.isQid(w.qid())
+                    && !w.directClassNames().contains(className)) {
+                w.assignClass(className);
                 return 1;
             }
             return 0;
@@ -100,7 +152,7 @@ public final class ReferentClassStamp {
         if (value instanceof List<?> list) {
             int n = 0;
             for (Object item : list) {
-                n += stamp(item, className);
+                n += stamp(item, className, originallyTyped);
             }
             return n;
         }

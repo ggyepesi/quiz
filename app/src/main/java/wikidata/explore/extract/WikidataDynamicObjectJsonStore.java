@@ -54,7 +54,20 @@ public class WikidataDynamicObjectJsonStore {
      *  untyped reference copy carries no type of its own and is absorbed into the single
      *  stamped entity for its qid. */
     private static String typePart(WikidataDynamicObject o) {
-        return o != null && o.hasTypeStamp() ? o.typeKey() : "";
+        return o != null && o.hasTypeStamp() ? storedTypeKey(o) : "";
+    }
+
+    /** The pool key's type part, never an internal load type: an entity keyed by plumbing
+     *  would be a different entity after the plumbing is retracted. Falls back to the
+     *  object's first real class, or to blank (absorbed as an untyped copy). */
+    private static String storedTypeKey(WikidataDynamicObject o) {
+        String key = o.typeKey();
+        if (!WikidataDynamicObject.isInternalClassName(key)) {
+            return key;
+        }
+        return o.directClassNames().stream()
+                .filter(name -> !WikidataDynamicObject.isInternalClassName(name))
+                .findFirst().orElse("");
     }
 
     /** Pool/ref key: ⟨typeKey, qid⟩. */
@@ -257,9 +270,12 @@ public class WikidataDynamicObjectJsonStore {
         LinkedHashMap<String, List<WikidataDynamicObject>> byType = new LinkedHashMap<>();
         List<WikidataDynamicObject> untyped = new ArrayList<>();
         for (WikidataDynamicObject o : instances) {
-            if (o.hasTypeStamp()) {
-                byType.computeIfAbsent(o.typeKey(), k -> new ArrayList<>()).add(o);
+            String key = o.hasTypeStamp() ? storedTypeKey(o) : "";
+            if (!key.isBlank()) {
+                byType.computeIfAbsent(key, k -> new ArrayList<>()).add(o);
             } else {
+                // No real class of its own — a bare reference copy, or one carrying only
+                // plumbing. Either way it is absorbed into the stamped entity for its qid.
                 untyped.add(o);
             }
         }
@@ -306,6 +322,10 @@ public class WikidataDynamicObjectJsonStore {
         for (WikidataDynamicObject o : instances) {
             if (o.hasTypeStamp()) classes.addAll(o.directClassNames());
         }
+        // Internal load types (a reify's "__subject_X") are plumbing, never a model class.
+        // The generation un-stamps them, but a saved pool is the wrong place to find out
+        // that some path missed one — so the boundary drops them unconditionally.
+        classes.removeIf(WikidataDynamicObject::isInternalClassName);
         // A duplicate reference copy can still carry the old base stamp beside the
         // richer subtype carrier. Base membership is inherited, not a second direct claim.
         classes.removeIf(base -> classes.stream().anyMatch(candidate ->
@@ -319,7 +339,8 @@ public class WikidataDynamicObjectJsonStore {
         if (e.type == null) {
             for (WikidataDynamicObject o : instances) {
                 String t = o.typeName();
-                if (t != null && !t.isBlank() && !"WikidataDynamicObject".equals(t)) {
+                if (t != null && !t.isBlank() && !"WikidataDynamicObject".equals(t)
+                        && !WikidataDynamicObject.isInternalClassName(t)) {
                     e.type = t;
                     break;
                 }
@@ -481,7 +502,8 @@ public class WikidataDynamicObjectJsonStore {
                  current = graph == null ? null : graph.baseType(current)) {
                 depth++;
             }
-            if (depth > bestDepth) {
+            if (depth > bestDepth || (depth == bestDepth
+                    && (best == null || candidate.compareTo(best) < 0))) {
                 best = candidate;
                 bestDepth = depth;
             }

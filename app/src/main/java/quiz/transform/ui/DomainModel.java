@@ -74,7 +74,8 @@ public interface DomainModel {
                  current = baseType(current)) {
                 depth++;
             }
-            if (depth > bestDepth) {
+            if (depth > bestDepth || (depth == bestDepth
+                    && (best == null || direct.compareTo(best) < 0))) {
                 best = direct;
                 bestDepth = depth;
             }

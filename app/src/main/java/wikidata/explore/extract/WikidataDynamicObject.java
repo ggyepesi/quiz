@@ -259,6 +259,41 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         if (className != null && !className.isBlank()) type = className;
     }
 
+    /**
+     * Whether {@code className} is generation plumbing rather than a model class.
+     *
+     * <p>A reify stamps its discovered subjects with an internal load type
+     * ({@code __subject_Nomination}) to source on, and {@link quiz.web.ViewableJson}
+     * already hides the matching {@code __}-prefixed field keys. The same rule decides
+     * class names, and it is spelled here — on the object that carries them — so the
+     * save path, the schema graph and the un-stamp cannot disagree about it.</p>
+     */
+    public static boolean isInternalClassName(String className) {
+        return className != null && className.startsWith("__");
+    }
+
+    /**
+     * Retract a class claim.
+     *
+     * <p>{@link #type(String)} only ever ADDS to {@code directClasses}, so {@code type(null)}
+     * clears the carrier while leaving the name behind as a membership — which is how an
+     * internal load type stamped for a reify survived into saved pools. Retracting the
+     * carrier falls back to the remaining classes (kept in sorted order by the referent
+     * stamp, so the choice is deterministic), or to no type at all.</p>
+     */
+    public void removeClass(String className) {
+        if (className == null || className.isBlank()) {
+            return;
+        }
+        directClasses.remove(className);
+        if (type == null || type.isBlank() || className.equals(type)) {
+            type = directClasses.isEmpty() ? null : directClasses.iterator().next();
+        }
+        if (typeKey == null || typeKey.isBlank() || className.equals(typeKey)) {
+            typeKey = type;
+        }
+    }
+
     public void directClasses(java.util.Collection<String> classNames) {
         directClasses.clear();
         if (classNames != null) {
