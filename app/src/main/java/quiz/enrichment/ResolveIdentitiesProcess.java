@@ -21,7 +21,14 @@ import java.util.Map;
  * later field configuration reads from the resolved entity.
  */
 public final class ResolveIdentitiesProcess
-        implements Process<ResolveIdentitiesDecision> {
+        implements Process<ResolveIdentitiesProcess.Result> {
+
+    /** Raw discovery outcome; the workflow host owns review and Apply. */
+    public record Result(
+            List<ResolveIdentitiesReviewRequest.InstanceIdentity> instances,
+            int alreadyResolved, int completedSearches, int failedSearches) {
+        public Result { instances = instances == null ? List.of() : List.copyOf(instances); }
+    }
 
     /** One instance to resolve: its domain id (where the identity link is written), its
      *  name (the search term), and its current qid (blank if not yet resolved). */
@@ -48,7 +55,7 @@ public final class ResolveIdentitiesProcess
         return plan;
     }
 
-    @Override public ProcessOutcome<ResolveIdentitiesDecision> execute(ProcessContext context)
+    @Override public ProcessOutcome<Result> execute(ProcessContext context)
             throws Exception {
         List<ResolveIdentitiesReviewRequest.InstanceIdentity> forReview = new ArrayList<>();
         Throwable firstProblem = null;
@@ -85,24 +92,16 @@ public final class ResolveIdentitiesProcess
 
         if (context.cancellation().isCancelled()) {
             return ProcessOutcome.cancelled(
-                    new ResolveIdentitiesDecision(List.of()), "cancelled before review");
+                    new Result(forReview, alreadyResolved, completedSearches, failedSearches),
+                    "cancelled after " + completedSearches + " search(es)");
         }
-
-        ResolveIdentitiesDecision decision = forReview.isEmpty()
-                ? new ResolveIdentitiesDecision(List.of())
-                : context.input(new ResolveIdentitiesReviewRequest(
-                        "Resolve identities",
-                        "Confirm the Wikidata entity for each instance.",
-                        forReview));
-        ResolveIdentitiesDecision result = decision == null
-                ? new ResolveIdentitiesDecision(List.of()) : decision;
-        String summary = result.resolved().size() + " resolved, "
+        Result result = new Result(forReview, alreadyResolved, completedSearches, failedSearches);
+        String summary = forReview.size() + " result(s) ready for review, "
                 + alreadyResolved + " already resolved"
                 + (failedSearches == 0 ? ""
                         : ", " + failedSearches + " search(es) failed");
         if (failedSearches > 0) {
-            if (completedSearches == 0 && result.resolved().isEmpty()
-                    && firstProblem != null) {
+            if (completedSearches == 0 && firstProblem != null) {
                 return ProcessOutcome.failed(firstProblem);
             }
             return ProcessOutcome.partial(result, firstProblem, summary);

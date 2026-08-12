@@ -202,9 +202,10 @@ class FindDataProcessTest {
                      new CancellationToken());
 
         assertEquals(ProcessStatus.SUCCEEDED, outcome.status());
-        assertEquals(1, reviews[0]);   // exactly ONE review for the whole batch
-        assertEquals(1, outcome.result().acceptedDecisions().size());
-        EnrichmentDecision decision = outcome.result().acceptedDecisions().get(0);
+        assertEquals(0, reviews[0]);   // execution never opens UI; host reviews afterwards
+        assertEquals(1, outcome.result().results().size());
+        EnrichmentDecision decision = EnrichmentDecision.acceptDefault(
+                outcome.result().results().get(0).proposal());
         assertEquals("hawaii", decision.subject().targetId());
         assertEquals(1440000L, decision.fields().get(0).candidate().proposedValue());
     }

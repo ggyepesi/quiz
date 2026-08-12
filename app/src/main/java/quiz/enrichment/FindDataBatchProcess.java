@@ -68,32 +68,10 @@ public final class FindDataBatchProcess implements Process<FindDataBatchResult> 
             }
         }
 
-        // ONE review over every member's proposal, then apply the accepted values —
-        // instead of pausing on a modal inside each member's job.
-        List<EnrichmentDecision> accepted = List.of();
-        if (!reviewable.isEmpty() && !context.cancellation().isCancelled()) {
-            BatchReviewDecision reviewed = context.input(new FindDataBatchReviewRequest(
-                    "Review found data" + (field.isBlank() ? "" : " — " + field),
-                    "Accept the values to fill for these members.",
-                    reviewable));
-            accepted = reviewed == null ? List.of() : reviewed.accepted();
-        }
-
-        // Attach each accepted decision back to its member result, keyed by the DOMAIN
-        // identifier (targetId) — where the correction is written — so the result still
-        // reports acceptedDecisions() per member.
-        Map<String, EnrichmentDecision> byTarget = new HashMap<>();
-        for (EnrichmentDecision decision : accepted) {
-            byTarget.put(decision.subject().targetId(), decision);
-        }
-        List<FindDataResult> reviewedResults = new ArrayList<>(results.size());
-        for (FindDataResult memberResult : results) {
-            reviewedResults.add(new FindDataResult(memberResult.proposal(),
-                    byTarget.get(memberResult.proposal().subject().targetId())));
-        }
-
-        FindDataBatchResult result = new FindDataBatchResult(reviewedResults, skipped);
-        String summary = result.acceptedDecisions().size() + " accepted, "
+        // Execution ends with immutable raw proposals. The workflow host owns the
+        // Results and Apply phases; a Process must never pause to construct Swing UI.
+        FindDataBatchResult result = new FindDataBatchResult(results, skipped);
+        String summary = reviewable.size() + " result(s) ready for review, "
                 + results.size() + "/" + members.size() + " member(s) completed"
                 + (skipped == 0 ? "" : ", " + skipped + " skipped");
         if (context.cancellation().isCancelled()) {

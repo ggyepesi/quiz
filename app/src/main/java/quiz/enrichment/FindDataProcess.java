@@ -122,14 +122,9 @@ public final class FindDataProcess implements Process<FindDataResult> {
             return ProcessOutcome.failed(firstProblem);
         }
 
-        EnrichmentDecision accepted = null;
-        if (requestReview && hasCandidates(proposal)) {
-            accepted = context.input(new EnrichmentReviewRequest(
-                    "Review enrichment — " + request.subject().displayName(),
-                    "Review and accept the candidates returned by Find Data.",
-                    proposal));
-        }
-        FindDataResult result = new FindDataResult(proposal, accepted);
+        // Discovery returns raw candidates. Review belongs to the workflow host so the
+        // Running phase never blocks on UI and every caller follows the same skeleton.
+        FindDataResult result = discovered;
         if (firstProblem != null || completed < attempted) {
             return ProcessOutcome.partial(result, firstProblem,
                                           summary(proposal, routeState(attempted, "partial; completed results preserved")));

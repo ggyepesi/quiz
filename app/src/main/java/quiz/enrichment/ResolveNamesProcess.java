@@ -28,9 +28,14 @@ public final class ResolveNamesProcess implements Process<ResolveNamesProcess.Re
     /** One accepted repair: the entity and the name it will be given. */
     public record Name(String qid, String label) { }
 
-    /** What the run produced: the names the reviewer accepted, plus what was seen. */
+    /** Raw query outcome. Review and staging are workflow-host responsibilities. */
     public record Result(
-            List<Name> accepted, int requested, int resolved, int failedBatches) { }
+            Set<String> requested, Map<String, String> resolved, int failedBatches) {
+        public Result {
+            requested = requested == null ? Set.of() : Set.copyOf(requested);
+            resolved = resolved == null ? Map.of() : Map.copyOf(resolved);
+        }
+    }
 
     /** Review over the outcome — resolved names to accept, unresolved kept visible. */
     public record ReviewRequest(
@@ -89,7 +94,7 @@ public final class ResolveNamesProcess implements Process<ResolveNamesProcess.Re
         for (int from = 0; from < all.size(); from += BATCH) {
             if (context.cancellation().isCancelled()) {
                 return ProcessOutcome.cancelled(
-                        new Result(List.of(), all.size(), labels.size(), failedBatches),
+                        new Result(qids, labels, failedBatches),
                         "Cancelled after " + labels.size() + " of " + all.size()
                                 + " name(s)");
             }
@@ -105,13 +110,10 @@ public final class ResolveNamesProcess implements Process<ResolveNamesProcess.Re
                     + " resolved so far.\n");
         }
 
-        List<Name> accepted = context.input(new ReviewRequest(
-                "Resolve names", field, qids, labels, failedBatches));
-
-        List<Name> staged = accepted == null ? List.of() : accepted;
+        Result result = new Result(qids, labels, failedBatches);
         return ProcessOutcome.succeeded(
-                new Result(staged, all.size(), labels.size(), failedBatches),
-                staged.size() + " name(s) accepted of " + labels.size()
-                        + " resolved; " + failedBatches + " batch(es) failed");
+                result, labels.size() + " of " + all.size()
+                        + " name(s) ready for review; " + failedBatches
+                        + " batch(es) failed");
     }
 }

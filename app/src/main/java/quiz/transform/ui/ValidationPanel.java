@@ -13,13 +13,11 @@ import quiz.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
 import quiz.enrichment.EnrichmentRoute;
 import quiz.enrichment.EnrichmentSources;
-import quiz.enrichment.EnrichmentReviewRequest;
 import quiz.enrichment.FindDataProcess;
 import quiz.enrichment.FindDataBatchProcess;
 import quiz.enrichment.FindDataBatchResult;
 import quiz.enrichment.SourcePageImageEnrichmentProvider;
 import quiz.enrichment.WikimediaImageEnrichmentProvider;
-import quiz.enrichment.ui.EnrichmentReviewPanel;
 import quiz.curation.Correction;
 import quiz.curation.CorrectionPolicy;
 import quiz.curation.Corrections;
@@ -186,7 +184,7 @@ public final class ValidationPanel extends JPanel {
         this.findDataRunner = new SwingProcessRunner(
                 this.queryRunner.context(),
                 this.queryRunner.logListener(),
-                this::handleProcessInput);
+                process.ProcessInputHandler.unsupported());
         findDataRunner.registerCancelButton(cancelProcessButton);
 
         Collection<? extends Viewable> source =
@@ -354,7 +352,8 @@ public final class ValidationPanel extends JPanel {
         selectField(type, field, ScopeFilter.ALL);
 
         remove(split);
-        JPanel summary = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        JPanel summary = new JPanel(
+                new objectview.utils.swing.WrapLayout(FlowLayout.LEFT, 6, 4));
         summary.add(new JLabel("Curating:"));
         summary.add(new JLabel(type + "." + field));
         if (scopeDescription != null && !scopeDescription.isBlank()) {
@@ -485,13 +484,29 @@ public final class ValidationPanel extends JPanel {
         selectedChanged(null);
         instancesHolder.removeAll();
         List<Viewable> matching = drilledInstances;
-        instancesHolder.add(header(selectedFieldType, selectedFieldPath, matching.size()),
-                            BorderLayout.NORTH);
+        instancesHolder.add(scrollableActions(
+                header(selectedFieldType, selectedFieldPath, matching.size())),
+                BorderLayout.NORTH);
         if (!matching.isEmpty()) {
             instancesHolder.add(instancesView(matching, selectedFieldType), BorderLayout.CENTER);
         }
         instancesHolder.revalidate();
         instancesHolder.repaint();
+    }
+
+    /** The source/action stack can be taller than the fixed-target curation pane. Keep it
+     *  in normal layout flow with a bounded viewport instead of letting BorderLayout.NORTH
+     *  clip its lower blocks over the card browser. */
+    private static JComponent scrollableActions(JComponent actions) {
+        JScrollPane scroll = new JScrollPane(actions,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setBorder(null);
+        scroll.getVerticalScrollBar().setUnitIncrement(18);
+        java.awt.Dimension preferred = actions.getPreferredSize();
+        scroll.setPreferredSize(new java.awt.Dimension(
+                preferred.width, Math.min(300, preferred.height + 4)));
+        return scroll;
     }
 
     /** Identity coverage is a convenience shortcut beside the ordinary
@@ -647,7 +662,8 @@ public final class ValidationPanel extends JPanel {
     }
 
     private static JPanel headerLine(java.awt.Component... components) {
-        JPanel line = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
+        JPanel line = new JPanel(
+                new objectview.utils.swing.WrapLayout(FlowLayout.LEFT, 8, 2));
         line.setAlignmentX(LEFT_ALIGNMENT);
         for (java.awt.Component component : components) line.add(component);
         return line;
@@ -879,36 +895,82 @@ public final class ValidationPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Every reference in this scope has a name.");
             return;
         }
-        if (JOptionPane.showConfirmDialog(this,
-                new JLabel("<html>Fetch names for <b>" + unnamed.size()
-                        + "</b> referenced entities showing a QID.<br><br>"
-                        + "Each resolved name is staged as a correction on the entity "
-                        + "itself, so it applies everywhere that entity appears.</html>"),
-                "Resolve names", JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {
-            return;
-        }
-        resolveNamesButton.setEnabled(false);
-        // The established road: a cancellable, logged process that raises ONE review and
-        // stages only what the reader accepts. Registered with the same runner as Find
-        // Data, so Cancel governs it too — a 39-request repair must not be a dead button.
-        findDataRunner.run(
-                new quiz.enrichment.ResolveNamesProcess(unnamed,
-                        selectedFieldType + "." + selectedFieldPath),
-                outcome -> SwingUtilities.invokeLater(() -> {
-                    resolveNamesButton.setEnabled(true);
-                    quiz.enrichment.ResolveNamesProcess.Result result = outcome.result();
-                    if (result != null) stageNames(result.accepted());
-                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
-                        JOptionPane.showMessageDialog(ValidationPanel.this,
-                                "Name lookup failed: " + outcome.error().getMessage());
+        showResolveNamesPlan(unnamed);
+    }
+
+    /** Preview the exact unnamed entities before any requests begin. The preview uses the
+     *  same virtualized Viewable card path as the rest of TransformApp. */
+    private void showResolveNamesPlan(java.util.LinkedHashSet<String> unnamed) {
+        List<Viewable> targets = unnamed.stream().map(this::unnamedTargetCard).toList();
+        String field = selectedFieldType + "." + selectedFieldPath;
+        quiz.enrichment.ResolveNamesProcess resolveProcess =
+                new quiz.enrichment.ResolveNamesProcess(unnamed, field);
+        process.swing.workflow.ProcessWorkflowAction<
+                quiz.enrichment.ResolveNamesProcess.Result,
+                quiz.enrichment.ResolveNamesProcess.Name> action =
+                new process.swing.workflow.ProcessWorkflowAction<>() {
+                    @Override public String id() { return "resolve-reference-names"; }
+                    @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
+                        return new process.swing.workflow.ProcessWorkflowPlan(
+                                "Resolve names", "Fetch names for exactly these referenced entities.",
+                                List.of(new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                        "Will query", targets)));
                     }
-                }),
-                ex -> SwingUtilities.invokeLater(() -> {
-                    resolveNamesButton.setEnabled(true);
-                    JOptionPane.showMessageDialog(ValidationPanel.this,
-                            "Name lookup failed: " + ex.getMessage());
-                }));
+                    @Override public process.Process<quiz.enrichment.ResolveNamesProcess.Result>
+                    process() { return resolveProcess; }
+                    @Override public process.swing.workflow.ProcessWorkflowResults<
+                            quiz.enrichment.ResolveNamesProcess.Name> results(
+                                    process.ProcessOutcome<quiz.enrichment.ResolveNamesProcess.Result>
+                                            outcome) {
+                        List<process.swing.workflow.ProcessWorkflowResults.Card<
+                                quiz.enrichment.ResolveNamesProcess.Name>> resolved =
+                                new ArrayList<>();
+                        List<process.swing.workflow.ProcessWorkflowResults.Card<
+                                quiz.enrichment.ResolveNamesProcess.Name>> unresolved =
+                                new ArrayList<>();
+                        for (String qid : outcome.result().requested()) {
+                            String label = outcome.result().resolved().get(qid);
+                            boolean found = label != null && !label.isBlank()
+                                    && !label.equals(qid);
+                            quiz.transform.DynamicViewable card =
+                                    new quiz.transform.DynamicViewable(qid, found ? label : qid);
+                            card.type(found ? "Resolved name" : "Unresolved name");
+                            card.put("QID", qid);
+                            card.put("Result", found ? label : "No name returned");
+                            var resultCard = new process.swing.workflow.ProcessWorkflowResults.Card<>(
+                                    card, found
+                                            ? () -> new quiz.enrichment.ResolveNamesProcess.Name(
+                                                    qid, label)
+                                            : () -> null,
+                                    found);
+                            (found ? resolved : unresolved).add(resultCard);
+                        }
+                        return new process.swing.workflow.ProcessWorkflowResults<>(
+                                "Resolve names — results", outcome.summary(), List.of(
+                                new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                                        "Resolved", resolved),
+                                new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                                        "Unresolved", unresolved)));
+                    }
+                    @Override public void apply(
+                            List<quiz.enrichment.ResolveNamesProcess.Name> decisions) {
+                        stageNames(decisions);
+                    }
+                };
+        process.swing.workflow.SwingProcessWorkflow.start(
+                this, findDataRunner, action);
+    }
+
+    private Viewable unnamedTargetCard(String qid) {
+        Viewable existing = domain.instances().stream()
+                .filter(candidate -> qid.equals(candidate.getIdentifier()))
+                .findFirst().orElse(null);
+        if (existing != null) return existing;
+        quiz.transform.DynamicViewable target =
+                new quiz.transform.DynamicViewable(qid, qid);
+        target.type("Unnamed reference");
+        target.put("QID", qid);
+        return target;
     }
 
     /** Every QID the drilled members' selected field still shows instead of a name.
@@ -942,8 +1004,17 @@ public final class ValidationPanel extends JPanel {
             staging.stage(Correction.entityLabel(name.qid(), name.label(), "wikidata"));
             staged++;
         }
-        status.setText("Staged " + staged + " name(s); Apply, then reload the domain.");
+        // Preview the detached label overlay in the same live pool coverage inspects.
+        // Without this, cards could show the reviewed labels while the cached Unnamed
+        // column and Names block continued reporting the pre-review count.
+        Corrections.apply(domain.instances(), List.of(staging));
+        refreshCoverage();
+        int remaining = unnamedTargets().size();
+        status.setText("Staged " + staged + " name(s); " + remaining
+                + " unnamed remain; Apply to save.");
         updateApplyButton();
+        onCurated.run();
+        if (selectedFieldPath != null) renderFieldDrill();
     }
 
     /** Selects {@code path} and drills the members whose reference has no name. */
@@ -1208,10 +1279,14 @@ public final class ValidationPanel extends JPanel {
                     FindDataBatchResult result = outcome.result();
                     quiz.curation.ManualCuration store = curationStore();
                     if (result != null && store != null) {
-                        for (quiz.enrichment.EnrichmentDecision decision
-                                : result.acceptedDecisions()) {
-                            applyDecision(store, decision);
-                        }
+                        List<quiz.enrichment.EnrichmentProposal> proposals = result.results()
+                                .stream().map(quiz.enrichment.FindDataResult::proposal).toList();
+                        quiz.enrichment.ui.FindDataBatchReviewPanel.showModeless(
+                                this,
+                                "Review found data" + (path.isBlank() ? "" : " — " + path),
+                                "Review the values found for these members.", proposals,
+                                reviewed -> reviewed.accepted().forEach(
+                                        decision -> applyDecision(store, decision)));
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
                         JOptionPane.showMessageDialog(ValidationPanel.this,
@@ -1240,33 +1315,6 @@ public final class ValidationPanel extends JPanel {
         return quiz.source.WikidataSource.isQid(id);
     }
 
-    /** Rich input remains rendered by Swing, but the pause/request belongs to Find Data. */
-    private <T> T handleProcessInput(
-            ProcessInputRequest<T> request, CancellationToken cancellation)
-            throws Exception {
-        if (request instanceof EnrichmentReviewRequest review) {
-            quiz.enrichment.EnrichmentDecision answer =
-                    SwingProcessInput.await(cancellation, completed ->
-                            EnrichmentReviewPanel.showModeless(
-                                    this, review.title(), review.proposal(), completed));
-            return request.responseType().cast(answer);
-        }
-        if (request instanceof quiz.enrichment.ResolveNamesProcess.ReviewRequest names) {
-            List<quiz.enrichment.ResolveNamesProcess.Name> answer =
-                    SwingProcessInput.await(cancellation, completed ->
-                            quiz.enrichment.ui.ResolvedNamesReviewPanel.showModeless(
-                                    this, names, completed));
-            return request.responseType().cast(answer);
-        }
-        if (request instanceof quiz.enrichment.FindDataBatchReviewRequest batch) {
-            quiz.enrichment.BatchReviewDecision answer =
-                    SwingProcessInput.await(cancellation, completed ->
-                            quiz.enrichment.ui.FindDataBatchReviewPanel.showModeless(
-                                    this, batch.title(), batch.prompt(), batch.proposals(), completed));
-            return request.responseType().cast(answer);
-        }
-        return ProcessInputHandler.unsupported().request(request, cancellation);
-    }
 
     private quiz.curation.ManualCuration curationStore() {
         return domain instanceof quiz.curation.Curatable c ? c.curation() : null;

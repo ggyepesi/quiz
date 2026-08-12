@@ -19,7 +19,7 @@ class ResolveIdentitiesProcessTest {
     void keepsAcceptedIdentityWithoutSearchingOrReviewing() {
         // Null query clients and an unsupported input handler make this a regression guard:
         // either a search or a review would fail the process.
-        ProcessOutcome<ResolveIdentitiesDecision> outcome = new ProcessRunner(
+        ProcessOutcome<ResolveIdentitiesProcess.Result> outcome = new ProcessRunner(
                 new QueryContext(null, null), null, ProcessInputHandler.unsupported())
                 .run(new ResolveIdentitiesProcess(List.of(
                                 new ResolveIdentitiesProcess.Subject(
@@ -28,13 +28,13 @@ class ResolveIdentitiesProcessTest {
                         new CancellationToken());
 
         assertEquals(ProcessStatus.SUCCEEDED, outcome.status());
-        assertTrue(outcome.result().resolved().isEmpty());
+        assertTrue(outcome.result().instances().isEmpty());
         assertTrue(outcome.summary().contains("1 already resolved"));
     }
 
     @Test
     void reportsFailureWhenEveryUnresolvedSearchFails() {
-        ProcessOutcome<ResolveIdentitiesDecision> outcome = new ProcessRunner(
+        ProcessOutcome<ResolveIdentitiesProcess.Result> outcome = new ProcessRunner(
                 new QueryContext(null, null), null, ProcessInputHandler.unsupported())
                 .run(new ResolveIdentitiesProcess(List.of(
                                 new ResolveIdentitiesProcess.Subject(

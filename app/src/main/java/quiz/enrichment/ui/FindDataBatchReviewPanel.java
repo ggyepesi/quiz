@@ -1,26 +1,31 @@
 package quiz.enrichment.ui;
 
+import objectview.Viewable;
+import objectview.render.RenderingMode;
+import objectview.view.SearchableView;
 import quiz.enrichment.BatchReviewDecision;
 import quiz.enrichment.EnrichmentDecision;
 import quiz.enrichment.EnrichmentProposal;
+import quiz.transform.DynamicViewable;
 
-import javax.swing.JCheckBox;
+import javax.swing.JButton;
 import javax.swing.JDialog;
-
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dialog;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-/**
- * One approve/skip step over every member's proposal, as a {@link CategorizedReviewPanel}:
- * a checkable row per member showing the value (or image) that would be applied, split into
- * FOUND (compatible, accepted by default) and NOT FOUND (no value found or rejected by field
- * type — kept visible so the members that need manual curation don't vanish, the same way
- * identity resolution shows its "No match" set). Fine-grained per-field editing stays in the
- * single-member {@link EnrichmentReviewPanel}; this is the bulk accept for a batch fill.
- */
+/** Virtualized card review over every proposal produced by Load values. */
 public final class FindDataBatchReviewPanel {
 
     private FindDataBatchReviewPanel() { }
@@ -28,102 +33,115 @@ public final class FindDataBatchReviewPanel {
     public static void showDialog(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone) {
-        CategorizedReviewPanel.showDialog(owner, title, prompt,
-                                          sections(proposals), new Dimension(720, 560), accepted -> onDone.accept(decision(accepted)));
+        show(owner, title, prompt, proposals, Dialog.ModalityType.APPLICATION_MODAL, onDone);
     }
 
     public static JDialog showModeless(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone) {
-        return CategorizedReviewPanel.showModeless(owner, title, prompt,
-                                                   sections(proposals), new Dimension(720, 560),
-                                                   accepted -> onDone.accept(decision(accepted)));
+        return show(owner, title, prompt, proposals, Dialog.ModalityType.MODELESS, onDone);
     }
 
-    private static List<CategorizedReviewPanel.Section<EnrichmentProposal>> sections(
-            List<EnrichmentProposal> proposals) {
-        List<CategorizedReviewPanel.Row<EnrichmentProposal>> found = new ArrayList<>();
-        List<CategorizedReviewPanel.Row<EnrichmentProposal>> notFound = new ArrayList<>();
+    private static JDialog show(
+            Component owner, String title, String prompt,
+            List<EnrichmentProposal> proposals, Dialog.ModalityType modality,
+            Consumer<BatchReviewDecision> onDone) {
+        Map<String, EnrichmentDecision> applicable = new LinkedHashMap<>();
+        List<EnrichmentDecision> safeDefaults = new ArrayList<>();
+        List<Viewable> cards = new ArrayList<>();
+        int ordinal = 0;
         for (EnrichmentProposal proposal : proposals == null
                 ? List.<EnrichmentProposal>of() : proposals) {
-            if (EnrichmentDecision.acceptDefault(proposal) != null) {
-                found.add(row(proposal, true));
-            } else {
-                notFound.add(row(proposal, false));
-            }
-        }
-        return List.of(
-                new CategorizedReviewPanel.Section<>("Found",
-                                                     "Found values — accepted; uncheck any you don't want", found),
-                new CategorizedReviewPanel.Section<>("Not found",
-                                                     "No value found (or rejected by field type) — curate manually", notFound));
-    }
-
-    private static CategorizedReviewPanel.Row<EnrichmentProposal> row(
-            EnrichmentProposal proposal, boolean selectable) {
-        String label = rowLabel(proposal);
-        // A REPLACE would overwrite an existing (possibly curated) value, so it is NOT
-        // pre-checked: overwriting is always a deliberate tick.
-        boolean overwrite = overwrites(proposal);
-        JCheckBox accept = new JCheckBox(
-                CategorizedReviewPanel.truncate(label, 90)
-                        + (overwrite ? "  [overwrites existing]" : ""),
-                selectable && !overwrite);
-        accept.setEnabled(selectable);
-        accept.setToolTipText(overwrite
-                                      ? label + " — would replace the current value; check to apply"
-                                      : label);
-        return new CategorizedReviewPanel.Row<>(proposal, accept);
-    }
-
-    private static BatchReviewDecision decision(List<EnrichmentProposal> accepted) {
-        List<EnrichmentDecision> decisions = new ArrayList<>();
-        for (EnrichmentProposal proposal : accepted) {
+            String id = cardId(proposal, ordinal++);
             EnrichmentDecision decision = EnrichmentDecision.acceptDefault(proposal);
+            boolean overwrite = overwrites(proposal);
+            DynamicViewable card = new DynamicViewable(id, proposal.subject().displayName());
+            card.type(decision == null ? "Not found" : overwrite ? "Overwrite" : "Found");
+            card.put("Outcome", card.typeName());
+            card.put("Proposed change", detail(proposal));
+            cards.add(card);
             if (decision != null) {
-                decisions.add(decision);
+                applicable.put(id, decision);
+                if (!overwrite) safeDefaults.add(decision);
             }
         }
-        return new BatchReviewDecision(decisions);
+
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        panel.add(new JLabel("<html>" + CategorizedReviewPanel.html(prompt)
+                + "<br><br>Select a card to stage that proposed value. Overwrites are "
+                + "never included in Stage all safe results.</html>"), BorderLayout.NORTH);
+        JButton close = new JButton("Close without staging");
+        JButton selected = new JButton("Stage selected card");
+        selected.setEnabled(false);
+        JButton all = new JButton("Stage all safe results (" + safeDefaults.size() + ")");
+        all.setEnabled(!safeDefaults.isEmpty());
+        AtomicReference<EnrichmentDecision> selectedDecision = new AtomicReference<>();
+        if (!cards.isEmpty()) {
+            panel.add(SearchableView.builder(cards)
+                    .sample(cards.get(0)).mode(RenderingMode.CARD)
+                    .collapsible(false).columns(2)
+                    .selectionListener(value -> {
+                        EnrichmentDecision decision = value instanceof Viewable card
+                                ? applicable.get(card.getIdentifier()) : null;
+                        selectedDecision.set(decision);
+                        selected.setEnabled(decision != null);
+                    }).build(), BorderLayout.CENTER);
+        }
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+        footer.add(close); footer.add(selected); footer.add(all);
+        panel.add(footer, BorderLayout.SOUTH);
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(owner), title, modality);
+        dialog.setContentPane(panel); dialog.setSize(new Dimension(900, 680));
+        dialog.setLocationRelativeTo(owner);
+        close.addActionListener(e -> finish(dialog, onDone, List.of()));
+        selected.addActionListener(e -> {
+            EnrichmentDecision decision = selectedDecision.get();
+            finish(dialog, onDone, decision == null ? List.of() : List.of(decision));
+        });
+        all.addActionListener(e -> finish(dialog, onDone, safeDefaults));
+        dialog.setVisible(true);
+        return dialog;
     }
 
-    /** A proposal overwrites existing data when any of its field candidates is a REPLACE. */
+    private static void finish(JDialog dialog, Consumer<BatchReviewDecision> callback,
+                               List<EnrichmentDecision> decisions) {
+        dialog.dispose();
+        callback.accept(new BatchReviewDecision(List.copyOf(decisions)));
+    }
+
+    private static String cardId(EnrichmentProposal proposal, int ordinal) {
+        return proposal.subject().type() + '\u0000' + proposal.subject().targetId()
+                + '\u0000' + ordinal;
+    }
+
     private static boolean overwrites(EnrichmentProposal proposal) {
         return proposal.fields().stream().anyMatch(
-                f -> f.suggestedAction() == EnrichmentProposal.ReviewAction.REPLACE);
+                field -> field.suggestedAction() == EnrichmentProposal.ReviewAction.REPLACE);
     }
 
-    private static String rowLabel(EnrichmentProposal proposal) {
-        String detail;
+    private static String detail(EnrichmentProposal proposal) {
         EnrichmentDecision accepted = EnrichmentDecision.acceptDefault(proposal);
         if (accepted != null && !accepted.fields().isEmpty()) {
-            // A routed proposal may retain an incompatible primary candidate before a
-            // usable fallback candidate. Show the candidate that will actually be applied,
-            // together with its provenance, rather than misleadingly showing the rejected
-            // primary value in the Found tab.
-            EnrichmentProposal.FieldCandidate field =
-                    accepted.fields().get(0).candidate();
-            detail = field.field() + " = " + field.proposedValue()
-                    + sourceSuffix(field.source());
-        } else if (!proposal.media().isEmpty()) {
-            EnrichmentProposal.MediaCandidate media = proposal.media().get(0);
-            detail = media.field() + ": image" + sourceSuffix(media.source());
-        } else if (!proposal.fields().isEmpty()) {
-            EnrichmentProposal.FieldCandidate field = proposal.fields().get(0);
-            detail = field.field() + " rejected: " + field.compatibilityError()
-                    + sourceSuffix(field.source());
-        } else {
-            detail = "(no value)";
+            EnrichmentProposal.FieldCandidate field = accepted.fields().get(0).candidate();
+            return field.field() + " = " + field.proposedValue() + sourceSuffix(field.source());
         }
-        return proposal.subject().displayName() + "  —  " + detail;
+        if (!proposal.media().isEmpty()) {
+            EnrichmentProposal.MediaCandidate media = proposal.media().get(0);
+            return media.field() + ": image" + sourceSuffix(media.source());
+        }
+        if (!proposal.fields().isEmpty()) {
+            EnrichmentProposal.FieldCandidate field = proposal.fields().get(0);
+            return field.field() + " rejected: " + field.compatibilityError()
+                    + sourceSuffix(field.source());
+        }
+        return "No value found";
     }
 
     private static String sourceSuffix(EnrichmentProposal.SourceRef source) {
-        if (source == null || source.kind() == null || source.kind().isBlank()) {
-            return "";
-        }
+        if (source == null || source.kind() == null || source.kind().isBlank()) return "";
         String property = source.propertyId() == null || source.propertyId().isBlank()
                 ? "" : ", " + source.propertyId();
-        return "  [" + source.kind() + property + "]";
+        return " [" + source.kind() + property + "]";
     }
 }

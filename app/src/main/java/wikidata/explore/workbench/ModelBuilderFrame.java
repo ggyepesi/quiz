@@ -611,20 +611,64 @@ public class ModelBuilderFrame extends JFrame {
                             projectModel.rootClass()));
                     return;
                 }
-                processRunner.run(
-                        new GenerateDomainProcess(projectModel.copy()),
-                        outcome -> {
-                            if (outcome.usefulResult().isPresent()) {
-                                acceptGenerationRun(outcome.usefulResult().get());
+                GeneratedProjectModel snapshot = projectModel.copy();
+                GenerateDomainProcess generation = new GenerateDomainProcess(snapshot);
+                java.util.List<objectview.Viewable> classCards = snapshot.classes().stream()
+                        .map(model -> {
+                            quiz.transform.DynamicViewable card =
+                                    new quiz.transform.DynamicViewable(
+                                            model.className(), model.className());
+                            card.type("Generated class");
+                            card.put("Depth", model.generationDepth());
+                            card.put("Fields", model.fields().size());
+                            return (objectview.Viewable) card;
+                        }).toList();
+                process.swing.workflow.ProcessWorkflowAction<
+                        GenerationRun, GenerationRun> action =
+                        new process.swing.workflow.ProcessWorkflowAction<>() {
+                            @Override public String id() { return "generate-domain"; }
+                            @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
+                                return new process.swing.workflow.ProcessWorkflowPlan(
+                                        "Generate domain",
+                                        "Generate every configured class into one shared domain snapshot.",
+                                        java.util.List.of(
+                                                new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                                        "Classes", classCards)));
                             }
-                            if (outcome.status() == ProcessStatus.FAILED
-                                    && outcome.error() instanceof Exception ex) {
-                                reportGenerationError(ex);
+                            @Override public process.Process<GenerationRun> process() {
+                                return generation;
                             }
-                        },
-                        error -> reportGenerationError(
-                                error instanceof Exception ex
-                                        ? ex : new RuntimeException(error)));
+                            @Override public process.swing.workflow.ProcessWorkflowResults<
+                                    GenerationRun> results(
+                                            process.ProcessOutcome<GenerationRun> outcome) {
+                                GenerationRun run = outcome.result();
+                                quiz.transform.DynamicViewable summary =
+                                        new quiz.transform.DynamicViewable(
+                                                "generation-summary", snapshot.name());
+                                summary.type("Generation result");
+                                summary.put("Objects", run.size());
+                                var apply = new process.swing.workflow.ProcessWorkflowResults.Card<>(
+                                        summary, () -> run, true);
+                                java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
+                                        GenerationRun>> instances = run.instances().stream()
+                                        .map(instance ->
+                                                new process.swing.workflow.ProcessWorkflowResults.Card<
+                                                        GenerationRun>(instance, () -> null, false))
+                                        .toList();
+                                return new process.swing.workflow.ProcessWorkflowResults<>(
+                                        "Generate domain — results", outcome.summary(),
+                                        java.util.List.of(
+                                                new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                                                        "Summary", java.util.List.of(apply)),
+                                                new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                                                        "Instances", instances)));
+                            }
+                            @Override public void apply(java.util.List<GenerationRun> decisions) {
+                                if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
+                            }
+                        };
+                process.swing.workflow.SwingProcessWorkflow.start(
+                        this, processRunner, action);
             } catch (Exception ex) {
                 reportGenerationError(ex);
             }

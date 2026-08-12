@@ -84,7 +84,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     // Runs the identity-resolution process (off-EDT, with a review pause). Shares the
     // session's query context + log window, so its searches show in "Query logs…".
     private final SwingProcessRunner resolveRunner = new SwingProcessRunner(
-            queries.runner().context(), queries.runner().logListener(), this::handleProcessInput);
+            queries.runner().context(), queries.runner().logListener(), process.ProcessInputHandler.unsupported());
 
     private ViewStepsPanel viewStepsPanel;
 
@@ -378,14 +378,20 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 new quiz.enrichment.ResolveIdentitiesProcess(subjects, 12),
                 outcome -> SwingUtilities.invokeLater(() -> {
                     setResolveRunning(false, scopeLabel, members.size());
-                    quiz.enrichment.ResolveIdentitiesDecision decision = outcome.result();
-                    if (decision != null) {
-                        applyResolvedIdentities(curation, decision);
-                        if (!decision.resolved().isEmpty()) {
-                            // Move directly from review to the explicit Apply/Forget boundary.
-                            String type = members.get(0).typeName();
-                            openIdentityActions(members, type == null ? "View" : type);
-                        }
+                    quiz.enrichment.ResolveIdentitiesProcess.Result result = outcome.result();
+                    if (result != null && !result.instances().isEmpty()) {
+                        lastReviewItems = result.instances();
+                        lastReviewTitle = "Resolve identities";
+                        lastReviewPrompt = "Confirm the Wikidata entity for each instance.";
+                        quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showModeless(
+                                this, lastReviewTitle, lastReviewPrompt, result.instances(),
+                                decision -> {
+                                    if (decision == null || decision.resolved().isEmpty()) return;
+                                    applyResolvedIdentities(curation, decision);
+                                    String type = members.get(0).typeName();
+                                    openIdentityActions(members,
+                                            type == null ? "View" : type);
+                                });
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
                         JOptionPane.showMessageDialog(TransformWorkbenchPanel.this,
@@ -605,23 +611,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         return identitiesDirty && !lastApplied.isEmpty();
     }
 
-    /** Renders the identity-resolution review pause; other input requests are unsupported. */
-    private <T> T handleProcessInput(
-            ProcessInputRequest<T> request, CancellationToken cancellation) throws Exception {
-        if (request instanceof quiz.enrichment.ResolveIdentitiesReviewRequest resolve) {
-            // Retain the review so the pending result can be re-opened (recall).
-            lastReviewItems = resolve.instances();
-            lastReviewTitle = resolve.title();
-            lastReviewPrompt = resolve.prompt();
-            quiz.enrichment.ResolveIdentitiesDecision answer =
-                    SwingProcessInput.await(cancellation, completed ->
-                    quiz.enrichment.ui.ResolveIdentitiesReviewPanel.showModeless(
-                            this, resolve.title(), resolve.prompt(),
-                            resolve.instances(), completed));
-            return request.responseType().cast(answer);
-        }
-        return ProcessInputHandler.unsupported().request(request, cancellation);
-    }
 
 
     /** Curate the field selected on the left for the visible instances, in-pane: swap the
