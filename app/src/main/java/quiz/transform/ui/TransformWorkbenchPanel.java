@@ -836,7 +836,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             groups.setStatusText(selectedGroupStatus(group));
         });
         groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
-        groups.addControl("Add filter group", viewStepsPanel::requestAddFilterGroup);
+        // "Add filter group" is NOT here: its condition is composed on the field panel's
+        // operator row, and a control that commits a rule edited elsewhere reads as
+        // unrelated to it. Facet and manual groups ask for their own input, so they stay.
         groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
         groups.addControl("Create subclass from group", this::createSubclassFromSelection);
         groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));

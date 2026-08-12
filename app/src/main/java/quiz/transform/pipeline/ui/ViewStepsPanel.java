@@ -57,6 +57,7 @@ public final class ViewStepsPanel extends JPanel {
     // low-cardinality categorical values), empty for free-text fields.
     private final JComboBox<String> filterValue = editableCombo();
     private final JTextField filterValue2 = new JTextField(10);
+    private final JButton addFilterGroup = new JButton("Add filter group");
 
     private static JComboBox<String> editableCombo() {
         JComboBox<String> c = new JComboBox<>();
@@ -141,6 +142,9 @@ public final class ViewStepsPanel extends JPanel {
 
         reloadOperators(FieldKind.UNKNOWN);
         filterOperator.addActionListener(e -> updateFilterValueEnablement());
+        addFilterGroup.setToolTipText(
+                "Make the instances matching this condition a named group");
+        addFilterGroup.addActionListener(e -> requestAddFilterGroup());
         ButtonGroup scopeButtons = new ButtonGroup();
         scopeButtons.add(allScope);
         scopeButtons.add(missingScope);
@@ -214,6 +218,9 @@ public final class ViewStepsPanel extends JPanel {
         row.add(filterValue);
         row.add(new JLabel("and:"));
         row.add(filterValue2);
+        // The control that commits the rule sits with the rule. It used to live only in the
+        // group-tree bar, so nothing beside the operator said where the condition was going.
+        row.add(addFilterGroup);
 
         p.add(row, BorderLayout.NORTH);
         return p;
@@ -423,6 +430,9 @@ public final class ViewStepsPanel extends JPanel {
         FilterOperator op = (FilterOperator) filterOperator.getSelectedItem();
         filterValue.setEnabled(op != null && !op.isUnary());
         filterValue2.setEnabled(op != null && op.isBinary());
+        // A condition needs both halves — no field selected means there is nothing to
+        // filter ON, whatever the operator says.
+        addFilterGroup.setEnabled(op != null && currentField() != null);
     }
 
     /** Create a named filter group from the rule currently shown in this editor. */
