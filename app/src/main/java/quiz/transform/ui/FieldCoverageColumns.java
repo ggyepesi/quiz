@@ -165,6 +165,16 @@ public final class FieldCoverageColumns implements FieldTableContributor {
         return false;
     }
 
+    /** What the source said about this field's emptiness, or null when it said nothing.
+     *  Only a Wikidata-extracted instance carries one; anything else is an ordinary gap. */
+    static wikidata.explore.extract.FieldStatus assertedStatus(Viewable q, FieldPath path) {
+        if (!(q instanceof wikidata.explore.extract.WikidataDynamicObject wdo)
+                || path == null || path.segments().size() != 1) {
+            return null;
+        }
+        return wdo.fieldStatus(path.segments().get(0));
+    }
+
     /** A target showing its identifier (or nothing) where its name belongs. That is
      *  what an unresolved label looks like once it reaches a card. */
     private static boolean isUnnamed(Viewable target) {
@@ -250,7 +260,11 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                     return switch (filter) {
                         case ALL -> true;
                         case PRESENT -> present;
-                        case MISSING -> !present;
+                        // A source that SAID "unknown" has answered; keeping it in
+                        // MISSING makes a worklist item that can never be cleared.
+                        case MISSING -> !present && assertedStatus(member, path) == null;
+                        case ASSERTED_EMPTY ->
+                                !present && assertedStatus(member, path) != null;
                         // A named-but-unresolved reference is a subset of PRESENT, so it
                         // needs the value to be there before the name can be missing.
                         case UNNAMED_REFERENCE ->

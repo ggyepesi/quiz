@@ -71,6 +71,13 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @JsonIgnore
     private transient boolean wikidataEntityMissing;
 
+    // Why a field is empty, when the SOURCE said so explicitly (unknown / none). Not
+    // transient: it is an answer the extraction obtained, so it belongs in the snapshot
+    // beside the values — a run that has to re-derive it is a run that will keep
+    // offering an uncurable gap. Absent = no claim about absence was made.
+    @Hidden
+    private Map<String, FieldStatus> fieldStatuses;
+
     public WikidataDynamicObject() { }
 
     public WikidataDynamicObject(String qid, String name) {
@@ -131,6 +138,32 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     public String getQid() { return qid(); }
 
     public boolean isWikidataEntityMissing() { return wikidataEntityMissing; }
+
+    /** Records that the source explicitly reported {@code field} as unknown / none. */
+    public void fieldStatus(String field, FieldStatus status) {
+        if (field == null || field.isBlank()) return;
+        if (status == null) {
+            if (fieldStatuses != null) fieldStatuses.remove(field);
+            return;
+        }
+        if (fieldStatuses == null) fieldStatuses = new java.util.LinkedHashMap<>();
+        fieldStatuses.put(field, status);
+    }
+
+    /** What the source said about this field's emptiness, or null when it said nothing
+     *  — which is the ordinary "not known" gap. */
+    public FieldStatus fieldStatus(String field) {
+        return fieldStatuses == null || field == null ? null : fieldStatuses.get(field);
+    }
+
+    public Map<String, FieldStatus> fieldStatuses() {
+        return fieldStatuses == null ? Map.of() : Map.copyOf(fieldStatuses);
+    }
+
+    public void fieldStatuses(Map<String, FieldStatus> statuses) {
+        fieldStatuses = statuses == null || statuses.isEmpty()
+                ? null : new java.util.LinkedHashMap<>(statuses);
+    }
 
     public void wikidataEntityMissing(boolean missing) {
         this.wikidataEntityMissing = missing;

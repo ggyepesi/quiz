@@ -338,13 +338,40 @@ public class WikidataApiClient {
             String qid,
             String label,
             Map<String, List<String>> claimEntityQids,
-            boolean missing) {
+            boolean missing,
+            Map<String, String> valuelessClaims) {
 
         public ApiEntity(
                 String qid,
                 String label,
                 Map<String, List<String>> claimEntityQids) {
-            this(qid, label, claimEntityQids, false);
+            this(qid, label, claimEntityQids, false, Map.of());
+        }
+
+        public ApiEntity(
+                String qid,
+                String label,
+                Map<String, List<String>> claimEntityQids,
+                boolean missing) {
+            this(qid, label, claimEntityQids, missing, Map.of());
+        }
+
+        public ApiEntity {
+            valuelessClaims = valuelessClaims == null ? Map.of()
+                    : Map.copyOf(valuelessClaims);
+        }
+
+        /**
+         * The snak type when this property has statements but NONE of them carries a
+         * value — {@code somevalue} (a value exists, unknown) or {@code novalue} (there
+         * is none). Null when the property yielded values, or has no statement at all.
+         *
+         * <p>The distinction the caller needs: "the source has nothing to say" and "the
+         * source says it is unknown" are different answers, and only the first is a gap
+         * worth asking about again.
+         */
+        public String valuelessClaim(String pid) {
+            return valuelessClaims.get(pid);
         }
 
         /** The entity-QID values for a claim PID (empty if absent). */
@@ -641,14 +668,43 @@ public class WikidataApiClient {
             }
 
             Map<String, List<String>> claims = new LinkedHashMap<>();
+            Map<String, String> valueless = new LinkedHashMap<>();
             for (String pid : claimPids) {
-                List<String> vals = entityQids(entity.path("claims").path(pid));
-                if (!vals.isEmpty()) claims.put(pid, vals);
+                com.fasterxml.jackson.databind.JsonNode statements =
+                        entity.path("claims").path(pid);
+                List<String> vals = entityQids(statements);
+                if (!vals.isEmpty()) {
+                    claims.put(pid, vals);
+                    continue;
+                }
+                // Statements exist but none carries a value: the source is SAYING
+                // something (unknown / none), not staying silent. Recorded so a caller
+                // can tell that apart from a property with no statement at all.
+                String snakType = onlySnakType(statements);
+                if (snakType != null) valueless.put(pid, snakType);
             }
-            out.put(qid, new ApiEntity(qid, label, claims));
+            out.put(qid, new ApiEntity(qid, label, claims, false, valueless));
             parsed[0]++;
         });
         return parsed[0];
+    }
+
+    /**
+     * The snak type shared by every non-deprecated statement of a property that produced
+     * no value — {@code somevalue} or {@code novalue} — or null when there are no such
+     * statements (or they disagree, which is not a claim about absence).
+     */
+    private static String onlySnakType(JsonNode claimsArray) {
+        if (!claimsArray.isArray() || claimsArray.isEmpty()) return null;
+        String seen = null;
+        for (JsonNode claim : claimsArray) {
+            if ("deprecated".equals(claim.path("rank").asText())) continue;
+            String snakType = claim.path("mainsnak").path("snaktype").asText("");
+            if (!"somevalue".equals(snakType) && !"novalue".equals(snakType)) return null;
+            if (seen != null && !seen.equals(snakType)) return null;
+            seen = snakType;
+        }
+        return seen;
     }
 
     /** Every entity-QID value in a claims array, in order, skipping deprecated. */

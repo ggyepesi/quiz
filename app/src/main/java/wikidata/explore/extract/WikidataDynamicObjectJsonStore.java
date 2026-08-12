@@ -310,6 +310,10 @@ public class WikidataDynamicObjectJsonStore {
         // richer subtype carrier. Base membership is inherited, not a second direct claim.
         classes.removeIf(base -> classes.stream().anyMatch(candidate ->
                 !candidate.equals(base) && isSubclassOf(candidate, base, graph)));
+        for (WikidataDynamicObject o : instances) {
+            o.fieldStatuses().forEach((field, status) ->
+                    e.fieldStatus.putIfAbsent(field, status.stored()));
+        }
         e.classes.addAll(classes);
         e.type = mostSpecificClass(classes, graph);
         if (e.type == null) {
@@ -514,6 +518,10 @@ public class WikidataDynamicObjectJsonStore {
                 o.typeKey(e.typeKey);
             }
             o.referenceLabel(e.referenceLabel);
+            e.fieldStatus.forEach((field, token) -> {
+                FieldStatus status = FieldStatus.fromStored(token);
+                if (status != null) o.fieldStatus(field, status);
+            });
             byKey.put(compositeKey(e.typeKey, e.id), o);
         }
         Map<String, WikidataDynamicObject> byQidSingle = uniqueByQid(byKey);
@@ -684,6 +692,9 @@ public class WikidataDynamicObjectJsonStore {
         // Null for untyped leaves.
         public String typeKey;
         public Map<String, Object> fields = new LinkedHashMap<>();
+        // Why a field is empty when the SOURCE said so — "unknown" / "none". Absent for
+        // the ordinary case, so an existing snapshot loads unchanged.
+        public Map<String, String> fieldStatus = new LinkedHashMap<>();
     }
 
     /** Flattened snapshot: a root-qid list plus a deduped entity pool. */

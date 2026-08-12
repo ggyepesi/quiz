@@ -956,9 +956,17 @@ public class RuleTreeExtractor {
             }
             boolean any = false;
             for (RuleIncludedField f : outgoingFields) {
-                for (String vq : e.claim(RuleNode.cleanPid(f.propertyPid()))) {
+                String pid = RuleNode.cleanPid(f.propertyPid());
+                for (String vq : e.claim(pid)) {
                     member.merge(f.fieldName(), registry.getOrCreate(vq, vq));
                     any = true;
+                }
+                // The source SAID this field is unknown / none rather than staying
+                // silent. Recorded so curation stops offering a gap nothing can fill.
+                String valueless = e.valuelessClaim(pid);
+                if (valueless != null) {
+                    member.fieldStatus(f.fieldName(), "novalue".equals(valueless)
+                            ? FieldStatus.ASSERTED_NONE : FieldStatus.ASSERTED_UNKNOWN);
                 }
             }
             if (any) filled++;

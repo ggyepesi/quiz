@@ -19,7 +19,14 @@ public enum ScopeFilter {
      * <p>Field tasks only. An identity is not a reference, so this scope is not offered
      * for one; see {@code ValidationPanel.scopeChoices}.
      */
-    UNNAMED_REFERENCE("Present, but the reference has no name");
+    UNNAMED_REFERENCE("Present, but the reference has no name"),
+
+    /**
+     * Empty because the SOURCE said so — "value unknown" or "no value" — rather than
+     * because nobody has looked. Not a gap: no fetch will ever fill it, so it is kept
+     * out of MISSING and listed on its own instead of sitting in the worklist forever.
+     */
+    ASSERTED_EMPTY("Empty — the source says unknown / none");
 
     private final String label;
 

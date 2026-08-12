@@ -632,6 +632,7 @@ public final class ValidationPanel extends JPanel {
             case MISSING -> "instance(s) with a missing value";
             case PRESENT -> "instance(s) with an existing value";
             case UNNAMED_REFERENCE -> "instance(s) whose reference has no name";
+            case ASSERTED_EMPTY -> "instance(s) the source reports unknown / none";
             case ALL -> "instance(s)";
         };
     }
