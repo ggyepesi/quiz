@@ -842,7 +842,13 @@ public final class ValidationPanel extends JPanel {
                     fieldSources.put(key, source);
                     updateFieldSourceButton();
                     if (produceAfterChoice) {
-                        SwingUtilities.invokeLater(() -> runFillBatch(key.path()));
+                        // Through the same confirmation as every other start. Choosing a
+                        // property is picking a tool, not pulling the trigger — and this
+                        // path is the one where the user has just seen a dialog, so a run
+                        // beginning by itself reads as the picker having done it.
+                        SwingUtilities.invokeLater(() -> {
+                            if (confirmFill(key, false)) runFillBatch(key.path());
+                        });
                     }
                 });
     }
