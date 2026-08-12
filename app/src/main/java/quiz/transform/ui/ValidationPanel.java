@@ -91,7 +91,7 @@ public final class ValidationPanel extends JPanel {
     private final JButton exploreIdentityButton = new JButton("Explore Wikidata…");
     private final JButton cancelProcessButton = new JButton("Cancel Find Data");
     private final JButton resolveMissingButton = new JButton("Resolve identities…");
-    private final JButton applyButton = new JButton("Apply changes");
+    private final JButton applyButton = new JButton("Save staged changes");
     private final JLabel selectedLabel = new JLabel("No instance selected");
     private final JTextField manualValue = new JTextField(18);
     private final JButton setValueButton = new JButton("Set / replace");
@@ -566,7 +566,11 @@ public final class ValidationPanel extends JPanel {
     private void updateApplyButton() {
         int n = staging == null ? 0 : staging.size();
         applyButton.setEnabled(n > 0);
-        applyButton.setText(n == 0 ? "Apply changes" : "Apply changes (" + n + ")");
+        // "Save", not "Apply": a result panel's Apply STAGES, and this is the only
+        // control that writes. Two buttons both reading Apply left the reader unable to
+        // tell whether anything had been persisted.
+        applyButton.setText(n == 0 ? "Save staged changes" : "Save " + n + " staged change"
+                + (n == 1 ? "" : "s"));
         applyButton.setToolTipText(n == 0
                                            ? "No staged changes"
                                            : "Write " + n + " staged change(s) to the curation sidecar");
@@ -946,7 +950,11 @@ public final class ValidationPanel extends JPanel {
                             (found ? resolved : unresolved).add(resultCard);
                         }
                         return new process.swing.workflow.ProcessWorkflowResults<>(
-                                "Resolve names — results", outcome.summary(), List.of(
+                                "Resolve names — results", outcome.summary(),
+                                // Staging, not saving: the toolbar's Save is what
+                                // writes, and a button reading "Apply" here made the
+                                // two indistinguishable.
+                                "Stage", List.of(
                                 new process.swing.workflow.ProcessWorkflowResults.Tab<>(
                                         "Resolved", resolved),
                                 new process.swing.workflow.ProcessWorkflowResults.Tab<>(
@@ -1008,6 +1016,7 @@ public final class ValidationPanel extends JPanel {
         // Without this, cards could show the reviewed labels while the cached Unnamed
         // column and Names block continued reporting the pre-review count.
         Corrections.apply(domain.instances(), List.of(staging));
+        renameCollapsedReferences(accepted);
         refreshCoverage();
         int remaining = unnamedTargets().size();
         status.setText("Staged " + staged + " name(s); " + remaining
@@ -1015,6 +1024,54 @@ public final class ValidationPanel extends JPanel {
         updateApplyButton();
         onCurated.run();
         if (selectedFieldPath != null) renderFieldDrill();
+    }
+
+    /**
+     * Replaces a just-named QID where it survives as a COLLAPSED COPY.
+     *
+     * <p>Renaming the entity is not enough on a compiled domain: ProductCompiler turns a
+     * bare reference into its display name, so a film holds the string "Q592174", not a
+     * pointer to the entity that string came from. The next load collapses again and
+     * picks up the repaired label — but until then the counts would keep reporting
+     * references the user has just fixed, which reads as the repair not working.
+     *
+     * <p>Only the SELECTED field, and only where the model says it was entity-valued:
+     * an ordinary field may legitimately hold QID-shaped text of its own.
+     */
+    private void renameCollapsedReferences(
+            List<quiz.enrichment.ResolveNamesProcess.Name> accepted) {
+        if (selectedFieldPath == null || selectedFieldType == null) return;
+        FieldPath path = FieldPath.parse(selectedFieldPath);
+        if (!domain.entityOrigin(selectedFieldType, path)) return;
+        Map<String, String> byQid = new LinkedHashMap<>();
+        for (quiz.enrichment.ResolveNamesProcess.Name name : accepted) {
+            if (name.label() != null && !name.label().isBlank()) {
+                byQid.put(name.qid(), name.label());
+            }
+        }
+        if (byQid.isEmpty()) return;
+        for (Viewable member : instances) {
+            if (!domain.isInstanceOf(member, selectedFieldType)) continue;
+            Object value = objectview.field.FieldAccess.getPath(member, selectedFieldPath);
+            if (value instanceof CharSequence text) {
+                String label = byQid.get(text.toString().trim());
+                if (label != null) {
+                    objectview.field.FieldAccess.setPath(member, selectedFieldPath, label);
+                }
+            } else if (value instanceof List<?> values) {
+                List<Object> replaced = new ArrayList<>(values.size());
+                boolean changed = false;
+                for (Object item : values) {
+                    String label = item instanceof CharSequence text2
+                            ? byQid.get(text2.toString().trim()) : null;
+                    replaced.add(label == null ? item : label);
+                    changed |= label != null;
+                }
+                if (changed) {
+                    objectview.field.FieldAccess.setPath(member, selectedFieldPath, replaced);
+                }
+            }
+        }
     }
 
     /** Selects {@code path} and drills the members whose reference has no name. */

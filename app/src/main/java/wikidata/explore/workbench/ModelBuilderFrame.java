@@ -657,7 +657,7 @@ public class ModelBuilderFrame extends JFrame {
                                         .toList();
                                 return new process.swing.workflow.ProcessWorkflowResults<>(
                                         "Generate domain — results", outcome.summary(),
-                                        java.util.List.of(
+                                        "Accept", java.util.List.of(
                                                 new process.swing.workflow.ProcessWorkflowResults.Tab<>(
                                                         "Summary", java.util.List.of(apply)),
                                                 new process.swing.workflow.ProcessWorkflowResults.Tab<>(

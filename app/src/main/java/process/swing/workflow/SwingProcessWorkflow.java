@@ -41,6 +41,9 @@ public final class SwingProcessWorkflow {
         final SwingProcessRunner runner;
         final ProcessWorkflowAction<R, D> action;
         final ProcessWorkflowState state = new ProcessWorkflowState();
+        // What this action's apply does, for the buttons and the confirmation — set
+        // when the results arrive, since only the action knows.
+        String applyVerb = "Apply";
         final JDialog dialog;
 
         Session(Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action) {
@@ -93,10 +96,11 @@ public final class SwingProcessWorkflow {
         }
 
         void showResults(ProcessWorkflowResults<D> results, ProcessStatus status) {
+            applyVerb = results.applyVerb();
             JPanel panel = page("3 · Results", results.summary()
                     + (status == ProcessStatus.PARTIAL ? " (partial result)" : ""));
             AtomicReference<ProcessWorkflowResults.Card<D>> selected = new AtomicReference<>();
-            JButton applySelected = new JButton("Apply selected card");
+            JButton applySelected = new JButton(results.applyVerb() + " selected card");
             applySelected.setEnabled(false);
             List<ProcessWorkflowResults.Card<D>> bulk = results.tabs().stream()
                     .flatMap(tab -> tab.cards().stream())
@@ -122,7 +126,8 @@ public final class SwingProcessWorkflow {
             }
             panel.add(tabs, BorderLayout.CENTER);
             JButton close = new JButton("Close without applying");
-            JButton applyAll = new JButton("Apply all safe results (" + bulk.size() + ")");
+            JButton applyAll = new JButton(
+                    results.applyVerb() + " all safe results (" + bulk.size() + ")");
             applyAll.setEnabled(!bulk.isEmpty());
             close.addActionListener(e -> dialog.dispose());
             applySelected.addActionListener(e -> apply(List.of(selected.get())));
@@ -140,7 +145,7 @@ public final class SwingProcessWorkflow {
                 action.apply(decisions);
                 state.applied();
                 JOptionPane.showMessageDialog(owner,
-                        decisions.size() + " curation decision(s) applied.");
+                        applyVerb + ": " + decisions.size() + " decision(s).");
                 dialog.dispose();
             } catch (Exception error) {
                 state.retryApply();
