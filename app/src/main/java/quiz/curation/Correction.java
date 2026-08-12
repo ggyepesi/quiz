@@ -15,6 +15,18 @@ public record Correction(String type, String qid, String field, Object value,
     public static final String MEDIA = "media";
     public static final String MEDIA_COLLECTION = "media[]";
 
+    /**
+     * An entity-valued field. The stored value is the target's QID; the instance it
+     * refers to is materialized at apply time, exactly as {@link #MEDIA} stores a URL
+     * and materializes a MediaValue.
+     *
+     * <p>A QID, not the object: a sidecar records what was decided, and what was decided
+     * is "this film's location is Q60". Serialising the target instead would freeze a
+     * copy of it beside the pool that owns it.
+     */
+    public static final String REFERENCE = "reference";
+    public static final String REFERENCE_COLLECTION = "reference[]";
+
     /** Backward-compatible shape used by generated and legacy sidecars. */
     public Correction(String qid, String field, Object value, String origin) {
         this(null, qid, field, value, origin, null, null, null);

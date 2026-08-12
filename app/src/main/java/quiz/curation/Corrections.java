@@ -49,6 +49,12 @@ public final class Corrections {
         int applied = 0;
         Set<String> manualKeys = new HashSet<>();
 
+        // A reference correction stores a QID; it resolves against THIS pool, so a
+        // curated reference lands on the same instance every other field pointing at
+        // that entity already uses.
+        REFERENCE_POOL.set(legacyByQid);
+        try {
+
         // Pass 1 — authoritative reviewed values override or extend the base.
         for (Correction c : all) {
             if (!c.authoritative()) {
@@ -82,6 +88,9 @@ public final class Corrections {
         }
 
         return applied;
+        } finally {
+            REFERENCE_POOL.remove();
+        }
     }
 
     private static void applyCorrection(Viewable target, Correction correction,
@@ -184,7 +193,21 @@ public final class Corrections {
         }
     }
 
+    /** The pool a reference correction resolves its QID against. Set for the duration of
+     *  one apply, so a curated reference points at the SAME instance every other field
+     *  referring to that entity does. */
+    private static final ThreadLocal<java.util.Map<String, Viewable>> REFERENCE_POOL =
+            new ThreadLocal<>();
+
     private static Object coerceCorrection(Correction correction, Viewable target, Object sample) {
+        if (correction.value() instanceof String qid
+                && (Correction.REFERENCE.equals(correction.valueKind())
+                    || Correction.REFERENCE_COLLECTION.equals(correction.valueKind()))) {
+            Viewable referent = referent(qid);
+            boolean collection =
+                    Correction.REFERENCE_COLLECTION.equals(correction.valueKind());
+            return collection ? List.of(referent) : referent;
+        }
         if (sample == null && correction.value() instanceof String url
                 && (Correction.MEDIA.equals(correction.valueKind())
                     || Correction.MEDIA_COLLECTION.equals(correction.valueKind()))) {
@@ -199,6 +222,24 @@ public final class Corrections {
             return collection ? List.of(media) : media;
         }
         return coerce(correction.value(), sample);
+    }
+
+    /**
+     * The pooled instance for {@code qid}, or a stub named by the QID when the pool has
+     * none.
+     *
+     * <p>A stub rather than a dropped value: the decision was made and recorded, and
+     * losing it because the entity is not in this particular pool would be worse than
+     * showing it unnamed — which the UNNAMED_REFERENCE curation scope then lists for a
+     * label fill.
+     */
+    private static Viewable referent(String qid) {
+        java.util.Map<String, Viewable> pool = REFERENCE_POOL.get();
+        Viewable pooled = pool == null ? null : pool.get(qid);
+        if (pooled != null) {
+            return pooled;
+        }
+        return new quiz.transform.DynamicViewable(qid, qid);
     }
 
     /** A URL → a MediaValue matching {@code sample}'s shape: a single value when the

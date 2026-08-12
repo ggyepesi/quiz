@@ -140,6 +140,9 @@ public final class ValidationPanel extends JPanel {
     // Set while the scope dropdown's model is being rebuilt, so repopulating it
     // does not fire the listener and re-run the drill mid-switch.
     private boolean syncingScopeChoices;
+    // Resolves a fetched QID to the instance a reference field points at, creating one
+    // when the pool has none. Rebuilt per drill so it sees the current pool.
+    private DomainReferenceResolver referenceResolver;
     private long identityLabelRequest;
 
     /** The concrete member used to discover a field source. Keep its readable name beside
@@ -444,6 +447,9 @@ public final class ValidationPanel extends JPanel {
         drilledInstances = List.copyOf(scoped == null ? List.of()
                                                : membersWithFieldScope(
                 domain, instances, scoped.type(), path, scopeFilter));
+        // Over the WHOLE domain, not the drilled scope: a location already pooled under
+        // another film must be linked, not created a second time.
+        referenceResolver = new DomainReferenceResolver(domain.instances());
         renderFieldDrill();
     }
 
@@ -635,14 +641,6 @@ public final class ValidationPanel extends JPanel {
      *  then one "Load values" triggers the fetch. Manual entry is a separate by-hand path.
      *  A reference field is out of scope for now. */
     private void populateCurateActions(JPanel target) {
-        if (curateTypeOf(selectedFieldType, selectedFieldPath) == CurateType.REFERENCE) {
-            JLabel note = new JLabel("— reference-field curation isn't supported yet");
-            note.setEnabled(false);
-            target.add(headerLine(note));
-            target.revalidate();
-            target.repaint();
-            return;
-        }
         DomainField field = selectedDomainField();
         boolean media = field != null && field.kind() == objectview.field.FieldKind.MEDIA;
 
@@ -1075,7 +1073,8 @@ public final class ValidationPanel extends JPanel {
             boolean media, String qid, String path) {
         if (!media) {
             FieldKey key = new FieldKey(selectedFieldType, path);
-            return FieldEnrichmentRoutes.from(sourceFor(key), fallbackSourceFor(key));
+            return FieldEnrichmentRoutes.from(
+                    sourceFor(key), fallbackSourceFor(key), referenceResolver);
         }
         List<quiz.enrichment.EnrichmentProvider> providers = new ArrayList<>();
         providers.add(new WikimediaImageEnrichmentProvider());

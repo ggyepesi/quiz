@@ -80,8 +80,20 @@ public final class EnrichmentDecisionApplier {
                         candidateSource.kind(), candidateSource.sourceId(),
                         candidateSource.propertyId(), candidateSource.propertyLabel(),
                         candidateSource.direction(), candidateSource.recordUrl());
-                curation.put(type, targetId, candidate.field(), value,
-                        origin, null, policy, source);
+                // An entity-valued field records the target's QID, not the object: a
+                // sidecar records the DECISION ("this film's location is Q60"), and
+                // serialising the instance would freeze a copy of it beside the pool
+                // that owns it. Corrections materializes it back at apply time, the
+                // same way a media URL becomes a MediaValue.
+                Object stored = value;
+                String valueKind = null;
+                if (referenceQid(value) != null) {
+                    stored = referenceQid(value);
+                    valueKind = candidate.targetCollection()
+                            ? Correction.REFERENCE_COLLECTION : Correction.REFERENCE;
+                }
+                curation.put(type, targetId, candidate.field(), stored,
+                        origin, valueKind, policy, source);
             }
 
             EnrichmentProposal.MediaCandidate media = decision.media();
@@ -109,6 +121,20 @@ public final class EnrichmentDecisionApplier {
         }
 
         return Corrections.apply(domain.instances(), List.of(curation));
+    }
+
+    /** The QID an approved reference value stands for, or null when the value is not a
+     *  reference. A single-valued field yields its target's id; a collection yields the
+     *  one target it is adding. */
+    private static Object referenceQid(Object value) {
+        if (value instanceof objectview.Viewable target) {
+            String id = target.getIdentifier();
+            return id == null || id.isBlank() ? null : id;
+        }
+        if (value instanceof java.util.Collection<?> values && values.size() == 1) {
+            return referenceQid(values.iterator().next());
+        }
+        return null;
     }
 
     private static List<String> affectedFields(EnrichmentDecision decision) {

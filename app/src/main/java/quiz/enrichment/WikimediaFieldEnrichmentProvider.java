@@ -27,6 +27,8 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
     private final String propertyPid;
     private final String propertyLabel;
     private final RuleDirection direction;
+    // Supplied by whoever owns the pool; null keeps the old value-only behaviour.
+    private final ReferenceResolver references;
 
     /** Read the property chosen from the sample entity's claims. */
     public WikimediaFieldEnrichmentProvider(String propertyPid) {
@@ -39,21 +41,35 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
      *  {@link #supports} rejects it rather than reading a DBpedia/etc. property as a
      *  Wikidata claim. */
     public WikimediaFieldEnrichmentProvider(FieldSourceMapping source) {
+        this(source, null);
+    }
+
+    /** With a resolver, an entity-valued property fills a reference field; without one
+     *  it behaves exactly as before. */
+    public WikimediaFieldEnrichmentProvider(
+            FieldSourceMapping source, ReferenceResolver references) {
         this(source == null || source.sourceType() != FieldSourceType.SPARQL
                         ? null : source.propertyPid(),
                 source == null ? null : source.propertyLabel(),
                 source == null ? RuleDirection.ROOT_TO_ITEM : source.direction(),
-                WikimediaEntityLookup.defaultFetcher());
+                WikimediaEntityLookup.defaultFetcher(), references);
     }
 
     WikimediaFieldEnrichmentProvider(
             String propertyPid, WikimediaEntityLookup.JsonFetcher fetcher) {
-        this(propertyPid, null, RuleDirection.ROOT_TO_ITEM, fetcher);
+        this(propertyPid, null, RuleDirection.ROOT_TO_ITEM, fetcher, null);
     }
 
     WikimediaFieldEnrichmentProvider(
             String propertyPid, String propertyLabel, RuleDirection direction,
             WikimediaEntityLookup.JsonFetcher fetcher) {
+        this(propertyPid, propertyLabel, direction, fetcher, null);
+    }
+
+    WikimediaFieldEnrichmentProvider(
+            String propertyPid, String propertyLabel, RuleDirection direction,
+            WikimediaEntityLookup.JsonFetcher fetcher, ReferenceResolver references) {
+        this.references = references;
         this.propertyPid = propertyPid == null || propertyPid.isBlank()
                 ? null : propertyPid.trim();
         this.propertyLabel = propertyLabel == null ? "" : propertyLabel.trim();
@@ -118,13 +134,27 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
 
                 List<EnrichmentProposal.FieldCandidate> fields = new ArrayList<>();
                 Object value = bestValue(entity.claims(property));
-                // Entity-valued claims are QIDs. A
-                // text field wants the entity label, while a reference field must stay
-                // schema-incompatible until a real Viewable reference can be resolved.
-                if (value instanceof String entityQid
-                        && WikidataIds.isQid(entityQid) && textTarget(request)) {
-                    value = lookup.labels(List.of(entityQid)).execute(context)
-                            .getOrDefault(entityQid, entityQid);
+                // Entity-valued claims are QIDs. A text field wants the entity's label;
+                // a reference field wants the entity itself, resolved through the pool
+                // that owns instance identity. Both need the label, so it is fetched
+                // once here either way.
+                boolean createdReference = false;
+                if (value instanceof String entityQid && WikidataIds.isQid(entityQid)
+                        && (textTarget(request) || referenceTarget(request))) {
+                    String label = lookup.labels(List.of(entityQid)).execute(context)
+                                         .getOrDefault(entityQid, entityQid);
+                    if (textTarget(request)) {
+                        value = label;
+                    } else if (references == null) {
+                        // No resolver: leave the QID, so compatibility reports the
+                        // mismatch rather than the field silently filling with a string.
+                        value = entityQid;
+                    } else {
+                        ReferenceResolver.Resolved resolved = references.resolve(
+                                entityQid, label, targetTypeOf(request));
+                        value = resolved == null ? entityQid : resolved.value();
+                        createdReference = resolved != null && resolved.created();
+                    }
                 }
                 if (value != null) {
                     String incompatibility = FieldValueCompatibility.problem(
@@ -170,12 +200,26 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
         return best == null ? null : formatValue(best.value());
     }
 
-    private static boolean textTarget(EnrichmentRequest request) {
+    /** A field that holds an entity, not a rendering of one. */
+    private static boolean referenceTarget(EnrichmentRequest request) {
+        return kindOf(request) == objectview.field.FieldKind.REFERENCE;
+    }
+
+    /** The class the field expects its targets to be, so a created instance is stamped
+     *  as one instead of joining the pool untyped. */
+    private static String targetTypeOf(EnrichmentRequest request) {
         objectview.field.FieldRef schema = request.targetSchema();
-        if (schema == null) return false;
-        objectview.field.FieldKind kind = schema.collection()
-                ? schema.valueKind() : schema.kind();
-        return kind == objectview.field.FieldKind.TEXT;
+        return schema == null ? null : schema.targetType();
+    }
+
+    private static objectview.field.FieldKind kindOf(EnrichmentRequest request) {
+        objectview.field.FieldRef schema = request.targetSchema();
+        if (schema == null) return null;
+        return schema.collection() ? schema.valueKind() : schema.kind();
+    }
+
+    private static boolean textTarget(EnrichmentRequest request) {
+        return kindOf(request) == objectview.field.FieldKind.TEXT;
     }
 
     /** Format a claim value by its SHAPE, so a property chosen from real data works
