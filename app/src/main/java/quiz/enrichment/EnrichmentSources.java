@@ -24,10 +24,12 @@ public final class EnrichmentSources {
         }
 
         if (curation != null) {
-            String targetId = member.getIdentifier();
+            // Type matching belongs to IdentityLinks: a link recorded under this
+            // instance's base class, its subclass or a role it carries all identify it,
+            // and missing one reads as "no source" — which sends Find Data down the
+            // name-based path instead of the identified one.
             for (IdentityLink link : curation.identityLinks()) {
-                if (java.util.Objects.equals(type, link.type())
-                        && java.util.Objects.equals(targetId, link.targetId())) {
+                if (quiz.curation.IdentityLinks.matches(link, member)) {
                     add(result, link.sourceKind(), link.sourceId(), link.recordUrl());
                 }
             }

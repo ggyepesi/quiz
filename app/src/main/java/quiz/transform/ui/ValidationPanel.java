@@ -591,15 +591,14 @@ public final class ValidationPanel extends JPanel {
                 member, concreteType(member), curationStore()));
     }
 
-    /** The Wikidata QID of a pending (staged, not yet applied) identity for {@code member}. */
+    /** The Wikidata QID of a pending (staged, not yet applied) identity for {@code member}.
+     *  Matching is {@link quiz.curation.IdentityLinks}' job — a link written under the
+     *  instance's base class must still be found once it carries a subclass or a role. */
     private String stagedQid(Viewable member) {
         if (staging == null || member == null) return null;
-        String type = concreteType(member);
-        String targetId = member.getIdentifier();
         return staging.identityLinks().stream()
-                      .filter(l -> "Wikidata".equalsIgnoreCase(l.sourceKind()))
-                      .filter(l -> java.util.Objects.equals(l.type(), type))
-                      .filter(l -> java.util.Objects.equals(l.targetId(), targetId))
+                      .filter(l -> quiz.curation.IdentityLinks.matches(
+                              l, member, quiz.curation.IdentityLinks.WIKIDATA))
                       .map(IdentityLink::sourceId)
                       .filter(ValidationPanel::isQid)
                       .findFirst().orElse(null);
@@ -1440,7 +1439,8 @@ public final class ValidationPanel extends JPanel {
      *  detached durable write never blocks a batch fill. */
     private void commitApprovedIdentity(Viewable target, String qid, String canonicalName) {
         if (staging == null || target == null) return;
-        String targetType = concreteType(target);
+        // Written under the stable identity type — see quiz.curation.IdentityLinks.
+        String targetType = quiz.curation.IdentityLinks.stableType(target);
         String targetId = target.getIdentifier();
         if (targetId == null || targetId.isBlank()) return;
         String name = canonicalName == null || canonicalName.isBlank()

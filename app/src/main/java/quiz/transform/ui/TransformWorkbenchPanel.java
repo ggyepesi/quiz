@@ -332,7 +332,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // further pre-filtering and an all-identified scope still opens for inspection.
         List<quiz.enrichment.ResolveIdentitiesProcess.Subject> subjects = new ArrayList<>();
         for (Viewable member : resolvable) {
-            String memberType = member.typeName();
+            // The link is written under the STABLE identity type, not the most-specific
+            // class: a subclass or a role membership can move the latter, and the link
+            // would then stop matching the very instance it identifies.
+            String memberType = quiz.curation.IdentityLinks.stableType(member);
             subjects.add(new quiz.enrichment.ResolveIdentitiesProcess.Subject(
                     memberType, member.getIdentifier(), member.getDisplayName(),
                     currentQid(curation, memberType, member)));
@@ -402,32 +405,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     /** The instance's current qid: its own id when it IS a qid, else an approved Wikidata
-     *  identity link — so already-resolved members are skipped by the process. */
+     *  identity link — so already-resolved members are skipped by the process. Link keying
+     *  lives in {@link quiz.curation.IdentityLinks}, which reads a link written under any
+     *  type this instance carries. */
     private static String currentQid(
             quiz.curation.ManualCuration curation, String type, Viewable member) {
         String id = member.getIdentifier();
         if (quiz.source.WikidataSource.isQid(id)) {
             return id;
         }
-        if (curation == null) {
-            return null;
-        }
-        // Not a Wikidata-native identity — the resolved qid, if any, is curation history.
-        String durable = curation.identityLinks().stream()
-                .filter(link -> type.equals(link.type()) && id != null
-                        && id.equals(link.targetId())
-                        && "Wikidata".equalsIgnoreCase(link.sourceKind()))
-                .map(quiz.curation.IdentityLink::sourceId)
-                .findFirst().orElse(null);
-        if (durable != null) return durable;
-        quiz.curation.CurationStaging staging =
-                quiz.curation.CurationStaging.forCuration(curation);
-        return staging == null ? null : staging.identityLinks().stream()
-                .filter(link -> type.equals(link.type()) && id != null
-                        && id.equals(link.targetId())
-                        && "Wikidata".equalsIgnoreCase(link.sourceKind()))
-                .map(quiz.curation.IdentityLink::sourceId)
-                .findFirst().orElse(null);
+        return quiz.curation.IdentityLinks.wikidataQid(curation, member);
     }
 
     /** The card-header identity chip for a member: its native or curated Wikidata QID as a
@@ -437,6 +424,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         quiz.curation.ManualCuration curation = curation();
         if (member == null) {
             return null;
+        }
+        if (wikidata.WikidataIds.isStatementId(member.getIdentifier())) {
+            return IdentityChip.statement();
         }
         String qid = currentQid(curation, member.typeName(), member);
         // A native QID needs no curation sidecar. Conversely, do not label every member of a
@@ -451,11 +441,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             quiz.curation.ManualCuration curation, quiz.enrichment.ResolveIdentitiesDecision decision) {
         int changed = 0;
         for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : decision.resolved()) {
-            if (hasIdentityLink(curation, r)) {
+            if (quiz.curation.IdentityLinks.alreadyLinked(curation, r.targetId(), r.qid())) {
                 continue;
             }
             quiz.curation.IdentityLink link = new quiz.curation.IdentityLink(
-                    r.type(), r.targetId(), "Wikidata", r.qid(),
+                    r.type(), r.targetId(), quiz.curation.IdentityLinks.WIKIDATA, r.qid(),
                     "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata");
             quiz.curation.CurationStaging.forCuration(curation).stage(link);
             changed++;
@@ -465,24 +455,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
         updateScopeStatus();   // pending state on the scope buttons, immediately
         render();
-    }
-
-    private static boolean hasIdentityLink(
-            quiz.curation.ManualCuration curation,
-            quiz.enrichment.ResolveIdentitiesDecision.Resolved resolved) {
-        boolean durable = curation.identityLinks().stream().anyMatch(link ->
-                java.util.Objects.equals(link.type(), resolved.type())
-                        && java.util.Objects.equals(link.targetId(), resolved.targetId())
-                        && "Wikidata".equalsIgnoreCase(link.sourceKind())
-                        && java.util.Objects.equals(link.sourceId(), resolved.qid()));
-        if (durable) return true;
-        quiz.curation.CurationStaging staging =
-                quiz.curation.CurationStaging.forCuration(curation);
-        return staging != null && staging.identityLinks().stream().anyMatch(link ->
-                java.util.Objects.equals(link.type(), resolved.type())
-                        && java.util.Objects.equals(link.targetId(), resolved.targetId())
-                        && "Wikidata".equalsIgnoreCase(link.sourceKind())
-                        && java.util.Objects.equals(link.sourceId(), resolved.qid()));
     }
 
     /** Forget the staged identities. A staged assignment is by definition unsaved, so
@@ -712,17 +684,24 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             identitiesButton.setEnabled(false);
             return;
         }
+        long statements = scope.visibleMembers().stream()
+                .filter(member -> wikidata.WikidataIds.isStatementId(
+                        member.getIdentifier()))
+                .count();
         long identified = scope.visibleMembers().stream()
+                .filter(member -> !wikidata.WikidataIds.isStatementId(
+                        member.getIdentifier()))
                 .filter(member -> currentQid(curation, member.typeName(), member) != null)
                 .count();
-        long unresolved = scope.visibleMembers().size() - identified;
+        long unresolved = scope.visibleMembers().size() - statements - identified;
         String count = scope.visibleMembers().size() == scope.baseMembers().size()
                 ? scope.visibleMembers().size() + " shown"
                 : scope.visibleMembers().size() + " shown of "
                         + scope.baseMembers().size() + " group members";
         scopeStatus.setText((scope.selectedType() == null ? "View" : scope.selectedType())
                 + " · " + count + " · "
-                + identified + " identified · " + unresolved + " unresolved");
+                + identified + " identified · " + unresolved + " unresolved"
+                + (statements == 0 ? "" : " · " + statements + " statements"));
 
         curateFieldButton.setText(selectedField == null ? "Curate field…"
                 : "Curate " + selectedField.displayPath() + "…");
@@ -730,7 +709,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         // Resolution acts on the visible scope, so it needs one; the staging controls beside
         // it stay available even when the scope is empty (they act on what is already staged).
-        identitiesButton.setEnabled(curation != null && !scope.visibleMembers().isEmpty());
+        boolean hasResolvable = scope.visibleMembers().stream().anyMatch(member ->
+                !wikidata.WikidataIds.isStatementId(member.getIdentifier()));
+        identitiesButton.setEnabled(curation != null && hasResolvable);
     }
 
     /** The staging controls read the staging session directly — it is the single record of
