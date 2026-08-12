@@ -80,6 +80,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final SwingQuerySession queries =
             new SwingQuerySession(queryFactory.newContext());
     private final JButton cancelQueryButton = new JButton("Cancel request");
+    private final JButton cancelIdentityButton = new JButton("Cancel identity process");
     // Runs the identity-resolution process (off-EDT, with a review pause). Shares the
     // session's query context + log window, so its searches show in "Query logs…".
     private final SwingProcessRunner resolveRunner = new SwingProcessRunner(
@@ -158,6 +159,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         queries.runner().registerCancelButton(cancelQueryButton);
         queries.runner().cancelAction(requestClient::cancelCurrentQuery);
         top.add(cancelQueryButton);
+        resolveRunner.registerCancelButton(cancelIdentityButton);
+        top.add(cancelIdentityButton);
         toolbar.add(top);
 
         if (controller.domain() instanceof quiz.curation.Curatable c && c.curation() != null) {
@@ -290,82 +293,23 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private void openIdentityActions(List<Viewable> members, String type) {
         quiz.curation.ManualCuration curation = curation();
-        // Set once the modeless panel is shown, so an in-panel manual resolve can enable
-        // "Save identities" live instead of forcing a reopen.
-        java.util.concurrent.atomic.AtomicReference<CategorizedReviewPanel<Viewable>> panelRef =
-                new java.util.concurrent.atomic.AtomicReference<>();
-        List<CategorizedReviewPanel.Row<Viewable>> identified = new ArrayList<>();
-        List<CategorizedReviewPanel.Row<Viewable>> unresolved = new ArrayList<>();
-        for (Viewable member : members) {
-            String qid = currentQid(curation, member.typeName(), member);
-            JLabel name = new JLabel(member.getDisplayName());
-            if (qid != null) {
-                JCheckBox done = new JCheckBox("", false);
-                done.setEnabled(false);   // already identified — nothing to select
-                identified.add(new CategorizedReviewPanel.Row<>(member, done,
-                        CategorizedReviewPanel.Cell.of(name),
-                        CategorizedReviewPanel.Cell.stretch(IdentityChip.of(qid))));
-            } else {
-                // Manual fallback beside the batch resolve: pick the exact Wikidata entity
-                // by hand via Explore when the automated resolve finds nothing (or the wrong
-                // thing). Stages the approved identity through the same in-memory path.
-                JButton explore = new JButton("Explore…");
-                explore.setToolTipText(
-                        "Manually find and approve the Wikidata entity for this instance");
-                JCheckBox pick = new JCheckBox("", true);
-                // A slot that fills with the resolved QID chip in place, so a manual pick
-                // shows as "done" in this modeless panel without a full reopen.
-                JPanel chipSlot = new JPanel(new BorderLayout());
-                chipSlot.setOpaque(false);
-                explore.addActionListener(e -> exploreIdentityManually(member, resolvedQid -> {
-                    chipSlot.removeAll();
-                    chipSlot.add(IdentityChip.of(resolvedQid), BorderLayout.WEST);
-                    chipSlot.revalidate();
-                    chipSlot.repaint();
-                    explore.setText("Change…");
-                    pick.setSelected(false);
-                    pick.setEnabled(false);   // resolved — no longer a pending selection
-                    CategorizedReviewPanel<Viewable> open = panelRef.get();
-                    if (open != null) {
-                        open.setFooterEnabled("Save identities", true);   // now saveable, live
-                    }
-                }));
-                unresolved.add(new CategorizedReviewPanel.Row<>(
-                        member, pick,
-                        CategorizedReviewPanel.Cell.stretch(name),
-                        CategorizedReviewPanel.Cell.of(explore),
-                        CategorizedReviewPanel.Cell.of(chipSlot)));
-            }
-        }
-        List<CategorizedReviewPanel.Section<Viewable>> sections = List.of(
-                new CategorizedReviewPanel.Section<>("Identified",
-                        "Instances with a Wikidata identity", identified),
-                new CategorizedReviewPanel.Section<>("Unresolved",
-                        "Select which to resolve, then Apply selected", unresolved));
-
-        List<CategorizedReviewPanel.FooterAction> extra = new ArrayList<>();
-        if (!lastReviewItems.isEmpty()) {
-            extra.add(new CategorizedReviewPanel.FooterAction(
-                    identitiesDirty ? "Show pending result" : "Continue review",
-                    true, this::recallLastResult));
-        }
-        extra.add(new CategorizedReviewPanel.FooterAction(
-                "Save identities", identitiesDirty, this::saveIdentities));
-        extra.add(new CategorizedReviewPanel.FooterAction(
-                "Forget", !lastReviewItems.isEmpty(), this::forgetLastResult));
-
-        String prompt = type + " · " + identified.size() + " identified · "
-                + unresolved.size() + " unresolved";
-        javax.swing.JDialog dialog = CategorizedReviewPanel.showModeless(
-                this, "Wikidata identities", prompt, sections, extra,
-                "Resolve selected", new Dimension(720, 560),
-                checked -> {
-                    if (!checked.isEmpty()) {
-                        resolveIdentities(checked, type + " selected unresolved");
-                    }
-                });
-        panelRef.set(CategorizedReviewPanel.panelOf(dialog));
+        quiz.enrichment.IdentityResolutionPlan plan =
+                quiz.enrichment.IdentityResolutionPlan.inspect(
+                        type, members,
+                        member -> currentQid(curation, member.typeName(), member));
+        quiz.enrichment.ui.IdentityResolutionPlanPanel.showModeless(
+                this, plan,
+                unresolved -> resolveIdentities(unresolved,
+                        type + " unresolved from " + members.size() + " inspected"),
+                stagedIdentityCount(curation), this::saveIdentities, this::forgetLastResult);
     }
+
+    private static int stagedIdentityCount(quiz.curation.ManualCuration curation) {
+        quiz.curation.CurationStaging staging =
+                quiz.curation.CurationStaging.forCuration(curation);
+        return staging == null ? 0 : staging.identityLinks().size();
+    }
+
 
     /** Manually resolve ONE instance's identity: open Explore, and stage the approved
      *  QID through the same in-memory pending path the batch resolve uses (Save / Forget
@@ -437,6 +381,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     quiz.enrichment.ResolveIdentitiesDecision decision = outcome.result();
                     if (decision != null) {
                         applyResolvedIdentities(curation, decision);
+                        if (!decision.resolved().isEmpty()) {
+                            // Move directly from review to the explicit Apply/Forget boundary.
+                            String type = members.get(0).typeName();
+                            openIdentityActions(members, type == null ? "View" : type);
+                        }
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
                         JOptionPane.showMessageDialog(TransformWorkbenchPanel.this,
@@ -471,7 +420,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return null;
         }
         // Not a Wikidata-native identity — the resolved qid, if any, is curation history.
-        return curation.identityLinks().stream()
+        String durable = curation.identityLinks().stream()
+                .filter(link -> type.equals(link.type()) && id != null
+                        && id.equals(link.targetId())
+                        && "Wikidata".equalsIgnoreCase(link.sourceKind()))
+                .map(quiz.curation.IdentityLink::sourceId)
+                .findFirst().orElse(null);
+        if (durable != null) return durable;
+        quiz.curation.CurationStaging staging =
+                quiz.curation.CurationStaging.forCuration(curation);
+        return staging == null ? null : staging.identityLinks().stream()
                 .filter(link -> type.equals(link.type()) && id != null
                         && id.equals(link.targetId())
                         && "Wikidata".equalsIgnoreCase(link.sourceKind()))
@@ -513,7 +471,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             quiz.curation.IdentityLink link = new quiz.curation.IdentityLink(
                     r.type(), r.targetId(), "Wikidata", r.qid(),
                     "https://www.wikidata.org/wiki/" + r.qid(), r.label(), "wikidata");
-            curation.putIdentityLink(link);
+            quiz.curation.CurationStaging.forCuration(curation).stage(link);
             pending.put(identityKey(r.type(), r.targetId()), r);
             changed++;
         }
@@ -527,14 +485,21 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         updateScopeStatus();   // pending state on the scope buttons, immediately
         render();
         JOptionPane.showMessageDialog(this,
-                changed + " identity(ies) applied in memory —"
-                        + " inspect them, then \"Save identities\" or \"Forget result\".");
+                changed + " identity(ies) staged — inspect them, then Apply changes or Forget.");
     }
 
     private static boolean hasIdentityLink(
             quiz.curation.ManualCuration curation,
             quiz.enrichment.ResolveIdentitiesDecision.Resolved resolved) {
-        return curation.identityLinks().stream().anyMatch(link ->
+        boolean durable = curation.identityLinks().stream().anyMatch(link ->
+                java.util.Objects.equals(link.type(), resolved.type())
+                        && java.util.Objects.equals(link.targetId(), resolved.targetId())
+                        && "Wikidata".equalsIgnoreCase(link.sourceKind())
+                        && java.util.Objects.equals(link.sourceId(), resolved.qid()));
+        if (durable) return true;
+        quiz.curation.CurationStaging staging =
+                quiz.curation.CurationStaging.forCuration(curation);
+        return staging != null && staging.identityLinks().stream().anyMatch(link ->
                 java.util.Objects.equals(link.type(), resolved.type())
                         && java.util.Objects.equals(link.targetId(), resolved.targetId())
                         && "Wikidata".equalsIgnoreCase(link.sourceKind())
@@ -566,11 +531,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      *  result is by definition unsaved, this restores the pre-resolve state. */
     private void forgetLastResult() {
         quiz.curation.ManualCuration curation = curation();
-        if (identitiesDirty && curation != null) {
-            for (quiz.enrichment.ResolveIdentitiesDecision.Resolved r : lastApplied) {
-                curation.removeIdentityLink(r.type(), r.targetId(), "Wikidata");
-            }
-        }
+        if (identitiesDirty && curation != null)
+            quiz.curation.CurationStaging.forCuration(curation).discardIdentityLinks();
         clearPendingResult();
         render();
     }
@@ -589,7 +551,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (curation == null) {
             return true;
         }
-        int savedCount = lastApplied.size();   // reset after save, so capture it for the dialog
+        quiz.curation.CurationStaging stagedSession =
+                quiz.curation.CurationStaging.forCuration(curation);
+        int savedCount = stagedSession == null ? 0 : stagedSession.identityLinks().size();
         java.util.Set<String> appliedKeys = lastApplied.stream()
                 .map(resolved -> identityKey(resolved.type(), resolved.targetId()))
                 .collect(java.util.stream.Collectors.toSet());
@@ -611,7 +575,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             keepReview = choice == 0;
         }
         try {
-            curation.save();
+            stagedSession.applyIdentityLinks();
             identitiesDirty = false;
             lastApplied = List.of();
             lastReviewItems = keepReview ? List.copyOf(unresolvedReview) : List.of();

@@ -56,6 +56,14 @@ public final class CurationStaging implements CorrectionSource {
         return List.copyOf(identities.values());
     }
 
+    /** Discard only pending identity work, leaving staged field corrections intact. */
+    public synchronized void discardIdentityLinks() {
+        if (identities.isEmpty()) return;
+        identities.clear();
+        changed();
+        releaseIfUnused();
+    }
+
     public synchronized int size() {
         return corrections.size() + identities.size();
     }
@@ -93,6 +101,28 @@ public final class CurationStaging implements CorrectionSource {
         }
 
         corrections.clear();
+        identities.clear();
+        changed();
+        releaseIfUnused();
+    }
+
+    /** Persist only pending identity links. An identity review must not commit unrelated
+     *  field corrections staged by another modeless curation surface. */
+    public synchronized void applyIdentityLinks() throws IOException {
+        if (identities.isEmpty()) return;
+        List<IdentityLink> previous = target.identityLinks();
+        try {
+            for (IdentityLink link : identities.values()) target.putIdentityLink(link);
+            target.save();
+        } catch (IOException | RuntimeException failure) {
+            for (IdentityLink pending : identities.values()) {
+                target.removeIdentityLink(
+                        pending.type(), pending.targetId(), pending.sourceKind());
+                previous.stream().filter(old -> sameIdentityKey(old, pending))
+                        .forEach(target::putIdentityLink);
+            }
+            throw failure;
+        }
         identities.clear();
         changed();
         releaseIfUnused();

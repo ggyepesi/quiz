@@ -715,9 +715,18 @@ public final class ValidationPanel extends JPanel {
                                                + (repairable == 1 ? "" : "s") + "…");
             resolveNamesButton.setToolTipText(
                     "Fetch the missing labels for the referenced entities in this scope");
+            // Beside the repair, in the drill panel the reader is already looking at.
+            // The same action exists in the toolbar and on the field row, and both were
+            // missed twice — an affordance is only real where the eye already is.
+            JButton showThese = new JButton("Show the " + repairable + " member"
+                                                    + (repairable == 1 ? "" : "s") + "…");
+            showThese.setToolTipText(
+                    "Drill the members whose " + selectedFieldPath + " shows a QID");
+            showThese.addActionListener(e ->
+                    showUnnamedReferences(FieldPath.parse(selectedFieldPath)));
             names.add(headerLine(
                     new JLabel("References showing a QID instead of a name:"),
-                    resolveNamesButton));
+                    showThese, resolveNamesButton));
             target.add(names);
         }
 

@@ -41,4 +41,24 @@ class CurationStagingTest {
         assertEquals(1, applied.identityLinks().size());
         assertEquals(0, firstPanel.size());
     }
+
+    @Test void identityApplyLeavesFieldCorrectionsStaged(@TempDir Path dir) throws Exception {
+        ManualCuration durable = new ManualCuration(
+                dir.resolve("identity-only.curation.json").toFile());
+        CurationStaging staging = CurationStaging.forCuration(durable);
+        staging.stage(new Correction(
+                "Movie", "local-1", "year", "1999", Correction.MANUAL,
+                null, CorrectionPolicy.REPLACE, null));
+        staging.stage(new IdentityLink(
+                "Movie", "local-1", "Wikidata", "Q1",
+                "https://www.wikidata.org/wiki/Q1", "Movie", "manual"));
+
+        staging.applyIdentityLinks();
+
+        ManualCuration saved = new ManualCuration(durable.file()).load();
+        assertEquals(1, saved.identityLinks().size());
+        assertTrue(saved.corrections().isEmpty());
+        assertEquals(1, staging.corrections().size());
+        assertTrue(staging.identityLinks().isEmpty());
+    }
 }
