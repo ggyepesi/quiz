@@ -81,10 +81,10 @@ public final class FieldCoverageColumns implements FieldTableContributor {
                 // Which fields hold references that render as a bare QID. Present, so
                 // invisible in every other column — you would otherwise have to drill
                 // each field in turn to discover that composer has 700 of them.
-                column("Unnamed", 72, p -> {
-                    int unnamed = coverage(p).unnamed();
-                    return unnamed == 0 ? "" : String.valueOf(unnamed);
-                }));
+                // Always a number, never blank: a blank cell cannot be told from a
+                // column that is not computing at all, which is exactly how a genuine
+                // zero and a broken count came to look the same.
+                column("Unnamed", 72, p -> String.valueOf(coverage(p).unnamed())));
     }
 
     /** The working set, never null — a supplier may return null before the first render. */
