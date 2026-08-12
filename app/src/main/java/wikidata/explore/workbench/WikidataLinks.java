@@ -21,6 +21,14 @@ public final class WikidataLinks {
     private WikidataLinks() {
     }
 
+    /** The value→URL mapping for card rendering: a bare Wikidata id becomes a link,
+     *  anything else is left alone. One supplier so every view links identically
+     *  instead of each remembering to. */
+    public static java.util.function.Function<Object, String> valueLinker() {
+        return value -> value instanceof CharSequence text && isId(text.toString().trim())
+                ? url(text.toString().trim()) : null;
+    }
+
     public static boolean isId(String s) {
         return s != null && wikidata.WikidataIds.isId(s.trim());
     }

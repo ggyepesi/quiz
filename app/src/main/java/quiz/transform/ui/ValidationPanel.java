@@ -1521,6 +1521,7 @@ public final class ValidationPanel extends JPanel {
     // curation panel uses), so a missing member is the object — click to select it.
     private JComponent instancesView(List<Viewable> missing, String type) {
         return objectview.view.SearchableView.builder(missing)
+                .valueLinker(wikidata.explore.workbench.WikidataLinks.valueLinker())
                                                    .sample(missing.get(0))
                                                    .hiddenFields(domain.structuralFields(type))
                                                    .fieldTypes(domain.fieldTypes(type))

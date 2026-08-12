@@ -70,6 +70,7 @@ public final class IdentityResolutionPlanPanel extends JPanel {
         java.util.Map<String, String> qids = new java.util.HashMap<>();
         entries.forEach(e -> qids.put(key(e.member()), e.currentQid()));
         return SearchableView.builder(members)
+                .valueLinker(wikidata.explore.workbench.WikidataLinks.valueLinker())
                 .sample(members.get(0))
                 .mode(objectview.render.RenderingMode.CARD)
                 .collapsible(false)
