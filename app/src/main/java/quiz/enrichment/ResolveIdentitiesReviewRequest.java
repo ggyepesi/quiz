@@ -38,23 +38,28 @@ public record ResolveIdentitiesReviewRequest(
         }
 
         /**
-         * The confident pick: the FIRST exact-label match, or null when none matches.
+         * The confident pick: the TOP-RANKED candidate, and only when its label matches
+         * this instance's name exactly. Null otherwise — which routes the instance to the
+         * ambiguous group, where the same top candidate is offered pre-selected.
          *
-         * <p>Candidates come back in Wikidata relevance order, so the top exact hit is the
-         * canonical entity ("India" → Q668). Homonyms sharing the label no longer demote it
-         * to ambiguous — ranking decides.</p>
+         * <p>Candidates come back in relevance order, so an exact label at rank 0 is the
+         * canonical entity ("India" → Q668, undisturbed by the homonym given name that
+         * shares its label). Accepting an exact label at ANY rank instead let a worse
+         * candidate overrule a better one: searching "Franklin D. Roosevelt" ranks Q8007
+         * first but labels him "Franklin <b>Delano</b> Roosevelt", so the exactly-labelled
+         * Paris Métro station at rank 1 won — and confident results are the ones a bulk
+         * Stage writes without further review.</p>
          *
          * <p>This is the classification the review surface groups by, so it belongs to the
          * data rather than to whichever panel renders it.</p>
          */
         public IdentityMatch exactMatch() {
-            for (IdentityMatch match : candidates) {
-                if (match.label() != null && name != null
-                        && match.label().equalsIgnoreCase(name)) {
-                    return match;
-                }
+            if (candidates.isEmpty()) {
+                return null;
             }
-            return null;
+            IdentityMatch top = candidates.get(0);
+            return top.label() != null && name != null
+                    && top.label().equalsIgnoreCase(name) ? top : null;
         }
     }
 

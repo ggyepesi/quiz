@@ -61,6 +61,27 @@ class IdentityResultCardsTest {
         assertNull(card(results, "No match").decision().get());
     }
 
+    /**
+     * An exact label ranked below a better candidate is not bulk-safe: it lands in
+     * Ambiguous with the top-ranked candidate pre-selected, so approving it is one click
+     * — but a click. "Stage all safe" would otherwise write a Paris Métro station as
+     * Franklin D. Roosevelt's identity.
+     */
+    @Test void aLowerRankedExactLabelIsReviewedRatherThanBulkStaged() {
+        ProcessWorkflowResults<ResolveIdentitiesDecision.Resolved> results =
+                IdentityResultCards.of(new ResolveIdentitiesProcess.Result(List.of(
+                        new InstanceIdentity("President", "fdr", "Franklin D. Roosevelt", "",
+                                List.of(new IdentityMatch("Q8007", "Franklin Delano Roosevelt",
+                                                "president of the United States"),
+                                        new IdentityMatch("Q1445234", "Franklin D. Roosevelt",
+                                                "Paris Métro station")))), 0, 1, 0), "");
+
+        assertEquals(0, tab(results, "Confident").cards().size());
+        var card = tab(results, "Ambiguous").cards().get(0);
+        assertFalse(card.includeInApplyAll());
+        assertEquals("Q8007", card.decision().get().qid());
+    }
+
     /** Staging writes the identity onto the INSTANCE, not onto the matched entity. */
     @Test void aDecisionCarriesTheInstanceItIdentifies() {
         ResolveIdentitiesDecision.Resolved resolved =
@@ -72,8 +93,13 @@ class IdentityResultCardsTest {
     }
 
     private static ProcessWorkflowResults.Card<ResolveIdentitiesDecision.Resolved> card(
-            ProcessWorkflowResults<ResolveIdentitiesDecision.Resolved> results, String tab) {
-        return results.tabs().stream().filter(t -> t.title().equals(tab))
-                .findFirst().orElseThrow().cards().get(0);
+            ProcessWorkflowResults<ResolveIdentitiesDecision.Resolved> results, String title) {
+        return tab(results, title).cards().get(0);
+    }
+
+    private static ProcessWorkflowResults.Tab<ResolveIdentitiesDecision.Resolved> tab(
+            ProcessWorkflowResults<ResolveIdentitiesDecision.Resolved> results, String title) {
+        return results.tabs().stream().filter(t -> t.title().equals(title))
+                .findFirst().orElseThrow();
     }
 }

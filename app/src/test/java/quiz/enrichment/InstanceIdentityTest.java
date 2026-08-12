@@ -23,6 +23,18 @@ class InstanceIdentityTest {
         assertEquals("Q668", india.exactMatch().qid());
     }
 
+    /** Measured on the 45 US presidents: this is the one case where an exact label
+     *  disagreed with the ranking, and the ranking was right. */
+    @Test void anExactLabelBelowTheTopHitDoesNotWin() {
+        InstanceIdentity fdr = new InstanceIdentity(
+                "President", "fdr", "Franklin D. Roosevelt", "", List.of(
+                new IdentityMatch("Q8007", "Franklin Delano Roosevelt",
+                        "president of the United States from 1933 to 1945"),
+                new IdentityMatch("Q1445234", "Franklin D. Roosevelt", "Paris Métro station")));
+
+        assertNull(fdr.exactMatch());
+    }
+
     @Test void exactMatchIsNullWhenNoLabelEqualsTheName() {
         InstanceIdentity x = new InstanceIdentity("State", "x", "Zubrowka", "", List.of(
                 new IdentityMatch("Q1", "Poland", ""),
