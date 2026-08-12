@@ -51,6 +51,9 @@ public final class FieldCoverageColumns implements FieldTableContributor {
     }
 
     private final DomainModel domain;
+    // Invoked when a row's unnamed-reference action is pressed, with that row's field
+    // path. Optional: a picker that only reports coverage supplies none.
+    private java.util.function.Consumer<FieldPath> onRepairNames;
     private final Supplier<String> baseType;
     private final Supplier<? extends Collection<? extends Viewable>> instances;
     // JTable asks for the same cell values repeatedly while painting. Cache one complete
@@ -71,6 +74,31 @@ public final class FieldCoverageColumns implements FieldTableContributor {
 
     @Override public SelectionMode selectionMode() {
         return SelectionMode.SINGLE;
+    }
+
+    /** Makes the Unnamed count actionable: the row offers a control that takes the
+     *  caller straight to those references. A number the reader cannot act on leaves
+     *  the report and the repair in different places. */
+    public void onRepairNames(java.util.function.Consumer<FieldPath> handler) {
+        this.onRepairNames = handler;
+    }
+
+    @Override public List<RowAction> actions() {
+        if (onRepairNames == null) {
+            return List.of();
+        }
+        return List.of(new RowAction() {
+            @Override public String label(FieldRow row) {
+                int unnamed = coverage(row.path()).unnamed();
+                return unnamed == 0 ? "" : "Name " + unnamed + "…";
+            }
+            @Override public boolean enabled(FieldRow row) {
+                return coverage(row.path()).unnamed() > 0;
+            }
+            @Override public void run(FieldRow row) {
+                onRepairNames.accept(row.path());
+            }
+        });
     }
 
     @Override public List<ExtraColumn> columns() {

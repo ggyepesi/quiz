@@ -201,6 +201,10 @@ public final class ValidationPanel extends JPanel {
         // NOT the constructor parameter — which "Curate data" passes as null.
         coverageColumns = new FieldCoverageColumns(
                 domain, () -> type, () -> this.instances);
+        // The Unnamed count is actionable: pressing it selects that field and switches
+        // to the scope those members live in, so the report and the repair are reached
+        // from the same place instead of requiring the reader to know a filter exists.
+        coverageColumns.onRepairNames(this::showUnnamedReferences);
         coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null, coverageColumns);
         coverage.setChangeListener(this::onFieldSelected);
 
@@ -251,7 +255,12 @@ public final class ValidationPanel extends JPanel {
             }
         });
 
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        // Wrapping, not plain FlowLayout: this bar carries eight controls, and in
+        // BorderLayout.NORTH a plain FlowLayout reports one row's height while laying
+        // out several — so the overflow is clipped and the user cannot tell the
+        // controls exist. That is how the Values scope became unfindable.
+        JPanel bar = new JPanel(
+                new objectview.utils.swing.WrapLayout(FlowLayout.LEFT, 6, 4));
         bar.add(new JLabel("Type:"));
         bar.add(typeCombo);
         bar.add(new JLabel("Values:"));
@@ -679,14 +688,19 @@ public final class ValidationPanel extends JPanel {
         }
 
         // Repairing a reference's NAME is not the same job as filling the field: the
-        // value is already right, only its target has no label. Offered exactly where
-        // that is the gap being looked at.
-        if (scopeFilter == ScopeFilter.UNNAMED_REFERENCE) {
+        // value is already right, only its target has no label. So it is offered
+        // wherever the selected field HAS such references — gating it behind the
+        // matching scope hid the cure from the column that reports the disease.
+        int repairable = unnamedTargets().size();
+        if (repairable > 0) {
             JPanel names = titledBlock("Names");
+            resolveNamesButton.setText("Resolve " + repairable + " name"
+                                               + (repairable == 1 ? "" : "s") + "…");
             resolveNamesButton.setToolTipText(
                     "Fetch the missing labels for the referenced entities in this scope");
-            names.add(headerLine(new JLabel("These references show a QID:"),
-                                 resolveNamesButton));
+            names.add(headerLine(
+                    new JLabel("References showing a QID instead of a name:"),
+                    resolveNamesButton));
             target.add(names);
         }
 
@@ -872,10 +886,14 @@ public final class ValidationPanel extends JPanel {
      *  string, and the label is recorded against the entity's QID either way. */
     private java.util.LinkedHashSet<String> unnamedTargets() {
         java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
-        if (selectedFieldPath == null) return out;
+        if (selectedFieldPath == null || selectedFieldType == null) return out;
         FieldPath path = FieldPath.parse(selectedFieldPath);
         boolean entityOrigin = domain.entityOrigin(selectedFieldType, path);
-        for (Viewable member : drilledInstances) {
+        // Over the TYPE's members, not the drilled scope: the count then matches the
+        // Unnamed column, and the action is available from any scope — a name is
+        // repaired on the entity, so which films are currently listed is irrelevant.
+        for (Viewable member : instances) {
+            if (!domain.isInstanceOf(member, selectedFieldType)) continue;
             out.addAll(FieldCoverageColumns.unnamedReferences(member, path, entityOrigin));
         }
         return out;
@@ -894,6 +912,16 @@ public final class ValidationPanel extends JPanel {
         }
         status.setText("Staged " + staged + " name(s); Apply to write them.");
         updateApplyButton();
+    }
+
+    /** Selects {@code path} and drills the members whose reference has no name. */
+    private void showUnnamedReferences(FieldPath path) {
+        identityTask = false;
+        syncScopeChoices();
+        scopeFilter = ScopeFilter.UNNAMED_REFERENCE;
+        scopeCombo.setSelectedItem(scopeFilter);
+        coverage.setSelectedPath(path);
+        onFieldSelected();
     }
 
     /** Starts source discovery; true means a picker was opened asynchronously. */
