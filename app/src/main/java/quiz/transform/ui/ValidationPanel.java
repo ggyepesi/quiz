@@ -863,21 +863,25 @@ public final class ValidationPanel extends JPanel {
             return;
         }
         resolveNamesButton.setEnabled(false);
-        status.setText("Resolving " + unnamed.size() + " reference name(s)…");
-        queryRunner.runQuiet(
-                new quiz.enrichment.ResolveReferenceLabelsQuery(unnamed),
-                result -> SwingUtilities.invokeLater(() -> {
-                    stageNames(result.labels());
+        // The established road: a cancellable, logged process that raises ONE review and
+        // stages only what the reader accepts. Registered with the same runner as Find
+        // Data, so Cancel governs it too — a 39-request repair must not be a dead button.
+        findDataRunner.run(
+                new quiz.enrichment.ResolveNamesProcess(unnamed,
+                        selectedFieldType + "." + selectedFieldPath),
+                outcome -> SwingUtilities.invokeLater(() -> {
                     resolveNamesButton.setEnabled(true);
-                    if (result.failedBatches() > 0) {
-                        status.setText("Staged " + result.labels().size()
-                                + " name(s); " + result.failedBatches()
-                                + " batch(es) failed. Apply to write resolved names.");
+                    quiz.enrichment.ResolveNamesProcess.Result result = outcome.result();
+                    if (result != null) stageNames(result.accepted());
+                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
+                        JOptionPane.showMessageDialog(ValidationPanel.this,
+                                "Name lookup failed: " + outcome.error().getMessage());
                     }
                 }),
-                error -> SwingUtilities.invokeLater(() -> {
+                ex -> SwingUtilities.invokeLater(() -> {
                     resolveNamesButton.setEnabled(true);
-                    status.setText("Name lookup failed: " + error.getMessage());
+                    JOptionPane.showMessageDialog(ValidationPanel.this,
+                            "Name lookup failed: " + ex.getMessage());
                 }));
     }
 
@@ -899,18 +903,20 @@ public final class ValidationPanel extends JPanel {
         return out;
     }
 
-    private void stageNames(Map<String, String> labels) {
-        if (staging == null || labels == null) return;
+    /** Stages the names the reader accepted. One correction per ENTITY, so it fixes
+     *  every instance referring to it. */
+    private void stageNames(List<quiz.enrichment.ResolveNamesProcess.Name> accepted) {
+        if (staging == null || accepted == null) return;
         int staged = 0;
-        for (Map.Entry<String, String> entry : labels.entrySet()) {
-            String label = entry.getValue();
-            if (label == null || label.isBlank() || label.equals(entry.getKey())) {
+        for (quiz.enrichment.ResolveNamesProcess.Name name : accepted) {
+            if (name.label() == null || name.label().isBlank()
+                    || name.label().equals(name.qid())) {
                 continue;
             }
-            staging.stage(Correction.entityLabel(entry.getKey(), label, "wikidata"));
+            staging.stage(Correction.entityLabel(name.qid(), name.label(), "wikidata"));
             staged++;
         }
-        status.setText("Staged " + staged + " name(s); Apply to write them.");
+        status.setText("Staged " + staged + " name(s); Apply, then reload the domain.");
         updateApplyButton();
     }
 
@@ -1217,6 +1223,13 @@ public final class ValidationPanel extends JPanel {
                     SwingProcessInput.await(cancellation, completed ->
                             EnrichmentReviewPanel.showModeless(
                                     this, review.title(), review.proposal(), completed));
+            return request.responseType().cast(answer);
+        }
+        if (request instanceof quiz.enrichment.ResolveNamesProcess.ReviewRequest names) {
+            List<quiz.enrichment.ResolveNamesProcess.Name> answer =
+                    SwingProcessInput.await(cancellation, completed ->
+                            quiz.enrichment.ui.ResolvedNamesReviewPanel.showModeless(
+                                    this, names, completed));
             return request.responseType().cast(answer);
         }
         if (request instanceof quiz.enrichment.FindDataBatchReviewRequest batch) {
