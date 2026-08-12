@@ -107,4 +107,9 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
             quiz.curation.Correction correction) throws Exception {
         return new ModelFieldRulePromoter(modelFile, this).promote(correction);
     }
+
+    @Override public wikidata.explore.model.FieldSourceMapping declaredSource(
+            String type, String field) {
+        return new ModelFieldRulePromoter(modelFile, this).declaredSource(type, field);
+    }
 }

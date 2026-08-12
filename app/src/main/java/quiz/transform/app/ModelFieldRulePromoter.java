@@ -7,6 +7,7 @@ import quiz.curation.ValueSource;
 import quiz.transform.ui.DomainModel;
 import quiz.transform.ui.FieldDefinitions;
 import wikidata.explore.model.FieldProductionKind;
+import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -79,6 +80,34 @@ final class ModelFieldRulePromoter {
             Files.deleteIfExists(temporary.toPath());
         }
         return preview;
+    }
+
+    /**
+     * The rule this field already has in the model, or null.
+     *
+     * <p>Read-only, so unlike {@link #loadModel} it does not require the model to be
+     * writable: seeding curation from a declaration must work for a model you can only
+     * read. A field with no property declared yields null rather than an empty rule —
+     * "declared as nothing" and "not declared" are different, and only the second should
+     * send the user to the property picker.
+     */
+    FieldSourceMapping declaredSource(String type, String field) {
+        if (modelFile == null || !modelFile.isFile() || type == null || field == null) {
+            return null;
+        }
+        try {
+            GeneratedProjectModel model =
+                    new GeneratedProjectModelStore().load(modelFile);
+            GeneratedFieldModel declared = findField(model.findClass(type), field);
+            if (declared == null || declared.mapping() == null
+                    || declared.mapping().propertyPid() == null
+                    || declared.mapping().propertyPid().isBlank()) {
+                return null;
+            }
+            return declared.mapping();
+        } catch (Exception unreadable) {
+            return null;   // a model we cannot read simply contributes no seed
+        }
     }
 
     private GeneratedProjectModel loadModel() throws Exception {

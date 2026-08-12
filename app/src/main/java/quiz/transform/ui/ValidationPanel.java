@@ -759,7 +759,56 @@ public final class ValidationPanel extends JPanel {
             // No route is configured and no member resolves to a Wikidata entity yet —
             // fall through so runFillBatch reports that identities must be resolved first.
         }
+        if (!confirmFill(key, media)) {
+            return;
+        }
         runFillBatch(path);
+    }
+
+    /**
+     * Shows what the load will do before it does it: which members, from which source,
+     * and where the values will land.
+     *
+     * <p>The run reaches an external service once per member and can take minutes over
+     * a large scope, so starting it is a decision — and the source it will use may have
+     * been seeded from the model rather than chosen here, which makes it worth stating
+     * rather than assuming the user knows.
+     */
+    private boolean confirmFill(FieldKey key, boolean media) {
+        FieldSourceMapping source = media ? null : sourceFor(key);
+        FieldSourceMapping fallback = media ? null : fallbackSourceFor(key);
+
+        StringBuilder plan = new StringBuilder("<html><b>Load values for ")
+                .append(key.type()).append('.').append(key.path())
+                .append("</b><br><br>");
+        plan.append("Members: <b>").append(drilledInstances.size()).append("</b> ")
+            .append(scopeDescription(scopeFilter)).append("<br>");
+        if (media) {
+            plan.append("Source: Wikidata image (P18) / Wikimedia Commons<br>");
+        } else {
+            plan.append("Wikidata: ").append(describe(source)).append("<br>");
+            plan.append("Wikipedia fallback: ").append(fallback == null
+                    ? "none — Wikidata only" : describe(fallback)).append("<br>");
+        }
+        plan.append("<br>One request per member. Nothing is written yet: every value ")
+            .append("comes back for review, and Apply is still a separate step.</html>");
+
+        return JOptionPane.showConfirmDialog(
+                this, new JLabel(plan.toString()), "Load values",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION;
+    }
+
+    private static String describe(FieldSourceMapping source) {
+        if (source == null || source.propertyPid() == null
+                || source.propertyPid().isBlank()) {
+            return "no property configured";
+        }
+        String label = source.propertyLabel() == null || source.propertyLabel().isBlank()
+                ? "" : source.propertyLabel() + " ";
+        String direction = source.direction() == RuleDirection.ITEM_TO_ROOT
+                ? " (incoming)" : "";
+        return label + "(" + source.propertyPid() + ")" + direction;
     }
 
     /** Starts source discovery; true means a picker was opened asynchronously. */
@@ -830,9 +879,30 @@ public final class ValidationPanel extends JPanel {
 
     private FieldSourceMapping sourceFor(FieldKey key) {
         if (key != null && !fieldSources.containsKey(key)) {
-            seedFieldSourceFromCuration(key);
+            // The model's declaration first: it is what the domain was generated with,
+            // so asking for it again is asking the user to re-enter known configuration.
+            // Past corrections are the fallback, for a field the model never declared.
+            if (!seedFieldSourceFromModel(key)) {
+                seedFieldSourceFromCuration(key);
+            }
         }
         return key == null ? null : fieldSources.get(key);
+    }
+
+    /** Seed this field's source from the backing ModelBuilder model. True when the model
+     *  declared one — {@code locations -> P840} is already in movies.model.json, and
+     *  re-asking for it was the gap this closes. */
+    private boolean seedFieldSourceFromModel(FieldKey key) {
+        if (!(domain instanceof quiz.curation.FieldRulePromoter modelBacked)) {
+            return false;
+        }
+        FieldSourceMapping declared = modelBacked.declaredSource(key.type(), key.path());
+        if (declared == null || declared.propertyPid() == null
+                || declared.propertyPid().isBlank()) {
+            return false;
+        }
+        fieldSources.put(key, declared);
+        return true;
     }
 
     /** Reuse a property already recorded for this field rather than re-discovering it: every
