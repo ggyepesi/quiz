@@ -2,6 +2,8 @@ package wikidata.explore.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MembershipPatternTest {
@@ -93,5 +95,64 @@ class MembershipPatternTest {
         assertEquals(MembershipPattern.REIFIED, MembershipPattern.of(c));
         assertEquals("Reified statements (P1411 of OscarNominations)",
                 MembershipPattern.describe(c));
+    }
+    /** A kind class has no membership query by design — its members are ASSIGNED by
+     *  evidence — so reading "Unconfigured" would say the opposite of the truth and
+     *  leave Apply with no visible trace anywhere on the class. */
+    @Test void anEvidenceRuleConfiguresAClassThatQueriesNothing() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        project.addClass(person);
+
+        assertEquals(MembershipPattern.UNCONFIGURED,
+                MembershipPattern.of(person, project));
+
+        project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        assertEquals(MembershipPattern.EVIDENCE_KIND,
+                MembershipPattern.of(person, project));
+        assertEquals("Evidence-derived kind (P31 = Q5)",
+                MembershipPattern.describe(person, project));
+    }
+
+    @Test void theDescriptionNamesTheFirstEvidenceValuesAndCountsTheRest() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel film = new GeneratedClassModel("Film");
+        project.addClass(film);
+        project.addEntityKindRule(new EntityKindRule("Film",
+                List.of("Q11424", "Q24862", "Q17517379", "Q202866", "Q506240")));
+
+        assertEquals("Evidence-derived kind (P31 = Q11424, Q24862, Q17517379, +2)",
+                MembershipPattern.describe(film, project));
+    }
+
+    /** Being a field's target drives role inference and referent loads; an evidence
+     *  rule does not, so REFERENCED still wins when a class is both. */
+    @Test void aFieldTargetStaysReferencedEvenWithAKindRule() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        project.addClass(person);
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        project.addClass(nomination);
+        project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        assertEquals(MembershipPattern.REFERENCED,
+                MembershipPattern.of(person, project));
+    }
+
+    @Test void queriedMembershipDescriptionWinsOverAnIncidentalKindRule() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.instanceMapping().propertyPid("P31");
+        person.instanceMapping().sourceQid("Q5");
+        project.addClass(person);
+        project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        assertEquals(MembershipPattern.SINGLE_TYPE,
+                MembershipPattern.of(person, project));
+        assertEquals("Single type (Q5)",
+                MembershipPattern.describe(person, project));
     }
 }

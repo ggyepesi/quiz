@@ -3,6 +3,7 @@ package wikidata.explore.model;
 import wikidata.WikidataIds;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -25,6 +26,10 @@ public enum MembershipPattern {
      *  points at it, so never "Unconfigured". Requires project context to detect (see
      *  {@link #of(GeneratedClassModel, GeneratedProjectModel)}). */
     REFERENCED("Referenced only"),
+    /** Members are not queried at all: an evidence rule assigns this class to entities
+     *  already in the pool (P31 = Q5 → Person). Configured, but by classification rather
+     *  than by a membership query — so it must not read as "Unconfigured". */
+    EVIDENCE_KIND("Evidence-derived kind"),
     /** {@code P31 = Qx} — every member is the same single type. */
     SINGLE_TYPE("Single type"),
     /** {@code P31 ∈ {type, subtypes…}} — members span several (sub)types. */
@@ -57,10 +62,15 @@ public enum MembershipPattern {
     public static MembershipPattern of(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
         MembershipPattern base = of(clazz);
-        if (base == UNCONFIGURED && derivedFrom(clazz, project) != null) {
+        if (base != UNCONFIGURED) {
+            return base;
+        }
+        // REFERENCED first: being a field's target drives real machinery (role
+        // inference, referent field loads), which an evidence rule does not.
+        if (derivedFrom(clazz, project) != null) {
             return REFERENCED;
         }
-        return base;
+        return kindRule(clazz, project) == null ? base : EVIDENCE_KIND;
     }
 
     /** The field that derives a referenced-only class's membership, or null. The
@@ -89,6 +99,24 @@ public enum MembershipPattern {
                     }
                     return new DerivedFrom(owner.className(), f.name(), pid);
                 }
+            }
+        }
+        return null;
+    }
+
+    /** The configured evidence rule naming this class, or null. */
+    public static EntityKindRule kindRule(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        if (clazz == null || project == null) {
+            return null;
+        }
+        String name = clean(clazz.className());
+        if (name.isEmpty()) {
+            return null;
+        }
+        for (EntityKindRule rule : project.entityKindRules()) {
+            if (rule != null && rule.isConfigured() && name.equals(clean(rule.className()))) {
+                return rule;
             }
         }
         return null;
@@ -142,6 +170,13 @@ public enum MembershipPattern {
             return "Derived from " + via
                     + (d.pid().matches("(?i)P\\d+") ? " (" + d.pid() + ")" : "");
         }
+        EntityKindRule kind = kindRule(clazz, project);
+        if (of(clazz, project) == EVIDENCE_KIND && kind != null) {
+            List<String> qids = kind.evidenceQids();
+            String shown = String.join(", ", qids.subList(0, Math.min(3, qids.size())));
+            return EVIDENCE_KIND.label + " (" + kind.propertyPid() + " = " + shown
+                    + (qids.size() > 3 ? ", +" + (qids.size() - 3) : "") + ")";
+        }
         return describe(clazz);
     }
 
@@ -174,7 +209,7 @@ public enum MembershipPattern {
             // REFERENCED needs project context to name its deriving field, so it is
             // only produced by of(clazz, project); reached here only if a caller uses
             // the single-arg path, where the bare label is the best we can say.
-            case REFERENCED, UNCONFIGURED -> p.label;
+            case REFERENCED, EVIDENCE_KIND, UNCONFIGURED -> p.label;
         };
     }
 

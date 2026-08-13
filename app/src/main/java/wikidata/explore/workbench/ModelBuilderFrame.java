@@ -439,7 +439,35 @@ public class ModelBuilderFrame extends JFrame {
         if (entityKindsWindow != null) entityKindsWindow.dispose();
         entityKindsWindow = new JFrame("Evidence-derived entity kinds");
         entityKindsWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        entityKindsWindow.add(new EntityKindRulesPanel(projectModel, this::modelChanged));
+        // Labels for the vocabulary picker come from the loaded pool — the same objects
+        // the vocabulary was derived from, so a value always reads as what it is.
+        // REACHABLE, not the roots: a vocabulary value (Q5 "human") is a nested field
+        // value and never a top-level object, so a roots-only scan finds no labels at all.
+        java.util.Map<String, String> labels = new java.util.concurrent.ConcurrentHashMap<>();
+        // The reachable graph can be large. Warm the optional label cache away from
+        // the EDT; until it is ready the picker safely displays the QID fallback.
+        GenerationRun labelRun = lastRun;
+        if (labelRun != null && labelRun.dynamicObjects() != null) {
+            new SwingWorker<Void, Void>() {
+                @Override protected Void doInBackground() {
+                    for (WikidataDynamicObject o :
+                            wikidata.explore.extract.WikidataObjectGraph.reachable(
+                                    labelRun.dynamicObjects())) {
+                        if (o != null && wikidata.WikidataIds.isQid(o.qid())
+                                && o.getDisplayName() != null
+                                && !o.getDisplayName().isBlank()) {
+                            labels.putIfAbsent(o.qid(), o.getDisplayName());
+                        }
+                    }
+                    return null;
+                }
+            }.execute();
+        }
+        entityKindsWindow.add(new EntityKindRulesPanel(projectModel, this::modelChanged,
+                labels::get,
+                (seed, onPicked) -> ExploreByExamplePanel.showPicker(
+                        entityKindsWindow, querySession.runner(), seed, false,
+                        (qid, label) -> onPicked.accept(qid))));
         entityKindsWindow.setSize(700, 420);
         entityKindsWindow.setLocationByPlatform(true);
         entityKindsWindow.setVisible(true);

@@ -22,6 +22,8 @@ import objectview.Viewable;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.model.GeneratedProjectModel;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -256,25 +258,32 @@ public class GenerationPipeline {
         // still take effect, so a projection added since this snapshot was saved
         // (e.g. Nomination.year <- edition.date.year) fills on Remap rather than
         // silently no-op'ing.
-        wikidata.explore.transform.Canonicalization.apply(
-                snapshot, previous.dynamicObjects(), log);
+        // Remap stages a new result; kind assignment can change carrier/type keys, so
+        // never mutate the previous run that remains visible until Apply succeeds.
+        List<WikidataDynamicObject> pool =
+                wikidata.explore.transform.PoolCopy.deepCopy(previous.dynamicObjects());
+        wikidata.explore.transform.Canonicalization.apply(snapshot, pool, log);
         int filled = wikidata.explore.transform.ModelYearProjections.apply(
-                snapshot, previous.dynamicObjects(), log);
+                snapshot, pool, log);
         int restricted = wikidata.explore.transform.FieldExpectations
-                .apply(snapshot, previous.dynamicObjects(), log).dropped().size();
+                .apply(snapshot, pool, log).dropped().size();
+        wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
+                wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
+                        snapshot, pool, previous.dynamicObjects(), log);
+        wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, pool, log);
         if (log != null) {
             log.message("Remap (display-only, no cached pool): "
-                    + previous.dynamicObjects().size() + " objects re-materialized, "
+                    + pool.size() + " objects re-materialized, "
                     + filled + " projected field(s) filled, "
+                    + kinds.classified() + " entity kind(s) assigned, "
                     + restricted + " dropped (required-field).\n");
         }
 
-        List<Viewable> instances =
-                materialize(runtime, previous.dynamicObjects());
+        List<Viewable> instances = materialize(runtime, pool);
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan,
-                previous.dynamicObjects(), runtime, instances, rs);
+                pool, runtime, instances, rs);
     }
 
     /**
@@ -316,15 +325,28 @@ public class GenerationPipeline {
 
         // Drop the dropped-duplicate stubs from the served pool (not just untype).
         pool.removeIf(demoted::contains);
+        // Recreate the semantic role carriers that generation stamps after reify.
+        // The cached enriched pool predates both this stamp and referent-field loading.
+        wikidata.explore.transform.ReferentClassStamp.apply(snapshot, reified);
+        removeInternalTypesAndFields(pool);
+        wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
+                wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
+                        snapshot, pool, previous.dynamicObjects(), log);
         // Field expectations (#96): report coverage, drop REQUIRED-missing records
         // (e.g. a Nomination with no ceremony edition), keep EXPECTED-missing ones.
         int restricted = wikidata.explore.transform.FieldExpectations
                 .apply(compiledSnapshot, pool, log).dropped().size();
+        // The cached enriched pool predates referent-field loading, so rebuild the
+        // observed vocabularies from the same evidence-bearing final snapshot used
+        // by the local classifier, not from this freshly re-transformed pool.
+        wikidata.explore.transform.DescriptiveVocabularyBuild.apply(
+                snapshot, previous.dynamicObjects(), log);
 
         if (log != null) {
             log.message("Remap (retransform): " + pool.size()
                     + " objects, " + reified.size() + " reified, "
                     + filled + " projected field(s) filled, "
+                    + kinds.classified() + " entity kind(s) assigned, "
                     + restricted + " dropped (required-field).\n");
         }
 
@@ -332,6 +354,21 @@ public class GenerationPipeline {
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, rs);
+    }
+
+    private static void removeInternalTypesAndFields(
+            Collection<WikidataDynamicObject> pool) {
+        for (WikidataDynamicObject object : pool) {
+            if (object == null) continue;
+            for (String type : new ArrayList<>(object.directClassNames())) {
+                if (WikidataDynamicObject.isInternalClassName(type)) {
+                    object.removeClass(type);
+                }
+            }
+            for (String field : new ArrayList<>(object.dynamicFields().keySet())) {
+                if (field != null && field.startsWith("__")) object.remove(field);
+            }
+        }
     }
 
     /**
