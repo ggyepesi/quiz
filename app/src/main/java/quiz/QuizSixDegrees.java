@@ -87,7 +87,7 @@ public class QuizSixDegrees extends Quiz {
         JLabel title = new JLabel("Find the connection", SwingConstants.CENTER);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 28f));
 
-        main.add(title, GridBagUtils.gbc(
+        main.add(title, GridBagUtils.spanning(
                 0, 0, 2, 0.0, 0.0,
                 GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL,
@@ -105,13 +105,13 @@ public class QuizSixDegrees extends Quiz {
                 viewables.values(),
                 false);
 
-        main.add(left, GridBagUtils.gbc(
+        main.add(left, GridBagUtils.weighted(
                 0, 1, 1.0, 0.35,
                 GridBagConstraints.NORTHWEST,
                 GridBagConstraints.BOTH,
                 new Insets(8, 8, 8, 8)));
 
-        main.add(right, GridBagUtils.gbc(
+        main.add(right, GridBagUtils.weighted(
                 1, 1, 1.0, 0.35,
                 GridBagConstraints.NORTHWEST,
                 GridBagConstraints.BOTH,
@@ -123,7 +123,7 @@ public class QuizSixDegrees extends Quiz {
 
         JScrollPane pathScroll = new JScrollPane(pathPanel);
 
-        main.add(pathScroll, GridBagUtils.gbc(
+        main.add(pathScroll, GridBagUtils.weighted(
                 0, 2, 2.0, 0.55,
                 GridBagConstraints.NORTHWEST,
                 GridBagConstraints.BOTH,
@@ -143,13 +143,13 @@ public class QuizSixDegrees extends Quiz {
         buttons.add(revealAllButton);
         buttons.add(nextButton);
 
-        main.add(buttons, GridBagUtils.gbc(
+        main.add(buttons, GridBagUtils.weighted(
                 0, 3, 2.0, 0.0,
                 GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL,
                 new Insets(8, 8, 12, 8)));
 
-        frame.add(main, GridBagUtils.gbc(
+        frame.add(main, GridBagUtils.weighted(
                 0, 0, 1.0, 1.0,
                 GridBagConstraints.CENTER,
                 GridBagConstraints.BOTH,
@@ -260,7 +260,7 @@ public class QuizSixDegrees extends Quiz {
         JLabel label = new JLabel(text, SwingConstants.CENTER);
         label.setFont(label.getFont().deriveFont(Font.BOLD, 28f));
 
-        frame.add(label, GridBagUtils.gbc(
+        frame.add(label, GridBagUtils.weighted(
                 0, 0, 1.0, 1.0,
                 GridBagConstraints.CENTER,
                 GridBagConstraints.BOTH,

@@ -60,7 +60,7 @@ public final class ChoiceBoard extends JPanel {
             int position = choices.size() - 1;
             int col = position % policy.columns();
             int row = position / policy.columns();
-            add(selectable, GridBagUtils.gbc(
+            add(selectable, GridBagUtils.weighted(
                     col, row, 1.0, 1.0,
                     GridBagConstraints.CENTER,
                     GridBagConstraints.BOTH,

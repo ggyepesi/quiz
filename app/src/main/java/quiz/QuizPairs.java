@@ -120,9 +120,9 @@ public class QuizPairs extends Quiz {
             pairingManager.registerPanel(leftChoice, true);
             pairingManager.registerPanel(rightChoice, false);
 
-            p.add(leftChoice, GridBagUtils.gbc(0, row, 0.5, 0.0,
+            p.add(leftChoice, GridBagUtils.weighted(0, row, 0.5, 0.0,
                     GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(8,8,8,8)));
-            p.add(rightChoice, GridBagUtils.gbc(1, row++, 0.5, 0.0,
+            p.add(rightChoice, GridBagUtils.weighted(1, row++, 0.5, 0.0,
                     GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(8,8,8,8)));
         }
         return p;

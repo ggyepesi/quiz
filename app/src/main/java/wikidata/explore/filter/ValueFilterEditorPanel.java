@@ -116,49 +116,49 @@ public class ValueFilterEditorPanel extends JPanel {
         int y = 0;
 
         editor.add(new JLabel("Field"),
-                GridBagUtils.gbc(0, y, 0.0, 0.0,
+                GridBagUtils.weighted(0, y, 0.0, 0.0,
                         GridBagConstraints.WEST,
                         GridBagConstraints.NONE,
                         new Insets(3, 3, 3, 3)));
 
         editor.add(fieldNameField,
-                GridBagUtils.gbc(1, y, 1.0, 0.0,
+                GridBagUtils.weighted(1, y, 1.0, 0.0,
                         GridBagConstraints.WEST,
                         GridBagConstraints.HORIZONTAL,
                         new Insets(3, 3, 3, 3)));
 
         editor.add(new JLabel("PID"),
-                GridBagUtils.gbc(2, y, 0.0, 0.0,
+                GridBagUtils.weighted(2, y, 0.0, 0.0,
                         GridBagConstraints.WEST,
                         GridBagConstraints.NONE,
                         new Insets(3, 3, 3, 3)));
 
         editor.add(pidField,
-                GridBagUtils.gbc(3, y++, 0.0, 0.0,
+                GridBagUtils.weighted(3, y++, 0.0, 0.0,
                         GridBagConstraints.WEST,
                         GridBagConstraints.HORIZONTAL,
                         new Insets(3, 3, 3, 3)));
 
         editor.add(new JLabel("Label"),
-                GridBagUtils.gbc(0, y, 0.0, 0.0,
+                GridBagUtils.weighted(0, y, 0.0, 0.0,
                         GridBagConstraints.WEST,
                         GridBagConstraints.NONE,
                         new Insets(3, 3, 3, 3)));
 
         editor.add(labelField,
-                GridBagUtils.gbc(1, y, 1.0, 0.0,
+                GridBagUtils.weighted(1, y, 1.0, 0.0,
                         GridBagConstraints.WEST,
                         GridBagConstraints.HORIZONTAL,
                         new Insets(3, 3, 3, 3)));
 
         editor.add(operatorBox,
-                GridBagUtils.gbc(2, y, 0.0, 0.0,
+                GridBagUtils.weighted(2, y, 0.0, 0.0,
                         GridBagConstraints.WEST,
                         GridBagConstraints.NONE,
                         new Insets(3, 3, 3, 3)));
 
         editor.add(valueSpinner,
-                GridBagUtils.gbc(3, y++, 0.0, 0.0,
+                GridBagUtils.weighted(3, y++, 0.0, 0.0,
                         GridBagConstraints.WEST,
                         GridBagConstraints.HORIZONTAL,
                         new Insets(3, 3, 3, 3)));
@@ -173,7 +173,7 @@ public class ValueFilterEditorPanel extends JPanel {
         buttons.add(clearButton);
 
         editor.add(buttons,
-                GridBagUtils.gbc(0, y, 4, 1.0, 0.0,
+                GridBagUtils.spanning(0, y, 4, 1.0, 0.0,
                         GridBagConstraints.EAST,
                         GridBagConstraints.HORIZONTAL,
                         new Insets(3, 3, 3, 3)));

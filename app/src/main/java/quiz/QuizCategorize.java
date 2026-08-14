@@ -118,7 +118,7 @@ public class QuizCategorize extends Quiz {
         nextButton.addActionListener(e -> drawRound());
 
         frame.add(nextButton,
-                GridBagUtils.gbc(
+                GridBagUtils.weighted(
                         0, 1,
                         1.0, 0.0,
                         GridBagConstraints.CENTER,
@@ -163,7 +163,7 @@ public class QuizCategorize extends Quiz {
             });
 
             panel.add(card,
-                    GridBagUtils.gbc(
+                    GridBagUtils.weighted(
                             col, row,
                             1.0, 0.0,
                             GridBagConstraints.NORTHWEST,
@@ -177,7 +177,7 @@ public class QuizCategorize extends Quiz {
         }
 
         panel.add(Box.createVerticalGlue(),
-                GridBagUtils.gbc(
+                GridBagUtils.weighted(
                         0, row + 1,
                         1.0, 1.0,
                         GridBagConstraints.NORTHWEST,
@@ -200,7 +200,7 @@ public class QuizCategorize extends Quiz {
         title.setFont(title.getFont().deriveFont(Font.BOLD, 22f));
 
         panel.add(title,
-                GridBagUtils.gbc(
+                GridBagUtils.weighted(
                         0, row++,
                         1.0, 0.0,
                         GridBagConstraints.NORTHWEST,
@@ -215,7 +215,7 @@ public class QuizCategorize extends Quiz {
             button.addActionListener(e -> chooseCategory(category));
 
             panel.add(button,
-                    GridBagUtils.gbc(
+                    GridBagUtils.weighted(
                             0, row++,
                             1.0, 0.0,
                             GridBagConstraints.NORTHWEST,
@@ -224,7 +224,7 @@ public class QuizCategorize extends Quiz {
         }
 
         panel.add(Box.createVerticalGlue(),
-                GridBagUtils.gbc(
+                GridBagUtils.weighted(
                         0, row,
                         1.0, 1.0,
                         GridBagConstraints.NORTHWEST,
@@ -290,7 +290,7 @@ public class QuizCategorize extends Quiz {
 
         panel.putClientProperty(ASSIGNED_CATEGORY_LABEL, label);
 
-        panel.add(label, GridBagUtils.gbc(
+        panel.add(label, GridBagUtils.weighted(
                 0,
                 panel.getComponentCount(),
                 1.0,
@@ -339,7 +339,7 @@ public class QuizCategorize extends Quiz {
         label.setFont(new Font("Arial", Font.BOLD, 28));
         stopTiming();
         frame.add(label,
-                GridBagUtils.gbc(
+                GridBagUtils.weighted(
                         0, 0,
                         1.0, 1.0,
                         GridBagConstraints.CENTER,
