@@ -159,7 +159,10 @@ public class SingleRootClassModelPanel extends JPanel {
 
     private void buildUi() {
         tree.setRootVisible(true);
-        tree.setToggleClickCount(0);
+        // Double-click expands, the Swing default. Nothing here claims double-click, and
+        // with 0 the ONLY way to open a class was the expand handle — invisible in some
+        // themes, which makes a class with fields look like a class with none.
+        tree.setToggleClickCount(2);
         tree.setRowHeight(28);
         tree.setFont(tree.getFont().deriveFont(14f));
         tree.setCellRenderer(new ClassPatternTreeRenderer(projectModel));
@@ -262,14 +265,17 @@ public class SingleRootClassModelPanel extends JPanel {
     private void addField() {
         GeneratedClassModel cls = selectedClassOrRoot();
 
-        String name =
-                JOptionPane.showInputDialog(
-                        this,
-                        "Field name:",
-                        "field");
-
-        if (name == null || name.isBlank()) {
-            return;
+        String name = "field";
+        while (true) {
+            name = JOptionPane.showInputDialog(this, "Field name:", name);
+            if (name == null || name.isBlank()) return;
+            if (!GeneratedClassModel.isReservedFieldName(name)) break;
+            JOptionPane.showMessageDialog(this,
+                    "'" + name.trim() + "' already exists as a built-in "
+                            + (name.trim().equalsIgnoreCase("name")
+                                    ? "display-name" : "identity-QID")
+                            + " field. Choose a different field name.",
+                    "Reserved field name", JOptionPane.INFORMATION_MESSAGE);
         }
 
         GeneratedFieldModel f =
@@ -393,12 +399,21 @@ public class SingleRootClassModelPanel extends JPanel {
             return;
         }
         int i = 0;
+        boolean restoredAny = false;
         while (i < tree.getRowCount()) {
             TreePath p = tree.getPathForRow(i);
             if (p != null && expanded.contains(pathLabels(p))) {
                 tree.expandPath(p);
+                restoredAny = true;
             }
             i++;
+        }
+        // Remembering what was open only means something within the SAME tree. Loading
+        // another domain rebuilds it from different classes, so nothing matches and every
+        // class ends up shut — the first build's expand-all is the honest default there.
+        if (!restoredAny) {
+            expandAll();
+            return;
         }
         if (tree.getRowCount() > 0) {
             tree.expandRow(0); // always show the domain's classes
