@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CanonicalizerTest {
 
@@ -123,6 +125,12 @@ class CanonicalizerTest {
                 .filter(GeneratedFieldModel::isNameField)
                 .count();
         assertEquals(0, identityNames, "no vestigial model-level name field");
+    }
+
+    @Test void reservedIdentityNamesAreExposedForEditors() {
+        assertTrue(GeneratedClassModel.isReservedFieldName("name"));
+        assertTrue(GeneratedClassModel.isReservedFieldName(" QID "));
+        assertFalse(GeneratedClassModel.isReservedFieldName("structuredName"));
     }
 
     @Test

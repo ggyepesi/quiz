@@ -25,7 +25,7 @@ public enum FieldProductionKind {
             case INLINE_VALUE -> "Simple property";
             case DELAYED_ENTITY_FIELD -> "Related entity values";
             case CHILD_OBJECTS -> "Related objects";
-            case OWNED_COMPONENT -> "Owned component (same entity)";
+            case OWNED_COMPONENT -> "Owned component (QID from owner)";
             case INVERT -> "Invert (reverse of another field)";
             case COMPANION_MATCH -> "Companion match (outcome flag)";
             case AUTO -> "Auto";

@@ -41,6 +41,7 @@ public final class GeneratedProjectModelValidator {
             }
 
             validateClassReferences(project, clazz, problems);
+            validateOwnedClass(project, clazz, problems);
             validateOwnedComponentFields(project, clazz, problems);
             validateBaseCycle(project, clazz, problems);
             validateCanonical(clazz, problems);
@@ -54,6 +55,47 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    private static void validateOwnedClass(
+            GeneratedProjectModel project, GeneratedClassModel clazz,
+            List<Problem> problems) {
+        if (!clazz.ownedClass()) return;
+        if (clazz.hasBase()) {
+            GeneratedClassModel base = project.findClass(clazz.baseClassName());
+            if (base != null && !base.ownedClass()) {
+                problems.add(Problem.error(clazz.className(),
+                        "An Owned class can extend only another Owned class; '"
+                                + base.className() + "' is " + base.classKind() + "."));
+            }
+        }
+        FieldSourceMapping own = clazz.instanceMapping();
+        if (clazz.reifiesStatements() || !clazz.seedQids().isEmpty()
+                || !clean(own.sourceQid()).isBlank()
+                || !clean(own.propertyPid()).isBlank()
+                || !own.additionalTypeQids().isEmpty()) {
+            problems.add(Problem.error(clazz.className(),
+                    "An Owned class cannot also define an independent membership source."));
+        }
+        // An Owned class may be produced at several sites, but its FIELDS are shared by
+        // all of them and load from the owner's entity — so every site must be on the
+        // same kind of owner. Person.fullname + Person.birthName is fine; adding
+        // Organisation.legalName would make Name.familyName (P734, a property of humans)
+        // meaningless for half its instances.
+        List<GeneratedClassModel> owners =
+                MembershipPattern.owningEntityClasses(clazz, project);
+        if (owners.size() > 1) {
+            problems.add(Problem.error(clazz.className(),
+                    "Owned class '" + clazz.className() + "' is produced from different "
+                            + "kinds of entity ("
+                            + owners.stream().map(GeneratedClassModel::className)
+                                    .collect(java.util.stream.Collectors.joining(", "))
+                            + ") at " + MembershipPattern.ownedBy(clazz, project).stream()
+                                    .map(site -> site.ownerClass() + "." + site.fieldName())
+                                    .collect(java.util.stream.Collectors.joining(", "))
+                            + ". Its fields load from the owner, so one owned class "
+                            + "cannot serve owners of different kinds — give each its own."));
+        }
     }
 
     private static void validateOwnedComponentFields(
@@ -74,6 +116,11 @@ public final class GeneratedProjectModelValidator {
             }
             GeneratedClassModel target = project.findClass(field.entityClassName());
             if (target == null) continue; // ordinary reference validation reports it
+            if (!target.ownedClass()) {
+                problems.add(Problem.error(path(owner, field),
+                        "QID-from-owner production requires target class '"
+                                + target.className() + "' to be configured as Owned."));
+            }
             // Equality is the self-cycle diagnosed by validateOwnedComponentCycles.
             // This check is specifically for a distinct owner that already inherits
             // the target and would redundantly compose it a second time.

@@ -84,6 +84,11 @@ public final class FieldDefinitionPanel extends JPanel {
     public String validationError() {
         FieldDefinition value = definition();
         if (value.name().isBlank()) return "Field name is required.";
+        if (wikidata.explore.model.GeneratedClassModel
+                .isReservedFieldName(value.name())) {
+            return "'" + value.name().trim()
+                    + "' already exists as a built-in identity/display field.";
+        }
         if (value.type() == FieldType.AUTO) return "Choose what the field holds.";
         if (value.cardinality() == FieldCardinality.AUTO) return "Choose Single or List.";
         if (value.type() == FieldType.ENTITY && value.entityClassName().isBlank()) {

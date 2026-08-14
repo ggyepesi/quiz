@@ -36,6 +36,7 @@ class OwnedComponentMappingTest {
         structuredName.entityClassName("Name");
         structuredName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
         GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
         name.addField("givenName", FieldType.STRING, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P735");
         project.rootClass(person);

@@ -183,6 +183,7 @@ public class FieldSourcePanel extends JPanel {
             refreshCompanionRows();
             refreshStatementFieldControls();
             refreshOwnedComponentControls();
+            updateRecommendation();
         });
         productionBox.setToolTipText(
                 productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
@@ -304,11 +305,15 @@ public class FieldSourcePanel extends JPanel {
         clearFallbackButton.setEnabled(set);
     }
 
-    /** The owning class's Wikidata type QID, or null (with a prompt) if unset. */
+    /** The owning class's Wikidata type QID, or null (with a prompt) if unset. For a
+     *  field on an owned component the type is the OWNER's: the component's instances
+     *  are the owner's entities, so they are the ones that carry the properties. */
     private String classTypeQid() {
         GeneratedClassModel owner = ownerClass();
-        String typeQid = owner == null || owner.instanceMapping() == null
-                ? "" : owner.instanceMapping().sourceQid();
+        GeneratedClassModel bearer = projectModel == null
+                ? null : MembershipPattern.owningEntityClass(owner, projectModel);
+        if (bearer != null) owner = bearer;
+        String typeQid = MembershipPattern.typeQid(owner, projectModel);
         if (typeQid == null || !WikidataIds.isQid(typeQid)) {
             JOptionPane.showMessageDialog(this,
                     "Set the owning class's Wikidata type first.",
@@ -1113,6 +1118,18 @@ public class FieldSourcePanel extends JPanel {
                     "DBpedia: 'Property' = the Wikipedia infobox property "
                             + "(e.g. numbermainstars, brighteststarname). Joined by "
                             + "owl:sameAs to the entity's Wikidata QID, after extraction.");
+            return;
+        }
+
+        wikidata.explore.model.FieldDefinition definition =
+                fieldDefinitionPanel.definition();
+        GeneratedClassModel target = definition == null || projectModel == null
+                ? null : projectModel.findClass(definition.entityClassName());
+        if (target != null && target.ownedClass()) {
+            recommendationLabel.setText(productionBox.getSelectedItem()
+                    == FieldProductionKind.OWNED_COMPONENT
+                    ? "Owned target: QID comes explicitly from the owner instance"
+                    : "Owned target: choose Load as 'Owned component (QID from owner)'");
             return;
         }
 

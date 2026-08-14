@@ -20,8 +20,11 @@ public enum MembershipPattern {
      *  (+ an optional source class or discovered subjects), not by a membership
      *  query. So a statement class is never "Unconfigured". */
     REIFIED("Reified statements"),
-    /** Produced once per owning instance by an ENTITY field marked OWNED_COMPONENT. */
-    OWNED_COMPONENT("Owned component"),
+    /** A class with no identity of its own: one instance is produced per owning
+     *  instance by each ENTITY field marked OWNED_COMPONENT, carrying that owner's
+     *  identifier. Being owned is a property of the CLASS; WHERE it is produced is a
+     *  property of the field, and a class may be produced at several sites. */
+    OWNED_COMPONENT("Owned class"),
     /** A referenced-only ("identity holder") class: it has no membership rule of its
      *  own — its members are DERIVED as the range of a field that targets it (an
      *  entity at the value-end of that field's property). Complete the moment a field
@@ -64,6 +67,9 @@ public enum MembershipPattern {
      *  back to the single-argument {@link #of(GeneratedClassModel)}. */
     public static MembershipPattern of(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
+        if (clazz != null && clazz.ownedClass()) {
+            return OWNED_COMPONENT;
+        }
         MembershipPattern base = of(clazz);
         if (base != UNCONFIGURED) {
             return base;
@@ -79,6 +85,87 @@ public enum MembershipPattern {
         return kindRule(clazz, project) == null ? base : EVIDENCE_KIND;
     }
 
+    /**
+     * The Wikidata type its entities ARE, for the tools that need one to sample or to
+     * discover properties against.
+     *
+     * <p>The declared membership type where the class has one; otherwise the evidence a
+     * kind rule classifies by (P31 = Q5 → Person). An evidence-derived kind is stamped,
+     * never queried, so it declares no membership source — but its rule already says
+     * what those entities are, and asking the class to ALSO declare a membership query
+     * would turn a stamped kind into an extracted one. Blank when nothing says.
+     */
+    public static String typeQid(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        if (clazz == null) return "";
+        FieldSourceMapping mapping = project == null
+                ? clazz.instanceMapping() : clazz.effectiveInstanceMapping(project);
+        String declared = mapping == null ? "" : clean(mapping.sourceQid());
+        if (!declared.isEmpty()) return declared;
+        EntityKindRule rule = kindRule(clazz, project);
+        if (rule != null) {
+            for (String evidence : rule.evidenceQids()) {
+                String qid = clean(evidence);
+                if (!qid.isEmpty()) return qid;
+            }
+        }
+        return "";
+    }
+
+    /**
+     * The class whose ENTITIES a component's instances actually are — itself, unless it
+     * is an owned component, in which case the owner, and so on up a chain of components.
+     *
+     * <p>A component has no members of its own: one is made per owning instance and
+     * carries the OWNER's identifier, which is exactly why its fields load properties
+     * from the owner's QID. So every question asked of the Wikidata entities behind a
+     * component — what properties do they have, what does a sample look like — has to be
+     * asked of the class that supplies those entities. Null when the chain never reaches
+     * one (an unowned component).
+     */
+    public static GeneratedClassModel owningEntityClass(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        List<GeneratedClassModel> bearers = owningEntityClasses(clazz, project);
+        return bearers.size() == 1 ? bearers.getFirst() : null;
+    }
+
+    /**
+     * Every class whose entities stand behind this one, over ALL production sites.
+     *
+     * <p>One entry is the answer. Several means the owned class is produced from
+     * different kinds of entity — {@code Person.fullname} and {@code Organisation.legalName}
+     * — and no single type speaks for it: the sites disagree, and a caller must say so
+     * rather than take whichever was declared first. Note that two sites on the SAME
+     * owner ({@code Person.fullname}, {@code Person.birthName}) agree perfectly; it is
+     * the owner's kind that matters here, not the number of sites. Empty for an owned
+     * class nothing produces.
+     */
+    public static List<GeneratedClassModel> owningEntityClasses(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        java.util.LinkedHashMap<String, GeneratedClassModel> bearers =
+                new java.util.LinkedHashMap<>();
+        collectOwningEntityClasses(clazz, project, bearers,
+                new java.util.LinkedHashSet<>());
+        return List.copyOf(bearers.values());
+    }
+
+    private static void collectOwningEntityClasses(
+            GeneratedClassModel clazz, GeneratedProjectModel project,
+            java.util.Map<String, GeneratedClassModel> bearers,
+            java.util.Set<String> visiting) {
+        if (clazz == null || project == null) return;
+        if (of(clazz, project) != OWNED_COMPONENT) {
+            bearers.putIfAbsent(clean(clazz.className()), clazz);
+            return;
+        }
+        if (!visiting.add(clean(clazz.className()))) return;   // cyclic model
+        for (OwnedBy site : ownedBy(clazz, project)) {
+            collectOwningEntityClasses(
+                    project.findClass(site.ownerClass()), project, bearers, visiting);
+        }
+        visiting.remove(clean(clazz.className()));
+    }
+
     /** Field-defined production sites; the target class carries no duplicate owner config. */
     public static List<OwnedBy> ownedBy(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
@@ -89,9 +176,7 @@ public enum MembershipPattern {
         for (GeneratedClassModel owner : project.classes()) {
             if (owner == null) continue;
             for (GeneratedFieldModel field : owner.fields()) {
-                if (field != null && field.type() == FieldType.ENTITY
-                        && field.mapping().productionKind()
-                                == FieldProductionKind.OWNED_COMPONENT
+                if (OwnedClassSemantics.isOwnerQidField(field, project)
                         && target.equals(clean(field.entityClassName()))) {
                     sites.add(new OwnedBy(owner.className(), field.name()));
                 }
@@ -192,10 +277,14 @@ public enum MembershipPattern {
     public static String describe(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (of(clazz, project) == OWNED_COMPONENT) {
+            // What the CLASS is, then where it is produced. "Owned by Person.fullname"
+            // read as though the class belonged to that owner; a field is a production
+            // SITE, and the same owned class may be produced at several of them.
             List<OwnedBy> sites = ownedBy(clazz, project);
             String shown = sites.stream().map(s -> s.ownerClass() + "." + s.fieldName())
                     .collect(java.util.stream.Collectors.joining(", "));
-            return "Owned by " + shown;
+            return shown.isBlank() ? "Owned class (no producing field yet)"
+                    : "Owned class — produced at " + shown;
         }
         if (of(clazz, project) == REFERENCED) {
             DerivedFrom d = derivedFrom(clazz, project);

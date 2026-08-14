@@ -68,8 +68,18 @@ Consequences of this framing:
 
 ### Owned components — one projected object per owner
 
-An ENTITY field loaded as **Owned component (same entity)** composes one target
-object from each owner. For example, `Person.structuredName → Name` creates a
+Select **Owned class** as the target class's class kind. This records only the
+population kind — never an owner. The Owned class editor consequently contains
+only its structural settings (class name, alias and base class). An Owned class
+may extend another Owned class, inheriting its fields and owner-QID identity
+semantics. Source and Statement classes cannot be Owned bases because their
+population/identity grains are different.
+
+An ENTITY field whose target is an Owned class composes one target object from
+each owner. On that field, explicitly choose **Owned component (QID from
+owner)**; this is the persisted owner-QID contract, not an inference from the
+target class.
+For example, `Person.structuredName → Name` creates a
 `Name` with the Person's QID, then loads `Name.givenName (P735)` and
 `Name.familyName (P734)` against that QID. The field is the production site, so
 `Name` does not repeat an owner-class setting or define a membership query.

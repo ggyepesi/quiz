@@ -124,6 +124,7 @@ class GeneratedProjectModelValidatorTest {
         field.entityClassName("Name");
         field.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
         GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
         name.addField("givenName", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P735");
         project.addClass(person);
@@ -139,6 +140,7 @@ class GeneratedProjectModelValidatorTest {
     @Test void extensionAndOwnedCompositionOfTheSameClassIsRejected() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
         GeneratedClassModel person = new GeneratedClassModel("Person");
         person.baseClassName("Name");
         GeneratedFieldModel field = person.addField(
@@ -158,6 +160,7 @@ class GeneratedProjectModelValidatorTest {
     @Test void ownedSelfCycleHasOneClearDiagnostic() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
         GeneratedFieldModel field = name.addField(
                 "birthName", FieldType.ENTITY, FieldCardinality.SINGLE);
         field.entityClassName("Name");
@@ -172,5 +175,81 @@ class GeneratedProjectModelValidatorTest {
                 .count(), result.format());
         assertFalse(result.errors().stream().anyMatch(problem ->
                 problem.message().contains("through class extension")), result.format());
+    }
+
+    @Test void explicitOwnedClassIsConfiguredBeforeItHasAProducingField() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        project.addClass(name);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(), result.format());
+        assertEquals(MembershipPattern.OWNED_COMPONENT,
+                MembershipPattern.of(name, project));
+        assertTrue(MembershipPattern.describe(name, project)
+                .contains("no producing field yet"));
+    }
+
+    @Test void makingAClassOwnedClearsItsIndependentPopulation() {
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.instanceMapping().propertyPid("P31");
+        name.instanceMapping().sourceQid("Q5");
+        name.seedQids().add("Q42");
+
+        name.ownedClass(true);
+
+        assertTrue(name.instanceMapping().propertyPid().isBlank());
+        assertTrue(name.instanceMapping().sourceQid().isBlank());
+        assertTrue(name.seedQids().isEmpty());
+    }
+
+    @Test void ownedClassExtendsFieldsButNotTheBasePopulation() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel base = new GeneratedClassModel("BaseName");
+        base.ownedClass(true);
+        base.addField("language", FieldType.ENTITY, FieldCardinality.SINGLE);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.baseClassName("BaseName");
+        name.ownedClass(true);
+        project.addClass(base);
+        project.addClass(name);
+
+        assertEquals(1, name.effectiveFields(project).size());
+        assertTrue(name.effectiveInstanceMapping(project).sourceQid().isBlank());
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid());
+    }
+
+    @Test void ownedClassCannotExtendAStatementClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel statement = new GeneratedClassModel("Nomination");
+        statement.statementSource(new StatementClassSource("Films", "P1411"));
+        GeneratedClassModel owned = new GeneratedClassModel("Name");
+        owned.baseClassName("Nomination");
+        owned.ownedClass(true);
+        project.addClass(statement);
+        project.addClass(owned);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("only another Owned class")), result.format());
+    }
+
+    @Test void ownedClassCannotExtendASourceClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addClass(new GeneratedClassModel("BaseName"));
+        GeneratedClassModel owned = new GeneratedClassModel("Name");
+        owned.baseClassName("BaseName");
+        owned.ownedClass(true);
+        project.addClass(owned);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("only another Owned class")), result.format());
     }
 }

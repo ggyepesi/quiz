@@ -29,6 +29,7 @@ class ReferentFieldLoadTest {
         structuredName.entityClassName("Name");
         structuredName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
         GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
         GeneratedFieldModel given = name.addField(
                 "givenName", FieldType.ENTITY, FieldCardinality.SINGLE);
         given.entityClassName("GivenName");

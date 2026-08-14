@@ -30,6 +30,11 @@ public class GeneratedClassModel {
     private String discriminatorQid = "";
     private String alias = "";
 
+    /** Explicit population kind for a component class. The owner is intentionally
+     * not stored here: every ENTITY field targeting this class is a production site. */
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private ClassKind classKind = ClassKind.SOURCE;
+
     // The statement property defines the class's production grain. A source
     // model class supplies the subject population from its extracted members.
     // The source class is structurally optional (blank = discover subjects
@@ -85,6 +90,36 @@ public class GeneratedClassModel {
 
     public String displayClassName() {
         return alias().isBlank() ? className : alias();
+    }
+
+    public boolean ownedClass() {
+        return classKind() == ClassKind.OWNED;
+    }
+
+    public void ownedClass(boolean value) {
+        classKind(value ? ClassKind.OWNED : ClassKind.SOURCE);
+    }
+
+    public ClassKind classKind() {
+        if (classKind == ClassKind.OWNED) return ClassKind.OWNED;
+        return reifiesStatements() ? ClassKind.STATEMENT : ClassKind.SOURCE;
+    }
+
+    public void classKind(ClassKind value) {
+        classKind = value == null ? ClassKind.SOURCE : value;
+        if (classKind == ClassKind.OWNED) clearIndependentPopulation();
+    }
+
+    /** Clears query/seed/reification state that would independently populate a class. */
+    public void clearIndependentPopulation() {
+        statementSource(null);
+        seedQids.clear();
+        instanceMapping.sourceQid("");
+        instanceMapping.sourceLabel("");
+        instanceMapping.propertyPid("");
+        instanceMapping.propertyLabel("");
+        instanceMapping.additionalTypeQids().clear();
+        instanceMapping.excludedTypeQids().clear();
     }
 
     public String baseClassName() {
@@ -213,7 +248,10 @@ public class GeneratedClassModel {
     public FieldSourceMapping effectiveInstanceMapping(
             GeneratedProjectModel project) {
 
-        if (!instanceMapping.sourceQid().isBlank()
+        // Owned classes may extend another class for its fields/schema, but their
+        // population always comes from owning fields, never from the base's query.
+        if (ownedClass()
+                || !instanceMapping.sourceQid().isBlank()
                 || baseClassName.isEmpty()
                 || project == null) {
             return instanceMapping;
@@ -255,6 +293,7 @@ public class GeneratedClassModel {
         copy.discriminatorPid = discriminatorPid;
         copy.discriminatorQid = discriminatorQid;
         copy.alias = alias;
+        copy.classKind = classKind;
 
         copy.statementSource =
                 statementSource == null
@@ -293,10 +332,16 @@ public class GeneratedClassModel {
         }
 
         String trimmed = name.trim();
-        return trimmed.equalsIgnoreCase("name")
-                || trimmed.equalsIgnoreCase("qid")
+        return isReservedFieldName(trimmed)
                 ? trimmed + "Value"
                 : trimmed;
+    }
+
+    /** Built-in identity/display properties that cannot also be model data fields. */
+    public static boolean isReservedFieldName(String name) {
+        if (name == null) return false;
+        String clean = name.trim();
+        return clean.equalsIgnoreCase("name") || clean.equalsIgnoreCase("qid");
     }
 
     private static String clean(String value) {

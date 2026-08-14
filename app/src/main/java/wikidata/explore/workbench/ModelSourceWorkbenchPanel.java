@@ -31,14 +31,14 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             new FieldSourcePanel();
     private final StatementSourcePanel statementSourcePanel =
             new StatementSourcePanel();
-    private final OwnedComponentSourcePanel ownedComponentSourcePanel;
+    private final OwnedClassPanel ownedClassPanel;
 
     private final JComboBox<String> kindBox =
             new JComboBox<>(
                     new String[]{
                             "Source class",
                             "Statement class",
-                            "Owned component"
+                            "Owned class"
                     });
 
     private final JPanel kindHeader =
@@ -87,7 +87,8 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         super(new BorderLayout(4, 4));
         this.projectModel = projectModel;
-        this.ownedComponentSourcePanel = new OwnedComponentSourcePanel(projectModel);
+        this.ownedClassPanel = new OwnedClassPanel(projectModel);
+        this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
 
         classSourcePanel.baseClassCandidates(
                 () -> projectModel.classes()
@@ -105,8 +106,6 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         statementSourcePanel.setProjectModel(
                 projectModel);
-        ownedComponentSourcePanel.afterChange(this::ownedComponentChanged);
-
         buildUi();
     }
 
@@ -217,6 +216,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             MembershipPattern pattern = MembershipPattern.of(clazz, projectModel);
             kindBox.setSelectedIndex(clazz.reifiesStatements()
                     ? 1 : pattern == MembershipPattern.OWNED_COMPONENT ? 2 : 0);
+            kindBox.setEnabled(true);
             updatingKind = false;
 
             kindHeader.setVisible(true);
@@ -225,7 +225,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                 statementSourcePanel.edit(clazz);
                 layout.show(cardPanel, "statement");
             } else if (pattern == MembershipPattern.OWNED_COMPONENT) {
-                ownedComponentSourcePanel.edit(clazz);
+                ownedClassPanel.edit(clazz);
                 layout.show(cardPanel, "owned");
             } else {
                 classSourcePanel.edit(clazz);
@@ -233,10 +233,12 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             }
         } else if (selected
                 instanceof GeneratedFieldModel field) {
+            kindBox.setEnabled(true);
             kindHeader.setVisible(false);
             fieldSourcePanel.edit(field);
             layout.show(cardPanel, "field");
         } else {
+            kindBox.setEnabled(true);
             kindHeader.setVisible(false);
             layout.show(cardPanel, "empty");
         }
@@ -277,7 +279,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             if (kindBox.getSelectedIndex() == 1) {
                 statementSourcePanel.applyEdits();
             } else if (kindBox.getSelectedIndex() == 2) {
-                ownedComponentSourcePanel.applyEdits();
+                ownedClassPanel.applyEdits();
             } else {
                 classSourcePanel.applyEdits();
             }
@@ -291,18 +293,59 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     public RuleNode temporaryRuleNodeForSelected() {
         applyEdits();
 
-        if (selected
-                instanceof GeneratedClassModel clazz) {
-            return RuleTreeCompiler.compileClass(clazz);
+        GeneratedClassModel sampled = samplingClass();
+        if (sampled == null) {
+            return null;
         }
-
-        if (selected
-                instanceof GeneratedFieldModel) {
-            return RuleTreeCompiler.compileClass(
-                    projectModel.rootClass());
+        RuleNode node = RuleTreeCompiler.compileClass(sampled);
+        // An evidence-derived kind declares no membership source — it is stamped from
+        // P31 evidence, not queried — so the compiled node has no type to sample. Give
+        // this node the rule's evidence type. It is TEMPORARY, for discovery and samples
+        // only: the generation plan must keep compiling the class as it is, or a stamped
+        // kind would silently become an extracted one.
+        if (node != null && clean(node.sourceQid()).isEmpty()) {
+            node.sourceQid(MembershipPattern.typeQid(sampled, projectModel));
         }
+        return node;
+    }
 
-        return null;
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    /**
+     * The class whose MEMBERS answer questions asked about the selection — which
+     * properties occur, what a sample looks like.
+     *
+     * <p>For an owned component that is the class that OWNS it: a component has no
+     * members to query, its instances being the owner's entities under the owner's QID.
+     * Discovering "properties of Name" would sample nothing, while the properties its
+     * fields load — P734, P735 — are properties of the Person one hop up.
+     */
+    private GeneratedClassModel samplingClass() {
+        GeneratedClassModel clazz = null;
+        if (selected instanceof GeneratedClassModel selectedClass) {
+            clazz = selectedClass;
+        } else if (selected instanceof GeneratedFieldModel field) {
+            clazz = declaringClass(field);
+        }
+        if (clazz == null) {
+            return projectModel.rootClass();
+        }
+        GeneratedClassModel bearer =
+                MembershipPattern.owningEntityClass(clazz, projectModel);
+        return bearer == null ? clazz : bearer;
+    }
+
+    /** The class a field is declared on — a field's questions are about its own class,
+     *  which is not the root once a project has more than one. */
+    private GeneratedClassModel declaringClass(GeneratedFieldModel field) {
+        for (GeneratedClassModel clazz : projectModel.classes()) {
+            if (clazz != null && clazz.fields().contains(field)) {
+                return clazz;
+            }
+        }
+        return projectModel.rootClass();
     }
 
     public FieldSampleContext fieldSampleContextForSelected() {
@@ -482,7 +525,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                 statementSourcePanel,
                 "statement");
         cardPanel.add(
-                ownedComponentSourcePanel,
+                ownedClassPanel,
                 "owned");
         cardPanel.add(
                 fieldSourcePanel,
@@ -634,10 +677,35 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         int kind = kindBox.getSelectedIndex();
         boolean toStatement = kind == 1;
-        boolean toOwned = kind == 2;
+
+        if (kind == 2) {
+            if (!clazz.ownedClass()) {
+                int answer = JOptionPane.showConfirmDialog(this,
+                        "Make " + clazz.className() + " an Owned class?\n\n"
+                                + "It will no longer have an independent Wikidata source. "
+                                + "Its instances will be created by ENTITY fields that "
+                                + "target it.",
+                        "Owned class", JOptionPane.OK_CANCEL_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+                if (answer != JOptionPane.OK_OPTION) {
+                    updatingKind = true;
+                    kindBox.setSelectedIndex(clazz.reifiesStatements() ? 1 : 0);
+                    updatingKind = false;
+                    return;
+                }
+                classSourcePanel.applyEdits();
+                clazz.ownedClass(true);
+            }
+            ownedClassPanel.edit(clazz);
+            layout.show(cardPanel, "owned");
+            afterChange.accept(null);
+            return;
+        }
 
         if (toStatement) {
-            OwnedComponentSourcePanel.detachSites(clazz, projectModel);
+            if (clazz.ownedClass()) {
+                clazz.ownedClass(false);
+            }
             if (!clazz.reifiesStatements()) {
                 classSourcePanel.applyEdits();
 
@@ -675,35 +743,10 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
             statementSourcePanel.edit(clazz);
             layout.show(cardPanel, "statement");
-        } else if (toOwned) {
-            if (clazz.reifiesStatements()) {
-                statementSourcePanel.applyEdits();
-                clazz.statementSource(null);
-                clazz.canonical(null);
-            } else {
-                classSourcePanel.applyEdits();
-            }
-            ownedComponentSourcePanel.edit(clazz);
-            // Declare the owning field NOW. This kind lives on another class's field, so
-            // a class that merely SHOWS this card is still UNCONFIGURED to the model, and
-            // the refresh below would put the kind box straight back to "Source class".
-            if (!ownedComponentSourcePanel.declareSite(false)) {
-                javax.swing.JOptionPane.showMessageDialog(this,
-                        "An owned component is produced by a field on another class, and "
-                                + "this project has no other class to own it.\nAdd the "
-                                + "owner class first.",
-                        "Owned component", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-                updatingKind = true;
-                kindBox.setSelectedIndex(0);
-                updatingKind = false;
-                classSourcePanel.edit(clazz);
-                layout.show(cardPanel, "class");
-                afterChange.accept(null);
-                return;
-            }
-            layout.show(cardPanel, "owned");
         } else {
-            OwnedComponentSourcePanel.detachSites(clazz, projectModel);
+            if (clazz.ownedClass()) {
+                clazz.ownedClass(false);
+            }
             if (clazz.reifiesStatements()) {
                 statementSourcePanel.applyEdits();
                 clazz.statementSource(null);
@@ -717,10 +760,4 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         afterChange.accept(null);
     }
 
-    private void ownedComponentChanged(Void ignored) {
-        if (selected instanceof GeneratedClassModel clazz) {
-            ownedComponentSourcePanel.edit(clazz);
-        }
-        afterChange.accept(null);
-    }
 }

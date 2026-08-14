@@ -2,11 +2,10 @@ package wikidata.explore.transform;
 
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.FieldProductionKind;
-import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.OwnedClassSemantics;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -85,7 +84,7 @@ public final class OwnedComponents {
                 // Subclass instances match that owner below; inherited fields must not
                 // manufacture a second site under the subclass name.
                 for (GeneratedFieldModel field : ownerClass.fields()) {
-                    if (!isSite(field)) continue;
+                    if (!isSite(field, project)) continue;
                     GeneratedClassModel target = project.findClass(field.entityClassName());
                     if (target == null) continue; // validator reports the model error
                     String typeKey = target.className() + "@"
@@ -129,9 +128,9 @@ public final class OwnedComponents {
         return new Result(created, List.copyOf(made));
     }
 
-    private static boolean isSite(GeneratedFieldModel field) {
-        return field != null && field.type() == FieldType.ENTITY
-                && field.mapping().productionKind() == FieldProductionKind.OWNED_COMPONENT;
+    private static boolean isSite(
+            GeneratedFieldModel field, GeneratedProjectModel project) {
+        return OwnedClassSemantics.isOwnerQidField(field, project);
     }
 
     private static void copyTargetFields(

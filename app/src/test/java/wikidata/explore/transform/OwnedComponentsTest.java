@@ -77,7 +77,10 @@ class OwnedComponentsTest {
                 "pronunciation", FieldType.ENTITY, FieldCardinality.SINGLE);
         nested.entityClassName("Pronunciation");
         nested.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
-        project.addClass(new GeneratedClassModel("Pronunciation"));
+        GeneratedClassModel pronunciationClass =
+                new GeneratedClassModel("Pronunciation");
+        pronunciationClass.ownedClass(true);
+        project.addClass(pronunciationClass);
         WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
 
         OwnedComponents.Result result = OwnedComponents.apply(
@@ -123,6 +126,7 @@ class OwnedComponentsTest {
         name.entityClassName("Name");
         name.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
         GeneratedClassModel component = new GeneratedClassModel("Name");
+        component.ownedClass(true);
         GeneratedFieldModel given = component.addField(
                 "givenName", FieldType.ENTITY, FieldCardinality.SINGLE);
         given.entityClassName("GivenName");

@@ -92,7 +92,8 @@ Generate selected class
  FIELD EDITOR (Production source -> field)
 --------------------------------------------------------------------------------
 
-  Field name        The field's name (becomes the JSON key / column).
+  Field name        The field's name (becomes the JSON key / column). "name" and
+                    "qid" already belong to every instance and are reserved.
   Source            Where values come from (SPARQL is the default).
   Type              String / Number / Date / Image / Entity / Auto.
                     Entity = a reference to another item.
@@ -358,4 +359,3 @@ ISSUES/QUERIES END
 
   3. Then Phase 2 (Greek mythology) — the relations showcase, and it's less blocked than stars (self-referential relations use the in-set DELAYED_ENTITY_FIELD path
   that already works for sharesBorderWith).
-

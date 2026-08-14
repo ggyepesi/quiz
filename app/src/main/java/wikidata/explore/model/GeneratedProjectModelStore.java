@@ -90,6 +90,8 @@ public final class GeneratedProjectModelStore {
     public GeneratedProjectModel load(
             File file) throws IOException {
 
-        return mapper.readValue(file, GeneratedProjectModel.class);
+        GeneratedProjectModel model = mapper.readValue(file, GeneratedProjectModel.class);
+        OwnedClassSemantics.migrateLegacy(model);
+        return model;
     }
 }
