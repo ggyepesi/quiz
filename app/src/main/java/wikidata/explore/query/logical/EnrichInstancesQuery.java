@@ -54,33 +54,28 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
 
     @Override
     public GenerationRun execute(QueryContext context) throws Exception {
-        context.message("Enriching " + previousRun.dynamicObjects().size()
-                + " downloaded objects: fetching only the declared properties still "
-                + "missing.");
+        // A STEP, not a bare message: the log window renders the tree, so a run that only
+        // emits text sits at "Running..." saying nothing while its batches come and go.
+        // Recording under a step gives every request its own entry — including one still
+        // in flight, which is exactly the entry worth seeing when a run looks stuck.
+        return context.step(
+                "Enrich \"" + projectModel.name() + "\"",
+                "Domain",   // a container node, not a SPARQL query
+                null,
+                parameters(),
+                step -> {
+                    wikidata.api.WikidataApiClient entityApi =
+                            new wikidata.api.WikidataApiClient(
+                                    wikidata.api.WikidataApiClient.DEFAULT_USER_AGENT)
+                                    .cancellation(context.cancellation());
 
-        wikidata.api.WikidataApiClient entityApi =
-                new wikidata.api.WikidataApiClient(
-                        wikidata.api.WikidataApiClient.DEFAULT_USER_AGENT)
-                        .cancellation(context.cancellation());
-
-        // Tee to stdout as well as the log window. A fetch over thousands of entities is
-        // I/O-bound — near-zero CPU for minutes — so "is it working or blocked?" cannot
-        // be answered by watching the process. Every batch prints, timestamped, where a
-        // hung request shows as a line that stops advancing.
-        return new GenerationPipeline().enrich(
-                previousRun, projectModel, entityApi,
-                wikidata.explore.extract.GenerationLog.of(text -> {
-                    context.message(text);
-                    echo(text);
-                }));
-    }
-
-    private static void echo(String text) {
-        if (text == null || text.isBlank()) return;
-        String stamp = java.time.LocalTime.now().withNano(0).toString();
-        for (String line : text.split("\\R")) {
-            if (!line.isBlank()) System.out.println("[enrich " + stamp + "] " + line);
-        }
+                    // Also teed to stdout: a fetch over thousands of entities is
+                    // I/O-bound — near-zero CPU for minutes — so the process itself
+                    // cannot answer "working, or blocked?".
+                    return new GenerationPipeline().enrich(
+                            previousRun, projectModel, entityApi,
+                            StepGenerationLog.of(context, step, "enrich"));
+                });
     }
 
     @Override

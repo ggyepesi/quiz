@@ -59,56 +59,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                 null,
                 Map.of("domain", project.name()),
                 step -> {
-                    GenerationLog genLog = new GenerationLog() {
-                        @Override public void message(String text) {
-                            context.message(text);
-                        }
-                        @Override public void subquery(
-                                String title, String request, String summary) {
-                            step.subquery(title, request, summary);
-                        }
-                        @Override public void subqueryFailed(
-                                String title, String request, String error) {
-                            step.subqueryFailed(title, request, error);
-                        }
-                        @Override public Running subqueryStarted(
-                                String title, String request) {
-                            return running(step, title, request);
-                        }
-                        @Override public Group group(String title) {
-                            wikidata.explore.query.log.LogStep sub =
-                                    step.beginGroup(title);
-                            return new Group() {
-                                // Batches within a group now record concurrently
-                                // (QualifierLoader fans out), so count atomically.
-                                private final java.util.concurrent.atomic
-                                        .AtomicInteger n =
-                                        new java.util.concurrent.atomic
-                                                .AtomicInteger();
-                                @Override public void message(String t) {
-                                    context.message(t);
-                                }
-                                @Override public void subquery(
-                                        String ti, String r, String s) {
-                                    sub.subquery(ti, r, s);
-                                    n.incrementAndGet();
-                                }
-                                @Override public void subqueryFailed(
-                                        String ti, String r, String e) {
-                                    sub.subqueryFailed(ti, r, e);
-                                    n.incrementAndGet();
-                                }
-                                @Override public Running subqueryStarted(
-                                        String ti, String r) {
-                                    n.incrementAndGet();
-                                    return running(sub, ti, r);
-                                }
-                                @Override public void close() {
-                                    sub.completeGroup(n.get() + " request(s)");
-                                }
-                            };
-                        }
-                    };
+                    // One structured log for every long run (see Enrich): each
+                    // request becomes its own entry, an in-flight one included.
+                    GenerationLog genLog = StepGenerationLog.of(context, step);
 
                     GenerationPipeline pipeline = new GenerationPipeline();
                     WikidataObjectRegistry shared = new WikidataObjectRegistry();
@@ -452,19 +405,6 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
     }
 
     // A running sub-query node under {@code step}, finished via the handle.
-    private static GenerationLog.Running running(
-            wikidata.explore.query.log.LogStep step, String title, String request) {
-        wikidata.explore.query.log.LogNode child = step.beginSubquery(title, request);
-        return new GenerationLog.Running() {
-            @Override public void done(String summary) {
-                step.completeSubquery(child, summary);
-            }
-            @Override public void failed(String error) {
-                step.failSubquery(child, error);
-            }
-        };
-    }
-
     // Generatable = has something to query: a membership type, extra types, or
     // an explicit seed-QID set. (A bare reference-only class is skipped.)
     private boolean generatable(GeneratedClassModel cls) {
