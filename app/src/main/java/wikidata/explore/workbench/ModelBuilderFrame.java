@@ -23,6 +23,7 @@ import wikidata.explore.model.*;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
+import wikidata.explore.query.logical.EnrichInstancesQuery;
 import wikidata.explore.query.logical.RemapInstancesQuery;
 import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.query.swing.SwingQueryRunner;
@@ -83,6 +84,11 @@ public class ModelBuilderFrame extends JFrame {
     // up canonicalization / display-name / mapping edits fast.
     private final JButton remapButton =
             new JButton("Remap (no download)");
+
+    // Fetch what a newly DECLARED field needs, over the entities already downloaded —
+    // additive, so it costs a property sweep rather than a re-extraction.
+    private final JButton enrichButton =
+            new JButton("Enrich (declared fields)");
 
     private final JButton cancelButton =
             new JButton("Cancel");
@@ -273,13 +279,22 @@ public class ModelBuilderFrame extends JFrame {
         JPanel runRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow1.add(generateButton);
         runRow1.add(generateDomainButton);
-        remapButton.setToolTipText("Re-materialize the last download with the "
-                                           + "current model — applies display-name / canonicalization / mapping "
-                                           + "edits without re-fetching from Wikidata.");
-        runRow1.add(remapButton);
         runRow1.add(cancelButton);
         runRow1.add(depthLabel);
         runRow1.add(depthSpinner);
+
+        // Reusing what was already downloaded: its own row, and one that stays short.
+        // A FlowLayout row inside this fixed-height GridLayout WRAPS out of sight
+        // rather than growing, so a row that outgrows a narrow window loses buttons.
+        JPanel runRowReuse = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        remapButton.setToolTipText("Re-materialize the last download with the "
+                                           + "current model — applies display-name / canonicalization / mapping "
+                                           + "edits without re-fetching from Wikidata.");
+        runRowReuse.add(remapButton);
+        enrichButton.setToolTipText("Load fields declared since the last download — "
+                                           + "fetches only those properties, for the entities already in the pool. "
+                                           + "Remap cannot show a property nobody fetched.");
+        runRowReuse.add(enrichButton);
 
         JPanel runRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow2.add(showInstancesButton);
@@ -291,6 +306,7 @@ public class ModelBuilderFrame extends JFrame {
 
         JPanel runSection = new JPanel(new GridLayout(0, 1, 0, 0));
         runSection.add(runRow1);
+        runSection.add(runRowReuse);
         runSection.add(runRow2);
 
         JPanel panel = new JPanel(new BorderLayout(4, 4));
@@ -733,6 +749,23 @@ public class ModelBuilderFrame extends JFrame {
                     // so canonicalization / display-name edits apply without a
                     // re-fetch. Valid for local edits (same extraction).
                     return new RemapInstancesQuery(lastRun, projectModel.copy());
+                },
+                this::reportGenerationError);
+
+        queryRunner.wireButton(
+                enrichButton,
+                this::acceptGenerationRun,
+                () -> {
+                    sourceWorkbench.applyEdits();
+                    if (lastRun == null) {
+                        warnNothingToGenerate(
+                                "Nothing to enrich yet — run Generate domain (or "
+                                        + "instances) first.");
+                        return null;
+                    }
+                    // Additive: a field declared since the download needs its property
+                    // fetched for the entities already here, not a new extraction.
+                    return new EnrichInstancesQuery(lastRun, projectModel.copy());
                 },
                 this::reportGenerationError);
 

@@ -296,6 +296,106 @@ public class GenerationPipeline {
     }
 
     /**
+     * Fills DECLARED fields that were never fetched, over the pool already downloaded.
+     *
+     * <p>The third mode, between the other two. Generate re-extracts; Remap re-transforms
+     * offline and so can never show a property nobody fetched. But declaring
+     * {@code Nominee.type} or {@code Name.familyName} changes no membership and
+     * invalidates nothing already in the pool — it is ADDITIVE, and its input is just
+     * the QIDs the pool already holds. Paying for a full re-extraction to add two
+     * per-entity properties is the wrong price.
+     *
+     * <p>So: materialize any newly declared components, fetch the declared PIDs of
+     * referenced-only and owned classes for the entities already present, then give the
+     * new values their classes and display names. A field that already has a value is
+     * left alone ({@link wikidata.explore.transform.ReferentFieldLoad}), so re-running
+     * only fills gaps.
+     */
+    public GenerationRun enrich(
+            GenerationRun previous,
+            GeneratedProjectModel snapshot,
+            wikidata.api.WikidataApiClient entityApi,
+            GenerationLog log) throws Exception {
+
+        // Say what is happening BEFORE each slow phase, not after: compiling the
+        // runtime and copying tens of thousands of objects take real time and used to
+        // pass in silence, so the run looked hung until the first fetch batch.
+        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
+        sink.message("Enrich: compiling the model's classes...\n");
+        RuleNode plan = plan(snapshot);
+        GeneratedViewableRuntime runtime = buildRuntime(snapshot);
+
+        // IN PLACE, unlike Remap. Enrich only ADDS — components, and values for fields
+        // that were empty — so there is nothing for a staged copy to protect the visible
+        // run from: a fetch that fails halfway leaves correct-but-incomplete data, and
+        // re-running fills the rest. Remap copies because kind assignment can move an
+        // object's carrier/type key; nothing here does, and deep-copying 26k objects to
+        // add a property to 7k of them is the wrong price for an additive pass.
+        sink.message("Enrich: walking " + previous.dynamicObjects().size()
+                + " downloaded object(s) in place to find what the declarations "
+                + "apply to...\n");
+        List<WikidataDynamicObject> pool = new ArrayList<>(previous.dynamicObjects());
+
+        // No evidence pool either: the components of an earlier run ARE these objects,
+        // found by identity in the pool itself rather than copied from a previous run.
+        wikidata.explore.transform.OwnedComponents.Result owned =
+                wikidata.explore.transform.OwnedComponents.apply(
+                        snapshot, pool, null, log);
+        owned.addTo(pool);
+        sink.message("Enrich: " + owned.created()
+                + " owned component(s) materialized; fetching declared properties"
+                + reportPendingLoads(snapshot) + "...\n");
+
+        int loaded = wikidata.explore.transform.ReferentFieldLoad.apply(
+                snapshot, pool, entityApi, log);
+
+        // The values just fetched are bare references until they are told what they are.
+        wikidata.explore.transform.ReferentClassStamp.apply(snapshot, pool);
+        wikidata.explore.transform.Canonicalization.apply(snapshot, pool, log);
+        wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, pool, log);
+
+        sink.message("Enrich: " + owned.created() + " component(s) materialized, "
+                + loaded + " declared field value(s) loaded over "
+                + pool.size() + " objects (no re-extraction). Re-materializing...\n");
+
+        List<Viewable> instances = materialize(runtime, pool);
+
+        // The cached enriched pool is a SEPARATE deep copy taken at generation time, so
+        // it does not hold what was just fetched — and it is the PRE-reify pool, so it
+        // cannot simply be replaced with this one either (a later Remap would reify the
+        // already-reified records twice). Dropping it puts Remap on its no-cached-pool
+        // path, which re-materializes the enriched objects instead of re-transforming a
+        // stale copy of them: the same state a snapshot has after being loaded.
+        return new GenerationRun(
+                snapshot, previous.depth(), plan, pool, runtime, instances, null);
+    }
+
+    /** The class.field (PID) pairs an enrich run will try to load — named up front, so
+     *  a run that turns out to fetch nothing says which declarations it considered. */
+    private static String reportPendingLoads(GeneratedProjectModel snapshot) {
+        List<String> declared = new ArrayList<>();
+        for (GeneratedClassModel clazz : snapshot.classes()) {
+            if (clazz == null) continue;
+            wikidata.explore.model.MembershipPattern pattern =
+                    wikidata.explore.model.MembershipPattern.of(clazz, snapshot);
+            if (pattern != wikidata.explore.model.MembershipPattern.REFERENCED
+                    && pattern != wikidata.explore.model.MembershipPattern.OWNED_COMPONENT) {
+                continue;
+            }
+            for (GeneratedFieldModel field : clazz.fields()) {
+                String pid = field == null || field.mapping() == null
+                        ? "" : field.mapping().propertyPid();
+                if (pid != null && pid.matches("(?i)P\\d+")) {
+                    declared.add(clazz.className() + "." + field.name() + " (" + pid + ")");
+                }
+            }
+        }
+        return declared.isEmpty()
+                ? " — none declared on a referenced-only or owned class"
+                : ": " + String.join(", ", declared);
+    }
+
+    /**
      * Offline re-transform: run the PURE transforms (reify → restrictions →
      * inverts → canonicalize → companion-match) on a fresh deep copy of the cached
      * ENRICHED pool, so model edits to reify/dedup/canonical/facet config take
