@@ -1,0 +1,8106 @@
+{
+  "corrections" : [ {
+    "type" : null,
+    "qid" : "Q2249071",
+    "field" : "@view:display",
+    "value" : "The Mandrake",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336667",
+    "field" : "@view:display",
+    "value" : "Brooklyn, U.S.A.",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1366425",
+    "field" : "@view:display",
+    "value" : "It Started in Naples",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q913710",
+    "field" : "@view:display",
+    "value" : "So This Is Harris!",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3108480",
+    "field" : "@view:display",
+    "value" : "Kitty",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16252083",
+    "field" : "@view:display",
+    "value" : "Johnny Doughboy",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q18411",
+    "field" : "@view:display",
+    "value" : "Juliet of the Spirits",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q913620",
+    "field" : "@view:display",
+    "value" : "The First Wives Club",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q957893",
+    "field" : "@view:display",
+    "value" : "Easter Parade",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q13555527",
+    "field" : "@view:display",
+    "value" : "Champions Carry On",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1217943",
+    "field" : "@view:display",
+    "value" : "Tit for Tat",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15712970",
+    "field" : "@view:display",
+    "value" : "Mercy Island",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4727789",
+    "field" : "@view:display",
+    "value" : "All-American Co-Ed",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5978617",
+    "field" : "@view:display",
+    "value" : "I Never Forget a Face",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1662700",
+    "field" : "@view:display",
+    "value" : "You Can’t Win",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2323002",
+    "field" : "@view:display",
+    "value" : "Bells Are Ringing",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336671",
+    "field" : "@view:display",
+    "value" : "Moon Rockets",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2469737",
+    "field" : "@view:display",
+    "value" : "Centennial Summer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7804664",
+    "field" : "@view:display",
+    "value" : "Timber Toppers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336676",
+    "field" : "@view:display",
+    "value" : "Cinderella Horse",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2530984",
+    "field" : "@view:display",
+    "value" : "Carrie",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7640621",
+    "field" : "@view:display",
+    "value" : "Sunny",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1390900",
+    "field" : "@view:display",
+    "value" : "Arise, My Love",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6869530",
+    "field" : "@view:display",
+    "value" : "Minstrel Man",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q284362",
+    "field" : "@view:display",
+    "value" : "How to Marry a Millionaire",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1479998",
+    "field" : "@view:display",
+    "value" : "The Thomas Crown Affair",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1758773",
+    "field" : "@view:display",
+    "value" : "Come Blow Your Horn",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1631690",
+    "field" : "@view:display",
+    "value" : "How to Sleep",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3282841",
+    "field" : "@view:display",
+    "value" : "Li'l Abner",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3484515",
+    "field" : "@view:display",
+    "value" : "The Big Fisherman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q285762",
+    "field" : "@view:display",
+    "value" : "Paris Underground",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336680",
+    "field" : "@view:display",
+    "value" : "So You Want to Be on the Radio",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7751395",
+    "field" : "@view:display",
+    "value" : "The Mikado",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q429311",
+    "field" : "@view:display",
+    "value" : "The American President",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1511625",
+    "field" : "@view:display",
+    "value" : "The Harder They Fall",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3937862",
+    "field" : "@view:display",
+    "value" : "Silver Queen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q60168305",
+    "field" : "@view:display",
+    "value" : "The Dutch Tradition",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1162072",
+    "field" : "@view:display",
+    "value" : "A New Kind of Love",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q32011",
+    "field" : "@view:display",
+    "value" : "On the Town",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q683957",
+    "field" : "@view:display",
+    "value" : "The Snows of Kilimanjaro",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1436763",
+    "field" : "@view:display",
+    "value" : "What, No Men!",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2373415",
+    "field" : "@view:display",
+    "value" : "Sword Fishing",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q894846",
+    "field" : "@view:display",
+    "value" : "Mission to Moscow",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2384699",
+    "field" : "@view:display",
+    "value" : "My Wild Irish Rose",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1230516",
+    "field" : "@view:display",
+    "value" : "Dive Bomber",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336692",
+    "field" : "@view:display",
+    "value" : "So You Think You’re Not Guilty",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1754021",
+    "field" : "@view:display",
+    "value" : "Purple Rain",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2004469",
+    "field" : "@view:display",
+    "value" : "Nugent Slaughter",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1999028",
+    "field" : "@view:display",
+    "value" : "The Silver Chalice",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336695",
+    "field" : "@view:display",
+    "value" : "Spills and Chills",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7488760",
+    "field" : "@view:display",
+    "value" : "Shanks",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1779102",
+    "field" : "@view:display",
+    "value" : "Terminal Station",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1170086",
+    "field" : "@view:display",
+    "value" : "Phantom of the Paradise",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q719471",
+    "field" : "@view:display",
+    "value" : "High Society",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q521136",
+    "field" : "@view:display",
+    "value" : "What a Way to Go!",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1798755",
+    "field" : "@view:display",
+    "value" : "La Cucaracha",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q851611",
+    "field" : "@view:display",
+    "value" : "Bugsy Malone",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2061652",
+    "field" : "@view:display",
+    "value" : "On the Riviera",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3818197",
+    "field" : "@view:display",
+    "value" : "Mother Is a Freshman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1193014",
+    "field" : "@view:display",
+    "value" : "Boom Town",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1373704",
+    "field" : "@view:display",
+    "value" : "Scratch-As-Catch-Can",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q303095",
+    "field" : "@view:display",
+    "value" : "Tonight and Every Night",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1216947",
+    "field" : "@view:display",
+    "value" : "The Barkleys of Broadway",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1216760",
+    "field" : "@view:display",
+    "value" : "Young Bess",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q133888857",
+    "field" : "@view:display",
+    "value" : "Mary, Queen of Scots",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q726634",
+    "field" : "@view:display",
+    "value" : "The Caretakers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q486609",
+    "field" : "@view:display",
+    "value" : "Anastasia",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2070692",
+    "field" : "@view:display",
+    "value" : "So Ends Our Night",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1195447",
+    "field" : "@view:display",
+    "value" : "Seconds",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2604605",
+    "field" : "@view:display",
+    "value" : "Thousands Cheer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q383021",
+    "field" : "@view:display",
+    "value" : "Affair in Trinidad",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4883730",
+    "field" : "@view:display",
+    "value" : "Belle of the Yukon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q17032728",
+    "field" : "@view:display",
+    "value" : "This Woman is Mine",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q47487568",
+    "field" : "@view:display",
+    "value" : "Traffic Stop",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7549690",
+    "field" : "@view:display",
+    "value" : "So You Want to Be in Pictures",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q82323298",
+    "field" : "@view:display",
+    "value" : "Walk Run Cha-Cha",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q595310",
+    "field" : "@view:display",
+    "value" : "Song Without End",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3983426",
+    "field" : "@view:display",
+    "value" : "Ladies in Retirement",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3223627",
+    "field" : "@view:display",
+    "value" : "Home in Indiana",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1289548",
+    "field" : "@view:display",
+    "value" : "The Loud Mouth",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2468927",
+    "field" : "@view:display",
+    "value" : "Desire Under the Elms",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q281301",
+    "field" : "@view:display",
+    "value" : "That Uncertain Feeling",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q328096",
+    "field" : "@view:display",
+    "value" : "Martin Luther",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1770417",
+    "field" : "@view:display",
+    "value" : "Lillian Russell",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2592510",
+    "field" : "@view:display",
+    "value" : "Skyscraper",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q47487571",
+    "field" : "@view:display",
+    "value" : "Heaven Is a Traffic Jam on the 405",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q596623",
+    "field" : "@view:display",
+    "value" : "The Leopard",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q47487573",
+    "field" : "@view:display",
+    "value" : "Edith+Eddie",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q47487574",
+    "field" : "@view:display",
+    "value" : "Knife Skills",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1307044",
+    "field" : "@view:display",
+    "value" : "One from the Heart",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1348409",
+    "field" : "@view:display",
+    "value" : "Let's Make Love",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q596260",
+    "field" : "@view:display",
+    "value" : "Shaft",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1707931",
+    "field" : "@view:display",
+    "value" : "You'll Never Get Rich",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1051707",
+    "field" : "@view:display",
+    "value" : "Cavalcade of Dance",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q936327",
+    "field" : "@view:display",
+    "value" : "Willy Wonka & the Chocolate Factory",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5021556",
+    "field" : "@view:display",
+    "value" : "Call Me Madam",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q507941",
+    "field" : "@view:display",
+    "value" : "Claudelle Inglish",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q131904444",
+    "field" : "@view:display",
+    "value" : "Instruments of a Beating Heart",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7757045",
+    "field" : "@view:display",
+    "value" : "The Pickwick Papers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1169028",
+    "field" : "@view:display",
+    "value" : "Beneath the 12-Mile Reef",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1076605",
+    "field" : "@view:display",
+    "value" : "Ugetsu",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3223456",
+    "field" : "@view:display",
+    "value" : "The President's Lady",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1246225",
+    "field" : "@view:display",
+    "value" : "Speedy",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q971986",
+    "field" : "@view:display",
+    "value" : "More About Nostradamus",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6689255",
+    "field" : "@view:display",
+    "value" : "Louisiana Purchase",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q893480",
+    "field" : "@view:display",
+    "value" : "Bored of Education",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2003372",
+    "field" : "@view:display",
+    "value" : "Now You See It",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1466426",
+    "field" : "@view:display",
+    "value" : "Little Women",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1410785",
+    "field" : "@view:display",
+    "value" : "Up in Arms",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q82307765",
+    "field" : "@view:display",
+    "value" : "In the Absence",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3520585",
+    "field" : "@view:display",
+    "value" : "The Desert Song",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15843170",
+    "field" : "@view:display",
+    "value" : "Royal Scotland",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1848335",
+    "field" : "@view:display",
+    "value" : "The Strawberry Blonde",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4782789",
+    "field" : "@view:display",
+    "value" : "Aquatic House Party",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5595282",
+    "field" : "@view:display",
+    "value" : "Grandad of Races",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q421777",
+    "field" : "@view:display",
+    "value" : "Napoleon and Samantha",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1214915",
+    "field" : "@view:display",
+    "value" : "The Muppets Take Manhattan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1754248",
+    "field" : "@view:display",
+    "value" : "The Red Danube",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q17096124",
+    "field" : "@view:display",
+    "value" : "Time Stood Still",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16251390",
+    "field" : "@view:display",
+    "value" : "Hitchhike to Happiness",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1857464",
+    "field" : "@view:display",
+    "value" : "King of the Zombies",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16799310",
+    "field" : "@view:display",
+    "value" : "Hilla Medalia",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7114058",
+    "field" : "@view:display",
+    "value" : "Overture to The Merry Wives of Windsor",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2104178",
+    "field" : "@view:display",
+    "value" : "The West Point Story",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3222801",
+    "field" : "@view:display",
+    "value" : "The Son of Monte Cristo",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2307428",
+    "field" : "@view:display",
+    "value" : "Road to Rio",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6758649",
+    "field" : "@view:display",
+    "value" : "Mardi Gras",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q782822",
+    "field" : "@view:display",
+    "value" : "Patch Adams",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3207370",
+    "field" : "@view:display",
+    "value" : "The Rise and Fall of Legs Diamond",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q945470",
+    "field" : "@view:display",
+    "value" : "Désirée",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1748495",
+    "field" : "@view:display",
+    "value" : "Hollywood in Uniform",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3832270",
+    "field" : "@view:display",
+    "value" : "Light in the Window",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4917032",
+    "field" : "@view:display",
+    "value" : "Birth of the Blues",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q537407",
+    "field" : "@view:display",
+    "value" : "Mulan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2095992",
+    "field" : "@view:display",
+    "value" : "The Slender Thread",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1332299",
+    "field" : "@view:display",
+    "value" : "Pete's Dragon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4660118",
+    "field" : "@view:display",
+    "value" : "A Thousand and One Nights",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2662951",
+    "field" : "@view:display",
+    "value" : "The Spoilers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15783578",
+    "field" : "@view:display",
+    "value" : "Annie Was a Wonder",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1214560",
+    "field" : "@view:display",
+    "value" : "Adventures of Don Juan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1145732",
+    "field" : "@view:display",
+    "value" : "Sleepers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1856354",
+    "field" : "@view:display",
+    "value" : "Phaedra",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q60793263",
+    "field" : "@view:display",
+    "value" : "A Night at the Garden",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7750889",
+    "field" : "@view:display",
+    "value" : "The Medium",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q216153",
+    "field" : "@view:display",
+    "value" : "A Bug's Life",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1898476",
+    "field" : "@view:display",
+    "value" : "Marines in the Making",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1815458",
+    "field" : "@view:display",
+    "value" : "Two for the Seesaw",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1519180",
+    "field" : "@view:display",
+    "value" : "Mister Buddwing",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1881769",
+    "field" : "@view:display",
+    "value" : "The Harvey Girls",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q681774",
+    "field" : "@view:display",
+    "value" : "Caesar and Cleopatra",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3389042",
+    "field" : "@view:display",
+    "value" : "Bitter Sweet",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q504151",
+    "field" : "@view:display",
+    "value" : "Trading Places",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q123558",
+    "field" : "@view:display",
+    "value" : "The Flame of New Orleans",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1475674",
+    "field" : "@view:display",
+    "value" : "The Preacher's Wife",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1145745",
+    "field" : "@view:display",
+    "value" : "Experiment Perilous",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q545243",
+    "field" : "@view:display",
+    "value" : "Northwest Passage",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1483952",
+    "field" : "@view:display",
+    "value" : "Take a Letter, Darling",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q303887",
+    "field" : "@view:display",
+    "value" : "A Boy Named Charlie Brown",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q13554494",
+    "field" : "@view:display",
+    "value" : "Desert Wonderland",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2213722",
+    "field" : "@view:display",
+    "value" : "Sal of Singapore",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q189540",
+    "field" : "@view:display",
+    "value" : "Seven Samurai",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7561171",
+    "field" : "@view:display",
+    "value" : "Song of the Open Road",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4748193",
+    "field" : "@view:display",
+    "value" : "Amphibious Fighters",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3287141",
+    "field" : "@view:display",
+    "value" : "Hello, Frisco, Hello",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q116591",
+    "field" : "@view:display",
+    "value" : "Roller Derby Girl",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15789028",
+    "field" : "@view:display",
+    "value" : "Blue Grass Gentlemen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q82321382",
+    "field" : "@view:display",
+    "value" : "St. Louis Superman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7647177",
+    "field" : "@view:display",
+    "value" : "Survival City",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q300526",
+    "field" : "@view:display",
+    "value" : "A Preferred List",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q555687",
+    "field" : "@view:display",
+    "value" : "The Man Who Shot Liberty Valance",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1110062",
+    "field" : "@view:display",
+    "value" : "The Five Pennies",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2760036",
+    "field" : "@view:display",
+    "value" : "All the Brothers Were Valiant",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q148469",
+    "field" : "@view:display",
+    "value" : "Romance on the High Seas",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22753024",
+    "field" : "@view:display",
+    "value" : "Sunbonnet Sue",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3208985",
+    "field" : "@view:display",
+    "value" : "The Foxes of Harrow",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1373591",
+    "field" : "@view:display",
+    "value" : "The Actress",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q882343",
+    "field" : "@view:display",
+    "value" : "Blue Skies",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3831182",
+    "field" : "@view:display",
+    "value" : "The Four Poster",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15850554",
+    "field" : "@view:display",
+    "value" : "The Story of Time",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1814810",
+    "field" : "@view:display",
+    "value" : "Aloma of the South Seas",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q560053",
+    "field" : "@view:display",
+    "value" : "The Visit (1964 film)",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2407222",
+    "field" : "@view:display",
+    "value" : "Incendiary Blonde",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16700470",
+    "field" : "@view:display",
+    "value" : "Joanna",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4027067",
+    "field" : "@view:display",
+    "value" : "Saraband for Dead Lovers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4010265",
+    "field" : "@view:display",
+    "value" : "To the Shores of Tripoli",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q366244",
+    "field" : "@view:display",
+    "value" : "Sun Valley Serenade",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3707879",
+    "field" : "@view:display",
+    "value" : "Say One for Me",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16945293",
+    "field" : "@view:display",
+    "value" : "Sis Hopkins",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q596965",
+    "field" : "@view:display",
+    "value" : "Papillon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1058046",
+    "field" : "@view:display",
+    "value" : "Wives and Lovers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7757929",
+    "field" : "@view:display",
+    "value" : "The Power and the Prize",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2355348",
+    "field" : "@view:display",
+    "value" : "Street of Chance",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1245160",
+    "field" : "@view:display",
+    "value" : "Destination Moon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q758583",
+    "field" : "@view:display",
+    "value" : "The Proud and Profane",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3137375",
+    "field" : "@view:display",
+    "value" : "The Story of Three Loves",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q331017",
+    "field" : "@view:display",
+    "value" : "To Catch a Thief",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q680594",
+    "field" : "@view:display",
+    "value" : "Midnight Lace",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q215617",
+    "field" : "@view:display",
+    "value" : "Sleeping Beauty",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q164858",
+    "field" : "@view:display",
+    "value" : "A Majority of One",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q945883",
+    "field" : "@view:display",
+    "value" : "El Cid",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1604697",
+    "field" : "@view:display",
+    "value" : "The Sting II",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3815370",
+    "field" : "@view:display",
+    "value" : "Kind Lady",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1340984",
+    "field" : "@view:display",
+    "value" : "Back Street",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q218894",
+    "field" : "@view:display",
+    "value" : "Pocahontas",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1167120",
+    "field" : "@view:display",
+    "value" : "The Gospel According to St. Matthew",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2312028",
+    "field" : "@view:display",
+    "value" : "Star Spangled Rhythm",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1214975",
+    "field" : "@view:display",
+    "value" : "The Young Girls of Rochefort",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1362240",
+    "field" : "@view:display",
+    "value" : "In Harm's Way",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4916056",
+    "field" : "@view:display",
+    "value" : "Birds Do It, Bees Do It",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1058426",
+    "field" : "@view:display",
+    "value" : "Sorrell and Son",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1518288",
+    "field" : "@view:display",
+    "value" : "Le Plaisir",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3212069",
+    "field" : "@view:display",
+    "value" : "Moontide",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3204158",
+    "field" : "@view:display",
+    "value" : "B.F.'s Daughter",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1501765",
+    "field" : "@view:display",
+    "value" : "Only Angels Have Wings",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5459272",
+    "field" : "@view:display",
+    "value" : "Flight for Freedom",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1424385",
+    "field" : "@view:display",
+    "value" : "The Blue Bird",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7560273",
+    "field" : "@view:display",
+    "value" : "Something to Shout About",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q940014",
+    "field" : "@view:display",
+    "value" : "Pride and Prejudice",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1581149",
+    "field" : "@view:display",
+    "value" : "Toys in the Attic",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2356858",
+    "field" : "@view:display",
+    "value" : "Prince of Foxes",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2844002",
+    "field" : "@view:display",
+    "value" : "Higher and Higher",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q61269467",
+    "field" : "@view:display",
+    "value" : "Period. End of Sentence.",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q8036606",
+    "field" : "@view:display",
+    "value" : "World of Kids",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1788982",
+    "field" : "@view:display",
+    "value" : "My Geisha",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1601716",
+    "field" : "@view:display",
+    "value" : "Captains of the Clouds",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1169663",
+    "field" : "@view:display",
+    "value" : "Can't Help Singing",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3408633",
+    "field" : "@view:display",
+    "value" : "The Adventures of Mark Twain",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1315787",
+    "field" : "@view:display",
+    "value" : "The Cop",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2371931",
+    "field" : "@view:display",
+    "value" : "For Me and My Gal",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q584509",
+    "field" : "@view:display",
+    "value" : "Limelight",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q689697",
+    "field" : "@view:display",
+    "value" : "Army Champions",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q110874710",
+    "field" : "@view:display",
+    "value" : "The Queen of Basketball",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q900708",
+    "field" : "@view:display",
+    "value" : "Sabrina",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q189875",
+    "field" : "@view:display",
+    "value" : "Alice in Wonderland",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7723395",
+    "field" : "@view:display",
+    "value" : "The Climax",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6469881",
+    "field" : "@view:display",
+    "value" : "Lady, Let's Dance",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q849344",
+    "field" : "@view:display",
+    "value" : "She Wore a Yellow Ribbon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q426352",
+    "field" : "@view:display",
+    "value" : "Samson and Delilah",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1199203",
+    "field" : "@view:display",
+    "value" : "When Worlds Collide",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7764665",
+    "field" : "@view:display",
+    "value" : "The Sky's the Limit",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1518589",
+    "field" : "@view:display",
+    "value" : "The Muppet Movie",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q568507",
+    "field" : "@view:display",
+    "value" : "The Loves of Carmen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3549302",
+    "field" : "@view:display",
+    "value" : "The Solid Gold Cadillac",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q17393899",
+    "field" : "@view:display",
+    "value" : "Smart as a Fox",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q637153",
+    "field" : "@view:display",
+    "value" : "The White Cliffs of Dover",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1439144",
+    "field" : "@view:display",
+    "value" : "Forty Boys and a Song",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1306853",
+    "field" : "@view:display",
+    "value" : "A Woman of Affairs",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1431567",
+    "field" : "@view:display",
+    "value" : "Holiday Inn",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1100510",
+    "field" : "@view:display",
+    "value" : "The Balcony",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3040419",
+    "field" : "@view:display",
+    "value" : "Blood on the Sun",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q300499",
+    "field" : "@view:display",
+    "value" : "A Night at the Movies",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q60891409",
+    "field" : "@view:display",
+    "value" : "Lifeboat",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2592996",
+    "field" : "@view:display",
+    "value" : "Wonder of Women",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q21527791",
+    "field" : "@view:display",
+    "value" : "Knickerbocker Holiday",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q374577",
+    "field" : "@view:display",
+    "value" : "Two Arabian Knights",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5871436",
+    "field" : "@view:display",
+    "value" : "Hit Parade of 1943",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5602608",
+    "field" : "@view:display",
+    "value" : "Green Grass of Wyoming",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4498626",
+    "field" : "@view:display",
+    "value" : "Khovanshchina",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1017834",
+    "field" : "@view:display",
+    "value" : "Busy Little Bears",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2352301",
+    "field" : "@view:display",
+    "value" : "Story of a Dog",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3701011",
+    "field" : "@view:display",
+    "value" : "Moscow Moods",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q40895",
+    "field" : "@view:display",
+    "value" : "Dumbo",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22683504",
+    "field" : "@view:display",
+    "value" : "The Bolshoi Ballet",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7694454",
+    "field" : "@view:display",
+    "value" : "Teenage Rebel",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4839171",
+    "field" : "@view:display",
+    "value" : "Back Street",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5965806",
+    "field" : "@view:display",
+    "value" : "I'll Get By",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1218111",
+    "field" : "@view:display",
+    "value" : "The Three Musketeers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1666238",
+    "field" : "@view:display",
+    "value" : "Intermezzo",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1143762",
+    "field" : "@view:display",
+    "value" : "The House on Telegraph Hill",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1795987",
+    "field" : "@view:display",
+    "value" : "Blood and Sand",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1127669",
+    "field" : "@view:display",
+    "value" : "My Gal Sal",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2650555",
+    "field" : "@view:display",
+    "value" : "Along the Rainbow Trail",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1634649",
+    "field" : "@view:display",
+    "value" : "No Time for Love",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1742135",
+    "field" : "@view:display",
+    "value" : "Kings of the Turf",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q747912",
+    "field" : "@view:display",
+    "value" : "The Frogmen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2329152",
+    "field" : "@view:display",
+    "value" : "Stairway to Light",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3713975",
+    "field" : "@view:display",
+    "value" : "Meet Me in Las Vegas",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q918380",
+    "field" : "@view:display",
+    "value" : "My Best Friend's Wedding",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q65048111",
+    "field" : "@view:display",
+    "value" : "Life Overtakes Me",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1852239",
+    "field" : "@view:display",
+    "value" : "The Americanization of Emily",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1734045",
+    "field" : "@view:display",
+    "value" : "Romance of Radium",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3205691",
+    "field" : "@view:display",
+    "value" : "Coney Island",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3602577",
+    "field" : "@view:display",
+    "value" : "A Man Called Peter",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q426293",
+    "field" : "@view:display",
+    "value" : "The Oscar",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1813582",
+    "field" : "@view:display",
+    "value" : "Guys and Dolls",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q898465",
+    "field" : "@view:display",
+    "value" : "Jesus Christ Superstar",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1752485",
+    "field" : "@view:display",
+    "value" : "Step Lively",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2778954",
+    "field" : "@view:display",
+    "value" : "Men in Black",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q13550644",
+    "field" : "@view:display",
+    "value" : "Sagebrush and Silver",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q13550645",
+    "field" : "@view:display",
+    "value" : "Down on the Farm",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q760012",
+    "field" : "@view:display",
+    "value" : "Gunga Din",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1750333",
+    "field" : "@view:display",
+    "value" : "Prophet Without Honor",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1939276",
+    "field" : "@view:display",
+    "value" : "Mister Mugg",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q684216",
+    "field" : "@view:display",
+    "value" : "Lassie Come Home",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q31971",
+    "field" : "@view:display",
+    "value" : "Reap the Wild Wind",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5212720",
+    "field" : "@view:display",
+    "value" : "Damn Yankees",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q999353",
+    "field" : "@view:display",
+    "value" : "Buck Privates",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1071402",
+    "field" : "@view:display",
+    "value" : "Cheyenne Autumn",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1964594",
+    "field" : "@view:display",
+    "value" : "The Model and the Marriage Broker",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q584824",
+    "field" : "@view:display",
+    "value" : "Night and Day",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2250146",
+    "field" : "@view:display",
+    "value" : "The Furies",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2321588",
+    "field" : "@view:display",
+    "value" : "Gypsy",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7450965",
+    "field" : "@view:display",
+    "value" : "Sensations of 1945",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2017676",
+    "field" : "@view:display",
+    "value" : "Visit to a Small Planet",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15806132",
+    "field" : "@view:display",
+    "value" : "Dive-Hi Champs",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7786140",
+    "field" : "@view:display",
+    "value" : "This Mechanical Age",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q331274",
+    "field" : "@view:display",
+    "value" : "The Shanghai Gesture",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q637192",
+    "field" : "@view:display",
+    "value" : "Paint Your Wagon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q47472042",
+    "field" : "@view:display",
+    "value" : "Heroin(e)",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1345912",
+    "field" : "@view:display",
+    "value" : "The Boys from Syracuse",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1352613",
+    "field" : "@view:display",
+    "value" : "Let It Be",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2123101",
+    "field" : "@view:display",
+    "value" : "Quicker'n a Wink",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q245227",
+    "field" : "@view:display",
+    "value" : "The Prince of Egypt",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q973616",
+    "field" : "@view:display",
+    "value" : "Daddy Long Legs",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1906840",
+    "field" : "@view:display",
+    "value" : "Career",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3744838",
+    "field" : "@view:display",
+    "value" : "My Son, My Son!",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1199345",
+    "field" : "@view:display",
+    "value" : "Billy the Kid",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2413621",
+    "field" : "@view:display",
+    "value" : "The Private Life of the Gannets",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q60903913",
+    "field" : "@view:display",
+    "value" : "End Game",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3182336",
+    "field" : "@view:display",
+    "value" : "Lydia",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q541414",
+    "field" : "@view:display",
+    "value" : "Morituri",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3517941",
+    "field" : "@view:display",
+    "value" : "Ten Gentlemen from West Point",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1345920",
+    "field" : "@view:display",
+    "value" : "Song of the South",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q499639",
+    "field" : "@view:display",
+    "value" : "Strangers on a Train",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q661949",
+    "field" : "@view:display",
+    "value" : "Dream Wife",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2269754",
+    "field" : "@view:display",
+    "value" : "The Black Rose",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15629374",
+    "field" : "@view:display",
+    "value" : "Blaze Busters",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1031821",
+    "field" : "@view:display",
+    "value" : "Can-Can",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1648026",
+    "field" : "@view:display",
+    "value" : "Stout Hearts and Willing Hands",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q909561",
+    "field" : "@view:display",
+    "value" : "Is Paris Burning?",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q105993238",
+    "field" : "@view:display",
+    "value" : "Colette",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q660463",
+    "field" : "@view:display",
+    "value" : "The Pigeon That Took Rome",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1580373",
+    "field" : "@view:display",
+    "value" : "Look for the Silver Lining",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1219738",
+    "field" : "@view:display",
+    "value" : "The Stripper",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22000673",
+    "field" : "@view:display",
+    "value" : "Why Girls Leave Home",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3006300",
+    "field" : "@view:display",
+    "value" : "Sundown",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15854212",
+    "field" : "@view:display",
+    "value" : "White Rhapsody",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1304578",
+    "field" : "@view:display",
+    "value" : "The Ghost and Mrs. Muir",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1167859",
+    "field" : "@view:display",
+    "value" : "Frenchman's Creek",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1199728",
+    "field" : "@view:display",
+    "value" : "The Uninvited",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2556456",
+    "field" : "@view:display",
+    "value" : "Show Boat",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1225134",
+    "field" : "@view:display",
+    "value" : "There's No Business Like Show Business",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q131872925",
+    "field" : "@view:display",
+    "value" : "Incident",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q794344",
+    "field" : "@view:display",
+    "value" : "Symphony of a City",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q131872927",
+    "field" : "@view:display",
+    "value" : "The Only Girl in the Orchestra",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2548546",
+    "field" : "@view:display",
+    "value" : "Wanted – A Master",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q12127823",
+    "field" : "@view:display",
+    "value" : "Speaking of Animals and Their Families",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2015369",
+    "field" : "@view:display",
+    "value" : "Of Pups and Puzzles",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15809895",
+    "field" : "@view:display",
+    "value" : "Flying with Music",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2343239",
+    "field" : "@view:display",
+    "value" : "The Virgin Queen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2063151",
+    "field" : "@view:display",
+    "value" : "It Should Happen to You",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15805317",
+    "field" : "@view:display",
+    "value" : "Desert Killer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1283810",
+    "field" : "@view:display",
+    "value" : "One, Two, Three",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1736790",
+    "field" : "@view:display",
+    "value" : "That Mothers Might Live",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1335608",
+    "field" : "@view:display",
+    "value" : "Jammin' the Blues",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1198611",
+    "field" : "@view:display",
+    "value" : "The Absent-Minded Professor",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1167592",
+    "field" : "@view:display",
+    "value" : "Jungle Book",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q635167",
+    "field" : "@view:display",
+    "value" : "The Music Box",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q787658",
+    "field" : "@view:display",
+    "value" : "Address Unknown",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1210771",
+    "field" : "@view:display",
+    "value" : "The 5,000 Fingers of Dr. T.",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2368412",
+    "field" : "@view:display",
+    "value" : "Sure Cures",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1546133",
+    "field" : "@view:display",
+    "value" : "Screen Snapshots Series 25, No. 1: 25th Anniversary",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1199280",
+    "field" : "@view:display",
+    "value" : "The Little Prince",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q12126710",
+    "field" : "@view:display",
+    "value" : "Oh, My Nerves",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q12125133",
+    "field" : "@view:display",
+    "value" : "Irish Eyes Are Smiling",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4353817",
+    "field" : "@view:display",
+    "value" : "Mother Wore Tights",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7168620",
+    "field" : "@view:display",
+    "value" : "Period of Adjustment",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q862708",
+    "field" : "@view:display",
+    "value" : "Gate of Hell",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2385458",
+    "field" : "@view:display",
+    "value" : "Million Dollar Mermaid",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3282128",
+    "field" : "@view:display",
+    "value" : "Red Garters",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7997070",
+    "field" : "@view:display",
+    "value" : "Who's Who in Animal Land",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1353594",
+    "field" : "@view:display",
+    "value" : "King Rat",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1750380",
+    "field" : "@view:display",
+    "value" : "Lady in the Dark",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16908612",
+    "field" : "@view:display",
+    "value" : "Facing Fear",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q432567",
+    "field" : "@view:display",
+    "value" : "The Princess and the Pirate",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q10862976",
+    "field" : "@view:display",
+    "value" : "Sand",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2414783",
+    "field" : "@view:display",
+    "value" : "The United States Marine Band",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1698632",
+    "field" : "@view:display",
+    "value" : "Kisses for My President",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2265028",
+    "field" : "@view:display",
+    "value" : "Seeing Hands",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22008929",
+    "field" : "@view:display",
+    "value" : "Gadgets Galore",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7743045",
+    "field" : "@view:display",
+    "value" : "The Jazz Singer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q20475",
+    "field" : "@view:display",
+    "value" : "Yojimbo",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1479652",
+    "field" : "@view:display",
+    "value" : "When Ladies Meet",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1507856",
+    "field" : "@view:display",
+    "value" : "George Marion, Jr.",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2877834",
+    "field" : "@view:display",
+    "value" : "Babes in Toyland",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2734652",
+    "field" : "@view:display",
+    "value" : "The Gang's All Here",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2006171",
+    "field" : "@view:display",
+    "value" : "A Rage to Live",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336707",
+    "field" : "@view:display",
+    "value" : "Ridin’ the Rails",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2412450",
+    "field" : "@view:display",
+    "value" : "The Leatherneck",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3235479",
+    "field" : "@view:display",
+    "value" : "Seven Thieves",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q854532",
+    "field" : "@view:display",
+    "value" : "Fate is the Hunter",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q252529",
+    "field" : "@view:display",
+    "value" : "Black Narcissus",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q931735",
+    "field" : "@view:display",
+    "value" : "Lady of the Tropics",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1444517",
+    "field" : "@view:display",
+    "value" : "The Best Things in Life Are Free",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q61037254",
+    "field" : "@view:display",
+    "value" : "Black Sheep",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1333207",
+    "field" : "@view:display",
+    "value" : "A House Is Not a Home",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1868902",
+    "field" : "@view:display",
+    "value" : "London Can Take It!",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1335729",
+    "field" : "@view:display",
+    "value" : "The Great Heart",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5182432",
+    "field" : "@view:display",
+    "value" : "Crashing the Water Barrier",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1656073",
+    "field" : "@view:display",
+    "value" : "The Last of Mrs. Cheyney",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q921033",
+    "field" : "@view:display",
+    "value" : "Fourteen Hours",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336714",
+    "field" : "@view:display",
+    "value" : "Athletes of the Saddle",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22233317",
+    "field" : "@view:display",
+    "value" : "Herring Hunt",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q949666",
+    "field" : "@view:display",
+    "value" : "It Started with Eve",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1257227",
+    "field" : "@view:display",
+    "value" : "Three Little Words",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1444707",
+    "field" : "@view:display",
+    "value" : "The Earrings of Madame de...",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1687008",
+    "field" : "@view:display",
+    "value" : "Portrait of Jennie",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q213787",
+    "field" : "@view:display",
+    "value" : "The Hunchback of Notre Dame",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1304986",
+    "field" : "@view:display",
+    "value" : "The Crowd",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q135465",
+    "field" : "@view:display",
+    "value" : "Rashomon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15260435",
+    "field" : "@view:display",
+    "value" : "3rd Ave. El",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1304891",
+    "field" : "@view:display",
+    "value" : "San Antonio",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2268591",
+    "field" : "@view:display",
+    "value" : "The Spanish Main",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q634809",
+    "field" : "@view:display",
+    "value" : "Paris Blues",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2208041",
+    "field" : "@view:display",
+    "value" : "Kiss Me Kate",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1657934",
+    "field" : "@view:display",
+    "value" : "Water Trix",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3886865",
+    "field" : "@view:display",
+    "value" : "Stagecoach to Fury",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3209050",
+    "field" : "@view:display",
+    "value" : "State Fair",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q971165",
+    "field" : "@view:display",
+    "value" : "Rogue Cop",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336727",
+    "field" : "@view:display",
+    "value" : "Christ among the Primitives",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q600517",
+    "field" : "@view:display",
+    "value" : "The Baby Maker",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2412388",
+    "field" : "@view:display",
+    "value" : "Fiesta",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2562722",
+    "field" : "@view:display",
+    "value" : "Unstrung Heroes",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1196413",
+    "field" : "@view:display",
+    "value" : "The Flame and the Arrow",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q742219",
+    "field" : "@view:display",
+    "value" : "Madame Bovary",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16956160",
+    "field" : "@view:display",
+    "value" : "Cavedigger",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336731",
+    "field" : "@view:display",
+    "value" : "Joy of Living",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336733",
+    "field" : "@view:display",
+    "value" : "Wee Water Wonders",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336735",
+    "field" : "@view:display",
+    "value" : "The First Piano Quartette",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336736",
+    "field" : "@view:display",
+    "value" : "The Strauss Fantasy",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336738",
+    "field" : "@view:display",
+    "value" : "Three Kisses",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15812521",
+    "field" : "@view:display",
+    "value" : "Golden Horses",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q144970",
+    "field" : "@view:display",
+    "value" : "Hatari!",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336647",
+    "field" : "@view:display",
+    "value" : "Information Please: Series 1, No. 1",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3819358",
+    "field" : "@view:display",
+    "value" : "Too Young to Kiss",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336649",
+    "field" : "@view:display",
+    "value" : "Screen Snapshots' 50th Anniversary of Motion Pictures",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1299272",
+    "field" : "@view:display",
+    "value" : "Queen Bee",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3108556",
+    "field" : "@view:display",
+    "value" : "Stage Door Canteen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1114432",
+    "field" : "@view:display",
+    "value" : "The Four Feathers",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1351398",
+    "field" : "@view:display",
+    "value" : "Siege",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2259762",
+    "field" : "@view:display",
+    "value" : "Images",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2249423",
+    "field" : "@view:display",
+    "value" : "The Merry Widow",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1217650",
+    "field" : "@view:display",
+    "value" : "The Wonderful World of the Brothers Grimm",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1131380",
+    "field" : "@view:display",
+    "value" : "James and the Giant Peach",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5546024",
+    "field" : "@view:display",
+    "value" : "George Washington Slept Here",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7683567",
+    "field" : "@view:display",
+    "value" : "Tanks a Million",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q174513",
+    "field" : "@view:display",
+    "value" : "One-Eyed Jacks",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336652",
+    "field" : "@view:display",
+    "value" : "Your National Gallery",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1951164",
+    "field" : "@view:display",
+    "value" : "Movie Pests",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7717016",
+    "field" : "@view:display",
+    "value" : "The Best of Everything",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15542972",
+    "field" : "@view:display",
+    "value" : "Beauty and the Beach",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1758385",
+    "field" : "@view:display",
+    "value" : "Corvette K-225",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1528304",
+    "field" : "@view:display",
+    "value" : "The Egyptian",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3281512",
+    "field" : "@view:display",
+    "value" : "The Gazebo",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q939909",
+    "field" : "@view:display",
+    "value" : "The Mudlark",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7751097",
+    "field" : "@view:display",
+    "value" : "The Merry Monahans",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1537524",
+    "field" : "@view:display",
+    "value" : "Goodbye, Miss Turlock",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1492706",
+    "field" : "@view:display",
+    "value" : "Down Argentine Way",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1163628",
+    "field" : "@view:display",
+    "value" : "Straw Dogs",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2594521",
+    "field" : "@view:display",
+    "value" : "Wrong Way Butch",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1656298",
+    "field" : "@view:display",
+    "value" : "The Emperor Waltz",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2961961",
+    "field" : "@view:display",
+    "value" : "Cheers for Miss Bishop",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1170235",
+    "field" : "@view:display",
+    "value" : "That Forsyte Woman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1391649",
+    "field" : "@view:display",
+    "value" : "Facing Your Danger",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1258295",
+    "field" : "@view:display",
+    "value" : "Thirty Seconds Over Tokyo",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2249349",
+    "field" : "@view:display",
+    "value" : "The Tales of Hoffmann",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q515528",
+    "field" : "@view:display",
+    "value" : "The Black Swan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q213635",
+    "field" : "@view:display",
+    "value" : "Ernst Toch",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1700581",
+    "field" : "@view:display",
+    "value" : "John J. Mescall",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q106519515",
+    "field" : "@view:display",
+    "value" : "Alison McAlpine",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q369059",
+    "field" : "@view:display",
+    "value" : "William H. Clothier",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6475324",
+    "field" : "@view:display",
+    "value" : "Mildred Griffiths",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q504444",
+    "field" : "@view:display",
+    "value" : "Joseph H. August",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q55004",
+    "field" : "@view:display",
+    "value" : "Kurt Weill",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q534994",
+    "field" : "@view:display",
+    "value" : "Harry Sukman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q106596187",
+    "field" : "@view:display",
+    "value" : "Michael Scheuerman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q893694",
+    "field" : "@view:display",
+    "value" : "Boris Juraga",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1123883",
+    "field" : "@view:display",
+    "value" : "Raymond Rasch",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q126197942",
+    "field" : "@view:display",
+    "value" : "Jean Tsien",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q373115",
+    "field" : "@view:display",
+    "value" : "Winton Hoch",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q723837",
+    "field" : "@view:display",
+    "value" : "Robert Krasker",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1467469",
+    "field" : "@view:display",
+    "value" : "Fritz Maurischat",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q61890591",
+    "field" : "@view:display",
+    "value" : "Jonathan Chinn",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1362480",
+    "field" : "@view:display",
+    "value" : "Yury Annenkov",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1030765",
+    "field" : "@view:display",
+    "value" : "Glen MacWilliams",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1146861",
+    "field" : "@view:display",
+    "value" : "Cy Coleman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945448",
+    "field" : "@view:display",
+    "value" : "Dick Snider",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3700971",
+    "field" : "@view:display",
+    "value" : "John Jarvis",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q464028",
+    "field" : "@view:display",
+    "value" : "Edward H. Plumb",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q351563",
+    "field" : "@view:display",
+    "value" : "Joseph LaShelle",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q710447",
+    "field" : "@view:display",
+    "value" : "Arthur Lonergan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3442680",
+    "field" : "@view:display",
+    "value" : "Rosine Delamare",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1609972",
+    "field" : "@view:display",
+    "value" : "John Stoll",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q61006630",
+    "field" : "@view:display",
+    "value" : "Skye Fitzgerald",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2580846",
+    "field" : "@view:display",
+    "value" : "William V. Skall",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q28604111",
+    "field" : "@view:display",
+    "value" : "Daphne Matziaraki",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2778939",
+    "field" : "@view:display",
+    "value" : "Luigi Scaccianoce",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3847605",
+    "field" : "@view:display",
+    "value" : "Maria De Matteis",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2377564",
+    "field" : "@view:display",
+    "value" : "Robert R. Benton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q458801",
+    "field" : "@view:display",
+    "value" : "Bess Meredyth",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1312577",
+    "field" : "@view:display",
+    "value" : "Russell Metty",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q634059",
+    "field" : "@view:display",
+    "value" : "Archie Stout",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q505108",
+    "field" : "@view:display",
+    "value" : "Paul Groesse",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q505035",
+    "field" : "@view:display",
+    "value" : "Arthur E. Arling",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1383334",
+    "field" : "@view:display",
+    "value" : "Lou Brock",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945503",
+    "field" : "@view:display",
+    "value" : "Andy Thomson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q97338456",
+    "field" : "@view:display",
+    "value" : "Lee Seung-jun",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q49161279",
+    "field" : "@view:display",
+    "value" : "Laura Checkoway",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q690973",
+    "field" : "@view:display",
+    "value" : "Alfred Gilks",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q124839256",
+    "field" : "@view:display",
+    "value" : "Truman H. Talley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3760602",
+    "field" : "@view:display",
+    "value" : "George Milo",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1681848",
+    "field" : "@view:display",
+    "value" : "Willy Holt",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2571000",
+    "field" : "@view:display",
+    "value" : "Virgil Miller",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q324705",
+    "field" : "@view:display",
+    "value" : "Peter Herman Adler",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1750520",
+    "field" : "@view:display",
+    "value" : "Vassilis Photopoulos",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q348093",
+    "field" : "@view:display",
+    "value" : "Lucien Ballard",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q541907",
+    "field" : "@view:display",
+    "value" : "Gerald Fried",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1268997",
+    "field" : "@view:display",
+    "value" : "Hans O. Peters",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q603714",
+    "field" : "@view:display",
+    "value" : "Lewis J. Rachmil",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1745777",
+    "field" : "@view:display",
+    "value" : "Louis Forbes",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q725791",
+    "field" : "@view:display",
+    "value" : "Roger Kellaway",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q664592",
+    "field" : "@view:display",
+    "value" : "Johnny Green",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q132035427",
+    "field" : "@view:display",
+    "value" : "Lisa Remington",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16728125",
+    "field" : "@view:display",
+    "value" : "Jason Cohen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q49159465",
+    "field" : "@view:display",
+    "value" : "David Heilbroner",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4681254",
+    "field" : "@view:display",
+    "value" : "Addison Hehr",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22336742",
+    "field" : "@view:display",
+    "value" : "Joseph O'Brien",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3013691",
+    "field" : "@view:display",
+    "value" : "Daniel B. Cathcart",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q464764",
+    "field" : "@view:display",
+    "value" : "Paul Vogel",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q729273",
+    "field" : "@view:display",
+    "value" : "George Tipton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2807994",
+    "field" : "@view:display",
+    "value" : "William Wallace",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16218675",
+    "field" : "@view:display",
+    "value" : "Bryn Mooser",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3185119",
+    "field" : "@view:display",
+    "value" : "Joseph J. Lilley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5408018",
+    "field" : "@view:display",
+    "value" : "Charles Harten",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1332599",
+    "field" : "@view:display",
+    "value" : "Luis Bacalov",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q504191",
+    "field" : "@view:display",
+    "value" : "W. Howard Greene",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q106596147",
+    "field" : "@view:display",
+    "value" : "Janice Duncan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q432919",
+    "field" : "@view:display",
+    "value" : "Maxwell Anderson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5082300",
+    "field" : "@view:display",
+    "value" : "Charles S. Thompson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5292704",
+    "field" : "@view:display",
+    "value" : "Don Greenwood, Jr.",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q507137",
+    "field" : "@view:display",
+    "value" : "Russell A. Gausman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q132157564",
+    "field" : "@view:display",
+    "value" : "Janique L. Robillard",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q24640447",
+    "field" : "@view:display",
+    "value" : "Kim A. Snyder",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q117708004",
+    "field" : "@view:display",
+    "value" : "Gary Byung-Seok Kam",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q438450",
+    "field" : "@view:display",
+    "value" : "Barbara Karinska",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3514200",
+    "field" : "@view:display",
+    "value" : "Takashi Matsuyama",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5515555",
+    "field" : "@view:display",
+    "value" : "Gabriel Béchir",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2129792",
+    "field" : "@view:display",
+    "value" : "Ralph Staub",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2003187",
+    "field" : "@view:display",
+    "value" : "Arnold Friberg",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2158138",
+    "field" : "@view:display",
+    "value" : "Robert M. Haas",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q675760",
+    "field" : "@view:display",
+    "value" : "Arlington Valles",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q28941169",
+    "field" : "@view:display",
+    "value" : "Stephen Ellis",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15485848",
+    "field" : "@view:display",
+    "value" : "Walter Greene",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q375958",
+    "field" : "@view:display",
+    "value" : "Ferde Grofé",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q710335",
+    "field" : "@view:display",
+    "value" : "Arthur Lawson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q376630",
+    "field" : "@view:display",
+    "value" : "Joe Renzetti",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1700525",
+    "field" : "@view:display",
+    "value" : "John Hughes",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q328857",
+    "field" : "@view:display",
+    "value" : "Cyril J. Mockridge",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1712251",
+    "field" : "@view:display",
+    "value" : "Julien Josephson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q711913",
+    "field" : "@view:display",
+    "value" : "Stanley Cortez",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2735722",
+    "field" : "@view:display",
+    "value" : "John F. Warren",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2549683",
+    "field" : "@view:display",
+    "value" : "Warren Doane",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6707947",
+    "field" : "@view:display",
+    "value" : "Lyle Reifsnider",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q114409592",
+    "field" : "@view:display",
+    "value" : "Geoff McLean",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6251493",
+    "field" : "@view:display",
+    "value" : "John P. Austin",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6183560",
+    "field" : "@view:display",
+    "value" : "Jerry Fairbanks",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q363241",
+    "field" : "@view:display",
+    "value" : "Patrick Doyle",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1676994",
+    "field" : "@view:display",
+    "value" : "Jack Chertok",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1738870",
+    "field" : "@view:display",
+    "value" : "Kenneth Higgins",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7369294",
+    "field" : "@view:display",
+    "value" : "Ross Dowd",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6144919",
+    "field" : "@view:display",
+    "value" : "James W. Sullivan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7347058",
+    "field" : "@view:display",
+    "value" : "Robert Luthardt",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1816618",
+    "field" : "@view:display",
+    "value" : "Leland Fuller",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q208681",
+    "field" : "@view:display",
+    "value" : "Kris Kristofferson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3827165",
+    "field" : "@view:display",
+    "value" : "Larry Russell",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q8013895",
+    "field" : "@view:display",
+    "value" : "William Kellner",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q588246",
+    "field" : "@view:display",
+    "value" : "Nathan Juran",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q71424",
+    "field" : "@view:display",
+    "value" : "Walter Lassally",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7288044",
+    "field" : "@view:display",
+    "value" : "Ralph S. Hurst",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q96606",
+    "field" : "@view:display",
+    "value" : "Paul Huldschinsky",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q573709",
+    "field" : "@view:display",
+    "value" : "Anthony Newley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1379985",
+    "field" : "@view:display",
+    "value" : "Michael Relph",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6284142",
+    "field" : "@view:display",
+    "value" : "Joseph Hurley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q27038285",
+    "field" : "@view:display",
+    "value" : "Kahane Cooperman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1690720",
+    "field" : "@view:display",
+    "value" : "Joan Bridge",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1699139",
+    "field" : "@view:display",
+    "value" : "John Alton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q49171594",
+    "field" : "@view:display",
+    "value" : "Thomas Lee Wright",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q278759",
+    "field" : "@view:display",
+    "value" : "Boris Kaufman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q118366",
+    "field" : "@view:display",
+    "value" : "Franz Bachelin",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q72792",
+    "field" : "@view:display",
+    "value" : "Hal Roach",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q116202607",
+    "field" : "@view:display",
+    "value" : "Pedro Kos",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q537722",
+    "field" : "@view:display",
+    "value" : "Jerry Wexler",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6317675",
+    "field" : "@view:display",
+    "value" : "Justin Herman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q537652",
+    "field" : "@view:display",
+    "value" : "Antoni Clavé",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6755563",
+    "field" : "@view:display",
+    "value" : "Marc Frédérix",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q317574",
+    "field" : "@view:display",
+    "value" : "Mack Sennett",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q367614",
+    "field" : "@view:display",
+    "value" : "Ray Rennahan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q124396899",
+    "field" : "@view:display",
+    "value" : "Sean Wang",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q139223",
+    "field" : "@view:display",
+    "value" : "Peter Maxwell Davies",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2149875",
+    "field" : "@view:display",
+    "value" : "Richard Irvine",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q862316",
+    "field" : "@view:display",
+    "value" : "Bill Melendez",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q453461",
+    "field" : "@view:display",
+    "value" : "Heinz Eric Roemheld",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2399809",
+    "field" : "@view:display",
+    "value" : "Ted McCord",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4480566",
+    "field" : "@view:display",
+    "value" : "Yuri Fayer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q543004",
+    "field" : "@view:display",
+    "value" : "Nicholas Musuraca",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q83571794",
+    "field" : "@view:display",
+    "value" : "Smriti Mundhra",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4030",
+    "field" : "@view:display",
+    "value" : "Duke Ellington",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q516780",
+    "field" : "@view:display",
+    "value" : "Leah Rhodes",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7437270",
+    "field" : "@view:display",
+    "value" : "Scott Slimon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q84650",
+    "field" : "@view:display",
+    "value" : "Franz Planer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2578830",
+    "field" : "@view:display",
+    "value" : "William Flannery",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q458458",
+    "field" : "@view:display",
+    "value" : "Grantland Rice",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15452178",
+    "field" : "@view:display",
+    "value" : "Otto Siegel",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3623760",
+    "field" : "@view:display",
+    "value" : "Arrigo Breschi",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q957475",
+    "field" : "@view:display",
+    "value" : "Herbert Brenon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q28555333",
+    "field" : "@view:display",
+    "value" : "Raphaela Neihausen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q568941",
+    "field" : "@view:display",
+    "value" : "Loyal Griggs",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1597011",
+    "field" : "@view:display",
+    "value" : "Peter Matz",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3736983",
+    "field" : "@view:display",
+    "value" : "Harley Miller",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q56513231",
+    "field" : "@view:display",
+    "value" : "Evgenia Arbugaeva",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6114127",
+    "field" : "@view:display",
+    "value" : "Jack Mills",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7369192",
+    "field" : "@view:display",
+    "value" : "Ross Bellah",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15793783",
+    "field" : "@view:display",
+    "value" : "Cedric Francis",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q571348",
+    "field" : "@view:display",
+    "value" : "William Ferrari",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6389791",
+    "field" : "@view:display",
+    "value" : "Kenneth A. Reid",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q181230",
+    "field" : "@view:display",
+    "value" : "Elizabeth Haffenden",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945983",
+    "field" : "@view:display",
+    "value" : "Madeline Bell",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q521379",
+    "field" : "@view:display",
+    "value" : "Marjorie Best",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q463883",
+    "field" : "@view:display",
+    "value" : "Frances Marion",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q24661045",
+    "field" : "@view:display",
+    "value" : "Jon Shenk",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15821551",
+    "field" : "@view:display",
+    "value" : "John Koenig",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1509838",
+    "field" : "@view:display",
+    "value" : "Gerald Duffy",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7965524",
+    "field" : "@view:display",
+    "value" : "Walter M. Simonds",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6222410",
+    "field" : "@view:display",
+    "value" : "John Bonar",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q455568",
+    "field" : "@view:display",
+    "value" : "Helen Rose",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q782423",
+    "field" : "@view:display",
+    "value" : "Marcel Grignon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7344072",
+    "field" : "@view:display",
+    "value" : "Robert Emmet Smith",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2546833",
+    "field" : "@view:display",
+    "value" : "Walter Wottitz",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5081286",
+    "field" : "@view:display",
+    "value" : "Charles Novi",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q592131",
+    "field" : "@view:display",
+    "value" : "Edward Stevenson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1569339",
+    "field" : "@view:display",
+    "value" : "Morris Stoloff",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q958139",
+    "field" : "@view:display",
+    "value" : "Henri Alekan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q432573",
+    "field" : "@view:display",
+    "value" : "Angela Morley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1203",
+    "field" : "@view:display",
+    "value" : "John Lennon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q145245",
+    "field" : "@view:display",
+    "value" : "Irene Lentz",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2475884",
+    "field" : "@view:display",
+    "value" : "Charles P. Boyle",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q60169605",
+    "field" : "@view:display",
+    "value" : "John Hoffman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2174492",
+    "field" : "@view:display",
+    "value" : "Rudolph Sternad",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1263913",
+    "field" : "@view:display",
+    "value" : "Stephen Seymour",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15793909",
+    "field" : "@view:display",
+    "value" : "Charles A. Marshall",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2643",
+    "field" : "@view:display",
+    "value" : "George Harrison",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q710209",
+    "field" : "@view:display",
+    "value" : "Arthur Krams",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6247446",
+    "field" : "@view:display",
+    "value" : "John McCarthy, Jr.",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1753034",
+    "field" : "@view:display",
+    "value" : "Pete Smith",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1364297",
+    "field" : "@view:display",
+    "value" : "Nicola Piovani",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q505498",
+    "field" : "@view:display",
+    "value" : "Joseph C. Wright",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15109562",
+    "field" : "@view:display",
+    "value" : "Jocelyn Herbert",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q365310",
+    "field" : "@view:display",
+    "value" : "Adolph Deutsch",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q105993263",
+    "field" : "@view:display",
+    "value" : "Alice Doyard",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q110983839",
+    "field" : "@view:display",
+    "value" : "Gulistan Mirzaei",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q323729",
+    "field" : "@view:display",
+    "value" : "Russell Harlan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q206439",
+    "field" : "@view:display",
+    "value" : "Isaac Hayes",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4895750",
+    "field" : "@view:display",
+    "value" : "Bertram C. Granger",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16730600",
+    "field" : "@view:display",
+    "value" : "Jeffrey Karoff",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1911401",
+    "field" : "@view:display",
+    "value" : "Maurice Pelling",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2632",
+    "field" : "@view:display",
+    "value" : "Ringo Starr",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2282010",
+    "field" : "@view:display",
+    "value" : "Sidney Wagner",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1634444",
+    "field" : "@view:display",
+    "value" : "Mark-Lee Kirk",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16195285",
+    "field" : "@view:display",
+    "value" : "Nicholas Reed",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q23772060",
+    "field" : "@view:display",
+    "value" : "Maya Gnyp",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1573173",
+    "field" : "@view:display",
+    "value" : "John L. Russell",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q203489",
+    "field" : "@view:display",
+    "value" : "Howard Shoup",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1452607",
+    "field" : "@view:display",
+    "value" : "Freddie Rich",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2993623",
+    "field" : "@view:display",
+    "value" : "Conrad Salinger",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q921068",
+    "field" : "@view:display",
+    "value" : "Allen M. Davey",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q544404",
+    "field" : "@view:display",
+    "value" : "Sanzō Wada",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1526143",
+    "field" : "@view:display",
+    "value" : "Jules White",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1064479",
+    "field" : "@view:display",
+    "value" : "Charles G. Clarke",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q117863039",
+    "field" : "@view:display",
+    "value" : "Christine Turner",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1047235",
+    "field" : "@view:display",
+    "value" : "Casey Roberts",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3960118",
+    "field" : "@view:display",
+    "value" : "Sid Ramin",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1699848",
+    "field" : "@view:display",
+    "value" : "John DuCasse Schulze",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q113462325",
+    "field" : "@view:display",
+    "value" : "Craig Renaud",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q716493",
+    "field" : "@view:display",
+    "value" : "Sol Polito",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1361541",
+    "field" : "@view:display",
+    "value" : "Stephen Warbeck",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q322960",
+    "field" : "@view:display",
+    "value" : "Ted Tetzlaff",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q706953",
+    "field" : "@view:display",
+    "value" : "Vince Guaraldi",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q214665",
+    "field" : "@view:display",
+    "value" : "Nino Rota",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q214664",
+    "field" : "@view:display",
+    "value" : "Hein Heckroth",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2522160",
+    "field" : "@view:display",
+    "value" : "Victor A. Gangelin",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1443461",
+    "field" : "@view:display",
+    "value" : "Frank Hotaling",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15824180",
+    "field" : "@view:display",
+    "value" : "Konstantin Kalser",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q506155",
+    "field" : "@view:display",
+    "value" : "Gile Steele",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q100978669",
+    "field" : "@view:display",
+    "value" : "Sami Khan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1586541",
+    "field" : "@view:display",
+    "value" : "Harry Hallenberger",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q72595",
+    "field" : "@view:display",
+    "value" : "Alfred Junge",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q980785",
+    "field" : "@view:display",
+    "value" : "Jo Mielziner",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q457727",
+    "field" : "@view:display",
+    "value" : "George Duning",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q952428",
+    "field" : "@view:display",
+    "value" : "David Newman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3052234",
+    "field" : "@view:display",
+    "value" : "Emil Newman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16228877",
+    "field" : "@view:display",
+    "value" : "Michael Whittaker",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q538062",
+    "field" : "@view:display",
+    "value" : "Patrick Williams",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q61268728",
+    "field" : "@view:display",
+    "value" : "Ed Perkins",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q27038217",
+    "field" : "@view:display",
+    "value" : "Ben Proudfoot",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6115380",
+    "field" : "@view:display",
+    "value" : "Jack Stubbs",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7542",
+    "field" : "@view:display",
+    "value" : "Prince",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q719424",
+    "field" : "@view:display",
+    "value" : "Vincent Korda",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q49172137",
+    "field" : "@view:display",
+    "value" : "Kate Davis",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3350674",
+    "field" : "@view:display",
+    "value" : "Oliver Smith",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q80135",
+    "field" : "@view:display",
+    "value" : "Dmitri Shostakovich",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q914315",
+    "field" : "@view:display",
+    "value" : "Jean Bourgoin",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q955982",
+    "field" : "@view:display",
+    "value" : "Osmond Borradaile",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q656020",
+    "field" : "@view:display",
+    "value" : "Del Andrews",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2020181",
+    "field" : "@view:display",
+    "value" : "Oliver Emert",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q329998",
+    "field" : "@view:display",
+    "value" : "Irwin Kostal",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q270662",
+    "field" : "@view:display",
+    "value" : "Gian Carlo Menotti",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3209197",
+    "field" : "@view:display",
+    "value" : "Maurice Ransford",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q487355",
+    "field" : "@view:display",
+    "value" : "Lennie Hayton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1508127",
+    "field" : "@view:display",
+    "value" : "Malcolm Brown",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1902096",
+    "field" : "@view:display",
+    "value" : "Marlin Skiles",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2129546",
+    "field" : "@view:display",
+    "value" : "Ralph W. Brinton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2130599",
+    "field" : "@view:display",
+    "value" : "Randall Duell",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4970513",
+    "field" : "@view:display",
+    "value" : "Mary Ann Nyberg",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1506831",
+    "field" : "@view:display",
+    "value" : "George Abbott",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2149659",
+    "field" : "@view:display",
+    "value" : "Richard H. Riedel",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1707407",
+    "field" : "@view:display",
+    "value" : "Joseph Kish",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2131271",
+    "field" : "@view:display",
+    "value" : "Raoul Pene Du Bois",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1127767",
+    "field" : "@view:display",
+    "value" : "Constantin Bakaleinikoff",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2824201",
+    "field" : "@view:display",
+    "value" : "Adele Palmer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16731865",
+    "field" : "@view:display",
+    "value" : "Malcolm Clarke",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q184805",
+    "field" : "@view:display",
+    "value" : "Tom Waits",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q110975337",
+    "field" : "@view:display",
+    "value" : "Elizabeth Mirzaei",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1426120",
+    "field" : "@view:display",
+    "value" : "William Glasgow",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1452428",
+    "field" : "@view:display",
+    "value" : "Fred M. MacLean",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q116540140",
+    "field" : "@view:display",
+    "value" : "Anne Alvergue",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q968440",
+    "field" : "@view:display",
+    "value" : "Sam Leavitt",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q668567",
+    "field" : "@view:display",
+    "value" : "George Sawley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1819039",
+    "field" : "@view:display",
+    "value" : "Leonard Smith",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1706711",
+    "field" : "@view:display",
+    "value" : "Joseph C. Brun",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1701641",
+    "field" : "@view:display",
+    "value" : "John S. Detlie",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5128811",
+    "field" : "@view:display",
+    "value" : "Claude E. Carpenter",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1913198",
+    "field" : "@view:display",
+    "value" : "Max Parker",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6527008",
+    "field" : "@view:display",
+    "value" : "Sheila O'Brien",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22101649",
+    "field" : "@view:display",
+    "value" : "Carson Davidson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q279129",
+    "field" : "@view:display",
+    "value" : "A. Roland Fields",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3807499",
+    "field" : "@view:display",
+    "value" : "Jay Blackton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22101714",
+    "field" : "@view:display",
+    "value" : "Albert Woodbury",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6380255",
+    "field" : "@view:display",
+    "value" : "Kay Nelson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1589307",
+    "field" : "@view:display",
+    "value" : "Jim Morahan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q155474",
+    "field" : "@view:display",
+    "value" : "Daniele Amfitheatrof",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q390731",
+    "field" : "@view:display",
+    "value" : "Robert Youngson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q521154",
+    "field" : "@view:display",
+    "value" : "Marcel Vertès",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q452471",
+    "field" : "@view:display",
+    "value" : "Georges Périnal",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1344044",
+    "field" : "@view:display",
+    "value" : "Veniero Colasanti",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2439901",
+    "field" : "@view:display",
+    "value" : "Thomas Morahan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q106587707",
+    "field" : "@view:display",
+    "value" : "Charlotte Cook",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q109055",
+    "field" : "@view:display",
+    "value" : "Ernst Fegté",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22101639",
+    "field" : "@view:display",
+    "value" : "Vincenzo Lucci-Chiarissi",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q505353",
+    "field" : "@view:display",
+    "value" : "Thomas Little",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22101635",
+    "field" : "@view:display",
+    "value" : "Robert G. Leffingwell",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q273502",
+    "field" : "@view:display",
+    "value" : "Anne Dudley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15997763",
+    "field" : "@view:display",
+    "value" : "Leo Erdody",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q383858",
+    "field" : "@view:display",
+    "value" : "Arthur Lange",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q116865876",
+    "field" : "@view:display",
+    "value" : "Conall Jones",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945683",
+    "field" : "@view:display",
+    "value" : "Joan Sawyer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q749021",
+    "field" : "@view:display",
+    "value" : "Edward Ray Robinson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1380910",
+    "field" : "@view:display",
+    "value" : "Ted Moore",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1707096",
+    "field" : "@view:display",
+    "value" : "Joseph E. Gershenson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1332234",
+    "field" : "@view:display",
+    "value" : "Elliott J. Clawson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1672338",
+    "field" : "@view:display",
+    "value" : "Ira S. Webb",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1368602",
+    "field" : "@view:display",
+    "value" : "Harold Rosson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5591195",
+    "field" : "@view:display",
+    "value" : "Grace Gregory",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15457691",
+    "field" : "@view:display",
+    "value" : "Miles White",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2158476",
+    "field" : "@view:display",
+    "value" : "Robert Peterson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5628420",
+    "field" : "@view:display",
+    "value" : "H. Matsumoto",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1507268",
+    "field" : "@view:display",
+    "value" : "Georgie Stoll",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2271373",
+    "field" : "@view:display",
+    "value" : "A. Earl Hedrick",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22101623",
+    "field" : "@view:display",
+    "value" : "Thomas Mead",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7674339",
+    "field" : "@view:display",
+    "value" : "Tadaoto Kainoshō",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22101621",
+    "field" : "@view:display",
+    "value" : "Morton Scott",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6113966",
+    "field" : "@view:display",
+    "value" : "Jack McConaghy",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q708870",
+    "field" : "@view:display",
+    "value" : "Arthur Charles Miller",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q822523",
+    "field" : "@view:display",
+    "value" : "Bernard Knowles",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6114643",
+    "field" : "@view:display",
+    "value" : "Jack Poplin",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2157024",
+    "field" : "@view:display",
+    "value" : "Robert E. Dolan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1454375",
+    "field" : "@view:display",
+    "value" : "Hilyard M. Brown",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3201274",
+    "field" : "@view:display",
+    "value" : "Kohei Ezaki",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2793443",
+    "field" : "@view:display",
+    "value" : "Herschel McCoy",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1319095",
+    "field" : "@view:display",
+    "value" : "Robert Burks",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1277469",
+    "field" : "@view:display",
+    "value" : "Earle Hagen",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1001114",
+    "field" : "@view:display",
+    "value" : "Buddy Baker",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7966724",
+    "field" : "@view:display",
+    "value" : "Walton C. Ament",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945808",
+    "field" : "@view:display",
+    "value" : "Michael Crowley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5735121",
+    "field" : "@view:display",
+    "value" : "Herbert Moulton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1827244",
+    "field" : "@view:display",
+    "value" : "Lionel Lindon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q437262",
+    "field" : "@view:display",
+    "value" : "Gennady Rozhdestvensky",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1642396",
+    "field" : "@view:display",
+    "value" : "John Moore",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q345800",
+    "field" : "@view:display",
+    "value" : "Joseph MacDonald",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q159694",
+    "field" : "@view:display",
+    "value" : "Christian Dior",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945660",
+    "field" : "@view:display",
+    "value" : "Werner Schumann",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6120751",
+    "field" : "@view:display",
+    "value" : "Jacques Mersereau",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1337211",
+    "field" : "@view:display",
+    "value" : "Emile Santiago",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q86839569",
+    "field" : "@view:display",
+    "value" : "Colette Sandstedt",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q26933",
+    "field" : "@view:display",
+    "value" : "Pete Townshend",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1443174",
+    "field" : "@view:display",
+    "value" : "Frank E. Hughes",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q130386970",
+    "field" : "@view:display",
+    "value" : "Ema Ryan Yamazaki",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q712851",
+    "field" : "@view:display",
+    "value" : "Oliver Wallace",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q61270171",
+    "field" : "@view:display",
+    "value" : "Sam A. Davis",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q49160125",
+    "field" : "@view:display",
+    "value" : "Kerrin Sheldon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q430899",
+    "field" : "@view:display",
+    "value" : "Carmen Dillon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1398991",
+    "field" : "@view:display",
+    "value" : "Fay Babcock",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2482439",
+    "field" : "@view:display",
+    "value" : "Charles Schoenbaum",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5077105",
+    "field" : "@view:display",
+    "value" : "Charles E. Henderson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1174736",
+    "field" : "@view:display",
+    "value" : "David Hirschfelder",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q945402",
+    "field" : "@view:display",
+    "value" : "William Travilla",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1365563",
+    "field" : "@view:display",
+    "value" : "Roy Pomeroy",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q4710910",
+    "field" : "@view:display",
+    "value" : "Albert Nozaki",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1668173",
+    "field" : "@view:display",
+    "value" : "Rudolph Maté",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5495570",
+    "field" : "@view:display",
+    "value" : "Fred J. Rode",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q27043433",
+    "field" : "@view:display",
+    "value" : "Jay Rosenblatt",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q583717",
+    "field" : "@view:display",
+    "value" : "Robert H. Planck",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q119384",
+    "field" : "@view:display",
+    "value" : "René Hubert",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2754574",
+    "field" : "@view:display",
+    "value" : "Elmer Dyer",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q459556",
+    "field" : "@view:display",
+    "value" : "Carmen Dragon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2546437",
+    "field" : "@view:display",
+    "value" : "Walter Strenge",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15787326",
+    "field" : "@view:display",
+    "value" : "Beatrice Dawson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q213821",
+    "field" : "@view:display",
+    "value" : "Eugen Schüfftan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2159057",
+    "field" : "@view:display",
+    "value" : "Robert Usher",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q113642496",
+    "field" : "@view:display",
+    "value" : "Beth Levison",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1489209",
+    "field" : "@view:display",
+    "value" : "Gabriel Figueroa",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945646",
+    "field" : "@view:display",
+    "value" : "John Hoover",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6112282",
+    "field" : "@view:display",
+    "value" : "Jack Eaton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2482428",
+    "field" : "@view:display",
+    "value" : "Harry Jackson",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q94031410",
+    "field" : "@view:display",
+    "value" : "Deni Vachlioti",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q328403",
+    "field" : "@view:display",
+    "value" : "Leo Tover",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945573",
+    "field" : "@view:display",
+    "value" : "Douglas Gordon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2161758",
+    "field" : "@view:display",
+    "value" : "Roger Furse",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1292620",
+    "field" : "@view:display",
+    "value" : "Edward J. Kay",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q3277771",
+    "field" : "@view:display",
+    "value" : "Mahlon Merrick",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q115367297",
+    "field" : "@view:display",
+    "value" : "Kartiki Gonsalves",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q778789",
+    "field" : "@view:display",
+    "value" : "Bert Glennon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7693736",
+    "field" : "@view:display",
+    "value" : "Ted Smith",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1065815",
+    "field" : "@view:display",
+    "value" : "Charles Previn",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1699530",
+    "field" : "@view:display",
+    "value" : "John Cameron",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q743092",
+    "field" : "@view:display",
+    "value" : "Oliver T. Marsh",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1378792",
+    "field" : "@view:display",
+    "value" : "Matthew Wilder",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1684020",
+    "field" : "@view:display",
+    "value" : "John Bryan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q707321",
+    "field" : "@view:display",
+    "value" : "Guy Green",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q749741",
+    "field" : "@view:display",
+    "value" : "Léon Barsacq",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1351550",
+    "field" : "@view:display",
+    "value" : "Eric Walter Orbom",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1389976",
+    "field" : "@view:display",
+    "value" : "Ralph Berger",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q47493288",
+    "field" : "@view:display",
+    "value" : "Elaine McMillion Sheldon",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q52429537",
+    "field" : "@view:display",
+    "value" : "Maxim Arbugaev",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2161676",
+    "field" : "@view:display",
+    "value" : "Fernando Carrere",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q5641225",
+    "field" : "@view:display",
+    "value" : "Haldane Douglas",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q712683",
+    "field" : "@view:display",
+    "value" : "Percy Faith",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q96848",
+    "field" : "@view:display",
+    "value" : "Hanns Kräly",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q16559595",
+    "field" : "@view:display",
+    "value" : "Giorgio Treves",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2161739",
+    "field" : "@view:display",
+    "value" : "Gabriel Scognamillo",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1291925",
+    "field" : "@view:display",
+    "value" : "Edward Colman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q106189907",
+    "field" : "@view:display",
+    "value" : "Sophia Nahli Allison",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1432783",
+    "field" : "@view:display",
+    "value" : "William E. Snyder",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q506734",
+    "field" : "@view:display",
+    "value" : "Piero Gherardi",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q541127",
+    "field" : "@view:display",
+    "value" : "John Meehan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1252306",
+    "field" : "@view:display",
+    "value" : "Douglas Gamley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q516408",
+    "field" : "@view:display",
+    "value" : "Josephine Lovett",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1350928",
+    "field" : "@view:display",
+    "value" : "Ted Wilde",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q510729",
+    "field" : "@view:display",
+    "value" : "Julie Harris",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q43291777",
+    "field" : "@view:display",
+    "value" : "Jamie Kalven",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945617",
+    "field" : "@view:display",
+    "value" : "Linda Chapman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945610",
+    "field" : "@view:display",
+    "value" : "Richard Hawkins",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1493931",
+    "field" : "@view:display",
+    "value" : "Kenneth Macgowan",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q913178",
+    "field" : "@view:display",
+    "value" : "George Montgomery",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2062426",
+    "field" : "@view:display",
+    "value" : "Paul Sheriff",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945476",
+    "field" : "@view:display",
+    "value" : "Tadeusz Jaworski",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6259582",
+    "field" : "@view:display",
+    "value" : "John Sturtevant",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22946154",
+    "field" : "@view:display",
+    "value" : "David Goodman",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q961851",
+    "field" : "@view:display",
+    "value" : "Nelson Riddle",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1459318",
+    "field" : "@view:display",
+    "value" : "Tom Barry",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1711853",
+    "field" : "@view:display",
+    "value" : "Julia Heron",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2161581",
+    "field" : "@view:display",
+    "value" : "Oliver Messel",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q7693493",
+    "field" : "@view:display",
+    "value" : "Ted Marshall",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2571042",
+    "field" : "@view:display",
+    "value" : "Wilfred Shingleton",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q6820223",
+    "field" : "@view:display",
+    "value" : "Merrill Pye",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1873461",
+    "field" : "@view:display",
+    "value" : "Lucinda Ballard",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q85707",
+    "field" : "@view:display",
+    "value" : "Hans J. Salter",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1562463",
+    "field" : "@view:display",
+    "value" : "Harold Lipstein",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945602",
+    "field" : "@view:display",
+    "value" : "Dick Young",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15789407",
+    "field" : "@view:display",
+    "value" : "Boris Vermont",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22945535",
+    "field" : "@view:display",
+    "value" : "John Armstrong",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2161716",
+    "field" : "@view:display",
+    "value" : "Jean d'Eaubonne",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q67073745",
+    "field" : "@view:display",
+    "value" : "John Haptas",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q22946143",
+    "field" : "@view:display",
+    "value" : "Jim O'Connor",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q542481",
+    "field" : "@view:display",
+    "value" : "Saul Chaplin",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q15821102",
+    "field" : "@view:display",
+    "value" : "Jocelyn Rickards",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q517831",
+    "field" : "@view:display",
+    "value" : "Gwen Wakeling",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q121069",
+    "field" : "@view:display",
+    "value" : "Paul Markwitz",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q2571036",
+    "field" : "@view:display",
+    "value" : "Wilfred M. Cline",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q1423839",
+    "field" : "@view:display",
+    "value" : "Ruth Morley",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  }, {
+    "type" : null,
+    "qid" : "Q20859630",
+    "field" : "@view:display",
+    "value" : "Lene Bausager",
+    "origin" : "wikidata",
+    "valueKind" : null,
+    "policy" : "REPLACE",
+    "source" : null
+  } ],
+  "fieldDefinitions" : [ ],
+  "merges" : [ ],
+  "identityLinks" : [ ]
+}

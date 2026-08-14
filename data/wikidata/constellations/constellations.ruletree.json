@@ -101,8 +101,8 @@
         "@class" : "wikidata.explore.rule.RuleNode",
         "name" : "Star",
         "itemVar" : "stars",
-        "sourceQid" : "Q8928",
-        "sourceLabel" : "constellation",
+        "sourceQid" : "",
+        "sourceLabel" : "",
         "additionalSourceQids" : [ "java.util.LinkedHashSet", [ ] ],
         "propertyPid" : "P59",
         "propertyLabel" : "constellation",
@@ -156,17 +156,13 @@
         "requireSitelink" : false,
         "rankBySitelinks" : false,
         "rankPropertyPid" : "",
-        "rankDescending" : true,
-        "requireEnglishLabel" : null,
-        "includeImage" : null
+        "rankDescending" : true
       },
       "collection" : true
     } ] ],
     "requireSitelink" : false,
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
-    "rankDescending" : true,
-    "requireEnglishLabel" : null,
-    "includeImage" : null
+    "rankDescending" : true
   }
 }

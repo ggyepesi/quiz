@@ -1,0 +1,366 @@
+{
+  "corrections" : [ ],
+  "fieldDefinitions" : [ ],
+  "merges" : [ ],
+  "identityLinks" : [ {
+    "type" : "President",
+    "targetId" : "Abraham Lincoln",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q91",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q91",
+    "canonicalName" : "Abraham Lincoln",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Andrew Jackson",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11817",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11817",
+    "canonicalName" : "Andrew Jackson",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Andrew Johnson",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q8612",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q8612",
+    "canonicalName" : "Andrew Johnson",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Barack Obama",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q76",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q76",
+    "canonicalName" : "Barack Obama",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Benjamin Harrison",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q35678",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q35678",
+    "canonicalName" : "Benjamin Harrison",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Bill Clinton",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q1124",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q1124",
+    "canonicalName" : "Bill Clinton",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Calvin Coolidge",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q36023",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q36023",
+    "canonicalName" : "Calvin Coolidge",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Chester A. Arthur",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q35498",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q35498",
+    "canonicalName" : "Chester A. Arthur",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Donald Trump",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q22686",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q22686",
+    "canonicalName" : "Donald Trump",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Dwight D. Eisenhower",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q9916",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q9916",
+    "canonicalName" : "Dwight D. Eisenhower",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Franklin D. Roosevelt",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q1445234",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q1445234",
+    "canonicalName" : "Franklin D. Roosevelt",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Franklin Pierce",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q12312",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q12312",
+    "canonicalName" : "Franklin Pierce",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "George H. W. Bush",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q23505",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q23505",
+    "canonicalName" : "George H. W. Bush",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "George W. Bush",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q207",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q207",
+    "canonicalName" : "George W. Bush",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "George Washington",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q23",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q23",
+    "canonicalName" : "George Washington",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Gerald Ford",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q9582",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q9582",
+    "canonicalName" : "Gerald Ford",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Grover Cleveland",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q35171",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q35171",
+    "canonicalName" : "Grover Cleveland",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Harry S. Truman",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11613",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11613",
+    "canonicalName" : "Harry S. Truman",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Herbert Hoover",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q35236",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q35236",
+    "canonicalName" : "Herbert Hoover",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "James A. Garfield",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q34597",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q34597",
+    "canonicalName" : "James A. Garfield",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "James Buchanan",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q12325",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q12325",
+    "canonicalName" : "James Buchanan",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "James K. Polk",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11891",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11891",
+    "canonicalName" : "James K. Polk",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "James Madison",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11813",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11813",
+    "canonicalName" : "James Madison",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "James Monroe",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11815",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11815",
+    "canonicalName" : "James Monroe",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Jimmy Carter",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q23685",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q23685",
+    "canonicalName" : "Jimmy Carter",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Joe Biden",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q6279",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q6279",
+    "canonicalName" : "Joe Biden",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "John Adams",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11806",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11806",
+    "canonicalName" : "John Adams",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "John F. Kennedy",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q9696",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q9696",
+    "canonicalName" : "John F. Kennedy",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "John Quincy Adams",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11816",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11816",
+    "canonicalName" : "John Quincy Adams",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "John Tyler",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11881",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11881",
+    "canonicalName" : "John Tyler",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Lyndon B. Johnson",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q9640",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q9640",
+    "canonicalName" : "Lyndon B. Johnson",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Martin Van Buren",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11820",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11820",
+    "canonicalName" : "Martin Van Buren",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Millard Fillmore",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q12306",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q12306",
+    "canonicalName" : "Millard Fillmore",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Richard Nixon",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q9588",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q9588",
+    "canonicalName" : "Richard Nixon",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Ronald Reagan",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q9960",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q9960",
+    "canonicalName" : "Ronald Reagan",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Rutherford B. Hayes",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q35686",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q35686",
+    "canonicalName" : "Rutherford B. Hayes",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Theodore Roosevelt",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q33866",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q33866",
+    "canonicalName" : "Theodore Roosevelt",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Thomas Jefferson",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11812",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11812",
+    "canonicalName" : "Thomas Jefferson",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Ulysses S. Grant",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q34836",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q34836",
+    "canonicalName" : "Ulysses S. Grant",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Warren G. Harding",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q35286",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q35286",
+    "canonicalName" : "Warren G. Harding",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "William Henry Harrison",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11869",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11869",
+    "canonicalName" : "William Henry Harrison",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "William Howard Taft",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q35648",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q35648",
+    "canonicalName" : "William Howard Taft",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "William McKinley",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q35041",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q35041",
+    "canonicalName" : "William McKinley",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Woodrow Wilson",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q34296",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q34296",
+    "canonicalName" : "Woodrow Wilson",
+    "origin" : "wikidata"
+  }, {
+    "type" : "President",
+    "targetId" : "Zachary Taylor",
+    "sourceKind" : "Wikidata",
+    "sourceId" : "Q11896",
+    "recordUrl" : "https://www.wikidata.org/wiki/Q11896",
+    "canonicalName" : "Zachary Taylor",
+    "origin" : "wikidata"
+  } ]
+}

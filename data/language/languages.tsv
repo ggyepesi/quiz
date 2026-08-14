@@ -2,17 +2,16 @@
 leafFamily	familyPath
 Abaza–Abkhaz	Northwest Caucasian;;Abaza–Abkhaz
 Admiralty Islands?	Malayo-Polynesian;;Oceanic;;Admiralty Islands?
-Akuapem–Fante	Atlantic–Congo;;Volta–Congo;;Kwa;;Potou–Tano;;Tano;;Central Tano;;Akan;;Core Akan;;Akuapem–Fante
+Akuapem–Fante	Atlantic–Congo;;Volta–Congo;;Kwa;;Potou–Tano;;Tano;;Akan;;Twi-Fante;;(core);;Akuapem–Fante
 Albanoid	Albanoid
 Alemannic	Germanic;;West Germanic;;Elbe Germanic;;High German;;Upper German;;Alemannic
 Amharic–Argobba	Semitic;;West Semitic;;South Semitic;;Ethiopic;;South;;Transversal;;Amharic–Argobba
-Anglic	Germanic;;West Germanic;;North Sea Germanic;;Anglo-Frisian;;Anglic
+Anglic	Germanic;;West Germanic;;North Sea Germanic;;Anglic
 Anglo-Frisian	Germanic;;West Germanic;;North Sea Germanic;;Anglo-Frisian
-Anglo-Norman	Italic;;Latino-Faliscan;;Latinic;;Romance;;Italo-Western;;Western;;Gallo-Iberian?;;Gallo-Romance;;Gallo-Rhaetian?;;Arpitan–Oïl;;Oïl;;Frankish zone;;Northern Norman;;Anglo-Norman
 Arabic	Semitic;;West Semitic;;Central Semitic;;Arabic
 Araona–Tacana	Pano–Tacanan;;Tacanan;;Araona–Tacana
 Arpitan–Oïl	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Western Romance;;Gallo-Iberian?;;Gallo-Romance;;Gallo-Rhaetian?;;Arpitan–Oïl
-Asante-Akyem-Kwahu dialect	Atlantic–Congo;;Volta–Congo;;Kwa;;Potou–Tano;;Tano;;Central Tano;;Akan;;Core Akan;;Asante-Akyem-Kwahu dialect
+Asante-Akyem-Kwahu dialect	Atlantic–Congo;;Volta–Congo;;Kwa;;Potou–Tano;;Tano;;Akan;;Twi-Fante;;(core);;Asante-Akyem-Kwahu dialect
 Asturleonese	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Western;;Ibero-Romance;;West Iberian;;Asturleonese
 Atlantic–Congo	Atlantic–Congo
 Austroasiatic	Austroasiatic
@@ -33,17 +32,16 @@ Bisayan	Malayo-Polynesian;;Philippine;;Greater Central Philippine;;Central Phili
 Bisa–Busa	Mande;;Eastern;;Bisa–Busa
 Bodish	Tibeto-Burman;;Tibeto-Kanauri (?);;Bodish
 Bolivian	Panoan;;Mainline Panoan;;Nawa;;Bolivian
-Boroic	Tibeto-Burman;;Central Tibeto-Burman languages (?);;Sal;;Boro–Garo;;Boroic
+Boroic	Tibeto-Burman;;Central Tibeto-Burman?;;Sal;;Boro–Garo;;Boroic
 Boro–Garo	Tibeto-Burman;;Central Tibeto-Burman (?);;Sal;;Boro–Garo
 Botatwe	Atlantic–Congo;;Benue–Congo;;Bantoid;;Bantu;;Botatwe
 Bourbonnais Creole	French Creole;;Bourbonnais Creole
 Burmese	Tibeto-Burman;;Lolo-Burmese;;Burmish;;Burmese
 Burmish	Tibeto-Burman;;Lolo-Burmese;;Burmish
-Buryat–Mongolian	Mongolic;;Central Mongolic;;Buryat–Mongolian
+Buryat–Mongolian	Serbi–Mongolic;;Mongolic;;Central Mongolic;;Buryat–Mongolian
 Butuan–Tausug	Malayo-Polynesian;;Philippine;;Greater Central Philippine;;Central Philippine;;Bisayan;;Southern Bisayan;;Butuan–Tausug
 Bʼaga	Komuz?;;Bʼaga
 Cagayan Valley	Malayo-Polynesian;;Philippine;;Northern Luzon;;Cagayan Valley
-Caspian	Indo-Iranian;;Iranian;;Western;;Northwestern;;Caspian
 Castilian	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Western Romance;;Gallo-Iberian?;;Ibero-Romance;;West Iberian;;Castilian
 Cavinena–Tacana	Pano–Tacanan;;Tacanan;;Araona–Tacana;;Cavinena–Tacana
 Central	Sámi;;Western;;Central
@@ -52,11 +50,12 @@ Central Finnic	Finnic;;Southern Finnic;;Central Finnic
 Central Luzon	Malayo-Polynesian;;Philippine;;Central Luzon
 Central Philippine	Malayo-Polynesian;;Philippine;;Greater Central Philippine;;Central Philippine
 Central Semitic	Semitic;;West Semitic;;Central Semitic
-Central Tai	Kam–Tai;;Be–Tai ?;;Tai;;Central Tai
+Central Tai	Tai;;Central Tai
 Central–Eastern Kamta	Indo-Iranian;;Indo-Aryan;;Eastern;;Odia–Bengali–Assamese;;Bengali–Assamese;;Kamrupa;;Kamta;;Central–Eastern Kamta
 Chakavian	Balto-Slavic;;Slavic;;South Slavic;;Western;;Chakavian
-Chiang Saen	Kam–Tai;;Tai;;Southwestern;;Chiang Saen
+Chiang Saen	Tai;;Southwestern (Thai);;Chiang Saen
 Chinese	Sinitic;;Chinese
+Chiquitano	Macro-Jê?;;Chiquitano
 Chokwe–Luchazi (K.10)	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu (Zone K);;Chokwe–Luchazi (K.10)
 Chuanqiandian cluster	Hmongic;;Core Hmongic;;West Hmongic;;Chuanqiandian cluster
 Chuukic	Malayo-Polynesian;;Oceanic;;Micronesian;;Micronesian Proper;;Nuclear Micronesian;;Chuukic–Pohnpeic;;Chuukic
@@ -70,7 +69,6 @@ Dardic	Indo-Iranian;;Indo-Aryan;;Dardic
 Didinga–Murle	Eastern Sudanic?;;Southern Eastern?;;Surmic;;Southern;;Southwest;;Didinga–Murle
 Dutch	Germanic;;West Germanic;;Weser–Rhine Germanic;;Low Franconian;;Dutch
 Dzongkha–Lhokä	Tibeto-Burman;;Tibeto-Kanauri (?);;Bodish;;Tibetic;;Dzongkha–Lhokä
-Early Papiamento	Portuguese Creole;;Afro-Portuguese Creole;;Upper Guinea Creole;;Early Papiamento
 East	Niger–Congo?;;Mande;;Western;;Manding;;East
 East Baltic	Balto-Slavic;;Baltic;;East Baltic
 East Barito	Malayo-Polynesian;;Western Indonesian;;Barito;;East Barito
@@ -79,7 +77,8 @@ East Lechitic	Balto-Slavic;;Slavic;;West Slavic;;Lechitic;;East Lechitic
 East Low German	Germanic;;West Germanic;;North Sea Germanic;;Low German;;East Low German
 East Scandinavian	Germanic;;North Germanic;;East Scandinavian
 East Slavic	Balto-Slavic;;Slavic;;East Slavic
-Eastern	Balto-Slavic;;Slavic;;South Slavic;;Eastern
+Eastern	Indo-Iranian;;Indo-Aryan;;Eastern
+Eastern Bolivian Guaraní	Tupian;;Tupi–Guarani;;Guaraní;;Eastern Bolivian Guaraní
 Eastern Dardic	Indo-Iranian;;Indo-Aryan;;Eastern Dardic
 Eastern Karluk	Turkic;;Common Turkic;;Karluk;;Eastern Karluk
 Eastern Pahari	Indo-Iranian;;Indo-Aryan;;Northern Zone;;Eastern Pahari
@@ -92,7 +91,7 @@ Egyptian	Egyptian
 Ellicean	Malayo-Polynesian;;Oceanic;;Polynesian;;Ellicean
 Ems	Germanic;;West Germanic;;North Sea Germanic;;Anglo-Frisian;;Frisian;;East Frisian;;Ems
 Finnish Braille	Finnic;;Northern Finnic;;Finnish Braille
-Florentine dialect	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Italo-Dalmatian;;Italo-Romance;;Tuscan;;Northern Tuscan dialects;;Florentine dialect
+Florentine	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Italo-Dalmatian;;Italo-Romance;;Tuscan;;Northern Tuscan;;Florentine
 Francien zone	Italic;;Latino-Faliscan;;Latinic;;Romance;;Italo-Western;;Western Romance;;Gallo-Iberian;;Gallo-Romance;;Gallo-Rhaetian?;;Arpitan–Oïl;;Oïl;;Francien zone
 French Sign	French Sign
 Frisian	Germanic;;West Germanic;;North Sea Germanic;;Anglo-Frisian?;;Frisian
@@ -104,8 +103,10 @@ Galician–Portuguese	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;We
 Ga–Dangme	Atlantic–Congo;;Volta-Congo;;Kwa;;Ga–Dangme
 Gbe	Atlantic-Congo;;Volta–Congo;;Volta-Niger;;Gbe
 German Sign Language family	German Sign Language family
+Gilaki–Rudbari	Indo-Iranian;;Iranian;;Western;;Northwestern;;Caspian;;Gilaki–Rudbari
 Goidelic	Celtic;;Insular Celtic;;Goidelic
 Greenlandic	Eskimo;;Inuit;;Greenlandic
+Group III	Tupian;;Tupi–Guarani;;Group III
 Guang	Atlantic–Congo;;Volta-Congo;;Benue-Congo;;Kwa;;Potou–Tano;;Tano;;Guang
 Guaraní	Tupian;;Tupi–Guarani;;Guarani;;Guaraní
 Guarayu	Tupian;;Tupí–Guaraní;;Guarayu
@@ -117,7 +118,7 @@ Gurma	Atlantic–Congo;;Gur;;Northern;;Oti–Volta;;Gurma
 Harari–East Gurage	Semitic;;West Semitic;;South Semitic;;Ethiopic;;South;;Transversal;;Harari–East Gurage
 Hausa–Gwandara	Chadic;;West;;Hausa–Gwandara
 Hellenic	Graeco-Phrygian (?);;Hellenic
-High German	Germanic;;West Germanic;;Elbe Germanic;;High German
+High German	Germanic;;West Germanic;;High German
 Highland East	Cushitic;;Highland East
 Highlands	Malayo-Polynesian;;Malayo-Sumbawan (?);;Chamic;;Highlands
 Hilalian	Semitic;;West Semitic;;Central Semitic;;Arabic;;Maghrebi;;Hilalian
@@ -133,6 +134,7 @@ Inuit	Eskaleut;;Inuit
 Inuit (Inuktut)	Eskimo;;Inuit (Inuktut)
 Inuvialuktun	Eskimo;;Inuit;;Inuvialuktun
 Iranian Persian	Indo-Iranian;;Iranian;;Western Iranian;;Southwestern;;Persian;;Iranian Persian
+Italo-Romance	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Italo-Dalmatian;;Italo-Romance
 Jamaican Creole	English creole;;Atlantic;;Western;;Jamaican Creole
 Japanese Sign	Japanese Sign
 Japanese Sign Language?	Japanese Sign Language?
@@ -140,7 +142,7 @@ Jingpho–Luish	Tibeto-Burman;;Sal;;Jingpho–Luish
 Jola	Atlantic–Congo;;Bak;;Jola
 Jola–Papel	Atlantic–Congo;;Senegambian;;Bak–Bijago;;Bak proper;;Jola–Papel
 Kalanga-Nyamba	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Shona languages;;Kalanga-Nyamba
-Kannadoid	Southern;;Southern I;;Tamil-Kannada;;Kannadoid
+Kannadoid	Southern;;Southern I;;Tamil–Kannada;;Kannadoid
 Karluk	Turkic;;Common Turkic;;Karluk
 Kasiguranin–Tagalog	Malayo-Polynesian;;Philippine;;Greater Central Philippine;;Central Philippine;;Kasiguranin–Tagalog
 Kimbundu languages (H.20)	Atlantic–Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu (Zone H);;Kimbundu languages (H.20)
@@ -153,7 +155,7 @@ Kuki-Chin–Naga?	Central Tibeto-Burman?;;Kuki-Chin–Naga?
 Kunama	Kunama
 Kypchak–Cuman	Turkic;;Common Turkic;;Kipchak;;Kypchak–Cuman
 Kyrgyz–Kipchak	Turkic;;Common Turkic;;Kipchak;;Kyrgyz–Kipchak
-Lahnda	Indo-Iranian;;Indo-Aryan;;Northwestern;;Lahnda
+Lahnda	Indo-Iranian;;Indo-Aryan;;Northwestern;;Punjabi;;Lahnda
 Lao–Phutai	Tai;;Southwestern;;Lao–Phutai
 Latino-Faliscan	Italic;;Latino-Faliscan
 Low Franconian	Germanic;;West Germanic;;Weser–Rhine Germanic;;Low Franconian
@@ -161,9 +163,7 @@ Low Saxon	Germanic;;West Germanic;;North Sea Germanic;;Low German;;Low Saxon
 Luba languages	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Luban;;Luba languages
 Lule–Pite	Sámi;;Western;;Central;;Lule–Pite
 Luri–Dezfuli?	Indo-Iranian;;Iranian;;Western Iranian;;Southwestern Iranian;;Luri–Dezfuli?
-Macro-Jê?	Macro-Jê?
 Maithili	Indo-Iranian;;Indo-Aryan;;Central;;Eastern Hindi;;Maithili
-Malay	Malayo-Polynesian;;Malayo-Chamic;;Malayic;;Malay
 Malayalamoid	Southern;;Southern I;;Tamil–Kannada;;Tamil–Kota;;Tamil–Toda;;Tamil–Irula;;Tamil–Kodava–Urali;;Tamil–Malayalam;;Malayalamoid
 Malayic	Malayo-Polynesian;;disputed:;;Malayic
 Malayo-Polynesian	Malayo-Polynesian
@@ -175,6 +175,7 @@ Melanesian Pidgin	English Creole;;Pacific;;Melanesian Pidgin
 Micronesian	Malayo-Polynesian;;Oceanic;;Central–Eastern Oceanic;;Micronesian
 Middle Georgian	Kartvelian;;Karto-Zan;;Old Georgian;;Middle Georgian
 Misumalpan	Misumalpan
+Moldavian dialect	Italic;;Latino-Faliscan;;Latin;;Romance;;Eastern Romance;;Romanian;;Moldavian dialect
 Monic	Monic
 Moré	Atlantic–Congo;;Gur;;Northern;;Oti–Volta;;Moré–Dagbani;;Moré
 Moselle Franconian	Germanic;;West Germanic;;Weser–Rhine Germanic;;(High German);;Central German;;West Central German;;Central Franconian;;Moselle Franconian
@@ -186,7 +187,8 @@ Mường–Nguồn	Vietic;;Viet–Mường;;Mường–Nguồn
 Navarro-Aragonese	Italic;;Latino-Faliscan;;Romance;;Italo-Western;;Western Romance;;(disputed);;Pyrenean–Mozarabic?;;Navarro-Aragonese
 Ngbandi-based creole	Ngbandi-based creole
 Niger-Congo?	Niger-Congo?
-North	Semitic;;West Semitic;;South Semitic;;Ethiopic;;North
+Norman	Italic;;Latino-Faliscan;;Latinic;;Romance;;Italo-Western;;Western;;Gallo-Romance;;Oïl;;Norman
+North	Tucanoan;;Eastern;;North
 North Sea Germanic	Germanic;;West Germanic;;North Sea Germanic
 Northeastern	Semitic;;Central Semitic;;Northwest Semitic;;Aramaic;;Eastern;;Northeastern
 Northern	Atlantic–Congo;;Gur;;Southern;;Gurunsi;;Northern
@@ -194,18 +196,18 @@ Northern Athabaskan	Na-Dené;;Athabaskan;;Northern Athabaskan
 Northern Luzon	Malayo-Polynesian;;Philippine;;Northern Luzon
 Northern Tai	Kam–Tai;;Be–Tai ?;;Tai;;Northern Tai
 Northwest Caucasian	Northwest Caucasian
-Northwestern	Atlantic–Congo;;Volta-Congo;;Savannas;;Gur;;Northern Gur;;Oti–Volta;;Western Oti-Volta;;Northwestern
+Northwestern	Indo-Iranian;;Iranian;;Western Iranian;;Northwestern
 Northwestern (Shan)	Tai;;Southwestern;;Northwestern (Shan)
 Northwestern Romani	Indo-Iranian;;Indo-Aryan;;Central Zone;;Romani;;Northern Romani;;Northwestern Romani
 Norwegian dialects	Germanic;;North Germanic;;West Scandinavian;;Norwegian dialects
 Nuclear Micronesian	Malayo-Polynesian;;Oceanic;;Micronesian;;Micronesian Proper;;Nuclear Micronesian
 Nuer-Reel	Eastern Sudanic;;Southern Eastern;;Nilotic;;Western Nilotic;;Dinka–Nuer;;Nuer-Reel
 Nyasa	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Nyasa
-Occitano-Romance	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Western Romance;;Gallo-Romance;;Occitano-Romance
+Occitano-Romance	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Western Romance;;Gallo-Iberian?;;(disputed);;Occitano-Romance
 Oromoid	Cushitic;;East;;Lowland;;Oromoid
 Ovambo	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Kavango–Southwest;;Southwest Bantu;;Ovambo
 Persian	Indo-Iranian;;Iranian;;Western Iranian;;Southwestern Iranian;;Persian
-Peräpohjola	Finnic;;Finnish;;Peräpohjola
+Peräpohjola	Finnic;;North Finnic;;Finnish;;Peräpohjola
 Piro	Arawakan;;Southern;;Piro
 Pitkern–Norfuk	English–Tahitian creole;;Pitkern–Norfuk
 Pohnpeic	Malayo-Polynesian;;Oceanic;;Micronesian;;Nuclear Micronesian;;Chuukic–Pohnpeic;;Pohnpeic
@@ -214,7 +216,7 @@ Puquina	Puquina
 Pu–Xian Min	Sinitic;;Chinese;;Min;;Coastal Min;;Pu–Xian Min
 Qeltu	Semitic;;West Semitic;;Central Semitic;;Arabic;;Mesopotamian;;Qeltu
 Rhaeto-Romance	Italic;;Latino-Faliscan;;Latinic;;Romance;;Italo-Western;;Western;;Gallo-Iberian?;;Gallo-Romance;;Gallo-Rhaetian?;;Rhaeto-Romance
-Romanian	Italic;;Latino-Faliscan;;Latin;;Romance;;Eastern Romance;;Romanian
+Riau Malay	Malayo-Polynesian;;Malayo-Sumbawan;;Malayic;;Riau Malay
 Rundic	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Northeast Bantu;;Great Lakes Bantu;;Western Lakes Bantu;;Rwanda-Rundi;;Rundic
 Ruthenian	Balto-Slavic;;Slavic;;East Slavic;;Ruthenian
 Rwanda-Rundi	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Northeast Bantu;;Great Lakes Bantu;;Western Lakes Bantu;;Rwanda-Rundi
@@ -228,11 +230,11 @@ Sayhadic?	Semitic;;West Semitic;;South Semitic?;;Southwestern?;;Sayhadic?
 Scots	Germanic;;West Germanic;;North Sea Germanic;;Anglo-Frisian;;Anglic;;Scots
 Sena (N40) ?	Atlantic–Congo;;Benue–Congo;;Southern Bantoid;;Bantu;;Nyasa;;Sena (N40) ?
 Senegambian	Atlantic–Congo;;West Atlantic;;Senegambian
-Serbo-Croatian	Balto-Slavic;;Slavic;;South;;Western;;Serbo-Croatian
+Serbo-Croatian	Balto-Slavic;;Slavic;;South Slavic;;Serbo-Croatian
 Sgaw–Bghai	Karen languages;;Sgaw–Bghai
 Shona (S.10)	Atlantic–Congo;;Benue–Congo;;Southern Bantoid;;Bantu;;Shona (S.10)
 Shona group	Atlantic–Congo;;Benue–Congo;;Southern;;Bantu;;Shona group
-Shona languages (S.10)	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Shona languages (S.10)
+Shona languages (S.10)	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Southern Bantu;;Shona languages (S.10)
 Sicilian Arabic	Semitic;;West Semitic;;Central Semitic;;Arabic;;Maghrebi;;Pre-Hilalian;;Pre-Hilalian Tunisian;;Sicilian Arabic
 Sindhic	Indo-Iranian;;Indo-Aryan;;Northwestern;;Sindhic
 Sinhalese–Maldivian	Indo-Iranian;;Indo-Aryan;;Southern;;Sinhalese–Maldivian
@@ -244,15 +246,15 @@ Sorbian	Balto-Slavic;;Slavic;;West Slavic;;Sorbian
 Soso–Yalunka	Niger–Congo?;;Mande;;Western Mande;;Central;;Soso–Yalunka
 Sotho–Tswana	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Southern Bantu;;Sotho–Tswana
 South	Semitic;;West;;Central;;Northwest;;Canaanite;;South
-South Bia	Atlantic–Congo;;Kwa;;Potou–Tano;;Tano;;Central Tano;;Bia;;South Bia
-Southeast Semitic	Afro-Asiatic;;Semitic;;West Semitic;;South Semitic;;Southeast Semitic
-Southeastern	Indo-Iranian;;Iranian;;Southeastern
+South Bia	Atlantic–Congo;;Kwa;;Potou–Tano;;Tano;;Akan;;Bia;;South Bia
+Southeast Semitic	Semitic;;West Semitic;;South Semitic;;Southeast Semitic
+Southeastern	Atlantic–Congo;;Volta-Congo;;Savannas;;Gur;;Northern;;Oti–Volta;;Western;;Southeastern
 Southeastern Bengali	Indo-Iranian;;Indo-Aryan;;Eastern;;Bengali–Assamese;;Gauda–Bangla;;Southeastern Bengali
-Southern	English Creole;;Atlantic;;Eastern;;Southern
+Southern	Songhay;;Southern
 Southern Oghuz	Turkic;;Common Turkic;;Oghuz;;Southern Oghuz
 Southern Romance?	Italic;;Latino-Faliscan;;Latin;;Romance;;Southern Romance?
 Southwest Bantu	Atlantic–Congo;;Volta–Congo languages;;Benue–Congo;;Bantoid languages;;Southern Bantoid;;Bantu;;Kavango – Southwest;;Southwest Bantu
-Southwestern	Sámi;;Western;;Southwestern
+Southwestern	Indo-Iranian;;Iranian;;Western;;Southwestern
 Southwestern Brittonic	Celtic;;Insular Celtic;;Brittonic;;Southwestern Brittonic
 Spanish-based creole	Spanish-based creole
 Standard Mandarin	Sinitic;;Chinese;;Mandarin;;Beijing Mandarin;;Beijingese;;Standard Mandarin
@@ -265,13 +267,12 @@ Tahitic	Malayo-Polynesian;;Oceanic;;Polynesian;;Eastern Polynesian;;Tahitic
 Tamil–Paliyan	Southern;;Southern I;;Tamil–Kannada;;Tamil–Kota;;Tamil–Toda;;Tamil–Irula;;Tamil–Kodava–Urali;;Tamil–Malayalam;;Tamiloid;;Tamil–Paliyan
 Tatic	Indo-Iranian;;Iranian;;Western;;Northwestern;;Adharic;;Tatic
 Tekela	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Southern Bantu;;Nguni;;Tekela
+Teluguoid	Southern;;South-Central;;Teluguoid
 Tequiraca–Canichana?	Tequiraca–Canichana?
 Tetunic	Malayo-Polynesian;;Central–Eastern;;Timor–Babar;;Tetunic
 Tibeto-Burman	Tibeto-Burman
 Tongic	Malayo-Polynesian;;Oceanic;;Polynesian;;Tongic
 Tswa–Ronga	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Southern Bantu;;Tswa–Ronga
-Tupi	Tupian;;Tupi–Guarani;;Tupi languages;;Tupi
-Tuscan	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Italo-Dalmatian;;Italo-Romance;;Tuscan
 Ugric	Uralic;;Ugric
 Upper Guinea Creole	Portuguese Creole;;Afro-Portuguese Creole;;Upper Guinea Creole
 Vainakh	Northeast Caucasian;;Nakh;;Vainakh
@@ -280,9 +281,9 @@ Viet–Mường	Vietic;;Viet–Mường
 Warayan	Malayo-Polynesian;;Philippine;;Central Philippine;;Bisayan;;Central Bisayan;;Warayan
 West African Pidgin English	English Creole;;Atlantic;;West African Pidgin English
 West Iberian	Italic;;Latino-Faliscan;;Latin;;Romance;;Italo-Western;;Western;;Ibero-Romance;;West Iberian
-West Manding	Mande;;Western Mande;;Manding;;West Manding
+West Manding	Niger–Congo?;;Mande;;West Mande;;Central-West;;Central Mande;;Manding-Jogo;;Manding-Vai;;Manding-Mokole;;Manding;;West Manding
 West Scandinavian	Germanic;;Northwest Germanic;;North Germanic;;West Scandinavian
-Western	Turkic;;Common Turkic;;Oghuz;;Western
+Western	English creole;;Atlantic;;Western
 Western Bisayan	Malayo-Polynesian;;Philippine;;Central Philippine;;Bisayan;;Western Bisayan
 Western Brittonic	Celtic;;Insular Celtic;;Brittonic;;Western Brittonic
 Western Indo-Aryan	Indo-Iranian;;Indo-Aryan;;Western Indo-Aryan
@@ -297,8 +298,6 @@ Zande–Nzakara	Atlantic-Congo;;Volta-Congo;;Savannas?;;Ubangian;;Zande language
 Zunda	Atlantic–Congo;;Volta-Congo;;Benue–Congo;;Bantoid;;Southern Bantoid;;Bantu;;Southern Bantu;;Nguni-Tsonga;;Nguni;;Zunda
 indigenous–Auslan creole	indigenous–Auslan creole
 mixed Puquina–Quechua	mixed Puquina–Quechua
-| ancestor = Old Malay	Malayo-Polynesian;;Malayic;;| fam5 =;;| ancestor = Old Malay
-| ancestor = Old Telugu	Dravidic;;Southern Dravidic;;South–Central Dravidic;;| ancestor = Old Telugu
 | ancestor = Proto-Koreanic	Koreanic;;| ancestor = Proto-Koreanic
 | dia1 = Prekmurje	Balto-Slavic;;Slavic;;South Slavic;;Western South Slavic;;| dia1 = Prekmurje
 | script = Latin (Finnish alphabet)	Finnic;;Northern Finnic;;| script = Latin (Finnish alphabet)
@@ -310,33 +309,33 @@ Adangme	Dangbe	Latin (Dangbe alphabet)	South-eastern Ghana, east of Accra	Dangbe
 Afar	Qafar af, عَفَر أَف	Latin	Horn of Africa	Afar	2.603000 million	aa	aar	aar	afar1241	Afar language	https://en.wikipedia.org/wiki/Afar_language	Djibouti;;Eritrea;;Ethiopia	Latin	Saho–Afar
 Afrikaans		Latin script (Afrikaans alphabet), Arabic script	Southern Africa	Afrikaners, Coloureds	7.2 million (2016), 10.3 million L2 speakers in South Africa	af	afr	afr	afri1274	Afrikaans	https://en.wikipedia.org/wiki/Afrikaans		Latin script (Afrikaans alphabet);;Arabic script	Dutch
 Aklanon	Akeanon, Inakeanon	Latin; , Historically Baybayin	Aklan, northwestern Capiz, northern Antique, and southern Romblon	Aklanon	560, 000				akla1240	Aklanon language	https://en.wikipedia.org/wiki/Aklanon_language	Philippines	Latin;;Historically Baybayin	Western Bisayan
-Akuapem Twi	Akuapem	Latin		Akuapem	626, 000				akua1239	Akuapem dialect	https://en.wikipedia.org/wiki/Akuapem_dialect	Ghana	Latin	Akuapem–Fante
+Akuapem Twi	Akuapem	Latin		Akuapem	626, 000				akua1239	Akuapem Twi	https://en.wikipedia.org/wiki/Akuapem_Twi	Ghana	Latin	Akuapem–Fante
 Albanian	shqip, gjuha shqipe, arbërisht			Albanians	7.5 million	sq		sqi	alba1267	Albanian language	https://en.wikipedia.org/wiki/Albanian_language			Albanoid
-Amharic	አማርኛ Amarəñña	Geʽez script (Amharic abugida), Geʽez Braille		Amhara	L1: 34.883130 million	am	amh	amh	amha1245	Amharic	https://en.wikipedia.org/wiki/Amharic	Ethiopia	Geʽez script (Amharic abugida);;Geʽez Braille	Amharic–Argobba
+Amharic	አማርኛ Amarəñña	Geʽez script (Amharic abugida), Geʽez Braille		Amhara	34.883130 million	am	amh	amh	amha1245	Amharic	https://en.wikipedia.org/wiki/Amharic	Ethiopia	Geʽez script (Amharic abugida);;Geʽez Braille	Amharic–Argobba
 Antiguan and Barbudan Creole	Aanteegan an' Baabyuudan / Raabak	Latin		| agency = Antiguan and Barbudan Language Academy	151, 270			aig	anti1245	Antiguan and Barbudan Creole	https://en.wikipedia.org/wiki/Antiguan_and_Barbudan_Creole		Latin	Gullah–Nevis–Antigua
 Arabic	اَلْعَرَبِيَّةُ ()	Arabic alphabet		Arabs, and other ethnic groups of the Arab world	410.549950 million native speakers of all varieties		ara	ara	arab1395	Arabic	https://en.wikipedia.org/wiki/Arabic	Arab world;;surrounding regions	Arabic alphabet	Central Semitic
 Aragonese	aragonés	Latin (Aragonese alphabet)	Aragon; northern and central Huesca and northern Zaragoza	Aragonese	Active speakers: 10, 000–12, 000	an	arg	arg	arag1245	Aragonese language	https://en.wikipedia.org/wiki/Aragonese_language	Spain	Latin (Aragonese alphabet)	Navarro-Aragonese
 Araona	alaōna	Latin	La Paz Department	Araona	110			aro	arao1248	Araona language	https://en.wikipedia.org/wiki/Araona_language	Bolivia	Latin	Araona–Tacana
 Armenian	հայերեն			Armenians	5.28129 million	hy			arme1241	Armenian language	https://en.wikipedia.org/wiki/Armenian_language			
 Aromanian	limba armãneascã, limba armãnã, armãneashti, armãneashte, armãneashci, armãneashce, limba rrãmãneascã, limba rrãmãnã, rrãmãneshti	Latin (Aromanian alphabet)	Balkans	Aromanians	210, 000		rup	rup	arom1237	Aromanian language	https://en.wikipedia.org/wiki/Aromanian_language	Greece;;Albania;;North Macedonia;;Bulgaria;;Romania;;Serbia	Latin (Aromanian alphabet)	Eastern Romance
-Asante Twi	Asah	Latin, Braille		Ashanti	3.820000 million				asan1239	Asante dialect	https://en.wikipedia.org/wiki/Asante_dialect	Ashanti	Latin;;Braille	Asante-Akyem-Kwahu dialect
-Assamese	অসমীয়া	*Bengali–Assamese script (Assamese alphabet) *Assamese Braille, Latin script (Nagamese and Nefamese)	Northeast India *Assam *Arunachal Pradesh *Meghalaya *Nagaland	Assamese	L1: 15.327990 million	as	asm	asm	assa1263	Assamese language	https://en.wikipedia.org/wiki/Assamese_language	India	*Bengali–Assamese script (Assamese alphabet) *Assamese Braille;;Latin script (Nagamese;;Nefamese)	Bengali–Assamese
-Assyrian	ܣܘܪܝܬ|rtl=yes	* Swāḏāyā Syriac	Assyrian heartland (northwestern Iran, northern Iraq, northern Syria, southern Turkey), Lebanon, Armenia, global diaspora	Assyrians,	942, 430			syr	assy1241	Suret language	https://en.wikipedia.org/wiki/Suret_language	Iran;;Iraq;;Syria;;Turkey	* Swāḏāyā Syriac	Northeastern
-Assyrian Neo-Aramaic	ܣܘܪܝܬ|rtl=yes	* Swāḏāyā Syriac	Assyrian heartland (northwestern Iran, northern Iraq, northern Syria, southern Turkey), Lebanon, Armenia, global diaspora	Assyrians,	942, 430			syr	assy1241	Suret language	https://en.wikipedia.org/wiki/Suret_language	Iran;;Iraq;;Syria;;Turkey	* Swāḏāyā Syriac	Northeastern
-Astur-Leonese			Spain (Asturias, northwestern and northern Castile and León), Northeastern Portugal (Tierra de Miranda and some villages in the Riudenor and Deilon parishes), As transitional variants, western Cantabria, northwestern Extremadura and southwestern Castile and León				ast, mwl, ext	ast, mwl, ext	astu1244	Asturleonese language	https://en.wikipedia.org/wiki/Asturleonese_language			West Iberian
+Asante Twi	Asah	Latin, Braille		Ashanti	3.820000 million				asan1239	Asante Twi	https://en.wikipedia.org/wiki/Asante_Twi	Ashanti	Latin;;Braille	Asante-Akyem-Kwahu dialect
+Assamese	অসমীয়া	*Bengali–Assamese script (Assamese alphabet; current) *Assamese script (also called the Kamarupi script; in decline since the 20th century) *Assamese Braille *Latin script (Nagamese and Nefamese)	Northeast India *Assam *Arunachal Pradesh *Meghalaya *Nagaland	Assamese	15.327990 million	as	asm	asm	assa1263	Assamese language	https://en.wikipedia.org/wiki/Assamese_language	India	*Bengali–Assamese script (Assamese alphabet;;current) *Assamese script (also called the Kamarupi script;;in decline since the 20th century) *Assamese Braille *Latin script (Nagamese;;Nefamese)	Bengali–Assamese
+Assyrian	ܣܘܪܝܬ|rtl=yes	* Swāḏāyā Syriac	Assyrian heartland (northwestern Iran, northern Iraq, northern Syria, eastern & southern Turkey), Lebanon, Armenia, Georgia global diaspora	Assyrians,	942, 430			syr	assy1241	Suret language	https://en.wikipedia.org/wiki/Suret_language	Iran;;Iraq;;Syria;;Turkey	* Swāḏāyā Syriac	Northeastern
+Assyrian Neo-Aramaic	ܣܘܪܝܬ|rtl=yes	* Swāḏāyā Syriac	Assyrian heartland (northwestern Iran, northern Iraq, northern Syria, eastern & southern Turkey), Lebanon, Armenia, Georgia global diaspora	Assyrians,	942, 430			syr	assy1241	Suret language	https://en.wikipedia.org/wiki/Suret_language	Iran;;Iraq;;Syria;;Turkey	* Swāḏāyā Syriac	Northeastern
+Astur-Leonese			Spain (Asturias, northwestern and northern Castile and León), Northeastern Portugal (Tierra de Miranda and some villages in the Riudenor and Deilon parishes), As transitional variants, western Cantabria, northwestern Extremadura and southwestern Castile and León	Asturians, Leonese people, Mirandese people, Cantabrians, Extremadurans			ast, mwl, ext	ast, mwl, ext	astu1244	Asturleonese language	https://en.wikipedia.org/wiki/Asturleonese_language			West Iberian
 Aymara	Aymar aru	Latin script		Aymara	1.677, 100 million	ay	aym	aym	nucl1667	Aymara language	https://en.wikipedia.org/wiki/Aymara_language	Bolivia;;Chile;;Peru;;Argentina	Latin script	Aymaran
 Azerbaijani		*In Azerbaijan: Latin script (Azerbaijani Latin alphabet) * In Iran: Perso-Arabic script (Azerbaijani Arabic alphabet) * In Russia: Cyrillic script	Iranian Azerbaijan, South Caucasus	Azerbaijanis	23.849330 million	az	aze	aze	azer1255	Azerbaijani language	https://en.wikipedia.org/wiki/Azerbaijani_language		*In Azerbaijan: Latin script (Azerbaijani Latin alphabet) * In Iran: Perso-Arabic script (Azerbaijani Arabic alphabet) * In Russia: Cyrillic script	Western Oghuz
 Bainuk										Bainuk people	https://en.wikipedia.org/wiki/Bainuk_people			
-Balochi	بلوچی Balòci	Perso-Arabic script (Balochi alphabet)	Balochistan	Baloch	8.784850 million		bal	bal	balo1260	Balochi language	https://en.wikipedia.org/wiki/Balochi_language	Pakistan;;Iran;;Afghanistan	Perso-Arabic script (Balochi alphabet)	Northwestern
-Bambara	Bamanankan بَمَنَنكَن ߓߡߊߣߊ߲ߞߊ߲	Latin script, Arabic script (Ajami), NKo script, Masaba	central southern Mali	Bamana	L1: 4.186390 million	bm	bam	bam	bamb1269	Bambara language	https://en.wikipedia.org/wiki/Bambara_language	Mali	Latin script;;Arabic script (Ajami);;NKo script;;Masaba	Bambara–Dyula
+Balochi	بلۏچیBalòči	Perso-Arabic script (Balochi alphabet)	Balochistan	Baloch	8.784850 million		bal	bal	balo1260	Balochi language	https://en.wikipedia.org/wiki/Balochi_language	Pakistan;;Iran;;Afghanistan	Perso-Arabic script (Balochi alphabet)	Northwestern
+Bambara	Bamanankan بَمَنَنكَن ߓߡߊߣߊ߲ߞߊ߲	Latin script, Arabic script (Ajami), NKo script, Masaba	central southern Mali	Bamana	4.186390 million	bm	bam	bam	bamb1269	Bambara language	https://en.wikipedia.org/wiki/Bambara_language	Mali	Latin script;;Arabic script (Ajami);;NKo script;;Masaba	Bambara–Dyula
 Bari										Bari	https://en.wikipedia.org/wiki/Bari			
-Basque	euskara	* Latin (Basque alphabet) * Basque Braille * Northeastern Iberian script (c. 80 BC)	Basque Country	Basque	806, 000	eu		eus	basq1248	Basque language	https://en.wikipedia.org/wiki/Basque_language	France;;Spain	* Latin (Basque alphabet) * Basque Braille * Northeastern Iberian script (c. 80 BC)	
+Basque	euskara	* Latin (Basque alphabet) * Basque Braille * Northeastern Iberian script (c. 80 BC)	Basque Country * Basque Autonomous Community and Navarre (Spain) * French Basque Country	Basque	806, 000	eu		eus	basq1248	Basque language	https://en.wikipedia.org/wiki/Basque_language	France;;Spain	* Latin (Basque alphabet) * Basque Braille * Northeastern Iberian script (c. 80 BC)	
 Batak										Batak	https://en.wikipedia.org/wiki/Batak			
 Baure	Baure		Beni Department	980 Baure (2006)	20			brg	baur1253	Baure language	https://en.wikipedia.org/wiki/Baure_language	Bolivia		Moxos
 Belarusian	беларуская мова			Belarusians	5.094 million	be	bel	bel	bela1254	Belarusian language	https://en.wikipedia.org/wiki/Belarusian_language	Belarus		Ruthenian
-Bengali	বাংলা (Bangla)	* Bengali–Assamese script (Bengali alphabet) * Bengali Braille * [[#Alternative and historic scripts|Alternative and historic scripts]]	*Bengal (Bangladesh and West Bengal, India) *Assam, India (Barak valley and Lower division) *Tripura, India *Jharkhand, India *Andaman and Nicobar islands, India	Bengalis	L1: 241.827340 million	bn	ben	ben	beng1280	Bengali language	https://en.wikipedia.org/wiki/Bengali_language	Bangladesh;;India	* Bengali–Assamese script (Bengali alphabet) * Bengali Braille * [[#Alternative;;historic scripts|Alternative;;historic scripts]]	Bengali–Assamese
+Bengali		*Bengali–Assamese script (Bengali alphabet; official) *Bengali Braille *[[#Alternative and historic scripts|Alternative and historic scripts]]	*Bengal (Bangladesh and West Bengal, India) *Barak Valley (Assam, India) *Tripura (India) *Jharkhand (India) *Andaman and Nicobar islands (India) * Jiribam (Manipur, India)	Bengalis	241.827340 million	bn	ben	ben	beng1280	Bengali language	https://en.wikipedia.org/wiki/Bengali_language	Bangladesh;;India	*Bengali–Assamese script (Bengali alphabet;;official) *Bengali Braille *[[#Alternative;;historic scripts|Alternative;;historic scripts]]	Bengali–Assamese
 Benshangul	Gebeto	Latin alphabet	Benishangul-Gumuz	Berta people, Wetawit	377, 000 all Berta languages			wti	bert1248	Berta language	https://en.wikipedia.org/wiki/Berta_language	Sudan;;Ethiopia	Latin alphabet	Berta languages
-Berber			North Africa and Berber diaspora	Berbers			ber		berb1260	Berber languages	https://en.wikipedia.org/wiki/Berber_languages			
+Berber			North Africa and Berber diaspora	Berbers	| date =		ber		berb1260	Berber languages	https://en.wikipedia.org/wiki/Berber_languages			
 Bikol			Bicol Region		(1990)		bik	bik	biko1240	Bikol languages	https://en.wikipedia.org/wiki/Bikol_languages			Central Philippine
 Bislama	Bislama	Latin, Avoiuli (local)	Vanuatu		10, 000	bi	bis	bis	bisl1239	Bislama	https://en.wikipedia.org/wiki/Bislama	Vanuatu	Latin;;Avoiuli (local)	Melanesian Pidgin
 Bissa	Bɩsa		Burkina Faso, Ghana, Togo	Bissa people	590, 000			bib	biss1248	Bissa language	https://en.wikipedia.org/wiki/Bissa_language			Bisa–Busa
@@ -345,30 +344,30 @@ Bodo	बर	*Devanagari (official) *Eastern Nagari (contemporary) *Latin (contem
 Bokmål	bokmål	Latin (Norwegian alphabet)			none	nb	nob	nob	norw1259	Bokmål	https://en.wikipedia.org/wiki/Bokmål	Norway	Latin (Norwegian alphabet)	Dano-Norwegian
 Bosnian		Formerly:	Bosnia and surrounding areas	Bosniaks	3.109630 million	bs	bos	bos	bosn1245	Bosnian language	https://en.wikipedia.org/wiki/Bosnian_language		Formerly:	Serbo-Croatian
 Bozo			Mali, Nigeria, Burkina Faso, Ivory Coast	Bozo people	230, 000 (apart from Tieyaxo) in Mali				bozo1252	Bozo language	https://en.wikipedia.org/wiki/Bozo_language			Soninke–Bozo
-Breton	brezhoneg	Latin script (Breton alphabet)	Lower Brittany	Bretons	107000 in Brittany	br	bre		bret1245	Breton language	https://en.wikipedia.org/wiki/Breton_language	Brittany (France)	Latin script (Breton alphabet)	Southwestern Brittonic
-Bulgarian	български език			Bulgarians	L1: 6.757200 million	bg	bul	bul	bulg1262	Bulgarian language	https://en.wikipedia.org/wiki/Bulgarian_language			Eastern
+Breton	brezhoneg	Latin script (Breton alphabet)	Lower Brittany	Bretons	107000 in Brittany	br	bre	bre	bret1245	Breton language	https://en.wikipedia.org/wiki/Breton_language	Brittany (France)	Latin script (Breton alphabet)	Southwestern Brittonic
+Bulgarian	български език			Bulgarians	6.757200 million	bg	bul	bul	bulg1262	Bulgarian language	https://en.wikipedia.org/wiki/Bulgarian_language			Eastern South Slavic
 Burgenland Croatian	gradišćanskohrvatski jezik			Burgenland Croats	19, 412 (in Burgenland), 50, 000–60, 000 (all speakers)				burg1244	Burgenland Croatian	https://en.wikipedia.org/wiki/Burgenland_Croatian			Chakavian
-Burmese	မြန်မာဘာသာစကား				L1: 32.9 million	my		mya	mran1234	Burmese language	https://en.wikipedia.org/wiki/Burmese_language	Myanmar		Burmish
-Bésiro	Besïro		Santa Cruz; Mato Grosso	Chiquitanos	2400			cax	chiq1253	Chiquitano language	https://en.wikipedia.org/wiki/Chiquitano_language	Bolivia;;Brazil		Macro-Jê?
+Burmese	မြန်မာဘာသာစကား				32.9 million	my		mya	mran1234	Burmese language	https://en.wikipedia.org/wiki/Burmese_language	Myanmar		Burmish
+Bésiro	Bésɨro			Chiquitano	<2400			cax	chiq1248	Bésɨro	https://en.wikipedia.org/wiki/Bésɨro	Bolivia		Chiquitano
 Canichana			Beni Department	Canichana people				caz	cani1243	Canichana language	https://en.wikipedia.org/wiki/Canichana_language	Bolivia		Tequiraca–Canichana?
-Cantonese	廣東話 / Gwong2dung1waa6, 廣府話 / Gwong2fu2waa6		Guangdong, eastern Guangxi	| familycolor = Sino-Tibetan				yue	cant1236	Cantonese	https://en.wikipedia.org/wiki/Cantonese	China;;Hong Kong;;Macau;;overseas Chinese communities		Yuehai
+Cantonese	廣東話 / Gwóngdūngwá, 廣州話 / Gwóngjāuwá		Guangdong, eastern Guangxi	| familycolor = Sino-Tibetan				yue	cant1236	Cantonese	https://en.wikipedia.org/wiki/Cantonese	China;;Hong Kong;;Macau;;overseas Chinese communities		Yuehai
 Cape Verdean Creole	kauberdianu, kabuverdianu, kriolu, kriol	Latin (ALUPEC)		Cape Verdeans	871, 000			kea	kabu1256	Cape Verdean Creole	https://en.wikipedia.org/wiki/Cape_Verdean_Creole	Cape Verde	Latin (ALUPEC)	Upper Guinea Creole
-Castilian		Latin script (Spanish alphabet), Spanish Braille			L1: 519.115 million	es	spa	spa	stan1288	Spanish language	https://en.wikipedia.org/wiki/Spanish_language	Spain;;Hispanic America;;Equatorial Guinea	Latin script (Spanish alphabet);;Spanish Braille	Castilian
-Catalan	català, valencià		Southern Europe		L1: 4.141310 million	ca	cat	cat	stan1289	Catalan language	https://en.wikipedia.org/wiki/Catalan_language			Occitano-Romance
+Castilian		Latin script (Spanish alphabet), Spanish Braille			519.115 million	es	spa	spa	stan1288	Spanish language	https://en.wikipedia.org/wiki/Spanish_language	Spain;;Hispanic America;;Equatorial Guinea	Latin script (Spanish alphabet);;Spanish Braille	Castilian
+Catalan	català, valencià		Catalan Countries	Catalans, Valencians and others	4.141310 million	ca	cat	cat	stan1289	Catalan language	https://en.wikipedia.org/wiki/Catalan_language			Occitano-Romance
 Cavineña	| fontcolor = #ffffff		Beni Department		600			cav	cavi1250	Cavineña language	https://en.wikipedia.org/wiki/Cavineña_language	Bolivia		Cavinena–Tacana
 Cayubaba			Beni Department	2, 203 Cayubaba people (2012)	3 rememberers			cyb	cayu1262	Cayubaba language	https://en.wikipedia.org/wiki/Cayubaba_language	Bolivia		
 Cebuano		Latin (Filipino alphabet), Philippine Braille, Historically Badlit	Central Visayas, almost all of Negros Island Region, western parts of Eastern Visayas, and most parts of Mindanao	Visayans	20 million		ceb	ceb	cebu1242	Cebuano language	https://en.wikipedia.org/wiki/Cebuano_language	Philippines	Latin (Filipino alphabet);;Philippine Braille;;Historically Badlit	Bisayan
-Central Thai				Central Thai, Thai Chinese, Mon, Lao Wiang, Phuan	L1: 27.177030 million	th	tha	tha	thai1261	Thai language	https://en.wikipedia.org/wiki/Thai_language			Chiang Saen
+Central Thai				Central Thai, Thai Chinese, Mon, Lao Wiang, Phuan	27.177030 million	th	tha	tha	thai1261	Thai language	https://en.wikipedia.org/wiki/Thai_language			Chiang Saen
 Chakma			*Bangladesh **Chittagong Hill Tracts *India **Northeast India *Myanmar **Rakhine State	Chakma, Daingnet	740, 000			ccp	chak1266	Chakma language	https://en.wikipedia.org/wiki/Chakma_language			Bengali–Assamese
 Cham		Cham, Jawi, Latin	Mainland Southeast Asia	Cham	491, 448				cham1328	Cham language	https://en.wikipedia.org/wiki/Cham_language	Cambodia;;Vietnam	Cham;;Jawi;;Latin	Coastal
-Chavacano	| states = Philippines	Latin (Spanish alphabet)	Zamboanga City and Basilan (Zamboangueño and Basileño), Cavite City (Caviteño) and Ternate, Cavite (Ternateño/Bahra)		700, 000 native speakers of Zamboangueño; 1.2 million of Zamboangueño as a second language;			cbk	chav1241	Chavacano	https://en.wikipedia.org/wiki/Chavacano		Latin (Spanish alphabet)	Spanish-based creole
+Chavacano	| states = Philippines	Latin (Spanish alphabet)	Zamboanga City and Basilan (Zamboangueño and Basileño), Cavite City (Caviteño) and Ternate (Ternateño/Bahra)		405, 798 native speakers of Zamboangueño (2010), 10, 840 native speakers of other varieties, 1.2 million Zamboangueño speakers as a second language (1992)			cbk	chav1241	Chavacano	https://en.wikipedia.org/wiki/Chavacano		Latin (Spanish alphabet)	Spanish-based creole
 Chechen		Cyrillic script (present, official), Latin script (historically), Arabic script (historically), Georgian script (historically)	North Caucasus (Chechnya, Ingushetia, Dagestan)	Chechens	1.762950 million	ce	che	che	chec1245	Chechen language	https://en.wikipedia.org/wiki/Chechen_language	Russia	Cyrillic script (present;;official);;Latin script (historically);;Arabic script (historically);;Georgian script (historically)	Vainakh
-Chewa	Chichewa, Chinyanja	Latin script, Mwangwego script, Chewa Braille	Southeast Africa	Chewa	7 million	ny	nya	nya	nyan1308	Chewa language	https://en.wikipedia.org/wiki/Chewa_language	Malawi;;Zambia	Latin script;;Mwangwego script;;Chewa Braille	Nyasa
+Chewa		Latin script, Mwangwego script, Chewa Braille	Southeast Africa	Chewa	7 million	ny	nya	nya	nyan1308	Chewa language	https://en.wikipedia.org/wiki/Chewa_language	Malawi;;Zambia	Latin script;;Mwangwego script;;Chewa Braille	Nyasa
 Chibarwe		Latin script, Mwangwego script		Sena	2, 869, 000				nucl1396	Sena language	https://en.wikipedia.org/wiki/Sena_language	Mozambique;;Malawi;;Zimbabwe	Latin script;;Mwangwego script	Sena (N40) ?
-Chichewa	Chichewa, Chinyanja	Latin script, Mwangwego script, Chewa Braille	Southeast Africa	Chewa	7 million	ny	nya	nya	nyan1308	Chewa language	https://en.wikipedia.org/wiki/Chewa_language	Malawi;;Zambia	Latin script;;Mwangwego script;;Chewa Braille	Nyasa
+Chichewa		Latin script, Mwangwego script, Chewa Braille	Southeast Africa	Chewa	7 million	ny	nya	nya	nyan1308	Chewa language	https://en.wikipedia.org/wiki/Chewa_language	Malawi;;Zambia	Latin script;;Mwangwego script;;Chewa Braille	Nyasa
 Chimán										Chimán	https://en.wikipedia.org/wiki/Chimán			
 Chin			India, Myanmar, Bangladesh	Zo *Kuki *Chin *Mizo *Zomi					kuki1246	Kuki-Chin languages	https://en.wikipedia.org/wiki/Kuki-Chin_languages			Kuki-Chin–Naga?
-Chinese				Han Chinese, Hui, Chuanqing, She, Yao	1.390940300 billion	zh		zho	sini1245	Chinese language	https://en.wikipedia.org/wiki/Chinese_language	China (including Hong Kong;;Macau);;Taiwan;;Singapore;;Malaysia		Sinitic
+Chinese				Han Chinese, Hui	1.390940300 billion	zh		zho	sini1245	Chinese language	https://en.wikipedia.org/wiki/Chinese_language	China (including Mainland China;;Hong Kong;;Macau);;Malaysia;;Singapore;;Taiwan		Sinitic
 Chipewyan										Chipewyan	https://en.wikipedia.org/wiki/Chipewyan			
 Chiquitano										Chiquitano	https://en.wikipedia.org/wiki/Chiquitano			
 Chittagonian	চাটগাঁইয়া, চিটাইঙ্গা	* Bengali–Assamese script (Bengali alphabet) * Arabic * Latin	Chittagong region	Bengali	13 million			ctg	chit1275	Chittagonian language	https://en.wikipedia.org/wiki/Chittagonian_language	Bangladesh	* Bengali–Assamese script (Bengali alphabet) * Arabic * Latin	Southeastern Bengali
@@ -379,29 +378,29 @@ Circassian			North Caucasus	Circassians, Cherkesogai					circ1239	Circassian lan
 Cocos Malay	Basa Pulu Kokos	Latin (Malay alphabet)	Cocos Islands, Sabah	4, 000 in Malaysia (2000)	1, 060 in Australia			coa	coco1260	Cocos Malay	https://en.wikipedia.org/wiki/Cocos_Malay	Australia;;Malaysia	Latin (Malay alphabet)	Betawi
 Comorian	shikomori,	Arabic, Latin	Throughout Comoros and Mayotte; also in Madagascar and Réunion	Comorians	790, 000 in Comoros				como1260	Comorian languages	https://en.wikipedia.org/wiki/Comorian_languages	Comoros;;Mayotte	Arabic;;Latin	Sabaki
 Cook Islands Māori	Māori, Maori Kuki Airani, Māori Kūki Āirani		Polynesia		13, 620 in Cook Islands, 96% of ethnic population		rar		raro1241	Cook Islands Māori	https://en.wikipedia.org/wiki/Cook_Islands_Māori	Cook Islands;;New Zealand		Tahitic
-Coptic	*ϯⲙⲉⲧⲣⲉⲙⲛ̀ⲭⲏⲙⲓ (Bohairic Dialect), *ⲧⲙⲉⲧⲗⲉⲙⲛ̄ⲕⲏⲙⲓ (Fayyumic Dialect), *ⲧⲙⲛ̄ⲧⲣⲙ̄ⲛ̄ⲕⲏⲙⲉ (Akhmimic Dialect), *ⲧⲙⲛ̄ⲧⲣⲙ̄ⲛ̄ⲕⲏⲙⲉ (Sahidic Dialect)	Coptic alphabet		Copts			cop	cop	copt1239	Coptic language	https://en.wikipedia.org/wiki/Coptic_language	Egypt	Coptic alphabet	Egyptian
-Corsican	corsu, lingua corsa	Latin script (Corsican alphabet)		Corsicans	150, 000 in Corsica	co	cos		cors1241	Corsican language	https://en.wikipedia.org/wiki/Corsican_language		Latin script (Corsican alphabet)	Tuscan
+Coptic	*ϯⲙⲉⲧⲣⲉⲙⲛ̀ⲭⲏⲙⲓ (Bohairic Dialect) *ⲧⲙⲉⲧⲗⲉⲙⲛ̄ⲕⲏⲙⲓ (Fayyumic Dialect) *ⲧⲙⲛ̄ⲧⲣⲙ̄ⲛ̄ⲕⲏⲙⲉ (Akhmimic Dialect) *ⲧⲙⲛ̄ⲧⲣⲙ̄ⲛ̄ⲕⲏⲙⲉ (Sahidic Dialect)	Coptic alphabet		Copts			cop	cop	copt1239	Coptic language	https://en.wikipedia.org/wiki/Coptic_language		Coptic alphabet	Egyptian
+Corsican	corsu, lingua corsa	Latin script (Corsican alphabet)		Corsicans	105, 000 in Corsica (2022)	co	cos		cors1242	Corsican language	https://en.wikipedia.org/wiki/Corsican_language		Latin script (Corsican alphabet)	Italo-Romance
 Cree										Cree	https://en.wikipedia.org/wiki/Cree			
-Crimean Tatar	qırımtatar tili, къырымтатар тили, قریم تاتار تلی qırım tili, къырым тили, قریم تلی	Crimean Tatar alphabet (Latin and Cyrillic; previously Arabic)	Eastern Europe	Crimean Tatars	581, 340		crh	crh	crim1257	Crimean Tatar language	https://en.wikipedia.org/wiki/Crimean_Tatar_language	Ukraine;;Turkey;;Uzbekistan;;Russia;;Kyrgyzstan;;Bulgaria	Crimean Tatar alphabet (Latin;;Cyrillic;;previously Arabic)	Kipchak–Cuman
-Croatian	hrvatski	Latin (Gaj's alphabet), Yugoslav Braille, Glagolitic (historical), Bosnian Cyrillic (historical)	Southeast Europe	Croats	L1: 5.146970 million	hr	hrv	hrv	croa1245	Croatian language	https://en.wikipedia.org/wiki/Croatian_language	Croatia;;Bosnia;;Herzegovina;;Hungary (Bácska);;Montenegro (Bay of Kotor);;Romania (Caraș-Severin County);;Serbia (Vojvodina)	Latin (Gaj's alphabet);;Yugoslav Braille;;Glagolitic (historical);;Bosnian Cyrillic (historical)	Serbo-Croatian
-Cypriot Arabic	Σάννα · Sanna · سانا	Greek and Latin, Arabic script (historical)	Kormakitis and urban areas in the south	Maronite Cypriots, Lebanese Cypriots	No speakers in the south			acy	cypr1248	Cypriot Arabic	https://en.wikipedia.org/wiki/Cypriot_Arabic	Cyprus	Greek;;Latin;;Arabic script (historical)	Qeltu
-Czech	čeština, český jazyk			Czechs	L1: 9.757710 million	cs		ces	czec1258	Czech language	https://en.wikipedia.org/wiki/Czech_language			Czech–Slovak
+Crimean Tatar	qırımtatar tili, къырымтатар тили, قریم تاتار تلی qırım tili, къырым тили, قریم تلی	Crimean Tatar alphabet (Latin and Cyrillic; previously Arabic)	Eastern Europe and Southeastern Europe	Crimean Tatars	581, 340		crh	crh	crim1257	Crimean Tatar language	https://en.wikipedia.org/wiki/Crimean_Tatar_language	Ukraine;;Romania;;Bulgaria;;Turkey;;Uzbekistan;;Russia;;Kyrgyzstan	Crimean Tatar alphabet (Latin;;Cyrillic;;previously Arabic)	Kipchak–Cuman
+Croatian	hrvatski	Latin (Gaj's alphabet), Yugoslav Braille, Glagolitic (historical), Bosnian Cyrillic (historical)	Southeast Europe	Croats	5.146970 million	hr	hrv	hrv	croa1245	Croatian language	https://en.wikipedia.org/wiki/Croatian_language	Croatia;;Bosnia;;Herzegovina;;Hungary (Bácska);;Montenegro (Bay of Kotor);;Romania (Caraș-Severin County);;Serbia (Vojvodina)	Latin (Gaj's alphabet);;Yugoslav Braille;;Glagolitic (historical);;Bosnian Cyrillic (historical)	Serbo-Croatian
+Cypriot Arabic	Σάννα · Sanna · سانا	Greek and Latin, Arabic script (historical)	Kormakitis and urban areas in the south	Maronite Cypriots, Lebanese Cypriots	No speakers in Southern Cyprus			acy	cypr1248	Cypriot Arabic	https://en.wikipedia.org/wiki/Cypriot_Arabic	Cyprus	Greek;;Latin;;Arabic script (historical)	Qeltu
+Czech	čeština, český jazyk			Czechs	9.757710 million	cs		ces	czec1258	Czech language	https://en.wikipedia.org/wiki/Czech_language			Czech–Slovak
 Dagaare	|states=Ghana, Burkina Faso, Ivory Coast	Latin (Dagaare alphabet), Dagaare Braille		Dagaaba people	1.323000 million				sout2789	Dagaare language	https://en.wikipedia.org/wiki/Dagaare_language		Latin (Dagaare alphabet);;Dagaare Braille	Moré
 Dagbani	Dagbanli	Latin, Ajami	Kingdom of Dagbon	5.640000 million Dagomba (2021 census)	1.170000 million			dag	dagb1246	Dagbani language	https://en.wikipedia.org/wiki/Dagbani_language	Ghana;;Togo	Latin;;Ajami	Southeastern
-Danish	dansk		Denmark, Schleswig-Holstein (Germany); , Additionally in the Faroe Islands and Greenland		5.97 million	da	dan		dani1285	Danish language	https://en.wikipedia.org/wiki/Danish_language			East Scandinavian
-Dari	دری	Persian alphabet	| speakers = L1: 15.206330 million	Afghan Tajiks				prs	dari1249	Dari	https://en.wikipedia.org/wiki/Dari	Afghanistan	Persian alphabet	Persian
-Dhivehi	ދިވެހި, '	Thaana (official), Unofficial, Latin (Maldivian alphabet), Historical, Dhives Akuru (until the 19th century), Eveyla Akuru (ancient)		Maldivians	504, 829	dv	div	div	dhiv1236	Dhivehi language	https://en.wikipedia.org/wiki/Dhivehi_language	Maldives;;Minicoy	Thaana (official);;Unofficial;;Latin (Maldivian alphabet);;Historical;;Dhives Akuru (until the 19th century);;Eveyla Akuru (ancient)	Sinhalese–Maldivian
+Danish	dansk		Denmark, Schleswig-Holstein (Germany); , Additionally in the Faroe Islands and Greenland		5.520680 million	da	dan		dani1285	Danish language	https://en.wikipedia.org/wiki/Danish_language			East Scandinavian
+Dari		Persian alphabet	| speakers = L1: 15.206330 million					prs	dari1249	Dari	https://en.wikipedia.org/wiki/Dari	Afghanistan	Persian alphabet	Persian
+Dhivehi	ދިވެހި, '	Thaana (official), Unofficial, Latin (Maldivian alphabet), Historical, Dhives Akuru (until the 19th century), Eveyla Akuru (ancient)		Maldivians	504, 829	dv	div	div	dhiv1236	Maldivian language	https://en.wikipedia.org/wiki/Maldivian_language	Maldives;;India	Thaana (official);;Unofficial;;Latin (Maldivian alphabet);;Historical;;Dhives Akuru (until the 19th century);;Eveyla Akuru (ancient)	Sinhalese–Maldivian
 Dinka										Dinka people	https://en.wikipedia.org/wiki/Dinka_people			
-Dogon			Dogon country, Mali (mainly Bandiagara Region)	Dogon people					dogo1299	Dogon languages	https://en.wikipedia.org/wiki/Dogon_languages			Niger-Congo?
+Dogon			Dogon country, Mali (mainly Bandiagara Region)	Dogon people	est. 600, 000				dogo1299	Dogon languages	https://en.wikipedia.org/wiki/Dogon_languages			Niger-Congo?
 Dogri					2.597 million in India		doi	doi	indo1311	Dogri language	https://en.wikipedia.org/wiki/Dogri_language			Western Pahari
-Dutch					25 million	nl		nld	mode1257	Dutch language	https://en.wikipedia.org/wiki/Dutch_language			Low Franconian
+Dutch					25 million	nl		nld	dutc1256	Dutch language	https://en.wikipedia.org/wiki/Dutch_language			Low Franconian
 Dutch Low Saxon					2.15 million (2005)			|glotto=none		Dutch Low Saxon	https://en.wikipedia.org/wiki/Dutch_Low_Saxon	Netherlands;;Germany		Low Saxon
 Dutch Sign Language					15, 000			dse	dutc1253	Dutch Sign Language	https://en.wikipedia.org/wiki/Dutch_Sign_Language	Netherlands		French Sign
-Dyula	Julakan ߖߎ߬ߟߊ߬ߞߊ߲	N'Ko, Latin, Ajami		Dyula	L1: 2.563000 million		dyu	dyu	dyul1238	Dyula language	https://en.wikipedia.org/wiki/Dyula_language	Burkina Faso;;Mali;;Côte d'Ivoire	N'Ko;;Latin;;Ajami	Bambara–Dyula
-Dzongkha		Tibetan script, Dzongkha Braille		Ngalop people	171, 080	dz	dzo	dzo	nucl1307	Dzongkha	https://en.wikipedia.org/wiki/Dzongkha	Bhutan	Tibetan script;;Dzongkha Braille	Dzongkha–Lhokä
+Dyula	Julakan ߖߎ߬ߟߊ߬ߞߊ߲	N'Ko, Latin, Ajami		Dyula	2.563000 million		dyu	dyu	dyul1238	Dyula language	https://en.wikipedia.org/wiki/Dyula_language	Burkina Faso;;Mali;;Côte d'Ivoire	N'Ko;;Latin;;Ajami	Bambara–Dyula
+Dzongkha		*Joyig script *Tibetan script *Dzongkha Braille		Ngalop people	171, 080	dz	dzo	dzo	nucl1307	Dzongkha	https://en.wikipedia.org/wiki/Dzongkha	Bhutan	*Joyig script *Tibetan script *Dzongkha Braille	Dzongkha–Lhokä
 East Pomeranian	|states = Diaspora of German expellees in the Americas; formerly Province of Pomerania		|speakers = Native: ≅ 300.000				nds	nds	east2293	East Pomeranian dialect	https://en.wikipedia.org/wiki/East_Pomeranian_dialect			East Low German
-Egyptian Arabic		Arabic alphabet	| extinct =	Egyptians	L1: 83.567230 million			arz	egyp1253	Egyptian Arabic	https://en.wikipedia.org/wiki/Egyptian_Arabic	Egypt	Arabic alphabet	Arabic
-English					L1: 380 million	en	eng	eng	stan1293	English language	https://en.wikipedia.org/wiki/English_language	The English-speaking world;;including the		Anglic
+Egyptian Arabic		Arabic alphabet, chat alphabet	| extinct =	Egyptians	83.567230 million			arz	egyp1253	Egyptian Arabic	https://en.wikipedia.org/wiki/Egyptian_Arabic	Egypt	Arabic alphabet;;chat alphabet	Arabic
+English					380 million	en	eng	eng	stan1293	English language	https://en.wikipedia.org/wiki/English_language	The English-speaking world;;including the		Anglic
 Ese Ejja	ese'ejja		Beni Department (Bolivia), La Paz Department, Pando Department, (Bolivia); Department of Madre de Dios (Peru), Department of Puno, Peru	Ese Ejja people	730			ese	esee1248	Ese Ejja language	https://en.wikipedia.org/wiki/Ese_Ejja_language	Bolivia;;Peru		Tacanan
 Estonian	eesti keel	Latin (Estonian alphabet), Estonian Braille	Northern Europe	Estonians	1.244850 million	et	est	est	esto1258	Estonian language	https://en.wikipedia.org/wiki/Estonian_language	Estonia	Latin (Estonian alphabet);;Estonian Braille	Central Finnic
 Ewe	Eʋegbe	Latin (Ewe alphabet), Ewe Braille	Southern Ghana east of the Volta River	Ewe	5.026230 million	ee	ewe		ewee1241	Ewe language	https://en.wikipedia.org/wiki/Ewe_language	Ghana;;Togo;;Benin	Latin (Ewe alphabet);;Ewe Braille	Gbe
@@ -411,73 +410,73 @@ Fante	Fante			Fante people	2.786100 million		fat	fat	fant1241	Fante dialect	http
 Faroese	føroyskt			Faroe Islanders	69, 150	fo	fao	fao	faro1244	Faroese language	https://en.wikipedia.org/wiki/Faroese_language	Faroe Islands		Insular Scandinavian
 Fiji Hindi	फ़िजी हिंदी			Indo-Fijians and the Indo-Fijian diaspora	380, 000				fiji1242	Fiji Hindi	https://en.wikipedia.org/wiki/Fiji_Hindi	Fiji		Awadhi;;Bhojpuri;;Maithili
 Fijian	Vosa Vaka-Viti	Latin-based		Fijians	339, 210	fj	fij	fij	fiji1243	Fijian language	https://en.wikipedia.org/wiki/Fijian_language	Fiji	Latin-based	East Fijian
-Filipino	Wikang Filipino	Latin (Filipino alphabet), Philippine Braille,	All regions of the Philippines, especially in Metro Manila, and in other urban centers in the archipelago		L1: 29.211970 million (2010)		fil	fil	fili1244	Filipino language	https://en.wikipedia.org/wiki/Filipino_language	Philippines	Latin (Filipino alphabet);;Philippine Braille	Tagalog
-Finnish	suomi, suomen kieli		| speakers = 5 million, Finland: 4.75 million (2023), Sweden: – (2022), Russia (Karelia): 8500, US: 26000	Finns		fi	fin	fin	nucl1717	Finnish language	https://en.wikipedia.org/wiki/Finnish_language	Finland;;Sweden;;Russia		| script = Latin (Finnish alphabet);;Finnish Braille
+Filipino	Wikang Filipino	Latin (Filipino alphabet), Philippine Braille,	All regions of the Philippines, especially in Metro Manila, and in other urban centers in the archipelago		29.211970 million (2010)		fil	fil	fili1244	Filipino language	https://en.wikipedia.org/wiki/Filipino_language	Philippines	Latin (Filipino alphabet);;Philippine Braille	Tagalog
+Finnish	suomi, suomen kieli		| speakers = 5 million, Finland: 4.75 million (2023), Sweden: – (2022), Russia (Karelia): 8500, US: 26000	Finns		fi	fin	fin	nucl1717	Finnish language	https://en.wikipedia.org/wiki/Finnish_language	Finland;;Sweden;;Russia;;Norway		| script = Latin (Finnish alphabet);;Finnish Braille
 Formosan languages			Taiwan	Taiwanese Aborigines (Formosan people)					none	Formosan languages	https://en.wikipedia.org/wiki/Formosan_languages			
 Franco-Provençal	patouès, gaga, arpetan	Latin	Aosta Valley, Piedmont, Apulia, Bourgogne-Franche-Comté, Savoie, Bresse, Bugey, Dombes, Beaujolais, Dauphiné, Lyonnais, Forez, Romandie		157, 000			frp	fran1269	Franco-Provençal	https://en.wikipedia.org/wiki/Franco-Provençal	Italy;;France;;Switzerland	Latin	Arpitan–Oïl
-French	français	Latin script (French alphabet), French Braille			L1: 74.170080 million	fr		fra	stan1290	French language	https://en.wikipedia.org/wiki/French_language	France;;Belgium;;Switzerland;;Monaco;;Francophone Africa;;Canada;;other locations in the Francophonie	Latin script (French alphabet);;French Braille	Francien zone
+French	français	Latin script (French alphabet), French Braille			74.170080 million	fr		fra	stan1290	French language	https://en.wikipedia.org/wiki/French_language	France;;Belgium;;Switzerland;;Monaco;;Francophone Africa;;Canada;;other locations in the Francophonie	Latin script (French alphabet);;French Braille	Francien zone
 Frisian			Netherlands and Germany., West Frisian: Friesland, Westerkwartier; , Saterland Frisian: Saterland; , North Frisian: Nordfriesland, Heligoland	Frisians					fris1239	Frisian languages	https://en.wikipedia.org/wiki/Frisian_languages			Anglo-Frisian
 Friulian	furlan	Latin (Friulian alphabet)	Friuli	Friulians	Regular speakers: 420, 000		fur	fur	friu1240	Friulian language	https://en.wikipedia.org/wiki/Friulian_language	Italy	Latin (Friulian alphabet)	Rhaeto-Romance
-Fula	Fulfulde, Pulaar, Pular	Latin, Adlam, Arabic (Ajami)	Sahel	Fula	L1: 36.854740 million	ff	ful	ful	fula1264	Fula language	https://en.wikipedia.org/wiki/Fula_language	Western Africa	Latin;;Adlam;;Arabic (Ajami)	Fula–Wolof
-Fulfulde	Fulfulde, Pulaar, Pular	Latin, Adlam, Arabic (Ajami)	Sahel	Fula	L1: 36.854740 million	ff	ful	ful	fula1264	Fula language	https://en.wikipedia.org/wiki/Fula_language	Western Africa	Latin;;Adlam;;Arabic (Ajami)	Fula–Wolof
-Ga	Gã	Latin (Ga alphabet), Ghanaian braille	South-eastern Ghana, around Accra	Ga	745, 000		gaa	gaa	gaaa1244	Ga language	https://en.wikipedia.org/wiki/Ga_language	Ghana	Latin (Ga alphabet);;Ghanaian braille	Ga–Dangme
+Fula	Fulfulde, Pulaar, Pular	Latin, Adlam, Arabic (Ajami)	Sahel	Fula	36.854740 million	ff	ful	ful	fula1264	Fula language	https://en.wikipedia.org/wiki/Fula_language	Western Africa	Latin;;Adlam;;Arabic (Ajami)	Fula–Wolof
+Fulfulde	Fulfulde, Pulaar, Pular	Latin, Adlam, Arabic (Ajami)	Sahel	Fula	36.854740 million	ff	ful	ful	fula1264	Fula language	https://en.wikipedia.org/wiki/Fula_language	Western Africa	Latin;;Adlam;;Arabic (Ajami)	Fula–Wolof
+Ga	Gã	Latin (Ga alphabet), Ghanaian braille	South-eastern Ghana, around Accra	Ga	745, 000		gaa	gaa	gaaa1244	Gã language	https://en.wikipedia.org/wiki/Gã_language	Ghana	Latin (Ga alphabet);;Ghanaian braille	Ga–Dangme
 Gagauz		Latin (Gagauz alphabet, current), Cyrillic (historical), Greek (historical)	Gagauzia	Gagauz	148, 720 (total speakers), 115, 000 (in Moldova)			gag	gaga1249	Gagauz language	https://en.wikipedia.org/wiki/Gagauz_language	Moldova;;Ukraine;;Russia;;Turkey	Latin (Gagauz alphabet;;current);;Cyrillic (historical);;Greek (historical)	Western Oghuz
 Galician	galego	Latin (Galician alphabet), Galician Braille	Galicia and adjacent areas in Asturias and Castile and León	Galician	million	gl	glg	glg	gali1258	Galician language	https://en.wikipedia.org/wiki/Galician_language		Latin (Galician alphabet);;Galician Braille	Galician-Portuguese
 Ganguela	Chiluchazi		|speakers=431, 000					lch	luch1239	Luchazi	https://en.wikipedia.org/wiki/Luchazi	Angola;;Zambia		Chokwe–Luchazi (K.10)
 Garifuna										Garifuna	https://en.wikipedia.org/wiki/Garifuna			
-Georgian	ქართული ენა	* Georgian script * Georgian Braille	South Caucasus	Georgians	L1: 3.760570 million	ka		kat	nucl1302	Georgian language	https://en.wikipedia.org/wiki/Georgian_language	Georgia	* Georgian script * Georgian Braille	Middle Georgian
-German	Deutsch				L1: 95 million					German language	https://en.wikipedia.org/wiki/German_language	Germany;;Switzerland;;Austria;;Liechtenstein;;Luxembourg;;Belgium;;Italy		High German
+Georgian	ქართული ენა	* Georgian script * Georgian Braille	South Caucasus	Georgians	3.760570 million	ka		kat	nucl1302	Georgian language	https://en.wikipedia.org/wiki/Georgian_language	Georgia	* Georgian script * Georgian Braille	Middle Georgian
+German	Deutsch				95 million					German language	https://en.wikipedia.org/wiki/German_language	Germany;;Switzerland;;Austria;;Liechtenstein;;Luxembourg;;Belgium;;South Tyrol (Italy);;Namibia		High German
 German Sign Language	150px				Between 80, 000 and 395, 000			gsg	germ1281	German Sign Language	https://en.wikipedia.org/wiki/German_Sign_Language	Germany;;Belgium;;Luxembourg		German Sign Language family
-Gilaki			Southwest coast of the Caspian Sea	5.840000 million Gilaks (2025)	| date =			glk	gila1242	Gilaki language	https://en.wikipedia.org/wiki/Gilaki_language	Iran;;province of Gilan;;parts of the province of Mazandaran;;Qazvin also Alborz		Caspian
+Gilaki			Southwest coast of the Caspian Sea	Gilaks	1.610000 million			glk	gila1242	Gilaki language	https://en.wikipedia.org/wiki/Gilaki_language	Iran;;province of Gilan;;parts of the province of Mazandaran;;Qazvin also Alborz		Gilaki–Rudbari
 Gilbertese	Taetae ni Kiribati	Latin, ([[#Alphabet|Gilbertese alphabet]])		I-Kiribati	118, 618		gil	gil	gilb1244	Gilbertese language	https://en.wikipedia.org/wiki/Gilbertese_language	Kiribati	Latin;;([[#Alphabet|Gilbertese alphabet]])	Micronesian
 Gonja			Northern Ghana	Gonja people	310, 000			gjn	gonj1241	Gonja language	https://en.wikipedia.org/wiki/Gonja_language	Ghana		Guang
 Greek	ελληνικά, elliniká			Greeks	13.5 million	el			gree1276	Greek language	https://en.wikipedia.org/wiki/Greek_language			Hellenic
 Guaraní	avañeʼẽ	Guarani alphabet (Latin script)		Guaraní, Paraguayan people	6.540 million	| iso2 =		gug	para1311	Guarani language	https://en.wikipedia.org/wiki/Guarani_language	Paraguay	Guarani alphabet (Latin script)	Guaraní
-Guarasu'we	Guarasugwé		Rondônia, Brazil and Beni Department, Bolivia	46 Guarasu’we (2000)				psm	paus1244	Warázu language	https://en.wikipedia.org/wiki/Warázu_language	Bolivia		Guarayu
+Guarasu'we	Guarasuñée		Rondônia, Brazil and Beni Department, Bolivia	149 Guarasu’we in Bolivia (2024); 101 Guarasugwe in Brazil (2022)	4–5 (2017)			psm	paus1244	Warázu language	https://en.wikipedia.org/wiki/Warázu_language	Bolivia		Guarayu
 Guarayu	Gwarayú, nyanyanye, ñañañe, guarani'ete'		Santa Cruz, Boquerón	12, 000 (2012)	8, 430			gyr	guar1292	Guarayu language	https://en.wikipedia.org/wiki/Guarayu_language			Guarayu–Sirionó
-Guernésiais	guernésiais, dgèrnésiais				200				dger1238	Guernésiais	https://en.wikipedia.org/wiki/Guernésiais	Guernsey		Anglo-Norman
-Gujarati			Western India * Gujarat * Union-territories Dadra and Nagar Haveli and Daman and Diu	Gujaratis	L1: 56.953120 million	gu	guj	guj	guja1252	Gujarati language	https://en.wikipedia.org/wiki/Gujarati_language	India		Gujarati languages
+Guernésiais	guernésiais, dgèrnésiais	Latin (French orthography)			200				dger1238	Guernésiais	https://en.wikipedia.org/wiki/Guernésiais	Guernsey	Latin (French orthography)	Norman
+Gujarati			Western India * Gujarat * Union-territories Dadra and Nagar Haveli and Daman and Diu	Gujaratis	56.953120 million	gu	guj	guj	guja1252	Gujarati language	https://en.wikipedia.org/wiki/Gujarati_language	India		Gujarati languages
 Gulmancema	Migulimancema	Latin		Gurma people	1.529300 million			gux	gour1243	Gurmantche language	https://en.wikipedia.org/wiki/Gurmantche_language	Burkina Faso;;Togo;;Benin;;Niger;;Ghana;;Nigeria	Latin	Gurma
 Gumuz	|states=Ethiopia, Sudan	Ethiopic, Latin (in Ethiopia)	Benishangul-Gumuz Region; Amhara Region; Blue Nile State	Gumuz	Ethiopia: 161, 000			guk	gumu1244	Gumuz language	https://en.wikipedia.org/wiki/Gumuz_language		Ethiopic;;Latin (in Ethiopia)	Bʼaga
 Guyanese Creole	Creolese				643, 000 in Guyana			gyn	creo1235	Guyanese Creole	https://en.wikipedia.org/wiki/Guyanese_Creole	Guyana		Southern
 Gwich'in										Gwichʼin	https://en.wikipedia.org/wiki/Gwichʼin			
 Haitian Creole			| ethnicity = Haitians		13.157800 million	ht	hat	hat		Haitian Creole	https://en.wikipedia.org/wiki/Haitian_Creole	Haiti		Circum-Caribbean French
 Hajong	হাজং	Bengali-Assamese script, Latin script	Meghalaya, Assam, Mizoram, Arunachal Pradesh and West Bengal in India Mymensingh, Sherpur, Netrokona and Sunamganj in Bangladesh	Hajong	79, 800			haj	hajo1238	Hajong language	https://en.wikipedia.org/wiki/Hajong_language	India;;Bangladesh	Bengali-Assamese script;;Latin script	Bengali–Assamese
-Harari	ሀረሪ ()	Ge'ez script (officially), Arabic script (formerly), Latin script (informally; diaspora), Harari script	Harari Region	Harari	L1: 27, 260			har	hara1271	Harari language	https://en.wikipedia.org/wiki/Harari_language	Ethiopia	Ge'ez script (officially);;Arabic script (formerly);;Latin script (informally;;diaspora);;Harari script	Harari–East Gurage
+Harari	ጌይ ሲናን ()	Ge'ez script (officially), Arabic script (formerly), Latin script (informally; diaspora), Harari script	Harari Region	Harari	27, 260			har	hara1271	Harari language	https://en.wikipedia.org/wiki/Harari_language	Ethiopia	Ge'ez script (officially);;Arabic script (formerly);;Latin script (informally;;diaspora);;Harari script	Harari–East Gurage
 Hassaniya	حسانية (')	Arabic alphabet, Latin alphabet (in Senegal)			5.637100 million			mey	hass1238	Hassaniya Arabic	https://en.wikipedia.org/wiki/Hassaniya_Arabic		Arabic alphabet;;Latin alphabet (in Senegal)	Hilalian
-Hausa	Harshen/Halshen Hausa		West Africa	Hausa	L1: 58.044460 million	ha	hau	hau	haus1257	Hausa language	https://en.wikipedia.org/wiki/Hausa_language			Hausa–Gwandara
+Hausa	Harshen/Halshen Hausa		West Africa	Hausa	58.044460 million	ha	hau	hau	haus1257	Hausa language	https://en.wikipedia.org/wiki/Hausa_language			Hausa–Gwandara
 Hebrew	Ivrit		Southern Levant		20 million	he	heb	| iso3comment =	hebr1246	Hebrew language	https://en.wikipedia.org/wiki/Hebrew_language	Israel		South
 Hiligaynon	Hiniligaynon, Inilonggo, Binisayâ		Western Visayas, Negros Island Region, Soccsksargen, southwestern portion of Masbate, coastal Palawan, some parts of southern Mindoro, some parts of Romblon and a few parts of Northern Mindanao	Hiligaynon	8.6 million		hil	hil	hili1240	Hiligaynon language	https://en.wikipedia.org/wiki/Hiligaynon_language	Philippines		Central Bisayan
-Hindi	हिन्दी,	*Devanagari (official) *Kaithi (historical) *Mahajani (historical) *Laṇḍā (historical) *Devanagari Braille		| region = Hindi Belt	L1: 345.365030 million	hi	hin	hin	hind1269	Hindi	https://en.wikipedia.org/wiki/Hindi	India	*Devanagari (official) *Kaithi (historical) *Mahajani (historical) *Laṇḍā (historical) *Devanagari Braille	Hindustani
+Hindi	हिन्दी,	*Devanagari (official) *Kaithi (historical) *Mahajani (historical) *Laṇḍā (historical) *Devanagari Braille		| region = Hindi Belt	345.365030 million	hi	hin	hin	hind1269	Hindi	https://en.wikipedia.org/wiki/Hindi	India	*Devanagari (official) *Kaithi (historical) *Mahajani (historical) *Laṇḍā (historical) *Devanagari Braille	Hindustani
 Hiri Motu		Latin script	Papua New Guinea		"Very few" (cited 1992)	ho	hmo	hmo	hiri1237	Hiri Motu	https://en.wikipedia.org/wiki/Hiri_Motu		Latin script	Motu
 Hmong	/ / / (Vietnam) / /	Hmong writing: incl. Pahawh Hmong, Nyiakeng Puachue Hmong, multiple Latin standards		Hmong	4.5 million		hmn	hmn	firs1234	Hmong language	https://en.wikipedia.org/wiki/Hmong_language	China;;Vietnam;;Laos;;Myanmar;;Thailand	Hmong writing: incl. Pahawh Hmong;;Nyiakeng Puachue Hmong;;multiple Latin standards	Chuanqiandian cluster
-Hungarian				Hungarians	14 million	hu	hun		hung1274	Hungarian language	https://en.wikipedia.org/wiki/Hungarian_language	Hungary;;areas of east Austria;;Croatia;;Romania;;northern Serbia;;Slovakia;;Slovenia;;western Ukraine		Ugric
+Hungarian				Hungarians	12.149610 million	hu	hun	hun	hung1274	Hungarian language	https://en.wikipedia.org/wiki/Hungarian_language	Hungary;;areas of east Austria;;Croatia;;Romania;;northern Serbia;;Slovakia;;Slovenia;;western Ukraine		Ugric
 Ibanag		Latin	Northern Luzon	Ibanag	600, 000			ibg	iban1267	Ibanag language	https://en.wikipedia.org/wiki/Ibanag_language	Philippines	Latin	Cagayan Valley
 Icelandic	íslenska	Latin (Icelandic alphabet), Icelandic Braille		Icelanders	388, 720	is		isl	icel1247	Icelandic language	https://en.wikipedia.org/wiki/Icelandic_language	Iceland	Latin (Icelandic alphabet);;Icelandic Braille	Insular Scandinavian
 Icelandic Sign Language	Íslenskt táknmál				250–300			icl	icel1236	Icelandic Sign Language	https://en.wikipedia.org/wiki/Icelandic_Sign_Language	Iceland		Danish Sign
 Igbo	Ásụ̀sụ́ Ìgbò	Latin (Ọnwụ alphabet), Nwagu Aneke script, Neo-Nsibidi, Ndebe script, Igbo Braille, Akagụ Script	Igboland: Abia, Anambra, Ebonyi, Enugu, Imo; native speakers are also found in parts of Delta State and Rivers State	Igbo	33.706370 million	ig	ibo	ibo	nucl1417	Igbo language	https://en.wikipedia.org/wiki/Igbo_language	Nigeria	Latin (Ọnwụ alphabet);;Nwagu Aneke script;;Neo-Nsibidi;;Ndebe script;;Igbo Braille;;Akagụ Script	Igboid
-Ilocano	Ilóko, Ilúko, Pagsasaó nga Ilokáno	Latin (Ilocano alphabet),  Ilokano Braille, Historically Kur-itan	Northern Luzon which includes the Ilocos Region, Cordillera Administrative Region and Cagayan Valley, as well as many areas in Central Luzon, and certain parts of Mindanao.	Ilocano	L1: 8.7 million		ilo	ilo	ilok1237	Ilocano language	https://en.wikipedia.org/wiki/Ilocano_language	Philippines	Latin (Ilocano alphabet);;Ilokano Braille;;Historically Kur-itan	Northern Luzon
-Indonesian		Latin (EYD), Indonesian Braille		Over 600 Indonesian ethnic groups	L1: 75.161170 million	id	ind	ind	indo1316	Indonesian language	https://en.wikipedia.org/wiki/Indonesian_language	Indonesia	Latin (EYD);;Indonesian Braille	Malay
+Ilocano	Ilóko, Ilúko, Pagsasaó nga Ilokáno	Latin (Ilocano alphabet),  Ilokano Braille, Historically Kur-itan	Northern Luzon which includes the Ilocos Region, Cordillera Administrative Region and Cagayan Valley, as well as many areas in Central Luzon, and certain parts of Mindanao.	Ilocano	8.7 million		ilo	ilo	ilok1237	Ilocano language	https://en.wikipedia.org/wiki/Ilocano_language	Philippines	Latin (Ilocano alphabet);;Ilokano Braille;;Historically Kur-itan	Northern Luzon
+Indonesian		Latin (EYD), Indonesian Braille		Over 600 Indonesian ethnic groups	75.161170 million	id	ind	ind	indo1316	Indonesian language	https://en.wikipedia.org/wiki/Indonesian_language	Indonesia	Latin (EYD);;Indonesian Braille	Riau Malay
 Inuinnaqtun	ᐃᓄᐃᓐᓇᖅᑐᓐ‎	Latin, Inuktitut syllabics (Gjoa Haven only)			1, 310	iu	iku	ikt	copp1244	Inuinnaqtun	https://en.wikipedia.org/wiki/Inuinnaqtun	Canada (Nunavut;;Northwest Territories)	Latin;;Inuktitut syllabics (Gjoa Haven only)	Inuvialuktun
-Inuktitut	ᐃᓄᒃᑎᑐᑦ, inuktitut	Inuktitut syllabics, Inuktitut Braille, Latin	Northwest Territories, Nunatsiavut (Newfoundland and Labrador), Nunavik (Quebec), Nunavut		L1: 37570	iu	iku	iku	east2534	Inuktitut	https://en.wikipedia.org/wiki/Inuktitut	Canada	Inuktitut syllabics;;Inuktitut Braille;;Latin	Inuit (Inuktut)
+Inuktitut	ᐃᓄᒃᑎᑐᑦ, inuktitut	Inuktitut syllabics, Inuktitut Braille, Latin	Northwest Territories, Nunatsiavut (Newfoundland and Labrador), Nunavik (Quebec), Nunavut		37570	iu	iku	iku	east2534	Inuktitut	https://en.wikipedia.org/wiki/Inuktitut	Canada	Inuktitut syllabics;;Inuktitut Braille;;Latin	Inuit (Inuktut)
 Inuvialuktun	| states = Canada	Latin script, Syllabics	Northwest Territories, Nunavut	3, 110 Inuvialuit	680, 22% of ethnic population	iu	iku	ikt	west2618	Inuvialuktun	https://en.wikipedia.org/wiki/Inuvialuktun		Latin script;;Syllabics	Inuit
 Iraqi Turkmen										Iraqi Turkmens	https://en.wikipedia.org/wiki/Iraqi_Turkmens			
-Irish	Standard Irish: Gaeilge	Latin (Irish alphabet), Ogham (historically), Irish Braille	Ireland	Irish people	L1: unknown		gle	gle	iris1253	Irish language	https://en.wikipedia.org/wiki/Irish_language	Republic of Ireland;;Northern Ireland	Latin (Irish alphabet);;Ogham (historically);;Irish Braille	Goidelic
+Irish	Standard Irish: Gaeilge	Latin (Irish alphabet), Ogham (historically), Irish Braille	Ireland	Irish people	unknown, Daily users outside education system: , (ROI, 2022) 71, 968, (NI, 2021) 43, 557		gle	gle	iris1253	Irish language	https://en.wikipedia.org/wiki/Irish_language	Republic of Ireland;;Northern Ireland	Latin (Irish alphabet);;Ogham (historically);;Irish Braille	Goidelic
 Isan										Isan	https://en.wikipedia.org/wiki/Isan			
-Italian		Latin script (Italian alphabet), Italian Braille	Italian peninsula	Italians	L1: 64.821530 million	it	ita	ita	ital1282	Italian language	https://en.wikipedia.org/wiki/Italian_language	Italy;;San Marino;;Vatican City;;Switzerland;;Slovenia (Slovene Istria);;Croatia (Istria)	Latin script (Italian alphabet);;Italian Braille	Florentine dialect
-Itonama	sihni pandara	Latin	Beni Department	2, 940 Itonama people (2006)				ito	iton1250	Itonama language	https://en.wikipedia.org/wiki/Itonama_language	Bolivia	Latin	
+Italian		Latin script (Italian alphabet), Italian Braille	Italian peninsula	Italians	64.821530 million	it	ita	ita	ital1282	Italian language	https://en.wikipedia.org/wiki/Italian_language	Italy;;San Marino;;Vatican City;;Switzerland;;Slovenia (Istria);;Croatia (Istria)	Latin script (Italian alphabet);;Italian Braille	Florentine
+Itonama	sihni padara	Latin	Beni Department	2, 940 Itonama people (2006)				ito	iton1250	Itonama language	https://en.wikipedia.org/wiki/Itonama_language	Bolivia	Latin	
 Ivatan	Chirin nu Ibatan		Batanes Islands	Ivatan	32, 790				ivat1242	Ivatan language	https://en.wikipedia.org/wiki/Ivatan_language	Philippines		Batanic
 Jamaican Patois	Patwa, Jamiekan / Jamiekan Kriyuol, Jumiekan / Jumiekan Kryuol / Jumieka Taak / Jumieka taak / Jumiekan languij	Latin (Cassidy/JLU orthography)			3.2 million			jam	jama1262	Jamaican Patois	https://en.wikipedia.org/wiki/Jamaican_Patois	Jamaica	Latin (Cassidy/JLU orthography)	Western
 Japanese	(Nihongo)			Japanese (Yamato)	123.427320 million	ja	jpn	jpn	nucl1643	Japanese language	https://en.wikipedia.org/wiki/Japanese_language	Japan		Insular
-Javanese	Basa Jawa, ꦧꦱꦗꦮ, باسا جاوا	Latin script (Javanese Latin alphabet), Javanese script, Pegon script	Throughout Indonesia (mainly central and eastern Java)	Javanese,	68.335000 million	jv	jav		java1253	Javanese language	https://en.wikipedia.org/wiki/Javanese_language	Indonesia;;Malaysia;;Netherlands;;Suriname;;New Caledonia	Latin script (Javanese Latin alphabet);;Javanese script;;Pegon script	Malayo-Polynesian
+Javanese	Basa Jawa, ꦧꦱꦗꦮ, باسا جاوا	Latin script (Javanese Latin alphabet), Javanese script, Pegon script	Throughout Indonesia (mainly central and eastern Java)	Javanese,  Madurese,	68.335000 million	jv	jav		java1253	Javanese language	https://en.wikipedia.org/wiki/Javanese_language	Indonesia;;Malaysia;;Netherlands;;Suriname;;New Caledonia	Latin script (Javanese Latin alphabet);;Javanese script;;Pegon script	Malayo-Polynesian
 Jola			The Gambia, Senegal (esp. Casamance) and Guinea-Bissau						jola1264	Jola languages	https://en.wikipedia.org/wiki/Jola_languages			Jola–Papel
 Jola-Fogny	kujóolay		Casamance		475, 000			dyo	jola1263	Jola-Fonyi language	https://en.wikipedia.org/wiki/Jola-Fonyi_language	Gambia;;Senegal		Jola
-Jèrriais	jèrriais				1920				jerr1238	Jèrriais	https://en.wikipedia.org/wiki/Jèrriais	Jersey;;Sark		Anglo-Norman
+Jèrriais	jèrriais			Jerseys	1920				jerr1238	Jèrriais	https://en.wikipedia.org/wiki/Jèrriais	Jersey;;Sark		Norman
 Kachin	Jinghpaw ga, ဂျိန်ဖော့	Latin alphabet, Mon–Burmese script (unofficial)	Kachin State, Yingjiang County	Jinghpaw	942, 500		kac		jing1260	Jingpo language	https://en.wikipedia.org/wiki/Jingpo_language	Myanmar;;China;;India	Latin alphabet;;Mon–Burmese script (unofficial)	Jingpho–Luish
 Kalaallisut	Kalaallisut, Kitaamiisut			Kalaallit	44, 000–52, 000				kala1399	West Greenlandic	https://en.wikipedia.org/wiki/West_Greenlandic	West Greenland;;Denmark		Greenlandic
 Kalanga	TjiKalanga/Ikalanga		SouthWest parts of Zimbabwe Central, North Central and NorthEast Botswana	Kalanga people	700, 000 in Zimbabwe,  850, 000 in Botswana				kala1405	Kalanga language	https://en.wikipedia.org/wiki/Kalanga_language			Shona group
-Kamtapuri	রংপুরী, কোচ-ৰাজবংশী, দেশী	Bengali-Assamese script	North Bengal, Lower Assam	Rajbongshi, Bengali, Deshi, Nashya Shaikh, Assamese	10.476000 million			rkt	rang1272	Rangpuri language	https://en.wikipedia.org/wiki/Rangpuri_language	Bangladesh;;India	Bengali-Assamese script	Central–Eastern Kamta
-Kannada	ಕನ್ನಡ	*Kannada script *Kannada Braille	Karnataka	Kannadigas	L1: 43.697430 million	kn	kan	kan	nucl1305	Kannada	https://en.wikipedia.org/wiki/Kannada	India	*Kannada script *Kannada Braille	Kannadoid
+Kamtapuri	রংপুরী, কোচ-ৰাজবংশী, কামতা, কামতাপুৰী	Bengali-Assamese script	North Bengal, Lower Assam	Rajbongshi, Bengali, Deshi, Nashya Shaikh, Assamese	10.476000 million			rkt	rang1265	Rangpuri language	https://en.wikipedia.org/wiki/Rangpuri_language	Bangladesh;;India	Bengali-Assamese script	Central–Eastern Kamta
+Kannada	ಕನ್ನಡ	*Kannada script *Kannada Braille	Karnataka	Kannadigas	43.697430 million	kn	kan	kan	nucl1305	Kannada	https://en.wikipedia.org/wiki/Kannada	India	*Kannada script *Kannada Braille	Kannadoid
 Kanuri	Kànùrí, كَنُرِيِه	Latin, Arabic (Ajami)	Lake Chad	Kanuri, Kanembu	10.608000 million	kr	kau	kau	kanu1279	Kanuri language	https://en.wikipedia.org/wiki/Kanuri_language		Latin;;Arabic (Ajami)	Western
 Kapampangan	Amánung Kapangpángan, Amánung Sísuan	Latin (Kapampangan alphabet), Kulitan	Central Luzon (entirety of Pampanga, southern Tarlac, northeastern Bataan, western Bulacan, southwestern Nueva Ecija, southeastern parts of Zambales)	Kapampangan	2.8 million		pam	pam	pamp1243	Kapampangan language	https://en.wikipedia.org/wiki/Kapampangan_language	Philippines	Latin (Kapampangan alphabet);;Kulitan	Central Luzon
 Karaim	къарай тили, karaj tili	Cyrillic script, Latin script, Hebrew alphabet		Crimean Karaites	81			kdr	kara1464	Karaim language	https://en.wikipedia.org/wiki/Karaim_language	Crimea;;Lithuania;;Poland	Cyrillic script;;Latin script;;Hebrew alphabet	Kypchak–Cuman
@@ -489,65 +488,65 @@ Kashmiri		Official: Perso-Arabic script (contemporary), Others: Devanagari (info
 Kashubian	kaszëbsczi (jãzëk), kaszëbskô mòwa	Latin (Kashubian alphabet)	Kashubia	Kashubians	87, 600			csb	kash1274	Kashubian language	https://en.wikipedia.org/wiki/Kashubian_language	Poland	Latin (Kashubian alphabet)	Pomeranian
 Kassonke	Xaasongaxango			Kassonke, Malinke	2.511 million				xaas1235	Kassonke language	https://en.wikipedia.org/wiki/Kassonke_language	Mali		West Manding
 Kazakh	қазақша, қазақ тілі, qazaqşa, qazaq tılı, قازاقشا, قازاق ٴتىلى, قزاقچه, قزاق تلى	Kazakh alphabets (Cyrillic script, Latin script, Perso-Arabic script, Kazakh Braille)	Central Asia, (Turkestan)	Kazakhs	16.444380 million	kk	kaz	kaz	kaza1248	Kazakh language	https://en.wikipedia.org/wiki/Kazakh_language	Kazakhstan;;China;;Mongolia;;Russia;;Kyrgyzstan;;Uzbekistan	Kazakh alphabets (Cyrillic script;;Latin script;;Perso-Arabic script;;Kazakh Braille)	Kipchak–Nogai
-Khmer	ភាសាខ្មែរ / ខេមរភាសា, Phéasa Khmêr / Khémôrôphéasa			Khmer	L1: 19.477730 million	km	khm		khme1253	Khmer language	https://en.wikipedia.org/wiki/Khmer_language			Austroasiatic
+Khmer	ភាសាខ្មែរ / ខេមរភាសា, Phéasa Khmêr / Khémôrôphéasa			Khmer	19.477730 million	km	khm		khme1253	Khmer language	https://en.wikipedia.org/wiki/Khmer_language			Austroasiatic
 Khoisan										Khoisan	https://en.wikipedia.org/wiki/Khoisan			
 Kichwa				Quechua	454, 750				colo1257	Kichwa language	https://en.wikipedia.org/wiki/Kichwa_language	Ecuador;;Colombia;;Peru		Northern
-Kikongo	Kikongo	Latin, Mandombe	| ethnicity = Kongo		L1: 5.955500 million		kon	kon	yomb1244	Kongo language	https://en.wikipedia.org/wiki/Kongo_language	DR Congo (Kongo Central);;Angola;;Republic of the Congo;;Gabon	Latin;;Mandombe	Kongo languages (H.16)
+Kikongo	Kikongo	Latin, Mandombe	| ethnicity = Kongo		5.955500 million		kon	kon	yomb1244	Kongo language	https://en.wikipedia.org/wiki/Kongo_language	DR Congo (Kongo Central);;Angola;;Republic of the Congo;;Gabon	Latin;;Mandombe	Kongo languages (H.16)
 Kimbundu	|states=Angola		Bengo Province, Luanda Province, Icolo e Bengo Province, Cuanza Norte Province, Cuanza Sul Province, Malanje Province	Ambundu	3.728 million		kmb	kmb	kimb1241	Kimbundu	https://en.wikipedia.org/wiki/Kimbundu			Kimbundu languages (H.20)
 Kinaray-a	Kinaray-a, Hiniraya, Binisaya nga Karay-a	Latin	Antique, southern and central Iloilo, southern part of Guimaras, southern Aklan, Occidental Mindoro particularly in Ilin Island, western Capiz, some parts of Palawan, and a few parts of Soccsksargen	Karay-a	1.1 million			krj	kina1250	Karay-a language	https://en.wikipedia.org/wiki/Karay-a_language	Philippines	Latin	Western Bisayan
 Kinyarwanda	Ikinyarwanda	Latin		Banyarwanda	14.828160 million	rw	kin	kin	kiny1244	Kinyarwanda	https://en.wikipedia.org/wiki/Kinyarwanda	Rwanda;;Uganda	Latin	Rwanda-Rundi
-Kiriol	guinensi, kriyol, kiriol, purtuguis 'kriolo'				L1: 345, 100				uppe1455	Guinea-Bissau Creole	https://en.wikipedia.org/wiki/Guinea-Bissau_Creole	Guinea-Bissau;;Cape Verde;;Senegal;;The Gambia		Upper Guinea Creole
+Kiriol	guinensi, kriyol, kiriol, purtuguis 'kriolo'				345, 100				uppe1455	Guinea-Bissau Creole	https://en.wikipedia.org/wiki/Guinea-Bissau_Creole	Guinea-Bissau;;Cape Verde;;Senegal;;The Gambia		Upper Guinea Creole
 Kirundi	Ikirundi	Latin	| ethnicity = Hutu, Tutsi, Twa, Ganwa		13.185850 million	rn	run	run	rund1242	Kirundi	https://en.wikipedia.org/wiki/Kirundi	Burundi	Latin	Rundic
 Kom	Kom Rem		India	Kom	15, 108			kmm	komi1270	Kom language (India)	https://en.wikipedia.org/wiki/Kom_language_(India)			Northwestern
 Konkani		*Present **Devanagari script (Balbodh, official) **Latin script **Kannada script **Malayalam script **Perso-Arabic script *Past **Nāgarī **Goykanadi **Modi script	Southern and Western India (Konkan region) *Goa *coastal areas of Karnataka, Maharashtra and some parts of Kerala *Gujarat (in the Dang district) *Dadra and Nagar Haveli and Daman and Diu	Konkani	5.937000 million		kok	kok	goan1235	Konkani language	https://en.wikipedia.org/wiki/Konkani_language		*Present **Devanagari script (Balbodh;;official) **Latin script **Kannada script **Malayalam script **Perso-Arabic script *Past **Nāgarī **Goykanadi **Modi script	Marathi–Konkani
 Korean	한국어 () (South Korea), 조선어 () (North Korea)		Korea	Koreans, formerly Jaegaseung	81.186970 million	ko	kor	kor	kore1280	Korean language	https://en.wikipedia.org/wiki/Korean_language			| ancestor = Proto-Koreanic
 Korean Sign Language					180, 000		sgn	kvk	kore1273	Korean Sign Language	https://en.wikipedia.org/wiki/Korean_Sign_Language	South Korea		Japanese Sign Language?
 Kosraean			Kosrae		9, 000		kos	kos	kosr1238	Kosraean language	https://en.wikipedia.org/wiki/Kosraean_language	Federated States of Micronesia		Nuclear Micronesian
-Krio			| notice = IPA	Sierra Leone Creoles, Gambian Creoles, Krio Fernandinos, Nigerian Creoles	L1: 856, 050			kri	krio1253	Krio language	https://en.wikipedia.org/wiki/Krio_language	Sierra Leone		West African Pidgin English
+Krio			| notice = IPA	Sierra Leone Creoles, Gambian Creoles, Krio Fernandinos, Nigerian Creoles	856, 050			kri	krio1253	Krio language	https://en.wikipedia.org/wiki/Krio_language	Sierra Leone		West African Pidgin English
 Kriol	Bileez Kriol, Kriol			Belizean Creoles	180, 792			bzj	beli1260	Belizean Creole	https://en.wikipedia.org/wiki/Belizean_Creole	Belize		Western
 Kunama	Baada, Baazayn, Diila	Latin	western Eritrea, northern Ethiopia	Kunama	179, 430			kun	kuna1268	Kunama language	https://en.wikipedia.org/wiki/Kunama_language	Eritrea;;Ethiopia	Latin	Kunama
 Kurdish	Kurdî, کوردی		Kurdistan; Also Anatolia, Caucasus, Khorasan, Kurdish diaspora	Kurds	29.194200 million	ku	kur	kur	kurd1259	Kurdish language	https://en.wikipedia.org/wiki/Kurdish_language	Armenia;;Azerbaijan;;Iran;;Iraq;;Syria;;Turkey		Northwestern
-Kuwaiti Arabic	كويتي	Arabic, with addition of 3 or 4 letters.			2.550000 million	afb		afb	kuwa1251	Kuwaiti Arabic	https://en.wikipedia.org/wiki/Kuwaiti_Arabic	Grane;;nowadays State of Kuwait;;Iraq (Bedouin regions)	Arabic;;with addition of 3 or 4 letters.	Gulf
+Kuwaiti Arabic	كويتي	Arabic, with addition of 3 or 4 letters.			1.690000 million	afb		afb	kuwa1251	Kuwaiti Arabic	https://en.wikipedia.org/wiki/Kuwaiti_Arabic	Kuwait;;Iraq (Bedouin regions)	Arabic;;with addition of 3 or 4 letters.	Gulf
 Kuwaiti Persian	عیمی, ʿĪmi			'Ajam of Kuwait	?			none	none	Kuwaiti Persian	https://en.wikipedia.org/wiki/Kuwaiti_Persian	Kuwait		Iranian Persian
 Kuwaiti Sign Language					?				kuwa1252	Kuwaiti Sign Language	https://en.wikipedia.org/wiki/Kuwaiti_Sign_Language	Kuwait		|iso3=none
 Kven	kvääni, kainu			Kven people	2, 000–8, 000			fkv	kven1236	Kven language	https://en.wikipedia.org/wiki/Kven_language	Norway		Peräpohjola
 Kwanyama	Oshikwanyama		Cunene Province (Angola), Ovamboland (Namibia)		1, 003, 783 in Angola (2024); , 250, 000 in Namibia (2006)	kj	kua	kua	kuan1247	Kwanyama	https://en.wikipedia.org/wiki/Kwanyama	Angola;;Namibia		Ovambo
-Kyrgyz	Кыргыз тили, kyrgyz tili, قىرعىز تئلى	Kyrgyz alphabets (Cyrillic script, Perso-Arabic script, Kyrgyz Braille) Historically, Old Turkic script	Central Asia	Kyrgyz	5.154500 million	ky	kir	kir	kirg1245	Kyrgyz language	https://en.wikipedia.org/wiki/Kyrgyz_language	Kyrgyzstan;;Afghanistan;;Tajikistan;;Pakistan;;China	Kyrgyz alphabets (Cyrillic script;;Perso-Arabic script;;Kyrgyz Braille) Historically;;Old Turkic script	Kyrgyz–Kipchak
+Kyrgyz	Кыргыз тили, kırgız tili, قىرعىز تئلى	Kyrgyz alphabets (Cyrillic script, Perso-Arabic script, Kyrgyz Braille) Historically, Old Turkic script	Central Asia	Kyrgyz	5.606330 million	ky	kir	kir	kirg1245	Kyrgyz language	https://en.wikipedia.org/wiki/Kyrgyz_language	Kyrgyzstan;;Tajikistan;;China	Kyrgyz alphabets (Cyrillic script;;Perso-Arabic script;;Kyrgyz Braille) Historically;;Old Turkic script	Kyrgyz–Kipchak
 Ladin	lingaz ladin, ladin	Latin script	Ladinia (Trentino-Alto Adige/Südtirol, Veneto)	Ladin people	41, 129			lld	ladi1250	Ladin language	https://en.wikipedia.org/wiki/Ladin_language	Italy	Latin script	Rhaeto-Romance
-Lao	ພາສາລາວ, phasa Lao	Lao script in Laos, Thai script in Thailand, Thai and Lao Braille		Lao, Isan	L1: 3.685170 million	lo	lao		laoo1244	Lao language	https://en.wikipedia.org/wiki/Lao_language	Laos;;Thailand (Isan);;Cambodia (Stung Treng;;Preah Vihear;;Ratanakiri);;Vietnam (Điện Biên;;Lai Châu;;Sơn La);;China (Xishuangbanna)	Lao script in Laos;;Thai script in Thailand;;Thai;;Lao Braille	Lao–Phutai
+Lao	ພາສາລາວ, phasa Lao	Lao script in Laos, Thai script in Thailand, Thai and Lao Braille		Lao, Isan	3.685170 million	lo	lao		laoo1244	Lao language	https://en.wikipedia.org/wiki/Lao_language	Laos;;Thailand (Isan);;Cambodia (Stung Treng;;Preah Vihear;;Ratanakiri);;Vietnam (Điện Biên;;Lai Châu;;Sơn La);;China (Xishuangbanna)	Lao script in Laos;;Thai script in Thailand;;Thai;;Lao Braille	Lao–Phutai
 Latin	lingua Latina, Latinum	Latin (Latin alphabet)				la	lat	lat	impe1234	Latin	https://en.wikipedia.org/wiki/Latin		Latin (Latin alphabet)	Latino-Faliscan
 Latvian	latviešu valoda	Latin (Latvian alphabet), Latvian Braille	Baltic	Latvians	1.5 million	lv	lav	lav	latv1249	Latvian language	https://en.wikipedia.org/wiki/Latvian_language	Latvia	Latin (Latvian alphabet);;Latvian Braille	East Baltic
 Leco	Burua		La Paz Department: east of Lake Titicaca	2, 800 Leco (2001)	20			lec	leco1242	Leco language	https://en.wikipedia.org/wiki/Leco_language	Bolivia		
 Lemko										Lemkos	https://en.wikipedia.org/wiki/Lemkos			
-Limburgish	Limburgs, Lèmburgs		Limburg Limburg	| script = Latin	800, 000	li	lim	lim	limb1263	Limburgish	https://en.wikipedia.org/wiki/Limburgish	Netherlands *Limburg Belgium *Limburg *Liège Germany *North Rhine-Westphalia		Low Franconian
+Limburgish	Limbörgs, Limburgs, Lèmburgs		Limburg Limburg	| script = Latin	800, 000	li	lim	lim	limb1263	Limburgish	https://en.wikipedia.org/wiki/Limburgish	Netherlands *Limburg Belgium *Limburg *Liège Germany *North Rhine-Westphalia		Low Franconian
 Limonese Creole	Mekatelyu				55, 100				limo1249	Limonese Creole	https://en.wikipedia.org/wiki/Limonese_Creole	Costa Rica		Jamaican Creole
-Lingala	Lingála	African Reference Alphabet (Latin), Mandombe script	Congo River		L1: 20.522160 million	ln	lin	lin	ling1269	Lingala	https://en.wikipedia.org/wiki/Lingala	Democratic Republic of the Congo;;Republic of the Congo	African Reference Alphabet (Latin);;Mandombe script	Bangi
+Lingala	Lingála	African Reference Alphabet (Latin), Mandombe script	Congo River		20.522160 million	ln	lin	lin	ling1269	Lingala	https://en.wikipedia.org/wiki/Lingala	Democratic Republic of the Congo;;Republic of the Congo	African Reference Alphabet (Latin);;Mandombe script	Bangi
 Lithuanian	lietuvių kalba	Latin (Lithuanian alphabet), Lithuanian Braille	Baltic	Lithuanians	4.0 million	lt	lit		lith1251	Lithuanian language	https://en.wikipedia.org/wiki/Lithuanian_language	Lithuania	Latin (Lithuanian alphabet);;Lithuanian Braille	East Baltic
-Low German	Plattdütsch, Plattdüütsch, Plattdütsk, Plattdüütsk, Plattduitsk (South-Westphalian), Plattduitsch (Eastphalian), Plattdietsch (Low Prussian); Neddersassisch; Nedderdüütsch						nds	nds	lowg1239	Low German	https://en.wikipedia.org/wiki/Low_German			North Sea Germanic
+Low German	Plattdütsch, Plattdüütsch, Plattdütsk, Plattdüütsk, Plattduitsk (South-Westphalian), Plattduitsch (Eastphalian), Plattdietsch (Low Prussian); Neddersassisch; Nedderdüütsch				Estimated 4.35–7.15 million, Up to 10 million second-language speakers		nds	nds	lowg1239	Low German	https://en.wikipedia.org/wiki/Low_German			North Sea Germanic
 Lower Sorbian	dolnoserbšćina, dolnoserbski	Latin (Sorbian alphabet)	Brandenburg	Sorbs	5, 000		dsb	dsb	lowe1385	Lower Sorbian language	https://en.wikipedia.org/wiki/Lower_Sorbian_language	Germany	Latin (Sorbian alphabet)	Sorbian
 Lule Sami	julevsámegiella	Latin		Lule Sámi people	650		smj	smj	lule1254	Lule Sámi	https://en.wikipedia.org/wiki/Lule_Sámi	Norway;;Sweden	Latin	Lule–Pite
 Luo			southwestern Ethiopia, South Sudan, Sudan, northeastern Congo, northern Uganda, southwestern Kenya, northern Tanzania	Luo peoples					lwoo1234	Luo languages	https://en.wikipedia.org/wiki/Luo_languages			Western Nilotic
 Luri	لری	Persian alphabet	Southern Zagros Mountains	Lurs	4–5 million				luri1252	Luri language	https://en.wikipedia.org/wiki/Luri_language	Iran;;a few villages in eastern Iraq	Persian alphabet	Luri–Dezfuli?
 Luxembourgish	Lëtzebuergesch		Western Europe	Luxembourgers	400, 000	lb	ltz	ltz	luxe1243	Luxembourgish	https://en.wikipedia.org/wiki/Luxembourgish	Luxembourg;;Saarland;;north-west Rhineland-Palatinate;;Germany;;Arelerland;;Saint-Vith district;;Belgium;;Moselle department;;France		Moselle Franconian
 Macedonian	македонски, '		Southeastern Europe	Macedonians	1.731530 million	mk		mkd	mace1250	Macedonian language	https://en.wikipedia.org/wiki/Macedonian_language	North Macedonia;;Albania;;Bulgaria;;Greece;;Romania;;Serbia		Eastern South Slavic
-Machajuyai-Kallawaya	Machaj juyay		La Paz Department: Charazani; highlands north of Lake Titicaca	Kallawaya	L1: none			caw	call1235	Kallawaya language	https://en.wikipedia.org/wiki/Kallawaya_language	Bolivia		mixed Puquina–Quechua
-Machineri	Piro			Yine people, Manchineri	5, 080			pib	yine1238	Yine language	https://en.wikipedia.org/wiki/Yine_language	Peru		Piro
+Machajuyai-Kallawaya	Machaj juyay		La Paz Department: Charazani; highlands north of Lake Titicaca	Kallawaya	none			caw	call1235	Kallawaya language	https://en.wikipedia.org/wiki/Kallawaya_language	Bolivia		mixed Puquina–Quechua
+Machineri	yinerɨ tokanɨ			Yine people, Manchineri	4, 000			pib	yine1238	Yine language	https://en.wikipedia.org/wiki/Yine_language	Peru		Piro
 Maguindanao										Maguindanao	https://en.wikipedia.org/wiki/Maguindanao			
 Maithili	𑂧𑂶𑂟𑂱𑂪𑂲 •	*Devanagari (Official) *Tirhuta script (Historical and Original Script of Maithili language) *Newar script (Historical) *Kaithi script (Historical)	Mithila	Maithil	16.720000 million		mai	mai	mait1250	Maithili language	https://en.wikipedia.org/wiki/Maithili_language	India;;Nepal	*Devanagari (Official) *Tirhuta script (Historical;;Original Script of Maithili language) *Newar script (Historical) *Kaithi script (Historical)	Bihari
 Malagasy	malagasy / مَلَغَسِ			Malagasy	25 million	mg	mlg	mlg	mala1537	Malagasy language	https://en.wikipedia.org/wiki/Malagasy_language			East Barito
-Malay					L1: 90 million, perhaps 125 million including local Malay			msa	nucl1806	Malay language	https://en.wikipedia.org/wiki/Malay_language	Brunei;;Christmas Island;;Cocos Islands;;Timor-Leste;;Indonesia;;Malaysia;;Singapore;;Southeast Philippines;;South Thailand		| ancestor = Old Malay
-Malayalam		*Malayalam script (Brahmic) *Malayalam Braille *Vatteluttu (historical) *Koleluttu (historical) *Malayanma (historical) *Grantha (historical) *Arabi Malayalam script (mostly historical) *Suriyani Malayalam (historical) *Hebrew script *Latin script (informal)	Southern India * Kerala * Tamil Nadu (Kanyakumari and other Kerala border districts) * Puducherry (Mahé) *Lakshadweep * Karnataka (Dakshina Kannada and Kodagu districts)	Malayali	L1: 37.367500 million	ml	mal	mal	mala1464	Malayalam	https://en.wikipedia.org/wiki/Malayalam	India	*Malayalam script (Brahmic) *Malayalam Braille *Vatteluttu (historical) *Koleluttu (historical) *Malayanma (historical) *Grantha (historical) *Arabi Malayalam script (mostly historical) *Suriyani Malayalam (historical) *Hebrew script *Latin script (informal)	Malayalamoid
+Malay					90 million, perhaps 125 million including local Malay			msa	nucl1806	Malay language	https://en.wikipedia.org/wiki/Malay_language	Brunei;;Christmas Island;;Cocos Islands;;Timor-Leste;;Indonesia;;Malaysia;;Singapore;;Southeast Philippines;;South Thailand		Malayic
+Malayalam		*Malayalam script (Brahmic) *Malayalam Braille *Vatteluttu (historical) *Koleluttu (historical) *Malayanma (historical) *Grantha (historical) *Arabi Malayalam script (mostly historical) *Suriyani Malayalam (historical) *Hebrew script *Latin script (informal)	Southern India * Kerala * Tamil Nadu (Kanyakumari and other Kerala border districts) * Puducherry (Mahé) *Lakshadweep * Karnataka (Dakshina Kannada and Kodagu districts)	Malayali	37.367500 million	ml	mal	mal	mala1464	Malayalam	https://en.wikipedia.org/wiki/Malayalam	India	*Malayalam script (Brahmic) *Malayalam Braille *Vatteluttu (historical) *Koleluttu (historical) *Malayanma (historical) *Grantha (historical) *Arabi Malayalam script (mostly historical) *Suriyani Malayalam (historical) *Hebrew script *Latin script (informal)	Malayalamoid
 Maltese	Malti	Latin (Maltese alphabet), Maltese Braille		Maltese	571, 460	mt	mlt	mlt	malt1254	Maltese language	https://en.wikipedia.org/wiki/Maltese_language	Malta	Latin (Maltese alphabet);;Maltese Braille	Sicilian Arabic
-Mandarin				| region = North China, Central China, Southwestern China	L1: 990 million			cmn	mand1415	Mandarin Chinese	https://en.wikipedia.org/wiki/Mandarin_Chinese			Chinese
-Mandarin Chinese				| region = North China, Central China, Southwestern China	L1: 990 million			cmn	mand1415	Mandarin Chinese	https://en.wikipedia.org/wiki/Mandarin_Chinese			Chinese
+Mandarin				| region = North China, Central China, Southwestern China, Malaysia, Singapore, Taiwan	990 million			cmn	mand1415	Mandarin Chinese	https://en.wikipedia.org/wiki/Mandarin_Chinese			Chinese
+Mandarin Chinese				| region = North China, Central China, Southwestern China, Malaysia, Singapore, Taiwan	990 million			cmn	mand1415	Mandarin Chinese	https://en.wikipedia.org/wiki/Mandarin_Chinese			Chinese
 Mandinka	Mandinka kaŋo مَانْدِينْكَا كَانْجَوْ, Mandingo مَانْدِنْجَوْ ߡߊ߲߬ߘߌ߲߬ߞߊ	Arabic, Latin, N'Ko, Garay	Casamance, The Gambia, Senegal	Mandinka	2.114 million			mnk	mand1436	Mandinka language	https://en.wikipedia.org/wiki/Mandinka_language	Senegal;;The Gambia;;Guinea-Bissau	Arabic;;Latin;;N'Ko;;Garay	West Manding
 Mandjak		Latin	|ethnicity=Manjack		324, 000			mfv	mand1419	Manjak language	https://en.wikipedia.org/wiki/Manjak_language	Guinea-Bissau;;Senegal;;the Gambia	Latin	Manjaku–Papel
 Maninka	Maninkakan	N'Ko, Latin		Mandinka	4.599 million				mane1267	Maninka language	https://en.wikipedia.org/wiki/Maninka_language	Guinea;;Mali;;Liberia;;Sierra Leone;;Ivory Coast	N'Ko;;Latin	East
 Maninke	Maninkakan	N'Ko, Latin		Mandinka	4.599 million				mane1267	Maninka language	https://en.wikipedia.org/wiki/Maninka_language	Guinea;;Mali;;Liberia;;Sierra Leone;;Ivory Coast	N'Ko;;Latin	East
-Manipuri	মৈতৈলোন • ISO|Meiteilon	*Meetei Mayek *Naoriya Phulo *Bengali-Assamese script *Latin alphabet (unofficial)	Manipur, Assam, Tripura	Meitei	1.775000 million		mni		mani1292	Meitei language	https://en.wikipedia.org/wiki/Meitei_language	India;;Bangladesh	*Meetei Mayek *Naoriya Phulo *Bengali-Assamese script *Latin alphabet (unofficial)	Kuki-Chin–Naga?
+Manipuri	মৈতৈলোন • ISO|Meiteilon	*Meetei Mayek *Naoriya Phulo *Bengali-Assamese script *Latin alphabet (unofficial)	Manipur, Assam, Tripura	Meitei	1.775000 million		mni	mni	mani1292	Meitei language	https://en.wikipedia.org/wiki/Meitei_language	India;;Bangladesh	*Meetei Mayek *Naoriya Phulo *Bengali-Assamese script *Latin alphabet (unofficial)	Kuki-Chin–Naga?
 Manx	Gaelg, y Ghaelg, Gailck, y Ghailck			Manx		gv	glv	glv	manx1243	Manx language	https://en.wikipedia.org/wiki/Manx_language	Isle of Man		Goidelic
 Maranao										Maranao people	https://en.wikipedia.org/wiki/Maranao_people			
-Marathi	मराठी, 𑘦𑘨𑘰𑘙𑘲 ()	*Devanagari (official), (Marathi alphabet) *Modi (historical) *Goykanadi (historical, sometimes) *Kadamba (historical) *Devanagari Braille	South, South Central and Western India * Maharashtra * Goa (minority) * Karnataka (minority in the districts of Belagavi, and Bidar) * Gujarat (a small population in Vadodara and Surat) * Dadra and Nagar Haveli and Daman and Diu (minority) * Tamil Nadu (by some people in Thanjavur)	Marathi	L1: 83.247270 million	mr	mar		mara1378	Marathi language	https://en.wikipedia.org/wiki/Marathi_language	India	*Devanagari (official);;(Marathi alphabet) *Modi (historical) *Goykanadi (historical;;sometimes) *Kadamba (historical) *Devanagari Braille	Marathi–Konkani
+Marathi	मराठी, 𑘦𑘨𑘰𑘙𑘲 ()	*Devanagari (official), (Marathi alphabet) *Modi (historical) *Goykanadi (historical, sometimes) *Kadamba (historical) *Nagari (historical) *Devanagari Braille	South, South Central and Western India * Maharashtra * Goa (minority) * Karnataka (minority in the districts of Belagavi, and Bidar) * Gujarat (a small population in Vadodara and Surat) * Dadra and Nagar Haveli and Daman and Diu (minority) * Tamil Nadu (by some people in Thanjavur)	Marathi	83.247270 million	mr	mar		mara1378	Marathi language	https://en.wikipedia.org/wiki/Marathi_language	India	*Devanagari (official);;(Marathi alphabet) *Modi (historical) *Goykanadi (historical;;sometimes) *Kadamba (historical) *Nagari (historical) *Devanagari Braille	Marathi–Konkani
 Marma	ရက္ခိုင်ဘာသာ	Burmese script|	* Rakhine State and other parts of Myanmar * Chittagong Hill Tracts, Patuakhali, Cox Bazar (Bangladesh) * Tripura (India)	Rakhine, Marma, Kamein	1 million					Rakhine language	https://en.wikipedia.org/wiki/Rakhine_language	Myanmar;;Bangladesh;;India	Burmese script|	Burmese
 Maropa	Chirgua, Chiriba, Sapiboca		Beni Department	1, 130 (1994 census)	12–15			rey	reye1240	Reyesano language	https://en.wikipedia.org/wiki/Reyesano_language	Bolivia		Tacana Proper
 Marshallese	(new orthography) Kajin Ṃajeḷ, (old orthography) Kajin Majōl	Latin (Marshallese alphabet)		Marshallese	55, 000	mh	mah	mah	mars1254	Marshallese language	https://en.wikipedia.org/wiki/Marshallese_language	Marshall Islands	Latin (Marshallese alphabet)	Nuclear Micronesian
@@ -555,17 +554,17 @@ Matsu dialect	馬祖話 / Mā-cū-huâ, 平話 / Bàng-huâ	Chinese characters, 
 Maya			Mesoamerica: Southern Mexico, Guatemala, Belize, north-western El Salvador and western Honduras; refugee and emigrants, mainly in the United States and Canada.	Maya peoples	6.0 million		myn		maya1287	Mayan languages	https://en.wikipedia.org/wiki/Mayan_languages			
 Mayangna										Mayangna people	https://en.wikipedia.org/wiki/Mayangna_people			
 Mazanderani	مازِرونی‎, تَبَری	Persian alphabet	South coast of the Caspian Sea	Mazanderanis	1.35000 million				maza1305	Mazanderani language	https://en.wikipedia.org/wiki/Mazanderani_language	Iran (Province of Mazandaran;;parts of the provinces of Alborz;;Tehran;;Qazvin;;Semnan;;Golestan)	Persian alphabet	Mazanderani-Shahmirzadi
-Mehri	مهريّت,	Modified version of the Arabic script	South Arabia	Mehri	in Yemen, total			gdq	mehr1241	Mehri language	https://en.wikipedia.org/wiki/Mehri_language	Yemen;;Oman	Modified version of the Arabic script	Southeast Semitic
-Meitei	মৈতৈলোন • ISO|Meiteilon	*Meetei Mayek *Naoriya Phulo *Bengali-Assamese script *Latin alphabet (unofficial)	Manipur, Assam, Tripura	Meitei	1.775000 million		mni		mani1292	Meitei language	https://en.wikipedia.org/wiki/Meitei_language	India;;Bangladesh	*Meetei Mayek *Naoriya Phulo *Bengali-Assamese script *Latin alphabet (unofficial)	Kuki-Chin–Naga?
+Mehri	مهريّت,	Modified version of the Arabic script	South Arabia	Mehri	258, 900			gdq	mehr1241	Mehri language	https://en.wikipedia.org/wiki/Mehri_language	Yemen;;Oman	Modified version of the Arabic script	Southeast Semitic
+Meitei	মৈতৈলোন • ISO|Meiteilon	*Meetei Mayek *Naoriya Phulo *Bengali-Assamese script *Latin alphabet (unofficial)	Manipur, Assam, Tripura	Meitei	1.775000 million		mni	mni	mani1292	Meitei language	https://en.wikipedia.org/wiki/Meitei_language	India;;Bangladesh	*Meetei Mayek *Naoriya Phulo *Bengali-Assamese script *Latin alphabet (unofficial)	Kuki-Chin–Naga?
 Meänkieli	meänkieli		Torne Valley, Kalix, Luleå, Umeå, Stockholm	Tornedalians	20, 000 to 75, 000			fit	torn1244	Meänkieli	https://en.wikipedia.org/wiki/Meänkieli	Sweden		Peräpohjola
 Mi'kmaq										Mi'kmaq	https://en.wikipedia.org/wiki/Mi'kmaq			
-Minangkabau	Bahaso Minangkabau,	Latin (Minangkabau Latin alphabet), Minangkabau script	West Sumatra, Riau, Jambi, Bengkulu, North Sumatra, Aceh (Indonesia), Negeri Sembilan (Malaysia)	Minangkabau, Aneuk Jamèë, Mukomuko, Kampar, Kuantan, Pesisir	5.53 million		min	min	mina1268	Minangkabau language	https://en.wikipedia.org/wiki/Minangkabau_language	Indonesia;;Malaysia	Latin (Minangkabau Latin alphabet);;Minangkabau script	Malayic
+Minangkabau	Bahaso Minangkabau,	Latin (Minangkabau Latin alphabet), Minangkabau script	West Sumatra, Riau, Jambi, Bengkulu, North Sumatra, Aceh (Indonesia), Negeri Sembilan, Selangor (Malaysia)	Minangkabau, Aneuk Jamèë, Mukomuko, Kampar, Kuantan, Pesisir	5.53 million		min	min	mina1268	Minangkabau language	https://en.wikipedia.org/wiki/Minangkabau_language	Indonesia;;West Sumatra	Latin (Minangkabau Latin alphabet);;Minangkabau script	Malayic
 Minyanka	Mamara				738, 000			myk	mama1271	Minyanka language	https://en.wikipedia.org/wiki/Minyanka_language	Mali		Suppire–Mamara
 Mirandese	mirandés, lhéngua/léngua mirandesa, charro		Eastern Tierra de Miranda (Miranda de l Douro and eastern Bumioso)	Mirandese people	3, 500 speakers, 1, 000 common users of the language.		mwl	mwl	mira1251	Mirandese language	https://en.wikipedia.org/wiki/Mirandese_language	Portugal		Asturleonese
 Miskito	Miskitu		North Caribbean Coast Autonomous Region, neighbouring areas	Miskito	150, 000			miq	misk1235	Miskito language	https://en.wikipedia.org/wiki/Miskito_language	Honduras;;Nicaragua		Misumalpan
 Mojeño-Ignaciano		| nation = Bolivia		2, 000 Ignaciano (2012)	1, 080			ign	igna1246	Ignaciano language	https://en.wikipedia.org/wiki/Ignaciano_language	Bolivia	| nation = Bolivia	Moxo languages
 Mojeño-Trinitario				30, 000 Trinitario people (2012)	3, 140			trn	trin1274	Trinitario language	https://en.wikipedia.org/wiki/Trinitario_language	Bolivia		Moxo languages
-Moldovan		Moldovan Cyrillic		Moldovans		mo	mol	mol		Moldovan language	https://en.wikipedia.org/wiki/Moldovan_language		Moldovan Cyrillic	Romanian
+Moldovan		Moldovan Cyrillic		Moldovans		mo	mol	mol		Moldovan language	https://en.wikipedia.org/wiki/Moldovan_language		Moldovan Cyrillic	Moldavian dialect
 Mon	ဘာသာမန်	Mon–Burmese (Mon alphabet)	Lower Myanmar	Mon	1.108000 million				monn1252	Mon language	https://en.wikipedia.org/wiki/Mon_language	Myanmar *Mon State *Kayin State *Tanintharyi Region	Mon–Burmese (Mon alphabet)	Monic
 Mongolian	Mongol khel		Mongolia, parts of Northeast China, Northwestern China, southern Siberia, and Issyk-Kul Region in Kyrgyzstan	Mongols, Buryats, Oirats	5.047380 million	mn	mon	mon	mong1331	Mongolian language	https://en.wikipedia.org/wiki/Mongolian_language	Mongolian Plateau		Buryat–Mongolian
 Montenegrin				Montenegrins	c. 215, 000 (2023)		cnr	cnr	mont1282	Montenegrin language	https://en.wikipedia.org/wiki/Montenegrin_language	Montenegro		Serbo-Croatian
@@ -583,24 +582,24 @@ Nambya	Nanzva		| ethnicity = Nambya people		105, 000				namb1291	Nambya language
 Nauruan	Dorerin Naoe, Ekaiairũ Naoero	Latin		Nauruans	9, 356	na	nau	nau	naur1243	Nauruan language	https://en.wikipedia.org/wiki/Nauruan_language	Nauru	Latin	Micronesian
 Ndau			Mozambique, Zimbabwe, South Africa		2.4 million				ndau1241	Ndau language	https://en.wikipedia.org/wiki/Ndau_language			Shona (S.10)
 Ndebele	isiNdebele	Latin script	Limpopo in South Africa; Matabeleland South in Zimbabwe; North-East District in Botswana	Northern Ndebele	2.6 million	nd	nde	nde	nort2795	Northern Ndebele language	https://en.wikipedia.org/wiki/Northern_Ndebele_language		Latin script	Zunda
-Nepali	| pronunciation =		Himalayas		L1: 18.970460 million	ne	nep	nep	nepa1254	Nepali language	https://en.wikipedia.org/wiki/Nepali_language	Nepal (official)		Eastern Pahari
+Nepali	| pronunciation =		Himalayas		18.970460 million	ne	nep	nep	nepa1254	Nepali language	https://en.wikipedia.org/wiki/Nepali_language	* Nepal (official) **Sinja Valley		Eastern Pahari
 New Zealand Sign Language	te reo Rotarota o Aotearoa, te reo Turi o Aotearoa		| altname = NZSL		23, 000			nzs	newz1236	New Zealand Sign Language	https://en.wikipedia.org/wiki/New_Zealand_Sign_Language	New Zealand		BANZSL
-Nheengatu	| states = Brazil, Colombia, Venezuela	Latin	Guainía Department, Amazonas, Amazonas		<10, 000			yrl	nhen1239	Nheengatu language	https://en.wikipedia.org/wiki/Nheengatu_language		Latin	Tupi
+Nheengatu	| states = Brazil, Colombia, Venezuela	Latin	Guainía Department, Amazonas, Amazonas		<10, 000			yrl	nhen1239	Nheengatu	https://en.wikipedia.org/wiki/Nheengatu		Latin	Group III
 Niuean	ko e vagahau Niuē	Latin			1, 340 in Niue		niu	niu	niue1239	Niuean language	https://en.wikipedia.org/wiki/Niuean_language	Niue;;Cook Islands;;New Zealand;;Tonga	Latin	Tongic
 Norfuk	Norfuk, Norf'k	Latin (Norfolk/Pitcairnese alphabet)	Norfolk Island and Lord Howe Island		1, 786			pih	pitc1234	Norfuk language	https://en.wikipedia.org/wiki/Norfuk_language		Latin (Norfolk/Pitcairnese alphabet)	Pitkern–Norfuk
 North Frisian	Sylt: Nuurđfriisk, Föhr/Amrum: nuurdfresk, Heligoland: Noorfriisk, Wiedingharde/Halligen: nordfreesk, Mooring: nordfrasch, Karrharde: nordfräisch, Central Goesharde: noordfreesch	Latin	North Frisia	North Frisians	10, 000		frr	frr	nort2626	North Frisian language	https://en.wikipedia.org/wiki/North_Frisian_language	Germany	Latin	Frisian
 North Slavey	North: , Sahtúgot’įné Yatı̨́, K’ashógot’įne Goxedǝ́, Shíhgot’įne Yatı̨́, South: , Dené Dháh, Dene Yatıé, Dene Zhatıé		Northwest Territories	Slavey, Sahtu	2, 215		den	den	slav1253	Slavey language	https://en.wikipedia.org/wiki/Slavey_language	Denendeh;;Canada		Northern Athabaskan
 Northern Sami	davvisámegiella	Latin ([[#Alphabet|Northern Sámi alphabet]]), Northern Sámi Braille			25, 000	se	sme	sme	nort2671	Northern Sámi	https://en.wikipedia.org/wiki/Northern_Sámi	Norway;;Sweden;;Finland;;(Sápmi)	Latin ([[#Alphabet|Northern Sámi alphabet]]);;Northern Sámi Braille	Central
 Northern Sotho	Sesotho sa Leboa	Latin (Northern Sotho alphabet), Sotho Braille, Ditema tsa Dinoko	Limpopo, Gauteng, Mpumalanga	Pedi, Lobedu, Tlôkwa	6.23 million		nso		nort3233	Northern Sotho	https://en.wikipedia.org/wiki/Northern_Sotho	South Africa	Latin (Northern Sotho alphabet);;Sotho Braille;;Ditema tsa Dinoko	Sotho–Tswana
-Northern Thai	กำเมือง	Tai Tham script (traditional, formerly), Thai script (de facto, current)	Northern Thailand	Northern Thai	6 million			nod	nort2740	Northern Thai language	https://en.wikipedia.org/wiki/Northern_Thai_language	Thailand;;(Chiang Mai;;Lamphun;;Lampang;;Uttaradit;;Phrae;;Nan;;Phayao;;Chiang Rai;;Mae Hong Son;;Communities throughout Thailand);;Myanmar;;(Tachileik;;Myawaddy);;Laos;;(Houayxay;;Ton Pheung)	Tai Tham script (traditional;;formerly);;Thai script (de facto;;current)	Chiang Saen
+Northern Thai	กำเมือง	Tai Tham script (traditional, formerly), Thai script (de facto, current)	Northern Thailand	Lanna	6 million			nod	nort2740	Lanna language	https://en.wikipedia.org/wiki/Lanna_language	Thailand;;(Chiang Mai;;Lamphun;;Lampang;;Uttaradit;;Phrae;;Nan;;Phayao;;Chiang Rai;;Mae Hong Son;;Communities throughout Thailand);;Myanmar;;(Tachileik;;Myawaddy);;Laos;;(Houayxay;;Ton Pheung)	Tai Tham script (traditional;;formerly);;Thai script (de facto;;current)	Chiang Saen
 Norwegian	norsk	Latin (Norwegian alphabet), Norwegian Braille	| speakers = 4.32 million	Norwegians		no	nor	nor	norw1258	Norwegian language	https://en.wikipedia.org/wiki/Norwegian_language	Norway	Latin (Norwegian alphabet);;Norwegian Braille	West Scandinavian
 Nuer	Thok Naath	Latin	Greater Upper Nile, Gambela Region	Nuer	1.706170 million			nus	nuer1246	Nuer language	https://en.wikipedia.org/wiki/Nuer_language	South Sudan;;Ethiopia	Latin	Nuer-Reel
 Nuristani			Nuristan, Kunar, Afghanistan, Chitral, Pakistan	Nuristanis					nuri1243	Nuristani languages	https://en.wikipedia.org/wiki/Nuristani_languages			Indo-Iranian
 Nynorsk	nynorsk	Latin (Norwegian alphabet)			none	nn	nno	nno	norw1262	Nynorsk	https://en.wikipedia.org/wiki/Nynorsk	Norway	Latin (Norwegian alphabet)	Norwegian dialects
 Nzema	| region = Ghana, Ivory Coast			Nzema	427, 000		nzi	nzi	nzim1238	Nzema language	https://en.wikipedia.org/wiki/Nzema_language			South Bia
 Occitan	occitan,  provençal / provençau	Latin alphabet (Occitan alphabet)	Occitania	Occitans		oc	oci	oci	occi1239	Occitan language	https://en.wikipedia.org/wiki/Occitan_language	France;;Spain;;Italy;;Monaco	Latin alphabet (Occitan alphabet)	Occitano-Romance
-Odia	ଓଡ଼ିଆ	*Odia script *Kalinga script (historical) *Odia Braille	Eastern India * Odisha * Parts of Jharkhand, Chhattisgarh, Andhra Pradesh and West Bengal	Odias and Tribals of Odisha	L1: 34.461520 million	or	ori	ori	macr1269	Odia language	https://en.wikipedia.org/wiki/Odia_language	India	*Odia script *Kalinga script (historical) *Odia Braille	Eastern
-Oriya	ଓଡ଼ିଆ	*Odia script *Kalinga script (historical) *Odia Braille	Eastern India * Odisha * Parts of Jharkhand, Chhattisgarh, Andhra Pradesh and West Bengal	Odias and Tribals of Odisha	L1: 34.461520 million	or	ori	ori	macr1269	Odia language	https://en.wikipedia.org/wiki/Odia_language	India	*Odia script *Kalinga script (historical) *Odia Braille	Eastern
+Odia	ଓଡ଼ିଆ	*Odia script *Kalinga script (historical) *Odia Braille	Eastern India * Odisha * Parts of Jharkhand, Chhattisgarh, Andhra Pradesh and West Bengal	Odias and Tribals of Odisha	34.461520 million	or	ori	ori	macr1269	Odia language	https://en.wikipedia.org/wiki/Odia_language	India	*Odia script *Kalinga script (historical) *Odia Braille	Eastern
+Oriya	ଓଡ଼ିଆ	*Odia script *Kalinga script (historical) *Odia Braille	Eastern India * Odisha * Parts of Jharkhand, Chhattisgarh, Andhra Pradesh and West Bengal	Odias and Tribals of Odisha	34.461520 million	or	ori	ori	macr1269	Odia language	https://en.wikipedia.org/wiki/Odia_language	India	*Odia script *Kalinga script (historical) *Odia Braille	Eastern
 Oromo			Oromia	Oromo	45.531240 million (all countries)	om	orm	orm	nucl1736	Oromo language	https://en.wikipedia.org/wiki/Oromo_language	Ethiopia;;Kenya;;Somalia		Oromoid
 Oshiwambo	Oshiwambo			Owambo	1, 441, 000				ndon1253	Ovambo language	https://en.wikipedia.org/wiki/Ovambo_language	Angola;;Namibia		Southwest Bantu
 PNG Sign Language			|speakers = 30, 000					pgz	papu1255	Papua New Guinean Sign Language	https://en.wikipedia.org/wiki/Papua_New_Guinean_Sign_Language	Papua New Guinea		indigenous–Auslan creole
@@ -609,15 +608,15 @@ Palauan	a tekoi er a Belau	Latin (formerly katakana)			16550		pau	pau	pala1344	P
 Pamiri			Pamir Mountains						shug1237	Pamir languages	https://en.wikipedia.org/wiki/Pamir_languages			Southeastern
 Pangasinan										Pangasinan	https://en.wikipedia.org/wiki/Pangasinan			
 Pannonian Rusyn	руски язик,	Cyrillic (Pannonian Rusyn alphabet)		Pannonian Rusyns				rsk	pann1240	Pannonian Rusyn	https://en.wikipedia.org/wiki/Pannonian_Rusyn	Serbia;;Croatia	Cyrillic (Pannonian Rusyn alphabet)	Eastern Slovak
-Papiamento	Papiamento (Aruba), Papiamentu (Curaçao and Bonaire)|paren=omit	Latin (Papiamento orthography)			350, 000		pap	pap	papi1253	Papiamento	https://en.wikipedia.org/wiki/Papiamento	Dutch Caribbean	Latin (Papiamento orthography)	Early Papiamento
+Papiamento	Papiamento (Aruba), Papiamentu (Curaçao and Bonaire)|paren=omit	Latin (Papiamento orthography)			350, 000		pap	pap	papi1253	Papiamento	https://en.wikipedia.org/wiki/Papiamento	Dutch Caribbean	Latin (Papiamento orthography)	Upper Guinea Creole
 Pashayi		Arabic script (Nastaliq)		Pashayi	404, 400				pash1270	Pashayi languages	https://en.wikipedia.org/wiki/Pashayi_languages	Afghanistan	Arabic script (Nastaliq)	Dardic
-Pashto	پښتو,	Pashto alphabet		Pashtuns	L1: 51.337760 million	ps	pus	pus	pash1269	Pashto	https://en.wikipedia.org/wiki/Pashto	Afghanistan;;Pakistan	Pashto alphabet	Southeastern
-Persian		* Arabic (Persian alphabet) in Iran and Afghanistan * Cyrillic (Tajik alphabet) in Tajikistan * Old Persian cuneiform (525 BC – 330 BC) * Pahlavi scripts (2nd century BC to 7th century AD) * Persian Braille			L1: 91.154770 million	fa		fas	fars1254	Persian language	https://en.wikipedia.org/wiki/Persian_language		* Arabic (Persian alphabet) in Iran;;Afghanistan * Cyrillic (Tajik alphabet) in Tajikistan * Old Persian cuneiform (525 BC – 330 BC) * Pahlavi scripts (2nd century BC to 7th century AD) * Persian Braille	Southwestern
+Pashto	پښتو,	Pashto alphabet		Pashtuns	51.337760 million	ps	pus	pus	pash1269	Pashto	https://en.wikipedia.org/wiki/Pashto	Afghanistan;;Pakistan	Pashto alphabet	Southeastern
+Persian	Fārsī	* Arabic (Persian alphabet) in Iran and Afghanistan * Cyrillic (Tajik alphabet) in Tajikistan * Old Persian cuneiform (525 BC – 330 BC) * Pahlavi scripts (2nd century BC to 7th century AD) * Persian Braille			91.154770 million	fa		fas	fars1254	Persian language	https://en.wikipedia.org/wiki/Persian_language		* Arabic (Persian alphabet) in Iran;;Afghanistan * Cyrillic (Tajik alphabet) in Tajikistan * Old Persian cuneiform (525 BC – 330 BC) * Pahlavi scripts (2nd century BC to 7th century AD) * Persian Braille	Southwestern
 Pitcairnese		Latin (Norfolk/Pitcairnese alphabet)	| ethnicity = Pitcairn Islanders		c. 400 Pitcairn-Norfolk			pih	pitc1234	Pitkern	https://en.wikipedia.org/wiki/Pitkern	Norfolk Island;;Pitcairn Islands;;New Zealand	Latin (Norfolk/Pitcairnese alphabet)	Pitkern–Norfuk
 Pohnpeian	Mahsen en Pohnpei [honorific], Lokaiahn Pohnpei [common]	Latin script	Pohnpei		29000		pon	pon	pohn1238	Pohnpeian language	https://en.wikipedia.org/wiki/Pohnpeian_language	Micronesia	Latin script	Pohnpeic
-Polish	polski				L1: 39.709620 million	pl	pol	pol	poli1260	Polish language	https://en.wikipedia.org/wiki/Polish_language	Poland;;Lithuania;;bordering regions		East Lechitic
-Portuguese	português				L1: 249.544530 million	pt	por	por	port1283	Portuguese language	https://en.wikipedia.org/wiki/Portuguese_language	Portugal;;Brazil;;Lusophone Africa;;other locations in the Portuguese-speaking world		Galician–Portuguese
-Pulaar	Pulaar, Pulaar Fuuta Tooro,	Arabic (Ajami), Fula Latin alphabet		Haratine, Fula, Toucouleur	million			fuc	pula1263	Pulaar language	https://en.wikipedia.org/wiki/Pulaar_language		Arabic (Ajami);;Fula Latin alphabet	Western
+Polish	polski			Polish	39.709620 million	pl	pol	pol	poli1260	Polish language	https://en.wikipedia.org/wiki/Polish_language	Poland;;Lithuania;;bordering regions		East Lechitic
+Portuguese	português				249.544530 million	pt	por	por	port1283	Portuguese language	https://en.wikipedia.org/wiki/Portuguese_language	Portugal;;Brazil;;Lusophone Africa;;other locations in the Portuguese-speaking world		Galician–Portuguese
+Pulaar	Pulaar, Pulaar Fuuta Tooro,	Adlam, Arabic (Ajami), Fula Latin alphabet		Haratine, Fula, Toucouleur	million			fuc	pula1263	Pulaar language	https://en.wikipedia.org/wiki/Pulaar_language		Adlam;;Arabic (Ajami);;Fula Latin alphabet	Western
 Punjabi		*Shāhmukhī (majority, Pakistan) *Gurmukhī (official, India) *Punjabi Braille	Punjab	Punjabis	150 million	pa	pan	pan	lahn1241	Punjabi language	https://en.wikipedia.org/wiki/Punjabi_language	Mostly the Punjab region (located in Pakistan;;India)	*Shāhmukhī (majority;;Pakistan) *Gurmukhī (official;;India) *Punjabi Braille	Northwestern
 Puquina	Pukina juyai		Lake Titicaca	Tiwanaku				puq	puqu1242	Puquina language	https://en.wikipedia.org/wiki/Puquina_language	Bolivia;;Peru		Puquina
 Qashqai	قشقايی ديلى,	Persian alphabet	Fars, Isfahan, Bushehr, Chaharmahal and Bakhtiari, Kohgiluyeh and Boyer-Ahmad, Khuzestan	2.000000 million Qashqai (2021)	1.020000 million			qxq	qash1240	Qashqai language	https://en.wikipedia.org/wiki/Qashqai_language	Iran	Persian alphabet	Southern Oghuz
@@ -625,84 +624,84 @@ Quechua			Throughout the central Andes Mountains including Argentina, Bolivia, C
 Rade		Latin		Rade	177, 000 in Vietnam				rade1240	Rade language	https://en.wikipedia.org/wiki/Rade_language	Vietnam	Latin	Highlands
 Rakhine	ရက္ခိုင်ဘာသာ	Burmese script|	* Rakhine State and other parts of Myanmar * Chittagong Hill Tracts, Patuakhali, Cox Bazar (Bangladesh) * Tripura (India)	Rakhine, Marma, Kamein	1 million					Rakhine language	https://en.wikipedia.org/wiki/Rakhine_language	Myanmar;;Bangladesh;;India	Burmese script|	Burmese
 Rama										Rama	https://en.wikipedia.org/wiki/Rama			
-Rangpuri	রংপুরী, কোচ-ৰাজবংশী, দেশী	Bengali-Assamese script	North Bengal, Lower Assam	Rajbongshi, Bengali, Deshi, Nashya Shaikh, Assamese	10.476000 million			rkt	rang1272	Rangpuri language	https://en.wikipedia.org/wiki/Rangpuri_language	Bangladesh;;India	Bengali-Assamese script	Central–Eastern Kamta
+Rangpuri	রংপুরী, কোচ-ৰাজবংশী, কামতা, কামতাপুৰী	Bengali-Assamese script	North Bengal, Lower Assam	Rajbongshi, Bengali, Deshi, Nashya Shaikh, Assamese	10.476000 million			rkt	rang1265	Rangpuri language	https://en.wikipedia.org/wiki/Rangpuri_language	Bangladesh;;India	Bengali-Assamese script	Central–Eastern Kamta
 Razihi	Rāziḥī	Latin script			62, 900			rzh	jaba1234	Razihi language	https://en.wikipedia.org/wiki/Razihi_language	Yemen	Latin script	Sabaic?
-Riograndenser Hunsrückisch		Latin alphabet	South America	German Brazilians	est. 3, 000, 000			hrx	riog1239	Hunsrik	https://en.wikipedia.org/wiki/Hunsrik	Brazil (Rio Grande do Sul;;Santa Catarina;;Paraná);;Argentina (Misiones);;Paraguay	Latin alphabet	Moselle Franconian
+Riograndenser Hunsrückisch		Latin alphabet	South America	German Brazilians	est. 3, 000, 000			hrx	riog1239	Hunsrik	https://en.wikipedia.org/wiki/Hunsrik	Brazil (Rio Grande do Sul;;Santa Catarina;;Paraná)	Latin alphabet	Moselle Franconian
 Romani	rromani ćhib			Romani	4.581890 million			rom	roma1329	Romani language	https://en.wikipedia.org/wiki/Romani_language			Western Indo-Aryan
 Romanian	limba română, românește, română	*Latin (Romanian alphabet) * Cyrillic ** Moldovan Cyrillic alphabet (Transnistria only) ** Romanian Cyrillic alphabet (historical) * Romanian Braille	Southeastern Europe, Eastern Europe, Central Europe		22.209690 million	ro		ron	roma1327	Romanian language	https://en.wikipedia.org/wiki/Romanian_language	Romania;;Moldova	*Latin (Romanian alphabet) * Cyrillic ** Moldovan Cyrillic alphabet (Transnistria only) ** Romanian Cyrillic alphabet (historical) * Romanian Braille	Eastern Romanian?
 Romansh	romontsch, rumantsch,  rumauntsch, rumàntsch	Latin	Grisons (Graubünden)	Romansh	Main language: 40, 074					Romansh language	https://en.wikipedia.org/wiki/Romansh_language	Switzerland	Latin	Rhaeto-Romance
-Russian	русский язык	Cyrillic (Russian alphabet), Russian Braille	| ethnicity =		L1: million (2026)	ru	rus	rus	russ1263	Russian language	https://en.wikipedia.org/wiki/Russian_language	Russia;;other areas of the Russian-speaking world	Cyrillic (Russian alphabet);;Russian Braille	East Slavic
+Russian	русский язык	Cyrillic (Russian alphabet), Russian Braille	| ethnicity =		million (2026)	ru	rus	rus	russ1263	Russian language	https://en.wikipedia.org/wiki/Russian_language	Russia;;other areas of the Russian-speaking world	Cyrillic (Russian alphabet);;Russian Braille	East Slavic
 Rusyn	русиньскый язык; руски язик,	Cyrillic script (Rusyn alphabets), Latin script (unofficially in Slovakia alongside the Cyrillic script)		Rusyns	70, 190			rue	rusy1239	Rusyn language	https://en.wikipedia.org/wiki/Rusyn_language		Cyrillic script (Rusyn alphabets);;Latin script (unofficially in Slovakia alongside the Cyrillic script)	East Slavic
 SA Sign Language	200px|center				235, 000			sfs	sout1404	South African Sign Language	https://en.wikipedia.org/wiki/South_African_Sign_Language	South Africa		BANZSL
-Sambal			Java, Sumatera, Malay Peninsula, Borneo, Sulawesi, Mindanao							Sambal	https://en.wikipedia.org/wiki/Sambal			
+Sambal			Java, Sumatra, Malay Peninsula, Borneo, Sulawesi, Mindanao							Sambal	https://en.wikipedia.org/wiki/Sambal			
 Sami				Sámi	29, 662		smi		saam1281	Sámi languages	https://en.wikipedia.org/wiki/Sámi_languages	| region = Sápmi (Finland;;Norway;;Russia;;Sweden)		
 Sami languages				Sámi	29, 662		smi		saam1281	Sámi languages	https://en.wikipedia.org/wiki/Sámi_languages	| region = Sápmi (Finland;;Norway;;Russia;;Sweden)		
 Sango	yângâ tî sängö	Latin script	* Central Africa		sag: 617, 000		sag		sang1327	Sango language	https://en.wikipedia.org/wiki/Sango_language	Central African Republic;;Chad;;Democratic Republic of the Congo	Latin script	Ngbandi-based creole
-Sanskrit	संस्कृत, संस्कृतम्,	Devanagari script (present day). Originally orally transmitted. Not attested in writing until the 1st century BCE, when it was written in the Brahmi script, and later in various Brahmic scripts.	South Asia (ancient and medieval), parts of Southeast Asia (medieval), mainly Indian subcontinent			sa	san	san	sans1269	Sanskrit	https://en.wikipedia.org/wiki/Sanskrit		Devanagari script (present day). Originally orally transmitted. Not attested in writing until the 1st century BCE;;when it was written in the Brahmi script;;later in various Brahmic scripts.	Indo-Aryan
+Sanskrit	संस्कृत, संस्कृतम्,	Devanagari script (present day). Originally orally transmitted. Not attested in writing until the 1st century BCE, when it was written in the Brahmi script, and later in various Brahmic scripts.	Indian subcontinent (ancient and medieval), parts of Southeast Asia (medieval)			sa	san	san	sans1269	Sanskrit	https://en.wikipedia.org/wiki/Sanskrit		Devanagari script (present day). Originally orally transmitted. Not attested in writing until the 1st century BCE;;when it was written in the Brahmi script;;later in various Brahmic scripts.	Indo-Aryan
 Santali	ᱥᱟᱱᱛᱟᱲᱤ	*Ol Chiki script (official), *Bengali-Assamese script *Odia script *Devanagari *Santali Latin alphabet		Santal, Mahali	7.645 million		sat		sant1410	Santali language	https://en.wikipedia.org/wiki/Santali_language	India;;Bangladesh;;Nepal	*Ol Chiki script (official);;*Bengali-Assamese script *Odia script *Devanagari *Santali Latin alphabet	Santalic
-Saraiki		Shahmukhi (Saraiki alphabet), Gurmukhi		Saraikis	28.84 million			skr	sera1259	Saraiki language	https://en.wikipedia.org/wiki/Saraiki_language	Pakistan	Shahmukhi (Saraiki alphabet);;Gurmukhi	Lahnda
+Saraiki		Perso-Arabic script (Shahmukhi), Gurmukhi, Devanagari, Khojki, Khudabadi, Laṇḍā (Kiṛakkī, Langdi and Multani; all historical)		Saraikis	28.84 million			skr	sera1259	Saraiki language	https://en.wikipedia.org/wiki/Saraiki_language	Pakistan;;India	Perso-Arabic script (Shahmukhi);;Gurmukhi;;Devanagari;;Khojki;;Khudabadi;;Laṇḍā (Kiṛakkī;;Langdi;;Multani;;all historical)	Lahnda
 Sardinian			15px Sardinia	Sardinians	1 million	sc	srd	srd		Sardinian language	https://en.wikipedia.org/wiki/Sardinian_language	15px Italy		Southern Romance?
 Saterland Frisian	Seeltersk	Latin	Saterland	Saterland Frisians	2, 000			stq	emsf1235	Saterland Frisian language	https://en.wikipedia.org/wiki/Saterland_Frisian_language	Germany	Latin	Ems
 Scandoromani					c. 100–150				trav1236	Scandoromani	https://en.wikipedia.org/wiki/Scandoromani	Norway;;Sweden;;Denmark		
 Scots	(Braid) Scots, Lallans, Doric	Latin		Scots	1, 508, 540 able to speak Scots		sco	sco	scot1243	Scots language	https://en.wikipedia.org/wiki/Scots_language	United Kingdom;;Republic of Ireland	Latin	Anglic
 Scottish Gaelic	Gàidhlig		Scotland; Cape Breton Island, Nova Scotia	Scottish Gaels	69, 701 L1 and L2 speakers in Scotland	gd	gla	gla	scot1245	Scottish Gaelic	https://en.wikipedia.org/wiki/Scottish_Gaelic	United Kingdom;;Canada		Goidelic
 Senufo			northern Ivory Coast, southern Mali, southwestern Burkina Faso, western Ghana						senu1239	Senufo languages	https://en.wikipedia.org/wiki/Senufo_languages			Atlantic–Congo
-Serbian			Southeastern Europe	Serbs	8.233186 million	sr	srp	srp	serb1264	Serbian language	https://en.wikipedia.org/wiki/Serbian_language	Serbia;;Bosnia;;Herzegovina;;Montenegro;;Kosovo;;Croatia		Serbo-Croatian
+Serbian			Southeastern Europe	Serbs	8.233186 million	sr	srp	srp	serb1264	Serbian language	https://en.wikipedia.org/wiki/Serbian_language	Serbia;;Bosnia-Herzegovina;;Montenegro;;Kosovo;;Croatia		Serbo-Croatian
 Serer	Seereer سࣹيرࣹيرْ‎	Arabic, Latin		Serer	1.870300 million		srr	srr	sere1260	Serer language	https://en.wikipedia.org/wiki/Serer_language	Senegal;;Gambia;;Mauritania	Arabic;;Latin	Senegambian
 Sesotho	Sesotho	Latin (Sesotho alphabet), Sotho Braille, Ditema tsa Dinoko		Basotho	5.6 million	st	sot	sot	sout2807	Sotho language	https://en.wikipedia.org/wiki/Sotho_language		Latin (Sesotho alphabet);;Sotho Braille;;Ditema tsa Dinoko	Sotho–Tswana
 Seychellois Creole	kreol, seselwa	Latin		Seychellois Creoles	127, 000 (2025)			crs	sese1246	Seychellois Creole	https://en.wikipedia.org/wiki/Seychellois_Creole	Seychelles	Latin	Bourbonnais Creole
-Shan	ၵႂၢမ်းတႆး (kwáam tái), လိၵ်ႈတႆး (līk tái)	Mon–Burmese (Shan alphabet)	Shan State	Shan, Dai, Kula	4.685000 million		shn	shn	shan1277	Shan language	https://en.wikipedia.org/wiki/Shan_language	Myanmar	Mon–Burmese (Shan alphabet)	Northwestern (Shan)
+Shan	ၵႂၢမ်းတႆး (kwā́m táy), လိၵ်ႈတႆး (lik táy)	Mon–Burmese (Shan alphabet)	Shan State	Shan, Dai, Kula	4.685000 million		shn	shn	shan1277	Shan language	https://en.wikipedia.org/wiki/Shan_language	Myanmar	Mon–Burmese (Shan alphabet)	Northwestern (Shan)
 Shangani	Xitsonga	Latin (Tsonga alphabet), Tsonga Braille		VaTsonga	3.7million	ts	tso	tso	tson1249	Tsonga language	https://en.wikipedia.org/wiki/Tsonga_language		Latin (Tsonga alphabet);;Tsonga Braille	Tswa–Ronga
-Shehri	Śḥɛrɛ̄t, Gəblɛ̄t		Dhofar		84, 900			shv	sheh1240	Shehri language	https://en.wikipedia.org/wiki/Shehri_language	Oman		Southeast Semitic
-Shona	chiShona	Latin script (Shona alphabet), Shona Braille, Ditema tsa Dinoko	Southern Africa	Shona	L1: 9.617410 million	sn	sna		core1255	Shona language	https://en.wikipedia.org/wiki/Shona_language		Latin script (Shona alphabet);;Shona Braille;;Ditema tsa Dinoko	Shona languages (S.10)
+Shehri	Śḥɛrɛ̄t, Gəblɛ̄t		Dhofar		89, 300			shv	sheh1240	Shehri language	https://en.wikipedia.org/wiki/Shehri_language	Oman		Southeast Semitic
+Shona	chiShona	Latin script (Shona alphabet), Shona Braille, Ditema tsa Dinoko	Southern Africa	Shona	9.617410 million	sn	sna		core1255	Shona language	https://en.wikipedia.org/wiki/Shona_language		Latin script (Shona alphabet);;Shona Braille;;Ditema tsa Dinoko	Shona languages (S.10)
 Shuar										Shuar	https://en.wikipedia.org/wiki/Shuar			
-Sidamo	Sidaamu Afoo	Latin	Sidama region	5.060000 million Sidama (2022)	4.940000 million		sid	sid	sida1246	Sidama language	https://en.wikipedia.org/wiki/Sidama_language	Ethiopia	Latin	Highland East
-Sindhi			Sindh and parts of Balochistan, Kutch and Barmer		37 million	sd	snd	snd	sind1272	Sindhi language	https://en.wikipedia.org/wiki/Sindhi_language			Sindhic
-Sinhala	සිංහල භාෂාව, ISO|Singhala Başāwa, also Sinhala Basawa			Sinhalese	L1: 18.211690 million	si	sin	sin	sinh1246	Sinhala language	https://en.wikipedia.org/wiki/Sinhala_language	Sri Lanka		Sinhalese–Maldivian
+Sidamo	Sidaamu Afoo	Latin	Sidama region	Sidama	4.940000 million		sid	sid	sida1246	Sidama language	https://en.wikipedia.org/wiki/Sidama_language	Ethiopia	Latin	Highland East
+Sindhi			Sindh and surrounding areas	Sindhis	37 million	sd	snd	snd	sind1272	Sindhi language	https://en.wikipedia.org/wiki/Sindhi_language	Pakistan		Sindhic
+Sinhala	සිංහල භාෂාව, ISO|Singhala Başāwa, also Sinhala Basawa			Sinhalese	18.211690 million	si	sin	sin	sinh1246	Sinhala language	https://en.wikipedia.org/wiki/Sinhala_language	Sri Lanka		Sinhalese–Maldivian
 Sinte Romani	Romanes, Sinto, Sintitikes	Latin		Sinti	210, 390			rmo	sint1235	Sinte Romani	https://en.wikipedia.org/wiki/Sinte_Romani	Albania;;Austria;;Bulgaria;;Croatia;;Czech Republic;;France;;Germany;;Italy;;Netherlands;;Portugal;;Romania;;Serbia;;Slovenia;;Spain;;Switzerland;;Turkey	Latin	Northwestern Romani
-Sirionó	Mbia cheë		Beni Department, Santa Cruz Department	Sirionó people, Yuqui people	330				siri1279	Sirionó language	https://en.wikipedia.org/wiki/Sirionó_language	Bolivia		Guarayu
-Slovak		Latin (Slovak alphabet), Slovak Braille, Cyrillic (Pannonian Rusyn alphabet)		Slovaks, Pannonian Rusyns	L1: 5.388870 million	sk		slk	slov1269	Slovak language	https://en.wikipedia.org/wiki/Slovak_language	Slovakia;;Czech Republic;;Hungary;;Carpathian Ruthenia;;Slavonia;;Vojvodina	Latin (Slovak alphabet);;Slovak Braille;;Cyrillic (Pannonian Rusyn alphabet)	Czech–Slovak
+Sirionó	Mbia cheë		Beni Department, Santa Cruz Department	Sirionó people	330			srq		Sirionó language	https://en.wikipedia.org/wiki/Sirionó_language	Bolivia		Guarayu
+Slovak		Latin (Slovak alphabet), Slovak Braille, Cyrillic (Pannonian Rusyn alphabet)		Slovaks, Pannonian Rusyns	5.388870 million	sk		slk	slov1269	Slovak language	https://en.wikipedia.org/wiki/Slovak_language	Slovakia;;Czech Republic;;Hungary;;Carpathian Ruthenia;;Slavonia;;Vojvodina	Latin (Slovak alphabet);;Slovak Braille;;Cyrillic (Pannonian Rusyn alphabet)	Czech–Slovak
 Slovene	slovenščina, slovenski jezik		| ethnicity = Slovenes		2.5 million	sl	slv	slv	slov1268	Slovene language	https://en.wikipedia.org/wiki/Slovene_language			| dia1 = Prekmurje
 Somali	Af Soomaali, Soomaali, 𐒖𐒍 𐒈𐒝𐒑𐒛𐒐𐒘, 𐒈𐒝𐒑𐒛𐒐𐒘, اف صومالِ, صومالِ	Somali Latin alphabet (Latin script; official), Wadaad's writing (Arabic script, occasional), Osmanya script (occasional)	Horn of Africa	Somalis	23.774850 million	so	som	som	soma1255	Somali language	https://en.wikipedia.org/wiki/Somali_language		Somali Latin alphabet (Latin script;;official);;Wadaad's writing (Arabic script;;occasional);;Osmanya script (occasional)	Somali languages
 Songhay			Niger River valley, (Mali, Niger, Algeria, Benin, Burkina Faso, Nigeria); scattered oases (Niger, Mali, Algeria)	Songhai			son		song1307	Songhay languages	https://en.wikipedia.org/wiki/Songhay_languages			
 Soninke	Sooninkanxanne سࣷونِکَنْخَنّࣹ	Latin, Arabic (Ajami), N'ti script	West Africa	Soninke	2.280700 million		snk	snk	soni1259	Soninke language	https://en.wikipedia.org/wiki/Soninke_language	Mali;;Senegal;;Ivory Coast;;Gambia;;Mauritania;;Guinea-Bissau;;Guinea;;Ghana;;Burkina Faso	Latin;;Arabic (Ajami);;N'ti script	Soninke–Bozo
 Sonsorolese	Ramari Dongosaro	Latin script	Palau: originally Sonsorol state (all three inhabited islands Sonsorol, Pulo Ana and Merir)		360			sov	sons1242	Sonsorolese	https://en.wikipedia.org/wiki/Sonsorolese	Palau	Latin script	Chuukic
-Soqotri		Ad hoc use of the Arabic script	Socotra Archipelago, Yemen	Soqotri	111, 000			sqt	soqo1240	Soqotri language	https://en.wikipedia.org/wiki/Soqotri_language		Ad hoc use of the Arabic script	Southeast Semitic
+Soqotri		Ad hoc use of the Arabic script	Socotra Archipelago, Yemen	Soqotri	131, 000			sqt	soqo1240	Soqotri language	https://en.wikipedia.org/wiki/Soqotri_language		Ad hoc use of the Arabic script	Southeast Semitic
 Sotho	Sesotho	Latin (Sesotho alphabet), Sotho Braille, Ditema tsa Dinoko		Basotho	5.6 million	st	sot	sot	sout2807	Sotho language	https://en.wikipedia.org/wiki/Sotho_language		Latin (Sesotho alphabet);;Sotho Braille;;Ditema tsa Dinoko	Sotho–Tswana
 South Slavey	North: , Sahtúgot’įné Yatı̨́, K’ashógot’įne Goxedǝ́, Shíhgot’įne Yatı̨́, South: , Dené Dháh, Dene Yatıé, Dene Zhatıé		Northwest Territories	Slavey, Sahtu	2, 215		den	den	slav1253	Slavey language	https://en.wikipedia.org/wiki/Slavey_language	Denendeh;;Canada		Northern Athabaskan
 Southern Ndebele	isiNdebele seSewula	Latin (Ndebele alphabet), Ndebele Braille	Mpumalanga, Limpopo, Gauteng, North West	amaNdebele	1.1 million	nr	nbl	nbl	sout2808	Southern Ndebele language	https://en.wikipedia.org/wiki/Southern_Ndebele_language	South Africa	Latin (Ndebele alphabet);;Ndebele Braille	Zunda
 Southern Sámi	åarjelsaemien gïele, saemien gïele	Latin	Norway, Sweden		600		sma	sma	sout2674	Southern Sámi	https://en.wikipedia.org/wiki/Southern_Sámi		Latin	Southwestern
 Southern Thai										Southern Thailand	https://en.wikipedia.org/wiki/Southern_Thailand			
-Spanish		Latin script (Spanish alphabet), Spanish Braille			L1: 519.115 million	es	spa	spa	stan1288	Spanish language	https://en.wikipedia.org/wiki/Spanish_language	Spain;;Hispanic America;;Equatorial Guinea	Latin script (Spanish alphabet);;Spanish Braille	Castilian
-Sranan Tongo	Sranantongo	Latin			L1: 519, 600		srn	srn	sran1240	Sranan Tongo	https://en.wikipedia.org/wiki/Sranan_Tongo	Suriname	Latin	Suriname
-Standard Chinese	現代標準漢語; 现代标准汉语				L1 and L2: 80% of China				none	Standard Chinese	https://en.wikipedia.org/wiki/Standard_Chinese	China;;Taiwan;;Singapore		Beijingese
+Spanish		Latin script (Spanish alphabet), Spanish Braille			519.115 million	es	spa	spa	stan1288	Spanish language	https://en.wikipedia.org/wiki/Spanish_language	Spain;;Hispanic America;;Equatorial Guinea	Latin script (Spanish alphabet);;Spanish Braille	Castilian
+Sranan Tongo	Sranantongo	Latin			519, 600		srn	srn	sran1240	Sranan Tongo	https://en.wikipedia.org/wiki/Sranan_Tongo	Suriname	Latin	Suriname
+Standard Chinese	現代標準漢語; 现代标准汉语				80% of China				none	Standard Chinese	https://en.wikipedia.org/wiki/Standard_Chinese	China		Beijingese
 Sumo										Sumo	https://en.wikipedia.org/wiki/Sumo			
-Sundanese	Basa Sunda,  بَاسَا سُوْندَا		Western part of Java and surrounding areas	*Sundanese, *Benteng Chinese *Cirebonese	32.400000 million		sun		sund1252	Sundanese language	https://en.wikipedia.org/wiki/Sundanese_language	Indonesia		Malayo-Sumbawan
+Sundanese	Basa Sunda,  بَاسَا سُوْندَا		Western part of Java and surrounding areas	*Sundanese, *Cirebonese *Benteng Chinese	32.400000 million		sun		sund1252	Sundanese language	https://en.wikipedia.org/wiki/Sundanese_language	Indonesia		Malayo-Sumbawan
 Susu	Sosoxui	Latin script, Arabic script, Koré Sèbèli	Coastal Guinea	Susu people	2.43 million		sus	sus	susu1250	Susu language	https://en.wikipedia.org/wiki/Susu_language	Guinea;;Sierra Leone;;Guinea Bissau	Latin script;;Arabic script;;Koré Sèbèli	Soso–Yalunka
-Swahili	Kiswahili, Lugha ya Kiswahili, كِسوَحِلِ	* Latin script ([[#Orthography|Swahili alphabet]]) * Arabic script (Swahili Ajami) * Mandombe script * Swahili Braille		| history =	L1: 5.265080 million (2019–2023), L2: 92.393400 million	sw	swa	swa	swah1254	Swahili	https://en.wikipedia.org/wiki/Swahili	Tanzania;;Kenya;;Mozambique;;the eastern part of the Democratic Republic of the Congo;;the Bajuni Islands;;Brava;;southern Somalia	* Latin script ([[#Orthography|Swahili alphabet]]) * Arabic script (Swahili Ajami) * Mandombe script * Swahili Braille	Sabaki
-Swazi	siSwati	Latin (Swazi alphabet), Swazi Braille, Ditema tsa Dinoko		Swazi people	L1: 2.314500 million	ss	ssw	ssw	swat1243	Swazi language	https://en.wikipedia.org/wiki/Swazi_language		Latin (Swazi alphabet);;Swazi Braille;;Ditema tsa Dinoko	Tekela
+Swahili	Kiswahili, Lugha ya Kiswahili, كِسوَحِلِ	* Latin script ([[#Orthography|Swahili alphabet]]) * Arabic script (Swahili Ajami) * Mandombe script * Swahili Braille		| history =	5.265080 million (2019–2023), L2: 92.393400 million	sw	swa	swa	swah1254	Swahili	https://en.wikipedia.org/wiki/Swahili	Tanzania;;Kenya;;Mozambique;;Democratic Republic of the Congo;;the Bajuni Islands;;Brava;;southern Somalia	* Latin script ([[#Orthography|Swahili alphabet]]) * Arabic script (Swahili Ajami) * Mandombe script * Swahili Braille	Sabaki
+Swazi	siSwati	Latin (Swazi alphabet), Swazi Braille, Ditema tsa Dinoko		Swazi people	2.314500 million	ss	ssw	ssw	swat1243	Swazi language	https://en.wikipedia.org/wiki/Swazi_language		Latin (Swazi alphabet);;Swazi Braille;;Ditema tsa Dinoko	Tekela
 Swedish		Latin (Swedish alphabet), Swedish Braille	| ethnicity = Swedes, Finland-Swedes		Native: 9.924200 million	sv	swe	swe	swed1254	Swedish language	https://en.wikipedia.org/wiki/Swedish_language	Sweden;;Finland;;formerly Estonia	Latin (Swedish alphabet);;Swedish Braille	East Scandinavian
 Swiss German	Schwiizerdütsch		|speakers= million in Switzerland				gsw	gsw	swis1247	Swiss German	https://en.wikipedia.org/wiki/Swiss_German	Switzerland (as German);;Liechtenstein;;Vorarlberg (Austria);;Piedmont & Aosta Valley (Italy)		Alemannic
 Sylheti		Sylheti Nagri script, Bengali–Assamese script, Latin script	*Sylhet Division (Bangladesh) *Barak Valley and Hojai (Assam, India) *North Tripura and Unakoti (Tripura, India)	Sylhetis				syl	sylh1242	Sylheti language	https://en.wikipedia.org/wiki/Sylheti_language	Bangladesh;;India	Sylheti Nagri script;;Bengali–Assamese script;;Latin script	Bengali–Assamese
-Tacana	| states = Bolivia		La Paz Department	7, 350 (2012)	1, 150			tna	taca1256	Tacana language	https://en.wikipedia.org/wiki/Tacana_language			Tacana Proper
-Tagalog			Katagalugan; Metro Manila (as Filipino), parts of Central Luzon, most of Calabarzon, parts of Mimaropa, northwestern Bicol Region, and Ilocos Region (southeast Pangasinan)	Tagalog	L1: 32.768940 million		tgl	tgl	taga1280	Tagalog language	https://en.wikipedia.org/wiki/Tagalog_language	Philippines		Kasiguranin–Tagalog
+Tacana	| states = Bolivia		La Paz Department	7, 350 Tacana people (2012)	1, 150			tna	taca1256	Tacana language	https://en.wikipedia.org/wiki/Tacana_language			Tacana Proper
+Tagalog		Latin (Filipino alphabet); , Baybayin (Revitalizing)	Metro Manila (as Filipino), parts of Central Luzon, most of Calabarzon, parts of Mimaropa, northwestern Bicol Region, and Ilocos Region (southeast Pangasinan)	Tagalog	32.768940 million	tl	tgl	tgl	taga1280	Tagalog language	https://en.wikipedia.org/wiki/Tagalog_language	Philippines	Latin (Filipino alphabet);;Baybayin (Revitalizing)	Kasiguranin–Tagalog
 Taiwan Sign Language	台灣手語							tss	taiw1241	Taiwan Sign Language	https://en.wikipedia.org/wiki/Taiwan_Sign_Language	Taiwan		Japanese Sign
-Taiwanese Hakka	臺灣客家語 / 臺灣客話, toiˇ vanˇ hagˋ gaˊ ngiˊ / toiˇ vanˇ hagˋ fa, thòi-vàn hak-kâ-ngî / thòi-vàn hak-fa		Taoyuan, Miaoli, Hsinchu, Pingtung, Kaohsiung, Taichung, Nantou, Changhua, Yunlin, Yilan, Hualien and Taitung	Hakka Taiwanese	L1: 327, 000				none	Taiwanese Hakka	https://en.wikipedia.org/wiki/Taiwanese_Hakka	Taiwan		Yue-Tai & Hailu
-Taiwanese Hokkien	臺語, / /	Chinese characters (Traditional),  Latin (Tâi-lô, Pe̍h-ōe-jī),  Kana,  Bopomofo (Taiwanese Phonetic Symbols),  Hangul	| ethnicity = Hoklo Taiwanese		L1: 6.910000 million				taib1242	Taiwanese Hokkien	https://en.wikipedia.org/wiki/Taiwanese_Hokkien	Taiwan	Chinese characters (Traditional);;Latin (Tâi-lô;;Pe̍h-ōe-jī);;Kana;;Bopomofo (Taiwanese Phonetic Symbols);;Hangul	Hokkien
-Taiwanese Mandarin		Traditional Chinese characters			L1: 14.400000 million				taib1240	Taiwanese Mandarin	https://en.wikipedia.org/wiki/Taiwanese_Mandarin	Taiwan	Traditional Chinese characters	Standard Mandarin
-Tajik	Тоҷикӣ Tojikī تاجيکى, форсии тоҷикӣ Forsii Tojikī فارسى تاجيکى		Central Asia	Tajiks	10.539520 million	tg	tgk	tgk	taji1250	Tajik language	https://en.wikipedia.org/wiki/Tajik_language	Tajikistan;;Uzbekistan		Persian
+Taiwanese Hakka	臺灣客家語 / 臺灣客話, toiˇ vanˇ hagˋ gaˊ ngiˊ / toiˇ vanˇ hagˋ fa, thòi-vàn hak-kâ-ngî / thòi-vàn hak-fa		Taoyuan, Miaoli, Hsinchu, Pingtung, Kaohsiung, Taichung, Nantou, Changhua, Yunlin, Yilan, Hualien and Taitung	Hakka Taiwanese	327, 000				none	Taiwanese Hakka	https://en.wikipedia.org/wiki/Taiwanese_Hakka	Taiwan		Yue-Tai & Hailu
+Taiwanese Hokkien	臺語, / /	Chinese characters (Traditional),  Latin (Tâi-lô, Pe̍h-ōe-jī),  Kana,  Bopomofo (Taiwanese Phonetic Symbols),  Hangul	| ethnicity = Hoklo Taiwanese		11.59 million				taib1242	Taiwanese Hokkien	https://en.wikipedia.org/wiki/Taiwanese_Hokkien	Taiwan	Chinese characters (Traditional);;Latin (Tâi-lô;;Pe̍h-ōe-jī);;Kana;;Bopomofo (Taiwanese Phonetic Symbols);;Hangul	Hokkien
+Taiwanese Mandarin		Traditional Chinese characters			14.400000 million				taib1240	Taiwanese Mandarin	https://en.wikipedia.org/wiki/Taiwanese_Mandarin	Taiwan	Traditional Chinese characters	Standard Mandarin
+Tajik	Тоҷикӣ Tojikī, форсии тоҷикӣ Forsii Tojikī		Central Asia	Tajiks	10.539520 million	tg	tgk	tgk	taji1250	Tajik language	https://en.wikipedia.org/wiki/Tajik_language	Tajikistan;;Uzbekistan		Persian
 Talian	taliàn	Latin alphabet	Serra Gaúcha	Venetian Brazilians	500, 000				tali1266	Talian dialect	https://en.wikipedia.org/wiki/Talian_dialect	Brazil;;(co-official language in several municipalities)	Latin alphabet	Venetian
 Tamasheq	Tafaghist	* Latin * Tifinagh * Arabic (Innislamen)	Sahara	Tuareg	900, 000			taq	tama1365	Tamasheq language	https://en.wikipedia.org/wiki/Tamasheq_language	Mali;;Burkina Faso	* Latin * Tifinagh * Arabic (Innislamen)	Southern
-Tamazight			North Africa and Berber diaspora	Berbers			ber		berb1260	Berber languages	https://en.wikipedia.org/wiki/Berber_languages			
-Tamil				*Tamils *Sri Lankan Moors	L1: 78.721340 million	ta	tam		tami1289	Tamil language	https://en.wikipedia.org/wiki/Tamil_language			Tamil–Paliyan
-Tapieté	Chawuncu			Ava Guaraní	51, 340				chir1295	Eastern Bolivian Guaraní language	https://en.wikipedia.org/wiki/Eastern_Bolivian_Guaraní_language	Bolivia;;Argentina;;Paraguay		Guaraní
-Tatar	татарча • tatarça • تاتارچا	Tatar alphabets (Cyrillic, Latin, formerly Arabic)	Volga-Ural region	Volga Tatars, Qaratays	L1: 4.029430 million	tt	tat	tat	tata1255	Tatar language	https://en.wikipedia.org/wiki/Tatar_language		Tatar alphabets (Cyrillic;;Latin;;formerly Arabic)	Kipchak–Bulgar
+Tamazight			North Africa and Berber diaspora	Berbers	| date =		ber		berb1260	Berber languages	https://en.wikipedia.org/wiki/Berber_languages			
+Tamil				*Tamils *Sri Lankan Moors	78.721340 million	ta	tam	tam	tami1289	Tamil language	https://en.wikipedia.org/wiki/Tamil_language			Tamil–Paliyan
+Tapieté	| states = Argentina, Paraguay, Bolivia				2, 500			tpj	tapi1253	Tapieté dialect	https://en.wikipedia.org/wiki/Tapieté_dialect			Eastern Bolivian Guaraní
+Tatar	татарча • tatarça • تاتارچا	Tatar alphabets (Cyrillic, Latin, formerly Arabic)	Volga-Ural region	Volga Tatars, Qaratays	4.029430 million	tt	tat	tat	tata1255	Tatar language	https://en.wikipedia.org/wiki/Tatar_language		Tatar alphabets (Cyrillic;;Latin;;formerly Arabic)	Kipchak–Bulgar
 Tati	Tâti,	Persian alphabet	| ethnicity = Tats		405, 000 Takestani speakers (2021), 35, 800 Harzandi speakers				tati1244	Tati language (Iran)	https://en.wikipedia.org/wiki/Tati_language_(Iran)	Iran	Persian alphabet	Tatic
 Tausug	Bahasa Sūg,	Latin (Filipino alphabet), Arabic (Jawi alphabet), Historically Luntar Sūg	— Spoken throughout the Sulu Archipelago (Basilan and Tawi-Tawi), southern Palawan, eastern Sabah and northern portion of North Kalimantan, — Also spoken in Zamboanga City and Zamboanga Peninsula	Tausūg	1.925261 million			tsg	taus1251	Tausug language	https://en.wikipedia.org/wiki/Tausug_language	Philippines;;Malaysia;;Indonesia	Latin (Filipino alphabet);;Arabic (Jawi alphabet);;Historically Luntar Sūg	Butuan–Tausug
-Tay	Tiểng Tày, Thổ	Latin (modified Vietnamese alphabet), Chữ Nôm Tày (archaic)		Tày	1.63 million			tyz	tayy1238	Tày language	https://en.wikipedia.org/wiki/Tày_language	Vietnam	Latin (modified Vietnamese alphabet);;Chữ Nôm Tày (archaic)	Central Tai
-Telugu	Telugu		*Andhra Pradesh *Telangana *Puducherry	Telugus	L1: 82.966790 million	te	tel	tel	telu1262	Telugu language	https://en.wikipedia.org/wiki/Telugu_language	India		| ancestor = Old Telugu
+Tay	Tiểng Tày, Thổ	Latin (modified Vietnamese alphabet), (archaic)		Tày	1.63 million			tyz	tayy1238	Tày language	https://en.wikipedia.org/wiki/Tày_language	Vietnam	Latin (modified Vietnamese alphabet);;(archaic)	Central Tai
+Telugu	Telugu		*Andhra Pradesh *Telangana *Puducherry *Tamilnadu *Karnataka	Telugus	82.966790 million	te	tel	tel	telu1262	Telugu language	https://en.wikipedia.org/wiki/Telugu_language	India		Teluguoid
 Tetum	Tetun			Tetun	463, 500, mostly in Indonesia		tet	tet	tetu1245	Tetun language	https://en.wikipedia.org/wiki/Tetun_language	Indonesia;;Timor-Leste		Tetunic
-Thai				Central Thai, Thai Chinese, Mon, Lao Wiang, Phuan	L1: 27.177030 million	th	tha	tha	thai1261	Thai language	https://en.wikipedia.org/wiki/Thai_language			Chiang Saen
+Thai				Central Thai, Thai Chinese, Mon, Lao Wiang, Phuan	27.177030 million	th	tha	tha	thai1261	Thai language	https://en.wikipedia.org/wiki/Thai_language			Chiang Saen
 Tibetan			China (Tibet Autonomous Region, Qinghai, Sichuan, Gansu, Yunnan); India (Ladakh, Sikkim, Uttarakhand, Himachal Pradesh, Arunachal Pradesh, Assam); Pakistan (Gilgit-Baltistan); Nepal; Bhutan; Myanmar (Kachin State)	Tibetan people and other Tibetic-speaking peoples	6 million				oldm1245	Tibetic languages	https://en.wikipedia.org/wiki/Tibetic_languages			Bodish
 Tigrinya	ትግርኛ (Təgrəñña)	Geʽez script (Tigrinya abugida)		Tigrayans, Tigrinya	9.940190 million	ti	tir	tir	tigr1271	Tigrinya language	https://en.wikipedia.org/wiki/Tigrinya_language	Eritrea;;Ethiopia	Geʽez script (Tigrinya abugida)	North
 Tobian	Ramarih Hatohobei	Latin script	Hatohobei, Koror, Sonsorol		150			tox	tobi1238	Tobian language	https://en.wikipedia.org/wiki/Tobian_language	Palau	Latin script	Chuukic
@@ -717,41 +716,41 @@ Tshiluba	Kit e Tela (Kitetela)	Latin script, Mandombe script	Kasai * Kasai-Occid
 Tsonga	Xitsonga	Latin (Tsonga alphabet), Tsonga Braille		VaTsonga	3.7million	ts	tso	tso	tson1249	Tsonga language	https://en.wikipedia.org/wiki/Tsonga_language		Latin (Tsonga alphabet);;Tsonga Braille	Tswa–Ronga
 Tswana	Setswana	Latin (Tswana alphabet), Tswana Braille, Ditema tsa Dinoko	| ethnicity = Batswana		4.07 million in South Africa (2011), 1.07 million in Botswana	tn	tsn	tsn	tswa1253	Tswana language	https://en.wikipedia.org/wiki/Tswana_language		Latin (Tswana alphabet);;Tswana Braille;;Ditema tsa Dinoko	Sotho–Tswana
 Tucano				Tucano people	4, 600 in Brazil			tuo	tuca1252	Tucano language	https://en.wikipedia.org/wiki/Tucano_language	Brazil;;Colombia		North
-Turkish	Türkçe (noun, adverb), Türk dili (noun)	Latin (Turkish alphabet), Turkish Braille		Turks	L1: 85.186380 million	tr	tur	tur	nucl1301	Turkish language	https://en.wikipedia.org/wiki/Turkish_language		Latin (Turkish alphabet);;Turkish Braille	Western
-Turkmen	türkmençe, türkmen dili,  түркменче, түркмен дили,	Latin (Turkmen alphabet, official in Turkmenistan), Perso-Arabic, Cyrillic, Turkmen Braille		Turkmens	L1: 6.797920 million		tuk	tuk	turk1304	Turkmen language	https://en.wikipedia.org/wiki/Turkmen_language	Turkmenistan;;Russia;;Iran;;Uzbekistan;;Afghanistan;;Tajikistan	Latin (Turkmen alphabet;;official in Turkmenistan);;Perso-Arabic;;Cyrillic;;Turkmen Braille	Eastern
-Turkmeni	türkmençe, türkmen dili,  түркменче, түркмен дили,	Latin (Turkmen alphabet, official in Turkmenistan), Perso-Arabic, Cyrillic, Turkmen Braille		Turkmens	L1: 6.797920 million		tuk	tuk	turk1304	Turkmen language	https://en.wikipedia.org/wiki/Turkmen_language	Turkmenistan;;Russia;;Iran;;Uzbekistan;;Afghanistan;;Tajikistan	Latin (Turkmen alphabet;;official in Turkmenistan);;Perso-Arabic;;Cyrillic;;Turkmen Braille	Eastern
+Turkish	Türkçe, Türk dili	Latin (Turkish alphabet), Turkish Braille		Turks	85.186380 million	tr	tur	tur	nucl1301	Turkish language	https://en.wikipedia.org/wiki/Turkish_language		Latin (Turkish alphabet);;Turkish Braille	Western
+Turkmen	türkmençe, türkmen dili,  түркменче, түркмен дили,	Latin (Turkmen alphabet, official in Turkmenistan), Perso-Arabic, Cyrillic, Turkmen Braille		Turkmens	6.797920 million	tk	tuk	tuk	turk1304	Turkmen language	https://en.wikipedia.org/wiki/Turkmen_language	Turkmenistan;;Russia;;Iran;;Uzbekistan;;Afghanistan;;Tajikistan	Latin (Turkmen alphabet;;official in Turkmenistan);;Perso-Arabic;;Cyrillic;;Turkmen Braille	Eastern
+Turkmeni	türkmençe, türkmen dili,  түркменче, түркмен дили,	Latin (Turkmen alphabet, official in Turkmenistan), Perso-Arabic, Cyrillic, Turkmen Braille		Turkmens	6.797920 million	tk	tuk	tuk	turk1304	Turkmen language	https://en.wikipedia.org/wiki/Turkmen_language	Turkmenistan;;Russia;;Iran;;Uzbekistan;;Afghanistan;;Tajikistan	Latin (Turkmen alphabet;;official in Turkmenistan);;Perso-Arabic;;Cyrillic;;Turkmen Braille	Eastern
 Tuvaluan	Te Ggana Tuuvalu	Latin script	Fiji, Kiribati, Nauru, New Zealand		10, 600 in Tuvalu		tvl	tvl	tuva1244	Tuvaluan language	https://en.wikipedia.org/wiki/Tuvaluan_language	Tuvalu	Latin script	Ellicean
 Tłı̨chǫ										Tłı̨chǫ	https://en.wikipedia.org/wiki/Tłı̨chǫ			
-Ukrainian	українська мова		Eastern Europe	Ukrainians	L1: 32.124580 million	uk	ukr	ukr	ukra1253	Ukrainian language	https://en.wikipedia.org/wiki/Ukrainian_language	Ukraine		East Slavic
+Ukrainian	українська мова		Eastern Europe	Ukrainians	32.124580 million	uk	ukr	ukr	ukra1253	Ukrainian language	https://en.wikipedia.org/wiki/Ukrainian_language	Ukraine		East Slavic
 Ulster-Scots	Ulstèr-Scotch, Ullans, (Braid) Scots, Scotch		Ulster	Ulster Scots	?				ulst1239	Ulster Scots dialect	https://en.wikipedia.org/wiki/Ulster_Scots_dialect	Ireland		Scots
 Umbundu	Úmbúndú			Ovimbundu	6, 980, 000		umb	umb	umbu1257	Umbundu	https://en.wikipedia.org/wiki/Umbundu	Angola		Bantu (Zone R)
-Upper Sorbian	hornjoserbšćina, hornjoserbsce	Latin (Sorbian alphabet)	Saxony	Sorbs	13490		hsb	hsb	uppe1395	Upper Sorbian language	https://en.wikipedia.org/wiki/Upper_Sorbian_language	Germany	Latin (Sorbian alphabet)	Sorbian
+Upper Sorbian	hornjoserbšćina, hornjoserbsce	Latin (Sorbian alphabet)	Saxony	Sorbs	25000		hsb	hsb	uppe1395	Upper Sorbian language	https://en.wikipedia.org/wiki/Upper_Sorbian_language	Germany	Latin (Sorbian alphabet)	Sorbian
 Urdu			*Pakistan (lingua franca) *Hindi–Urdu Belt and Deccan (India) *Terai (Nepal) *Old Dhaka (Bangladesh) *See geographical distribution of Urdu speakers for more	| speakers = L1: 77.681140 million		ur	urd	urd		Urdu	https://en.wikipedia.org/wiki/Urdu	South Asia		Hindustani
 Uru-Chipaya			Lakes Titicaca and Poopo, Bolivia	Uru					uruc1242	Uru–Chipaya languages	https://en.wikipedia.org/wiki/Uru–Chipaya_languages			
 Uruguayan Sign Language	Lengua de señas uruguaya				7, 000			ugy	urug1238	Uruguayan Sign Language	https://en.wikipedia.org/wiki/Uruguayan_Sign_Language	Uruguay		
 Uyghur		Perso-Arabic (Uyghur alphabet), Cyrillic (Uyghur Cyrillic), Latin (Uyghur Latin, New Script)			8–13 million	ug	uig	uig	uigh1240	Uyghur language	https://en.wikipedia.org/wiki/Uyghur_language	China;;Kazakhstan;;Kyrgyzstan;;Tajikistan	Perso-Arabic (Uyghur alphabet);;Cyrillic (Uyghur Cyrillic);;Latin (Uyghur Latin;;New Script)	Eastern Karluk
-Uzbek	oʻzbekcha, oʻzbek tili|,  ўзбекча, ўзбек тили,  اۉزبېکچه، اۉزبېک تیلی		Central Asia	Uzbeks	33.881260 million (incl. both Northern Uzbek & Southern Uzbek	uz	uzb	uzb	uzbe1247	Uzbek language	https://en.wikipedia.org/wiki/Uzbek_language	Uzbekistan;;Afghanistan;;Pakistan;;Russia;;Tajikistan;;Kazakhstan;;Kyrgyzstan;;Turkmenistan;;Mongolia;;China		Karluk
+Uzbek	oʻzbekcha, oʻzbek tili|,  ўзбекча, ўзбек тили,  اۉزبېکچه، اۉزبېک تیلی		Central Asia	Uzbeks	35.865910 million (incl. both Northern Uzbek & Southern Uzbek	uz	uzb	uzb	uzbe1247	Uzbek language	https://en.wikipedia.org/wiki/Uzbek_language	Uzbekistan;;Afghanistan;;Tajikistan;;Kyrgyzstan;;Turkmenistan;;China		Karluk
 Venda	Tshivenḓa	Latin (Venda alphabet), Venda Braille, Ditema tsa Dinoko	Limpopo	Venda, Lemba	1.29 million	ve	ven	ven	vend1245	Venda language	https://en.wikipedia.org/wiki/Venda_language		Latin (Venda alphabet);;Venda Braille;;Ditema tsa Dinoko	Southern
-Vietnamese	Tiếng Việt	Latin (Vietnamese alphabet), Vietnamese Braille, Chữ Nôm (historical)		Viet (Kinh), Gin	L1: 86.130550 million (2019–2023)		vie	vie	viet1252	Vietnamese language	https://en.wikipedia.org/wiki/Vietnamese_language	Vietnam	Latin (Vietnamese alphabet);;Vietnamese Braille;;Chữ Nôm (historical)	Viet–Mường
+Vietnamese	Tiếng Việt	Latin (Vietnamese alphabet), Vietnamese Braille, Chữ Nôm (historical)		Viet (Kinh), Gin	86.130550 million (2019–2023)		vie	vie	viet1252	Vietnamese language	https://en.wikipedia.org/wiki/Vietnamese_language	Vietnam	Latin (Vietnamese alphabet);;Vietnamese Braille;;Chữ Nôm (historical)	Viet–Mường
 Vietnamese sign languages			Vietnam						viet1253	Vietnamese sign languages	https://en.wikipedia.org/wiki/Vietnamese_sign_languages			
 Waray	Winaray, Samareño, Lineyte-Samarnon, Binisayâ nga Winaray, Binisayâ nga Samar-Leyte	Latin; , Historically Baybayin	Eastern Visayas, some parts of Masbate, southern part of Sorsogon, and Gibusong Island of Mindanao	Waray	3.56 million		war	war	wara1300	Waray language	https://en.wikipedia.org/wiki/Waray_language	Philippines	Latin;;Historically Baybayin	Warayan
 Weenhayek	Weenhayek		Tarija Department (Bolivia), Salta Province (Argentina)	Wichí	1910			mtp	wich1262	Wichí Lhamtés Nocten	https://en.wikipedia.org/wiki/Wichí_Lhamtés_Nocten	Bolivia;;Argentina		Wichi languages
 Welsh	Cymraeg, y Gymraeg		United Kingdom (Wales, England), Argentina (Chubut Province)		*Wales: 538, 300 (2021), (17.8% of the population of Wales at the 2021 census, including both L1 and L2 speakers) *England: 110, 000 (2007, estimated) *Argentina: 1, 500–5, 000 *Canada: <3, 885 (L1) (2011) *United States: 2, 003 *Australia: 1, 737	cy		cym	wels1247	Welsh language	https://en.wikipedia.org/wiki/Welsh_language			Western Brittonic
 Western Neo-Aramaic	ܣܪܝܘܢ (ܐܰܪܳܡܰܝ),	Maalouli square script, Syriac alphabet, Phoenician alphabet, Arabic alphabet	Maaloula, Bakhʽa and Jubb'adin villages, Qalamoun Mountains, Damascus	Aramean	30, 440			amw	west2763	Western Neo-Aramaic	https://en.wikipedia.org/wiki/Western_Neo-Aramaic	Syria	Maalouli square script;;Syriac alphabet;;Phoenician alphabet;;Arabic alphabet	Damascene Aramaic
 Wichi										Wichí	https://en.wikipedia.org/wiki/Wichí			
-Wolof	Wolof làkk, وࣷلࣷفْ لࣵکّ	Latin (Wolof alphabet), Arabic (Wolofal), Garay script	Senegambia	Wolof	L1: 8.214320 million	wo	wol		wolo1247	Wolof language	https://en.wikipedia.org/wiki/Wolof_language	Senegal;;Gambia;;Mauritania	Latin (Wolof alphabet);;Arabic (Wolofal);;Garay script	Fula–Wolof
+Wolof	Wolof làkk, وࣷلࣷفْ لࣵکّ	Latin (Wolof alphabet), Arabic (Wolofal), Garay script	Senegambia	Wolof	8.214320 million	wo	wol		wolo1247	Wolof language	https://en.wikipedia.org/wiki/Wolof_language	Senegal;;Gambia;;Mauritania	Latin (Wolof alphabet);;Arabic (Wolofal);;Garay script	Fula–Wolof
 Wuqiu dialect	/ 莆田話		Putian, Fujian		?				puti1238	Putian dialect	https://en.wikipedia.org/wiki/Putian_dialect	Southern China		Pu–Xian Min
 Xhosa	isiXhosa	Latin (Xhosa alphabet), Xhosa Braille, Ditema tsa Dinoko	eastern Eastern Cape; scattered communities elsewhere	AmaXhosa	8 million	xh	xho	xho	xhos1239	Xhosa language	https://en.wikipedia.org/wiki/Xhosa_language	South Africa;;Lesotho	Latin (Xhosa alphabet);;Xhosa Braille;;Ditema tsa Dinoko	Zunda
-Xinca			Guatemala	16, 200 Xinca people (2003 census)				xin	xinc1237	Xincan languages	https://en.wikipedia.org/wiki/Xincan_languages			
+Xinca			Guatemala	264, 167 Xinca people (2018 census)				xin	xinc1237	Xincan languages	https://en.wikipedia.org/wiki/Xincan_languages			
 Yakan	| states = Philippines	Latin, Jawi	Basilan	Yakan	110, 000			yka	yaka1277	Yakan language	https://en.wikipedia.org/wiki/Yakan_language		Latin;;Jawi	Sama-Bajaw
 Yaminawa										Yaminawá	https://en.wikipedia.org/wiki/Yaminawá			
 Yapese	Thiin nu Waqaab	Latin script	Island of Yap	Yapese	5, 130		yap	yap	yape1248	Yapese language	https://en.wikipedia.org/wiki/Yapese_language	Federated States of Micronesia	Latin script	Admiralty Islands?
 Yiddish	ייִדיש, יידיש, אידיש, yidish, idish	Hebrew alphabet (Yiddish orthography), occasionally Latin alphabet	Europe, Israel, North America, South America, other regions with Jewish populations	Ashkenazi Jews	≤ 600, 000	yi	yid	yid	east2295	Yiddish	https://en.wikipedia.org/wiki/Yiddish	Central;;Eastern;;Western Europe	Hebrew alphabet (Yiddish orthography);;occasionally Latin alphabet	High German
-Yoruba	Èdè Yorùbá	Latin (Yoruba alphabet), Arabic (Anjemi), Oduduwa script, Yoruba Braille	Yorubaland	Yoruba	L1: 47.858670 million	yo	yor	yor	yoru1245	Yoruba language	https://en.wikipedia.org/wiki/Yoruba_language	BeninNigeriaTogo	Latin (Yoruba alphabet);;Arabic (Anjemi);;Oduduwa script;;Yoruba Braille	Edekiri
+Yoruba	Èdè Yorùbá		Yorubaland	Yoruba	47.858670 million	yo	yor	yor	yoru1245	Yoruba language	https://en.wikipedia.org/wiki/Yoruba_language	BeninNigeriaTogo		Edekiri
 Yuki	Ukomnoʼm		Eel River area	Yuki people				yuk	yuki1243	Northern Yukian language	https://en.wikipedia.org/wiki/Northern_Yukian_language	California;;United States		Yuki–Wappo
 Yuracaré	Yurújare		Cochabamba Department	3, 300 Yuracaré people (2004), 3, 394 Yuracaré people (2012) (INE Census)	2680			yuz	yura1255	Yuracaré language	https://en.wikipedia.org/wiki/Yuracaré_language	Bolivia		
 Zamuco										Ayoreo	https://en.wikipedia.org/wiki/Ayoreo			
-Zande	Pazande	Latin		Zande	L1: 1.792000 million			zne	zand1248	Zande language	https://en.wikipedia.org/wiki/Zande_language	Democratic Republic of the Congo;;Central African Republic;;South Sudan	Latin	Zande–Nzakara
+Zande	Pazande	Latin		Zande	1.792000 million			zne	zand1248	Zande language	https://en.wikipedia.org/wiki/Zande_language	Democratic Republic of the Congo;;Central African Republic;;South Sudan	Latin	Zande–Nzakara
 Zarma	Zarma ciine, zarma sanni,	Arabic (Ajami), Braille, Latin	West Africa	Zarma	5.990100 million			dje	zarm1239	Zarma language	https://en.wikipedia.org/wiki/Zarma_language	Niger;;Mali;;Burkina Faso;;Nigeria	Arabic (Ajami);;Braille;;Latin	Southern
-Zhuang	Vahcuengh ("Zhuang"), Hauqcuengh (Yongbei), Kauqnuangz (Nong), Kauqnoangz, Hoedyaej (Guibian), Hauƽyəiч (Qiubei), Hauqraeuz, Gangjdoj (Yongbei, Nong, Qiubei), Kauqraeuz, Gangjtoj (Nong, Yang, Dai)	Zhuang, Old Zhuang, Sawndip, Sawgoek		Zhuang people	15.9 million, all Northern Zhuang languages	za	zha	zha	none	Zhuang languages	https://en.wikipedia.org/wiki/Zhuang_languages	China	Zhuang;;Old Zhuang;;Sawndip;;Sawgoek	Northern Tai;;Central Tai
-Zulu	isiZulu	Latin (Zulu alphabet), Zulu Braille, Ditema tsa Dinoko		Zulu	L1: 12.104600 million	zu	zul	zul	zulu1248	Zulu language	https://en.wikipedia.org/wiki/Zulu_language	South Africa;;Lesotho	Latin (Zulu alphabet);;Zulu Braille;;Ditema tsa Dinoko	Zunda
+Zhuang	Vahcuengh (Wuming), Hauqcuengh (Yongbei), Kauqnuangz (Nong), Kauqnoangz, Hoedyaej (Guibian), Hauƽyəiч (Qiubei), Hauqraeuz, Gangjdoj (Yongbei, Nong, Qiubei), Kauqraeuz, Gangjtoj (Nong, Yang, Dai)	Zhuang, Old Zhuang, Sawndip, Sawgoek		Zhuang people	15.9 million, all Northern Zhuang languages	za	zha	zha	none	Zhuang languages	https://en.wikipedia.org/wiki/Zhuang_languages	China	Zhuang;;Old Zhuang;;Sawndip;;Sawgoek	Northern Tai;;Central Tai
+Zulu	isiZulu	Latin (Zulu alphabet), Zulu Braille, Ditema tsa Dinoko		Zulu	12.104600 million	zu	zul	zul	zulu1248	Zulu language	https://en.wikipedia.org/wiki/Zulu_language	South Africa;;Lesotho	Latin (Zulu alphabet);;Zulu Braille;;Ditema tsa Dinoko	Zunda

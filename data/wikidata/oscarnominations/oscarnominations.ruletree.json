@@ -44,7 +44,8 @@
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
     "rankDescending" : true,
-    "requireEnglishLabel" : null,
-    "includeImage" : null
+    "rankFrom" : -1,
+    "rankUntil" : -1,
+    "membershipConstraints" : [ "java.util.ArrayList", [ ] ]
   }
 }

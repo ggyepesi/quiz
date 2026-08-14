@@ -175,8 +175,6 @@
     "requireSitelink" : false,
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
-    "rankDescending" : true,
-    "requireEnglishLabel" : null,
-    "includeImage" : null
+    "rankDescending" : true
   }
 }
