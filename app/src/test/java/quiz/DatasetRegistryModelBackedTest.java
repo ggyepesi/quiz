@@ -2,6 +2,7 @@ package quiz;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -16,6 +17,33 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * does not exist.
  */
 class DatasetRegistryModelBackedTest {
+
+    @Test void transformedSnapshotDoesNotEraseExistingModelBacking() {
+        DatasetRegistry registry = new DatasetRegistry();
+        DatasetRegistry.Dataset modeled = new DatasetRegistry.Dataset();
+        modeled.name("Oscars");
+        modeled.key("oscars");
+        modeled.rootClass("Nomination");
+        modeled.modelPath("data/oscars.model.json");
+        modeled.ruletreePath("data/oscars.ruletree.json");
+        modeled.modelSignature("signature");
+        registry.upsert(modeled);
+
+        DatasetRegistry.Dataset transformed = new DatasetRegistry.Dataset();
+        transformed.name("Oscars");
+        transformed.key("oscars");
+        transformed.rootClass("Person");
+        transformed.snapshotPath("data/transform/oscars.snapshot.json");
+        registry.upsertSnapshot(transformed);
+
+        DatasetRegistry.Dataset saved = registry.datasets().get(0);
+        assertTrue(saved.isModelBacked());
+        assertEquals("Nomination", saved.rootClass());
+        assertEquals("data/oscars.model.json", saved.modelPath());
+        assertEquals("data/oscars.ruletree.json", saved.ruletreePath());
+        assertEquals("signature", saved.modelSignature());
+        assertEquals("data/transform/oscars.snapshot.json", saved.snapshotPath());
+    }
 
     @Test void aModelBuilderDomainIsModelBacked() {
         DatasetRegistry.Dataset d = new DatasetRegistry.Dataset();

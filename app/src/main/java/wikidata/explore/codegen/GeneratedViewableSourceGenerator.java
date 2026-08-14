@@ -183,6 +183,17 @@ public class GeneratedViewableSourceGenerator {
         // ViewableFieldPaths recurse into the referenced class's fields for
         // nested search/sort/config.
         if (project != null && type != null && !type.isBlank()) {
+            GeneratedClassModel target = project.findClass(type);
+            // A referenced-only target is a semantic ROLE, not the final entity
+            // kind. Kind classification may replace Nominee with Person, Film, …;
+            // the field must therefore accept the resulting shared Viewable rather
+            // than freezing the role class into its Java signature.
+            if (target != null
+                    && wikidata.explore.model.MembershipPattern.of(target, project)
+                    == wikidata.explore.model.MembershipPattern.REFERENCED
+                    && !project.entityKindRules().isEmpty()) {
+                return "objectview.Viewable";
+            }
             String sanitized = sanitizeClassName(type);
             for (GeneratedClassModel cls : project.classes()) {
                 if (cls != null
@@ -240,7 +251,17 @@ public class GeneratedViewableSourceGenerator {
             return "field";
         }
 
-        StringBuilder out = new StringBuilder(parts.getFirst().toLowerCase());
+        String first = parts.getFirst();
+        // A model field may already be a Java-style name (structuredName).  Lowering
+        // the whole first token produced `structuredname`, while every model/schema
+        // path continued to say `structuredName`; reflective path reads then quietly
+        // missed the generated field.  Only decapitalize the identifier's first
+        // character.  Labels split into several words still become normal camelCase.
+        String initial = first.chars().allMatch(ch -> !Character.isLetter(ch)
+                || Character.isUpperCase(ch))
+                ? first.toLowerCase(java.util.Locale.ROOT)
+                : Character.toLowerCase(first.charAt(0)) + first.substring(1);
+        StringBuilder out = new StringBuilder(initial);
 
         for (int i = 1; i < parts.size(); i++) {
             String p = parts.get(i);

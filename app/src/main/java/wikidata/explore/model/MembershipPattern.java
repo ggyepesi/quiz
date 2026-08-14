@@ -20,6 +20,8 @@ public enum MembershipPattern {
      *  (+ an optional source class or discovered subjects), not by a membership
      *  query. So a statement class is never "Unconfigured". */
     REIFIED("Reified statements"),
+    /** Produced once per owning instance by an ENTITY field marked OWNED_COMPONENT. */
+    OWNED_COMPONENT("Owned component"),
     /** A referenced-only ("identity holder") class: it has no membership rule of its
      *  own — its members are DERIVED as the range of a field that targets it (an
      *  entity at the value-end of that field's property). Complete the moment a field
@@ -55,6 +57,7 @@ public enum MembershipPattern {
      *  targets it, its owner class, and the property (direct or qualifier) whose
      *  range the class IS. */
     public record DerivedFrom(String ownerClass, String fieldName, String pid) {}
+    public record OwnedBy(String ownerClass, String fieldName) {}
 
     /** Project-aware classification: a class with no membership of its own is
      *  REFERENCED (an identity holder) when some field targets it; otherwise falls
@@ -65,12 +68,36 @@ public enum MembershipPattern {
         if (base != UNCONFIGURED) {
             return base;
         }
+        if (!ownedBy(clazz, project).isEmpty()) {
+            return OWNED_COMPONENT;
+        }
         // REFERENCED first: being a field's target drives real machinery (role
         // inference, referent field loads), which an evidence rule does not.
         if (derivedFrom(clazz, project) != null) {
             return REFERENCED;
         }
         return kindRule(clazz, project) == null ? base : EVIDENCE_KIND;
+    }
+
+    /** Field-defined production sites; the target class carries no duplicate owner config. */
+    public static List<OwnedBy> ownedBy(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        if (clazz == null || project == null) return List.of();
+        String target = clean(clazz.className());
+        if (target.isEmpty()) return List.of();
+        java.util.ArrayList<OwnedBy> sites = new java.util.ArrayList<>();
+        for (GeneratedClassModel owner : project.classes()) {
+            if (owner == null) continue;
+            for (GeneratedFieldModel field : owner.fields()) {
+                if (field != null && field.type() == FieldType.ENTITY
+                        && field.mapping().productionKind()
+                                == FieldProductionKind.OWNED_COMPONENT
+                        && target.equals(clean(field.entityClassName()))) {
+                    sites.add(new OwnedBy(owner.className(), field.name()));
+                }
+            }
+        }
+        return List.copyOf(sites);
     }
 
     /** The field that derives a referenced-only class's membership, or null. The
@@ -164,6 +191,12 @@ public enum MembershipPattern {
      *  single-argument {@link #describe(GeneratedClassModel)}. */
     public static String describe(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
+        if (of(clazz, project) == OWNED_COMPONENT) {
+            List<OwnedBy> sites = ownedBy(clazz, project);
+            String shown = sites.stream().map(s -> s.ownerClass() + "." + s.fieldName())
+                    .collect(java.util.stream.Collectors.joining(", "));
+            return "Owned by " + shown;
+        }
         if (of(clazz, project) == REFERENCED) {
             DerivedFrom d = derivedFrom(clazz, project);
             String via = d.ownerClass() + "." + d.fieldName();
@@ -209,7 +242,7 @@ public enum MembershipPattern {
             // REFERENCED needs project context to name its deriving field, so it is
             // only produced by of(clazz, project); reached here only if a caller uses
             // the single-arg path, where the bare label is the best we can say.
-            case REFERENCED, EVIDENCE_KIND, UNCONFIGURED -> p.label;
+            case OWNED_COMPONENT, REFERENCED, EVIDENCE_KIND, UNCONFIGURED -> p.label;
         };
     }
 

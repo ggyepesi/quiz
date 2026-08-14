@@ -212,6 +212,11 @@ public class GenerationPipeline {
 
         enrichFromDBpedia(snapshot, dynamicObjects, log);
 
+        wikidata.explore.transform.OwnedComponents.Result owned =
+                wikidata.explore.transform.OwnedComponents.apply(
+                        snapshot, dynamicObjects, null, log);
+        owned.addTo(dynamicObjects);
+
         // Derived (production = INVERT) fields: build each as the reverse of a
         // forward reference already in the pool — no query, no extra depth.
         applyModelInverts(snapshot, dynamicObjects, log);
@@ -262,6 +267,10 @@ public class GenerationPipeline {
         // never mutate the previous run that remains visible until Apply succeeds.
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(previous.dynamicObjects());
+        wikidata.explore.transform.OwnedComponents.Result owned =
+                wikidata.explore.transform.OwnedComponents.apply(
+                        snapshot, pool, previous.dynamicObjects(), log);
+        owned.addTo(pool);
         wikidata.explore.transform.Canonicalization.apply(snapshot, pool, log);
         int filled = wikidata.explore.transform.ModelYearProjections.apply(
                 snapshot, pool, log);
@@ -309,6 +318,11 @@ public class GenerationPipeline {
         List<WikidataDynamicObject> reified =
                 wikidata.explore.transform.ModelStatementReifications.reify(
                         compiledSnapshot, pool, log, demoted);   // pool.addAll(reified) inside
+
+        wikidata.explore.transform.OwnedComponents.Result owned =
+                wikidata.explore.transform.OwnedComponents.apply(
+                        snapshot, pool, previous.dynamicObjects(), log);
+        owned.addTo(pool);
 
         // Compiled-model transforms (parity-proven); the rest still read raw.
         wikidata.explore.transform.FieldValueRestrictions.apply(compiledSnapshot, pool);

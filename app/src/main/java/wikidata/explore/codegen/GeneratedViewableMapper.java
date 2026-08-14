@@ -27,9 +27,16 @@ public class GeneratedViewableMapper {
     // several WDO copies (a root + inline-field references) maps to ONE typed
     // instance (see mapObject). Statement atoms (Q\d+-<guid>) keep per-atom identity.
     private final Map<String, Object> generatedByQid = new java.util.HashMap<>();
+    // Classes produced once per owning instance. Such a component BORROWS its owner's
+    // QID (one Name per Person, carrying the person's identifier), so it is not "the
+    // same entity arriving twice": unifying it by QID would hand the owner's instance
+    // back for the component's field — and then apply the component class's fields to
+    // it. Its identity is the production site, which the pool keeps in the type key.
+    private final java.util.Set<String> ownedComponentTypes;
 
     public GeneratedViewableMapper(GeneratedViewableRuntime runtime) {
         this.runtime = runtime;
+        this.ownedComponentTypes = ownedComponentTypes(runtime);
     }
 
     public List<Viewable> mapRoots(List<WikidataDynamicObject> roots) throws Exception {
@@ -50,6 +57,29 @@ public class GeneratedViewableMapper {
 
     private Object mapObject(WikidataDynamicObject source) throws Exception {
         return mapObject(source, null);
+    }
+
+    /** The classes some field produces as an owned component. Read from the compiled
+     *  classes' own models — the production site is declared on the OWNING field, so
+     *  the component class itself says nothing about being owned. */
+    private static java.util.Set<String> ownedComponentTypes(
+            GeneratedViewableRuntime runtime) {
+        java.util.Set<String> owned = new java.util.LinkedHashSet<>();
+        if (runtime == null || runtime.byType() == null) return owned;
+        for (GeneratedViewableRuntime.ClassRuntime cr : runtime.byType().values()) {
+            if (cr == null || cr.model() == null) continue;
+            for (GeneratedFieldModel field : cr.model().fields()) {
+                if (field == null || field.type() != FieldType.ENTITY
+                        || field.mapping().productionKind()
+                                != wikidata.explore.model.FieldProductionKind
+                                        .OWNED_COMPONENT) {
+                    continue;
+                }
+                String target = field.entityClassName();
+                if (target != null && !target.isBlank()) owned.add(target.trim());
+            }
+        }
+        return owned;
     }
 
     private Object mapObject(WikidataDynamicObject source, String preferredType)
@@ -76,7 +106,17 @@ public class GeneratedViewableMapper {
         // whose target wasn't stamped (typeName "WikidataDynamicObject") still
         // maps to the typed class the field declares — keeping cross-references
         // typed instead of raw. Falls back to the stamped type for roots.
-        String type = typedRequested ? preferredType : source.typeName();
+        // A declared field target such as Nominee can be a ROLE carrier. Once
+        // evidence classification has assigned a genuine modeled kind (Person),
+        // use that kind; retain the declared role only for unknown entities.
+        String sourceType = source.typeName();
+        boolean genuineModeledKind = typedRequested
+                && sourceType != null && !sourceType.isBlank()
+                && runtime.forType(sourceType) != null
+                && !sourceType.equals(preferredType)
+                && !source.directClassNames().contains(preferredType);
+        String type = genuineModeledKind ? sourceType
+                : typedRequested ? preferredType : sourceType;
 
         // Map each object to its generated class (e.g. a constellation's child
         // stars -> Star). An object whose type has no generated class (a true
@@ -92,7 +132,8 @@ public class GeneratedViewableMapper {
         // merging any fields this copy adds. This is what collapses the same
         // category / nominee referenced from many places instead of duplicating it.
         String entityQid = source.qid();
-        boolean realEntity = entityQid != null && WikidataIds.isQid(entityQid);
+        boolean realEntity = entityQid != null && WikidataIds.isQid(entityQid)
+                && !ownedComponentTypes.contains(type);
         if (realEntity) {
             Object byQid = generatedByQid.get(entityQid);
             if (byQid != null && !(byQid instanceof WikidataDynamicObject)) {

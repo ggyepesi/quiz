@@ -1011,6 +1011,12 @@ public class ModelBuilderFrame extends JFrame {
         if (c.reifiesStatements()) {
             return null;
         }
+        if (wikidata.explore.model.MembershipPattern.of(c, projectModel)
+                == wikidata.explore.model.MembershipPattern.OWNED_COMPONENT) {
+            return "Class \"" + c.className() + "\" is produced through "
+                    + wikidata.explore.model.MembershipPattern.describe(c, projectModel)
+                    + ". Use Generate domain; it has no independent query.";
+        }
         var m = c.effectiveInstanceMapping(projectModel);
         boolean hasTarget = m != null && !m.sourceQid().isBlank();
         boolean hasExtraTypes = m != null && !m.additionalTypeQids().isEmpty();

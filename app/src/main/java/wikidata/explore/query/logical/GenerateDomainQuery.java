@@ -299,6 +299,16 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 + " referent(s) with their declared class.\n");
                     }
 
+                    // Field-defined composition: Person.name -> Name creates one Name
+                    // carrying the Person QID. Name's own PIDs are loaded by the same
+                    // referent-field loader immediately below.
+                    List<WikidataDynamicObject> ownedRoots =
+                            new ArrayList<>(shared.values());
+                    ownedRoots.addAll(reified);
+                    wikidata.explore.transform.OwnedComponents.Result owned =
+                            wikidata.explore.transform.OwnedComponents.apply(
+                                    project, ownedRoots, null, genLog);
+
                     // Load a referenced-only class's DECLARED entity property-fields
                     // onto its (now class-stamped) referents — e.g. Nominee.type (P31),
                     // ForWork.genre (P136). No-op unless such fields are declared, so
@@ -321,6 +331,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         genLog.message("Loaded " + loadedReferentFields
                                 + " referent field value(s) from declared PIDs.\n");
                     }
+                    wikidata.explore.transform.ReferentClassStamp.apply(
+                            project, owned.components());
+                    wikidata.explore.transform.Canonicalization.apply(
+                            project, owned.components(), genLog);
 
                     // The served/saved pool: the whole shared pool (every class's
                     // roots + their referenced children) minus demoted reified
@@ -333,6 +347,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         }
                     }
                     pool.addAll(reified);
+                    owned.addTo(pool);
 
                     wikidata.explore.transform.ReferentKindClassifier.Result kindResult =
                             wikidata.explore.transform.ReferentKindClassifier.apply(

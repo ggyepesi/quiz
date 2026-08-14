@@ -4,6 +4,8 @@ public enum FieldProductionKind {
     INLINE_VALUE,
     DELAYED_ENTITY_FIELD,
     CHILD_OBJECTS,
+    /** One component object composed from the owning entity itself. */
+    OWNED_COMPONENT,
     /** DERIVED, not fetched: this field is the inverse of a forward reference on
      *  the referenced class — built in memory from data already generated, with no
      *  query. E.g. {@code Category.nominees} = the reverse of
@@ -23,6 +25,7 @@ public enum FieldProductionKind {
             case INLINE_VALUE -> "Simple property";
             case DELAYED_ENTITY_FIELD -> "Related entity values";
             case CHILD_OBJECTS -> "Related objects";
+            case OWNED_COMPONENT -> "Owned component (same entity)";
             case INVERT -> "Invert (reverse of another field)";
             case COMPANION_MATCH -> "Companion match (outcome flag)";
             case AUTO -> "Auto";

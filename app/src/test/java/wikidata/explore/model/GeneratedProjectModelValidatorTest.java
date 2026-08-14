@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedProjectModelValidator.ValidationResult;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedProjectModelValidatorTest {
@@ -111,5 +112,65 @@ class GeneratedProjectModelValidatorTest {
 
         assertFalse(result.valid(),
                 "a flat unknown match value field remains a blocking error");
+    }
+
+    @Test void aValidOwnedComponentNeedsNoOwnerConfigurationOnTheTarget() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.instanceMapping().propertyPid("P31");
+        person.instanceMapping().sourceQid("Q5");
+        GeneratedFieldModel field = person.addField(
+                "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        field.entityClassName("Name");
+        field.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.addField("givenName", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P735");
+        project.addClass(person);
+        project.addClass(name);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(), result.format());
+        assertTrue(MembershipPattern.describe(name, project)
+                .contains("Person.structuredName"));
+    }
+
+    @Test void extensionAndOwnedCompositionOfTheSameClassIsRejected() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.baseClassName("Name");
+        GeneratedFieldModel field = person.addField(
+                "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        field.entityClassName("Name");
+        field.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        project.addClass(name);
+        project.addClass(person);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("already is a Name")), result.format());
+    }
+
+    @Test void ownedSelfCycleHasOneClearDiagnostic() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        GeneratedFieldModel field = name.addField(
+                "birthName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        field.entityClassName("Name");
+        field.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        project.addClass(name);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertEquals(1, result.errors().stream()
+                .filter(problem -> problem.message().contains("Owned-component cycle"))
+                .count(), result.format());
+        assertFalse(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("through class extension")), result.format());
     }
 }

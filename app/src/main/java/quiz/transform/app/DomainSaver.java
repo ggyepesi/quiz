@@ -55,7 +55,9 @@ public final class DomainSaver implements DomainWriter {
         d.savedAt(java.time.LocalDateTime.now().toString());
 
         DatasetRegistry reg = DatasetRegistry.load();
-        reg.upsert(d);
+        // This may be a transformed view of a ModelBuilder domain with the same key.
+        // Keep that domain's model/rule-tree identity while replacing its served snapshot.
+        reg.upsertSnapshot(d);
         reg.save();
 
         return "Saved \"" + name + "\"  (" + members.size() + " members, types "

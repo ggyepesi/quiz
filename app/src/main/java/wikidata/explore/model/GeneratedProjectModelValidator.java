@@ -33,6 +33,7 @@ public final class GeneratedProjectModelValidator {
 
         validateUniqueClassNames(project, problems);
         validateSelectionsAndKindRules(project, problems);
+        validateOwnedComponentCycles(project, problems);
 
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) {
@@ -40,6 +41,7 @@ public final class GeneratedProjectModelValidator {
             }
 
             validateClassReferences(project, clazz, problems);
+            validateOwnedComponentFields(project, clazz, problems);
             validateBaseCycle(project, clazz, problems);
             validateCanonical(clazz, problems);
 
@@ -52,6 +54,79 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    private static void validateOwnedComponentFields(
+            GeneratedProjectModel project, GeneratedClassModel owner,
+            List<Problem> problems) {
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null || field.mapping().productionKind()
+                    != FieldProductionKind.OWNED_COMPONENT) continue;
+            if (field.type() != FieldType.ENTITY
+                    || field.cardinality() != FieldCardinality.SINGLE) {
+                problems.add(Problem.error(path(owner, field),
+                        "An owned component must be a single ENTITY field."));
+            }
+            if (!clean(field.mapping().propertyPid()).isBlank()) {
+                problems.add(Problem.error(path(owner, field),
+                        "An owned component field has no property; its target fields "
+                                + "load properties using the owner identity."));
+            }
+            GeneratedClassModel target = project.findClass(field.entityClassName());
+            if (target == null) continue; // ordinary reference validation reports it
+            // Equality is the self-cycle diagnosed by validateOwnedComponentCycles.
+            // This check is specifically for a distinct owner that already inherits
+            // the target and would redundantly compose it a second time.
+            if (!owner.className().equals(target.className())
+                    && project.isSameOrSubclass(owner.className(), target.className())) {
+                problems.add(Problem.error(path(owner, field),
+                        "The owner already is a " + target.className()
+                                + " through class extension; a nested component is redundant."));
+            }
+            FieldSourceMapping effective = target.effectiveInstanceMapping(project);
+            boolean independentlyPopulated = target.reifiesStatements()
+                    || !target.seedQids().isEmpty()
+                    || effective != null && (!clean(effective.sourceQid()).isBlank()
+                        || !effective.additionalTypeQids().isEmpty())
+                    || MembershipPattern.kindRule(target, project) != null;
+            if (independentlyPopulated) {
+                problems.add(Problem.error(path(owner, field),
+                        "Owned component class '" + target.className()
+                                + "' must not define an independent membership source."));
+            }
+        }
+    }
+
+    private static void validateOwnedComponentCycles(
+            GeneratedProjectModel project, List<Problem> problems) {
+        for (GeneratedClassModel start : project.classes()) {
+            if (start == null) continue;
+            java.util.LinkedHashSet<String> path = new java.util.LinkedHashSet<>();
+            if (ownedCycle(project, start.className(), start.className(), path)) {
+                problems.add(Problem.error(start.className(),
+                        "Owned-component cycle: " + String.join(" -> ", path)
+                                + " -> " + start.className()));
+            }
+        }
+    }
+
+    private static boolean ownedCycle(
+            GeneratedProjectModel project, String start, String current,
+            java.util.LinkedHashSet<String> path) {
+        if (!path.add(current)) return current.equals(start);
+        GeneratedClassModel model = project.findClass(current);
+        if (model != null) for (GeneratedFieldModel field : model.fields()) {
+            if (field != null && field.mapping().productionKind()
+                    == FieldProductionKind.OWNED_COMPONENT) {
+                String next = clean(field.entityClassName());
+                if (next.equals(start)
+                        || (!next.isBlank() && ownedCycle(project, start, next, path))) {
+                    return true;
+                }
+            }
+        }
+        path.remove(current);
+        return false;
     }
 
     private static void validateSelectionsAndKindRules(

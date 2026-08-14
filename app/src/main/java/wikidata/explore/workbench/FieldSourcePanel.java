@@ -182,6 +182,7 @@ public class FieldSourcePanel extends JPanel {
                     productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
             refreshCompanionRows();
             refreshStatementFieldControls();
+            refreshOwnedComponentControls();
         });
         productionBox.setToolTipText(
                 productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
@@ -229,6 +230,26 @@ public class FieldSourcePanel extends JPanel {
                         refreshStatementFieldControls();
                     }
                 });
+    }
+
+    private void refreshOwnedComponentControls() {
+        boolean owned = productionBox.getSelectedItem()
+                == FieldProductionKind.OWNED_COMPONENT;
+        propertyPidField.setEnabled(!owned);
+        sourceTypeBox.setEnabled(!owned);
+        directionBox.setEnabled(!owned);
+        requiredBox.setEnabled(!owned);
+        onlyRelatedOfTypeBox.setEnabled(!owned);
+        if (owned) {
+            qualifierPidField.setEnabled(false);
+            typeBox.setSelectedItem(FieldType.ENTITY);
+            shapeBox.setSelectedItem(FieldCardinality.SINGLE);
+            renderModeBox.setSelectedItem(FieldRenderMode.INLINE);
+            propertyPidField.setText("");
+            qualifierPidField.setText("");
+            requiredBox.setSelected(false);
+            onlyRelatedOfTypeBox.setSelected(false);
+        }
     }
 
     public void afterChange(Consumer<Void> afterChange) {
@@ -697,6 +718,14 @@ public class FieldSourcePanel extends JPanel {
         m.qualifierPid(
                 RuleNode.cleanPid(qualifierPidField.getText()));
         Object pk = productionBox.getSelectedItem();
+        boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
+        if (ownedComponent) {
+            // The edge itself is the producer. The component's declared fields load
+            // their own properties using the owner's identifier.
+            m.propertyPid("");
+            m.propertyLabel("");
+            m.qualifierPid("");
+        }
         boolean dateProjection = field.type() == FieldType.DATE
                 && pk == FieldProductionKind.AUTO;
         if (pk == FieldProductionKind.COMPANION_MATCH || dateProjection) {
@@ -721,6 +750,11 @@ public class FieldSourcePanel extends JPanel {
         }
 
         field.definition(fieldDefinitionPanel.definition());
+        if (ownedComponent) {
+            field.type(FieldType.ENTITY);
+            field.cardinality(FieldCardinality.SINGLE);
+            field.renderMode(FieldRenderMode.INLINE);
+        }
         // Auto display keeps the established inference; an explicit shared field
         // definition wins in both ModelBuilder and TransformApp.
         if (field.type() != FieldType.AUTO
@@ -856,6 +890,12 @@ public class FieldSourcePanel extends JPanel {
                     + "separate per-parent query (<b>needs depth ≥ 1</b>).<br>"
                     + "<i>Example:</i> a constellation's stars, each carrying its "
                     + "own apparent magnitude.</html>";
+            case OWNED_COMPONENT -> "<html><b>Owned component</b> — create one "
+                    + "object from this owner itself. It uses the owner's QID; the "
+                    + "target class's fields load their properties from that QID. "
+                    + "No property is configured on this producing field.<br>"
+                    + "<i>Example:</i> Person.structuredName → Name, where Name.givenName "
+                    + "loads P735 and Name.familyName loads P734.</html>";
             case INVERT -> "<html><b>Invert</b> — <b>derived</b>, not fetched: the "
                     + "reverse of a forward reference on the referenced class, built "
                     + "in memory from data already generated (no query, no depth, no "

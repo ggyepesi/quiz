@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.api.FakeWikidataApiClient;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -17,6 +18,45 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ReferentFieldLoadTest {
+
+    @Test void ownedComponentFieldsLoadFromTheOwnerQid() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.instanceMapping().propertyPid("P31");
+        person.instanceMapping().sourceQid("Q5");
+        GeneratedFieldModel structuredName = person.addField(
+                "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        structuredName.entityClassName("Name");
+        structuredName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        GeneratedFieldModel given = name.addField(
+                "givenName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        given.entityClassName("GivenName");
+        given.mapping().propertyPid("P735");
+        GeneratedFieldModel family = name.addField(
+                "familyName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        family.entityClassName("FamilyName");
+        family.mapping().propertyPid("P734");
+        model.rootClass(person);
+        model.addClass(name);
+
+        WikidataDynamicObject owner = new WikidataDynamicObject("Q42", "Douglas Adams");
+        owner.type("Person");
+        OwnedComponents.Result made = OwnedComponents.apply(
+                model, List.of(owner), null, null);
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .entity("Q42", "Douglas Adams", Map.of(
+                        "P735", List.of("Q463035"), "P734", List.of("Q351735")))
+                .entity("Q463035", "Douglas")
+                .entity("Q351735", "Adams");
+
+        assertEquals(2, ReferentFieldLoad.apply(model, List.of(owner), api, null));
+        WikidataDynamicObject component = made.components().get(0);
+        assertEquals("Douglas",
+                ((WikidataDynamicObject) component.get("givenName")).getDisplayName());
+        assertEquals("Adams",
+                ((WikidataDynamicObject) component.get("familyName")).getDisplayName());
+    }
 
     @Test void loadsFieldsForEveryDirectRoleOfASharedReferent() {
         GeneratedProjectModel model = new GeneratedProjectModel();

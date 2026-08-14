@@ -146,11 +146,16 @@ public final class ViewableToWdo {
                 byType.computeIfAbsent(instance.typeKey(), ignored -> new ArrayList<>())
                         .add(instance);
             }
+            // Sharing an identifier across DIFFERENT types decides nothing: ⟨typeKey, id⟩
+            // keeps those apart by construction, and it is now the NORMAL case — an owned
+            // component borrows its owner's identity, so reporting it would print a block
+            // per component. Only same-type copies, which MERGE, are worth reading about.
             boolean sameTypeCopies = byType.values().stream().anyMatch(v -> v.size() > 1);
+            if (!sameTypeCopies) {
+                continue;
+            }
             report.append("  \"").append(e.getKey()).append("\"  ")
-                    .append(sameTypeCopies
-                            ? "— same-type copies merged; different types kept separate"
-                            : "— kept separate by ⟨type, id⟩")
+                    .append("— same-type copies merged; different types kept separate")
                     .append('\n');
             for (WikidataDynamicObject w : instances) {
                 report.append("      · ⟨").append(w.typeKey()).append(", ")

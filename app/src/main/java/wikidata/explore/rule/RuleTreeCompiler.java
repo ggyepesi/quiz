@@ -150,7 +150,7 @@ public final class RuleTreeCompiler {
             GeneratedProjectModel project,
             Set<String> visited) {
 
-        if (field == null || field.mapping().propertyPid().isBlank()) {
+        if (field == null) {
             return;
         }
 
@@ -168,9 +168,11 @@ public final class RuleTreeCompiler {
         // CompanionMatcher) — not fetched — so they don't belong in the query plan.
         // (COMPANION_MATCH's propertyPid is the companion property, not a value to load.)
         if (kind == FieldProductionKind.INVERT
-                || kind == FieldProductionKind.COMPANION_MATCH) {
+                || kind == FieldProductionKind.COMPANION_MATCH
+                || kind == FieldProductionKind.OWNED_COMPONENT) {
             return;
         }
+        if (field.mapping().propertyPid().isBlank()) return;
 
         // A numeric filter on this field (e.g. apparentMagnitude <= 3) constrains
         // the owning class's instances to those that satisfy it.
@@ -414,7 +416,7 @@ public final class RuleTreeCompiler {
             CompiledProjectModel project,
             Set<String> visited) {
 
-        if (field == null || field.source().propertyPid().isBlank()) {
+        if (field == null) {
             return;
         }
         if (field.source().sourceType() == FieldSourceType.DBPEDIA) {
@@ -425,9 +427,11 @@ public final class RuleTreeCompiler {
         CompiledFieldSource m = field.source();
 
         if (kind == FieldProductionKind.INVERT
-                || kind == FieldProductionKind.COMPANION_MATCH) {
+                || kind == FieldProductionKind.COMPANION_MATCH
+                || kind == FieldProductionKind.OWNED_COMPONENT) {
             return;
         }
+        if (field.source().propertyPid().isBlank()) return;
 
         if (field.hasValueFilter()) {
             parent.valueFilters().add(new wikidata.explore.filter.WikidataValueFilter(

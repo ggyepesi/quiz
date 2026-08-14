@@ -66,6 +66,20 @@ Consequences of this framing:
   *properties of the entities in the derived set*, loaded per-referent. See
   [Discovering field properties](#discovering-field-properties) below.
 
+### Owned components — one projected object per owner
+
+An ENTITY field loaded as **Owned component (same entity)** composes one target
+object from each owner. For example, `Person.structuredName → Name` creates a
+`Name` with the Person's QID, then loads `Name.givenName (P735)` and
+`Name.familyName (P734)` against that QID. The field is the production site, so
+`Name` does not repeat an owner-class setting or define a membership query.
+
+The stable identity includes the site — `⟨Name@Person.structuredName, Q42⟩` — so
+two component fields targeting `Name` do not collapse. Subclasses of `Person`
+are admitted automatically. If a class extends `Name`, it already inherits
+Name's fields and should not also compose a nested Name; validation rejects that
+redundant/cyclic shape.
+
 ---
 
 ## Statement (reified class — `StatementClassSource` + `ReifyConstruct`)

@@ -87,6 +87,25 @@ public final class DatasetRegistry {
         datasets.add(d);
     }
 
+    /** Upsert a snapshot produced downstream from an existing domain model without
+     * erasing the model's ownership metadata. TransformApp writes a new snapshot but
+     * does not write a model or rule tree; blank incoming paths therefore mean
+     * "unchanged", not "this domain is no longer model-backed". */
+    public void upsertSnapshot(Dataset snapshot) {
+        if (snapshot == null || snapshot.key() == null || snapshot.key().isBlank()) return;
+        Dataset existing = datasets.stream()
+                .filter(value -> snapshot.key().equals(value.key()))
+                .findFirst().orElse(null);
+        if (existing != null && existing.isModelBacked()
+                && !snapshot.isModelBacked()) {
+            snapshot.modelPath(existing.modelPath());
+            snapshot.ruletreePath(existing.ruletreePath());
+            snapshot.rootClass(existing.rootClass());
+            snapshot.modelSignature(existing.modelSignature());
+        }
+        upsert(snapshot);
+    }
+
     // ------------------------------------------------------------------
     // Store
     // ------------------------------------------------------------------

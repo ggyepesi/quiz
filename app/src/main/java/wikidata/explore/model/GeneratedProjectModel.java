@@ -244,6 +244,20 @@ public class GeneratedProjectModel {
         return null;
     }
 
+    /** True when {@code candidate} is {@code expected} or extends it, following the
+     * model's single-inheritance chain. Cycles are tolerated here and diagnosed by
+     * structural validation; consumers still get a terminating membership answer. */
+    public boolean isSameOrSubclass(String candidate, String expected) {
+        if (candidate == null || expected == null) return false;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (String current = candidate; current != null && seen.add(current); ) {
+            if (expected.equals(current)) return true;
+            GeneratedClassModel model = findClass(current);
+            current = model == null || !model.hasBase() ? null : model.baseClassName();
+        }
+        return false;
+    }
+
     public GeneratedClassModel getOrCreateClass(String name) {
         String clean =
                 name == null || name.isBlank()

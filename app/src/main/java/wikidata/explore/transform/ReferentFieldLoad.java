@@ -24,8 +24,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Loads a REFERENCED-only class's declared entity-valued property-fields onto its
- * referents — the general form of "give an identity holder its own fields." A
+ * Loads a REFERENCED-only or OWNED_COMPONENT class's declared property-fields onto
+ * its instances — the general form of "give a non-root identity holder its own fields." A
  * referenced-only class (e.g. {@code Nominee}, {@code ForWork}) has no membership
  * of its own and is never extracted as a root, so the normal field pipeline never
  * runs for it; its members only ever appear as referents. This pass closes that
@@ -60,7 +60,9 @@ public final class ReferentFieldLoad {
         Map<String, List<GeneratedFieldModel>> byClass = new LinkedHashMap<>();
         for (GeneratedClassModel c : model.classes()) {
             if (c == null
-                    || MembershipPattern.of(c, model) != MembershipPattern.REFERENCED) {
+                    || (MembershipPattern.of(c, model) != MembershipPattern.REFERENCED
+                        && MembershipPattern.of(c, model)
+                                != MembershipPattern.OWNED_COMPONENT)) {
                 continue;
             }
             List<GeneratedFieldModel> fields = new ArrayList<>();
