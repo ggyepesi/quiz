@@ -40,6 +40,7 @@ public final class ViewStepsPanel extends JPanel {
     private final JComboBox<String> selectionCombo = new JComboBox<>();
     private final JComboBox<String> secondSelectionCombo = new JComboBox<>();
     private boolean refreshingTypes;
+    private boolean refreshingSchema;
 
     // The single-select field picker: the shared field-config table in SINGLE mode over
     // the SHARED config source, so it shows the same fields / order / types as the
@@ -194,6 +195,16 @@ public final class ViewStepsPanel extends JPanel {
         }
         controller.selectType((String) memberTypeCombo.getSelectedItem());
         rebuildFieldTree();
+    }
+
+    /** Rebuild fields when the selected group's explicit type specification changes. */
+    public void refreshSchema() {
+        refreshingSchema = true;
+        try {
+            rebuildFieldTree();
+        } finally {
+            refreshingSchema = false;
+        }
     }
 
     private JComponent memberRow() {
@@ -371,6 +382,11 @@ public final class ViewStepsPanel extends JPanel {
         reloadOperators(kindOf(f));
         populateValueChoices(f);
         updateScopeLabels();
+        // Rebuilding rows for a newly selected group's explicit TypeSpec is a schema
+        // refresh, not a user field/scope edit. Calling the parent here re-enters the
+        // group's show handler, which refreshes the schema again and prevents the
+        // instance/group split from ever being installed.
+        if (refreshingSchema) return;
         // Field selection and value scope are separate pieces of state, but the parent needs
         // both on every change: field actions still target the selected field while All is
         // active. Missing/Present cannot survive clearing the field selection.

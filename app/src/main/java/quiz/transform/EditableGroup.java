@@ -12,6 +12,9 @@ import java.util.Map;
 /** Mutable working-tree node shared by manual and rule-produced groups. */
 public class EditableGroup extends ViewableGroupAdapter {
 
+    /** The LOGICAL class of every group carrier, whatever Java class implements it. */
+    public static final String GROUP_TYPE = "ViewableGroup";
+
     private final String name;
 
     public EditableGroup(String name) {
@@ -20,6 +23,14 @@ public class EditableGroup extends ViewableGroupAdapter {
     }
 
     public String name() { return name; }
+
+    /** A group's identity class is {@link #GROUP_TYPE}, never the Java subclass. HOW a
+     *  group is produced (manual, facet, filter, type-spec) is DATA — the {@code producer}
+     *  rule field {@link #copyOf} reads back — not a different kind of object. Persisting
+     *  the subclass name would move a group's ⟨typeKey, id⟩ the moment it is edited, so
+     *  one group loaded as ViewableGroup and re-saved from its EditableGroup copy would
+     *  become two objects. */
+    @Override public String typeName() { return GROUP_TYPE; }
 
     /** File children under the undecorated name, so a produced group's rule-decorated
      *  display name ({@link FacetGroup#getDisplayName()}) never becomes the sibling key. */
@@ -71,13 +82,19 @@ public class EditableGroup extends ViewableGroupAdapter {
     }
 
     public static EditableGroup copyOf(ViewableGroup<?> source) {
-        return copyOf(source, new java.util.IdentityHashMap<>());
+        return copyOf(source, null);
+    }
+
+    public static EditableGroup copyOf(
+            ViewableGroup<?> source, quiz.transform.ui.DomainModel domain) {
+        return copyOf(source, domain, new java.util.IdentityHashMap<>());
     }
 
     // A revisited source returns its in-progress copy, so a cyclic/DAG persisted graph
     // reconstructs without infinite recursion (and shared nodes copy once).
     private static EditableGroup copyOf(
-            ViewableGroup<?> source, Map<ViewableGroup<?>, EditableGroup> seen) {
+            ViewableGroup<?> source, quiz.transform.ui.DomainModel domain,
+            Map<ViewableGroup<?>, EditableGroup> seen) {
         EditableGroup existing = seen.get(source);
         if (existing != null) return existing;
         objectview.field.FieldSet fields = source.fields();
@@ -100,6 +117,20 @@ public class EditableGroup extends ViewableGroupAdapter {
                     new quiz.transform.pipeline.ui.FilterCondition(
                             domainField, operator,
                             fields.read("filterValue"), fields.read("filterValue2")));
+        } else if ("typeSpec".equals(producer)) {
+            // A type-spec rule cannot be rebuilt without a domain to match against.
+            // Degrading it to a plain member list would silently drop the rule and
+            // stop the group tracking its parent — fail loud instead of guessing.
+            if (domain == null) {
+                throw new IllegalStateException(
+                        "Reconstructing a TypeSpecGroup requires a domain; "
+                                + "call copyOf(source, domain).");
+            }
+            String instanceClass = text(fields.read("typeSpecInstanceClass"));
+            if (instanceClass.isBlank()) instanceClass = text(fields.read("memberType"));
+            copy = new TypeSpecGroup(name,
+                    TypeSpec.decode(instanceClass,
+                            text(fields.read("typeSpecFields"))), domain);
         } else {
             copy = new EditableGroup(name);
         }
@@ -108,7 +139,7 @@ public class EditableGroup extends ViewableGroupAdapter {
         copy.setKeyRef(source.getKeyRef());
         copy.replaceMembers(source.getMembers());
         for (ViewableGroup<?> child : source.getChildren()) {
-            copy.addGroup(copyOf(child, seen));
+            copy.addGroup(copyOf(child, domain, seen));
         }
         return copy;
     }

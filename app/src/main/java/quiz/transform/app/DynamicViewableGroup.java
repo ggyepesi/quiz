@@ -52,13 +52,18 @@ public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
         return MultiRootGroup.of(adapted, "All");
     }
 
-    private static boolean isGroup(WikidataDynamicObject object) {
+    /** Every group is now written under the one logical group class
+     *  ({@link quiz.transform.EditableGroup#GROUP_TYPE}); its producer is a rule field.
+     *  The remaining names are the Java subclass names older snapshots were saved under
+     *  — read-compatibility only, never written again. */
+    static boolean isGroup(WikidataDynamicObject object) {
         if (object == null) return false;
         String type = object.typeName();
-        return "ViewableGroup".equals(type)
+        return quiz.transform.EditableGroup.GROUP_TYPE.equals(type)
                 || "EditableGroup".equals(type)
                 || "FacetGroup".equals(type)
-                || "OperationGroup".equals(type);
+                || "OperationGroup".equals(type)
+                || "TypeSpecGroup".equals(type);
     }
 
     private static DynamicViewableGroup wrap(

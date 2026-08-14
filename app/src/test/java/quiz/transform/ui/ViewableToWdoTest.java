@@ -203,11 +203,13 @@ class ViewableToWdoTest {
                 .findFirst().orElseThrow().getIdentifier());
     }
 
-    @Test void aGroupBindingResolvesToTheMemberReferencedGroupNotAnEditableCopy() {
+    @Test void aGroupBindingAndAMemberReferenceResolveToOneGroupObject() {
         // The "save manual States as domain" shape: a member references a
         // ViewableGroup, and the group-root binding is the transform-app's
         // EditableGroup COPY of the same root. Both paths must resolve to ONE
-        // ⟨ViewableGroup, id⟩ — the EditableGroup copy must never be snapshotted.
+        // ⟨ViewableGroup, id⟩ — the bound (edited) tree is the one that survives,
+        // and the member's reference resolves to it rather than adding a second
+        // representation of the same group.
         ViewableGroup root = new ViewableGroup("All");
         ViewableGroup leaf = root.getOrCreateChild("Lozengy");
         GroupedEntity member = new GroupedEntity("m1");
@@ -221,16 +223,196 @@ class ViewableToWdoTest {
                         "GroupedEntity", editableRoot)),
                 null);
 
-        // The EditableGroup copy never enters the pool.
+        // A group is persisted under its logical class, never the Java subclass that
+        // happens to carry it — otherwise editing a group would move its identity.
         assertTrue(converted.allObjects().stream()
                         .noneMatch(o -> "EditableGroup".equals(o.typeName())),
-                "the transform-app EditableGroup copy must not be snapshotted");
-        // The binding resolved to the member-referenced group.
+                "a group carrier's Java subclass must not become its persisted type");
         assertEquals("ViewableGroup",
                 converted.groupRootBindings().get(0).root().typeName());
         // Exactly one group object per id (root + leaf) — no duplicate representation.
         assertEquals(2, converted.allObjects().stream()
                         .filter(o -> "ViewableGroup".equals(o.typeName())).count());
+        // The member's own reference is that same object, not a second copy of it.
+        assertTrue(((java.util.Map<?, ?>) converted.allObjects().stream()
+                        .filter(o -> "m1".equals(o.getIdentifier()))
+                        .findFirst().orElseThrow().get("groups")).values().stream()
+                        .allMatch(referenced -> converted.allObjects().stream()
+                                .anyMatch(o -> o == referenced)),
+                "a member's group reference must be the converted group itself");
+    }
+
+    @Test void anEditAddedToTheBoundTreeSurvivesTheMemberReferencedOriginal() {
+        // The type-spec-group shape: the loaded tree is still what members point at,
+        // while the child the user just added exists only on the edited copy. Saving
+        // must keep the edit AND leave one object per group id.
+        ViewableGroup root = new ViewableGroup("All");
+        ViewableGroup leaf = root.getOrCreateChild("Lozengy");
+        GroupedEntity member = new GroupedEntity("m1");
+        member.groups.put(leaf.getIdentifier(), leaf);
+
+        quiz.transform.EditableGroup editableRoot =
+                quiz.transform.EditableGroup.copyOf(root);
+        quiz.transform.EditableGroup added = new quiz.transform.EditableGroup("Added");
+        editableRoot.addGroup(added);
+
+        var converted = ViewableToWdo.convertDomain(
+                java.util.List.of(member),
+                java.util.List.of(new objectview.viewconfig.DomainGroupRoot(
+                        "GroupedEntity", editableRoot)),
+                null);
+
+        assertTrue(converted.allObjects().stream()
+                        .anyMatch(o -> "All.Added".equals(o.getIdentifier())),
+                "the added child must be saved");
+        assertEquals(3, converted.allObjects().stream()
+                        .filter(o -> "ViewableGroup".equals(o.typeName())).count(),
+                "root + leaf + added, each exactly once");
+    }
+
+    @Test void aLoadedWdoMembersOldGroupReferenceIsReboundToTheEditedTree() {
+        WikidataDynamicObject oldLeaf = new WikidataDynamicObject("All.People", "People");
+        oldLeaf.type("ViewableGroup");
+        oldLeaf.typeKey("ViewableGroup");
+        WikidataDynamicObject member = new WikidataDynamicObject("m1", "m1");
+        member.type("GroupedEntity");
+        member.typeKey("GroupedEntity");
+        member.put("groups", new java.util.LinkedHashMap<>(
+                java.util.Map.of(oldLeaf.getIdentifier(), oldLeaf)));
+
+        quiz.transform.EditableGroup editedRoot = new quiz.transform.EditableGroup("All");
+        quiz.transform.EditableGroup editedLeaf = new quiz.transform.EditableGroup("People");
+        editedRoot.addGroup(editedLeaf);
+
+        var converted = ViewableToWdo.convertDomain(
+                java.util.List.of(member),
+                java.util.List.of(new objectview.viewconfig.DomainGroupRoot(
+                        "GroupedEntity", editedRoot)), null);
+
+        WikidataDynamicObject savedMember = converted.memberRoots().get(0);
+        assertTrue(savedMember != member, "saving must not mutate the loaded snapshot carrier");
+        Object savedReference = ((java.util.Map<?, ?>) savedMember.get("groups"))
+                .get("All.People");
+        assertTrue(savedReference == converted.allObjects().stream()
+                        .filter(o -> "All.People".equals(o.getIdentifier()))
+                        .findFirst().orElseThrow(),
+                "the loaded back-reference must point at the edited group conversion");
+        assertTrue(savedReference != oldLeaf,
+                "the old snapshot group must not leak into the saved graph");
+    }
+
+    /** A group registers under NO member type when it is reached while walking a member,
+     *  so every scan over the registry must tolerate an unscoped key. Two members sharing
+     *  one group is all it takes to put such a key in front of the second one. */
+    @Test void twoMembersMayShareAGroupThatNoBindingScopes() {
+        ViewableGroup root = new ViewableGroup("All");
+        ViewableGroup leaf = root.getOrCreateChild("Lozengy");
+        GroupedEntity one = new GroupedEntity("m1");
+        one.groups.put(leaf.getIdentifier(), leaf);
+        GroupedEntity two = new GroupedEntity("m2");
+        two.groups.put(leaf.getIdentifier(), leaf);
+
+        List<WikidataDynamicObject> pool = ViewableToWdo.pool(List.of(one, two));
+
+        assertEquals(2, pool.size());
+        assertEquals(pool.get(0).get("groups"), pool.get(1).get("groups"),
+                "both members reference the one converted group");
+    }
+
+    /** Without a bound tree for the member's type there is nothing authoritative to say
+     *  a group was removed, so its references must survive the save untouched. */
+    @Test void groupReferencesSurviveASaveThatBindsNoTree() {
+        WikidataDynamicObject group = loadedGroup("All.People", "People");
+        WikidataDynamicObject member = loadedMember("m1");
+        member.put("groups", new java.util.LinkedHashMap<>(
+                java.util.Map.of(group.getIdentifier(), group)));
+
+        List<WikidataDynamicObject> pool = ViewableToWdo.pool(List.of(member), null);
+
+        assertEquals(java.util.Set.of("All.People"),
+                ((java.util.Map<?, ?>) pool.get(0).get("groups")).keySet(),
+                "an unbound save must not drop what it cannot speak for");
+    }
+
+    /** A group is rebound because it IS a group, not because of the field name it sits
+     *  under, and at any depth — otherwise a legacy group leaks into the saved graph. */
+    @Test void aGroupIsReboundUnderAnyFieldNameAndAtAnyDepth() {
+        WikidataDynamicObject oldGroup = loadedGroup("All.People", "People");
+        WikidataDynamicObject nested = loadedMember("m3");
+        nested.put("groups", new java.util.LinkedHashMap<>(
+                java.util.Map.of(oldGroup.getIdentifier(), oldGroup)));
+        WikidataDynamicObject member = loadedMember("m1");
+        member.put("primaryGroup", oldGroup);
+        member.put("colleague", nested);
+
+        quiz.transform.EditableGroup editedRoot = new quiz.transform.EditableGroup("All");
+        quiz.transform.EditableGroup editedLeaf =
+                new quiz.transform.EditableGroup("People");
+        editedRoot.addGroup(editedLeaf);
+        var converted = ViewableToWdo.convertDomain(List.of(member),
+                List.of(new objectview.viewconfig.DomainGroupRoot(
+                        "GroupedEntity", editedRoot)), null);
+
+        WikidataDynamicObject saved = converted.memberRoots().get(0);
+        WikidataDynamicObject editedConversion = converted.allObjects().stream()
+                .filter(o -> "All.People".equals(o.getIdentifier()))
+                .findFirst().orElseThrow();
+        assertTrue(saved.get("primaryGroup") == editedConversion,
+                "a group under another field name is rebound too");
+        WikidataDynamicObject savedNested = (WikidataDynamicObject) saved.get("colleague");
+        assertTrue(savedNested != nested, "a nested member is copied, not shared");
+        assertTrue(((java.util.Map<?, ?>) savedNested.get("groups")).get("All.People")
+                        == editedConversion,
+                "a nested member's group reference is rebound at depth");
+    }
+
+    private static WikidataDynamicObject loadedGroup(String id, String name) {
+        WikidataDynamicObject group = new WikidataDynamicObject(id, name);
+        group.type("ViewableGroup");
+        group.typeKey("ViewableGroup");
+        return group;
+    }
+
+    private static WikidataDynamicObject loadedMember(String id) {
+        WikidataDynamicObject member = new WikidataDynamicObject(id, id);
+        member.type("GroupedEntity");
+        member.typeKey("GroupedEntity");
+        return member;
+    }
+
+    @Test void equalGroupPathsInDifferentMemberTypeTreesRemainDistinct() {
+        quiz.transform.EditableGroup first = new quiz.transform.EditableGroup("All");
+        quiz.transform.EditableGroup second = new quiz.transform.EditableGroup("All");
+
+        var converted = ViewableToWdo.convertDomain(java.util.List.of(), java.util.List.of(
+                new objectview.viewconfig.DomainGroupRoot("First", first),
+                new objectview.viewconfig.DomainGroupRoot("Second", second)), null);
+
+        WikidataDynamicObject firstRoot = converted.groupRootBindings().get(0).root();
+        WikidataDynamicObject secondRoot = converted.groupRootBindings().get(1).root();
+        assertTrue(firstRoot != secondRoot,
+                "member-type roots with the same display path are different groups");
+        assertFalse(firstRoot.typeKey().equals(secondRoot.typeKey()),
+                "their persisted identity types must remain distinct too");
+    }
+
+    @Test void anUnboundMemberKeepsItsGroupWhenThePathExistsInTwoBoundTrees() {
+        quiz.transform.EditableGroup first = new quiz.transform.EditableGroup("All");
+        quiz.transform.EditableGroup second = new quiz.transform.EditableGroup("All");
+        WikidataDynamicObject oldGroup = loadedGroup("All", "All");
+        WikidataDynamicObject unbound = new WikidataDynamicObject("u1", "u1");
+        unbound.type("Unbound");
+        unbound.typeKey("Unbound");
+        unbound.put("groups", new java.util.LinkedHashMap<>(
+                java.util.Map.of("All", oldGroup)));
+
+        var converted = ViewableToWdo.convertDomain(List.of(unbound), List.of(
+                new objectview.viewconfig.DomainGroupRoot("First", first),
+                new objectview.viewconfig.DomainGroupRoot("Second", second)), null);
+
+        WikidataDynamicObject saved = converted.memberRoots().get(0);
+        assertTrue(((java.util.Map<?, ?>) saved.get("groups")).get("All") == oldGroup,
+                "an unbound member must retain the reference when no bound tree can be chosen");
     }
 
     @Test void preservesMapKeys() {

@@ -25,6 +25,8 @@ public final class TransformController {
     public static final String ALL_ENTITIES = "All entities";
 
     private final WorkingDomain domain;
+    private quiz.transform.TypeSpec activeTypeSpec;
+    private DomainModel activeView;   // cached TypeSpecDomainView for activeTypeSpec
     private final DomainWriter writer;
     private String selectedType;
 
@@ -52,7 +54,7 @@ public final class TransformController {
         return result;
     }
     public List<DomainField> fields(String type) {
-        return ALL_ENTITIES.equals(type) ? List.of() : domain.fields(type);
+        return ALL_ENTITIES.equals(type) ? List.of() : schemaDomain(type).fields(type);
     }
 
     /** Declare a new empty scalar/media field on {@code type} — a schema act that surfaces
@@ -78,10 +80,67 @@ public final class TransformController {
         return ALL_ENTITIES.equals(type) ? Set.of() : domain.structuralFields(type);
     }
     public FieldTypeSource fieldTypes(String type) {
-        return ALL_ENTITIES.equals(type) ? name -> null : domain.fieldTypes(type);
+        return ALL_ENTITIES.equals(type) ? name -> null : schemaDomain(type).fieldTypes(type);
     }
     public FieldSchema fieldSchema(String type) {
-        return ALL_ENTITIES.equals(type) ? null : domain.fieldSchema(type);
+        return ALL_ENTITIES.equals(type) ? null : schemaDomain(type).fieldSchema(type);
+    }
+
+    /** Schema for a rendered object in a group-scoped view. The root instance uses the
+     *  TypeSpec projection; a referenced object uses its own actual modeled class. */
+    public FieldSchema renderedFieldSchema(Viewable instance, String rootType) {
+        if (instance == null) return null;
+        if (rootType != null && domain.isInstanceOf(instance, rootType)) {
+            return fieldSchema(mostSpecificClass(instance, rootType));
+        }
+        String actual = domain.mostSpecificClass(instance);
+        return domain.fieldSchema(actual == null ? instance.typeName() : actual);
+    }
+
+    private DomainModel schemaDomain(String type) {
+        return activeView != null && activeTypeSpec.instanceClass().equals(type)
+                ? activeView : domain;
+    }
+
+    /** Select a group and report whether its effective schema differs from the active one. */
+    public boolean selectGroup(objectview.group.ViewableGroup<?> group) {
+        quiz.transform.TypeSpec effective = effectiveTypeSpec(group);
+        if (java.util.Objects.equals(activeTypeSpec, effective)) return false;
+        if (effective != null) {
+            activeTypeSpec = effective;
+            // Cache one view per selected group: rebuildFieldTree and the field-config
+            // paths call fields()/fieldTypes()/fieldSchema() repeatedly for the same
+            // selection, and each would otherwise rebuild the projection from scratch.
+            activeView = new TypeSpecDomainView(domain, activeTypeSpec);
+        } else {
+            activeTypeSpec = null;
+            activeView = null;
+        }
+        return true;
+    }
+
+    /** Type constraints are inherited through ordinary and rule-produced child groups. */
+    private static quiz.transform.TypeSpec effectiveTypeSpec(
+            objectview.group.ViewableGroup<?> group) {
+        java.util.ArrayDeque<quiz.transform.TypeSpec> specs = new java.util.ArrayDeque<>();
+        java.util.Set<objectview.group.ViewableGroup<?>> seen =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        for (objectview.group.ViewableGroup<?> current = group;
+             current != null && seen.add(current); current = current.getParent()) {
+            if (current instanceof quiz.transform.TypeSpecGroup typed) {
+                specs.addFirst(typed.spec());
+            }
+        }
+        quiz.transform.TypeSpec effective = null;
+        for (quiz.transform.TypeSpec spec : specs) {
+            effective = effective == null ? spec : effective.refinedBy(spec);
+        }
+        return effective;
+    }
+
+    public quiz.transform.TypeSpec effectiveTypeSpec(
+            quiz.transform.EditableGroup group) {
+        return effectiveTypeSpec((objectview.group.ViewableGroup<?>) group);
     }
     public String baseType(String type) { return domain.baseType(type); }
     public List<String> subtypesOf(String type) { return domain.subtypesOf(type); }
@@ -129,6 +188,57 @@ public final class TransformController {
         group.reproduce(parent.getMembers());
         parent.addGroup(group);
         return group;
+    }
+
+    public quiz.transform.TypeSpecGroup addTypeSpecGroup(
+            quiz.transform.EditableGroup parent, String name,
+            quiz.transform.TypeSpec spec) {
+        if (parent == null || spec == null || !spec.isConfigured()) return null;
+        validateSpecClasses(spec);
+        quiz.transform.TypeSpec inherited = effectiveTypeSpec(parent);
+        quiz.transform.TypeSpec effective = inherited == null ? spec : inherited.refinedBy(spec);
+        validateSpecPaths(effective);
+        quiz.transform.TypeSpecGroup group = new quiz.transform.TypeSpecGroup(
+                name, spec, domain);
+        group.reproduce(parent.getMembers());
+        if (group.getMembers().isEmpty()) {
+            throw new IllegalArgumentException("The type specification admits no instances.");
+        }
+        parent.addGroup(group);
+        return group;
+    }
+
+    /** Reject a spec whose paths cannot be typed against the schema, using the SAME walk
+     *  {@code TypeSpecDomainView} projects with ({@link TypeSpecPaths}). Admission
+     *  navigates values at runtime while the projection resolves classes statically, so
+     *  sharing the walk is what keeps them in agreement — and turns a typo into a clear
+     *  message rather than a mystifying empty group. */
+    private void validateSpecPaths(quiz.transform.TypeSpec spec) {
+        new TypeSpecPaths(domain, spec).validate();
+    }
+
+    /** Every class an instance can be admitted BY. The modeled types plus the classes
+     *  instances are actually stamped with: a stamped, fieldless class (a Person the
+     *  domain has not given fields yet) is a valid restriction even though the field
+     *  graph has no shape to enumerate for it. The class picker MUST offer this set and
+     *  not the narrower {@link #types()}, or the UI refuses rules the rule engine accepts
+     *  — the fieldless-Person case is exactly the one type-spec groups exist for. */
+    public List<String> admissionClasses() {
+        java.util.LinkedHashSet<String> known =
+                new java.util.LinkedHashSet<>(domain.types());
+        domain.instances().stream().filter(java.util.Objects::nonNull)
+                .flatMap(value -> domain.directClasses(value).stream()).forEach(known::add);
+        return List.copyOf(known);
+    }
+
+    private void validateSpecClasses(quiz.transform.TypeSpec spec) {
+        java.util.Set<String> known = java.util.Set.copyOf(admissionClasses());
+        java.util.LinkedHashSet<String> unknown = new java.util.LinkedHashSet<>();
+        if (!known.contains(spec.instanceClass())) unknown.add(spec.instanceClass());
+        spec.fieldClasses().values().stream().flatMap(java.util.Set::stream)
+                .filter(type -> !known.contains(type)).forEach(unknown::add);
+        if (!unknown.isEmpty()) throw new IllegalArgumentException(
+                "Unknown modeled class(es): " + String.join(", ", unknown));
     }
 
     public quiz.transform.EditableGroup addManualGroup(

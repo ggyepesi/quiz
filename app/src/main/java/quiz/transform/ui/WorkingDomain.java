@@ -173,7 +173,6 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         groupRootSignatures.remove(subtype);
         return matched.size();
     }
-
     public quiz.transform.EditableGroup editableGroupRoot(String type) {
         if (type == null) return null;
         quiz.transform.EditableGroup root =
@@ -200,7 +199,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         // this only reconstructs the declared/empty tree shape.
         return declared == null
                 ? new quiz.transform.EditableGroup("All " + type)
-                : quiz.transform.EditableGroup.copyOf(declared);
+                : quiz.transform.EditableGroup.copyOf(declared, this);
     }
 
     @Override public List<String> types() {

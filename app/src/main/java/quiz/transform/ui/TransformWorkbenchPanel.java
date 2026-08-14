@@ -787,8 +787,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .sample(sample)
                     .hiddenFields(controller.structuralFields(type))
                     .fieldTypes(controller.fieldTypes(type))
-                    .fieldSchemas(q -> controller.fieldSchema(
-                            controller.mostSpecificClass(q, type)))
+                    .fieldSchemas(q -> controller.renderedFieldSchema(q, type))
                     .subtypeConfigs(subtypes)
                     .configState(instanceConfigsByType.get(type))
                     .configListener(config -> instanceConfigsByType.put(type, config))
@@ -812,7 +811,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .sample(sample)
                     .hiddenFields(controller.structuralFields(renderedType))
                     .fieldTypes(controller.fieldTypes(renderedType))
-                    .fieldSchemas(q -> controller.fieldSchema(q.typeName()))
+                    .fieldSchemas(q -> controller.renderedFieldSchema(q, renderedType))
                     .configState(instanceConfigsByType.get(renderedType))
                     .configListener(config ->
                             instanceConfigsByType.put(renderedType, config))
@@ -861,6 +860,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         java.util.function.Consumer<objectview.group.ViewableGroup<?>> show = group -> {
             activeGroup = group;
+            boolean schemaChanged = controller.selectGroup(group);
+            if (schemaChanged && viewStepsPanel != null) viewStepsPanel.refreshSchema();
             List<Viewable> members = applySelectionScope(explicitMembers(group));
             List<Viewable> shown = applyFieldScope(members);
             renderedScope = new RenderedScope(generation, selectedType, members, shown);
@@ -878,11 +879,15 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         activeShow = show;
         groups.setShowGroupHandler(show);
         groups.setSelectionHandler(group -> {
+            boolean schemaChanged = controller.selectGroup(group);
+            if (schemaChanged && viewStepsPanel != null) viewStepsPanel.refreshSchema();
             selectedGroup = group instanceof quiz.transform.EditableGroup editable
                     ? editable : null;
             groups.setStatusText(selectedGroupStatus(group));
         });
         groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
+        groups.addControl("Add type-spec group", () -> addTypeSpecGroup(selectedType, root));
+        groups.addControl("Show type spec", this::showSelectedTypeSpec);
         // "Add filter group" is NOT here: its condition is composed on the field panel's
         // operator row, and a control that commits a rule edited elsewhere reads as
         // unrelated to it. Facet and manual groups ask for their own input, so they stay.
@@ -892,7 +897,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         groups.getTree().setSelectionRow(0);
         selectedGroup = root instanceof quiz.transform.EditableGroup editable
                 ? editable : null;
-        show.accept(root);
+        objectview.group.ViewableGroup<?> initial = activeGroup != null
+                && belongsTo(root, activeGroup) ? activeGroup : root;
+        if (!groups.selectGroup(initial, true)) show.accept(root);
 
         JSplitPane split = new JSplitPane(
                 JSplitPane.VERTICAL_SPLIT, instances, groups);
@@ -909,6 +916,34 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         String status = "Selected group: " + name;
         return group instanceof quiz.transform.ProducedGroup produced
                 ? status + " — " + produced.ruleDescription() : status;
+    }
+
+    private static boolean belongsTo(objectview.group.ViewableGroup<?> root,
+                                     objectview.group.ViewableGroup<?> candidate) {
+        for (objectview.group.ViewableGroup<?> current = candidate; current != null;
+             current = current.getParent()) if (current == root) return true;
+        return false;
+    }
+
+    private void showSelectedTypeSpec() {
+        quiz.transform.TypeSpec spec = controller.effectiveTypeSpec(selectedGroup);
+        if (spec == null) {
+            JOptionPane.showMessageDialog(this,
+                    "The selected group has no type specification.", "Type specification",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        StringBuilder text = new StringBuilder("Instance class: ")
+                .append(spec.instanceClass());
+        spec.fieldClasses().forEach((path, types) -> text.append("\n")
+                .append(path).append(": ").append(String.join(" | ", types)));
+        JTextArea area = new JTextArea(text.toString(),
+                Math.max(4, spec.fieldClasses().size() + 2), 44);
+        area.setEditable(false);
+        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, area.getFont().getSize()));
+        JOptionPane.showMessageDialog(this, new JScrollPane(area),
+                "Effective type specification — " + selectedGroup.name(),
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     private JComponent titledInstancePanel(
@@ -950,6 +985,134 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (name == null || name.isBlank()) return;
         controller.addManualGroup(selectedOrRoot(root), name.trim());
         render();
+    }
+
+    private void addTypeSpecGroup(String type, objectview.group.ViewableGroup<?> root) {
+        quiz.transform.EditableGroup parent = selectedOrRoot(root);
+        if (parent == null || type == null) return;
+
+        JTextField name = new JTextField("Typed " + type, 22);
+        // A group is authored inside one class root, exactly like USStates is bound to
+        // USState. Show that class explicitly; choosing another would make the field rows
+        // below belong to a different schema.
+        JComboBox<String> instanceClass = new JComboBox<>(new String[]{type});
+        instanceClass.setSelectedItem(type);
+        // Base schema, not the selected group's refined projection: this dialog lists
+        // the reference fields to CONSTRAIN, so it must see the plain class, not a
+        // TypeSpecDomainView rewrite that may be active for the same type.
+        java.util.List<DomainField> references = controller.domain().fields(type).stream()
+                .filter(DomainField::reference).toList();
+        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(
+                new Object[]{"Instance / reference field", "Allowed class(es)"}, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return column == 1; }
+        };
+        references.forEach(field -> model.addRow(new Object[]{field.field(), ""}));
+        JTable rules = new JTable(model);
+        rules.setFillsViewportHeight(true);
+        rules.getColumnModel().getColumn(0).setPreferredWidth(220);
+        rules.getColumnModel().getColumn(1).setPreferredWidth(260);
+        JComboBox<String> classPicker = new JComboBox<>(
+                controller.admissionClasses().toArray(String[]::new));
+        // One class can be picked directly; unions remain expressible as
+        // "Film | MusicalWork" in the same editor. The choices come from the domain's
+        // explicit modeled/stamped classes, never from sampling the field's values.
+        classPicker.setEditable(true);
+        classPicker.setSelectedItem("");
+        rules.getColumnModel().getColumn(1).setCellEditor(
+                new DefaultCellEditor(classPicker));
+        rules.getColumnModel().getColumn(1).setCellRenderer(
+                new javax.swing.table.DefaultTableCellRenderer() {
+                    @Override public Component getTableCellRendererComponent(
+                            JTable table, Object value, boolean selected, boolean focus,
+                            int row, int column) {
+                        super.getTableCellRendererComponent(
+                                table, value, selected, focus, row, column);
+                        if (value == null || value.toString().isBlank()) {
+                            setText("Choose class(es)…");
+                            if (!selected) setForeground(UIManager.getColor("Label.disabledForeground"));
+                        }
+                        return this;
+                    }
+                });
+
+        JPanel form = new JPanel(new BorderLayout(6, 6));
+        JPanel heading = new JPanel(new GridLayout(0, 2, 6, 6));
+        heading.add(new JLabel("Group name:"));
+        heading.add(name);
+        heading.add(new JLabel("Instance class:"));
+        heading.add(instanceClass);
+        form.add(heading, BorderLayout.NORTH);
+        form.add(new JScrollPane(rules), BorderLayout.CENTER);
+        JLabel help = new JLabel("Enter one or more modeled classes separated by |. "
+                + "All filled rows must match; alternatives within a row use OR, and every "
+                + "value of a multi-valued field must match. Available: "
+                + String.join(", ", controller.admissionClasses()));
+        JButton preview = new JButton("Preview count");
+        JLabel previewResult = new JLabel(" ");
+        preview.addActionListener(event -> {
+            stopTableEditing(rules);
+            quiz.transform.TypeSpec candidate = typeSpecFrom(
+                    (String) instanceClass.getSelectedItem(), model);
+            long matches = parent.getMembers().stream()
+                    .filter(member -> candidate.matches(member, controller.domain())).count();
+            previewResult.setText(matches + " of " + parent.getMembers().size()
+                    + " parent instances will be admitted");
+        });
+        JPanel footer = new JPanel(new BorderLayout(6, 4));
+        footer.add(help, BorderLayout.NORTH);
+        JPanel previewRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        previewRow.add(preview);
+        previewRow.add(previewResult);
+        footer.add(previewRow, BorderLayout.SOUTH);
+        form.add(footer, BorderLayout.SOUTH);
+        form.setPreferredSize(new Dimension(700, Math.min(430, 150 + references.size() * 24)));
+
+        int answer = JOptionPane.showConfirmDialog(this, form, "Add type-spec group",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (answer != JOptionPane.OK_OPTION || name.getText().isBlank()
+                || instanceClass.getSelectedItem() == null) return;
+
+        stopTableEditing(rules);
+        quiz.transform.TypeSpec spec = typeSpecFrom(
+                (String) instanceClass.getSelectedItem(), model);
+        // No second opinion on what a valid class is: the controller validates the spec
+        // and its message is shown below. A stricter copy here would reject rules the
+        // rule engine accepts.
+        try {
+            quiz.transform.TypeSpecGroup created = controller.addTypeSpecGroup(
+                    parent, name.getText().trim(), spec);
+            activeGroup = created;
+            selectedGroup = created;
+            render();
+        } catch (IllegalArgumentException error) {
+            JOptionPane.showMessageDialog(this, error.getMessage(),
+                    "Cannot create group", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private static void stopTableEditing(JTable table) {
+        if (table != null && table.isEditing() && table.getCellEditor() != null) {
+            table.getCellEditor().stopCellEditing();
+        }
+    }
+
+    private static quiz.transform.TypeSpec typeSpecFrom(
+            String instanceClass, javax.swing.table.TableModel model) {
+        java.util.Map<String, java.util.Set<String>> fieldTypes = new java.util.LinkedHashMap<>();
+        for (int row = 0; row < model.getRowCount(); row++) {
+            java.util.Set<String> accepted = parseTypeNames(model.getValueAt(row, 1));
+            if (!accepted.isEmpty()) fieldTypes.put(
+                    String.valueOf(model.getValueAt(row, 0)), accepted);
+        }
+        return new quiz.transform.TypeSpec(instanceClass, fieldTypes);
+    }
+
+    private static java.util.Set<String> parseTypeNames(Object value) {
+        java.util.LinkedHashSet<String> result = new java.util.LinkedHashSet<>();
+        if (value != null) for (String part : String.valueOf(value).split("[|,]")) {
+            if (!part.isBlank()) result.add(part.trim());
+        }
+        return result;
     }
 
     private void createSubclassFromSelection() {
