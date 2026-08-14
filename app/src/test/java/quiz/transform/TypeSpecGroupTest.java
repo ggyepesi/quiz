@@ -359,6 +359,29 @@ class TypeSpecGroupTest {
         assertEquals(List.of(n1), group.getMembers());
     }
 
+    /** A rule that admits nothing YET is a rule, not an error: the kinds may not be stamped
+     *  and the referents may not be loaded. It is kept and re-applied when the scope is
+     *  re-derived; the workbench confirms the empty count rather than refusing it. */
+    @Test void aRuleThatAdmitsNothingYetIsStillCreatedAndFillsInLater() {
+        WikidataDynamicObject unstamped = entity("Q1", "Nominee");
+        WikidataDynamicObject n1 = entity("N1", "Nomination");
+        n1.put("nominee", unstamped);
+        WikidataDynamicObject person = entity("Q2", "Person");
+        SnapshotDomain domain = new SnapshotDomain(List.of(n1, unstamped, person));
+        TransformController controller = new TransformController(domain, null);
+        EditableGroup root = (EditableGroup) controller.groupRoot("Nomination");
+
+        TypeSpecGroup group = controller.addTypeSpecGroup(root, "People",
+                new TypeSpec("Nomination", Map.of("nominee", Set.of("Person"))));
+        org.junit.jupiter.api.Assertions.assertNotNull(group);
+        assertEquals(List.of(), group.getMembers());
+
+        // The kind arrives later; re-deriving the scope fills the group in.
+        n1.put("nominee", person);
+        root.reproduceDescendants();
+        assertEquals(List.of(n1), group.getMembers());
+    }
+
     private static WikidataDynamicObject entity(String id, String type) {
         WikidataDynamicObject value = new WikidataDynamicObject(id, id);
         value.type(type);

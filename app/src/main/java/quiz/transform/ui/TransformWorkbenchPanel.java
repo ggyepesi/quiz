@@ -1053,10 +1053,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             stopTableEditing(rules);
             quiz.transform.TypeSpec candidate = typeSpecFrom(
                     (String) instanceClass.getSelectedItem(), model);
-            long matches = parent.getMembers().stream()
-                    .filter(member -> candidate.matches(member, controller.domain())).count();
-            previewResult.setText(matches + " of " + parent.getMembers().size()
-                    + " parent instances will be admitted");
+            previewResult.setText(admittedCount(candidate, parent) + " of "
+                    + parent.getMembers().size() + " parent instances will be admitted");
         });
         JPanel footer = new JPanel(new BorderLayout(6, 4));
         footer.add(help, BorderLayout.NORTH);
@@ -1075,6 +1073,18 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         stopTableEditing(rules);
         quiz.transform.TypeSpec spec = typeSpecFrom(
                 (String) instanceClass.getSelectedItem(), model);
+        // A rule that admits nothing is offered, not refused: it may be right ahead of the
+        // data (kinds not stamped yet, referents not loaded), and the group fills itself in
+        // when the scope is re-derived. Only the author can tell that from a typo, so show
+        // the count and let them decide.
+        if (admittedCount(spec, parent) == 0 && JOptionPane.showConfirmDialog(this,
+                "This type specification admits 0 of " + parent.getMembers().size()
+                        + " instances in " + parent.name() + ".\nCreate the group anyway?"
+                        + "\n\nThe rule is kept and re-applied whenever the data changes.",
+                "Nothing admitted yet", JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
+            return;
+        }
         // No second opinion on what a valid class is: the controller validates the spec
         // and its message is shown below. A stricter copy here would reject rules the
         // rule engine accepts.
@@ -1088,6 +1098,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JOptionPane.showMessageDialog(this, error.getMessage(),
                     "Cannot create group", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /** The preview count: how many of the parent's members the rule admits right now. */
+    private long admittedCount(
+            quiz.transform.TypeSpec spec, quiz.transform.EditableGroup parent) {
+        return parent.getMembers().stream()
+                .filter(member -> spec.matches(member, controller.domain())).count();
     }
 
     private static void stopTableEditing(JTable table) {

@@ -200,10 +200,11 @@ public final class TransformController {
         validateSpecPaths(effective);
         quiz.transform.TypeSpecGroup group = new quiz.transform.TypeSpecGroup(
                 name, spec, domain);
+        // A group admitting nothing is NOT rejected: the rule can be right before the data
+        // it matches is loaded or stamped, and the group refills itself whenever the scope
+        // is re-derived. Whether an empty result means "typo" or "not yet" is the author's
+        // call, so the workbench confirms it against the preview count instead.
         group.reproduce(parent.getMembers());
-        if (group.getMembers().isEmpty()) {
-            throw new IllegalArgumentException("The type specification admits no instances.");
-        }
         parent.addGroup(group);
         return group;
     }
