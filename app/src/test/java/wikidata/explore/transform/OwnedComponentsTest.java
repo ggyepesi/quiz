@@ -136,6 +136,26 @@ class OwnedComponentsTest {
                 "a reused component is reported once even when revisited by a later round");
     }
 
+    /** The part's name is DERIVED from the owner's label and the site. A repaired label
+     *  must reach it: a derived value that never refreshes is stale data wearing the
+     *  appearance of current data. */
+    @Test void aReusedPartFollowsARepairedOwnerLabel() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Duglas Adams", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+        assertEquals("Duglas Adams — Structured Name", part.getDisplayName());
+
+        person.name("Douglas Adams");   // the label is corrected
+        OwnedComponents.Result again = OwnedComponents.apply(
+                project, List.of(person), null, null);
+
+        assertEquals(0, again.created(), "the same component, not a second one");
+        assertSame(part, person.get("structuredName"));
+        assertEquals("Douglas Adams — Structured Name", part.getDisplayName());
+    }
+
     private static GeneratedProjectModel project() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("people");

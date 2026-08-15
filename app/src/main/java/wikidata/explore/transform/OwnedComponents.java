@@ -113,6 +113,13 @@ public final class OwnedComponents {
                             current.put(identity, component);
                             created++;
                             materialized.add(component);
+                        } else {
+                            // A reused component was named from the owner's label as it
+                            // stood when the component was MADE. Labels get repaired, so
+                            // recompose it: the name is derived from the owner and the
+                            // site, and a derived value that never refreshes is stale
+                            // data wearing the appearance of current data.
+                            component.name(partName(owner, field));
                         }
 
                         WikidataDynamicObject prior = evidence.get(identity);

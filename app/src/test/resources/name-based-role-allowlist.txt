@@ -1,6 +1,6 @@
 demo/TypePanelDemo.java::if (fname.equals("name")) continue;
-wikidata/explore/model/GeneratedClassModel.java::return trimmed.equalsIgnoreCase("name")
-wikidata/explore/model/GeneratedClassModel.java::|| trimmed.equalsIgnoreCase("qid")
+wikidata/explore/model/GeneratedClassModel.java::return clean.equalsIgnoreCase("name") || clean.equalsIgnoreCase("qid");
 wikidata/explore/model/GeneratedFieldModel.java::return "name".equalsIgnoreCase(name);
 wikidata/explore/model/GeneratedProjectModelValidator.java::|| "source".equals(reference)
 wikidata/explore/workbench/FieldSourcePanel.java::m.subjectField("source".equals(subj) ? "" : subj);
+wikidata/explore/workbench/SingleRootClassModelPanel.java::+ (name.trim().equalsIgnoreCase("name")
