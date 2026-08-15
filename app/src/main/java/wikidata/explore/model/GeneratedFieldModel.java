@@ -8,6 +8,9 @@ public class GeneratedFieldModel {
     private String name;
     private FieldType type = FieldType.AUTO;
     private String entityClassName = "";
+    /** ENTITY values whose class the model deliberately does not name — see
+     *  {@link FieldDefinition#unclassedEntity()}. */
+    private boolean unclassedEntity;
     private FieldCardinality cardinality = FieldCardinality.AUTO;
     private FieldRenderMode renderMode = FieldRenderMode.AUTO;
 
@@ -97,6 +100,13 @@ public class GeneratedFieldModel {
 
     public void type(FieldType type) {
         this.type = type == null ? FieldType.AUTO : type;
+    }
+
+    public boolean unclassedEntity() { return unclassedEntity; }
+
+    public void unclassedEntity(boolean value) {
+        this.unclassedEntity = value;
+        if (value) entityClassName = "";
     }
 
     public String entityClassName() { return entityClassName; }
@@ -193,6 +203,7 @@ public class GeneratedFieldModel {
                 new GeneratedFieldModel(name, type, cardinality);
 
         c.entityClassName = entityClassName;
+        c.unclassedEntity = unclassedEntity;
         c.renderMode = renderMode;
         c.required = required;
         c.expectation = expectation;
@@ -237,13 +248,15 @@ public class GeneratedFieldModel {
     public List<GeneratedFieldModel> fields() { return fields; }
 
     public FieldDefinition definition() {
-        return new FieldDefinition(name, type, entityClassName, cardinality, renderMode);
+        return new FieldDefinition(name, type, entityClassName, cardinality, renderMode,
+                unclassedEntity);
     }
 
     public void definition(FieldDefinition definition) {
         if (definition == null) return;
         name(definition.name());
         type(definition.type());
+        unclassedEntity(definition.unclassedEntity());
         entityClassName(definition.entityClassName());
         cardinality(definition.cardinality());
         renderMode(definition.renderMode());

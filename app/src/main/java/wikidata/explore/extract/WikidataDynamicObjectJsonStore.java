@@ -137,11 +137,32 @@ public class WikidataDynamicObjectJsonStore {
             File file,
             wikidata.explore.model.GeneratedProjectModel schema)
             throws IOException {
-        return saveWithGroupRootBindingsInternal(
-                objects, List.of(), file,
-                builder -> builder.declare(schema),
-                wikidata.explore.transform.RoleSelections.materialize(schema, objects));
+        return saveWithFieldGraph(objects, file, schema, List.of());
     }
+
+    /** …recording which declarations have been FETCHED, so a later enrich asks only for
+     *  what is new rather than re-asking for every entity Wikidata had no answer for. */
+    public SnapshotFieldGraph saveWithFieldGraph(
+            List<WikidataDynamicObject> objects,
+            File file,
+            wikidata.explore.model.GeneratedProjectModel schema,
+            List<LoadedDeclaration> loadedDeclarations)
+            throws IOException {
+        this.pendingDeclarations = loadedDeclarations == null
+                ? List.of() : List.copyOf(loadedDeclarations);
+        try {
+            return saveWithGroupRootBindingsInternal(
+                    objects, List.of(), file,
+                    builder -> builder.declare(schema),
+                    wikidata.explore.transform.RoleSelections.materialize(schema, objects));
+        } finally {
+            this.pendingDeclarations = List.of();
+        }
+    }
+
+    /** Carried between the public save and the internal writer, which every save path
+     *  funnels through; empty for the saves that know nothing about declarations. */
+    private List<LoadedDeclaration> pendingDeclarations = List.of();
 
     public SnapshotFieldGraph saveWithGroupRootBindings(
             List<WikidataDynamicObject> memberRoots,
@@ -200,6 +221,7 @@ public class WikidataDynamicObjectJsonStore {
 
         FlatSnapshot snapshot = new FlatSnapshot();
         snapshot.version = FORMAT_VERSION;
+        snapshot.loadedDeclarations = new ArrayList<>(pendingDeclarations);
         snapshot.fieldGraph = fieldGraph.build();
         for (WikidataDynamicObject o : memberRoots) {
             String k = poolKey(o);
@@ -483,7 +505,9 @@ public class WikidataDynamicObjectJsonStore {
         return new LoadedSnapshot(objects, snapshot.fieldGraph,
                 resolveRoots(snapshot.roots, entities), groups,
                 resolveGroupRootBindings(snapshot, entities),
-                resolveRoleSelections(snapshot, entities));
+                resolveRoleSelections(snapshot, entities),
+                snapshot.loadedDeclarations == null
+                        ? List.of() : List.copyOf(snapshot.loadedDeclarations));
     }
 
     private static Map<String, List<WikidataDynamicObject>> resolveRoleSelections(
@@ -526,6 +550,12 @@ public class WikidataDynamicObjectJsonStore {
             if (className == null) className = object.typeName();
             object.dynamicFieldSchema(
                     graph.fieldSchema(className, Set.of()));
+            // Being a part is a property of the TYPE, so it survives the round trip
+            // through the schema rather than through each object: reloaded, it is still
+            // kept out of the served datasets.
+            if (graph.isPart(className)) {
+                object.part(true);
+            }
         }
     }
 
@@ -767,6 +797,8 @@ public class WikidataDynamicObjectJsonStore {
         public List<GroupRootRef> groupRootBindings = new ArrayList<>();
         public List<RoleSelectionRef> roleSelections = new ArrayList<>();
         public List<Entity> entities = new ArrayList<>();
+        /** Declarations already fetched — see {@link LoadedDeclaration}. */
+        public List<LoadedDeclaration> loadedDeclarations = new ArrayList<>();
         public SnapshotFieldGraph fieldGraph;
     }
 
@@ -776,7 +808,19 @@ public class WikidataDynamicObjectJsonStore {
             List<WikidataDynamicObject> memberRoots,
             List<WikidataDynamicObject> groupRoots,
             List<LoadedGroupRoot> groupRootBindings,
-            Map<String, List<WikidataDynamicObject>> roleSelections) {}
+            Map<String, List<WikidataDynamicObject>> roleSelections,
+            List<LoadedDeclaration> loadedDeclarations) {
+
+        public LoadedSnapshot(
+                List<WikidataDynamicObject> objects, SnapshotFieldGraph fieldGraph,
+                List<WikidataDynamicObject> memberRoots,
+                List<WikidataDynamicObject> groupRoots,
+                List<LoadedGroupRoot> groupRootBindings,
+                Map<String, List<WikidataDynamicObject>> roleSelections) {
+            this(objects, fieldGraph, memberRoots, groupRoots, groupRootBindings,
+                    roleSelections, List.of());
+        }
+    }
 
     public record GroupRootBinding(String memberType, WikidataDynamicObject root) {}
     public record LoadedGroupRoot(String memberType, WikidataDynamicObject root) {}

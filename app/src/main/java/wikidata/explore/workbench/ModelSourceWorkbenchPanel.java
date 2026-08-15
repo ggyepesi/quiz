@@ -188,6 +188,11 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                         : runnable;
     }
 
+    /** See {@link FieldSourcePanel#onReloadField}. */
+    public void onReloadField(java.util.function.Consumer<String> consumer) {
+        fieldSourcePanel.onReloadField(consumer);
+    }
+
     public void onFieldAddedFromTool(
             Consumer<GeneratedFieldModel> consumer) {
 

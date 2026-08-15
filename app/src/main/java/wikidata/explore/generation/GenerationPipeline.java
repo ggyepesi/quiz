@@ -346,8 +346,12 @@ public class GenerationPipeline {
                 + " owned component(s) materialized; fetching declared properties"
                 + reportPendingLoads(snapshot) + "...\n");
 
-        int loaded = wikidata.explore.transform.ReferentFieldLoad.apply(
-                snapshot, pool, entityApi, log);
+        // Skip what a previous run already fetched: a field with no value may simply
+        // have no answer in Wikidata, and without the record every run asks again.
+        wikidata.explore.transform.ReferentFieldLoad.Result referents =
+                wikidata.explore.transform.ReferentFieldLoad.load(
+                        snapshot, pool, entityApi, log, previous.loadedDeclarations());
+        int loaded = referents.loaded();
 
         // The values just fetched are bare references until they are told what they are.
         wikidata.explore.transform.ReferentClassStamp.apply(snapshot, pool);
@@ -367,7 +371,8 @@ public class GenerationPipeline {
         // path, which re-materializes the enriched objects instead of re-transforming a
         // stale copy of them: the same state a snapshot has after being loaded.
         return new GenerationRun(
-                snapshot, previous.depth(), plan, pool, runtime, instances, null);
+                snapshot, previous.depth(), plan, pool, runtime, instances, null,
+                referents.completed());
     }
 
     /** The class.field (PID) pairs an enrich run will try to load — named up front, so

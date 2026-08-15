@@ -769,6 +769,8 @@ public class ModelBuilderFrame extends JFrame {
                 },
                 this::reportGenerationError);
 
+        sourceWorkbench.onReloadField(this::forgetFetchedDeclaration);
+
         showInstancesButton.addActionListener(e -> showInstancesWindow());
         showStatementsButton.addActionListener(e -> showStatementsWindow(queryRunner));
 
@@ -1096,6 +1098,30 @@ public class ModelBuilderFrame extends JFrame {
      * model. One call, so a new mutation site cannot refresh some views and not
      * others. Selection changes are NOT model changes and stay separate.
      */
+    /** Drops one declaration from the run's fetch record, so the next Enrich loads that
+     *  field again. The record is what keeps Enrich cheap — a field already fetched is
+     *  skipped even where Wikidata had no answer — so refreshing VALUES is an explicit
+     *  act, per field, rather than a flag on the whole run. */
+    private void forgetFetchedDeclaration(String declarationKey) {
+        if (lastRun == null || declarationKey == null || declarationKey.isBlank()) {
+            return;
+        }
+        List<wikidata.explore.extract.LoadedDeclaration> kept =
+                lastRun.loadedDeclarations().stream()
+                        .filter(d -> !declarationKey.equals(d.key()))
+                        .toList();
+        if (kept.size() == lastRun.loadedDeclarations().size()) {
+            logWindow.info(declarationKey + " has not been fetched in this run — "
+                    + "the next Enrich loads it anyway.");
+            return;
+        }
+        lastRun = new GenerationRun(
+                lastRun.modelSnapshot(), lastRun.depth(), lastRun.plan(),
+                lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
+                lastRun.remapState(), kept);
+        logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
+    }
+
     private void modelChanged() {
         classModelPanel.refresh();
         if (graphWindow != null && graphWindow.isVisible()) {
@@ -1576,8 +1602,11 @@ public class ModelBuilderFrame extends JFrame {
             }
 
             GeneratedProjectModel snapshot = projectModel.copy();
-            List<WikidataDynamicObject> objects =
-                    new WikidataDynamicObjectJsonStore().load(file);
+            // The snapshot also records which declarations have been FETCHED; carry them
+            // onto the run so a following Enrich asks only for what is new.
+            WikidataDynamicObjectJsonStore.LoadedSnapshot saved =
+                    new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(file);
+            List<WikidataDynamicObject> objects = saved.objects();
 
             // Apply the current model's canonicalization to the loaded pool, so a
             // display-name spec set/edited after this snapshot was saved takes
@@ -1598,7 +1627,8 @@ public class ModelBuilderFrame extends JFrame {
                     pipeline.materialize(runtime, objects);
 
             acceptGenerationRun(new GenerationRun(
-                    snapshot, 0, plan, objects, runtime, instances));
+                    snapshot, 0, plan, objects, runtime, instances,
+                    null, saved.loadedDeclarations()));
 
             logWindow.info("Loaded " + objects.size()
                                    + " saved object(s) from " + file.getName()
@@ -1896,7 +1926,8 @@ public class ModelBuilderFrame extends JFrame {
                 // the user may have explicitly accepted saving a stale run after editing it.
                 new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
                         lastRun.dynamicObjects(), snapshotFile(),
-                        lastRun.modelSnapshot());
+                        lastRun.modelSnapshot(),
+                        lastRun.loadedDeclarations());
                 n = lastRun.dynamicObjects().size();
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');

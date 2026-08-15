@@ -25,13 +25,29 @@ public record GenerationRun(
         List<WikidataDynamicObject> dynamicObjects,
         GeneratedViewableRuntime runtime,
         List<Viewable> instances,
-        RemapState remapState) {
+        RemapState remapState,
+        List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations) {
+
+    public GenerationRun {
+        loadedDeclarations = loadedDeclarations == null
+                ? List.of() : List.copyOf(loadedDeclarations);
+    }
 
     /** Back-compat: a run with no cached transform inputs (remap = display-only). */
     public GenerationRun(GeneratedProjectModel modelSnapshot, int depth, RuleNode plan,
                          List<WikidataDynamicObject> dynamicObjects,
                          GeneratedViewableRuntime runtime, List<Viewable> instances) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, null);
+    }
+
+    /** Which declarations have been fetched is carried by the run, so a save records it
+     *  and the next enrich asks only for what is new. */
+    public GenerationRun(GeneratedProjectModel modelSnapshot, int depth, RuleNode plan,
+                         List<WikidataDynamicObject> dynamicObjects,
+                         GeneratedViewableRuntime runtime, List<Viewable> instances,
+                         RemapState remapState) {
+        this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances,
+                remapState, List.of());
     }
 
     /**

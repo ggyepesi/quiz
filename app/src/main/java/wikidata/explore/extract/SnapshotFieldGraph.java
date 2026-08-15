@@ -95,12 +95,20 @@ public final class SnapshotFieldGraph {
         return result;
     }
 
+    /** Whether instances of this type are parts of another object (an owned component). */
+    public boolean isPart(String typeName) {
+        TypeShape type = typeName == null ? null : types.get(typeName);
+        return type != null && type.part;
+    }
+
     /** The subset of {@link #allTypes()} served on the quiz web UI — the explicit
-     *  member roots supplied at save (see {@code markMembers}). */
+     *  member roots supplied at save (see {@code markMembers}), minus the parts. */
     public List<String> memberTypes() {
         List<String> result = new ArrayList<>();
         for (TypeShape type : types.values()) {
-            if (type.member && hasSubstance(type)) {
+            // …and never a PART, whatever an older snapshot marked: it is read inside
+            // its owner, never served in its own right.
+            if (type.member && !type.part && hasSubstance(type)) {
                 result.add(type.name);
             }
         }
@@ -173,6 +181,7 @@ public final class SnapshotFieldGraph {
                 new WikidataDynamicObject("__shape__:" + typeName, typeName);
         sample.type(typeName);
         sample.valueObject(type.valueObject);
+        sample.part(type.part);
         if (depth > MAX_PATH_DEPTH || !chain.add(typeName)) {
             return sample;
         }
@@ -219,6 +228,9 @@ public final class SnapshotFieldGraph {
                 TypeShape type = graph.types.computeIfAbsent(className, TypeShape::new);
                 type.member |= !object.isValueObject();
                 type.valueObject |= object.isValueObject();
+                // Observed like the other shape bits: a type is a part when the
+                // objects carrying it are.
+                type.part |= object.isPart();
                 for (Map.Entry<String, Object> entry
                         : object.dynamicFieldValues().entrySet()) {
                     type.fields.computeIfAbsent(entry.getKey(), FieldShape::new)
@@ -323,6 +335,13 @@ public final class SnapshotFieldGraph {
                         || root.typeName() == null || root.typeName().isBlank()) {
                     continue;
                 }
+                // A PART is in the pool because it is reachable, not because it is a
+                // root: an owned component has no name and no independent existence, so
+                // listing its type as a served dataset would offer the reader a list of
+                // things that cannot be told apart or spoken about.
+                if (root.isPart()) {
+                    continue;
+                }
                 for (String directClass : root.directClassNames()) {
                     markMemberAndBases(directClass);
                 }
@@ -384,6 +403,10 @@ public final class SnapshotFieldGraph {
         public String name;
         public boolean member;
         public boolean valueObject;
+        /** Instances are PARTS of another object: an owned component, in the pool
+         *  because it is reachable rather than because it is a root. Persisted so a
+         *  loaded snapshot still knows not to serve it as a dataset of its own. */
+        public boolean part;
         public String baseType;
         public Map<String, FieldShape> fields = new LinkedHashMap<>();
 

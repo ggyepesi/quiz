@@ -17,6 +17,27 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 class OwnedComponentsTest {
 
+    /** A part takes the owner's IDENTITY, and a name saying WHOSE view it is and WHICH
+     *  view. The owner's label alone would claim the part IS the owner — a claim its own
+     *  fields can contradict, as a person known as Elia Kazan whose name parts are Elias
+     *  Kazantzoglou — and a card whose only field holds a same-named child drops its own
+     *  title, which is how the owner lost its heading. */
+    @Test void aPartIsNamedByItsOwnerAndItsSite() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+
+        OwnedComponents.apply(project, List.of(person), null, null);
+
+        WikidataDynamicObject name = (WikidataDynamicObject) person.get("structuredName");
+        assertEquals("Q42", name.getIdentifier(), "the owner's identity");
+        assertEquals("Douglas Adams — Structured Name", name.getDisplayName());
+        org.junit.jupiter.api.Assertions.assertNotEquals(
+                person.getDisplayName(), name.getDisplayName(),
+                "distinct from the owner's own name, or the owner's title is suppressed");
+        org.junit.jupiter.api.Assertions.assertTrue(name.isPart(),
+                "and it is a part: never served as a dataset of its own");
+    }
+
     @Test void ownerFieldCreatesASeparateSameQidComponent() {
         GeneratedProjectModel project = project();
         WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");

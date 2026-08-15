@@ -211,6 +211,64 @@ public class GeneratedProjectModel {
         }
     }
 
+    /**
+     * Renames a class and every reference to it. A name is used by NAME elsewhere in the
+     * model — a field's target class, a base class, a kind rule's subject — so renaming
+     * the class alone leaves those pointing at a class that no longer exists: the field
+     * keeps a dangling target, and an owned class silently stops being produced because
+     * no site names it any more.
+     */
+    public void renameClass(String oldName, String newName) {
+        String from = oldName == null ? "" : oldName.trim();
+        String to = newName == null ? "" : newName.trim();
+        if (from.isEmpty() || to.isEmpty() || from.equals(to)) {
+            return;
+        }
+        GeneratedClassModel target = findClass(from);
+        if (target == null) {
+            return;
+        }
+        target.className(to);
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz == null) continue;
+            if (from.equals(clean(clazz.baseClassName()))) {
+                clazz.baseClassName(to);
+            }
+            StatementClassSource statement = clazz.statementSource();
+            if (statement != null && from.equals(clean(statement.sourceClassName()))) {
+                statement.sourceClassName(to);
+            }
+            renameFieldTargets(clazz.fields(), from, to);
+        }
+        for (EntityKindRule rule : entityKindRules) {
+            if (rule != null && from.equals(clean(rule.className()))) {
+                rule.className(to);
+            }
+        }
+        for (Selection selection : selections) {
+            if (selection instanceof RoleSelection role
+                    && from.equals(clean(role.ownerClassName()))) {
+                role.ownerClassName(to);
+            }
+        }
+    }
+
+    private static void renameFieldTargets(
+            List<GeneratedFieldModel> fields, String from, String to) {
+        if (fields == null) return;
+        for (GeneratedFieldModel field : fields) {
+            if (field == null) continue;
+            if (from.equals(clean(field.entityClassName()))) {
+                field.entityClassName(to);
+            }
+            renameFieldTargets(field.fields(), from, to);
+        }
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     public void addClass(GeneratedClassModel c) {
         if (c == null) {
             return;

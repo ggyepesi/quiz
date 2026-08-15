@@ -43,6 +43,18 @@ import java.util.Set;
  */
 public final class ReferentFieldLoad {
 
+    private record LoadOutcome(int loaded, boolean completed) {
+        static LoadOutcome completed(int loaded) { return new LoadOutcome(loaded, true); }
+        static LoadOutcome failed() { return new LoadOutcome(0, false); }
+    }
+
+    /** What a load did: values assigned, and the declarations it COMPLETED — the ones a
+     *  later run can skip entirely rather than re-asking for the entities that had no
+     *  answer. */
+    public record Result(
+            int loaded,
+            java.util.List<wikidata.explore.extract.LoadedDeclaration> completed) {}
+
     private ReferentFieldLoad() {}
 
     /** @return the number of (referent, field) values loaded. */
@@ -51,9 +63,29 @@ public final class ReferentFieldLoad {
             Collection<WikidataDynamicObject> pool,
             WikidataApiClient api,
             GenerationLog log) {
+        return load(model, pool, api, log, java.util.List.of()).loaded();
+    }
+
+    /**
+     * As {@link #apply}, skipping declarations a previous run already completed.
+     *
+     * @param alreadyLoaded exact declaration/QID coverage recorded by the snapshot
+     */
+    public static Result load(
+            GeneratedProjectModel model,
+            Collection<WikidataDynamicObject> pool,
+            WikidataApiClient api,
+            GenerationLog log,
+            Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded) {
 
         if (model == null || pool == null || api == null) {
-            return 0;
+            return new Result(0, java.util.List.of());
+        }
+        Map<String, wikidata.explore.extract.LoadedDeclaration> known = new LinkedHashMap<>();
+        if (alreadyLoaded != null) {
+            for (wikidata.explore.extract.LoadedDeclaration d : alreadyLoaded) {
+                if (d != null) known.put(d.key(), d);
+            }
         }
 
         // Referenced-only classes and their entity-valued property-fields.
@@ -77,7 +109,7 @@ public final class ReferentFieldLoad {
             }
         }
         if (byClass.isEmpty()) {
-            return 0;
+            return new Result(0, java.util.List.of());
         }
 
         // Index the referents by every direct class membership. Walk the WHOLE reachable
@@ -100,16 +132,46 @@ public final class ReferentFieldLoad {
 
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         int loaded = 0;
+        List<wikidata.explore.extract.LoadedDeclaration> completed = new ArrayList<>();
         for (Map.Entry<String, List<GeneratedFieldModel>> e : byClass.entrySet()) {
             List<WikidataDynamicObject> objs = referents.get(e.getKey());
             if (objs == null || objs.isEmpty()) {
                 continue;
             }
             for (GeneratedFieldModel f : e.getValue()) {
-                loaded += loadField(model, e.getKey(), objs, f, api, sink);
+                String pid = clean(f.mapping().propertyPid());
+                String key = wikidata.explore.extract.LoadedDeclaration.key(
+                        e.getKey(), f.name(), pid);
+                wikidata.explore.extract.LoadedDeclaration done = known.get(key);
+                Set<String> coveredQids = done == null
+                        ? Set.of() : new LinkedHashSet<>(done.coveredQids());
+                Set<String> currentQids = new LinkedHashSet<>();
+                for (WikidataDynamicObject obj : objs) currentQids.add(obj.qid());
+                if (!coveredQids.isEmpty() && coveredQids.containsAll(currentQids)) {
+                    sink.message("Referent field " + e.getKey() + "." + f.name()
+                            + " (" + pid + ") already loaded for " + currentQids.size()
+                            + " entities — skipped.\n");
+                    completed.add(new wikidata.explore.extract.LoadedDeclaration(
+                            e.getKey(), f.name(), pid, currentQids));
+                    continue;
+                }
+                List<WikidataDynamicObject> uncovered = objs.stream()
+                        .filter(obj -> !coveredQids.contains(obj.qid()))
+                        .toList();
+                LoadOutcome outcome = loadField(
+                        model, e.getKey(), uncovered, f, api, sink);
+                loaded += outcome.loaded();
+                if (outcome.completed()) {
+                    completed.add(new wikidata.explore.extract.LoadedDeclaration(
+                            e.getKey(), f.name(), pid, currentQids));
+                } else if (done != null) {
+                    // Preserve coverage known from an earlier successful run, but never
+                    // claim the uncovered identities from this failed attempt.
+                    completed.add(done);
+                }
             }
         }
-        return loaded;
+        return new Result(loaded, List.copyOf(completed));
     }
 
     /** Entity refs (outgoing claims), dates and plain strings load onto referents;
@@ -118,7 +180,7 @@ public final class ReferentFieldLoad {
         return t == FieldType.ENTITY || t == FieldType.DATE || t == FieldType.STRING;
     }
 
-    private static int loadField(
+    private static LoadOutcome loadField(
             GeneratedProjectModel model, String className,
             List<WikidataDynamicObject> objs,
             GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
@@ -127,17 +189,32 @@ public final class ReferentFieldLoad {
                 : loadLiteralField(className, objs, field, api, log);
     }
 
+    /** The entities still MISSING this field. A populated field is left alone at
+     *  assignment, so fetching for it downloads a property that is already known and
+     *  throws the answer away — on a re-run over a whole domain that is most of the
+     *  requests. Filtering here makes the cost proportional to what is missing. */
+    private static List<String> qidsMissing(
+            List<WikidataDynamicObject> objs, GeneratedFieldModel field) {
+        List<String> qids = new ArrayList<>(objs.size());
+        for (WikidataDynamicObject o : objs) {
+            if (o.get(field.name()) == null) {
+                qids.add(o.qid());
+            }
+        }
+        return qids;
+    }
+
     /** DATE / STRING: the property's literal value(s) read off the statements
      *  (mainsnak) — a DATE becomes a {@link aux.FlexibleDate}, a STRING the raw
      *  literal. This is what lets a Ceremony carry its own {@code year}/{@code date}. */
-    private static int loadLiteralField(
+    private static LoadOutcome loadLiteralField(
             String className, List<WikidataDynamicObject> objs,
             GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
 
         String pid = clean(field.mapping().propertyPid());
-        List<String> qids = new ArrayList<>(objs.size());
-        for (WikidataDynamicObject o : objs) {
-            qids.add(o.qid());
+        List<String> qids = qidsMissing(objs, field);
+        if (qids.isEmpty()) {
+            return LoadOutcome.completed(0);
         }
 
         Map<String, List<WikidataApiClient.ApiStatement>> stmts;
@@ -148,11 +225,13 @@ public final class ReferentFieldLoad {
         } catch (Exception ex) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
+                throw new java.util.concurrent.CancellationException(
+                        "Referent field load interrupted");
             } else {
                 log.message("Referent field load " + className + "." + field.name()
                         + " (" + pid + ") failed (" + ex.getMessage() + ")\n");
             }
-            return 0;
+            return LoadOutcome.failed();
         }
 
         boolean collection = field.cardinality() != null
@@ -186,18 +265,18 @@ public final class ReferentFieldLoad {
         }
         log.message("Referent field load " + className + "." + field.name()
                 + " (" + pid + ") -> " + loaded + " value(s)\n");
-        return loaded;
+        return LoadOutcome.completed(loaded);
     }
 
-    private static int loadEntityField(
+    private static LoadOutcome loadEntityField(
             GeneratedProjectModel model, String className,
             List<WikidataDynamicObject> objs,
             GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
 
         String pid = clean(field.mapping().propertyPid());
-        List<String> qids = new ArrayList<>(objs.size());
-        for (WikidataDynamicObject o : objs) {
-            qids.add(o.qid());
+        List<String> qids = qidsMissing(objs, field);
+        if (qids.isEmpty()) {
+            return LoadOutcome.completed(0);
         }
 
         Map<String, WikidataApiClient.ApiEntity> details;
@@ -208,11 +287,13 @@ public final class ReferentFieldLoad {
         } catch (Exception ex) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
+                throw new java.util.concurrent.CancellationException(
+                        "Referent field load interrupted");
             } else {
                 log.message("Referent field load " + className + "." + field.name()
                         + " (" + pid + ") failed (" + ex.getMessage() + ")\n");
             }
-            return 0;
+            return LoadOutcome.failed();
         }
 
         // Label the distinct value entities once.
@@ -261,7 +342,7 @@ public final class ReferentFieldLoad {
         // NomineeType) is NOT built here — that is done post-prune from the SERVED pool
         // by DescriptiveVocabularyBuild, so it lists exactly the types that survive
         // (a type whose only bearer was pruned must not linger in the vocabulary).
-        return loaded;
+        return LoadOutcome.completed(loaded);
     }
 
     /** Delegates to the one graph walk the snapshot writer also uses, so a field load

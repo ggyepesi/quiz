@@ -17,6 +17,9 @@ public abstract class GeneratedEntity extends ViewableAdapter {
     private String identifier = "";
     @Hidden
     private String label = "";
+    @Hidden
+    private boolean part;
+
 
     @Override public String getIdentifier() { return identifier; }
 
@@ -29,4 +32,10 @@ public abstract class GeneratedEntity extends ViewableAdapter {
     }
 
     public void label(String label) { this.label = label == null ? "" : label; }
+
+    /** See {@link objectview.Viewable#isPart()} — carried from the source object so a
+     *  rendered part behaves the same whichever pool it came from. */
+    @Override public boolean isPart() { return part; }
+
+    public void part(boolean value) { this.part = value; }
 }

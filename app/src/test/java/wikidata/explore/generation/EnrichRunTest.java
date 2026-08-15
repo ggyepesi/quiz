@@ -40,7 +40,7 @@ class EnrichRunTest {
                 .enrich(previous, project, api(), null);
 
         WikidataDynamicObject component = enriched.dynamicObjects().stream()
-                .filter(o -> "Name".equals(o.typeName())).findFirst().orElse(null);
+                .filter(o -> "BirthName".equals(o.typeName())).findFirst().orElse(null);
         assertNotNull(component, "the component is materialized: "
                 + enriched.dynamicObjects().stream()
                         .map(WikidataDynamicObject::typeName).toList());
@@ -56,7 +56,7 @@ class EnrichRunTest {
         // only adds, so copying tens of thousands of objects to touch a few thousand
         // would be the wrong price — the component hangs off the very object that was
         // already downloaded.
-        assertEquals(component, person.get("fullname"),
+        assertEquals(component, person.get("birthName"),
                 "the downloaded object itself carries the new component");
         assertNull(enriched.remapState(),
                 "the stale pre-reify cache is dropped rather than re-transformed later");
@@ -81,6 +81,95 @@ class EnrichRunTest {
         assertTrue(reported.contains("1 downloaded object"), reported);
         // Names the declarations it will try, so a run that fetches nothing says why.
         assertTrue(reported.contains("Name.familyName (P734)"), reported);
+    }
+
+    /** Being a part is a property of the TYPE, so it must survive the snapshot: reloaded,
+     *  it is still kept out of the served datasets. */
+    @org.junit.jupiter.api.Test void aPartStaysAPartAcrossTheSnapshot(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = new WikidataDynamicObject("Q42", "Douglas Adams");
+        person.type("Person");
+        person.typeKey("Person");
+        GenerationRun previous = new GenerationRun(
+                project, 1, null, new ArrayList<>(List.of(person)), null, List.of());
+        GenerationRun enriched = new GenerationPipeline()
+                .enrich(previous, project, api(), null);
+
+        java.io.File file = dir.resolve("enriched.snapshot.json").toFile();
+        var store = new wikidata.explore.extract.WikidataDynamicObjectJsonStore();
+        store.saveWithFieldGraph(enriched.dynamicObjects(), file);
+        var loaded = store.loadAllWithFieldGraph(file);
+
+        assertTrue(loaded.fieldGraph().isPart("BirthName"),
+                "the schema records that this type's instances are parts");
+        // A part is in the pool because it is reachable, not because it is a root: it
+        // must never be offered as a dataset in its own right.
+        assertTrue(loaded.fieldGraph().memberTypes().contains("Person"),
+                loaded.fieldGraph().memberTypes().toString());
+        org.junit.jupiter.api.Assertions.assertFalse(
+                loaded.fieldGraph().memberTypes().contains("BirthName"),
+                "a nameless part is not a served type: "
+                        + loaded.fieldGraph().memberTypes());
+        WikidataDynamicObject reloaded = loaded.objects().stream()
+                .filter(o -> "BirthName".equals(o.typeName())).findFirst().orElseThrow();
+        assertEquals("Douglas Adams — Birth Name", reloaded.getDisplayName(),
+                "reloaded, it still says whose view it is and which");
+        assertEquals("Q42", reloaded.getIdentifier(), "its identity is unchanged");
+    }
+
+    /** A field with no value may simply have no answer in Wikidata — for P734 that is
+     *  most people. Without a record of what has been FETCHED, every later run asks for
+     *  them all again; the snapshot carries that record so a run asks only for what is
+     *  new. */
+    @org.junit.jupiter.api.Test void aFetchedDeclarationIsNotFetchedAgain(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = new WikidataDynamicObject("Q7", "Nameless Person");
+        person.type("Person");
+        person.typeKey("Person");
+        GenerationRun previous = new GenerationRun(
+                project, 1, null, new ArrayList<>(List.of(person)), null, List.of());
+
+        java.util.List<java.util.List<String>> asked = new ArrayList<>();
+        GenerationRun first = new GenerationPipeline()
+                .enrich(previous, project, recording(asked), null);
+
+        assertEquals(1, asked.size(), "asked once for the person with no P734");
+        assertEquals(List.of("Q7"), asked.getFirst());
+        assertEquals(1, first.loadedDeclarations().size(),
+                "the run records the declaration it completed");
+        assertEquals("BirthName.familyName:P734",
+                first.loadedDeclarations().getFirst().key());
+        assertEquals(List.of("Q7"),
+                first.loadedDeclarations().getFirst().coveredQids());
+
+        java.io.File file = dir.resolve("enriched.snapshot.json").toFile();
+        var store = new wikidata.explore.extract.WikidataDynamicObjectJsonStore();
+        store.saveWithFieldGraph(first.dynamicObjects(), file, project,
+                first.loadedDeclarations());
+        var saved = store.loadAllWithFieldGraph(file);
+        assertEquals(List.of("Q7"), saved.loadedDeclarations().getFirst().coveredQids(),
+                "the snapshot retains identity-level fetch coverage");
+        GenerationRun resumed = new GenerationRun(
+                project, first.depth(), first.plan(), saved.objects(), null, List.of(),
+                null, saved.loadedDeclarations());
+
+        // A second enrich over the same pool: the value is still absent, but the
+        // declaration is known, so nothing is asked again.
+        asked.clear();
+        new GenerationPipeline().enrich(resumed, project, recording(asked), null);
+        assertTrue(asked.isEmpty(), "a completed declaration is not re-fetched: " + asked);
+    }
+
+    private static WikidataApiClient recording(java.util.List<java.util.List<String>> asked) {
+        return new WikidataApiClient(WikidataApiClient.DEFAULT_USER_AGENT) {
+            @Override public Map<String, ApiEntity> getEntities(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                if (pids != null && !pids.isEmpty()) asked.add(List.copyOf(qids));
+                return Map.of();   // Wikidata has no P734 for this person
+            }
+        };
     }
 
     /** Answers wbgetentities: Q42 has P734 → Q351735, which is labelled "Adams". */
@@ -110,11 +199,11 @@ class EnrichRunTest {
         person.instanceMapping().propertyPid("P31");
         person.instanceMapping().sourceQid("Q5");
         GeneratedFieldModel fullname = person.addField(
-                "fullname", FieldType.ENTITY, FieldCardinality.SINGLE);
-        fullname.entityClassName("Name");
+                "birthName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        fullname.entityClassName("BirthName");
         fullname.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
 
-        GeneratedClassModel name = new GeneratedClassModel("Name");
+        GeneratedClassModel name = new GeneratedClassModel("BirthName");
         name.ownedClass(true);
         GeneratedFieldModel familyName = name.addField(
                 "familyName", FieldType.ENTITY, FieldCardinality.SINGLE);

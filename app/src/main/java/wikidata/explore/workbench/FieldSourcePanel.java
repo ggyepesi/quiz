@@ -25,6 +25,10 @@ public class FieldSourcePanel extends JPanel {
 
     private GeneratedFieldModel field;
     private GeneratedProjectModel projectModel;
+    // Evaluated on every edit, never captured: a class renamed or added since this
+    // panel was built must appear in the target list without rebuilding anything.
+    private java.util.function.Supplier<java.util.List<String>> targetClassCandidates =
+            java.util.List::of;
     private SwingQueryRunner queryRunner;
 
     private final JButton discoverDbpediaButton = new JButton("Discover properties");
@@ -39,6 +43,7 @@ public class FieldSourcePanel extends JPanel {
     private Consumer<Void> afterChange = v -> {};
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Runnable onSampleRequested = () -> {};
+    private Consumer<String> onReloadField = key -> {};
 
     private Map<String, WikidataProperty> propertyCache = Map.of();
     private boolean updatingObjectTypeBox = false;
@@ -137,6 +142,12 @@ public class FieldSourcePanel extends JPanel {
 
     private final JButton applyButton =
             new JButton("Apply field source");
+
+    // A declaration already fetched is skipped by Enrich — that is what stops it
+    // re-asking for the thousands of entities Wikidata has no answer for. Refreshing a
+    // field's VALUES therefore has to say so explicitly, per field.
+    private final JButton reloadFieldButton =
+            new JButton("Re-fetch on next enrich");
 
     private final JComboBox<FieldSourceType> sourceTypeBox =
             new JComboBox<>(FieldSourceType.values());
@@ -261,6 +272,13 @@ public class FieldSourcePanel extends JPanel {
         this.propertyCache = cache == null ? Map.of() : cache;
     }
 
+    /** The classes (and vocabulary selections) a reference field may target. */
+    public void targetClassCandidates(
+            java.util.function.Supplier<java.util.List<String>> candidates) {
+        targetClassCandidates = candidates == null
+                ? java.util.List::of : candidates;
+    }
+
     public void setProjectModel(GeneratedProjectModel projectModel) {
         this.projectModel = projectModel;
     }
@@ -321,6 +339,30 @@ public class FieldSourcePanel extends JPanel {
             return null;
         }
         return typeQid;
+    }
+
+    /** Called with the declaration key ⟨class.field:PID⟩ whose fetch record should be
+     *  dropped, so the next Enrich loads it again. */
+    public void onReloadField(Consumer<String> consumer) {
+        onReloadField = consumer == null ? key -> {} : consumer;
+    }
+
+    private void requestReload() {
+        // The key must describe the model, not a mixture of an applied field name and
+        // an unapplied PID currently sitting in the editor.
+        apply();
+        GeneratedClassModel owner = ownerClass();
+        String pid = field == null || field.mapping() == null
+                ? null : RuleNode.cleanPid(field.mapping().propertyPid());
+        if (field == null || owner == null || pid == null || pid.isBlank()) {
+            JOptionPane.showMessageDialog(this,
+                    "Only a field loaded from a property can be re-fetched.",
+                    "Re-fetch", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        onReloadField.accept(wikidata.explore.extract.LoadedDeclaration.key(
+                owner.className(), field.name(), pid));
+        applyStatusLabel.setText("✓ will re-fetch " + field.name());
     }
 
     public void onSampleRequested(Runnable r) {
@@ -596,6 +638,10 @@ public class FieldSourcePanel extends JPanel {
         applyStatusLabel.setForeground(new Color(0x1a7f37));
         buttons.add(applyStatusLabel);
         buttons.add(examplesButton);
+        reloadFieldButton.setToolTipText("Forget that this field has been fetched, so "
+                + "the next Enrich loads its values again — otherwise a field already "
+                + "loaded is skipped, values and all.");
+        buttons.add(reloadFieldButton);
         buttons.add(sampleShapeButton);
         buttons.add(applyButton);
         GridBagUtils.wideRow(form, y++, buttons);
@@ -605,6 +651,7 @@ public class FieldSourcePanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
 
         applyButton.addActionListener(e -> apply());
+        reloadFieldButton.addActionListener(e -> requestReload());
         sampleShapeButton.addActionListener(e -> onSampleRequested.run());
         sourceTypeBox.addActionListener(e -> updateRecommendation());
         objectTypeBox.addActionListener(e -> {
@@ -1209,7 +1256,7 @@ public class FieldSourcePanel extends JPanel {
     // Shown/selected when the field has no object type (e.g. a scalar field
     // like name or apparent magnitude) — otherwise the box would default to
     // the first class and misleadingly show "Constellation".
-    private static final String NO_TYPE = "(none)";
+    private static final String NO_TYPE = FieldDefinitionPanel.NO_CLASS;
 
     // Populates the "Sort children by" box with the child class's own
     // (non-name) field names, so you can sort the edge's entities by e.g.

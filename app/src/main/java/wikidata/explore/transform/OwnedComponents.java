@@ -97,12 +97,19 @@ public final class OwnedComponents {
                         String identity = key(typeKey, owner.getIdentifier());
                         WikidataDynamicObject component = current.get(identity);
                         if (component == null) {
+                            // The owner's IDENTIFIER, and a name that says WHOSE view
+                            // this is and WHICH view: "Elia Kazan — birth name". The
+                            // owner's label alone would claim the component IS the
+                            // owner — a claim its own fields can contradict, since his
+                            // name parts are Elias Kazantzoglou — and a card whose only
+                            // field holds a same-named child drops its own title.
                             component = new WikidataDynamicObject(
-                                    owner.getIdentifier(), owner.getDisplayName());
+                                    owner.getIdentifier(),
+                                    partName(owner, field));
+                            component.part(true);
                             component.type(target.className());
                             component.directClasses(List.of(target.className()));
                             component.typeKey(typeKey);
-                            component.referenceLabel(owner.getReferenceLabel());
                             current.put(identity, component);
                             created++;
                             materialized.add(component);
@@ -126,6 +133,20 @@ public final class OwnedComponents {
             log.message("Owned components: materialized " + created + " object(s).\n");
         }
         return new Result(created, List.copyOf(made));
+    }
+
+    /** "Elia Kazan — birth name": whose view, and which view. Readable wherever the
+     *  part turns up — a curation list, a search hit — which a bare owner label is not,
+     *  and distinct from the owner's own name, which a title-suppressing renderer needs
+     *  it to be. */
+    private static String partName(
+            WikidataDynamicObject owner, GeneratedFieldModel field) {
+        String ownerName = owner.getDisplayName();
+        String site = objectview.render.FieldLabels.humanize(field.name());
+        if (ownerName == null || ownerName.isBlank()) {
+            return site;
+        }
+        return site == null || site.isBlank() ? ownerName : ownerName + " — " + site;
     }
 
     private static boolean isSite(

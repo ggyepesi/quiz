@@ -13,6 +13,11 @@ import java.util.Collection;
 /** Shared editor for the source-independent part of a field definition. */
 public final class FieldDefinitionPanel extends JPanel {
 
+    /** The placeholder shown when no class is chosen. It is a prompt, never a class
+     *  name: read back as one it became the field's target, and the model then held a
+     *  reference to a class called "(none)". */
+    public static final String NO_CLASS = "(none)";
+
     private final JTextField name = new JTextField(16);
     private final JComboBox<FieldType> type = new JComboBox<>(FieldType.values());
     private final JComboBox<String> targetType = new JComboBox<>();
@@ -20,6 +25,10 @@ public final class FieldDefinitionPanel extends JPanel {
             new JComboBox<>(FieldCardinality.values());
     private final JComboBox<FieldRenderMode> renderMode =
             new JComboBox<>(FieldRenderMode.values());
+    // "An entity, unclassed": the values keep their QID and label, and no class is
+    // named for them. Without it, the only way to hold item-valued answers (P734's
+    // family-name item) was to invent an empty class per property.
+    private final JCheckBox unclassedEntity = new JCheckBox("no class (keep label)");
 
     public FieldDefinitionPanel() {
         super(new GridBagLayout());
@@ -33,6 +42,7 @@ public final class FieldDefinitionPanel extends JPanel {
         GridBagUtils.labeledRow(this, c, row++, "Field name:", name);
         GridBagUtils.labeledRow(this, c, row++, "Holds:", type);
         GridBagUtils.labeledRow(this, c, row++, "Of class:", targetType);
+        GridBagUtils.labeledRow(this, c, row++, "", unclassedEntity);
         GridBagUtils.labeledRow(this, c, row++, "Count:", cardinality);
         GridBagUtils.labeledRow(this, c, row, "Display:", renderMode);
 
@@ -40,7 +50,10 @@ public final class FieldDefinitionPanel extends JPanel {
         targetType.setToolTipText("Logical target class when Holds = Entity.");
         cardinality.setToolTipText("Single value or collection; Auto is resolved by the producer.");
         renderMode.setToolTipText("Auto, inline value/object, or reference rendering.");
+        unclassedEntity.setToolTipText("The values are entities — identity and label "
+                + "kept — but this model names no class for them.");
         type.addActionListener(e -> refreshEnabled());
+        unclassedEntity.addActionListener(e -> refreshEnabled());
         refreshEnabled();
     }
 
@@ -65,6 +78,7 @@ public final class FieldDefinitionPanel extends JPanel {
         targetType.setSelectedItem(value.entityClassName());
         cardinality.setSelectedItem(value.cardinality());
         renderMode.setSelectedItem(value.renderMode());
+        unclassedEntity.setSelected(value.unclassedEntity());
         refreshEnabled();
     }
 
@@ -74,11 +88,18 @@ public final class FieldDefinitionPanel extends JPanel {
         // Only an ENTITY field has a referenced class. The target combo may be shared
         // (with a "(none)" sentinel) or hold a stale value, so blank it otherwise —
         // never leak the sentinel into a scalar field's entityClassName.
-        String entityClass = selectedType == FieldType.ENTITY && target != null
-                ? target.toString() : "";
-        return new FieldDefinition(name.getText(), selectedType, entityClass,
+        String chosen = target == null ? "" : target.toString().trim();
+        if (NO_CLASS.equals(chosen)) {
+            chosen = "";
+        }
+        String entityClass = selectedType == FieldType.ENTITY ? chosen : "";
+        boolean unclassed = selectedType == FieldType.ENTITY
+                && unclassedEntity.isSelected();
+        return new FieldDefinition(name.getText(), selectedType,
+                unclassed ? "" : entityClass,
                 (FieldCardinality) cardinality.getSelectedItem(),
-                (FieldRenderMode) renderMode.getSelectedItem());
+                (FieldRenderMode) renderMode.getSelectedItem(),
+                unclassed);
     }
 
     public String validationError() {
@@ -91,8 +112,9 @@ public final class FieldDefinitionPanel extends JPanel {
         }
         if (value.type() == FieldType.AUTO) return "Choose what the field holds.";
         if (value.cardinality() == FieldCardinality.AUTO) return "Choose Single or List.";
-        if (value.type() == FieldType.ENTITY && value.entityClassName().isBlank()) {
-            return "Choose the referenced class.";
+        if (value.type() == FieldType.ENTITY && value.entityClassName().isBlank()
+                && !value.unclassedEntity()) {
+            return "Choose the referenced class, or tick 'no class (keep label)'.";
         }
         return null;
     }
@@ -104,6 +126,8 @@ public final class FieldDefinitionPanel extends JPanel {
     JComboBox<FieldRenderMode> renderModeBox() { return renderMode; }
 
     private void refreshEnabled() {
-        targetType.setEnabled(type.getSelectedItem() == FieldType.ENTITY);
+        boolean entity = type.getSelectedItem() == FieldType.ENTITY;
+        unclassedEntity.setEnabled(entity);
+        targetType.setEnabled(entity && !unclassedEntity.isSelected());
     }
 }

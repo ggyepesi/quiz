@@ -235,7 +235,9 @@ public class SingleRootClassModelPanel extends JPanel {
             return;
         }
 
-        cls.className(
+        // Through the project, so every field target, base class and kind rule that
+        // names this class follows the rename instead of dangling.
+        projectModel.renameClass(cls.className(),
                 GeneratedViewableSourceGenerator.sanitizeClassName(s));
 
         refresh();

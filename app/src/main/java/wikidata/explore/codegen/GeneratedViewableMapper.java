@@ -157,6 +157,7 @@ public class GeneratedViewableMapper {
         if (target instanceof quiz.source.GeneratedEntity ge) {
             ge.identifier(source.getIdentifier());
             ge.label(source.getDisplayName());
+            ge.part(source.isPart());
         }
 
         applyFields(cr, target, source, false);

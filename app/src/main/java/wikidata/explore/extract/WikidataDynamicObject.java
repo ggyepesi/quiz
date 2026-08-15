@@ -55,6 +55,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @Hidden
     @JsonIgnore
     private boolean valueObject;
+    private transient boolean part;
 
     @Hidden
     @JsonIgnore
@@ -107,6 +108,14 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @Override public String getDisplayName() {
         return name == null || name.isBlank() ? identifier : name;
     }
+
+    /** A PART of another object — an owned component, carrying its owner's identity.
+     *  It is in the pool because it is reachable, not because it is a root, so it is
+     *  never served as a dataset of its own. It DOES carry a name (owner + site), so it
+     *  can be read wherever it turns up. */
+    @Override public boolean isPart() { return part; }
+
+    public void part(boolean value) { this.part = value; }
 
     // Identity is the stable `identifier`, never the source, so value-equality is safe.
     @Override public boolean equals(Object o) {

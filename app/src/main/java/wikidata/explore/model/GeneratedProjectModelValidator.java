@@ -77,6 +77,15 @@ public final class GeneratedProjectModelValidator {
             problems.add(Problem.error(clazz.className(),
                     "An Owned class cannot also define an independent membership source."));
         }
+        // A class with no entity of its own has no label to take. Its instances render
+        // as their fields; a TEMPLATE over those fields is the way to give one a name.
+        if (clazz.canonical() != null && clazz.canonical().displayNameMode()
+                == CanonicalSpec.DisplayNameMode.LABEL) {
+            problems.add(Problem.warning(clazz.className(),
+                    "An Owned class has no Wikidata entity of its own, so a LABEL "
+                            + "display name would be its OWNER's. Its instances render "
+                            + "as their fields; use a TEMPLATE to name them."));
+        }
         // An Owned class may be produced at several sites, but its FIELDS are shared by
         // all of them and load from the owner's entity — so every site must be on the
         // same kind of owner. Person.fullname + Person.birthName is fine; adding
@@ -248,6 +257,7 @@ public final class GeneratedProjectModelValidator {
             }
 
             if (field.type() == FieldType.ENTITY
+                    && !field.unclassedEntity()
                     && !clean(field.entityClassName()).isBlank()
                     && project.findClass(field.entityClassName()) == null
                     && project.findSelection(field.entityClassName()) == null) {
