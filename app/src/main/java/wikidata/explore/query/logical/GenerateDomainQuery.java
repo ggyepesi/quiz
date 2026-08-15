@@ -275,11 +275,16 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     List<WikidataDynamicObject> referentLoadRoots =
                             new ArrayList<>(shared.values());
                     referentLoadRoots.addAll(reified);
-                    int loadedReferentFields =
-                            wikidata.explore.transform.ReferentFieldLoad.apply(
+                    // Through load(), not apply(): a generation fetches every declared
+                    // property, and the run must RECORD which — otherwise the snapshot
+                    // it saves claims nothing has been fetched, and the first enrich
+                    // after a full generation re-asks Wikidata for all of it.
+                    wikidata.explore.transform.ReferentFieldLoad.Result referentLoad =
+                            wikidata.explore.transform.ReferentFieldLoad.load(
                                     project, referentLoadRoots,
                                     entityApi,
-                                    genLog);
+                                    genLog, java.util.List.of());
+                    int loadedReferentFields = referentLoad.loaded();
                     if (loadedReferentFields > 0) {
                         genLog.message("Loaded " + loadedReferentFields
                                 + " referent field value(s) from declared PIDs.\n");
@@ -400,7 +405,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     step.summary(summary.toString());
                     return new GenerationRun(
                             project, 0, rootPlan, pool, runtime, allInstances,
-                            new GenerationRun.RemapState(enrichedSnapshot, companionSets));
+                            new GenerationRun.RemapState(enrichedSnapshot, companionSets),
+                            referentLoad.completed());
                 });
     }
 

@@ -29,9 +29,12 @@ import java.util.Map;
  * referent's type). Only stamps when the target actually EXISTS as one of those,
  * so a dangling {@code entityClassName} (a typo, or a target since removed) is
  * left as an untyped label rather than conjuring a phantom type. Membership is
- * additive: when the same pooled entity is reached through fields declaring
- * different targets, it carries every declared role (for example both Nominee
- * and ForWork). For a previously untyped referent the legacy singular carrier
+ * additive while the referent is still role-only: when the same pooled entity is
+ * reached through fields declaring different targets, it carries every declared role
+ * (for example both Nominee
+ * and ForWork). Once classification has assigned a non-role kind, legacy role
+ * classes are selections and are not stamped back onto the entity. For a previously
+ * untyped referent the legacy singular carrier
  * type/storage key is selected deterministically from the complete role set, not
  * from whichever field happened to be visited first. Existing real types are
  * preserved. Roles remain semantic memberships, not separate copies. The referents
@@ -80,6 +83,7 @@ public final class ReferentClassStamp {
         }
 
         int stamped = 0;
+        java.util.Set<String> legacyRoles = RoleSelections.legacyRoleClassNames(model);
         Map<WikidataDynamicObject, Boolean> originallyTyped = new IdentityHashMap<>();
         for (WikidataDynamicObject o : instances) {
             if (o == null || o.typeName() == null) {
@@ -90,7 +94,8 @@ public final class ReferentClassStamp {
                 continue;
             }
             for (Map.Entry<String, String> e : byField.entrySet()) {
-                stamped += stamp(o.get(e.getKey()), e.getValue(), originallyTyped);
+                stamped += stamp(o.get(e.getKey()), e.getValue(), legacyRoles,
+                        originallyTyped);
             }
         }
         // Unrelated role classes have no "most specific" winner. Normalize their
@@ -137,10 +142,20 @@ public final class ReferentClassStamp {
     }
 
     private static int stamp(Object value, String className,
+                             java.util.Set<String> legacyRoles,
                              Map<WikidataDynamicObject, Boolean> originallyTyped) {
         if (value instanceof WikidataDynamicObject w) {
             if (w.qid() != null && WikidataIds.isQid(w.qid())) {
                 originallyTyped.putIfAbsent(w, w.hasTypeStamp());
+            }
+            // Roles are materialized from their owning field by RoleSelections. Before
+            // kind classification, their legacy classes keep bare referents stamped and
+            // allow one entity to occupy several roles. After classification, putting a
+            // role class back would let persistence choose it as the carrier again
+            // (Person -> Nominee), undoing the classifier's conclusion.
+            if (w.hasTypeStamp() && legacyRoles.contains(className)
+                    && w.directClassNames().stream().anyMatch(c -> !legacyRoles.contains(c))) {
+                return 0;
             }
             if (w.qid() != null && WikidataIds.isQid(w.qid())
                     && !w.directClassNames().contains(className)) {
@@ -152,7 +167,7 @@ public final class ReferentClassStamp {
         if (value instanceof List<?> list) {
             int n = 0;
             for (Object item : list) {
-                n += stamp(item, className, originallyTyped);
+                n += stamp(item, className, legacyRoles, originallyTyped);
             }
             return n;
         }

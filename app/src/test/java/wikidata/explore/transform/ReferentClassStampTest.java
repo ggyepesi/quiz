@@ -21,6 +21,8 @@ class ReferentClassStampTest {
         GeneratedProjectModel p = new GeneratedProjectModel();
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.statementSource(new wikidata.explore.model.StatementClassSource(
+                "OscarBackbone", "P1411"));
         entityField(nom, "nominee", "Nominee");           // -> bare class
         entityField(nom, "category", "OscarCategories");  // -> VOCABULARY Selection
         entityField(nom, "forWork", "ForWork");           // -> neither: not stamped
@@ -90,7 +92,7 @@ class ReferentClassStampTest {
         assertEquals("Nominee", b.typeName());
     }
 
-    @Test void addsTheDeclaredRoleWithoutReplacingAnExistingType() {
+    @Test void doesNotPutALegacyRoleBackOntoAClassifiedKind() {
         GeneratedProjectModel model = model();
 
         WikidataDynamicObject nomination =
@@ -104,9 +106,9 @@ class ReferentClassStampTest {
 
         int stamped = ReferentClassStamp.apply(model, List.of(nomination));
 
-        assertEquals(1, stamped);
+        assertEquals(0, stamped);
         assertEquals("Person", nominee.typeName(), "an existing type is preserved");
-        assertEquals(java.util.Set.of("Person", "Nominee"), nominee.directClassNames());
+        assertEquals(java.util.Set.of("Person"), nominee.directClassNames());
     }
 
     @Test void sameEntityCanBelongToBothStatementFieldRoles() {

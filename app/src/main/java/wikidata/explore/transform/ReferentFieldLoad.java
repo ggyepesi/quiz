@@ -88,13 +88,10 @@ public final class ReferentFieldLoad {
             }
         }
 
-        // Referenced-only classes and their entity-valued property-fields.
+        // Classes never extracted as roots, and their declared property-fields.
         Map<String, List<GeneratedFieldModel>> byClass = new LinkedHashMap<>();
         for (GeneratedClassModel c : model.classes()) {
-            if (c == null
-                    || (MembershipPattern.of(c, model) != MembershipPattern.REFERENCED
-                        && MembershipPattern.of(c, model)
-                                != MembershipPattern.OWNED_COMPONENT)) {
+            if (c == null || !loadsHere(MembershipPattern.of(c, model))) {
                 continue;
             }
             List<GeneratedFieldModel> fields = new ArrayList<>();
@@ -172,6 +169,23 @@ public final class ReferentFieldLoad {
             }
         }
         return new Result(loaded, List.copyOf(completed));
+    }
+
+    /**
+     * The membership patterns whose members are never extracted as roots, so the normal
+     * field pipeline never runs for them and their declared properties would otherwise
+     * never load.
+     *
+     * <p>REFERENCED members appear only as the value-end of a field; an OWNED_COMPONENT
+     * is produced per owner; and an EVIDENCE_KIND is STAMPED from P31 evidence rather
+     * than queried — its members are pool entities with real QIDs and no root query of
+     * their own. Declaring {@code Person.birthDate (P569)} used to validate, discover,
+     * and then silently load nothing.
+     */
+    private static boolean loadsHere(MembershipPattern pattern) {
+        return pattern == MembershipPattern.REFERENCED
+                || pattern == MembershipPattern.OWNED_COMPONENT
+                || pattern == MembershipPattern.EVIDENCE_KIND;
     }
 
     /** Entity refs (outgoing claims), dates and plain strings load onto referents;

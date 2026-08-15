@@ -353,7 +353,9 @@ public class GenerationPipeline {
                         snapshot, pool, entityApi, log, previous.loadedDeclarations());
         int loaded = referents.loaded();
 
-        // The values just fetched are bare references until they are told what they are.
+        // Newly fetched entity values need their declared target class. The stamping
+        // rule itself owns the important invariant: it may type a bare referent, but it
+        // never puts a legacy role class back onto an evidence-classified entity.
         wikidata.explore.transform.ReferentClassStamp.apply(snapshot, pool);
         wikidata.explore.transform.Canonicalization.apply(snapshot, pool, log);
         wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, pool, log);
