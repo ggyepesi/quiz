@@ -22,7 +22,9 @@ class ReferentFieldLoadTest {
 
     private static final class RecordingApi extends FakeWikidataApiClient {
         int claimLoads;
+        int literalLoads;
         List<String> loadedPids = List.of();
+        List<String> loadedLiteralPids = List.of();
 
         @Override public Map<String, WikidataApiClient.ApiEntity> getEntities(
                 List<String> qids, List<String> claimPids,
@@ -32,6 +34,14 @@ class ReferentFieldLoadTest {
                 loadedPids = List.copyOf(claimPids);
             }
             return super.getEntities(qids, claimPids, batchLog);
+        }
+
+        @Override public Map<String, Map<String, List<WikidataApiClient.ApiStatement>>>
+                getStatementsByProperty(List<String> qids, List<String> statementPids,
+                                        WikidataApiClient.BatchLog batchLog) {
+            literalLoads++;
+            loadedLiteralPids = List.copyOf(statementPids);
+            return super.getStatementsByProperty(qids, statementPids, batchLog);
         }
     }
 
@@ -176,6 +186,33 @@ class ReferentFieldLoadTest {
         Object y = ceremony.get("year");
         assertInstanceOf(aux.FlexibleDate.class, y);
         assertEquals(2024, ((aux.FlexibleDate) y).getYear());
+    }
+
+    @Test void siblingLiteralFieldsShareOneClaimsLoad() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("ceremony", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Ceremony");
+        GeneratedClassModel ceremonyClass = new GeneratedClassModel("Ceremony");
+        ceremonyClass.addField("date", FieldType.DATE, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P585");
+        ceremonyClass.addField("officialName", FieldType.STRING, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P1448");
+        model.rootClass(nomination);
+        model.addClass(ceremonyClass);
+
+        WikidataDynamicObject ceremony =
+                new WikidataDynamicObject("Q100", "97th Academy Awards");
+        ceremony.type("Ceremony");
+        RecordingApi api = new RecordingApi();
+        api.statement("Q100", "P585", "Q100$s1", "+2025-03-02T00:00:00Z", Map.of())
+                .statement("Q100", "P1448", "Q100$s2", "Academy Awards", Map.of());
+
+        assertEquals(2, ReferentFieldLoad.apply(model, List.of(ceremony), api, null));
+        assertEquals(1, api.literalLoads);
+        assertEquals(java.util.Set.of("P585", "P1448"),
+                new java.util.LinkedHashSet<>(api.loadedLiteralPids));
+        assertEquals("Academy Awards", ceremony.get("officialName"));
     }
 
     /** A referent that exists ONLY nested inside another record (never a top-level

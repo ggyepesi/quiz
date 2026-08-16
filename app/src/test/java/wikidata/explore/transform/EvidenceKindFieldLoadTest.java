@@ -51,12 +51,13 @@ class EvidenceKindFieldLoadTest {
 
     private static WikidataApiClient api() {
         return new WikidataApiClient(WikidataApiClient.DEFAULT_USER_AGENT) {
-            @Override public Map<String, List<ApiStatement>> getStatements(
-                    List<String> qids, String pid, List<String> qualifiers, BatchLog log) {
-                Map<String, List<ApiStatement>> out = new LinkedHashMap<>();
-                if (qids.contains("Q72717") && "P569".equals(pid)) {
-                    out.put("Q72717", List.of(
-                            new ApiStatement("Q72717$s1", "+1909-09-07T00:00:00Z", Map.of())));
+            @Override public Map<String, Map<String, List<ApiStatement>>>
+                    getStatementsByProperty(List<String> qids, List<String> pids,
+                                            BatchLog log) {
+                Map<String, Map<String, List<ApiStatement>>> out = new LinkedHashMap<>();
+                if (qids.contains("Q72717") && pids.contains("P569")) {
+                    out.put("P569", Map.of("Q72717", List.of(
+                            new ApiStatement("Q72717$s1", "+1909-09-07T00:00:00Z", Map.of()))));
                 }
                 return out;
             }

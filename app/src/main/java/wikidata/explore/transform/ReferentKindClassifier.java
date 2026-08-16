@@ -60,7 +60,12 @@ public final class ReferentKindClassifier {
             if (Thread.currentThread().isInterrupted()) Thread.currentThread().interrupt();
             else if (log != null) log.message("Entity kind classification failed ("
                     + failure.getMessage() + ")\n");
-            return new Result(0, 0, candidates.size());
+            // WHICH entities went unchecked, not just how many: the run reports its
+            // unresolved work by QID, and a bare count is dropped on the way there — so
+            // a call that failed outright would leave the run claiming it classified
+            // everything it could.
+            return new Result(0, 0, candidates.size(),
+                    List.copyOf(candidates.keySet()));
         }
         Map<String, WikidataApiClient.ApiEntity> evidence = partial.entities();
 

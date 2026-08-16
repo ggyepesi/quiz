@@ -43,17 +43,40 @@ import java.util.Set;
  */
 public final class ReferentFieldLoad {
 
-    private record LoadOutcome(int loaded, boolean completed) {
-        static LoadOutcome completed(int loaded) { return new LoadOutcome(loaded, true); }
-        static LoadOutcome failed() { return new LoadOutcome(0, false); }
+    /** What a field load did: values assigned, and the entities it could NOT reach.
+     *  Not a pass/fail flag — a load over thousands of entities normally answers for
+     *  almost all of them, and throwing that away because one batch of 50 was
+     *  unreachable both mis-states what is missing and makes the next run re-ask for
+     *  everything. An entity that answered is covered even when it has no such
+     *  property; only an unreached one is unresolved. */
+    private record LoadOutcome(int loaded, Set<String> unavailable) {
+        LoadOutcome {
+            unavailable = unavailable == null ? Set.of() : Set.copyOf(unavailable);
+        }
+        boolean completed() { return unavailable.isEmpty(); }
+        static LoadOutcome completed(int loaded) { return new LoadOutcome(loaded, Set.of()); }
     }
 
     private record EntityFieldBatch(
             Map<String, WikidataApiClient.ApiEntity> entities,
             Map<String, WikidataApiClient.ApiEntity> labels,
-            boolean completed) {
-        static EntityFieldBatch failed() {
-            return new EntityFieldBatch(Map.of(), Map.of(), false);
+            Set<String> unavailable) {
+        EntityFieldBatch {
+            unavailable = unavailable == null ? Set.of() : Set.copyOf(unavailable);
+        }
+        static EntityFieldBatch unreached(Collection<String> qids) {
+            return new EntityFieldBatch(Map.of(), Map.of(), new LinkedHashSet<>(qids));
+        }
+    }
+
+    private record LiteralFieldBatch(
+            Map<String, Map<String, List<WikidataApiClient.ApiStatement>>> statements,
+            Set<String> unavailable) {
+        LiteralFieldBatch {
+            unavailable = unavailable == null ? Set.of() : Set.copyOf(unavailable);
+        }
+        static LiteralFieldBatch unreached(Collection<String> qids) {
+            return new LiteralFieldBatch(Map.of(), new LinkedHashSet<>(qids));
         }
     }
 
@@ -97,6 +120,17 @@ public final class ReferentFieldLoad {
             WikidataApiClient api,
             GenerationLog log,
             Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded) {
+
+        return load(model, pool, api, log, alreadyLoaded, false);
+    }
+
+    public static Result load(
+            GeneratedProjectModel model,
+            Collection<WikidataDynamicObject> pool,
+            WikidataApiClient api,
+            GenerationLog log,
+            Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
+            boolean deferLabels) {
 
         if (model == null || pool == null || api == null) {
             return new Result(0, java.util.List.of());
@@ -157,6 +191,8 @@ public final class ReferentFieldLoad {
                 continue;
             }
             EntityFieldBatch entityBatch = loadEntityFields(
+                    e.getKey(), e.getValue(), objs, known, api, sink, deferLabels);
+            LiteralFieldBatch literalBatch = loadLiteralFields(
                     e.getKey(), e.getValue(), objs, known, api, sink);
             for (GeneratedFieldModel f : e.getValue()) {
                 String pid = clean(f.mapping().propertyPid());
@@ -179,20 +215,27 @@ public final class ReferentFieldLoad {
                         .filter(obj -> !coveredQids.contains(obj.qid()))
                         .toList();
                 LoadOutcome outcome = loadField(
-                        e.getKey(), uncovered, f, api, sink, entityBatch);
+                        e.getKey(), uncovered, f, sink, entityBatch, literalBatch);
                 loaded += outcome.loaded();
-                if (outcome.completed()) {
+                // Coverage is per ENTITY, not per declaration: everything asked about
+                // that an answer came back for is covered — including an entity that
+                // simply has no such property — and only the entities no batch reached
+                // stay unresolved. Reporting the whole declaration as unresolved because
+                // one batch of 50 failed both overstated what is missing (4,972 entities
+                // named for ~150 real failures) and made the next run re-ask for all of
+                // it.
+                Set<String> nowCovered = new LinkedHashSet<>(currentQids);
+                nowCovered.removeAll(outcome.unavailable());
+                if (!nowCovered.isEmpty()) {
                     completed.add(new wikidata.explore.extract.LoadedDeclaration(
-                            e.getKey(), f.name(), pid, currentQids));
+                            e.getKey(), f.name(), pid, nowCovered));
                 } else if (done != null) {
-                    // Preserve coverage known from an earlier successful run, but never
-                    // claim the uncovered identities from this failed attempt.
+                    // Nothing new was reached; keep the coverage an earlier run earned.
                     completed.add(done);
                 }
                 if (!outcome.completed()) {
                     failed.add(new wikidata.explore.extract.LoadedDeclaration(
-                            e.getKey(), f.name(), pid,
-                            uncovered.stream().map(WikidataDynamicObject::qid).toList()));
+                            e.getKey(), f.name(), pid, outcome.unavailable()));
                 }
             }
         }
@@ -225,11 +268,11 @@ public final class ReferentFieldLoad {
     private static LoadOutcome loadField(
             String className,
             List<WikidataDynamicObject> objs,
-            GeneratedFieldModel field, WikidataApiClient api, GenerationLog log,
-            EntityFieldBatch entityBatch) {
+            GeneratedFieldModel field, GenerationLog log,
+            EntityFieldBatch entityBatch, LiteralFieldBatch literalBatch) {
         return field.type() == FieldType.ENTITY
                 ? loadEntityField(className, objs, field, log, entityBatch)
-                : loadLiteralField(className, objs, field, api, log);
+                : loadLiteralField(className, objs, field, log, literalBatch);
     }
 
     /** Fetch all entity-valued sibling fields together. wbgetentities returns the
@@ -239,7 +282,7 @@ public final class ReferentFieldLoad {
             String className, List<GeneratedFieldModel> fields,
             List<WikidataDynamicObject> objs,
             Map<String, wikidata.explore.extract.LoadedDeclaration> known,
-            WikidataApiClient api, GenerationLog log) {
+            WikidataApiClient api, GenerationLog log, boolean deferLabels) {
         Set<String> qids = new LinkedHashSet<>();
         Set<String> pids = new LinkedHashSet<>();
         for (GeneratedFieldModel field : fields) {
@@ -258,15 +301,27 @@ public final class ReferentFieldLoad {
             }
         }
         if (qids.isEmpty()) {
-            return new EntityFieldBatch(Map.of(), Map.of(), true);
+            return new EntityFieldBatch(Map.of(), Map.of(), Set.of());
         }
 
         Map<String, WikidataApiClient.ApiEntity> details;
+        Set<String> unavailable;
         try (GenerationLog.Group group = log.group("Load " + pids.size()
                 + " referent fields on " + className + " for " + qids.size()
                 + " entities (" + String.join(", ", pids) + ")")) {
-            details = api.getEntities(new ArrayList<>(qids), new ArrayList<>(pids),
-                    group.batchSink());
+            // Partial, not all-or-nothing: what the reachable batches answered is real
+            // data, and an entity that answered without the property genuinely lacks it.
+            // Only the entities no batch reached are unresolved.
+            WikidataApiClient.PartialEntities partial = api.getEntityClaimsPartial(
+                    new ArrayList<>(qids), new ArrayList<>(pids), group.batchSink());
+            details = partial.entities();
+            unavailable = new LinkedHashSet<>(partial.unavailableQids());
+            if (!unavailable.isEmpty()) {
+                log.message("Referent entity fields on " + className + ": "
+                        + unavailable.size() + " of " + qids.size()
+                        + " entities unreachable in " + partial.failedBatches()
+                        + " batch(es); the rest were loaded.\n");
+            }
         } catch (Exception ex) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
@@ -275,7 +330,7 @@ public final class ReferentFieldLoad {
             }
             log.message("Referent entity fields on " + className + " failed ("
                     + ex.getMessage() + ")\n");
-            return EntityFieldBatch.failed();
+            return EntityFieldBatch.unreached(qids);
         }
 
         Set<String> valueQids = new LinkedHashSet<>();
@@ -283,6 +338,9 @@ public final class ReferentFieldLoad {
             for (String pid : pids) valueQids.addAll(entity.claim(pid));
         }
         Map<String, WikidataApiClient.ApiEntity> labels;
+        if (deferLabels) {
+            return new EntityFieldBatch(details, Map.of(), unavailable);
+        }
         try (GenerationLog.Group group = log.group("Resolve " + valueQids.size()
                 + " value label(s) for " + className)) {
             labels = valueQids.isEmpty() ? Map.of()
@@ -291,7 +349,72 @@ public final class ReferentFieldLoad {
         } catch (Exception ex) {
             labels = Map.of();
         }
-        return new EntityFieldBatch(details, labels, true);
+        return new EntityFieldBatch(details, labels, unavailable);
+    }
+
+    /** Fetch DATE/STRING siblings from one claims body, just as entity-valued sibling
+     * fields are grouped above. Parsing remains per PID and assignment per field. */
+    private static LiteralFieldBatch loadLiteralFields(
+            String className, List<GeneratedFieldModel> fields,
+            List<WikidataDynamicObject> objs,
+            Map<String, wikidata.explore.extract.LoadedDeclaration> known,
+            WikidataApiClient api, GenerationLog log) {
+        Set<String> qids = new LinkedHashSet<>();
+        Set<String> pids = new LinkedHashSet<>();
+        for (GeneratedFieldModel field : fields) {
+            if (field.type() != FieldType.DATE && field.type() != FieldType.STRING) continue;
+            String pid = clean(field.mapping().propertyPid());
+            wikidata.explore.extract.LoadedDeclaration done = known.get(
+                    wikidata.explore.extract.LoadedDeclaration.key(
+                            className, field.name(), pid));
+            Set<String> covered = done == null ? Set.of()
+                    : new LinkedHashSet<>(done.coveredQids());
+            for (WikidataDynamicObject obj : objs) {
+                if (!covered.contains(obj.qid()) && obj.get(field.name()) == null) {
+                    qids.add(obj.qid());
+                    pids.add(pid);
+                }
+            }
+        }
+        if (qids.isEmpty()) return new LiteralFieldBatch(Map.of(), Set.of());
+
+        try (GenerationLog.Group group = log.group("Load " + pids.size()
+                + " literal referent fields on " + className + " for " + qids.size()
+                + " entities (" + String.join(", ", pids) + ")")) {
+            // Partial, for the same reason as the entity batch above: the entities a
+            // reachable batch answered for are loaded and covered; only unreached ones
+            // stay unresolved.
+            WikidataApiClient.PartialStatements partial =
+                    api.getStatementsByPropertyPartial(
+                            new ArrayList<>(qids), new ArrayList<>(pids), group.batchSink());
+            if (!partial.unavailableQids().isEmpty()) {
+                log.message("Referent literal fields on " + className + ": "
+                        + partial.unavailableQids().size() + " of " + qids.size()
+                        + " entities unreachable in " + partial.failedBatches()
+                        + " batch(es); the rest were loaded.\n");
+            }
+            return new LiteralFieldBatch(partial.statements(),
+                    new LinkedHashSet<>(partial.unavailableQids()));
+        } catch (Exception ex) {
+            if (Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
+                throw new java.util.concurrent.CancellationException(
+                        "Referent field load interrupted");
+            }
+            log.message("Referent literal fields on " + className + " failed ("
+                    + ex.getMessage() + ")\n");
+            return LiteralFieldBatch.unreached(qids);
+        }
+    }
+
+    /** The entities of THIS field that no batch reached — the class-wide unavailable
+     *  set narrowed to the ones this field actually asked about. */
+    private static Set<String> unreachedOf(
+            Collection<String> asked, Set<String> unavailable) {
+        if (unavailable.isEmpty()) return Set.of();
+        Set<String> out = new LinkedHashSet<>(asked);
+        out.retainAll(unavailable);
+        return out;
     }
 
     /** The entities still MISSING this field. A populated field is left alone at
@@ -314,7 +437,7 @@ public final class ReferentFieldLoad {
      *  literal. This is what lets a Ceremony carry its own {@code year}/{@code date}. */
     private static LoadOutcome loadLiteralField(
             String className, List<WikidataDynamicObject> objs,
-            GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
+            GeneratedFieldModel field, GenerationLog log, LiteralFieldBatch batch) {
 
         String pid = clean(field.mapping().propertyPid());
         List<String> qids = qidsMissing(objs, field);
@@ -322,22 +445,9 @@ public final class ReferentFieldLoad {
             return LoadOutcome.completed(0);
         }
 
-        Map<String, List<WikidataApiClient.ApiStatement>> stmts;
-        try (GenerationLog.Group group = log.group("Load referent field "
-                + className + "." + field.name() + " (" + pid + ") for "
-                + qids.size() + " entities")) {
-            stmts = api.getStatements(qids, pid, List.of(), group.batchSink());
-        } catch (Exception ex) {
-            if (Thread.currentThread().isInterrupted()) {
-                Thread.currentThread().interrupt();
-                throw new java.util.concurrent.CancellationException(
-                        "Referent field load interrupted");
-            } else {
-                log.message("Referent field load " + className + "." + field.name()
-                        + " (" + pid + ") failed (" + ex.getMessage() + ")\n");
-            }
-            return LoadOutcome.failed();
-        }
+        Map<String, List<WikidataApiClient.ApiStatement>> stmts =
+                batch.statements().getOrDefault(pid, Map.of());
+        Set<String> unreached = unreachedOf(qids, batch.unavailable());
 
         boolean collection = field.cardinality() != null
                 && field.cardinality().isCollection();
@@ -370,7 +480,7 @@ public final class ReferentFieldLoad {
         }
         log.message("Referent field load " + className + "." + field.name()
                 + " (" + pid + ") -> " + loaded + " value(s)\n");
-        return LoadOutcome.completed(loaded);
+        return new LoadOutcome(loaded, unreached);
     }
 
     private static LoadOutcome loadEntityField(
@@ -385,9 +495,7 @@ public final class ReferentFieldLoad {
             return LoadOutcome.completed(0);
         }
 
-        if (!batch.completed()) {
-            return LoadOutcome.failed();
-        }
+        Set<String> unreached = unreachedOf(qids, batch.unavailable());
 
         boolean collection = field.cardinality() != null
                 && field.cardinality().isCollection();
@@ -417,7 +525,7 @@ public final class ReferentFieldLoad {
         // NomineeType) is NOT built here — that is done post-prune from the SERVED pool
         // by DescriptiveVocabularyBuild, so it lists exactly the types that survive
         // (a type whose only bearer was pruned must not linger in the vocabulary).
-        return LoadOutcome.completed(loaded);
+        return new LoadOutcome(loaded, unreached);
     }
 
     /** Delegates to the one graph walk the snapshot writer also uses, so a field load
