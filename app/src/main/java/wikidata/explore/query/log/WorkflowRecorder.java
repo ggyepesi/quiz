@@ -122,7 +122,7 @@ public class WorkflowRecorder {
 
         try {
             T result = body.run(step);
-            complete(node, LogStatus.OK, step.summaryText(), null);
+            complete(node, step.completionStatus(), step.summaryText(), null);
             return result;
         } catch (Exception e) {
             complete(node, statusFor(e), null, e);

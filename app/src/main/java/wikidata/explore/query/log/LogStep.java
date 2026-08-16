@@ -14,6 +14,7 @@ public final class LogStep {
     private final WorkflowRecorder recorder;
     private final LogNode node;
     private String summary;
+    private LogStatus completionStatus = LogStatus.OK;
 
     LogStep(WorkflowRecorder recorder, LogNode node) {
         this.recorder = recorder;
@@ -34,6 +35,13 @@ public final class LogStep {
 
     public LogStep summary(String summary) {
         this.summary = summary;
+        return this;
+    }
+
+    /** Marks a normally-returning step as partial rather than misleadingly OK. */
+    public LogStep partial(String summary) {
+        this.summary = summary;
+        this.completionStatus = LogStatus.PARTIAL;
         return this;
     }
 
@@ -93,8 +101,14 @@ public final class LogStep {
 
     /** Completes THIS step's own node (used to close a group step). */
     public void completeGroup(String summary) {
+        completeGroup(summary, LogStatus.OK);
+    }
+
+    /** Completes a group with the status derived from its child requests. */
+    public void completeGroup(String summary, LogStatus status) {
         if (recorder != null && node != null) {
-            recorder.completeSubquery(node, summary, LogStatus.OK);
+            recorder.completeSubquery(node, summary,
+                    status == null ? LogStatus.OK : status);
         }
     }
 
@@ -104,5 +118,9 @@ public final class LogStep {
 
     String summaryText() {
         return summary;
+    }
+
+    LogStatus completionStatus() {
+        return completionStatus;
     }
 }

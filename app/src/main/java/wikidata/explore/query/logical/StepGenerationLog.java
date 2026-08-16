@@ -6,6 +6,8 @@ import wikidata.explore.query.log.LogNode;
 import wikidata.explore.query.log.LogStep;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import wikidata.explore.query.log.LogStatus;
 
 /**
  * A {@link GenerationLog} that records into the query log's TREE, not just its text.
@@ -50,6 +52,9 @@ final class StepGenerationLog {
                 return new Group() {
                     // Batches within a group can record concurrently, so count atomically.
                     private final AtomicInteger n = new AtomicInteger();
+                    private final AtomicInteger failures = new AtomicInteger();
+                    private final AtomicReference<String> firstFailure =
+                            new AtomicReference<>();
                     @Override public void message(String text) {
                         context.message(text);
                         echo(echoPrefix, text);
@@ -62,16 +67,35 @@ final class StepGenerationLog {
                     @Override public void subqueryFailed(String ti, String r, String e) {
                         sub.subqueryFailed(ti, r, e);
                         n.incrementAndGet();
+                        recordFailure(e);
                         echo(echoPrefix, ti + "  FAILED " + e);
                     }
                     @Override public Running subqueryStarted(String ti, String r) {
                         n.incrementAndGet();
                         echo(echoPrefix, ti + "  started");
-                        return running(sub, ti, r, echoPrefix);
+                        Running child = running(sub, ti, r, echoPrefix);
+                        return new Running() {
+                            @Override public void done(String summary) {
+                                child.done(summary);
+                            }
+                            @Override public void failed(String error) {
+                                recordFailure(error);
+                                child.failed(error);
+                            }
+                        };
                     }
                     @Override public void close() {
-                        sub.completeGroup(n.get() + " request(s)");
-                        echo(echoPrefix, title + " — " + n.get() + " request(s)");
+                        int failed = failures.get();
+                        String summary = n.get() + " request(s)"
+                                + (failed == 0 ? "" : "; " + failed + " failed: "
+                                + concise(firstFailure.get()));
+                        sub.completeGroup(summary, failed == 0
+                                ? LogStatus.OK : LogStatus.PARTIAL);
+                        echo(echoPrefix, title + " — " + summary);
+                    }
+                    private void recordFailure(String error) {
+                        failures.incrementAndGet();
+                        firstFailure.compareAndSet(null, error);
                     }
                 };
             }
@@ -99,5 +123,13 @@ final class StepGenerationLog {
         for (String line : text.split("\\R")) {
             if (!line.isBlank()) System.out.println("[" + prefix + " " + stamp + "] " + line);
         }
+    }
+
+    private static String concise(String error) {
+        if (error == null || error.isBlank()) return "unspecified failure";
+        String oneLine = error.replaceAll("\\s+", " ").trim();
+        int url = oneLine.indexOf(" | URL:");
+        if (url > 0) oneLine = oneLine.substring(0, url);
+        return oneLine.length() <= 220 ? oneLine : oneLine.substring(0, 217) + "…";
     }
 }
