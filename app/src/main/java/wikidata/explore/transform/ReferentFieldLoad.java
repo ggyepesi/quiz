@@ -48,6 +48,15 @@ public final class ReferentFieldLoad {
         static LoadOutcome failed() { return new LoadOutcome(0, false); }
     }
 
+    private record EntityFieldBatch(
+            Map<String, WikidataApiClient.ApiEntity> entities,
+            Map<String, WikidataApiClient.ApiEntity> labels,
+            boolean completed) {
+        static EntityFieldBatch failed() {
+            return new EntityFieldBatch(Map.of(), Map.of(), false);
+        }
+    }
+
     /** What a load did: values assigned, and the declarations it COMPLETED — the ones a
      *  later run can skip entirely rather than re-asking for the entities that had no
      *  answer. */
@@ -147,6 +156,8 @@ public final class ReferentFieldLoad {
             if (objs == null || objs.isEmpty()) {
                 continue;
             }
+            EntityFieldBatch entityBatch = loadEntityFields(
+                    e.getKey(), e.getValue(), objs, known, api, sink);
             for (GeneratedFieldModel f : e.getValue()) {
                 String pid = clean(f.mapping().propertyPid());
                 String key = wikidata.explore.extract.LoadedDeclaration.key(
@@ -168,7 +179,7 @@ public final class ReferentFieldLoad {
                         .filter(obj -> !coveredQids.contains(obj.qid()))
                         .toList();
                 LoadOutcome outcome = loadField(
-                        model, e.getKey(), uncovered, f, api, sink);
+                        e.getKey(), uncovered, f, api, sink, entityBatch);
                 loaded += outcome.loaded();
                 if (outcome.completed()) {
                     completed.add(new wikidata.explore.extract.LoadedDeclaration(
@@ -212,12 +223,75 @@ public final class ReferentFieldLoad {
     }
 
     private static LoadOutcome loadField(
-            GeneratedProjectModel model, String className,
+            String className,
             List<WikidataDynamicObject> objs,
-            GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
+            GeneratedFieldModel field, WikidataApiClient api, GenerationLog log,
+            EntityFieldBatch entityBatch) {
         return field.type() == FieldType.ENTITY
-                ? loadEntityField(model, className, objs, field, api, log)
+                ? loadEntityField(className, objs, field, log, entityBatch)
                 : loadLiteralField(className, objs, field, api, log);
+    }
+
+    /** Fetch all entity-valued sibling fields together. wbgetentities returns the
+     * complete claims document for an entity, so asking once per PID only downloads
+     * the same body repeatedly (notably Name.givenName + Name.familyName). */
+    private static EntityFieldBatch loadEntityFields(
+            String className, List<GeneratedFieldModel> fields,
+            List<WikidataDynamicObject> objs,
+            Map<String, wikidata.explore.extract.LoadedDeclaration> known,
+            WikidataApiClient api, GenerationLog log) {
+        Set<String> qids = new LinkedHashSet<>();
+        Set<String> pids = new LinkedHashSet<>();
+        for (GeneratedFieldModel field : fields) {
+            if (field.type() != FieldType.ENTITY) continue;
+            String pid = clean(field.mapping().propertyPid());
+            wikidata.explore.extract.LoadedDeclaration done = known.get(
+                    wikidata.explore.extract.LoadedDeclaration.key(
+                            className, field.name(), pid));
+            Set<String> covered = done == null ? Set.of()
+                    : new LinkedHashSet<>(done.coveredQids());
+            for (WikidataDynamicObject obj : objs) {
+                if (!covered.contains(obj.qid()) && obj.get(field.name()) == null) {
+                    qids.add(obj.qid());
+                    pids.add(pid);
+                }
+            }
+        }
+        if (qids.isEmpty()) {
+            return new EntityFieldBatch(Map.of(), Map.of(), true);
+        }
+
+        Map<String, WikidataApiClient.ApiEntity> details;
+        try (GenerationLog.Group group = log.group("Load " + pids.size()
+                + " referent fields on " + className + " for " + qids.size()
+                + " entities (" + String.join(", ", pids) + ")")) {
+            details = api.getEntities(new ArrayList<>(qids), new ArrayList<>(pids),
+                    group.batchSink());
+        } catch (Exception ex) {
+            if (Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
+                throw new java.util.concurrent.CancellationException(
+                        "Referent field load interrupted");
+            }
+            log.message("Referent entity fields on " + className + " failed ("
+                    + ex.getMessage() + ")\n");
+            return EntityFieldBatch.failed();
+        }
+
+        Set<String> valueQids = new LinkedHashSet<>();
+        for (WikidataApiClient.ApiEntity entity : details.values()) {
+            for (String pid : pids) valueQids.addAll(entity.claim(pid));
+        }
+        Map<String, WikidataApiClient.ApiEntity> labels;
+        try (GenerationLog.Group group = log.group("Resolve " + valueQids.size()
+                + " value label(s) for " + className)) {
+            labels = valueQids.isEmpty() ? Map.of()
+                    : api.getEntities(new ArrayList<>(valueQids), List.of(),
+                    group.batchSink());
+        } catch (Exception ex) {
+            labels = Map.of();
+        }
+        return new EntityFieldBatch(details, labels, true);
     }
 
     /** The entities still MISSING this field. A populated field is left alone at
@@ -300,9 +374,10 @@ public final class ReferentFieldLoad {
     }
 
     private static LoadOutcome loadEntityField(
-            GeneratedProjectModel model, String className,
+            String className,
             List<WikidataDynamicObject> objs,
-            GeneratedFieldModel field, WikidataApiClient api, GenerationLog log) {
+            GeneratedFieldModel field, GenerationLog log,
+            EntityFieldBatch batch) {
 
         String pid = clean(field.mapping().propertyPid());
         List<String> qids = qidsMissing(objs, field);
@@ -310,52 +385,21 @@ public final class ReferentFieldLoad {
             return LoadOutcome.completed(0);
         }
 
-        Map<String, WikidataApiClient.ApiEntity> details;
-        try (GenerationLog.Group group = log.group("Load referent field "
-                + className + "." + field.name() + " (" + pid + ") for "
-                + qids.size() + " entities")) {
-            details = api.getEntities(qids, List.of(pid), group.batchSink());
-        } catch (Exception ex) {
-            if (Thread.currentThread().isInterrupted()) {
-                Thread.currentThread().interrupt();
-                throw new java.util.concurrent.CancellationException(
-                        "Referent field load interrupted");
-            } else {
-                log.message("Referent field load " + className + "." + field.name()
-                        + " (" + pid + ") failed (" + ex.getMessage() + ")\n");
-            }
+        if (!batch.completed()) {
             return LoadOutcome.failed();
-        }
-
-        // Label the distinct value entities once.
-        Set<String> valueQids = new LinkedHashSet<>();
-        for (WikidataDynamicObject o : objs) {
-            WikidataApiClient.ApiEntity e = details.get(o.qid());
-            if (e != null) {
-                valueQids.addAll(e.claim(pid));
-            }
-        }
-        Map<String, WikidataApiClient.ApiEntity> labels;
-        try (GenerationLog.Group group = log.group("Resolve " + valueQids.size()
-                + " value label(s) for " + className + "." + field.name())) {
-            labels = valueQids.isEmpty()
-                    ? Map.of()
-                    : api.getEntities(new ArrayList<>(valueQids), List.of(), group.batchSink());
-        } catch (Exception ex) {
-            labels = Map.of();
         }
 
         boolean collection = field.cardinality() != null
                 && field.cardinality().isCollection();
         int loaded = 0;
         for (WikidataDynamicObject o : objs) {
-            WikidataApiClient.ApiEntity e = details.get(o.qid());
+            WikidataApiClient.ApiEntity e = batch.entities().get(o.qid());
             if (e == null || o.get(field.name()) != null) {
                 continue;   // no data, or already populated
             }
             List<WikidataDynamicObject> values = new ArrayList<>();
             for (String vq : e.claim(pid)) {
-                WikidataApiClient.ApiEntity le = labels.get(vq);
+                WikidataApiClient.ApiEntity le = batch.labels().get(vq);
                 String label = le == null || le.label() == null || le.label().isBlank()
                         ? vq : le.label();
                 values.add(new WikidataDynamicObject(vq, label));

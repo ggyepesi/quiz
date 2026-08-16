@@ -2,6 +2,7 @@ package wikidata.explore.transform;
 
 import org.junit.jupiter.api.Test;
 import wikidata.api.FakeWikidataApiClient;
+import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldProductionKind;
@@ -18,6 +19,21 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ReferentFieldLoadTest {
+
+    private static final class RecordingApi extends FakeWikidataApiClient {
+        int claimLoads;
+        List<String> loadedPids = List.of();
+
+        @Override public Map<String, WikidataApiClient.ApiEntity> getEntities(
+                List<String> qids, List<String> claimPids,
+                WikidataApiClient.BatchLog batchLog) {
+            if (claimPids != null && !claimPids.isEmpty()) {
+                claimLoads++;
+                loadedPids = List.copyOf(claimPids);
+            }
+            return super.getEntities(qids, claimPids, batchLog);
+        }
+    }
 
     @Test void ownedComponentFieldsLoadFromTheOwnerQid() {
         GeneratedProjectModel model = new GeneratedProjectModel();
@@ -45,13 +61,16 @@ class ReferentFieldLoadTest {
         owner.type("Person");
         OwnedComponents.Result made = OwnedComponents.apply(
                 model, List.of(owner), null, null);
-        FakeWikidataApiClient api = new FakeWikidataApiClient()
-                .entity("Q42", "Douglas Adams", Map.of(
+        RecordingApi api = new RecordingApi();
+        api.entity("Q42", "Douglas Adams", Map.of(
                         "P735", List.of("Q463035"), "P734", List.of("Q351735")))
                 .entity("Q463035", "Douglas")
                 .entity("Q351735", "Adams");
 
         assertEquals(2, ReferentFieldLoad.apply(model, List.of(owner), api, null));
+        assertEquals(1, api.claimLoads);
+        assertEquals(java.util.Set.of("P734", "P735"),
+                new java.util.LinkedHashSet<>(api.loadedPids));
         WikidataDynamicObject component = made.components().get(0);
         assertEquals("Douglas",
                 ((WikidataDynamicObject) component.get("givenName")).getDisplayName());
