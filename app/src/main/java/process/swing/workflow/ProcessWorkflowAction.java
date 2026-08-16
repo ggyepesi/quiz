@@ -1,5 +1,7 @@
 package process.swing.workflow;
 
+import process.ProcessWorkflowPipeline;
+
 import process.Process;
 import process.ProcessOutcome;
 
@@ -14,6 +16,8 @@ import java.util.List;
 public interface ProcessWorkflowAction<R, D> {
     String id();
     ProcessWorkflowPlan plan();
+    /** Optional executable pipeline shown consistently in Plan, Running and Results. */
+    default ProcessWorkflowPipeline pipeline() { return null; }
     Process<R> process();
     ProcessWorkflowResults<D> results(ProcessOutcome<R> outcome);
     void apply(List<D> decisions) throws Exception;

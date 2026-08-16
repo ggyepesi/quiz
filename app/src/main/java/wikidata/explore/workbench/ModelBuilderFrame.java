@@ -692,7 +692,10 @@ public class ModelBuilderFrame extends JFrame {
                     return;
                 }
                 GeneratedProjectModel snapshot = projectModel.copy();
-                GenerateDomainProcess generation = new GenerateDomainProcess(snapshot);
+                process.ProcessWorkflowPipeline generationPipeline =
+                        wikidata.explore.generation.GenerateDomainPipeline.configured(snapshot);
+                GenerateDomainProcess generation =
+                        new GenerateDomainProcess(snapshot, generationPipeline);
                 java.util.List<objectview.Viewable> classCards = snapshot.classes().stream()
                         .map(model -> {
                             quiz.transform.DynamicViewable card =
@@ -707,6 +710,8 @@ public class ModelBuilderFrame extends JFrame {
                         GenerationRun, GenerationRun> action =
                         new process.swing.workflow.ProcessWorkflowAction<>() {
                             @Override public String id() { return "generate-domain"; }
+                            @Override public process.ProcessWorkflowPipeline
+                                    pipeline() { return generationPipeline; }
                             @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
                                 return new process.swing.workflow.ProcessWorkflowPlan(
                                         "Generate domain",

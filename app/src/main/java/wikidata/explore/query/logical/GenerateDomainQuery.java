@@ -33,9 +33,17 @@ import java.util.Map;
 public class GenerateDomainQuery implements Query<GenerationRun> {
 
     private final GeneratedProjectModel project;
+    private final process.ProcessWorkflowPipeline pipelineProgress;
 
     public GenerateDomainQuery(GeneratedProjectModel project) {
+        this(project, null);
+    }
+
+    public GenerateDomainQuery(
+            GeneratedProjectModel project,
+            process.ProcessWorkflowPipeline pipelineProgress) {
         this.project = project;
+        this.pipelineProgress = pipelineProgress;
     }
 
     @Override public String purpose() { return "Generate domain"; }
@@ -62,6 +70,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // One structured log for every long run (see Enrich): each
                     // request becomes its own entry, an in-flight one included.
                     GenerationLog genLog = StepGenerationLog.of(context, step);
+                    phase(wikidata.explore.generation.GenerateDomainPipeline.EXTRACT,
+                            project.classes().size() + " configured classes");
 
                     GenerationPipeline pipeline = new GenerationPipeline();
                     WikidataObjectRegistry shared = new WikidataObjectRegistry();
@@ -105,8 +115,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             rootPlan = plan;
                         }
                         classesRun++;
+                        progress(wikidata.explore.generation.GenerateDomainPipeline.EXTRACT,
+                                classesRun + " root class query(ies) completed");
                     }
 
+                    phase(wikidata.explore.generation.GenerateDomainPipeline.REIFY,
+                            "Loading statement classes and derived transforms");
                     // STATEMENT-reification classes (e.g. Nomination = the P1411
                     // statements of Oscarnominations, with year/forWork/nominee
                     // qualifier fields): load the qualifiers + reify into records.
@@ -263,6 +277,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     pool.addAll(reified);
 
+                    phase(wikidata.explore.generation.GenerateDomainPipeline.ROLE_EVIDENCE,
+                            "Loading fields declared on referenced roles");
                     // First acquisition pass: load fields on the role classes that are
                     // already known — e.g. Nominee.type (P31), ForWork.genre (P136).
                     // This evidence is then reused by the snapshot classifier instead
@@ -287,6 +303,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     project, referentLoadRoots,
                                     entityApi,
                                     genLog, java.util.List.of());
+                    phase(wikidata.explore.generation.GenerateDomainPipeline.CLASSIFY,
+                            "Applying stored and remote kind evidence");
                     wikidata.explore.transform.SnapshotEntityKindClassifier.Result storedKinds =
                             wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
                                     project, pool, pool, genLog);
@@ -311,6 +329,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 + " could not be checked.\n");
                     }
 
+                    phase(wikidata.explore.generation.GenerateDomainPipeline.OWNED,
+                            classifiedKinds + " kind assignment(s) available");
                     // Field-defined composition now sees the settled kind memberships:
                     // Person.name -> Name creates one Name carrying the Person QID.
                     wikidata.explore.transform.OwnedComponents.Result owned =
@@ -320,6 +340,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.transform.ReferentClassStamp.apply(
                             project, owned.components());
 
+                    phase(wikidata.explore.generation.GenerateDomainPipeline.KIND_OWNED_FIELDS,
+                            owned.created() + " owned component(s) created");
                     // Second acquisition pass fills fields belonging to kinds and owned
                     // components discovered above (Person.dateOfBirth, Name.*). Exact
                     // declaration coverage from pass one prevents duplicate requests.
@@ -333,13 +355,40 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             completedReferentLoads.put(d.key(), d));
                     secondReferentLoad.completed().forEach(d ->
                             completedReferentLoads.put(d.key(), d));
+
+                    // A failed declaration can succeed in this second pass (the log
+                    // demonstrates exactly that for Nominee.type). Kind assignment and
+                    // owned composition therefore have to converge AFTER the retry,
+                    // rather than freezing the first pass's "unknown" conclusion.
+                    wikidata.explore.transform.SnapshotEntityKindClassifier.Result lateKinds =
+                            wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
+                                    project, pool, pool, genLog);
+                    wikidata.explore.transform.OwnedComponents.Result lateOwned =
+                            wikidata.explore.transform.OwnedComponents.apply(
+                                    project, pool, null, genLog);
+                    lateOwned.addTo(pool);
+                    wikidata.explore.transform.ReferentClassStamp.apply(
+                            project, lateOwned.components());
+
+                    // Newly classified owners may have introduced owned classes only
+                    // now. One final load fills those declarations; prior exact coverage
+                    // keeps the pass proportional to the newly reachable work.
+                    wikidata.explore.transform.ReferentFieldLoad.Result finalReferentLoad =
+                            wikidata.explore.transform.ReferentFieldLoad.load(
+                                    project, pool, entityApi, genLog,
+                                    completedReferentLoads.values());
+                    finalReferentLoad.completed().forEach(d ->
+                            completedReferentLoads.put(d.key(), d));
+
                     int loadedReferentFields = firstReferentLoad.loaded()
-                            + secondReferentLoad.loaded();
+                            + secondReferentLoad.loaded() + finalReferentLoad.loaded();
                     if (loadedReferentFields > 0) {
                         genLog.message("Loaded " + loadedReferentFields
                                 + " referent/owned field value(s) from declared PIDs.\n");
                     }
 
+                    phase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
+                            loadedReferentFields + " referent/owned field value(s) loaded");
                     // Canonical names depend on the final class and field set, so this
                     // is the authoritative pass. Earlier canonicalization is harmless
                     // preparation for reification, but must not be the last word.
@@ -409,6 +458,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // show at generation yet vanish on reload.
                     List<Viewable> allInstances =
                             pipeline.materialize(runtime, pool);
+                    completePhase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
+                            allInstances.size() + " instances materialized");
 
                     // Parent summary = a copy-pasteable per-class breakdown of the
                     // SERVED pool, counted by DISTINCT qid (what the save keeps), so
@@ -444,21 +495,64 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     java.util.List<wikidata.explore.extract.LoadedDeclaration> failedLoads =
                             new java.util.ArrayList<>(firstReferentLoad.failed());
                     failedLoads.addAll(secondReferentLoad.failed());
+                    failedLoads.addAll(finalReferentLoad.failed());
+                    // Failure events are historical; quality describes the final state.
+                    // If a later pass completed the same declaration for every failed
+                    // QID, it repaired the failure and must not leave the run PARTIAL.
+                    failedLoads.removeIf(failed -> {
+                        wikidata.explore.extract.LoadedDeclaration completed =
+                                completedReferentLoads.get(failed.key());
+                        return completed != null && completed.coveredQids()
+                                .containsAll(failed.coveredQids());
+                    });
                     if (!failedLoads.isEmpty()) {
-                        qualityWarnings.add(failedLoads.size()
-                                + " declared field load(s) did not complete");
+                        String failedNames = failedLoads.stream().limit(3)
+                                .map(d -> d.className() + "." + d.fieldName()
+                                        + " (" + d.propertyPid() + ", "
+                                        + d.coveredQids().size() + " QIDs)")
+                                .collect(java.util.stream.Collectors.joining(", "));
+                        if (failedLoads.size() > 3) {
+                            failedNames += " … and " + (failedLoads.size() - 3) + " more";
+                        }
+                        qualityWarnings.add("Unresolved field load: " + failedNames);
                         failedLoads.forEach(d -> unavailableQids.addAll(d.coveredQids()));
+                        boolean roleFailure = failedLoads.stream().anyMatch(d -> {
+                            GeneratedClassModel c = project.findClass(d.className());
+                            return c != null && wikidata.explore.model.MembershipPattern.of(
+                                    c, project) == wikidata.explore.model.MembershipPattern.REFERENCED;
+                        });
+                        if (roleFailure) partialPhase(
+                                wikidata.explore.generation.GenerateDomainPipeline.ROLE_EVIDENCE,
+                                failedNames);
+                        boolean laterFailure = failedLoads.stream().anyMatch(d -> {
+                            GeneratedClassModel c = project.findClass(d.className());
+                            if (c == null) return false;
+                            var pattern = wikidata.explore.model.MembershipPattern.of(c, project);
+                            return pattern == wikidata.explore.model.MembershipPattern.EVIDENCE_KIND
+                                    || pattern == wikidata.explore.model.MembershipPattern.OWNED_COMPONENT;
+                        });
+                        if (laterFailure || !roleFailure) partialPhase(
+                                wikidata.explore.generation.GenerateDomainPipeline.KIND_OWNED_FIELDS,
+                                failedNames);
                     }
-                    if (remoteKinds.unavailable() > 0) {
+                    int unresolvedKindEvidence = Math.max(0,
+                            remoteKinds.unavailable() - lateKinds.classified());
+                    if (unresolvedKindEvidence > 0) {
                         qualityWarnings.add("Entity-kind evidence was unavailable for "
-                                + remoteKinds.unavailable() + " role member(s)");
+                                + unresolvedKindEvidence + " role member(s)");
                         unavailableQids.addAll(remoteKinds.unavailableQids());
+                        partialPhase(wikidata.explore.generation.GenerateDomainPipeline.CLASSIFY,
+                                unresolvedKindEvidence + " role member(s) unavailable");
                     }
                     if (!qualityWarnings.isEmpty()) {
                         summary.append("\nPARTIAL\t")
                                 .append(String.join("; ", qualityWarnings));
                     }
-                    step.summary(summary.toString());
+                    if (qualityWarnings.isEmpty()) {
+                        step.summary(summary.toString());
+                    } else {
+                        step.partial(summary.toString());
+                    }
                     return new GenerationRun(
                             project, 0, rootPlan, pool, runtime, allInstances,
                             new GenerationRun.RemapState(enrichedSnapshot, companionSets),
@@ -497,6 +591,22 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
             }
         }
         return sub;
+    }
+
+    private void phase(String id, String summary) {
+        if (pipelineProgress != null) pipelineProgress.start(id, summary);
+    }
+
+    private void progress(String id, String summary) {
+        if (pipelineProgress != null) pipelineProgress.progress(id, summary);
+    }
+
+    private void completePhase(String id, String summary) {
+        if (pipelineProgress != null) pipelineProgress.complete(id, summary);
+    }
+
+    private void partialPhase(String id, String summary) {
+        if (pipelineProgress != null) pipelineProgress.partial(id, summary);
     }
 
     @Override public int rowCount(GenerationRun r) { return r == null ? 0 : r.size(); }

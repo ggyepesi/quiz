@@ -1,5 +1,7 @@
 package process.swing.workflow;
 
+import process.ProcessWorkflowPipeline;
+
 import objectview.Viewable;
 import objectview.render.RenderingMode;
 import objectview.view.SearchableView;
@@ -45,9 +47,14 @@ public final class SwingProcessWorkflow {
         // when the results arrive, since only the action knows.
         String applyVerb = "Apply";
         final JDialog dialog;
+        final ProcessWorkflowPipeline pipeline;
+        final ProcessWorkflowPipelinePanel pipelinePanel;
 
         Session(Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action) {
             this.owner = owner; this.runner = runner; this.action = action;
+            this.pipeline = action.pipeline();
+            this.pipelinePanel = pipeline == null ? null
+                    : new ProcessWorkflowPipelinePanel(pipeline);
             dialog = new JDialog(SwingUtilities.getWindowAncestor(owner),
                     action.plan().title(), Dialog.ModalityType.MODELESS);
             dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -58,7 +65,13 @@ public final class SwingProcessWorkflow {
         void showPlan() {
             ProcessWorkflowPlan plan = action.plan();
             JPanel panel = page("1 · Plan", plan.description());
-            panel.add(tabs(plan.tabs()), BorderLayout.CENTER);
+            JTabbedPane planTabs = tabs(plan.tabs());
+            if (pipelinePanel != null) {
+                planTabs.insertTab("Pipeline", null, pipelinePanel,
+                        "Configured execution pipeline", 0);
+                planTabs.setSelectedIndex(0);
+            }
+            panel.add(planTabs, BorderLayout.CENTER);
             JButton cancel = new JButton("Cancel");
             JButton execute = new JButton(plan.executable()
                     ? "Execute" : plan.noWorkMessage());
@@ -72,9 +85,11 @@ public final class SwingProcessWorkflow {
         void execute() {
             if (!action.plan().executable()) return;
             state.execute();
+            if (pipeline != null) pipeline.reset();
             JPanel panel = page("2 · Running", action.process().plan().description());
-            JLabel status = new JLabel("Queries are running. Progress is recorded in Query logs.");
-            panel.add(status, BorderLayout.CENTER);
+            panel.add(pipelinePanel == null
+                    ? new JLabel("Queries are running. Progress is recorded in Query logs.")
+                    : pipelinePanel, BorderLayout.CENTER);
             JButton cancel = new JButton("Cancel process");
             cancel.addActionListener(e -> runner.cancel());
             panel.add(buttons(cancel), BorderLayout.SOUTH);
@@ -83,12 +98,17 @@ public final class SwingProcessWorkflow {
             // Re-queueing completion detached exceptions from the runner's guard and
             // could strand a completed result behind the stale Running page forever.
             runner.run(action.process(), this::completed, error -> {
+                        if (pipeline != null) pipeline.finish(ProcessStatus.FAILED,
+                                error == null ? "Process failed" : error.getMessage());
                         JOptionPane.showMessageDialog(owner, "Process failed: " + error.getMessage());
                         dialog.dispose();
                     });
         }
 
         void completed(ProcessOutcome<R> outcome) {
+            if (pipeline != null && outcome != null) {
+                pipeline.finish(outcome.status(), outcome.summary());
+            }
             if (outcome == null || outcome.result() == null) {
                 String message = outcome != null && outcome.error() != null
                         ? outcome.error().getMessage() : "No result was produced.";
@@ -142,6 +162,11 @@ public final class SwingProcessWorkflow {
                     .flatMap(tab -> tab.cards().stream())
                     .filter(ProcessWorkflowResults.Card::includeInApplyAll).toList();
             JTabbedPane tabs = new JTabbedPane();
+            int fixedTabCount = 0;
+            if (pipelinePanel != null) {
+                tabs.addTab("Pipeline", pipelinePanel);
+                fixedTabCount = 1;
+            }
             for (ProcessWorkflowResults.Tab<D> tab : results.tabs()) {
                 // Large result tabs (20k+ cards are normal) stay lazy. Building and
                 // search-indexing every tab here blocks the EDT after the process has
@@ -152,10 +177,14 @@ public final class SwingProcessWorkflow {
                 tabs.addTab(tab.title() + " (" + tab.cards().size() + ")", placeholder);
             }
             java.util.Set<Integer> builtTabs = new java.util.HashSet<>();
+            final int resultTabOffset = fixedTabCount;
             Runnable buildSelectedTab = () -> {
                 int index = tabs.getSelectedIndex();
-                if (index < 0 || !builtTabs.add(index)) return;
-                ProcessWorkflowResults.Tab<D> tab = results.tabs().get(index);
+                if (index < resultTabOffset) return;
+                int resultIndex = index - resultTabOffset;
+                if (resultIndex < 0 || resultIndex >= results.tabs().size()
+                        || !builtTabs.add(resultIndex)) return;
+                ProcessWorkflowResults.Tab<D> tab = results.tabs().get(resultIndex);
                 try {
                     tabs.setComponentAt(index, resultTab(tab, selected, applySelected));
                 } catch (Throwable failure) {
