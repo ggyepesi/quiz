@@ -109,6 +109,10 @@ class ReferentClassStampTest {
         assertEquals(0, stamped);
         assertEquals("Person", nominee.typeName(), "an existing type is preserved");
         assertEquals(java.util.Set.of("Person"), nominee.directClassNames());
+        assertEquals(0, ReferentClassStamp.apply(model, List.of(nomination)),
+                "kinded role members remain a fixed point on every convergence pass");
+        assertEquals(java.util.Set.of("Person"), nominee.directClassNames(),
+                "a later pass must not reintroduce the legacy role");
     }
 
     @Test void sameEntityCanBelongToBothStatementFieldRoles() {

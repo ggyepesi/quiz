@@ -1,0 +1,85 @@
+package wikidata.explore.generation;
+
+import wikidata.api.WikidataApiClient;
+import wikidata.explore.compiled.CompiledProjectModel;
+import wikidata.explore.extract.GenerationLog;
+import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.GeneratedProjectModel;
+
+import java.util.Collection;
+import java.util.List;
+
+/** Shared post-convergence stages for Generate, Enrich and Remap. */
+public final class DomainFinalization {
+    public record Result(int dead, int disambiguation, int orphans, int requiredDropped) { }
+
+    private DomainFinalization() { }
+
+    public static Result apply(
+            GeneratedProjectModel model,
+            CompiledProjectModel compiled,
+            List<WikidataDynamicObject> pool,
+            Collection<WikidataDynamicObject> consistencyRecords,
+            WikidataApiClient api,
+            GenerationLog log) throws Exception {
+        return apply(model, compiled, pool, consistencyRecords, pool, api, log);
+    }
+
+    public static Result apply(
+            GeneratedProjectModel model,
+            CompiledProjectModel compiled,
+            List<WikidataDynamicObject> pool,
+            Collection<WikidataDynamicObject> consistencyRecords,
+            Collection<WikidataDynamicObject> vocabularyEvidence,
+            WikidataApiClient api,
+            GenerationLog log) throws Exception {
+        int[] counts = new int[4];
+        List<GenerationStage> stages = List.of(
+                stage("canonicalize", "Canonicalize final names",
+                        () -> wikidata.explore.transform.Canonicalization.apply(
+                                compiled, pool, log)),
+                stage("dead-stubs", "Prune explicitly missing entities", () -> {
+                    var dead = wikidata.explore.transform.DeadStubPrune.apply(pool, log);
+                    counts[0] = dead.size();
+                    pool.removeIf(dead::contains);
+                }),
+                stage("disambiguation", "Prune Wikimedia internal entities", () -> {
+                    if (api == null) return;
+                    var bad = wikidata.explore.transform.DisambiguationPrune.apply(
+                            model, pool, api, log);
+                    counts[1] = bad.size();
+                    pool.removeIf(bad::contains);
+                }),
+                stage("orphans", "Prune unreachable untyped entities", () -> {
+                    var orphans = wikidata.explore.transform.OrphanPrune.apply(pool, log);
+                    counts[2] = orphans.size();
+                    pool.removeIf(orphans::contains);
+                }),
+                stage("expectations", "Apply field expectations", () -> counts[3] =
+                        wikidata.explore.transform.FieldExpectations.apply(
+                                compiled, pool, log).dropped().size()),
+                stage("vocabularies", "Build descriptive vocabularies",
+                        () -> wikidata.explore.transform.DescriptiveVocabularyBuild.apply(
+                                model, vocabularyEvidence == null ? pool
+                                        : new java.util.ArrayList<>(vocabularyEvidence),
+                                log)),
+                stage("consistency", "Audit final statement records", () -> {
+                    if (consistencyRecords != null) {
+                        wikidata.explore.transform.ConsistencyReport.check(
+                                compiled, new java.util.ArrayList<>(consistencyRecords), log);
+                    }
+                }));
+        for (GenerationStage stage : stages) stage.execute();
+        return new Result(counts[0], counts[1], counts[2], counts[3]);
+    }
+
+    private static GenerationStage stage(String id, String title, Checked action) {
+        return new GenerationStage() {
+            @Override public String id() { return id; }
+            @Override public String title() { return title; }
+            @Override public void execute() throws Exception { action.run(); }
+        };
+    }
+
+    @FunctionalInterface private interface Checked { void run() throws Exception; }
+}

@@ -52,12 +52,9 @@ class EnrichRunTest {
         assertEquals("Q351735", familyName.getIdentifier());
         assertEquals("Adams", familyName.getDisplayName());
 
-        // IN PLACE: the pool's own objects are enriched, not copies of them. Enrich
-        // only adds, so copying tens of thousands of objects to touch a few thousand
-        // would be the wrong price — the component hangs off the very object that was
-        // already downloaded.
-        assertEquals(component, person.get("birthName"),
-                "the downloaded object itself carries the new component");
+        // Enrich is transactional: the visible previous run is untouched until Apply.
+        assertNull(person.get("birthName"),
+                "the previous run remains unchanged while the staged result is reviewed");
         assertNull(enriched.remapState(),
                 "the stale pre-reify cache is dropped rather than re-transformed later");
     }
@@ -135,7 +132,7 @@ class EnrichRunTest {
         GenerationRun first = new GenerationPipeline()
                 .enrich(previous, project, recording(asked), null);
 
-        assertEquals(1, asked.size(), "asked once for the person with no P734");
+        assertEquals(1, asked.size(), "asked once for the person with no P734: " + asked);
         assertEquals(List.of("Q7"), asked.getFirst());
         assertEquals(1, first.loadedDeclarations().size(),
                 "the run records the declaration it completed");
@@ -166,8 +163,16 @@ class EnrichRunTest {
         return new WikidataApiClient(WikidataApiClient.DEFAULT_USER_AGENT) {
             @Override public Map<String, ApiEntity> getEntities(
                     List<String> qids, List<String> pids, BatchLog log) {
-                if (pids != null && !pids.isEmpty()) asked.add(List.copyOf(qids));
+                if (pids != null && pids.contains("P734")) asked.add(List.copyOf(qids));
                 return Map.of();   // Wikidata has no P734 for this person
+            }
+            @Override public PartialEntities getEntityClaimsPartial(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                return new PartialEntities(getEntities(qids, pids, log), 0);
+            }
+            @Override public PartialEntities getEntitiesBestEffort(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                return new PartialEntities(getEntities(qids, pids, log), 0);
             }
         };
     }
@@ -188,6 +193,14 @@ class EnrichRunTest {
                     }
                 }
                 return out;
+            }
+            @Override public PartialEntities getEntityClaimsPartial(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                return new PartialEntities(getEntities(qids, pids, log), 0);
+            }
+            @Override public PartialEntities getEntitiesBestEffort(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                return new PartialEntities(getEntities(qids, pids, log), 0);
             }
         };
     }

@@ -27,6 +27,8 @@ class EnrichKeepsKindTest {
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
         nomination.instanceMapping().propertyPid("P1411");
         nomination.statementSource(new StatementClassSource("OscarBackbone", "P1411"));
+        GeneratedClassModel backbone = new GeneratedClassModel("OscarBackbone");
+        backbone.instanceMapping().sourceQid("Q19020");
         GeneratedFieldModel nominee = nomination.addField(
                 "nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         nominee.entityClassName("Nominee");
@@ -44,6 +46,7 @@ class EnrichKeepsKindTest {
         birthName.addField("familyName", FieldType.ENTITY, FieldCardinality.COLLECTION)
                 .mapping().propertyPid("P734");
         project.rootClass(nomination);
+        project.addClass(backbone);
         project.addClass(nomineeClass);
         project.addClass(person);
         project.addClass(birthName);
@@ -90,6 +93,14 @@ class EnrichKeepsKindTest {
             @Override public Map<String, ApiEntity> getEntities(
                     List<String> qids, List<String> pids, BatchLog log) {
                 return Map.of();
+            }
+            @Override public PartialEntities getEntitiesBestEffort(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                return new PartialEntities(Map.of(), 0);
+            }
+            @Override public PartialEntities getEntityClaimsPartial(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                return new PartialEntities(Map.of(), 0);
             }
         };
     }

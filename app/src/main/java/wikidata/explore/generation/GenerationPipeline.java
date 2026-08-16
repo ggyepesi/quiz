@@ -41,6 +41,9 @@ import java.util.function.Consumer;
  */
 public class GenerationPipeline {
 
+    public record ExtractionResult(
+            List<WikidataDynamicObject> objects, int childQueryFailures) { }
+
     public RuleNode plan(GeneratedProjectModel snapshot) {
         return RuleTreeCompiler.compileProject(snapshot);
     }
@@ -66,6 +69,39 @@ public class GenerationPipeline {
             wikidata.explore.extract.WikidataObjectRegistry registry) throws Exception {
 
         RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry);
+        extractor.log(log);
+        return extractor.load(plan, depth, log);
+    }
+
+    public ExtractionResult extractResult(
+            WikidataSparqlClient client,
+            RuleNode plan,
+            int depth,
+            GenerationLog log,
+            wikidata.explore.extract.WikidataObjectRegistry registry,
+            process.CancellationToken cancellation,
+            wikidata.api.WikidataApiClient entityApi) throws Exception {
+        RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry)
+                .cancellation(cancellation)
+                .api(entityApi)
+                .deferLabels(true);
+        extractor.log(log);
+        List<WikidataDynamicObject> objects = extractor.load(plan, depth, log);
+        return new ExtractionResult(objects, extractor.childQueryFailures());
+    }
+
+    /** Shared-registry extraction using the generation run's action-API/fact store. */
+    public List<WikidataDynamicObject> extract(
+            WikidataSparqlClient client,
+            RuleNode plan,
+            int depth,
+            GenerationLog log,
+            wikidata.explore.extract.WikidataObjectRegistry registry,
+            process.CancellationToken cancellation,
+            wikidata.api.WikidataApiClient entityApi) throws Exception {
+        RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry)
+                .cancellation(cancellation)
+                .api(entityApi);
         extractor.log(log);
         return extractor.load(plan, depth, log);
     }
@@ -299,10 +335,10 @@ public class GenerationPipeline {
                         snapshot, pool, previous.dynamicObjects(), log);
         owned.addTo(pool);
         wikidata.explore.transform.ReferentClassStamp.apply(snapshot, owned.components());
-        wikidata.explore.transform.Canonicalization.apply(snapshot, pool, log);
-        int restricted = wikidata.explore.transform.FieldExpectations
-                .apply(snapshot, pool, log).dropped().size();
-        wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, pool, log);
+        wikidata.explore.compiled.CompiledProjectModel compiled =
+                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
+        int restricted = DomainFinalization.apply(
+                snapshot, compiled, pool, List.of(), null, log).requiredDropped();
         if (log != null) {
             log.message("Remap (display-only, no cached pool): "
                     + pool.size() + " objects re-materialized, "
@@ -349,42 +385,33 @@ public class GenerationPipeline {
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
-        // IN PLACE, unlike Remap. Enrich only ADDS — components, and values for fields
-        // that were empty — so there is nothing for a staged copy to protect the visible
-        // run from: a fetch that fails halfway leaves correct-but-incomplete data, and
-        // re-running fills the rest. Remap copies because kind assignment can move an
-        // object's carrier/type key; nothing here does, and deep-copying 26k objects to
-        // add a property to 7k of them is the wrong price for an additive pass.
+        // STAGED, like every shared workflow action. Loading evidence can classify an
+        // entity, change its carrier/type key, and unlock owned values; cancellation or
+        // failure must not mutate the currently applied snapshot before Apply.
         sink.message("Enrich: walking " + previous.dynamicObjects().size()
-                + " downloaded object(s) in place to find what the declarations "
+                + " downloaded object(s) in a staged copy to find what the declarations "
                 + "apply to...\n");
-        List<WikidataDynamicObject> pool = new ArrayList<>(previous.dynamicObjects());
-
-        // No evidence pool either: the components of an earlier run ARE these objects,
-        // found by identity in the pool itself rather than copied from a previous run.
-        wikidata.explore.transform.OwnedComponents.Result owned =
-                wikidata.explore.transform.OwnedComponents.apply(
-                        snapshot, pool, null, log);
-        owned.addTo(pool);
-        sink.message("Enrich: " + owned.created()
-                + " owned component(s) materialized; fetching declared properties"
+        List<WikidataDynamicObject> pool =
+                wikidata.explore.transform.PoolCopy.deepCopy(previous.dynamicObjects());
+        sink.message("Enrich: fetching declared properties"
                 + reportPendingLoads(snapshot) + "...\n");
 
-        // Skip what a previous run already fetched: a field with no value may simply
-        // have no answer in Wikidata, and without the record every run asks again.
-        wikidata.explore.transform.ReferentFieldLoad.Result referents =
-                wikidata.explore.transform.ReferentFieldLoad.load(
-                        snapshot, pool, entityApi, log, previous.loadedDeclarations());
-        int loaded = referents.loaded();
+        GenerationQualityTracker quality = new GenerationQualityTracker();
+        SemanticConvergence.Result convergence = SemanticConvergence.apply(
+                snapshot, pool, entityApi, log, previous.loadedDeclarations(), quality);
+        int loaded = convergence.loadedFields();
 
-        // Newly fetched entity values need their declared target class. The stamping
-        // rule itself owns the important invariant: it may type a bare referent, but it
-        // never puts a legacy role class back onto an evidence-classified entity.
-        wikidata.explore.transform.ReferentClassStamp.apply(snapshot, pool);
-        wikidata.explore.transform.Canonicalization.apply(snapshot, pool, log);
-        wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, pool, log);
+        // Finalization is deliberately after semantic convergence: names, expectations
+        // and vocabularies describe the final classes/fields rather than iteration one.
+        wikidata.explore.compiled.CompiledProjectModel compiled =
+                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
+        wikidata.explore.transform.FieldValueRestrictions.apply(compiled, pool);
+        wikidata.explore.transform.ModelInverts.apply(compiled, pool, log);
+        wikidata.explore.transform.ModelYearProjections.apply(compiled, pool, log);
+        FinalLabelHydration.apply(pool, entityApi, log, quality);
+        DomainFinalization.apply(snapshot, compiled, pool, List.of(), entityApi, log);
 
-        sink.message("Enrich: " + owned.created() + " component(s) materialized, "
+        sink.message("Enrich: " + convergence.ownedCreated() + " component(s) materialized, "
                 + loaded + " declared field value(s) loaded over "
                 + pool.size() + " objects (no re-extraction). Re-materializing...\n");
 
@@ -396,9 +423,42 @@ public class GenerationPipeline {
         // already-reified records twice). Dropping it puts Remap on its no-cached-pool
         // path, which re-materializes the enriched objects instead of re-transforming a
         // stale copy of them: the same state a snapshot has after being loaded.
+        GenerationRun.Quality finalQuality = reconcileQuality(
+                previous.quality(), quality.quality());
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, null,
-                referents.completed());
+                List.copyOf(convergence.completedDeclarations().values()), finalQuality);
+    }
+
+    /**
+     * Enrich re-runs every incomplete field/kind/label acquisition against the final
+     * graph. Those are final-state assertions, so an old PARTIAL must not survive a
+     * successful repair merely because its failure happened historically. Extraction
+     * is not re-run by Enrich; its warnings therefore remain unresolved.
+     */
+    static GenerationRun.Quality reconcileQuality(
+            GenerationRun.Quality prior, GenerationRun.Quality current) {
+        java.util.LinkedHashSet<String> warnings = new java.util.LinkedHashSet<>();
+        java.util.LinkedHashSet<String> qids = new java.util.LinkedHashSet<>();
+        if (prior != null && !prior.complete()) {
+            prior.warnings().stream().filter(GenerationPipeline::notRepairableByEnrich)
+                    .forEach(warnings::add);
+        }
+        if (current != null && !current.complete()) {
+            warnings.addAll(current.warnings());
+            qids.addAll(current.unavailableQids());
+        }
+        if (warnings.isEmpty() && qids.isEmpty()) {
+            return GenerationRun.Quality.completeQuality();
+        }
+        return GenerationRun.Quality.partial(List.copyOf(warnings), List.copyOf(qids));
+    }
+
+    private static boolean notRepairableByEnrich(String warning) {
+        if (warning == null) return false;
+        String normalized = warning.toLowerCase(java.util.Locale.ROOT);
+        return normalized.contains("child extraction")
+                || normalized.contains("root extraction");
     }
 
     /** How many fields produce an owned component — for the preview to say what it is
@@ -495,16 +555,9 @@ public class GenerationPipeline {
         owned.addTo(pool);
         wikidata.explore.transform.ReferentClassStamp.apply(
                 snapshot, owned.components());
-        wikidata.explore.transform.Canonicalization.apply(compiledSnapshot, pool, null);
-        // Field expectations (#96): report coverage, drop REQUIRED-missing records
-        // (e.g. a Nomination with no ceremony edition), keep EXPECTED-missing ones.
-        int restricted = wikidata.explore.transform.FieldExpectations
-                .apply(compiledSnapshot, pool, log).dropped().size();
-        // The cached enriched pool predates referent-field loading, so rebuild the
-        // observed vocabularies from the same evidence-bearing final snapshot used
-        // by the local classifier, not from this freshly re-transformed pool.
-        wikidata.explore.transform.DescriptiveVocabularyBuild.apply(
-                snapshot, previous.dynamicObjects(), log);
+        int restricted = DomainFinalization.apply(
+                snapshot, compiledSnapshot, pool, reified, previous.dynamicObjects(),
+                null, log).requiredDropped();
 
         if (log != null) {
             log.message("Remap (retransform): " + pool.size()
