@@ -55,6 +55,18 @@ class ReadTimeoutSplitsTest {
         assertTrue(WikidataApiClient.worthRetryingUnchanged((Exception) raised));
     }
 
+    @Test void aSuccessfulHeaderFollowedByConnectionResetIsNotFatalHttp200() {
+        IOException raised = WikidataApiClient.transportFailure(
+                new java.net.SocketException("Connection reset"), 200, -1,
+                "https://www.wikidata.org/w/api.php");
+
+        assertFalse(raised instanceof ApiHttpException);
+        assertInstanceOf(batch.ResponseInterruptedException.class, raised);
+        assertEquals(BatchFailure.TRANSIENT,
+                WikidataBatchFailureClassifier.INSTANCE.classify(raised).failure());
+        assertFalse(WikidataApiClient.worthRetryingUnchanged((Exception) raised));
+    }
+
     /** The status path is untouched: a real refusal keeps its status and Retry-After. */
     @Test void arefusalKeepsItsStatusAndRetryAfter() {
         ApiHttpException refused = assertInstanceOf(ApiHttpException.class,

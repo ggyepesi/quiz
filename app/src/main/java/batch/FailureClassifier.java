@@ -31,6 +31,9 @@ public interface FailureClassifier {
                 if (t instanceof EOFException) {
                     return FailureDecision.of(BatchFailure.TRANSIENT);
                 }
+                if (t instanceof ResponseInterruptedException) {
+                    return FailureDecision.of(BatchFailure.TRANSIENT);
+                }
                 if (t instanceof IOException) {
                     return FailureDecision.of(BatchFailure.UNAVAILABLE);
                 }

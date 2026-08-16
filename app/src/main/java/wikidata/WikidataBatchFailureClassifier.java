@@ -26,6 +26,9 @@ public final class WikidataBatchFailureClassifier implements FailureClassifier {
             if (t instanceof WikidataSparqlClient.TruncatedResponseException) {
                 return FailureDecision.of(BatchFailure.TRANSIENT);
             }
+            if (t instanceof batch.ResponseInterruptedException) {
+                return FailureDecision.of(BatchFailure.TRANSIENT);
+            }
             // Either shape of "it did not arrive in time": the JDK HTTP client's own
             // timeout, and the socket read timeout HttpURLConnection raises when the
             // BODY runs out of time (which is how the action API times out).

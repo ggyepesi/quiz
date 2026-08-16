@@ -674,15 +674,15 @@ public class WikidataApiClient {
      * Whether issuing the SAME request again can plausibly do better.
      *
      * <p>A status the server will not change its mind about (404, 400) is not worth five
-     * attempts. Neither is a TIMEOUT: it says this batch is too heavy, and asking for the
-     * same 50 entities four more times only spends ~15s of backoff learning that again —
-     * it is the executor's split, not another identical attempt, that makes progress.
+     * attempts. Neither is a body TIMEOUT/interruption: the batch executor owns their
+     * bounded retry/split policy, so a hidden transport retry loop must not multiply it.
      */
     static boolean worthRetryingUnchanged(Exception error) {
         if (error instanceof ApiHttpException http) {
             return RetryAfter.isRetryableStatus(http.status());
         }
-        return !(error instanceof batch.ResponseTimeoutException);
+        return !(error instanceof batch.ResponseTimeoutException
+                || error instanceof batch.ResponseInterruptedException);
     }
 
     /**
@@ -987,6 +987,14 @@ public class WikidataApiClient {
         // status, and how long the server asked us to wait. Collapsing them into a
         // bare IOException is what left the retry unable to tell throttling from a
         // permanent error, so it waited half a second and gave up on a 429.
+        // A 2xx header followed by an I/O failure is not an HTTP outcome. The
+        // server accepted the request and the transport lost the body (connection
+        // reset, premature EOF, etc.); preserve it as an IOException so the batch
+        // executor uses the availability retry budget instead of treating "200" as
+        // a fatal status code.
+        if (status >= 200 && status < 300) {
+            return new batch.ResponseInterruptedException(message, error);
+        }
         if (status > 0) {
             return new ApiHttpException(status, retryAfterMillis, message, error);
         }
