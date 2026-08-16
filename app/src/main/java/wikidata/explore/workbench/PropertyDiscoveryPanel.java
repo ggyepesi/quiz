@@ -8,18 +8,17 @@ import wikidata.explore.query.result.DiscoveredProperty;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.explore.rule.RuleNode;
 
+import objectview.render.RenderingMode;
+import objectview.view.SearchableView;
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 /**
  * Unified class-level property discovery panel (replaces NodePropertyDiscoveryPanel + WikidataItemAttributePanel).
@@ -59,13 +58,25 @@ public class PropertyDiscoveryPanel extends JPanel {
     private final JButton    qualifiersButton = new JButton("Qualifiers…");
     private final JButton    cancelButton    = new JButton("Cancel");
     private final JLabel     statusLabel     = new JLabel(" ");
-    private final JTextField searchField     = new JTextField(12);
 
-    // --- Table ---
+    // --- Results ---
     private final List<DiscoveredProperty>     properties = new ArrayList<>();
-    private final PropTableModel               tableModel = new PropTableModel(properties);
-    private final TableRowSorter<PropTableModel> sorter   = new TableRowSorter<>(tableModel);
-    private final JTable                       table      = new JTable(tableModel);
+
+    // The results go through the SAME searchable view as every other list in the app —
+    // the bespoke JTable this replaces is why Discover had no search box. TABLE mode is
+    // that view's columnar LAYOUT of the card path, not a table of its own: a row per
+    // property, so a selected row is visible as such, and search/sort/field config come
+    // with it. Row actions are buttons over the SELECTED row — per-row buttons are what
+    // a bespoke table was bought for, and they stop reading at any size.
+    private final JPanel resultHolder = new JPanel(new BorderLayout());
+    private final JButton addFieldButton = new JButton("Add field");
+    private final JButton allowButton = new JButton("Allow example");
+    private final JButton excludeButton = new JButton("Exclude example");
+    private DiscoveredProperty selectedProperty;
+    // Each run rebuilds the view over new rows; the columns/search/sort the user chose
+    // are about the SHAPE of a discovered property, which does not change between runs,
+    // so they are carried across instead of resetting to the default on every Run.
+    private objectview.search.SearchPanel.ConfigState resultConfig;
 
     private Timer qidResolveTimer;
 
@@ -152,81 +163,6 @@ public class PropertyDiscoveryPanel extends JPanel {
     // --- UI build ---
 
     private void buildUi() {
-        table.setFillsViewportHeight(true);
-        table.setRowHeight(24);
-        table.setRowSorter(sorter);
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-
-        table.getColumnModel().getColumn(PropTableModel.COL_PID)       .setPreferredWidth(55);
-        table.getColumnModel().getColumn(PropTableModel.COL_LABEL)     .setPreferredWidth(160);
-        table.getColumnModel().getColumn(PropTableModel.COL_DIR)       .setPreferredWidth(65);
-        table.getColumnModel().getColumn(PropTableModel.COL_TYPE)      .setPreferredWidth(75);
-        table.getColumnModel().getColumn(PropTableModel.COL_COUNT)     .setPreferredWidth(65);
-        table.getColumnModel().getColumn(PropTableModel.COL_EXAMPLE)   .setPreferredWidth(160);
-        table.getColumnModel().getColumn(PropTableModel.COL_ADD_FIELD) .setPreferredWidth(80);
-        table.getColumnModel().getColumn(PropTableModel.COL_ALLOW)     .setPreferredWidth(55);
-        table.getColumnModel().getColumn(PropTableModel.COL_EXCLUDE)   .setPreferredWidth(60);
-
-        ButtonRenderer btnRenderer = new ButtonRenderer();
-        for (int c : new int[]{PropTableModel.COL_ADD_FIELD, PropTableModel.COL_ALLOW, PropTableModel.COL_EXCLUDE}) {
-            table.getColumnModel().getColumn(c).setCellRenderer(btnRenderer);
-        }
-        table.getColumnModel().getColumn(PropTableModel.COL_ADD_FIELD)
-                .setCellEditor(new ButtonEditor("Add Field", viewRow -> {
-                    int r = table.convertRowIndexToModel(viewRow);
-                    if (r >= 0 && r < properties.size()) onAddField.accept(properties.get(r));
-                }));
-        table.getColumnModel().getColumn(PropTableModel.COL_ALLOW)
-                .setCellEditor(new ButtonEditor("Allow", viewRow -> {
-                    int r = table.convertRowIndexToModel(viewRow);
-                    if (r >= 0 && r < properties.size()) {
-                        String qid = properties.get(r).exampleQid();
-                        if (qid != null && !qid.isBlank()) onAddAllowedQid.accept(qid);
-                    }
-                }));
-        table.getColumnModel().getColumn(PropTableModel.COL_EXCLUDE)
-                .setCellEditor(new ButtonEditor("Exclude", viewRow -> {
-                    int r = table.convertRowIndexToModel(viewRow);
-                    if (r >= 0 && r < properties.size()) {
-                        String qid = properties.get(r).exampleQid();
-                        if (qid != null && !qid.isBlank()) onAddExcludedQid.accept(qid);
-                    }
-                }));
-
-        WdLinkRenderer linkRenderer = new WdLinkRenderer();
-        table.getColumnModel().getColumn(PropTableModel.COL_PID)    .setCellRenderer(linkRenderer);
-        table.getColumnModel().getColumn(PropTableModel.COL_EXAMPLE).setCellRenderer(linkRenderer);
-
-        table.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
-                int vr = table.rowAtPoint(e.getPoint());
-                int vc = table.columnAtPoint(e.getPoint());
-                if (vr < 0) return;
-                int mr = table.convertRowIndexToModel(vr);
-                int mc = table.convertColumnIndexToModel(vc);
-                if (mr < 0 || mr >= properties.size()) return;
-                DiscoveredProperty p = properties.get(mr);
-                if (mc == PropTableModel.COL_PID)
-                    openInBrowser("https://www.wikidata.org/wiki/Property:" + p.pid());
-                else if (mc == PropTableModel.COL_EXAMPLE && !p.exampleQid().isBlank())
-                    openInBrowser("https://www.wikidata.org/wiki/" + p.exampleQid());
-            }
-        });
-        table.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
-            @Override public void mouseMoved(java.awt.event.MouseEvent e) {
-                int vr = table.rowAtPoint(e.getPoint());
-                int vc = table.columnAtPoint(e.getPoint());
-                int mc = table.convertColumnIndexToModel(vc);
-                int mr = vr >= 0 ? table.convertRowIndexToModel(vr) : -1;
-                boolean link = false;
-                if (mr >= 0 && mr < properties.size()) {
-                    if (mc == PropTableModel.COL_PID) link = true;
-                    if (mc == PropTableModel.COL_EXAMPLE) link = !properties.get(mr).exampleQid().isBlank();
-                }
-                table.setCursor(link ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
-            }
-        });
-
         nodeLabel.setFont(nodeLabel.getFont().deriveFont(Font.BOLD));
         customQidField.setToolTipText("Leave empty to use the current tree node; or enter a class QID to override");
 
@@ -253,14 +189,12 @@ public class PropertyDiscoveryPanel extends JPanel {
                 + "qualifier-load config — generic, not domain-specific");
         controls.add(qualifiersButton);
         controls.add(cancelButton);
-        controls.add(new JLabel("  Search:"));
-        controls.add(searchField);
         controls.add(statusLabel);
 
         JLabel hint = new JLabel(
                 "<html>Profiles the selected class's members: which properties they "
                 + "<b>have</b> (outgoing) or which <b>reference</b> them (incoming), "
-                + "ranked by coverage — click a row to turn a property into a field. "
+                + "ranked by coverage — select a row, then Add field. "
                 + "<b>Override QID</b> profiles a class the tree node doesn't supply "
                 + "(a referenced-only class has none). <b>By target…</b> profiles one "
                 + "instance per membership target; <b>By type…</b> groups targets by "
@@ -276,7 +210,28 @@ public class PropertyDiscoveryPanel extends JPanel {
         north.add(objectview.utils.swing.ScrollPaneUtils.horizontalOnly(controls),
                 BorderLayout.CENTER);
         add(north, BorderLayout.NORTH);
-        add(new JScrollPane(table), BorderLayout.CENTER);
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        addFieldButton.setToolTipText("Turn the selected property into a field of this class.");
+        allowButton.setToolTipText("Add the selected row's example entity to the "
+                + "class's allowed QIDs.");
+        excludeButton.setToolTipText("Add the selected row's example entity to the "
+                + "class's excluded QIDs.");
+        actions.add(addFieldButton);
+        actions.add(allowButton);
+        actions.add(excludeButton);
+        addFieldButton.addActionListener(e -> withSelected(onAddField::accept));
+        allowButton.addActionListener(e -> withSelected(
+                p -> { if (!p.exampleQid().isBlank()) onAddAllowedQid.accept(p.exampleQid()); }));
+        excludeButton.addActionListener(e -> withSelected(
+                p -> { if (!p.exampleQid().isBlank()) onAddExcludedQid.accept(p.exampleQid()); }));
+        selectProperty(null);
+
+        JPanel results = new JPanel(new BorderLayout(4, 4));
+        results.add(resultHolder, BorderLayout.CENTER);
+        results.add(actions, BorderLayout.SOUTH);
+        add(results, BorderLayout.CENTER);
+        showResults();
 
         cancelButton.setEnabled(false);
 
@@ -285,18 +240,6 @@ public class PropertyDiscoveryPanel extends JPanel {
             public void removeUpdate(DocumentEvent e)  { scheduleQidResolve(); }
             public void changedUpdate(DocumentEvent e) {}
         });
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e)  { applyFilter(); }
-            public void removeUpdate(DocumentEvent e)  { applyFilter(); }
-            public void changedUpdate(DocumentEvent e) {}
-        });
-    }
-
-    private void applyFilter() {
-        String text = searchField.getText();
-        sorter.setRowFilter(text == null || text.isBlank()
-                ? null
-                : RowFilter.regexFilter("(?i)" + Pattern.quote(text.trim())));
     }
 
     private void scheduleQidResolve() {
@@ -343,13 +286,82 @@ public class PropertyDiscoveryPanel extends JPanel {
         }
 
         properties.clear();
-        tableModel.fireTableDataChanged();
+        showResults();
         statusLabel.setText("Discovering properties...");
 
         return new DiscoverClassPropertiesQuery(
                 node,
                 useCustom ? customQid : "",
                 n);
+    }
+
+    /** Rebuilds the results as one searchable view of Viewables, laid out as a TABLE:
+     *  a row per property, where a selected row reads as selected (a card's selection is
+     *  hard to see, and these rows are compared column by column anyway). The PIDs and
+     *  example QIDs stay bare in the data and become links through the value linker, so
+     *  no column exists only to carry a URL. */
+    private void showResults() {
+        List<DiscoveredPropertyViewable> rows = properties.stream()
+                .map(DiscoveredPropertyViewable::new).toList();
+
+        SearchableView view = SearchableView.builder(rows)
+                .type(DiscoveredPropertyViewable.class)
+                .mode(RenderingMode.TABLE)
+                .valueLinker(WikidataLinks.valueLinker())
+                .hiddenFields(inapplicableColumns(rows))
+                .emptyMessage("No properties discovered yet — pick a class and Run.")
+                .configState(resultConfig)
+                .configListener(state -> resultConfig = state)
+                .selectionListener(selected -> selectProperty(
+                        selected instanceof DiscoveredPropertyViewable row
+                                ? row.property() : null))
+                .build();
+
+        resultHolder.removeAll();
+        resultHolder.add(view, BorderLayout.CENTER);
+        resultHolder.revalidate();
+        resultHolder.repaint();
+        selectProperty(null);
+    }
+
+    /** Which example columns this run cannot fill. A class with no image property has no
+     *  image to show, and a profile whose examples are all literals denotes no entity —
+     *  a column standing empty down every row only reads as something missing. */
+    private static java.util.Set<String> inapplicableColumns(
+            List<DiscoveredPropertyViewable> rows) {
+        java.util.Set<String> hidden = new java.util.LinkedHashSet<>();
+        if (rows.stream().noneMatch(DiscoveredPropertyViewable::hasImage)) {
+            hidden.add("exampleImage");
+        }
+        if (rows.stream().noneMatch(DiscoveredPropertyViewable::hasExampleQid)) {
+            hidden.add("exampleQid");
+        }
+        return hidden;
+    }
+
+    /** The actions act on the selection, so they are disabled until there is one, and
+     *  the two example actions until that row HAS an example entity to act on. */
+    private void selectProperty(DiscoveredProperty property) {
+        selectedProperty = property;
+        addFieldButton.setEnabled(property != null);
+        boolean hasExample = property != null && !property.exampleQid().isBlank();
+        allowButton.setEnabled(hasExample);
+        excludeButton.setEnabled(hasExample);
+        if (property != null) {
+            statusLabel.setText("Selected " + property.pid()
+                    + (property.label() == null || property.label().isBlank()
+                            ? "" : " (" + property.label() + ")"));
+        }
+    }
+
+    private void withSelected(Consumer<DiscoveredProperty> action) {
+        if (selectedProperty == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Select a discovered property first.",
+                    "No selection", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        action.accept(selectedProperty);
     }
 
     private void acceptDiscovery(List<DiscoveredProperty> result) {
@@ -359,7 +371,7 @@ public class PropertyDiscoveryPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             properties.clear();
             properties.addAll(rows);
-            tableModel.fireTableDataChanged();
+            showResults();
             statusLabel.setText(rows.isEmpty()
                     ? "No properties found."
                     : rows.size() + " properties found.");
@@ -779,106 +791,4 @@ public class PropertyDiscoveryPanel extends JPanel {
         return v == null ? "" : v.toString();
     }
 
-    // --- Static helpers ---
-
-    private static void openInBrowser(String url) {
-        objectview.utils.BrowserLauncher.open(url);
-    }
-
-    // --- Table model ---
-
-    static final class PropTableModel extends AbstractTableModel {
-        static final int COL_PID       = 0;
-        static final int COL_LABEL     = 1;
-        static final int COL_DIR       = 2;
-        static final int COL_TYPE      = 3;
-        static final int COL_COUNT     = 4;
-        static final int COL_EXAMPLE   = 5;
-        static final int COL_ADD_FIELD = 6;
-        static final int COL_ALLOW     = 7;
-        static final int COL_EXCLUDE   = 8;
-
-        private static final String[] COLUMNS =
-                { "PID", "Label", "Dir", "Type", "N / sample", "Example", "Add Field", "Allow", "Exclude" };
-
-        private final List<DiscoveredProperty> rows;
-
-        PropTableModel(List<DiscoveredProperty> rows) { this.rows = rows; }
-
-        @Override public int getRowCount()    { return rows.size(); }
-        @Override public int getColumnCount() { return COLUMNS.length; }
-        @Override public String getColumnName(int col) { return COLUMNS[col]; }
-
-        @Override public Class<?> getColumnClass(int col) {
-            return (col == COL_ADD_FIELD || col == COL_ALLOW || col == COL_EXCLUDE)
-                    ? JButton.class : String.class;
-        }
-
-        @Override public boolean isCellEditable(int r, int c) {
-            return c == COL_ADD_FIELD || c == COL_ALLOW || c == COL_EXCLUDE;
-        }
-
-        @Override public Object getValueAt(int row, int col) {
-            DiscoveredProperty p = rows.get(row);
-            return switch (col) {
-                case COL_PID       -> p.pid();
-                case COL_LABEL     -> p.label();
-                case COL_DIR       -> p.direction();
-                case COL_TYPE      -> p.typeLabel();
-                case COL_COUNT     -> p.frequency();
-                case COL_EXAMPLE   -> p.exampleDisplay();
-                case COL_ADD_FIELD -> "Add Field";
-                case COL_ALLOW     -> p.exampleQid().isBlank() ? "" : "Allow";
-                case COL_EXCLUDE   -> p.exampleQid().isBlank() ? "" : "Exclude";
-                default -> "";
-            };
-        }
-    }
-
-    // --- Renderers / editors ---
-
-    private static class WdLinkRenderer extends DefaultTableCellRenderer {
-        @Override public Component getTableCellRendererComponent(
-                JTable table, Object value, boolean sel, boolean focus, int row, int col) {
-            super.getTableCellRendererComponent(table, value, sel, focus, row, col);
-            String text = value == null ? "" : value.toString();
-            if (!sel && WikidataIds.isId(text))
-                setForeground(new Color(0, 80, 200));
-            else if (!sel)
-                setForeground(table.getForeground());
-            return this;
-        }
-    }
-
-    private static class ButtonRenderer extends JButton
-            implements javax.swing.table.TableCellRenderer {
-        ButtonRenderer() { setOpaque(true); }
-        @Override public Component getTableCellRendererComponent(
-                JTable table, Object value, boolean sel, boolean focus, int row, int col) {
-            String text = value == null ? "" : value.toString();
-            setText(text);
-            setEnabled(!text.isBlank());
-            return this;
-        }
-    }
-
-    private static class ButtonEditor extends DefaultCellEditor {
-        private final JButton button;
-        private int currentRow;
-
-        ButtonEditor(String label, java.util.function.IntConsumer action) {
-            super(new JCheckBox());
-            button = new JButton(label);
-            button.addActionListener(e -> { fireEditingStopped(); if (button.isEnabled()) action.accept(currentRow); });
-        }
-        @Override public Component getTableCellEditorComponent(
-                JTable table, Object value, boolean sel, int row, int col) {
-            currentRow = row;
-            String text = value == null ? "" : value.toString();
-            button.setText(text);
-            button.setEnabled(!text.isBlank());
-            return button;
-        }
-        @Override public Object getCellEditorValue() { return button.getText(); }
-    }
 }

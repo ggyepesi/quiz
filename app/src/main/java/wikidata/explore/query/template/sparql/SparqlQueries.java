@@ -202,7 +202,10 @@ public final class SparqlQueries {
 
         return new WikidataQueryBuilder()
                 .distinct(false)
-                .select("prop", "propLabel", "type", "count", "example")
+                // exampleLabel: the label service already runs here (see label("prop")), and it
+                // names the example entity too — without it an entity example could only be
+                // shown as its bare QID.
+                .select("prop", "propLabel", "type", "count", "example", "exampleLabel")
                 .rawWhere("""
                         {
                           SELECT ?propUri
@@ -257,7 +260,10 @@ public final class SparqlQueries {
 
         return new WikidataQueryBuilder()
                 .distinct(false)
-                .select("prop", "propLabel", "type", "count", "example")
+                // exampleLabel: the label service already runs here (see label("prop")), and it
+                // names the example entity too — without it an entity example could only be
+                // shown as its bare QID.
+                .select("prop", "propLabel", "type", "count", "example", "exampleLabel")
                 .rawWhere("""
                         {
                           SELECT ?propUri

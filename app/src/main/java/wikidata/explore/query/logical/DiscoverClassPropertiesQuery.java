@@ -230,10 +230,7 @@ public class DiscoverClassPropertiesQuery
             }
 
             String exQid = entityQid(example);
-            String exDisplay =
-                    exLabel != null && !exLabel.isBlank()
-                            ? exLabel
-                            : (!exQid.isBlank() ? exQid : localName(example));
+            String exDisplay = display(exLabel, exQid, example);
 
             result.add(new DiscoveredProperty(
                     pid,
@@ -243,12 +240,43 @@ public class DiscoverClassPropertiesQuery
                     kindOf(typeUri),
                     count,
                     sampleSize,
+                    example == null ? "" : example,
                     exQid,
                     exDisplay == null ? "" : exDisplay,
                     direction));
         }
 
         return result;
+    }
+
+    /**
+     * What to READ for an example value — the point of an example is to say what this
+     * property holds, so a value nobody can read is a discovery that says nothing.
+     *
+     * <p>An entity reads as its label; the label service echoes a literal back unchanged,
+     * and an echo is not a label. A Wikidata time literal
+     * ({@code 1732-02-22T00:00:00Z}) reads as a date. Only a wikidata/commons URI is
+     * shortened to its last segment (the QID or the file name) — shortening an arbitrary
+     * URL would drop the part that identifies it.
+     */
+    static String display(String label, String qid, String value) {
+        String raw = value == null ? "" : value.trim();
+
+        if (label != null && !label.isBlank() && !label.equals(raw)) {
+            return label;
+        }
+        if (!qid.isBlank()) {
+            return qid;
+        }
+        aux.FlexibleDate date = aux.FlexibleDate.fromWikidataLiteral(raw);
+        if (date != null) {
+            return date.format();
+        }
+        if (raw.startsWith("http://commons.wikimedia.org/")) {
+            // Decoded: a file name is read by a person, not by a browser.
+            return wikidata.explore.CommonsMedia.fileName(raw);
+        }
+        return raw.startsWith("http://www.wikidata.org/") ? localName(raw) : raw;
     }
 
     private static String entityQid(String value) {
