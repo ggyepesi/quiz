@@ -37,10 +37,16 @@ import java.util.Set;
 public class QualifierLoader {
 
     private WikidataApiClient api;
+    private boolean deferLabels;
 
     /** Override the action-API client (share one / inject a stub for tests). */
     public QualifierLoader api(WikidataApiClient api) {
         this.api = api;
+        return this;
+    }
+
+    public QualifierLoader deferLabels(boolean defer) {
+        deferLabels = defer;
         return this;
     }
 
@@ -192,7 +198,7 @@ public class QualifierLoader {
 
             // Name the value/qualifier refs that weren't already pooled+labelled,
             // then let each statement's name follow its (now-labelled) value.
-            resolveRefLabels(refCache, g);
+            if (!deferLabels) resolveRefLabels(refCache, g);
             for (WikidataDynamicObject stmt : created) {
                 if (stmt.get(valueField) instanceof WikidataDynamicObject v) {
                     stmt.name(v.getDisplayName());

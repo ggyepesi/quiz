@@ -24,10 +24,16 @@ public final class WikidataEntityLabelResolver {
     public record Result(
             Map<String, String> labels,
             Set<String> missing,
-            int failedBatches) {
+            int failedBatches,
+            List<String> unavailableQids) {
+        public Result(Map<String, String> labels, Set<String> missing, int failedBatches) {
+            this(labels, missing, failedBatches, List.of());
+        }
         public Result {
             labels = Map.copyOf(labels);
             missing = Set.copyOf(missing);
+            unavailableQids = unavailableQids == null ? List.of()
+                    : unavailableQids.stream().distinct().toList();
         }
     }
 
@@ -51,11 +57,13 @@ public final class WikidataEntityLabelResolver {
         if (execution == Execution.BOUNDED_PARALLEL) {
             WikidataApiClient.PartialEntities partial =
                     api.getEntitiesBestEffort(clean, List.of(), log);
-            return result(partial.entities(), partial.failedBatches());
+            return result(partial.entities(), partial.failedBatches(),
+                    partial.unavailableQids());
         }
 
         Map<String, WikidataApiClient.ApiEntity> entities = new LinkedHashMap<>();
         int failed = 0;
+        Set<String> unavailable = new LinkedHashSet<>();
         for (int from = 0; from < clean.size(); from += BATCH_SIZE) {
             List<String> batch = clean.subList(from, Math.min(from + BATCH_SIZE, clean.size()));
             try {
@@ -66,13 +74,15 @@ public final class WikidataEntityLabelResolver {
                     throw e;
                 }
                 failed++;
+                unavailable.addAll(batch);
             }
         }
-        return result(entities, failed);
+        return result(entities, failed, List.copyOf(unavailable));
     }
 
     private static Result result(
-            Map<String, WikidataApiClient.ApiEntity> entities, int failedBatches) {
+            Map<String, WikidataApiClient.ApiEntity> entities, int failedBatches,
+            List<String> unavailableQids) {
         Map<String, String> labels = new LinkedHashMap<>();
         Set<String> missing = new LinkedHashSet<>();
         entities.forEach((qid, entity) -> {
@@ -82,6 +92,6 @@ public final class WikidataEntityLabelResolver {
                 labels.put(qid, entity.label());
             }
         });
-        return new Result(labels, missing, failedBatches);
+        return new Result(labels, missing, failedBatches, unavailableQids);
     }
 }

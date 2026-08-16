@@ -47,6 +47,7 @@ public class WikidataApiClient {
     private final ObjectMapper mapper = new ObjectMapper();
     private final String userAgent;
     private process.CancellationToken cancellation = new process.CancellationToken();
+    private WikidataFactStore facts = new WikidataFactStore();
 
     private java.util.function.Consumer<String> log = s -> {};
     private final java.util.concurrent.atomic.AtomicLong requestSeq =
@@ -86,6 +87,13 @@ public class WikidataApiClient {
         cancellation = token == null ? new process.CancellationToken() : token;
         return this;
     }
+
+    public WikidataApiClient facts(WikidataFactStore store) {
+        facts = store == null ? new WikidataFactStore() : store;
+        return this;
+    }
+
+    public WikidataFactStore facts() { return facts; }
     /**
      * Searches for Wikidata entities matching a natural language expression.
      *
@@ -581,6 +589,126 @@ public class WikidataApiClient {
         return out;
     }
 
+    /**
+     * Fetch several main-statement properties from one claims document per entity.
+     * {@code wbgetentities&props=claims} returns every property regardless of which
+     * PID the caller intends to parse, so issuing one request per literal field only
+     * downloads the same response repeatedly.
+     *
+     * @return property PID -> entity QID -> statements for that property
+     */
+    public Map<String, Map<String, List<ApiStatement>>> getStatementsByProperty(
+            List<String> entityQids, List<String> statementPids,
+            BatchLog batchLog) throws Exception {
+        Map<String, Map<String, List<ApiStatement>>> out = new LinkedHashMap<>();
+        if (entityQids == null || statementPids == null) return out;
+        List<String> pids = statementPids.stream()
+                .filter(WikidataIds::isPid).distinct().toList();
+        if (pids.isEmpty()) return out;
+        List<String> clean = entityQids.stream()
+                .filter(WikidataIds::isQid).distinct().toList();
+        List<WorkUnit<Map<String, Map<String, List<ApiStatement>>>>> roots =
+                new ArrayList<>();
+        for (int i = 0; i < clean.size(); i += 50) {
+            roots.add(statementGroupUnit(List.copyOf(clean.subList(i,
+                    Math.min(i + 50, clean.size()))), pids));
+        }
+        BatchExecutor<Map<String, Map<String, List<ApiStatement>>>> executor =
+                new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
+                        batchProgress(batchLog), WikidataBatchFailureClassifier.INSTANCE,
+                        cancellation, batch.BatchCheckpointStore.NONE,
+                        GET_ENTITIES_CONCURRENCY);
+        executor.run(roots, (descriptor, statements) -> statements.forEach((pid, byQid) ->
+                out.computeIfAbsent(pid, ignored -> new LinkedHashMap<>()).putAll(byQid)));
+        return out;
+    }
+
+    /** What a grouped statement lookup came back with, and which entities it could not
+     *  reach. Same contract as {@link PartialEntities}: absence in {@code statements} is
+     *  only "this entity has no such statement" for a QID that is NOT unavailable. */
+    public record PartialStatements(
+            Map<String, Map<String, List<ApiStatement>>> statements,
+            int failedBatches,
+            List<String> unavailableQids) {
+        public PartialStatements {
+            unavailableQids = unavailableQids == null
+                    ? List.of() : List.copyOf(unavailableQids);
+        }
+    }
+
+    /**
+     * Like {@link #getStatementsByProperty}, but keeps what the reachable batches
+     * returned instead of discarding a whole load because some of it failed.
+     *
+     * <p>A caller loading a declared field over thousands of entities has no use for
+     * all-or-nothing: one unreachable batch of 50 would throw away the answers for the
+     * other thousands, report them all as unresolved, and make the next run re-ask for
+     * every one of them. It must, though, still know WHICH entities went unanswered —
+     * absence is otherwise indistinguishable from "the property is not there".
+     */
+    public PartialStatements getStatementsByPropertyPartial(
+            List<String> entityQids, List<String> statementPids,
+            BatchLog batchLog) throws Exception {
+        Map<String, Map<String, List<ApiStatement>>> out = new LinkedHashMap<>();
+        if (entityQids == null || statementPids == null) {
+            return new PartialStatements(out, 0, List.of());
+        }
+        List<String> pids = statementPids.stream()
+                .filter(WikidataIds::isPid).distinct().toList();
+        if (pids.isEmpty()) return new PartialStatements(out, 0, List.of());
+        List<String> clean = entityQids.stream()
+                .filter(WikidataIds::isQid).distinct().toList();
+        List<WorkUnit<Map<String, Map<String, List<ApiStatement>>>>> roots =
+                new ArrayList<>();
+        for (int i = 0; i < clean.size(); i += 50) {
+            roots.add(statementGroupUnit(List.copyOf(clean.subList(i,
+                    Math.min(i + 50, clean.size()))), pids));
+        }
+        BatchExecutor<Map<String, Map<String, List<ApiStatement>>>> executor =
+                new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
+                        batchProgress(batchLog), WikidataBatchFailureClassifier.INSTANCE,
+                        cancellation, batch.BatchCheckpointStore.NONE,
+                        GET_ENTITIES_CONCURRENCY);
+        List<WorkDescriptor> failed = executor.runBestEffort(roots,
+                (descriptor, statements) -> statements.forEach((pid, byQid) ->
+                        out.computeIfAbsent(pid, ignored -> new LinkedHashMap<>())
+                                .putAll(byQid)));
+        return new PartialStatements(out, failed.size(), unavailableQids(failed));
+    }
+
+    private WorkUnit<Map<String, Map<String, List<ApiStatement>>>> statementGroupUnit(
+            List<String> qids, List<String> statementPids) {
+        return new WorkUnit<>() {
+            @Override public WorkDescriptor descriptor() {
+                String ids = String.join(",", qids);
+                return new WorkDescriptor("wbgetentities-statements",
+                        "statements:" + String.join(",", statementPids) + ":" + ids,
+                        "wbgetentities " + qids.size() + " entities",
+                        Map.of("ids", ids,
+                                "statements", String.join(",", statementPids)));
+            }
+            @Override public String request() { return entitiesUrl(qids, true); }
+            @Override public Map<String, Map<String, List<ApiStatement>>> execute()
+                    throws Exception {
+                JsonNode root = getEntitiesBatchWithRetry(qids, true);
+                Map<String, Map<String, List<ApiStatement>>> result = new LinkedHashMap<>();
+                for (String pid : statementPids) {
+                    Map<String, List<ApiStatement>> byQid = new LinkedHashMap<>();
+                    parseStatements(root, pid, List.of(), byQid);
+                    result.put(pid, byQid);
+                }
+                return result;
+            }
+            @Override public List<? extends WorkUnit<Map<String, Map<String,
+                    List<ApiStatement>>>>> split() {
+                if (qids.size() < 2) return List.of();
+                int middle = qids.size() / 2;
+                return List.of(statementGroupUnit(qids.subList(0, middle), statementPids),
+                        statementGroupUnit(qids.subList(middle, qids.size()), statementPids));
+            }
+        };
+    }
+
     private WorkUnit<Map<String, List<ApiStatement>>> statementUnit(
             List<String> qids, String statementPid, List<String> qualifierPids) {
         return new WorkUnit<>() {
@@ -648,10 +776,20 @@ public class WikidataApiClient {
      *  other seam below the HTTP call. */
     protected JsonNode getEntitiesBatchWithRetry(
             List<String> qids, boolean withClaims) throws Exception {
+        JsonNode cached = facts.response(qids, withClaims, mapper);
+        if (cached != null) {
+            facts.recordHits(qids == null ? 0 : qids.size());
+            return cached;
+        }
+        List<String> missing = facts.missing(qids, withClaims);
+        facts.recordHits((qids == null ? 0 : qids.size()) - missing.size());
         Exception last = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                return getEntitiesBatch(qids, withClaims);
+                JsonNode fetched = getEntitiesBatch(missing, withClaims);
+                facts.accept(fetched, withClaims);
+                JsonNode combined = facts.response(qids, withClaims, mapper);
+                return combined == null ? fetched : combined;
             } catch (Exception e) {
                 last = e;
                 if (Thread.currentThread().isInterrupted()) throw e;
@@ -705,7 +843,7 @@ public class WikidataApiClient {
      *  (~15s of waiting) rather than only a momentary blip. */
     private static final int MAX_ATTEMPTS = 5;
 
-    private JsonNode getEntitiesBatch(
+    protected JsonNode getEntitiesBatch(
             List<String> qids, boolean withClaims) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("action",    "wbgetentities");

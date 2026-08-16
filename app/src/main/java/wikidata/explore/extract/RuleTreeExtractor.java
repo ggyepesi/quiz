@@ -78,9 +78,16 @@ public class RuleTreeExtractor {
     // the reliable, non-SPARQL path. Lazily created with the project user agent;
     // override via api(...) to share one / inject logging.
     private WikidataApiClient api;
+    private boolean deferLabels;
 
     public RuleTreeExtractor api(WikidataApiClient api) {
         this.api = api;
+        return this;
+    }
+
+    /** Whole-domain generation hydrates labels once after semantic closure. */
+    public RuleTreeExtractor deferLabels(boolean defer) {
+        this.deferLabels = defer;
         return this;
     }
 
@@ -328,7 +335,7 @@ public class RuleTreeExtractor {
         // Resolve names for QID-only references created by Stage 1 and Stage 2
         // through one shared wbgetentities pass. This is a no-op when every registry
         // object already has a real label.
-        resolveLabels(progress);
+        if (!deferLabels) resolveLabels(progress);
 
         return roots;
     }

@@ -77,6 +77,12 @@ public class FakeWikidataApiClient extends WikidataApiClient {
     }
 
     @Override
+    public PartialEntities getEntitiesBestEffort(
+            List<String> qids, List<String> claimPids, BatchLog batchLog) {
+        return new PartialEntities(getEntities(qids, claimPids, batchLog), 0);
+    }
+
+    @Override
     public Map<String, List<ApiStatement>> getStatements(
             List<String> entityQids, String statementPid,
             List<String> qualifierPids, BatchLog batchLog) {
@@ -92,5 +98,24 @@ public class FakeWikidataApiClient extends WikidataApiClient {
             }
         }
         return out;
+    }
+
+    @Override
+    public Map<String, Map<String, List<ApiStatement>>> getStatementsByProperty(
+            List<String> entityQids, List<String> statementPids, BatchLog batchLog) {
+        Map<String, Map<String, List<ApiStatement>>> out = new LinkedHashMap<>();
+        if (statementPids == null) return out;
+        for (String pid : statementPids) {
+            out.put(pid, getStatements(entityQids, pid, List.of(), batchLog));
+        }
+        return out;
+    }
+
+    /** Every entity this fake knows is reachable, so nothing is unavailable. */
+    @Override
+    public PartialStatements getStatementsByPropertyPartial(
+            List<String> entityQids, List<String> statementPids, BatchLog batchLog) {
+        return new PartialStatements(
+                getStatementsByProperty(entityQids, statementPids, batchLog), 0, List.of());
     }
 }

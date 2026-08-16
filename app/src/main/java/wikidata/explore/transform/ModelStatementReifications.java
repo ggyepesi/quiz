@@ -880,10 +880,33 @@ public final class ModelStatementReifications {
             WikidataSparqlClient client,
             GenerationLog log) {
 
+        enrich(project, pool, client, log, null);
+    }
+
+    /** Compiled enrichment sharing the generation run's action API and fact store. */
+    public static void enrich(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi) {
+
+        enrich(project, pool, client, log, entityApi, false);
+    }
+
+    public static void enrich(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            boolean deferLabels) {
+
         if (client == null) {
             return;
         }
-        QualifierLoader loader = new QualifierLoader();
+        QualifierLoader loader = new QualifierLoader().api(entityApi)
+                .deferLabels(deferLabels);
         for (Reification reification : derive(project)) {
             loader.enrich(pool, reification.load(), client, log);
         }
