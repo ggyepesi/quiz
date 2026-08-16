@@ -53,7 +53,18 @@ public final class ReferentFieldLoad {
      *  answer. */
     public record Result(
             int loaded,
-            java.util.List<wikidata.explore.extract.LoadedDeclaration> completed) {}
+            java.util.List<wikidata.explore.extract.LoadedDeclaration> completed,
+            java.util.List<wikidata.explore.extract.LoadedDeclaration> failed) {
+        public Result(int loaded,
+                      java.util.List<wikidata.explore.extract.LoadedDeclaration> completed) {
+            this(loaded, completed, java.util.List.of());
+        }
+
+        public Result {
+            completed = completed == null ? java.util.List.of() : List.copyOf(completed);
+            failed = failed == null ? java.util.List.of() : List.copyOf(failed);
+        }
+    }
 
     private ReferentFieldLoad() {}
 
@@ -130,6 +141,7 @@ public final class ReferentFieldLoad {
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         int loaded = 0;
         List<wikidata.explore.extract.LoadedDeclaration> completed = new ArrayList<>();
+        List<wikidata.explore.extract.LoadedDeclaration> failed = new ArrayList<>();
         for (Map.Entry<String, List<GeneratedFieldModel>> e : byClass.entrySet()) {
             List<WikidataDynamicObject> objs = referents.get(e.getKey());
             if (objs == null || objs.isEmpty()) {
@@ -166,9 +178,14 @@ public final class ReferentFieldLoad {
                     // claim the uncovered identities from this failed attempt.
                     completed.add(done);
                 }
+                if (!outcome.completed()) {
+                    failed.add(new wikidata.explore.extract.LoadedDeclaration(
+                            e.getKey(), f.name(), pid,
+                            uncovered.stream().map(WikidataDynamicObject::qid).toList()));
+                }
             }
         }
-        return new Result(loaded, List.copyOf(completed));
+        return new Result(loaded, List.copyOf(completed), List.copyOf(failed));
     }
 
     /**

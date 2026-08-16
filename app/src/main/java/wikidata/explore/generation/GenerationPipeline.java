@@ -70,6 +70,21 @@ public class GenerationPipeline {
         return extractor.load(plan, depth, log);
     }
 
+    /** Shared-registry extraction bound to the process's real cancellation token. */
+    public List<WikidataDynamicObject> extract(
+            WikidataSparqlClient client,
+            RuleNode plan,
+            int depth,
+            GenerationLog log,
+            wikidata.explore.extract.WikidataObjectRegistry registry,
+            process.CancellationToken cancellation) throws Exception {
+
+        RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry)
+                .cancellation(cancellation);
+        extractor.log(log);
+        return extractor.load(plan, depth, log);
+    }
+
     // Fills DBpedia-sourced root fields (Wikipedia infobox) after the Wikidata
     // extraction, joined by owl:sameAs QID. No-op unless the root class has any
     // DBpedia field; failures are logged, not fatal (the run still succeeds).
@@ -212,10 +227,17 @@ public class GenerationPipeline {
 
         enrichFromDBpedia(snapshot, dynamicObjects, log);
 
-        wikidata.explore.transform.OwnedComponents.Result owned =
-                wikidata.explore.transform.OwnedComponents.apply(
-                        snapshot, dynamicObjects, null, log);
-        owned.addTo(dynamicObjects);
+        // NO owned components here. This is the single-class PREVIEW: it answers "who is
+        // in this class, carrying what", and materializing a component per owner answers
+        // neither — one empty part per instance, since nothing on this path fetches their
+        // declared properties. They are produced by Generate domain and by Enrich, which
+        // do. Say so, or their absence reads as a fault in the model.
+        int sites = ownedComponentSites(snapshot);
+        if (sites > 0 && log != null) {
+            log.message("Preview: " + sites + " owned-component field(s) NOT materialized "
+                    + "— parts are produced with their values by Generate domain or "
+                    + "Enrich, and would be empty here.\n");
+        }
 
         // Derived (production = INVERT) fields: build each as the reverse of a
         // forward reference already in the pool — no query, no extra depth.
@@ -267,18 +289,19 @@ public class GenerationPipeline {
         // never mutate the previous run that remains visible until Apply succeeds.
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(previous.dynamicObjects());
+        int filled = wikidata.explore.transform.ModelYearProjections.apply(
+                snapshot, pool, log);
+        wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
+                wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
+                        snapshot, pool, previous.dynamicObjects(), log);
         wikidata.explore.transform.OwnedComponents.Result owned =
                 wikidata.explore.transform.OwnedComponents.apply(
                         snapshot, pool, previous.dynamicObjects(), log);
         owned.addTo(pool);
+        wikidata.explore.transform.ReferentClassStamp.apply(snapshot, owned.components());
         wikidata.explore.transform.Canonicalization.apply(snapshot, pool, log);
-        int filled = wikidata.explore.transform.ModelYearProjections.apply(
-                snapshot, pool, log);
         int restricted = wikidata.explore.transform.FieldExpectations
                 .apply(snapshot, pool, log).dropped().size();
-        wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
-                wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
-                        snapshot, pool, previous.dynamicObjects(), log);
         wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, pool, log);
         if (log != null) {
             log.message("Remap (display-only, no cached pool): "
@@ -292,7 +315,8 @@ public class GenerationPipeline {
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan,
-                pool, runtime, instances, rs);
+                pool, runtime, instances, rs,
+                previous.loadedDeclarations(), previous.quality());
     }
 
     /**
@@ -377,6 +401,23 @@ public class GenerationPipeline {
                 referents.completed());
     }
 
+    /** How many fields produce an owned component — for the preview to say what it is
+     *  deliberately not doing. */
+    private static int ownedComponentSites(GeneratedProjectModel snapshot) {
+        int sites = 0;
+        for (GeneratedClassModel clazz : snapshot.classes()) {
+            if (clazz == null) continue;
+            for (GeneratedFieldModel field : clazz.fields()) {
+                if (field != null && field.type() == FieldType.ENTITY
+                        && field.mapping().productionKind()
+                                == wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT) {
+                    sites++;
+                }
+            }
+        }
+        return sites;
+    }
+
     /** The class.field (PID) pairs an enrich run will try to load — named up front, so
      *  a run that turns out to fetch nothing says which declarations it considered. */
     private static String reportPendingLoads(GeneratedProjectModel snapshot) {
@@ -426,11 +467,6 @@ public class GenerationPipeline {
                 wikidata.explore.transform.ModelStatementReifications.reify(
                         compiledSnapshot, pool, log, demoted);   // pool.addAll(reified) inside
 
-        wikidata.explore.transform.OwnedComponents.Result owned =
-                wikidata.explore.transform.OwnedComponents.apply(
-                        snapshot, pool, previous.dynamicObjects(), log);
-        owned.addTo(pool);
-
         // Compiled-model transforms (parity-proven); the rest still read raw.
         wikidata.explore.transform.FieldValueRestrictions.apply(compiledSnapshot, pool);
         wikidata.explore.transform.ModelInverts.apply(compiledSnapshot, pool, null);
@@ -439,8 +475,6 @@ public class GenerationPipeline {
         // records + their referenced (dated) entities.
         int filled = wikidata.explore.transform.ModelYearProjections.apply(
                 compiledSnapshot, pool, log);
-        wikidata.explore.transform.Canonicalization.apply(compiledSnapshot, pool, null);
-        wikidata.explore.transform.Canonicalization.apply(compiledSnapshot, reified, null);
         wikidata.explore.transform.CompanionMatch.applyWithSets(
                 compiledSnapshot, reified, rs.companionSets(), null);
 
@@ -453,6 +487,15 @@ public class GenerationPipeline {
         wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
                 wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
                         snapshot, pool, previous.dynamicObjects(), log);
+        // Kind membership is an input to owned composition: a Person that arrived as
+        // Nominee must become Person before Person.structuredName can be produced.
+        wikidata.explore.transform.OwnedComponents.Result owned =
+                wikidata.explore.transform.OwnedComponents.apply(
+                        snapshot, pool, previous.dynamicObjects(), log);
+        owned.addTo(pool);
+        wikidata.explore.transform.ReferentClassStamp.apply(
+                snapshot, owned.components());
+        wikidata.explore.transform.Canonicalization.apply(compiledSnapshot, pool, null);
         // Field expectations (#96): report coverage, drop REQUIRED-missing records
         // (e.g. a Nomination with no ceremony edition), keep EXPECTED-missing ones.
         int restricted = wikidata.explore.transform.FieldExpectations
@@ -474,7 +517,8 @@ public class GenerationPipeline {
         List<Viewable> instances = materialize(runtime, pool);
 
         return new GenerationRun(
-                snapshot, previous.depth(), plan, pool, runtime, instances, rs);
+                snapshot, previous.depth(), plan, pool, runtime, instances, rs,
+                previous.loadedDeclarations(), previous.quality());
     }
 
     private static void removeInternalTypesAndFields(

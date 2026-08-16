@@ -23,7 +23,20 @@ import java.util.Set;
 public final class SnapshotEntityKindClassifier {
     private SnapshotEntityKindClassifier() { }
 
-    public record Result(int classified, int unknown, int withoutStoredEvidence) { }
+    public record Result(
+            int classified,
+            int unknown,
+            int withoutStoredEvidence,
+            Set<String> withoutStoredEvidenceQids) {
+        public Result(int classified, int unknown, int withoutStoredEvidence) {
+            this(classified, unknown, withoutStoredEvidence, Set.of());
+        }
+
+        public Result {
+            withoutStoredEvidenceQids = withoutStoredEvidenceQids == null
+                    ? Set.of() : Set.copyOf(withoutStoredEvidenceQids);
+        }
+    }
 
     private record Producer(String ownerClass, String fieldName) { }
 
@@ -59,6 +72,7 @@ public final class SnapshotEntityKindClassifier {
         }
 
         int classified = 0, unknown = 0, withoutEvidence = 0;
+        Set<String> withoutEvidenceQids = new LinkedHashSet<>();
         for (WikidataDynamicObject candidate : candidates.values()) {
             Map<String, Set<String>> byPid = evidence.get(candidate.qid());
             boolean hasEvidence = false;
@@ -88,7 +102,10 @@ public final class SnapshotEntityKindClassifier {
                 }
             } else {
                 unknown++;
-                if (!hasEvidence) withoutEvidence++;
+                if (!hasEvidence) {
+                    withoutEvidence++;
+                    withoutEvidenceQids.add(candidate.qid());
+                }
             }
         }
         if (log != null) {
@@ -96,7 +113,7 @@ public final class SnapshotEntityKindClassifier {
                     + " classified, " + unknown + " unknown (" + withoutEvidence
                     + " without stored evidence).\n");
         }
-        return new Result(classified, unknown, withoutEvidence);
+        return new Result(classified, unknown, withoutEvidence, withoutEvidenceQids);
     }
 
     private static Map<String, List<Producer>> producers(GeneratedProjectModel model) {

@@ -97,7 +97,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
 
                         List<WikidataDynamicObject> roots = pipeline.extract(
                                 context.sparql(Datasource.WIKIDATA), plan, cls.generationDepth(),
-                                genLog, shared);
+                                genLog, shared, context.cancellation());
                         genLog.message("  -> " + roots.size() + " "
                                 + cls.className() + "\n");
 
@@ -252,16 +252,21 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 + " referent(s) with their declared class.\n");
                     }
 
-                    // Field-defined composition: Person.name -> Name creates one Name
-                    // carrying the Person QID. Name's own PIDs are loaded by the same
-                    // referent-field loader immediately below.
-                    List<WikidataDynamicObject> ownedRoots =
-                            new ArrayList<>(shared.values());
-                    ownedRoots.addAll(reified);
-                    wikidata.explore.transform.OwnedComponents.Result owned =
-                            wikidata.explore.transform.OwnedComponents.apply(
-                                    project, ownedRoots, null, genLog);
+                    // Build the initial served pool before kind classification. Owned
+                    // components deliberately come later: Person.name can only be
+                    // produced after a Nominee has actually been classified as Person.
+                    List<WikidataDynamicObject> pool = new ArrayList<>();
+                    for (WikidataDynamicObject o : shared.values()) {
+                        if (!demoted.contains(o) && !deadStubs.contains(o)) {
+                            pool.add(o);
+                        }
+                    }
+                    pool.addAll(reified);
 
+                    // First acquisition pass: load fields on the role classes that are
+                    // already known — e.g. Nominee.type (P31), ForWork.genre (P136).
+                    // This evidence is then reused by the snapshot classifier instead
+                    // of immediately issuing the same P31 request a second time.
                     // Load a referenced-only class's DECLARED entity property-fields
                     // onto its (now class-stamped) referents — e.g. Nominee.type (P31),
                     // ForWork.genre (P136). No-op unless such fields are declared, so
@@ -272,52 +277,83 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // (e.g. Ceremony as a Nomination's P805 qualifier value, never a
                     // top-level subject), and ReferentFieldLoad flattens the reachable
                     // graph to find them.
-                    List<WikidataDynamicObject> referentLoadRoots =
-                            new ArrayList<>(shared.values());
-                    referentLoadRoots.addAll(reified);
+                    List<WikidataDynamicObject> referentLoadRoots = pool;
                     // Through load(), not apply(): a generation fetches every declared
                     // property, and the run must RECORD which — otherwise the snapshot
                     // it saves claims nothing has been fetched, and the first enrich
                     // after a full generation re-asks Wikidata for all of it.
-                    wikidata.explore.transform.ReferentFieldLoad.Result referentLoad =
+                    wikidata.explore.transform.ReferentFieldLoad.Result firstReferentLoad =
                             wikidata.explore.transform.ReferentFieldLoad.load(
                                     project, referentLoadRoots,
                                     entityApi,
                                     genLog, java.util.List.of());
-                    int loadedReferentFields = referentLoad.loaded();
-                    if (loadedReferentFields > 0) {
-                        genLog.message("Loaded " + loadedReferentFields
-                                + " referent field value(s) from declared PIDs.\n");
-                    }
-                    wikidata.explore.transform.ReferentClassStamp.apply(
-                            project, owned.components());
-                    wikidata.explore.transform.Canonicalization.apply(
-                            project, owned.components(), genLog);
-
-                    // The served/saved pool: the whole shared pool (every class's
-                    // roots + their referenced children) minus demoted reified
-                    // duplicates and dead stubs, plus the reified records. This IS
-                    // the artifact the web serves and reload maps, so build it first.
-                    List<WikidataDynamicObject> pool = new ArrayList<>();
-                    for (WikidataDynamicObject o : shared.values()) {
-                        if (!demoted.contains(o) && !deadStubs.contains(o)) {
-                            pool.add(o);
-                        }
-                    }
-                    pool.addAll(reified);
-                    owned.addTo(pool);
-
-                    wikidata.explore.transform.ReferentKindClassifier.Result kindResult =
+                    wikidata.explore.transform.SnapshotEntityKindClassifier.Result storedKinds =
+                            wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
+                                    project, pool, pool, genLog);
+                    // A model need not expose every kind-evidence PID as a field, and a
+                    // failed first-pass declaration must not be mistaken for evidence
+                    // absence. Fetch only candidates for which no stored evidence was
+                    // available; candidates already classified above are excluded.
+                    wikidata.explore.transform.ReferentKindClassifier.Result remoteKinds =
                             wikidata.explore.transform.ReferentKindClassifier.apply(
                                     project, pool,
                                     entityApi,
-                                    genLog);
-                    if (kindResult.classified() > 0 || kindResult.unknown() > 0
-                            || kindResult.unavailable() > 0) {
-                        genLog.message("Evidence-classified " + kindResult.classified()
-                                + " role member(s); " + kindResult.unknown()
-                                + " remain of unknown kind; " + kindResult.unavailable()
+                                    genLog, storedKinds.withoutStoredEvidenceQids());
+                    int classifiedKinds = storedKinds.classified() + remoteKinds.classified();
+                    int unknownKinds = Math.max(0,
+                            storedKinds.unknown() - remoteKinds.classified());
+                    if (classifiedKinds > 0 || storedKinds.unknown() > 0
+                            || remoteKinds.unavailable() > 0) {
+                        genLog.message("Evidence-classified " + classifiedKinds
+                                + " role member(s); " + unknownKinds
+                                + " remain of unknown kind; "
+                                + remoteKinds.unavailable()
                                 + " could not be checked.\n");
+                    }
+
+                    // Field-defined composition now sees the settled kind memberships:
+                    // Person.name -> Name creates one Name carrying the Person QID.
+                    wikidata.explore.transform.OwnedComponents.Result owned =
+                            wikidata.explore.transform.OwnedComponents.apply(
+                                    project, pool, null, genLog);
+                    owned.addTo(pool);
+                    wikidata.explore.transform.ReferentClassStamp.apply(
+                            project, owned.components());
+
+                    // Second acquisition pass fills fields belonging to kinds and owned
+                    // components discovered above (Person.dateOfBirth, Name.*). Exact
+                    // declaration coverage from pass one prevents duplicate requests.
+                    wikidata.explore.transform.ReferentFieldLoad.Result secondReferentLoad =
+                            wikidata.explore.transform.ReferentFieldLoad.load(
+                                    project, pool, entityApi, genLog,
+                                    firstReferentLoad.completed());
+                    java.util.Map<String, wikidata.explore.extract.LoadedDeclaration>
+                            completedReferentLoads = new java.util.LinkedHashMap<>();
+                    firstReferentLoad.completed().forEach(d ->
+                            completedReferentLoads.put(d.key(), d));
+                    secondReferentLoad.completed().forEach(d ->
+                            completedReferentLoads.put(d.key(), d));
+                    int loadedReferentFields = firstReferentLoad.loaded()
+                            + secondReferentLoad.loaded();
+                    if (loadedReferentFields > 0) {
+                        genLog.message("Loaded " + loadedReferentFields
+                                + " referent/owned field value(s) from declared PIDs.\n");
+                    }
+
+                    // Canonical names depend on the final class and field set, so this
+                    // is the authoritative pass. Earlier canonicalization is harmless
+                    // preparation for reification, but must not be the last word.
+                    wikidata.explore.transform.Canonicalization.apply(
+                            project, pool, genLog);
+
+                    // Acquisition can create new thin references and owned components;
+                    // prune only after the last field load so "not fetched yet" is never
+                    // confused with "dead". The earlier raw-pool pass remains a cheap
+                    // guard for ghosts created during extraction/reification.
+                    java.util.Set<WikidataDynamicObject> finalDeadStubs =
+                            wikidata.explore.transform.DeadStubPrune.apply(pool, genLog);
+                    if (!finalDeadStubs.isEmpty()) {
+                        pool.removeIf(finalDeadStubs::contains);
                     }
 
                     // Drop Wikimedia-internal non-entities (a disambiguation / duplicated
@@ -400,13 +436,38 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             .forEach(e -> summary.append(e.getKey()).append('\t')
                                     .append(e.getValue().size()).append('\n'));
                     summary.append("TOTAL\t").append(servedTotal)
-                            .append(" distinct across ").append(classesRun)
-                            .append(" class(es)");
+                            .append(" distinct across ").append(servedByType.size())
+                            .append(" served type(s); ").append(classesRun)
+                            .append(" root class query(ies)");
+                    java.util.List<String> qualityWarnings = new java.util.ArrayList<>();
+                    java.util.Set<String> unavailableQids = new java.util.LinkedHashSet<>();
+                    java.util.List<wikidata.explore.extract.LoadedDeclaration> failedLoads =
+                            new java.util.ArrayList<>(firstReferentLoad.failed());
+                    failedLoads.addAll(secondReferentLoad.failed());
+                    if (!failedLoads.isEmpty()) {
+                        qualityWarnings.add(failedLoads.size()
+                                + " declared field load(s) did not complete");
+                        failedLoads.forEach(d -> unavailableQids.addAll(d.coveredQids()));
+                    }
+                    if (remoteKinds.unavailable() > 0) {
+                        qualityWarnings.add("Entity-kind evidence was unavailable for "
+                                + remoteKinds.unavailable() + " role member(s)");
+                        unavailableQids.addAll(remoteKinds.unavailableQids());
+                    }
+                    if (!qualityWarnings.isEmpty()) {
+                        summary.append("\nPARTIAL\t")
+                                .append(String.join("; ", qualityWarnings));
+                    }
                     step.summary(summary.toString());
                     return new GenerationRun(
                             project, 0, rootPlan, pool, runtime, allInstances,
                             new GenerationRun.RemapState(enrichedSnapshot, companionSets),
-                            referentLoad.completed());
+                            java.util.List.copyOf(completedReferentLoads.values()),
+                            qualityWarnings.isEmpty()
+                                    ? GenerationRun.Quality.completeQuality()
+                                    : GenerationRun.Quality.partial(
+                                            qualityWarnings,
+                                            java.util.List.copyOf(unavailableQids)));
                 });
     }
 

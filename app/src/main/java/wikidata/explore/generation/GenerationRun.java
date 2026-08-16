@@ -26,11 +26,23 @@ public record GenerationRun(
         GeneratedViewableRuntime runtime,
         List<Viewable> instances,
         RemapState remapState,
-        List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations) {
+        List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
+        Quality quality) {
 
     public GenerationRun {
         loadedDeclarations = loadedDeclarations == null
                 ? List.of() : List.copyOf(loadedDeclarations);
+        quality = quality == null ? Quality.completeQuality() : quality;
+    }
+
+    /** Compatibility constructor for local/remap paths that produced a complete run. */
+    public GenerationRun(GeneratedProjectModel modelSnapshot, int depth, RuleNode plan,
+                         List<WikidataDynamicObject> dynamicObjects,
+                         GeneratedViewableRuntime runtime, List<Viewable> instances,
+                         RemapState remapState,
+                         List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations) {
+        this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances,
+                remapState, loadedDeclarations, Quality.completeQuality());
     }
 
     /** Back-compat: a run with no cached transform inputs (remap = display-only). */
@@ -48,6 +60,27 @@ public record GenerationRun(
                          RemapState remapState) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances,
                 remapState, List.of());
+    }
+
+    /** Explicit data-completeness contract. A partial download is usable for review,
+     * but can no longer masquerade as a complete generated domain. */
+    public record Quality(
+            boolean complete,
+            List<String> warnings,
+            List<String> unavailableQids) {
+        public Quality {
+            warnings = warnings == null ? List.of() : List.copyOf(warnings);
+            unavailableQids = unavailableQids == null
+                    ? List.of() : unavailableQids.stream().distinct().toList();
+        }
+
+        public static Quality completeQuality() {
+            return new Quality(true, List.of(), List.of());
+        }
+
+        public static Quality partial(List<String> warnings, List<String> qids) {
+            return new Quality(false, warnings, qids);
+        }
     }
 
     /**

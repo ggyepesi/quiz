@@ -22,6 +22,16 @@ public final class ReferentKindClassifier {
     public static Result apply(GeneratedProjectModel model,
                                Collection<WikidataDynamicObject> pool,
                                WikidataApiClient api, GenerationLog log) {
+        return apply(model, pool, api, log, null);
+    }
+
+    /** Fetches evidence only for the requested candidates. A generation first uses
+     * already-loaded modeled fields; this fallback covers entities for which the
+     * snapshot had no evidence, without downloading the same P31 claims twice. */
+    public static Result apply(GeneratedProjectModel model,
+                               Collection<WikidataDynamicObject> pool,
+                               WikidataApiClient api, GenerationLog log,
+                               Set<String> candidateQids) {
         if (model == null || pool == null || api == null) return new Result(0, 0, 0);
         List<EntityKindRule> rules = model.entityKindRules().stream()
                 .filter(EntityKindRule::isConfigured)
@@ -34,6 +44,7 @@ public final class ReferentKindClassifier {
                 .filter(WikidataDynamicObject.class::isInstance)
                 .map(WikidataDynamicObject.class::cast)
                 .filter(value -> wikidata.WikidataIds.isQid(value.qid()))
+                .filter(value -> candidateQids == null || candidateQids.contains(value.qid()))
                 .forEach(value -> candidates.putIfAbsent(value.qid(), value));
         if (candidates.isEmpty()) return new Result(0, 0, 0);
 
@@ -94,7 +105,7 @@ public final class ReferentKindClassifier {
                     + " exhausted API batch(es); their role classes were retained: "
                     + summarizeQids(partial.unavailableQids()) + "\n");
         }
-        return new Result(classified, unknown, unavailable);
+        return new Result(classified, unknown, unavailable, partial.unavailableQids());
     }
 
     /** Same carrier rule as the domain/store: deepest modeled class, then name. */
@@ -119,7 +130,17 @@ public final class ReferentKindClassifier {
         return best;
     }
 
-    public record Result(int classified, int unknown, int unavailable) {}
+    public record Result(
+            int classified, int unknown, int unavailable, List<String> unavailableQids) {
+        public Result(int classified, int unknown, int unavailable) {
+            this(classified, unknown, unavailable, List.of());
+        }
+
+        public Result {
+            unavailableQids = unavailableQids == null
+                    ? List.of() : List.copyOf(unavailableQids);
+        }
+    }
 
     private static String summarizeQids(List<String> qids) {
         if (qids == null || qids.isEmpty()) return "(none listed)";

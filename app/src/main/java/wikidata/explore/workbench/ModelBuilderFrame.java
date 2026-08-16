@@ -575,7 +575,27 @@ public class ModelBuilderFrame extends JFrame {
                                      .map(e -> e.getKey() + " " + e.getValue().size())
                                      .collect(java.util.stream.Collectors.joining(", "));
         return "Generated instances — " + breakdown
-                + "  (" + total + " distinct)";
+                + "  (" + total + " distinct)" + partsNote();
+    }
+
+    /** A single-class preview deliberately does NOT materialize owned components: one
+     *  empty part per instance answers neither question a preview asks. Say so on the
+     *  panel, or their absence reads as a fault in the model. */
+    private String partsNote() {
+        boolean modelHasParts = projectModel.classes().stream()
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(clazz -> clazz.fields().stream().anyMatch(field ->
+                        field != null && field.type()
+                                == wikidata.explore.model.FieldType.ENTITY
+                                && field.mapping().productionKind()
+                                == wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT));
+        if (!modelHasParts || lastRun == null || lastRun.dynamicObjects() == null) {
+            return "";
+        }
+        boolean anyPart = lastRun.dynamicObjects().stream()
+                .anyMatch(o -> o != null && o.isPart());
+        return anyPart ? "" : "   ⚠ parts not materialized (preview — "
+                + "Generate domain or Enrich produces them with their values)";
     }
 
     private void wireActions() {
