@@ -655,11 +655,7 @@ public class WikidataApiClient {
             } catch (Exception e) {
                 last = e;
                 if (Thread.currentThread().isInterrupted()) throw e;
-                // A status the server will not change its mind about (404, 400) is
-                // not worth five attempts, and retrying it only lengthens a run that
-                // is going to fail anyway.
-                if (e instanceof ApiHttpException http
-                        && !RetryAfter.isRetryableStatus(http.status())) {
+                if (!worthRetryingUnchanged(e)) {
                     throw e;
                 }
                 if (attempt == MAX_ATTEMPTS) break;
@@ -672,6 +668,21 @@ public class WikidataApiClient {
             }
         }
         throw last;
+    }
+
+    /**
+     * Whether issuing the SAME request again can plausibly do better.
+     *
+     * <p>A status the server will not change its mind about (404, 400) is not worth five
+     * attempts. Neither is a TIMEOUT: it says this batch is too heavy, and asking for the
+     * same 50 entities four more times only spends ~15s of backoff learning that again —
+     * it is the executor's split, not another identical attempt, that makes progress.
+     */
+    static boolean worthRetryingUnchanged(Exception error) {
+        if (error instanceof ApiHttpException http) {
+            return RetryAfter.isRetryableStatus(http.status());
+        }
+        return !(error instanceof batch.ResponseTimeoutException);
     }
 
     /**
@@ -922,14 +933,21 @@ public class WikidataApiClient {
         conn.setConnectTimeout(10_000);
         conn.setReadTimeout(30_000);
 
-        try (var stream = conn.getInputStream()) {
-            JsonNode result = mapper.readTree(stream);
+        int responseStatus = -1;
+        try {
+            // Establish the response boundary explicitly. A timeout here is a
+            // connection/availability failure. Once this returns, a timeout while
+            // consuming the stream is specifically a response-body timeout.
+            responseStatus = conn.getResponseCode();
+            try (var stream = conn.getInputStream()) {
+                JsonNode result = mapper.readTree(stream);
 
-            log.accept("[API " + id + "] OK timeMs="
-                               + (System.nanoTime() - started) / 1_000_000
-                               + "\n");
+                log.accept("[API " + id + "] OK timeMs="
+                                   + (System.nanoTime() - started) / 1_000_000
+                                   + "\n");
 
-            return result;
+                return result;
+            }
         } catch (IOException e) {
             log.accept("[API " + id + "] ERROR "
                                + e.getMessage()
@@ -937,28 +955,42 @@ public class WikidataApiClient {
                                + (System.nanoTime() - started) / 1_000_000
                                + "\n");
 
-            // A refused request carries the two facts that decide what to do next: the
-            // status, and how long the server asked us to wait. Collapsing them into a
-            // bare IOException is what left the retry unable to tell throttling from a
-            // permanent error, so it waited half a second and gave up on a 429.
-            int status = statusOf(conn);
-            if (status > 0) {
-                throw new ApiHttpException(
-                        status,
-                        RetryAfter.millis(conn.getHeaderField("Retry-After"), -1),
-                        e.getMessage() + " | URL: " + url,
-                        e);
-            }
-            throw new IOException(e.getMessage() + " | URL: " + url, e);
+            throw transportFailure(e, responseStatus,
+                    RetryAfter.millis(conn.getHeaderField("Retry-After"), -1), url);
         }
     }
 
-    private static int statusOf(java.net.HttpURLConnection conn) {
-        try {
-            return conn.getResponseCode();
-        } catch (IOException unavailable) {
-            return -1;   // connection-level failure: there is no status to read
+    /**
+     * The failure to raise for a request that did not produce a body — the decision that
+     * tells the batch executor what to do next, so it is made in one place.
+     *
+     * <p>A read timeout is NOT an outcome the server reported: the headers arrived, so
+     * the connection still answers 200, and the BODY ran out of time. Reading a status
+     * here and wrapping it as an {@link ApiHttpException} handed the classifier a status
+     * it has no rule for, which is FATAL — so a 50-entity batch that merely needed
+     * splitting refused the whole run. A timeout stays a timeout, because that is the
+     * failure that means "ask for less".
+     */
+    static IOException transportFailure(
+            IOException error, int status, long retryAfterMillis, String url) {
+        String message = error.getMessage() + " | URL: " + url;
+
+        if (error instanceof java.net.SocketTimeoutException && status > 0) {
+            return new batch.ResponseTimeoutException(message, error);
         }
+        if (error instanceof java.net.SocketTimeoutException) {
+            java.net.SocketTimeoutException timeout = new java.net.SocketTimeoutException(message);
+            timeout.initCause(error);
+            return timeout; // no response: retry the connection, do not split the batch
+        }
+        // A refused request carries the two facts that decide what to do next: the
+        // status, and how long the server asked us to wait. Collapsing them into a
+        // bare IOException is what left the retry unable to tell throttling from a
+        // permanent error, so it waited half a second and gave up on a 429.
+        if (status > 0) {
+            return new ApiHttpException(status, retryAfterMillis, message, error);
+        }
+        return new IOException(message, error);
     }
 
     // ------------------------------------------------------------------

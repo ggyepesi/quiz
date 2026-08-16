@@ -17,7 +17,11 @@ public interface FailureClassifier {
                 if (t instanceof InterruptedException || t instanceof CancellationException) {
                     return FailureDecision.of(BatchFailure.CANCELLED);
                 }
-                if (t instanceof HttpTimeoutException) {
+                // A response-body timeout says the request arrived but was too heavy.
+                // A plain SocketTimeoutException may instead be a connection timeout;
+                // it falls through to IOException/UNAVAILABLE and is retried unchanged.
+                if (t instanceof HttpTimeoutException
+                        || t instanceof ResponseTimeoutException) {
                     return FailureDecision.of(BatchFailure.TOO_HEAVY);
                 }
                 // The transport-neutral shape of "the response stopped before the payload
