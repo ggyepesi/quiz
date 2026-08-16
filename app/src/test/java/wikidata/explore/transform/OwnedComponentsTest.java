@@ -156,6 +156,32 @@ class OwnedComponentsTest {
         assertEquals("Douglas Adams — Structured Name", part.getDisplayName());
     }
 
+    /**
+     * A generation composes owned values more than once — kinds settle, new owners
+     * appear, and composition runs again over a pool that already holds parts. Each
+     * owner must still end with ONE part per site: the run that lost this produced two
+     * birth names for every person (13,726 for 6,853), because a pass in between had
+     * rewritten the parts' type keys and the reuse lookup no longer matched.
+     */
+    @Test void composingAgainOverAPoolThatAlreadyHasPartsAddsNothing() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        java.util.List<WikidataDynamicObject> pool = new java.util.ArrayList<>(
+                List.of(person));
+
+        OwnedComponents.Result first = OwnedComponents.apply(project, pool, null, null);
+        first.addTo(pool);
+        Object part = person.get("structuredName");
+
+        OwnedComponents.Result second = OwnedComponents.apply(project, pool, null, null);
+        second.addTo(pool);
+
+        assertEquals(0, second.created(), "the second pass finds the work already done");
+        assertSame(part, person.get("structuredName"), "and leaves the same part in place");
+        assertEquals(1, pool.stream().filter(WikidataDynamicObject::isPart).count(),
+                "one part per owner, however many passes ran");
+    }
+
     private static GeneratedProjectModel project() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("people");

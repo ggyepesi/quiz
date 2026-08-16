@@ -61,11 +61,22 @@ public final class SnapshotEntityKindClassifier {
         roles.values().stream().flatMap(Collection::stream)
                 .filter(WikidataDynamicObject.class::isInstance)
                 .map(WikidataDynamicObject.class::cast)
+                // An owned part borrows its owner's QID to load fields; that does not
+                // make it an entity-kind candidate. Exclude it before matching as well
+                // as from copy propagation, otherwise it can inflate `classified`
+                // without receiving the class (and must never receive that class).
+                .filter(value -> !value.isPart())
                 .filter(value -> WikidataIds.isQid(value.qid()))
                 .forEach(value -> candidates.putIfAbsent(value.qid(), value));
+        // The copies of ONE entity — never a part of it. A part carries its owner's
+        // identifier, because that is how its fields load from the owner's QID, but it
+        // is a different object: a birth name is not a person. Stamped as one, it lost
+        // the production site its type key names — which IS a part's identity — and
+        // owned composition, no longer able to find it, produced a second part for the
+        // same owner on its next pass.
         Map<String, List<WikidataDynamicObject>> copiesByQid = new LinkedHashMap<>();
         for (WikidataDynamicObject object : WikidataObjectGraph.reachable(targetPool)) {
-            if (object != null && WikidataIds.isQid(object.qid())) {
+            if (object != null && !object.isPart() && WikidataIds.isQid(object.qid())) {
                 copiesByQid.computeIfAbsent(object.qid(), ignored -> new ArrayList<>())
                         .add(object);
             }

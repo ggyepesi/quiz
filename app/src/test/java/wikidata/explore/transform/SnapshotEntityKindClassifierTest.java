@@ -93,6 +93,61 @@ class SnapshotEntityKindClassifierTest {
         assertFalse(referencedCopy.directClassNames().contains("Nominee"));
     }
 
+    /**
+     * A part carries its OWNER's identifier — that is how its fields load from the
+     * owner's QID — but it is not the owner. Propagating a kind to "every copy of the
+     * QID" reached the part too and rewrote its type key, which is the part's production
+     * SITE and therefore its identity: owned composition could then no longer find it,
+     * and produced a second part for the same owner on the next pass.
+     */
+    @Test void aPartIsNotAnotherCopyOfItsOwner() {
+        GeneratedProjectModel model = model();
+        WikidataDynamicObject owner = entity("Q5000", "Nominee");
+        WikidataDynamicObject nomination = entity("N5", "Nomination");
+        nomination.put("nominee", owner);
+
+        WikidataDynamicObject part = entity("Q5000", "BirthName");
+        part.typeKey("BirthName@Person.birthName");
+        part.part(true);
+        owner.put("birthName", part);
+
+        WikidataDynamicObject saved = entity("Q5000", "Nominee");
+        saved.put("type", new WikidataDynamicObject("Q5", "human"));
+
+        SnapshotEntityKindClassifier.apply(model,
+                List.of(nomination, owner, part), List.of(saved), null);
+
+        assertEquals("Person", owner.typeName(), "the owner is classified as before");
+        assertEquals("BirthName", part.typeName(), "the part keeps what it is");
+        assertEquals("BirthName@Person.birthName", part.typeKey(),
+                "the type key names the production site — the part's identity");
+        assertFalse(part.directClassNames().contains("Person"),
+                "a birth name is not a person");
+    }
+
+    @Test void aPartExposedAsARoleIsNotCountedAsAnEntityCandidate() {
+        GeneratedProjectModel model = model();
+        WikidataDynamicObject part = entity("Q5000", "Nominee");
+        part.type("BirthName");
+        part.typeKey("BirthName@Person.birthName");
+        part.part(true);
+        WikidataDynamicObject nomination = entity("N6", "Nomination");
+        nomination.put("nominee", part);
+
+        WikidataDynamicObject saved = entity("Q5000", "Nominee");
+        saved.put("type", new WikidataDynamicObject("Q5", "human"));
+
+        SnapshotEntityKindClassifier.Result result =
+                SnapshotEntityKindClassifier.apply(
+                        model, List.of(nomination, part), List.of(saved), null);
+
+        assertEquals(0, result.classified());
+        assertEquals(0, result.unknown());
+        assertEquals("BirthName", part.typeName());
+        assertEquals("BirthName@Person.birthName", part.typeKey());
+        assertFalse(part.directClassNames().contains("Person"));
+    }
+
     private static GeneratedProjectModel model() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         model.rootClass().className("Nomination");
