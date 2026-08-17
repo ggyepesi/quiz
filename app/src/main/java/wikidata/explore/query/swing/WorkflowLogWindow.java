@@ -3,6 +3,7 @@ package wikidata.explore.query.swing;
 import objectview.render.CardListView;
 import objectview.render.RenderContext;
 import objectview.search.SearchPanel;
+import objectview.viewconfig.ViewConfig;
 import wikidata.explore.query.core.QueryStatus;
 import wikidata.explore.query.log.LogKind;
 import wikidata.explore.query.log.LogListener;
@@ -98,8 +99,14 @@ public class WorkflowLogWindow implements LogListener {
 
         v.createCardsPanel(1);
 
+        // Search every field of the entry, not just its title: what a reader looks for
+        // in a log — a QID, a PID, a property in a request — is on the steps BELOW the
+        // card, and the default search config is the display name alone. The card
+        // itself is the whole tree, so its search config is the whole entry too.
         SearchPanel search =
-                new SearchPanel(LogNode.class);
+                new SearchPanel(LogNode.class, null,
+                        new SearchPanel.ConfigState(
+                                ViewConfig.of(LogNode.class), null, null));
 
         search.setTarget(
                 v.getCardsPanel(),
