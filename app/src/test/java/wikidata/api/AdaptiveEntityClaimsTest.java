@@ -26,7 +26,7 @@ class AdaptiveEntityClaimsTest {
         }
 
         @Override protected JsonNode getEntitiesBatchWithRetry(
-                List<String> qids, boolean withClaims) throws Exception {
+                List<String> qids, boolean withClaims, List<String> pids) throws Exception {
             attemptedSizes.add(qids.size());
             if (qids.size() > 3 || (permanentlyUnavailable != null
                     && qids.contains(permanentlyUnavailable))) {

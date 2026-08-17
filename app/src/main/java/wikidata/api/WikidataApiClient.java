@@ -538,7 +538,7 @@ public class WikidataApiClient {
             @Override public String request() { return entitiesUrl(qids, withClaims); }
             @Override public Map<String, ApiEntity> execute() throws Exception {
                 Map<String, ApiEntity> result = new LinkedHashMap<>();
-                parseEntities(getEntitiesBatchWithRetry(qids, withClaims), pids, result);
+                parseEntities(getEntitiesBatchWithRetry(qids, withClaims, pids), pids, result);
                 return result;
             }
             @Override public List<? extends WorkUnit<Map<String, ApiEntity>>> split() {
@@ -690,7 +690,7 @@ public class WikidataApiClient {
             @Override public String request() { return entitiesUrl(qids, true); }
             @Override public Map<String, Map<String, List<ApiStatement>>> execute()
                     throws Exception {
-                JsonNode root = getEntitiesBatchWithRetry(qids, true);
+                JsonNode root = getEntitiesBatchWithRetry(qids, true, statementPids);
                 Map<String, Map<String, List<ApiStatement>>> result = new LinkedHashMap<>();
                 for (String pid : statementPids) {
                     Map<String, List<ApiStatement>> byQid = new LinkedHashMap<>();
@@ -723,7 +723,8 @@ public class WikidataApiClient {
             @Override public String request() { return entitiesUrl(qids, true); }
             @Override public Map<String, List<ApiStatement>> execute() throws Exception {
                 Map<String, List<ApiStatement>> result = new LinkedHashMap<>();
-                parseStatements(getEntitiesBatchWithRetry(qids, true), statementPid,
+                parseStatements(getEntitiesBatchWithRetry(qids, true,
+                        List.of(statementPid)), statementPid,
                         qualifierPids, result);
                 return result;
             }
@@ -776,19 +777,31 @@ public class WikidataApiClient {
      *  other seam below the HTTP call. */
     protected JsonNode getEntitiesBatchWithRetry(
             List<String> qids, boolean withClaims) throws Exception {
-        JsonNode cached = facts.response(qids, withClaims, mapper);
+        return getEntitiesBatchWithRetry(qids, withClaims, null);
+    }
+
+    /**
+     * @param pids the claim properties this batch is FOR. The fact store retains only
+     *             these, so the run holds the declared slice of an entity rather than
+     *             its whole claims body — and refuses to answer for any property it did
+     *             not retain, since a slice cannot tell "no such statement" from "never
+     *             fetched". Null asks for, and is only satisfied by, the whole body.
+     */
+    protected JsonNode getEntitiesBatchWithRetry(
+            List<String> qids, boolean withClaims, List<String> pids) throws Exception {
+        JsonNode cached = facts.response(qids, withClaims, pids, mapper);
         if (cached != null) {
             facts.recordHits(qids == null ? 0 : qids.size());
             return cached;
         }
-        List<String> missing = facts.missing(qids, withClaims);
+        List<String> missing = facts.missing(qids, withClaims, pids);
         facts.recordHits((qids == null ? 0 : qids.size()) - missing.size());
         Exception last = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 JsonNode fetched = getEntitiesBatch(missing, withClaims);
-                facts.accept(fetched, withClaims);
-                JsonNode combined = facts.response(qids, withClaims, mapper);
+                facts.accept(fetched, withClaims, pids);
+                JsonNode combined = facts.response(qids, withClaims, pids, mapper);
                 return combined == null ? fetched : combined;
             } catch (Exception e) {
                 last = e;

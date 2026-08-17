@@ -135,6 +135,11 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             classesRun + " root class query(ies) completed");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
                             "Loading statements and qualifiers");
+                    String statementPlan = statementAcquisitionPlan(compiledProject);
+                    progress(
+                            wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
+                            statementPlan);
+                    genLog.message("Statement acquisition plan: " + statementPlan + "\n");
                     // STATEMENT-reification classes (e.g. Nomination = the P1411
                     // statements of Oscarnominations, with year/forWork/nominee
                     // qualifier fields): load the qualifiers + reify into records.
@@ -148,12 +153,19 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // canonical identity already resolved). Byte-for-byte parity
                     // with the editable-model derivation is proven; the compile also
                     // fails fast if the model is structurally invalid.
-                    wikidata.explore.transform.ModelStatementReifications.enrich(
-                            compiledProject, reifyPool,
-                            context.sparql(Datasource.WIKIDATA), genLog, entityApi, true);
+                    wikidata.explore.transform.ModelStatementReifications.AcquisitionReport
+                            statementAcquisition =
+                            wikidata.explore.transform.ModelStatementReifications
+                                    .enrichWithReport(
+                                            compiledProject, reifyPool,
+                                            context.sparql(Datasource.WIKIDATA), genLog,
+                                            entityApi, true);
+                    progress(
+                            wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
+                            statementAcquisition.summary());
                     completePhase(
                             wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
-                            "Statement facts acquired");
+                            statementAcquisition.summary());
                     phase(wikidata.explore.generation.GenerateDomainPipeline.CONSTRUCT,
                             "Constructing statement records and derived fields");
                     // A source-class-less reify DISCOVERS its subjects, which enrich
@@ -324,11 +336,23 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             "Canonicalize, prune, validate and build vocabularies");
                     wikidata.explore.generation.DomainFinalization.apply(
                             project, compiledProject, pool, reified, entityApi, genLog);
+                    // Fetched vs avoided says whether the cache paid; the eviction
+                    // figures say WHY. A poor hit rate with no evicted re-fetches means
+                    // the consumers never ask about the same entity and a larger budget
+                    // would buy nothing; a poor hit rate with many of them means they do
+                    // meet, just not while the document is still held.
+                    wikidata.api.WikidataFactStore facts = generationState.facts();
                     genLog.message("Wikidata fact store: "
-                            + generationState.facts().fetchedDocuments()
-                            + " entity document(s) fetched, "
-                            + generationState.facts().cacheHits()
-                            + " later fetch(es) avoided.\n");
+                            + facts.fetchedDocuments() + " entity document(s) fetched, "
+                            + facts.cacheHits() + " later fetch(es) avoided; holding "
+                            + facts.size() + " document(s) (~"
+                            + (facts.estimatedBytes() / (1024 * 1024)) + " MB), "
+                            + facts.evictions() + " evicted, "
+                            + facts.evictedRefetches()
+                            + " re-fetch(es) of an evicted document"
+                            + (facts.oversized() == 0 ? "" : ", " + facts.oversized()
+                                    + " too large to retain")
+                            + ".\n");
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
                             pool.size() + " final object(s)");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
@@ -489,6 +513,25 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
 
     private void partialPhase(String id, String summary) {
         if (pipelineProgress != null) pipelineProgress.partial(id, summary);
+    }
+
+    private static String statementAcquisitionPlan(
+            wikidata.explore.compiled.CompiledProjectModel model) {
+        java.util.List<String> descriptions = new java.util.ArrayList<>();
+        for (var recipe :
+                wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+            var load = recipe.load();
+            String source = load.discoverSubjects() ? "discover subjects" : "reuse "
+                    + load.entityType() + " members";
+            String qualifiers = load.qualifiers() == null ? ""
+                    : load.qualifiers().stream().map(q -> q.fieldName() + "=" + q.pid())
+                    .collect(java.util.stream.Collectors.joining(", "));
+            descriptions.add(load.statementType() + ": " + source + ", load "
+                    + load.propertyPid() + (qualifiers.isBlank() ? ""
+                    : " with " + qualifiers));
+        }
+        return descriptions.isEmpty() ? "No statement classes configured"
+                : String.join("; ", descriptions);
     }
 
     /** Remote failures remain unresolved only when those exact identities still lack

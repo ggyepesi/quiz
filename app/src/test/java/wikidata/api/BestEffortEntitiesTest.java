@@ -41,7 +41,7 @@ class BestEffortEntitiesTest {
         }
 
         @Override
-        protected JsonNode getEntitiesBatchWithRetry(List<String> qids, boolean withClaims)
+        protected JsonNode getEntitiesBatchWithRetry(List<String> qids, boolean withClaims, List<String> pids)
                 throws Exception {
             synchronized (requested) {
                 requested.add(List.copyOf(qids));

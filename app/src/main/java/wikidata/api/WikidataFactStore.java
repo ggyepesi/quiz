@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,12 +21,38 @@ import java.util.concurrent.atomic.AtomicLong;
  * and labels without downloading it again.
  */
 public final class WikidataFactStore {
-    /** A conservative cap for the serialized payload retained by one run. The tree
-     * itself has overhead, but unlike an entry-count limit this remains meaningful
-     * when one Wikidata entity has a much larger claims body than another. */
-    public static final long DEFAULT_MAX_ESTIMATED_BYTES = 64L * 1024L * 1024L;
+    /**
+     * The budget one run may hold, sized from the access pattern rather than guessed.
+     *
+     * <p>Replaying this project's own recorded requests gives the reuse-distance curve:
+     * two thirds of all entity fetches are repeats, but the median reuse distance is
+     * ~11,000 documents, so a cache is worth nothing until it holds most of the working
+     * set — under 5,000 documents captures 0.3% of the repeats, 20,000 captures all of
+     * them. It is a cliff, not a gradient, and the earlier 64 MB sat just below it,
+     * holding ~4,000 documents and recording 10 hits in a run that made 67,837 fetches.
+     *
+     * <p>384 MB holds roughly 20,000 declared slices at the measured ~17 KB each, which
+     * is the whole working set. It is only affordable because a slice is retained
+     * instead of the whole claims body — the same 20,000 entities kept whole would be
+     * about five gigabytes. Weighed by payload, not by entry count, since Wikidata
+     * bodies differ by orders of magnitude.
+     */
+    public static final long DEFAULT_MAX_ESTIMATED_BYTES = 384L * 1024L * 1024L;
 
-    private record Document(JsonNode json, boolean claims, long estimatedBytes) { }
+    /**
+     * A retained document, and WHICH claim properties it kept. Keeping the whole claims
+     * body is what a run cannot afford: measured on this project's own access pattern,
+     * two thirds of all entity fetches are repeats, but the working set is ~18k
+     * documents at ~260 KB retained each — five gigabytes to hold what pays off. The
+     * declared slice of the same entity is a few hundred bytes.
+     *
+     * <p>The slice is what makes {@code pids} load-bearing rather than bookkeeping: a
+     * document that kept only P31 must not answer a question about P569, because the
+     * answer would be "no such statement" when the truth is "never fetched". Every
+     * lookup therefore states the properties it needs.
+     */
+    private record Document(
+            JsonNode json, boolean claims, Set<String> pids, long estimatedBytes) { }
 
     private final Map<String, Document> documents =
             new LinkedHashMap<>(256, 0.75f, true);
@@ -32,6 +60,13 @@ public final class WikidataFactStore {
     private long estimatedBytes;
     private final AtomicLong hits = new AtomicLong();
     private final AtomicLong fetched = new AtomicLong();
+    // Every QID this store dropped to stay inside its budget. Kept as identifiers (a
+    // few bytes each, far below what one claims document costs) so a later lookup can
+    // tell "we never had it" from "we had it and threw it away".
+    private final java.util.Set<String> evictedKeys = new java.util.HashSet<>();
+    private long evictions;
+    private long oversized;
+    private long evictedRefetches;
 
     public WikidataFactStore() { this(DEFAULT_MAX_ESTIMATED_BYTES); }
 
@@ -39,32 +74,84 @@ public final class WikidataFactStore {
         this.maxEstimatedBytes = Math.max(1, maxEstimatedBytes);
     }
 
-    /** Pure lookup: metrics are changed only when a cached response is actually used. */
+    /**
+     * Pure lookup: metrics are changed only when a cached response is actually used —
+     * except for one count that can only be taken here. A document this store HELD and
+     * then evicted, now asked for again, is a fetch a larger budget would have saved:
+     * the number that says whether a poor hit rate means the consumers do not overlap
+     * (nothing to gain) or that the budget is simply too small for them to meet.
+     */
     public synchronized List<String> missing(
             Collection<String> qids, boolean requireClaims) {
+        return missing(qids, requireClaims, null);
+    }
+
+    public synchronized List<String> missing(
+            Collection<String> qids, boolean requireClaims, Collection<String> pids) {
         List<String> out = new ArrayList<>();
         if (qids == null) return out;
         for (String qid : qids) {
             Document document = documents.get(qid);
-            if (document == null || requireClaims && !document.claims()) out.add(qid);
+            if (!answers(document, requireClaims, pids)) {
+                out.add(qid);
+                if (document == null && evictedKeys.contains(qid)) evictedRefetches++;
+            }
         }
         return out;
     }
 
+    /** Whether a held document can answer this question — it must have claims when
+     *  claims were asked for, and must have RETAINED every property being asked about.
+     *  A slice that kept P31 knows nothing about P569, and saying so is the difference
+     *  between a cache miss and a false "this entity has no date of birth". */
+    private static boolean answers(
+            Document document, boolean requireClaims, Collection<String> pids) {
+        if (document == null) return false;
+        if (!requireClaims) return true;
+        if (!document.claims()) return false;
+        if (pids == null) return document.pids() == null;   // the whole body was wanted
+        return document.pids() == null || document.pids().containsAll(pids);
+    }
+
     public synchronized void accept(JsonNode response, boolean claims) {
+        accept(response, claims, null);
+    }
+
+    /**
+     * Retains each entity, keeping only the claim properties this fetch was made for.
+     * A later question about another property finds the slice does not answer it and
+     * fetches again — one request, against holding every property of every entity for
+     * the whole run.
+     */
+    public synchronized void accept(
+            JsonNode response, boolean claims, Collection<String> pids) {
         if (response == null) return;
+        Set<String> retain = pids == null ? null : Set.copyOf(pids);
         response.path("entities").fields().forEachRemaining(entry -> {
             JsonNode copy = entry.getValue().deepCopy();
             fetched.incrementAndGet();
-            long weight = estimate(copy);
             Document previous = documents.get(entry.getKey());
             if (previous != null && previous.claims() && !claims) return;
+            Set<String> kept = retain;
+            if (claims && retain != null) {
+                // Merge with what this entity already had: two fetches for different
+                // declarations leave one document answering both.
+                kept = new LinkedHashSet<>(retain);
+                if (previous != null && previous.claims() && previous.pids() != null) {
+                    kept.addAll(previous.pids());
+                    mergeClaims(copy, previous.json(), previous.pids());
+                }
+                sliceClaims(copy, kept);
+                kept = Set.copyOf(kept);
+            }
+            long weight = estimate(copy);
             if (previous != null) estimatedBytes -= previous.estimatedBytes();
             if (weight > maxEstimatedBytes) {
-                documents.remove(entry.getKey());
+                if (documents.remove(entry.getKey()) != null) evictedKeys.add(entry.getKey());
+                oversized++;
                 return; // usable by the caller now, but too large to retain safely
             }
-            documents.put(entry.getKey(), new Document(copy, claims, weight));
+            documents.put(entry.getKey(), new Document(copy, claims, kept, weight));
             estimatedBytes += weight;
         });
         evictOldest();
@@ -72,18 +159,55 @@ public final class WikidataFactStore {
 
     public synchronized JsonNode response(
             Collection<String> qids, boolean requireClaims, ObjectMapper mapper) {
+        return response(qids, requireClaims, null, mapper);
+    }
+
+    public synchronized JsonNode response(
+            Collection<String> qids, boolean requireClaims,
+            Collection<String> pids, ObjectMapper mapper) {
         ObjectNode root = mapper.createObjectNode();
         ObjectNode entities = root.putObject("entities");
         if (qids == null) return root;
         for (String qid : qids) {
             Document document = documents.get(qid);
-            if (document == null || requireClaims && !document.claims()) return null;
+            if (!answers(document, requireClaims, pids)) return null;
             entities.set(qid, document.json().deepCopy());
         }
         return root;
     }
 
+    /** Drops every claim property outside the slice. Labels, id and the rest of the
+     *  entity document are untouched — they cost little and every consumer wants them. */
+    private static void sliceClaims(JsonNode entity, Set<String> keep) {
+        JsonNode claims = entity.path("claims");
+        if (!claims.isObject()) return;
+        List<String> drop = new ArrayList<>();
+        claims.fieldNames().forEachRemaining(pid -> {
+            if (!keep.contains(pid)) drop.add(pid);
+        });
+        ((ObjectNode) claims).remove(drop);
+    }
+
+    /** Carries the properties an earlier slice held into the document replacing it. */
+    private static void mergeClaims(JsonNode into, JsonNode from, Set<String> pids) {
+        JsonNode target = into.path("claims");
+        JsonNode source = from.path("claims");
+        if (!target.isObject() || !source.isObject()) return;
+        for (String pid : pids) {
+            if (!target.has(pid) && source.has(pid)) {
+                ((ObjectNode) target).set(pid, source.get(pid).deepCopy());
+            }
+        }
+    }
+
     public long cacheHits() { return hits.get(); }
+    /** Documents dropped to stay inside the budget. */
+    public synchronized long evictions() { return evictions; }
+    /** Documents too large to retain at all — the budget cannot hold even one. */
+    public synchronized long oversized() { return oversized; }
+    /** Lookups for a document this store had evicted: what a larger budget would have
+     *  saved, as opposed to consumers that simply never ask about the same entity. */
+    public synchronized long evictedRefetches() { return evictedRefetches; }
     public void recordHits(long count) { if (count > 0) hits.addAndGet(count); }
     public long fetchedDocuments() { return fetched.get(); }
     public synchronized int size() { return documents.size(); }
@@ -94,6 +218,8 @@ public final class WikidataFactStore {
         while (estimatedBytes > maxEstimatedBytes && entries.hasNext()) {
             Map.Entry<String, Document> eldest = entries.next();
             estimatedBytes -= eldest.getValue().estimatedBytes();
+            evictedKeys.add(eldest.getKey());
+            evictions++;
             entries.remove();
         }
     }

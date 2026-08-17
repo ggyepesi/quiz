@@ -115,7 +115,7 @@ class ReadTimeoutSplitsTest {
         List<Integer> attempted = java.util.Collections.synchronizedList(new ArrayList<>());
         WikidataApiClient client = new WikidataApiClient("test") {
             @Override protected JsonNode getEntitiesBatchWithRetry(
-                    List<String> qids, boolean withClaims) throws Exception {
+                    List<String> qids, boolean withClaims, List<String> pids) throws Exception {
                 attempted.add(qids.size());
                 if (qids.size() > 12) {
                     throw new batch.ResponseTimeoutException("Read timed out", null);

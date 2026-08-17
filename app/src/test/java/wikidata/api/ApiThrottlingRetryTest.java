@@ -60,7 +60,7 @@ class ApiThrottlingRetryTest {
         WikidataApiClient client = new WikidataApiClient("test") {
             @Override
             protected JsonNode getEntitiesBatchWithRetry(
-                    List<String> qids, boolean withClaims) throws Exception {
+                    List<String> qids, boolean withClaims, List<String> pids) throws Exception {
                 attempts.incrementAndGet();
                 throw new ApiHttpException(404, -1, "not found", null);
             }
