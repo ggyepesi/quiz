@@ -40,10 +40,10 @@ public final class GenerateDomainPipeline {
                         rootDetails(model)),
                 phase(ACQUIRE_STATEMENTS, "Acquire statement facts",
                         "Load main statements and configured qualifier facts.",
-                        reifyDetails(model)),
+                        statementAcquisitionDetails(model)),
                 phase(CONSTRUCT, "Construct graph",
                         "Reify statement records, apply restrictions, inverts and projections.",
-                        reifyDetails(model)),
+                        statementConstructionDetails(model)),
                 phase(SEMANTIC, "Resolve semantic worklist",
                         "Repeat role stamping, field/evidence acquisition, kind classification "
                                 + "and owned-value construction until stable.",
@@ -79,10 +79,37 @@ public final class GenerateDomainPipeline {
         return none(out, "No directly extracted root classes");
     }
 
-    private static List<String> reifyDetails(GeneratedProjectModel model) {
-        List<String> out = model.classes().stream().filter(GeneratedClassModel::reifiesStatements)
-                .map(c -> c.className() + " — statement class, "
-                        + c.fields().size() + " fields").toList();
+    private static List<String> statementAcquisitionDetails(GeneratedProjectModel model) {
+        List<String> out = new ArrayList<>();
+        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+            var load = recipe.load();
+            String source = load.discoverSubjects()
+                    ? "discover subjects into " + load.entityType()
+                    : "reuse " + load.entityType() + " members";
+            String qualifiers = load.qualifiers() == null || load.qualifiers().isEmpty()
+                    ? "no qualifiers"
+                    : load.qualifiers().stream().map(q -> q.fieldName() + " ← " + q.pid()
+                            + " (" + q.kind() + (q.multi() ? ", list" : "") + ")")
+                            .collect(java.util.stream.Collectors.joining(", "));
+            out.add(load.statementType() + " — " + source + "; load "
+                    + load.propertyPid() + " statements; " + qualifiers
+                    + "; value domain: " + load.valueDomainLabel());
+        }
+        return none(out, "No statement classes");
+    }
+
+    private static List<String> statementConstructionDetails(GeneratedProjectModel model) {
+        List<String> out = new ArrayList<>();
+        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+            var load = recipe.load();
+            var construct = recipe.reify();
+            String key = construct.dedupBy().isEmpty() ? "surrogate statement identity"
+                    : "canonical key " + String.join(" + ", construct.dedupBy());
+            out.add(construct.targetType() + " — promote " + load.statementField()
+                    + " records; source → " + construct.sourceField()
+                    + ", value → " + load.valueField() + "; " + key
+                    + "; " + construct.roles().size() + " fallback role(s)");
+        }
         return none(out, "No statement classes");
     }
 
@@ -98,8 +125,26 @@ public final class GenerateDomainPipeline {
     private static List<String> kindDetails(GeneratedProjectModel model) {
         List<String> out = model.entityKindRules().stream().filter(r -> r.isConfigured())
                 .map(r -> r.className() + " ← " + r.propertyPid() + " in "
-                        + String.join(", ", r.evidenceQids())).toList();
+                        + String.join(", ", r.evidenceQids())
+                        + evidenceProducerSuffix(model, r.propertyPid())).toList();
         return none(out, "No entity-kind rules");
+    }
+
+    private static String evidenceProducerSuffix(
+            GeneratedProjectModel model, String propertyPid) {
+        List<String> producers = new ArrayList<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            if (owner == null || MembershipPattern.of(owner, model)
+                    != MembershipPattern.REFERENCED) continue;
+            for (GeneratedFieldModel field : owner.fields()) {
+                if (field != null && field.mapping() != null
+                        && propertyPid.equalsIgnoreCase(field.mapping().propertyPid())) {
+                    producers.add(owner.className() + "." + field.name());
+                }
+            }
+        }
+        return producers.isEmpty() ? " — all role members (no modeled producer)"
+                : " — candidates from " + String.join(", ", producers);
     }
 
     private static List<String> ownedDetails(GeneratedProjectModel model) {

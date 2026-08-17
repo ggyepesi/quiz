@@ -38,14 +38,15 @@ public final class ReferentKindClassifier {
                 .filter(rule -> model.findClass(rule.className()) != null).toList();
         if (rules.isEmpty()) return new Result(0, 0, 0);
 
-        Map<String, List<Viewable>> roles = RoleSelections.materialize(model, pool);
+        EntityKindCandidates.Plan candidatePlan =
+                EntityKindCandidates.compile(model, pool, rules);
         LinkedHashMap<String, WikidataDynamicObject> candidates = new LinkedHashMap<>();
-        roles.values().stream().flatMap(Collection::stream)
-                .filter(WikidataDynamicObject.class::isInstance)
-                .map(WikidataDynamicObject.class::cast)
-                .filter(value -> wikidata.WikidataIds.isQid(value.qid()))
-                .filter(value -> candidateQids == null || candidateQids.contains(value.qid()))
-                .forEach(value -> candidates.putIfAbsent(value.qid(), value));
+        candidatePlan.candidateQids().stream()
+                .filter(qid -> candidateQids == null || candidateQids.contains(qid))
+                .forEach(qid -> {
+                    WikidataDynamicObject value = candidatePlan.objectsByQid().get(qid);
+                    if (value != null) candidates.put(qid, value);
+                });
         if (candidates.isEmpty()) return new Result(0, 0, 0);
 
         Set<String> properties = new LinkedHashSet<>();
@@ -79,27 +80,35 @@ public final class ReferentKindClassifier {
                 continue; // retain the compatibility role stamp; evidence was unavailable
             }
             boolean matched = false;
+            boolean changed = false;
             for (EntityKindRule rule : rules) {
+                if (!candidatePlan.eligible(candidate.qid(), rule.propertyPid())) continue;
                 if (entity != null && entity.claim(rule.propertyPid()).stream()
                         .anyMatch(rule.evidenceQids()::contains)) {
-                    candidate.assignClass(rule.className());
+                    if (!candidate.directClassNames().contains(rule.className())) {
+                        candidate.assignClass(rule.className());
+                        changed = true;
+                    }
                     matched = true;
                 }
             }
             if (matched) {
-                classified++;
                 // Retract the compatibility role stamp only after a genuine kind keeps
                 // the entity typed. An unknown thin referent must remain an object:
                 // without a stamp BareReferenceCollapse can turn it into a String on
                 // reload, losing canonical identity and role-selection membership.
                 for (String legacyRole : RoleSelections.legacyRoleClassNames(model)) {
+                    if (candidate.directClassNames().contains(legacyRole)) changed = true;
                     candidate.removeClass(legacyRole);
                 }
                 String carrier = carrier(candidate.directClassNames(), model);
                 if (carrier != null) {
+                    if (!carrier.equals(candidate.typeName())
+                            || !carrier.equals(candidate.typeKey())) changed = true;
                     candidate.type(carrier);
                     candidate.typeKey(carrier);
                 }
+                if (changed) classified++;
             } else {
                 unknown++;
             }

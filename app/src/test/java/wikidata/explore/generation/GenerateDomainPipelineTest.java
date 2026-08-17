@@ -16,6 +16,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GenerateDomainPipelineTest {
 
+    @Test void statementAcquisitionShowsItsSourcePropertyQualifiersAndConstruction() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new wikidata.explore.model.StatementClassSource("P1411"));
+        var category = nomination.addField(
+                "category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().propertyPid("P1411");
+        var nominee = nomination.addField(
+                "nominee", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        nominee.mapping().qualifierPid("P2453");
+        model.rootClass(nomination);
+
+        ProcessWorkflowPipeline pipeline = GenerateDomainPipeline.configured(model);
+        String acquisition = details(pipeline, GenerateDomainPipeline.ACQUIRE_STATEMENTS);
+        assertTrue(acquisition.contains("discover subjects"), acquisition);
+        assertTrue(acquisition.contains("P1411 statements"), acquisition);
+        assertTrue(acquisition.contains("nominee ← P2453 (ENTITY, list)"), acquisition);
+        String construction = details(pipeline, GenerateDomainPipeline.CONSTRUCT);
+        assertTrue(construction.contains("promote __Nomination records"), construction);
+        assertTrue(construction.contains("value → category"), construction);
+    }
+
     @Test void derivesFieldPropertyKindAndOwnedDetailsFromTheConfiguredModel() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
@@ -54,7 +76,7 @@ class GenerateDomainPipelineTest {
                 && roleDetails.contains("NomineeType") && roleDetails.contains("P31"),
                 roleDetails);
         assertTrue(details(pipeline, GenerateDomainPipeline.CLASSIFY)
-                .contains("Person ← P31 in Q5"));
+                .contains("Person ← P31 in Q5 — candidates from Nominee.type"));
         String ownedDetails = details(pipeline, GenerateDomainPipeline.OWNED);
         assertTrue(ownedDetails.contains("Person.name")
                 && ownedDetails.contains("Name") && ownedDetails.contains("owner QID"),

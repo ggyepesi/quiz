@@ -35,6 +35,12 @@ class SnapshotEntityKindClassifierTest {
         assertTrue(target.directClassNames().contains("Person"));
         assertFalse(target.directClassNames().contains("Nominee"));
         assertEquals("Person", target.typeName());
+
+        SnapshotEntityKindClassifier.Result stable =
+                SnapshotEntityKindClassifier.apply(model,
+                        List.of(nomination, target), List.of(saved), null);
+        assertEquals(0, stable.classified(),
+                "an evidence match already represented in the graph is not new work");
     }
 
     @Test void missingStoredEvidenceKeepsTheRoleCarrier() {
@@ -50,6 +56,32 @@ class SnapshotEntityKindClassifierTest {
         assertEquals(0, result.classified());
         assertEquals(1, result.withoutStoredEvidence());
         assertTrue(target.directClassNames().contains("Nominee"));
+    }
+
+    @Test void evidenceProducerScopesKindCandidatesToItsRole() {
+        GeneratedProjectModel model = model();
+        GeneratedFieldModel forWork = model.rootClass().addField(
+                "forWork", FieldType.ENTITY, FieldCardinality.SINGLE);
+        forWork.entityClassName("ForWork");
+        GeneratedClassModel workClass = new GeneratedClassModel("ForWork");
+        GeneratedFieldModel genre = workClass.addField(
+                "genre", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        genre.mapping().propertyPid("P136");
+        model.addClass(workClass);
+
+        WikidataDynamicObject nominee = entity("Q10", "Nominee");
+        WikidataDynamicObject work = entity("Q20", "ForWork");
+        WikidataDynamicObject nomination = entity("N10", "Nomination");
+        nomination.put("nominee", nominee);
+        nomination.put("forWork", work);
+
+        SnapshotEntityKindClassifier.Result result =
+                SnapshotEntityKindClassifier.apply(model,
+                        List.of(nomination, nominee, work), List.of(), null);
+
+        assertEquals(1, result.withoutStoredEvidence(),
+                "P31 is produced by Nominee.type, so ForWork is not a Person candidate");
+        assertEquals(java.util.Set.of("Q10"), result.withoutStoredEvidenceQids());
     }
 
     @Test void sameNamedFieldOnAnotherClassCannotSupplyEvidence() {
@@ -91,6 +123,22 @@ class SnapshotEntityKindClassifierTest {
         assertEquals("Person", referencedCopy.typeName());
         assertFalse(pooled.directClassNames().contains("Nominee"));
         assertFalse(referencedCopy.directClassNames().contains("Nominee"));
+    }
+
+    @Test void evidenceOnAnAlreadyClassifiedCopyStillBelongsToItsProducerRole() {
+        GeneratedProjectModel model = model();
+        WikidataDynamicObject target = entity("Q40", "Nominee");
+        WikidataDynamicObject nomination = entity("N40", "Nomination");
+        nomination.put("nominee", target);
+        WikidataDynamicObject saved = entity("Q40", "Person");
+        saved.put("type", new WikidataDynamicObject("Q5", "human"));
+
+        SnapshotEntityKindClassifier.Result result =
+                SnapshotEntityKindClassifier.apply(model,
+                        List.of(nomination, target), List.of(saved), null);
+
+        assertEquals(1, result.classified());
+        assertEquals("Person", target.typeName());
     }
 
     /**

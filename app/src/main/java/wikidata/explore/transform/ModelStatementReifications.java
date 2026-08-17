@@ -46,6 +46,31 @@ public final class ModelStatementReifications {
             ReifyConstruct reify) {
     }
 
+    public record AcquiredStatementClass(
+            String className, String propertyPid, int subjects,
+            int discoveredSubjects, int statements, List<String> qualifierPids) { }
+
+    public record AcquisitionReport(List<AcquiredStatementClass> classes) {
+        public AcquisitionReport {
+            classes = classes == null ? List.of() : List.copyOf(classes);
+        }
+        public int statements() {
+            return classes.stream().mapToInt(AcquiredStatementClass::statements).sum();
+        }
+        public int discoveredSubjects() {
+            return classes.stream().mapToInt(
+                    AcquiredStatementClass::discoveredSubjects).sum();
+        }
+        public String summary() {
+            if (classes.isEmpty()) return "No statement classes configured";
+            return classes.stream().map(c -> c.className() + ": " + c.subjects()
+                    + " subject(s), " + c.statements() + " " + c.propertyPid()
+                    + " statement(s)" + (c.discoveredSubjects() == 0 ? ""
+                    : ", " + c.discoveredSubjects() + " discovered"))
+                    .collect(java.util.stream.Collectors.joining("; "));
+        }
+    }
+
     public static List<Reification> derive(
             GeneratedProjectModel project) {
 
@@ -901,15 +926,39 @@ public final class ModelStatementReifications {
             GenerationLog log,
             wikidata.api.WikidataApiClient entityApi,
             boolean deferLabels) {
+        enrichWithReport(project, pool, client, log, entityApi, deferLabels);
+    }
 
-        if (client == null) {
-            return;
-        }
+    /** The same compiled acquisition path, returning counts for live progress. */
+    public static AcquisitionReport enrichWithReport(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            boolean deferLabels) {
+        if (client == null) return new AcquisitionReport(List.of());
         QualifierLoader loader = new QualifierLoader().api(entityApi)
                 .deferLabels(deferLabels);
+        List<AcquiredStatementClass> acquired = new ArrayList<>();
         for (Reification reification : derive(project)) {
-            loader.enrich(pool, reification.load(), client, log);
+            QualifierLoadConfig cfg = reification.load();
+            int before = pool.size();
+            List<WikidataDynamicObject> statements =
+                    loader.enrich(pool, cfg, client, log);
+            int discovered = Math.max(0, pool.size() - before);
+            int subjects = 0;
+            for (WikidataDynamicObject object : pool) {
+                if (object != null && cfg.entityType().equals(object.typeName())) subjects++;
+            }
+            List<String> qualifierPids = cfg.qualifiers() == null ? List.of()
+                    : cfg.qualifiers().stream().map(QualifierLoadConfig.Qualifier::pid)
+                    .filter(WikidataIds::isPid).distinct().toList();
+            acquired.add(new AcquiredStatementClass(cfg.statementType(),
+                    cfg.propertyPid(), subjects, discovered, statements.size(),
+                    qualifierPids));
         }
+        return new AcquisitionReport(acquired);
     }
 
     /** Compiled-model overload of {@link #reify(GeneratedProjectModel, List,

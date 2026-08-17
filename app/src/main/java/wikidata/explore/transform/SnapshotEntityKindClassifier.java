@@ -54,20 +54,18 @@ public final class SnapshotEntityKindClassifier {
         if (rules.isEmpty()) return new Result(0, 0, 0);
 
         Map<String, List<Producer>> producers = producers(model);
+        EntityKindCandidates.Plan candidatePlan =
+                EntityKindCandidates.compile(model, targetPool, rules);
+        Set<String> kindClasses = rules.stream().map(EntityKindRule::className)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
         Map<String, Map<String, Set<String>>> evidence =
-                evidence(model, evidencePool, producers);
-        Map<String, List<Viewable>> roles = RoleSelections.materialize(model, targetPool);
+                evidence(evidencePool, producers, candidatePlan.membersByRoleClass(),
+                        kindClasses);
         LinkedHashMap<String, WikidataDynamicObject> candidates = new LinkedHashMap<>();
-        roles.values().stream().flatMap(Collection::stream)
-                .filter(WikidataDynamicObject.class::isInstance)
-                .map(WikidataDynamicObject.class::cast)
-                // An owned part borrows its owner's QID to load fields; that does not
-                // make it an entity-kind candidate. Exclude it before matching as well
-                // as from copy propagation, otherwise it can inflate `classified`
-                // without receiving the class (and must never receive that class).
-                .filter(value -> !value.isPart())
-                .filter(value -> WikidataIds.isQid(value.qid()))
-                .forEach(value -> candidates.putIfAbsent(value.qid(), value));
+        candidatePlan.candidateQids().forEach(qid -> {
+            WikidataDynamicObject value = candidatePlan.objectsByQid().get(qid);
+            if (value != null) candidates.put(qid, value);
+        });
         // The copies of ONE entity — never a part of it. A part carries its owner's
         // identifier, because that is how its fields load from the owner's QID, but it
         // is a different object: a birth name is not a person. Stamped as one, it lost
@@ -88,29 +86,39 @@ public final class SnapshotEntityKindClassifier {
             Map<String, Set<String>> byPid = evidence.get(candidate.qid());
             boolean hasEvidence = false;
             boolean matched = false;
+            boolean changed = false;
             for (EntityKindRule rule : rules) {
+                if (!candidatePlan.eligible(candidate.qid(), rule.propertyPid())) continue;
                 Set<String> values = byPid == null ? null : byPid.get(rule.propertyPid());
                 if (values == null || values.isEmpty()) continue;
                 hasEvidence = true;
                 if (values.stream().anyMatch(rule.evidenceQids()::contains)) {
-                    copiesByQid.getOrDefault(candidate.qid(), List.of())
-                            .forEach(copy -> copy.assignClass(rule.className()));
+                    for (WikidataDynamicObject copy :
+                            copiesByQid.getOrDefault(candidate.qid(), List.of())) {
+                        if (!copy.directClassNames().contains(rule.className())) {
+                            copy.assignClass(rule.className());
+                            changed = true;
+                        }
+                    }
                     matched = true;
                 }
             }
             if (matched) {
-                classified++;
                 for (WikidataDynamicObject copy :
                         copiesByQid.getOrDefault(candidate.qid(), List.of())) {
                     for (String legacyRole : RoleSelections.legacyRoleClassNames(model)) {
+                        if (copy.directClassNames().contains(legacyRole)) changed = true;
                         copy.removeClass(legacyRole);
                     }
                     String carrier = carrier(copy.directClassNames(), model);
                     if (carrier != null) {
+                        if (!carrier.equals(copy.typeName())
+                                || !carrier.equals(copy.typeKey())) changed = true;
                         copy.type(carrier);
                         copy.typeKey(carrier);
                     }
                 }
+                if (changed) classified++;
             } else {
                 unknown++;
                 if (!hasEvidence) {
@@ -121,8 +129,10 @@ public final class SnapshotEntityKindClassifier {
         }
         if (log != null) {
             log.message("Snapshot entity-kind classification: " + classified
-                    + " classified, " + unknown + " unknown (" + withoutEvidence
-                    + " without stored evidence).\n");
+                    + " newly classified, " + unknown + " unknown (" + withoutEvidence
+                    + " without stored evidence); " + candidates.size() + " of "
+                    + candidatePlan.allRoleMembers()
+                    + " role member(s) eligible from evidence producers.\n");
         }
         return new Result(classified, unknown, withoutEvidence, withoutEvidenceQids);
     }
@@ -144,18 +154,20 @@ public final class SnapshotEntityKindClassifier {
     }
 
     private static Map<String, Map<String, Set<String>>> evidence(
-            GeneratedProjectModel model,
             Collection<WikidataDynamicObject> pool,
-            Map<String, List<Producer>> producers) {
+            Map<String, List<Producer>> producers,
+            Map<String, Set<String>> membersByClass,
+            Set<String> kindClasses) {
         Map<String, Map<String, Set<String>>> out = new LinkedHashMap<>();
-        Map<String, Set<String>> membersByClass = membersByClass(model, pool);
         for (WikidataDynamicObject object : WikidataObjectGraph.reachable(pool)) {
             if (object == null || !WikidataIds.isQid(object.qid())) continue;
             for (Map.Entry<String, List<Producer>> byPid : producers.entrySet()) {
                 for (Producer producer : byPid.getValue()) {
-                    if (!object.directClassNames().contains(producer.ownerClass())
-                            && !membersByClass.getOrDefault(
-                                    producer.ownerClass(), Set.of()).contains(object.qid())) {
+                    boolean owner = object.directClassNames().contains(producer.ownerClass());
+                    boolean classifiedCopy = membersByClass.getOrDefault(
+                                    producer.ownerClass(), Set.of()).contains(object.qid())
+                            && object.directClassNames().stream().anyMatch(kindClasses::contains);
+                    if (!owner && !classifiedCopy) {
                         continue;
                     }
                     Set<String> found = new LinkedHashSet<>();
@@ -165,22 +177,6 @@ public final class SnapshotEntityKindClassifier {
                                 .computeIfAbsent(byPid.getKey(), ignored -> new LinkedHashSet<>())
                                 .addAll(found);
                     }
-                }
-            }
-        }
-        return out;
-    }
-
-    private static Map<String, Set<String>> membersByClass(
-            GeneratedProjectModel model, Collection<WikidataDynamicObject> pool) {
-        Map<String, Set<String>> out = new LinkedHashMap<>();
-        Map<String, List<Viewable>> materialized = RoleSelections.materialize(model, pool);
-        for (wikidata.explore.model.RoleSelection role : RoleSelections.definitions(model)) {
-            for (Viewable member : materialized.getOrDefault(role.key(), List.of())) {
-                if (member instanceof WikidataDynamicObject object
-                        && WikidataIds.isQid(object.qid())) {
-                    out.computeIfAbsent(role.name(), ignored -> new LinkedHashSet<>())
-                            .add(object.qid());
                 }
             }
         }

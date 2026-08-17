@@ -65,4 +65,55 @@ class ReferentKindClassifierTest {
         assertEquals(List.of(unknown), RoleSelections.materialize(model,
                 List.of(event, person, unknown)).get("ForWork [Nomination.forWork]"));
     }
+
+    @Test void remoteEvidenceIsRequestedOnlyForProducerScopedRoles() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("P1411"));
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("ForWork");
+        model.rootClass(nomination);
+        GeneratedClassModel nomineeClass = new GeneratedClassModel("Nominee");
+        var type = nomineeClass.addField(
+                "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        type.mapping().propertyPid("P31");
+        model.addClass(nomineeClass);
+        GeneratedClassModel workClass = new GeneratedClassModel("ForWork");
+        var genre = workClass.addField(
+                "genre", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        genre.mapping().propertyPid("P136");
+        model.addClass(workClass);
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "Person");
+        person.type("Nominee");
+        WikidataDynamicObject work = new WikidataDynamicObject("Q2", "Work");
+        work.type("ForWork");
+        WikidataDynamicObject event = new WikidataDynamicObject("Q3$stmt", "Nomination");
+        event.type("Nomination");
+        event.put("nominee", person);
+        event.put("forWork", work);
+
+        class RecordingApi extends FakeWikidataApiClient {
+            List<String> asked = List.of();
+            @Override public PartialEntities getEntityClaimsPartial(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                asked = List.copyOf(qids);
+                return super.getEntityClaimsPartial(qids, pids, log);
+            }
+        }
+        RecordingApi api = new RecordingApi();
+        api.entity("Q1", "Person", Map.of("P31", List.of("Q5")));
+        api.entity("Q2", "Work", Map.of("P31", List.of("Q11424")));
+
+        var result = ReferentKindClassifier.apply(
+                model, List.of(event, person, work), api, null);
+
+        assertEquals(List.of("Q1"), api.asked);
+        assertEquals(1, result.classified());
+        assertEquals(0, result.unknown(), "ForWork is outside the P31 producer scope");
+    }
 }
