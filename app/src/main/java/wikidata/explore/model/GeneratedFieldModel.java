@@ -136,6 +136,10 @@ public class GeneratedFieldModel {
         return renderMode == FieldRenderMode.REFERENCE;
     }
 
+    public boolean renderInline() {
+        return renderMode == FieldRenderMode.INLINE;
+    }
+
     public boolean required() { return required; }
 
     public void required(boolean required) { this.required = required; }

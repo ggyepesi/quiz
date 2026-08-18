@@ -177,6 +177,9 @@ public final class GenerateDomainPipeline {
         out.add("Role stamping — apply each ENTITY field's declared target class");
         out.add("Reachability — rescan the graph after every newly loaded or owned value");
         out.add("Evidence acquisition — fetch all newly reachable declared properties together");
+        var manifest = wikidata.explore.transform.ReferentFieldLoad.compileManifest(model);
+        manifest.propertiesByClass().forEach((className, pids) -> out.add(
+                className + " acquisition slice — " + String.join(", ", pids)));
         out.add("Kind classification — combine stored evidence with missing remote evidence");
         out.add("Owned construction — materialize owner-QID components after kinds settle");
         out.addAll(roleFieldDetails(model));

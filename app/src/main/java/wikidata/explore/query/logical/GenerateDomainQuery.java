@@ -342,6 +342,20 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // would buy nothing; a poor hit rate with many of them means they do
                     // meet, just not while the document is still held.
                     wikidata.api.WikidataFactStore facts = generationState.facts();
+                    var aliases = entityApi.aliasMetrics();
+                    if (aliases.requests() > 0) {
+                        genLog.message("Alias acquisition: aliases rode "
+                                + (aliases.requests() - aliases.standaloneRequests())
+                                + " entity request(s), " + aliases.standaloneRequests()
+                                + " standalone request(s) of which "
+                                + aliases.failures() + " failed, " + aliases.entities()
+                                + " entity answer(s), ~"
+                                + aliases.responseBytes() / 1024
+                                + " KB alias-bearing response JSON; aliases themselves ~"
+                                + aliases.valueBytes() / 1024 + " KB; "
+                                + aliases.elapsedMillis()
+                                + " ms aggregate request time (concurrent, not wall clock).\n");
+                    }
                     genLog.message("Wikidata fact store: "
                             + facts.fetchedDocuments() + " entity document(s) fetched, "
                             + facts.cacheHits() + " later fetch(es) avoided; holding "
@@ -353,6 +367,49 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             + (facts.oversized() == 0 ? "" : ", " + facts.oversized()
                                     + " too large to retain")
                             + ".\n");
+                    genLog.message("Fact-store measurement: ~"
+                            + facts.measurementEstimatedBytes() / 1024 + " KB"
+                            + (facts.measurementTruncated()
+                                    ? " (detail truncated at the measurement budget)"
+                                    : "") + ".\n");
+                    java.util.List<wikidata.api.WikidataFactStore.PropertyUsage> usage =
+                            facts.propertyUsage();
+                    if (!usage.isEmpty()) {
+                        genLog.message("Fact-store property usage (banked / demanded / "
+                                + "unused, retained bytes, cache hits, eviction re-fetches):\n");
+                        for (var property : usage) {
+                            genLog.message("  " + property.propertyPid() + ": "
+                                    + property.bankedEntities() + " / "
+                                    + property.demandedEntities() + " / "
+                                    + property.unusedEntities() + ", ~"
+                                    + property.estimatedBytes() / 1024 + " KB retained, ~"
+                                    + property.unusedEstimatedBytes() / 1024
+                                    + " KB unused, " + property.cacheHits()
+                                    + " hit(s), " + property.evictedRefetches()
+                                    + " eviction re-fetch(es).\n");
+                        }
+                    }
+                    if (!facts.demandsBySource().isEmpty()) {
+                        genLog.message("Fact demand by consumer: "
+                                + facts.demandsBySource().entrySet().stream()
+                                .map(e -> e.getKey() + " [" + e.getValue().entrySet().stream()
+                                        .map(p -> p.getKey() + "=" + p.getValue())
+                                        .collect(java.util.stream.Collectors.joining(", "))
+                                        + "]")
+                                .collect(java.util.stream.Collectors.joining("; "))
+                                + ".\n");
+                    }
+                    if (!facts.retentionUsage().isEmpty()) {
+                        genLog.message("Fact retention by producer (PID: banked entities, "
+                                + "retained / unused bytes):\n");
+                        for (var retained : facts.retentionUsage()) {
+                            genLog.message("  " + retained.source() + " / "
+                                    + retained.propertyPid() + ": "
+                                    + retained.bankedEntities() + ", ~"
+                                    + retained.estimatedBytes() / 1024 + " / ~"
+                                    + retained.unusedEstimatedBytes() / 1024 + " KB.\n");
+                        }
+                    }
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
                             pool.size() + " final object(s)");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,

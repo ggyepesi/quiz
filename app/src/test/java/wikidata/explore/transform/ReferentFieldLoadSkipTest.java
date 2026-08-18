@@ -20,6 +20,105 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ReferentFieldLoadSkipTest {
 
+    @Test void emptyAliasesAreDurablyCoveredAcrossClients() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("people");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("birthDate", FieldType.DATE, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P569");
+        project.addClass(person);
+        project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        WikidataDynamicObject q1 = new WikidataDynamicObject("Q1", "One");
+        q1.type("Person"); q1.typeKey("Person"); q1.assignClass("Person");
+
+        class AliasCountingClient extends WikidataApiClient {
+            int aliasRequests;
+            AliasCountingClient() { super(DEFAULT_USER_AGENT); }
+            @Override public PartialStatements getStatementsByPropertyPartial(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                return new PartialStatements(Map.of(), 0, List.of());
+            }
+            @Override public Map<String, List<String>> getAliases(
+                    List<String> qids, BatchLog log) {
+                aliasRequests++;
+                Map<String, List<String>> result = new LinkedHashMap<>();
+                qids.forEach(qid -> result.put(qid, List.of()));
+                return result;
+            }
+        }
+        AliasCountingClient first = new AliasCountingClient();
+        ReferentFieldLoad.Result initial = ReferentFieldLoad.load(
+                project, List.of(q1), first, null, List.of());
+        assertEquals(1, first.aliasRequests);
+
+        AliasCountingClient nextRun = new AliasCountingClient();
+        ReferentFieldLoad.load(project, List.of(q1), nextRun, null, initial.completed());
+        assertEquals(0, nextRun.aliasRequests,
+                "an empty alias answer is coverage, not an invitation to ask forever");
+    }
+
+    /**
+     * The entity request carries aliases, so a class with entity-valued fields needs no
+     * second identity pass — and the coverage it banks is true. When it went the other
+     * way (coverage recorded from a response that had never been asked for aliases), the
+     * names were never fetched, the declaration said they had been, and no later Enrich
+     * could repair it.
+     */
+    @Test void anEntityLoadAnswersAliasesWithoutASecondPass() throws Exception {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject work = work("Q1");
+
+        class Probe extends WikidataApiClient {
+            int aliasRequests;
+            final boolean answersAliases;
+            Probe(boolean answersAliases) {
+                super(DEFAULT_USER_AGENT);
+                this.answersAliases = answersAliases;
+            }
+            @Override public PartialEntities getEntityClaimsPartial(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                Map<String, ApiEntity> out = new LinkedHashMap<>();
+                for (String qid : qids) {
+                    out.put(qid, answersAliases
+                            // props=labels|claims|aliases: an answer, values or not
+                            ? new ApiEntity(qid, qid, Map.of("P136", List.of("Q130232")),
+                                    false, Map.of(), List.of("Alias of " + qid))
+                            // a response that never carried aliases
+                            : new ApiEntity(qid, qid, Map.of("P136", List.of("Q130232")),
+                                    false, Map.of()));
+                }
+                return new PartialEntities(out, 0);
+            }
+            @Override public Map<String, List<String>> getAliases(
+                    List<String> qids, BatchLog log) {
+                aliasRequests++;
+                Map<String, List<String>> out = new LinkedHashMap<>();
+                qids.forEach(qid -> out.put(qid, List.of("Alias of " + qid)));
+                return out;
+            }
+        }
+
+        Probe answering = new Probe(true);
+        ReferentFieldLoad.Result answered = ReferentFieldLoad.load(
+                project, List.of(work), answering, null, List.of(), true);
+
+        assertEquals(List.of("Alias of Q1"), work.aliases(),
+                "the entity response names the entity as well as its claims");
+        assertEquals(0, answering.aliasRequests, "no second pass over the same entities");
+        assertTrue(answered.completed().stream().anyMatch(
+                        d -> d.key().endsWith("@aliases") && d.coveredQids().contains("Q1")),
+                "what was answered is covered");
+
+        WikidataDynamicObject other = work("Q1");
+        Probe silent = new Probe(false);
+        ReferentFieldLoad.load(
+                project, List.of(other), silent, null, List.of(), true);
+
+        assertEquals(1, silent.aliasRequests,
+                "a response that did not answer aliases must not be banked as if it had");
+        assertEquals(List.of("Alias of Q1"), other.aliases());
+    }
+
     @Test void sameSizedPoolStillLoadsAReplacementEntity() throws Exception {
         GeneratedProjectModel project = project();
         List<List<String>> asked = new ArrayList<>();
@@ -39,6 +138,10 @@ class ReferentFieldLoadSkipTest {
                 WikidataApiClient.DEFAULT_USER_AGENT) {
             @Override public PartialEntities getEntityClaimsPartial(
                     List<String> qids, List<String> pids, BatchLog log) {
+                throw new RuntimeException("network down");
+            }
+            @Override public Map<String, List<String>> getAliases(
+                    List<String> qids, BatchLog log) {
                 throw new RuntimeException("network down");
             }
         };
@@ -118,13 +221,21 @@ class ReferentFieldLoadSkipTest {
                         Map.of("P136", List.of("Q130232")), false, Map.of()));
                 return new PartialEntities(out, 1, List.of("Q2"));
             }
+            @Override public Map<String, List<String>> getAliases(
+                    List<String> qids, BatchLog log) {
+                Map<String, List<String>> out = new LinkedHashMap<>();
+                qids.forEach(qid -> out.put(qid, List.of()));
+                return out;
+            }
         };
 
         ReferentFieldLoad.Result result = ReferentFieldLoad.load(project,
                 List.of(work("Q1"), work("Q2")), partly, null, List.of(), true);
 
         assertEquals(1, result.loaded(), "the entity that answered is loaded");
-        assertEquals(List.of("Q1"), result.completed().getFirst().coveredQids(),
+        var fieldCoverage = result.completed().stream()
+                .filter(d -> d.fieldName().equals("genre")).findFirst().orElseThrow();
+        assertEquals(List.of("Q1"), fieldCoverage.coveredQids(),
                 "and covered, so the next run does not ask about it again");
         assertEquals(List.of("Q2"), result.failed().getFirst().coveredQids(),
                 "only the unreached entity is unresolved");
@@ -165,6 +276,12 @@ class ReferentFieldLoadSkipTest {
                     out.put(q, new ApiEntity(q, q, Map.of(), false, Map.of()));
                 }
                 return new PartialEntities(out, 0);
+            }
+            @Override public Map<String, List<String>> getAliases(
+                    List<String> qids, BatchLog log) {
+                Map<String, List<String>> out = new LinkedHashMap<>();
+                qids.forEach(qid -> out.put(qid, List.of()));
+                return out;
             }
         };
     }

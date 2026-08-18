@@ -358,6 +358,9 @@ public class WikidataDynamicObjectJsonStore {
             String n = o.getDisplayName();
             if (n != null && !n.equals(e.id)) { e.name = n; break; }
         }
+        java.util.LinkedHashSet<String> aliases = new java.util.LinkedHashSet<>();
+        for (WikidataDynamicObject o : instances) aliases.addAll(o.aliases());
+        e.aliases.addAll(aliases);
         for (WikidataDynamicObject o : instances) {
             String label = o.getReferenceLabel();
             if (label != null && !label.isBlank()
@@ -610,6 +613,7 @@ public class WikidataDynamicObjectJsonStore {
                 o.typeKey(e.typeKey);
             }
             o.referenceLabel(e.referenceLabel);
+            o.aliases(e.aliases);
             e.fieldStatus.forEach((field, token) -> {
                 FieldStatus status = FieldStatus.fromStored(token);
                 if (status != null) o.fieldStatus(field, status);
@@ -698,6 +702,7 @@ public class WikidataDynamicObjectJsonStore {
         Entity e = new Entity();
         e.id = null;                       // a value has no identity
         e.name = w.getDisplayName();
+        e.aliases.addAll(w.aliases());
         String referenceLabel = w.getReferenceLabel();
         if (referenceLabel != null
                 && !referenceLabel.equals(w.getDisplayName())) {
@@ -722,6 +727,7 @@ public class WikidataDynamicObjectJsonStore {
         }
         o.directClasses(e.classes);
         o.referenceLabel(e.referenceLabel);
+        o.aliases(e.aliases);
         o.valueObject(true);
         for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
             o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey, byQidSingle));
@@ -772,6 +778,8 @@ public class WikidataDynamicObjectJsonStore {
     public static class Entity {
         public String id;
         public String name;
+        // wbgetentities "Also known as" identity metadata (not a claim field).
+        public List<String> aliases = new ArrayList<>();
         // Generic Viewable reference label when it differs from the display name.
         public String referenceLabel;
         // The stamped domain class (e.g. "Constellation", "Star"); null for an

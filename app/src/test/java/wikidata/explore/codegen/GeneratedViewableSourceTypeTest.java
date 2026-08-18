@@ -5,6 +5,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldRenderMode;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedProjectModel;
 
@@ -21,6 +22,19 @@ class GeneratedViewableSourceTypeTest {
 
         assertTrue(source.contains("extends quiz.source.GeneratedEntity"));
         assertFalse(source.contains("public String qid"));
+    }
+
+    @Test void inlineRenderModeSurvivesCodeGeneration() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        var birthName = person.addField(
+                "birthName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        birthName.entityClassName("Name");
+        birthName.renderMode(FieldRenderMode.INLINE);
+
+        String source = generator.sourceFor(person);
+
+        assertTrue(source.contains("import objectview.annotations.Inline;"));
+        assertTrue(source.contains("@Inline\n    public objectview.Viewable birthName"));
     }
 
     @Test void statementClassAlsoExtendsGeneratedEntityNotAnEntityBase() {
@@ -43,10 +57,13 @@ class GeneratedViewableSourceTypeTest {
             wikidata.explore.extract.WikidataDynamicObject source =
                     new wikidata.explore.extract.WikidataDynamicObject("Q28", "Hungary");
             source.type("Country");
+            source.aliases(java.util.List.of("Magyarország"));
             Object mapped = new GeneratedViewableMapper(runtime)
                     .mapRoots(java.util.List.of(source)).getFirst();
             assertTrue(mapped instanceof quiz.source.GeneratedEntity);
             assertEquals("Q28", ((objectview.Viewable) mapped).getIdentifier());
+            assertEquals(java.util.List.of("Magyarország"),
+                    ((quiz.source.GeneratedEntity) mapped).alternateNames());
         }
 
         GeneratedClassModel statementClass = new GeneratedClassModel("Fact");

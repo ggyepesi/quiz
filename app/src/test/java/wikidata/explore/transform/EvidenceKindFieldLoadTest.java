@@ -61,6 +61,12 @@ class EvidenceKindFieldLoadTest {
                 }
                 return out;
             }
+
+            @Override public PartialStatements getStatementsByPropertyPartial(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                return new PartialStatements(
+                        getStatementsByProperty(qids, pids, log), 0, List.of());
+            }
         };
     }
 }

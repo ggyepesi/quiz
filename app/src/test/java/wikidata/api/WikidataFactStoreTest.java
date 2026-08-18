@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,6 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikidataFactStoreTest {
+    @Test void measurementIsBoundedAndReportsTruncation() {
+        WikidataFactStore store = new WikidataFactStore(1_536);
+        store.recordDemand("test", List.of("Q1", "Q2"), List.of("P31"));
+
+        assertTrue(store.measurementTruncated());
+        assertTrue(store.measurementEstimatedBytes() <= 1_536 / 8,
+                "measurement detail observes its reserved share of the cache budget");
+        assertTrue(store.estimatedBytes() <= 1_536);
+    }
+
     @Test void oneClaimsDocumentServesEntityAndStatementConsumers() throws Exception {
         class RecordingClient extends WikidataApiClient {
             int physical;
@@ -111,6 +122,81 @@ class WikidataFactStoreTest {
 
         assertEquals(List.of(), store.missing(List.of("Q42"), true, List.of("P31", "P569")),
                 "one document now answers both declarations");
+    }
+
+    @Test void propertyUsageSeparatesBankedFactsFromRealConsumerDemand()
+            throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore store = new WikidataFactStore();
+        store.recordRetentionPlan(
+                "Nominee", List.of("Q42"), List.of("P31", "P569"));
+        store.accept(mapper.readTree("""
+                {"entities":{"Q42":{"id":"Q42","claims":{
+                  "P31":[{"x":1}],"P569":[{"x":2}]}}}}
+                """), true, List.of("P31", "P569"));
+        store.recordDemand("Nominee", List.of("Q42"), List.of("P31"));
+        store.recordHits(1, List.of("P31"));
+
+        Map<String, WikidataFactStore.PropertyUsage> usage = store.propertyUsage().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        WikidataFactStore.PropertyUsage::propertyPid, p -> p));
+        assertEquals(1, usage.get("P31").demandedEntities());
+        assertEquals(0, usage.get("P31").unusedEntities());
+        assertEquals(1, usage.get("P31").cacheHits());
+        assertEquals(0, usage.get("P569").demandedEntities());
+        assertEquals(1, usage.get("P569").unusedEntities(),
+                "a prospective property is visible until a later consumer needs it");
+        assertTrue(usage.get("P569").unusedEstimatedBytes() > 0);
+        assertEquals(1L, store.demandsBySource().get("Nominee").get("P31"));
+        Map<String, WikidataFactStore.RetentionUsage> retention =
+                store.retentionUsage().stream().collect(java.util.stream.Collectors.toMap(
+                        WikidataFactStore.RetentionUsage::propertyPid, p -> p));
+        assertEquals("Nominee", retention.get("P569").source());
+        assertTrue(retention.get("P569").unusedEstimatedBytes() > 0);
+    }
+
+    @Test void aLaterSliceDoesNotDowngradeACompleteClaimsDocument() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore store = new WikidataFactStore();
+        store.accept(mapper.readTree("""
+                {"entities":{"Q42":{"id":"Q42","claims":{
+                  "P31":[{"x":1}],"P569":[{"x":2}]}}}}
+                """), true);
+
+        store.accept(mapper.readTree("""
+                {"entities":{"Q42":{"id":"Q42","claims":{"P31":[{"x":1}]}}}}
+                """), true, List.of("P31"));
+
+        JsonNode held = store.response(List.of("Q42"), true, List.of("P569"), mapper);
+        assertTrue(held.path("entities").path("Q42").path("claims").has("P569"),
+                "a later slice cannot replace a complete claims document");
+    }
+
+    @Test void anOversizedReplacementDoesNotDiscardTheUsefulPreviousSlice()
+            throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore store = new WikidataFactStore(700);
+        store.accept(mapper.readTree("""
+                {"entities":{"Q42":{"id":"Q42","claims":{"P31":[]}}}}
+                """), true, List.of("P31"));
+        assertEquals(List.of(), store.missing(List.of("Q42"), true, List.of("P31")));
+
+        store.accept(mapper.readTree("""
+                {"entities":{"Q42":{"id":"Q42","claims":{"P569":[{
+                  "value":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                },{
+                  "value":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                },{
+                  "value":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                }]}}}}
+                """), true, List.of("P569"));
+
+        assertTrue(store.oversized() > 0, "the augmentation exceeded the test budget");
+        assertEquals(List.of(), store.missing(List.of("Q42"), true, List.of("P31")),
+                "the smaller retained slice remains useful");
+        assertEquals(List.of("Q42"), store.missing(
+                List.of("Q42"), true, List.of("P569")),
+                "the oversized augmentation itself was not retained");
     }
 
     @Test void weightedLruEvictsOldDocumentsAndInspectionDoesNotCountHits()

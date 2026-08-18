@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -48,10 +49,38 @@ public class WikidataApiClient {
     private final String userAgent;
     private process.CancellationToken cancellation = new process.CancellationToken();
     private WikidataFactStore facts = new WikidataFactStore();
+    private final Map<String, List<String>> aliasCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private java.util.function.Consumer<String> log = s -> {};
     private final java.util.concurrent.atomic.AtomicLong requestSeq =
             new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong aliasRequests = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong standaloneAliasRequests = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong aliasFailures = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong aliasEntities = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong aliasResponseBytes = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong aliasValueBytes = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong aliasElapsedMillis = new java.util.concurrent.atomic.AtomicLong();
+
+    /** Physical cost of every response carrying aliases, distinguishing aliases that
+     * ride an entity request from the literal-only fallback pass. Response bytes are
+     * the complete JSON response; value bytes isolate aliases and approximate their
+     * marginal payload. Elapsed time is summed request time, so concurrent requests
+     * may exceed wall-clock time. Failures count the STANDALONE pass only: a request
+     * that would have been made anyway does not fail on account of the aliases it
+     * happened to carry. */
+    public record AliasMetrics(long requests, long standaloneRequests,
+                               long failures, long entities,
+                               long responseBytes, long valueBytes,
+                               long elapsedMillis) { }
+
+    public AliasMetrics aliasMetrics() {
+        return new AliasMetrics(aliasRequests.get(), standaloneAliasRequests.get(),
+                aliasFailures.get(),
+                aliasEntities.get(), aliasResponseBytes.get(), aliasValueBytes.get(),
+                aliasElapsedMillis.get());
+    }
 
 
     public static void main(String[] args) throws Exception {
@@ -357,13 +386,15 @@ public class WikidataApiClient {
             String label,
             Map<String, List<String>> claimEntityQids,
             boolean missing,
-            Map<String, String> valuelessClaims) {
+            Map<String, String> valuelessClaims,
+            List<String> aliases,
+            boolean aliasesAnswered) {
 
         public ApiEntity(
                 String qid,
                 String label,
                 Map<String, List<String>> claimEntityQids) {
-            this(qid, label, claimEntityQids, false, Map.of());
+            this(qid, label, claimEntityQids, false, Map.of(), List.of(), false);
         }
 
         public ApiEntity(
@@ -371,12 +402,28 @@ public class WikidataApiClient {
                 String label,
                 Map<String, List<String>> claimEntityQids,
                 boolean missing) {
-            this(qid, label, claimEntityQids, missing, Map.of());
+            this(qid, label, claimEntityQids, missing, Map.of(), List.of(), false);
+        }
+
+        public ApiEntity(
+                String qid, String label, Map<String, List<String>> claimEntityQids,
+                boolean missing, Map<String, String> valuelessClaims) {
+            this(qid, label, claimEntityQids, missing, valuelessClaims, List.of(), false);
+        }
+
+        /** For a caller that HAS asked about aliases; an empty list then means the
+         *  entity has none, which is an answer. */
+        public ApiEntity(
+                String qid, String label, Map<String, List<String>> claimEntityQids,
+                boolean missing, Map<String, String> valuelessClaims,
+                List<String> aliases) {
+            this(qid, label, claimEntityQids, missing, valuelessClaims, aliases, true);
         }
 
         public ApiEntity {
             valuelessClaims = valuelessClaims == null ? Map.of()
                     : Map.copyOf(valuelessClaims);
+            aliases = aliases == null ? List.of() : List.copyOf(aliases);
         }
 
         /**
@@ -516,6 +563,68 @@ public class WikidataApiClient {
                     Math.min(i + 50, clean.size()))), pids));
         }
         return roots;
+    }
+
+    /** Fallback for entities that have not already answered aliases while serving an
+     * ordinary labels/claims request — notably literal-only referent classes. */
+    public Map<String, List<String>> getAliases(
+            List<String> qids, BatchLog batchLog) throws Exception {
+        Map<String, List<String>> out = new LinkedHashMap<>();
+        if (qids == null) return out;
+        List<String> clean = qids.stream().filter(WikidataIds::isQid).distinct().toList();
+        List<String> missing = new ArrayList<>();
+        for (String qid : clean) {
+            if (aliasCache.containsKey(qid)) {
+                out.put(qid, aliasCache.get(qid));
+            } else {
+                missing.add(qid);
+            }
+        }
+        List<WorkUnit<Map<String, List<String>>>> roots = new ArrayList<>();
+        for (int i = 0; i < missing.size(); i += 50) {
+            roots.add(aliasUnit(List.copyOf(missing.subList(
+                    i, Math.min(i + 50, missing.size())))));
+        }
+        new BatchExecutor<Map<String, List<String>>>(
+                BatchPolicy.defaults().withResume(false), batchProgress(batchLog),
+                WikidataBatchFailureClassifier.INSTANCE, cancellation,
+                batch.BatchCheckpointStore.NONE, GET_ENTITIES_CONCURRENCY)
+                .run(roots, (descriptor, aliases) -> {
+                    aliases.forEach((qid, values) -> {
+                        aliasCache.put(qid, values);
+                    });
+                    out.putAll(aliases);
+                });
+        return out;
+    }
+
+    private WorkUnit<Map<String, List<String>>> aliasUnit(List<String> qids) {
+        return new WorkUnit<>() {
+            @Override public WorkDescriptor descriptor() {
+                String ids = String.join(",", qids);
+                return new WorkDescriptor("wbgetentities-aliases", "aliases:" + ids,
+                        "wbgetentities aliases " + qids.size() + " entities",
+                        Map.of("ids", ids));
+            }
+            @Override public String request() { return aliasesUrl(qids); }
+            @Override public Map<String, List<String>> execute() throws Exception {
+                JsonNode response = getAliasesBatchWithRetry(qids);
+                Map<String, ApiEntity> parsed = new LinkedHashMap<>();
+                parseEntities(response, List.of(), parsed);
+                Map<String, List<String>> result = new LinkedHashMap<>();
+                for (String qid : qids) {
+                    ApiEntity entity = parsed.get(qid);
+                    result.put(qid, entity == null ? List.of() : entity.aliases());
+                }
+                return result;
+            }
+            @Override public List<? extends WorkUnit<Map<String, List<String>>>> split() {
+                if (qids.size() < 2) return List.of();
+                int middle = qids.size() / 2;
+                return List.of(aliasUnit(qids.subList(0, middle)),
+                        aliasUnit(qids.subList(middle, qids.size())));
+            }
+        };
     }
 
     private BatchExecutor<Map<String, ApiEntity>> entityExecutor(BatchLog batchLog) {
@@ -766,8 +875,29 @@ public class WikidataApiClient {
     // The request as issued, with readable (decoded) pipes — for the query log.
     private static String entitiesUrl(List<String> qids, boolean withClaims) {
         return WIKIDATA_API + "?action=wbgetentities&ids=" + String.join("|", qids)
-                + "&props=" + (withClaims ? "labels|claims" : "labels")
+                + "&props=" + entityProps(withClaims)
                 + "&languages=en|mul&format=json";
+    }
+
+    private static String aliasesUrl(List<String> qids) {
+        return WIKIDATA_API + "?action=wbgetentities&ids=" + String.join("|", qids)
+                + "&props=aliases&languages=en|mul&format=json";
+    }
+
+    /**
+     * What every entity request asks for. Identity metadata — the label AND the
+     * aliases — always rides along: they are one small part of a response whose bulk is
+     * claims, and a consumer that received a document can then record "this entity's
+     * names are known" truthfully. Asked for separately, aliases cost a second pass over
+     * the same entities; left out while a load still recorded coverage, they were never
+     * fetched at all and nothing said so.
+     */
+    static String entityProps(boolean withClaims) {
+        return withClaims ? "labels|claims|aliases" : "labels|aliases";
+    }
+
+    private static String encodePipes(String value) {
+        return value.replace("|", "%7C");
     }
 
     private static final int GET_ENTITIES_CONCURRENCY = 6;
@@ -791,11 +921,11 @@ public class WikidataApiClient {
             List<String> qids, boolean withClaims, List<String> pids) throws Exception {
         JsonNode cached = facts.response(qids, withClaims, pids, mapper);
         if (cached != null) {
-            facts.recordHits(qids == null ? 0 : qids.size());
+            facts.recordHits(qids == null ? 0 : qids.size(), pids);
             return cached;
         }
         List<String> missing = facts.missing(qids, withClaims, pids);
-        facts.recordHits((qids == null ? 0 : qids.size()) - missing.size());
+        facts.recordHits((qids == null ? 0 : qids.size()) - missing.size(), pids);
         Exception last = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
@@ -861,13 +991,36 @@ public class WikidataApiClient {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("action",    "wbgetentities");
         params.put("ids",       String.join("%7C", qids));
-        params.put("props",     withClaims ? "labels%7Cclaims" : "labels");
+        params.put("props",     encodePipes(entityProps(withClaims)));
         // en + mul (the language-agnostic label) so an item without an English label
         // still resolves to a name instead of staying a QID — matches the SPARQL
         // SERVICE "en,mul".
         params.put("languages", "en%7Cmul");
         params.put("format",    "json");
         return get(WIKIDATA_API, params);
+    }
+
+    protected JsonNode getAliasesBatchWithRetry(List<String> qids) throws Exception {
+        Exception last = null;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                Map<String, String> params = new LinkedHashMap<>();
+                params.put("action", "wbgetentities");
+                params.put("ids", String.join("%7C", qids));
+                params.put("props", "aliases");
+                params.put("languages", "en%7Cmul");
+                params.put("format", "json");
+                return get(WIKIDATA_API, params);
+            } catch (Exception e) {
+                last = e;
+                if (Thread.currentThread().isInterrupted() || !worthRetryingUnchanged(e)) {
+                    throw e;
+                }
+                if (attempt == MAX_ATTEMPTS) break;
+                Thread.sleep(retryWaitMillis(e, attempt));
+            }
+        }
+        throw last;
     }
 
     // Visible for WbGetEntitiesParseTest. Returns the number of entities parsed from
@@ -891,6 +1044,16 @@ public class WikidataApiClient {
             if (label.isBlank()) {
                 label = entity.path("labels").path("mul").path("value").asText("");
             }
+            boolean aliasesAnswered = entity.has("aliases");
+            List<String> aliases = new ArrayList<>();
+            for (String language : List.of("en", "mul")) {
+                JsonNode values = entity.path("aliases").path(language);
+                if (!values.isArray()) continue;
+                for (JsonNode value : values) {
+                    String alias = value.path("value").asText("").trim();
+                    if (!alias.isBlank() && !aliases.contains(alias)) aliases.add(alias);
+                }
+            }
 
             Map<String, List<String>> claims = new LinkedHashMap<>();
             Map<String, String> valueless = new LinkedHashMap<>();
@@ -908,7 +1071,8 @@ public class WikidataApiClient {
                 String snakType = onlySnakType(statements);
                 if (snakType != null) valueless.put(pid, snakType);
             }
-            out.put(qid, new ApiEntity(qid, label, claims, false, valueless));
+            out.put(qid, new ApiEntity(
+                    qid, label, claims, false, valueless, aliases, aliasesAnswered));
             parsed[0]++;
         });
         return parsed[0];
@@ -1074,6 +1238,13 @@ public class WikidataApiClient {
 
         long id = requestSeq.incrementAndGet();
         long started = System.nanoTime();
+        String requestedProps = params.getOrDefault("props", "");
+        boolean aliasesRequest = requestedProps.contains("aliases");
+        boolean standaloneAliases = "aliases".equals(requestedProps);
+        if (aliasesRequest) {
+            aliasRequests.incrementAndGet();
+            if (standaloneAliases) standaloneAliasRequests.incrementAndGet();
+        }
 
         log.accept("\n[API " + id + "] GET " + url + "\n");
 
@@ -1093,6 +1264,24 @@ public class WikidataApiClient {
             try (var stream = conn.getInputStream()) {
                 JsonNode result = mapper.readTree(stream);
 
+                if (aliasesRequest) {
+                    aliasElapsedMillis.addAndGet(
+                            (System.nanoTime() - started) / 1_000_000);
+                    aliasEntities.addAndGet(result.path("entities").size());
+                    try {
+                        aliasResponseBytes.addAndGet(mapper.writeValueAsBytes(result).length);
+                        long values = 0;
+                        for (var entities = result.path("entities").elements();
+                                entities.hasNext(); ) {
+                            values += mapper.writeValueAsBytes(
+                                    entities.next().path("aliases")).length;
+                        }
+                        aliasValueBytes.addAndGet(values);
+                    } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
+                        // Measurement must never turn a valid response into a failure.
+                    }
+                }
+
                 log.accept("[API " + id + "] OK timeMs="
                                    + (System.nanoTime() - started) / 1_000_000
                                    + "\n");
@@ -1100,6 +1289,17 @@ public class WikidataApiClient {
                 return result;
             }
         } catch (IOException e) {
+            if (aliasesRequest) {
+                // A claims batch that timed out is a claims failure, reported by the
+                // batch executor that will split and retry it. Counting it here made a
+                // routine split read as "aliases failed" for a request that would have
+                // been made with or without them. Only the standalone pass fails AS an
+                // alias request; its elapsed time is still summed either way, which the
+                // report labels as aggregate request time.
+                if (standaloneAliases) aliasFailures.incrementAndGet();
+                aliasElapsedMillis.addAndGet(
+                        (System.nanoTime() - started) / 1_000_000);
+            }
             log.accept("[API " + id + "] ERROR "
                                + e.getMessage()
                                + " timeMs="

@@ -88,6 +88,43 @@ class ReferentFieldLoadTest {
                 ((WikidataDynamicObject) component.get("familyName")).getDisplayName());
     }
 
+    @Test void firstKindEvidenceFetchRetainsThePossibleKindAndOwnedFieldClosure() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P31");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("birthDate", FieldType.DATE, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P569");
+        GeneratedFieldModel name = person.addField(
+                "name", FieldType.ENTITY, FieldCardinality.SINGLE);
+        name.entityClassName("Name");
+        name.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel nameClass = new GeneratedClassModel("Name");
+        nameClass.ownedClass(true);
+        nameClass.addField("familyName", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P734");
+        model.rootClass(nomination);
+        model.addClass(nominee);
+        model.addClass(person);
+        model.addClass(nameClass);
+        model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
+                "Person", List.of("Q5")));
+
+        WikidataDynamicObject candidate = new WikidataDynamicObject("Q42", "Adams");
+        candidate.type("Nominee");
+        RecordingApi api = new RecordingApi();
+        api.entity("Q42", "Adams", Map.of("P31", List.of("Q5")));
+
+        assertEquals(1, ReferentFieldLoad.apply(model, List.of(candidate), api, null));
+        assertEquals(java.util.Set.of("P31", "P569", "P734"),
+                new java.util.LinkedHashSet<>(api.loadedPids),
+                "the first claims response banks the known downstream property closure");
+    }
+
     @Test void loadsFieldsForEveryDirectRoleOfASharedReferent() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");

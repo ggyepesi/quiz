@@ -51,10 +51,29 @@ public final class ReferentKindClassifier {
 
         Set<String> properties = new LinkedHashSet<>();
         rules.forEach(rule -> properties.add(rule.propertyPid()));
+        // Bank what a classified entity will be asked for next. wbgetentities returns
+        // the whole document either way, so this costs nothing to fetch and saves the
+        // fetch that would otherwise follow classification — for a model that does not
+        // declare its evidence property as a field, this is the ONLY place the closure
+        // can be banked, because no field load asks about these entities first.
+        int evidencePids = properties.size();
+        for (String pid : properties) {
+            Set<String> eligible = new LinkedHashSet<>(
+                    candidatePlan.qidsByProperty().getOrDefault(pid, Set.of()));
+            eligible.retainAll(candidates.keySet());
+            api.facts().recordDemand("entity-kind evidence", eligible, List.of(pid));
+        }
+        properties.addAll(ReferentFieldLoad.kindPropertyClosure(model,
+                rules.stream().map(EntityKindRule::className).toList()));
+        api.facts().recordRetentionPlan(
+                "entity-kind evidence", candidates.keySet(), properties);
         WikidataApiClient.PartialEntities partial;
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group group = sink.group(
-                "Classify " + candidates.size() + " role member(s) from entity-kind evidence")) {
+                "Classify " + candidates.size() + " role member(s) from "
+                        + evidencePids + " evidence property(ies); retain "
+                        + properties.size() + " planned property slice(s) ("
+                        + String.join(", ", properties) + ")")) {
             partial = api.getEntityClaimsPartial(new ArrayList<>(candidates.keySet()),
                     new ArrayList<>(properties), group.batchSink());
         } catch (Exception failure) {

@@ -34,6 +34,10 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @Hidden
     private String name = "";
 
+    /** Entity aliases are identity metadata from wbgetentities, not claim fields. */
+    @Hidden
+    private List<String> aliases = new ArrayList<>();
+
     @Hidden
     @JsonIgnore
     private String referenceLabel;
@@ -107,6 +111,18 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     @Override public String getDisplayName() {
         return name == null || name.isBlank() ? identifier : name;
+    }
+
+    public List<String> aliases() { return List.copyOf(aliases); }
+
+    public void aliases(java.util.Collection<String> values) {
+        aliases.clear();
+        if (values == null) return;
+        for (String value : values) {
+            if (value != null && !value.isBlank() && !aliases.contains(value.trim())) {
+                aliases.add(value.trim());
+            }
+        }
     }
 
     /** A PART of another object — an owned component, carrying its owner's identity.

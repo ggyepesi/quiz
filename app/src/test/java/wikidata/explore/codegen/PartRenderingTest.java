@@ -57,6 +57,9 @@ class PartRenderingTest {
             Viewable part = (Viewable) read(mapped, "birthName");
             assertNotNull(part);
             assertTrue(part.isPart(), "the mapped instance carries the declaration too");
+            assertTrue(objectview.ViewableAdapter.isInline(
+                            mapped.getClass().getDeclaredField("birthName")),
+                    "owned value fields retain their configured inline semantics");
 
             Card[] card = new Card[1];
             javax.swing.SwingUtilities.invokeAndWait(() -> card[0] = new Card(
@@ -64,6 +67,16 @@ class PartRenderingTest {
                     new RenderContext(List.of(mapped)), false));
             assertEquals("Douglas Adams", card[0].getTitle(),
                     "the owner keeps its own heading");
+
+            ViewConfig selectedAsWhole = ViewConfig.leaf();
+            selectedAsWhole.setCls((Class<? extends Viewable>) mapped.getClass());
+            selectedAsWhole.addField("birthName", ViewConfig.leaf());
+            Card[] whole = new Card[1];
+            javax.swing.SwingUtilities.invokeAndWait(() -> whole[0] = new Card(
+                    mapped, selectedAsWhole,
+                    new RenderContext(List.of(mapped)), false));
+            assertTrue(whole[0].hasRenderedConfiguredContent(),
+                    "an undrilled inline selection renders the owned value's fields");
         }
     }
 

@@ -21,6 +21,26 @@ import java.util.concurrent.atomic.AtomicLong;
  * and labels without downloading it again.
  */
 public final class WikidataFactStore {
+    private record FactKey(String qid, String pid) { }
+    private static final class FactMeasurement {
+        Long bankedBytes;
+        boolean demanded;
+        String retentionSource;
+    }
+    private static final class PropertyTotals {
+        long bankedEntities, estimatedBytes, demandedEntities;
+        long unusedEntities, unusedEstimatedBytes;
+    }
+    private static final class RetentionTotals {
+        long bankedEntities, estimatedBytes, demandedEntities, unusedEstimatedBytes;
+    }
+    public record PropertyUsage(
+            String propertyPid, long bankedEntities, long estimatedBytes,
+            long demandedEntities, long unusedEntities, long unusedEstimatedBytes,
+            long cacheHits, long evictedRefetches) { }
+    public record RetentionUsage(
+            String source, String propertyPid, long bankedEntities,
+            long estimatedBytes, long demandedEntities, long unusedEstimatedBytes) { }
     /**
      * The budget one run may hold, sized from the access pattern rather than guessed.
      *
@@ -67,11 +87,24 @@ public final class WikidataFactStore {
     private long evictions;
     private long oversized;
     private long evictedRefetches;
+    // One bounded record per measured QID/PID. Previously three independent maps held
+    // the same key forever and their invisible heap sat outside the cache budget.
+    private final Map<FactKey, FactMeasurement> factMeasurements = new LinkedHashMap<>();
+    private static final long ESTIMATED_MEASUREMENT_BYTES = 192L;
+    private final long maxMeasurementEntries;
+    private boolean measurementTruncated;
+    private final Map<String, Long> cacheHitsByProperty = new LinkedHashMap<>();
+    private final Map<String, Long> evictedRefetchesByProperty = new LinkedHashMap<>();
+    private final Map<String, Map<String, Long>> demandsBySource = new LinkedHashMap<>();
 
     public WikidataFactStore() { this(DEFAULT_MAX_ESTIMATED_BYTES); }
 
     public WikidataFactStore(long maxEstimatedBytes) {
         this.maxEstimatedBytes = Math.max(1, maxEstimatedBytes);
+        // Measurements may consume at most one eighth of the run budget. The estimate
+        // is deliberately conservative and is reported when the cap truncates detail.
+        this.maxMeasurementEntries = Math.max(0,
+                this.maxEstimatedBytes / 8 / ESTIMATED_MEASUREMENT_BYTES);
     }
 
     /**
@@ -94,7 +127,11 @@ public final class WikidataFactStore {
             Document document = documents.get(qid);
             if (!answers(document, requireClaims, pids)) {
                 out.add(qid);
-                if (document == null && evictedKeys.contains(qid)) evictedRefetches++;
+                if (document == null && evictedKeys.contains(qid)) {
+                    evictedRefetches++;
+                    if (pids != null) pids.forEach(pid ->
+                            evictedRefetchesByProperty.merge(pid, 1L, Long::sum));
+                }
             }
         }
         return out;
@@ -132,6 +169,11 @@ public final class WikidataFactStore {
             fetched.incrementAndGet();
             Document previous = documents.get(entry.getKey());
             if (previous != null && previous.claims() && !claims) return;
+            // A complete claims document already answers every sliced question. A
+            // concurrent or compatibility-path slice arriving later must not replace
+            // it with less information merely because that request finished last.
+            if (previous != null && previous.claims() && previous.pids() == null
+                    && claims && retain != null) return;
             Set<String> kept = retain;
             if (claims && retain != null) {
                 // Merge with what this entity already had: two fetches for different
@@ -145,12 +187,17 @@ public final class WikidataFactStore {
                 kept = Set.copyOf(kept);
             }
             long weight = estimate(copy);
-            if (previous != null) estimatedBytes -= previous.estimatedBytes();
             if (weight > maxEstimatedBytes) {
-                if (documents.remove(entry.getKey()) != null) evictedKeys.add(entry.getKey());
+                // The fetched response is still returned to its caller, but it cannot
+                // be retained. Keep an older, smaller slice if one exists: failing to
+                // cache the augmentation is not a reason to discard useful facts.
                 oversized++;
                 return; // usable by the caller now, but too large to retain safely
             }
+            if (claims && kept != null) {
+                recordBankedProperties(entry.getKey(), copy, kept);
+            }
+            if (previous != null) estimatedBytes -= previous.estimatedBytes();
             documents.put(entry.getKey(), new Document(copy, claims, kept, weight));
             estimatedBytes += weight;
         });
@@ -209,19 +256,150 @@ public final class WikidataFactStore {
      *  saved, as opposed to consumers that simply never ask about the same entity. */
     public synchronized long evictedRefetches() { return evictedRefetches; }
     public void recordHits(long count) { if (count > 0) hits.addAndGet(count); }
+    public synchronized void recordHits(long count, Collection<String> pids) {
+        recordHits(count);
+        if (count > 0 && pids != null) {
+            pids.forEach(pid -> cacheHitsByProperty.merge(pid, count, Long::sum));
+        }
+    }
+
+    /** Records the consumer's real need, separately from the wider slice retained in
+     * anticipation of later consumers. Unique QID/PID pairs make repeated convergence
+     * passes harmless; source totals explain which phase/class created the demand. */
+    public synchronized void recordDemand(
+            String source, Collection<String> qids, Collection<String> pids) {
+        if (qids == null || pids == null) return;
+        String owner = source == null || source.isBlank() ? "unspecified" : source;
+        Map<String, Long> byPid = demandsBySource.computeIfAbsent(
+                owner, ignored -> new LinkedHashMap<>());
+        for (String qid : qids) {
+            if (qid == null) continue;
+            for (String pid : pids) {
+                if (pid == null) continue;
+                FactMeasurement measurement = measurement(new FactKey(qid, pid));
+                if (measurement != null && !measurement.demanded) {
+                    measurement.demanded = true;
+                    byPid.merge(pid, 1L, Long::sum);
+                }
+            }
+        }
+    }
+
+    /** Attributes the wider anticipated slice to the producer that caused it to be
+     * banked. First producer wins: overlapping populations must not double-count the
+     * same retained QID/PID bytes. */
+    public synchronized void recordRetentionPlan(
+            String source, Collection<String> qids, Collection<String> pids) {
+        if (qids == null || pids == null) return;
+        String owner = source == null || source.isBlank() ? "unspecified" : source;
+        for (String qid : qids) for (String pid : pids) {
+            if (qid != null && pid != null) {
+                FactMeasurement measurement = measurement(new FactKey(qid, pid));
+                if (measurement != null && measurement.retentionSource == null) {
+                    measurement.retentionSource = owner;
+                }
+            }
+        }
+    }
+
+    public synchronized List<PropertyUsage> propertyUsage() {
+        Map<String, PropertyTotals> totals = new LinkedHashMap<>();
+        factMeasurements.forEach((key, measurement) -> {
+            if (measurement.bankedBytes == null) return;
+            PropertyTotals values = totals.computeIfAbsent(
+                    key.pid(), ignored -> new PropertyTotals());
+            values.bankedEntities++; values.estimatedBytes += measurement.bankedBytes;
+            if (measurement.demanded) values.demandedEntities++;
+            else {
+                values.unusedEntities++;
+                values.unusedEstimatedBytes += measurement.bankedBytes;
+            }
+        });
+        return totals.entrySet().stream().map(e -> new PropertyUsage(
+                        e.getKey(), e.getValue().bankedEntities,
+                        e.getValue().estimatedBytes, e.getValue().demandedEntities,
+                        e.getValue().unusedEntities, e.getValue().unusedEstimatedBytes,
+                        cacheHitsByProperty.getOrDefault(e.getKey(), 0L),
+                        evictedRefetchesByProperty.getOrDefault(e.getKey(), 0L)))
+                .sorted(java.util.Comparator.comparingLong(PropertyUsage::estimatedBytes)
+                        .reversed().thenComparing(PropertyUsage::propertyPid))
+                .toList();
+    }
+
+    public synchronized Map<String, Map<String, Long>> demandsBySource() {
+        Map<String, Map<String, Long>> copy = new LinkedHashMap<>();
+        demandsBySource.forEach((source, pids) -> copy.put(source,
+                java.util.Collections.unmodifiableMap(new LinkedHashMap<>(pids))));
+        return java.util.Collections.unmodifiableMap(copy);
+    }
+
+    public synchronized List<RetentionUsage> retentionUsage() {
+        record SourcePid(String source, String pid) { }
+        Map<SourcePid, RetentionTotals> totals = new LinkedHashMap<>();
+        factMeasurements.forEach((key, measurement) -> {
+            if (measurement.bankedBytes == null) return;
+            SourcePid group = new SourcePid(
+                    measurement.retentionSource == null
+                            ? "unattributed" : measurement.retentionSource,
+                    key.pid());
+            RetentionTotals values = totals.computeIfAbsent(
+                    group, ignored -> new RetentionTotals());
+            values.bankedEntities++; values.estimatedBytes += measurement.bankedBytes;
+            if (measurement.demanded) values.demandedEntities++;
+            else values.unusedEstimatedBytes += measurement.bankedBytes;
+        });
+        return totals.entrySet().stream().map(e -> new RetentionUsage(
+                        e.getKey().source(), e.getKey().pid(),
+                        e.getValue().bankedEntities, e.getValue().estimatedBytes,
+                        e.getValue().demandedEntities, e.getValue().unusedEstimatedBytes))
+                .sorted(java.util.Comparator.comparingLong(RetentionUsage::estimatedBytes)
+                        .reversed().thenComparing(RetentionUsage::source)
+                        .thenComparing(RetentionUsage::propertyPid))
+                .toList();
+    }
     public long fetchedDocuments() { return fetched.get(); }
     public synchronized int size() { return documents.size(); }
-    public synchronized long estimatedBytes() { return estimatedBytes; }
+    public synchronized long estimatedBytes() {
+        return estimatedBytes + measurementEstimatedBytes();
+    }
+    public synchronized long measurementEstimatedBytes() {
+        return factMeasurements.size() * ESTIMATED_MEASUREMENT_BYTES;
+    }
+    public synchronized boolean measurementTruncated() { return measurementTruncated; }
 
     private void evictOldest() {
         Iterator<Map.Entry<String, Document>> entries = documents.entrySet().iterator();
-        while (estimatedBytes > maxEstimatedBytes && entries.hasNext()) {
+        while (estimatedBytes + measurementEstimatedBytes() > maxEstimatedBytes
+                && entries.hasNext()) {
             Map.Entry<String, Document> eldest = entries.next();
             estimatedBytes -= eldest.getValue().estimatedBytes();
             evictedKeys.add(eldest.getKey());
             evictions++;
             entries.remove();
         }
+    }
+
+    private void recordBankedProperties(String qid, JsonNode entity, Set<String> pids) {
+        JsonNode claims = entity.path("claims");
+        for (String pid : pids) {
+            JsonNode value = claims.isObject() ? claims.get(pid) : null;
+            FactMeasurement measurement = measurement(new FactKey(qid, pid));
+            if (measurement != null) {
+                measurement.bankedBytes = value == null ? 0L : weigh(value);
+            }
+        }
+    }
+
+    private FactMeasurement measurement(FactKey key) {
+        FactMeasurement existing = factMeasurements.get(key);
+        if (existing != null) return existing;
+        if (factMeasurements.size() >= maxMeasurementEntries) {
+            measurementTruncated = true;
+            return null;
+        }
+        FactMeasurement created = new FactMeasurement();
+        factMeasurements.put(key, created);
+        return created;
     }
 
     private static long estimate(JsonNode json) {

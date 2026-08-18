@@ -60,11 +60,21 @@ public final class SemanticConvergence {
         int loaded = 0, classified = 0, owned = 0;
         int iteration;
         int productiveIterations = 0;
+        ReferentFieldLoad.AcquisitionManifest acquisition =
+                ReferentFieldLoad.compileManifest(model);
+        if (!acquisition.propertiesByClass().isEmpty()) {
+            sink.message("Semantic acquisition manifest: "
+                    + acquisition.propertiesByClass().entrySet().stream()
+                    .map(e -> e.getKey() + "=[" + String.join(", ", e.getValue()) + "]")
+                    .collect(java.util.stream.Collectors.joining("; ")) + ".\n");
+        }
 
         for (iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
+            long fetchedBefore = api.facts().fetchedDocuments();
+            long hitsBefore = api.facts().cacheHits();
             int stamped = ReferentClassStamp.apply(model, pool);
             ReferentFieldLoad.Result fields = ReferentFieldLoad.load(
-                    model, pool, api, sink, completed.values(), true);
+                    model, pool, api, sink, completed.values(), true, acquisition);
             loaded += fields.loaded();
             fields.completed().forEach(done -> {
                 completed.put(done.key(), done);
@@ -109,6 +119,11 @@ public final class SemanticConvergence {
                     + stamped + " role stamp(s), " + fields.loaded() + " field value(s), "
                     + (stored.classified() + remote.classified()) + " kind(s), "
                     + made.created() + " owned value(s).\n");
+            sink.message("Semantic fact reuse iteration " + iteration + ": "
+                    + (api.facts().fetchedDocuments() - fetchedBefore)
+                    + " document(s) fetched, "
+                    + (api.facts().cacheHits() - hitsBefore)
+                    + " fetch(es) avoided.\n");
             boolean productive = stamped != 0 || fields.loaded() != 0
                     || stored.classified() + remote.classified() != 0
                     || made.created() != 0 || componentStamps != 0;

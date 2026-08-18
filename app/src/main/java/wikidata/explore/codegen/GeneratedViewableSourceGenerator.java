@@ -61,9 +61,16 @@ public class GeneratedViewableSourceGenerator {
                 fields.stream()
                      .filter(f -> f != null && !f.isNameField())
                      .anyMatch(GeneratedFieldModel::renderAsReference);
+        boolean needsInlineImport =
+                fields.stream()
+                     .filter(f -> f != null && !f.isNameField())
+                     .anyMatch(GeneratedFieldModel::renderInline);
 
         if (needsReferenceImport) {
             sb.append("import objectview.annotations.Reference;\n\n");
+        }
+        if (needsInlineImport) {
+            sb.append("import objectview.annotations.Inline;\n\n");
         }
 
         // All generated classes extend the neutral GeneratedEntity carrier, which
@@ -89,6 +96,8 @@ public class GeneratedViewableSourceGenerator {
 
             if (field.renderAsReference()) {
                 sb.append("    @Reference\n");
+            } else if (field.renderInline()) {
+                sb.append("    @Inline\n");
             }
             // Quantity fields sort by their leading number, not lexically.
             if (effectiveType(field) == FieldType.NUMBER) {

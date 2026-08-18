@@ -6,6 +6,7 @@ import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldType;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -42,6 +43,23 @@ import java.util.Set;
  * value, a COLLECTION keeps all; an already-populated field is left alone.
  */
 public final class ReferentFieldLoad {
+    private static final String ALIASES_FIELD = "@aliases";
+    private static final String ALIASES_PROPERTY = "@aliases";
+
+    /** Immutable model-derived property bundles retained on each producer's first
+     * claims fetch. Population QIDs remain dynamic; the property closure does not. */
+    public record AcquisitionManifest(Map<String, Set<String>> propertiesByClass) {
+        public AcquisitionManifest {
+            Map<String, Set<String>> frozen = new LinkedHashMap<>();
+            if (propertiesByClass != null) propertiesByClass.forEach((name, pids) ->
+                    frozen.put(name, pids == null ? Set.of()
+                            : Collections.unmodifiableSet(new LinkedHashSet<>(pids))));
+            propertiesByClass = Collections.unmodifiableMap(frozen);
+        }
+        public Set<String> propertiesFor(String className) {
+            return propertiesByClass.getOrDefault(className, Set.of());
+        }
+    }
 
     /** What a field load did: values assigned, and the entities it could NOT reach.
      *  Not a pass/fail flag — a load over thousands of entities normally answers for
@@ -132,6 +150,19 @@ public final class ReferentFieldLoad {
             Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
             boolean deferLabels) {
 
+        return load(model, pool, api, log, alreadyLoaded, deferLabels,
+                compileManifest(model));
+    }
+
+    public static Result load(
+            GeneratedProjectModel model,
+            Collection<WikidataDynamicObject> pool,
+            WikidataApiClient api,
+            GenerationLog log,
+            Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
+            boolean deferLabels,
+            AcquisitionManifest manifest) {
+
         if (model == null || pool == null || api == null) {
             return new Result(0, java.util.List.of());
         }
@@ -149,7 +180,7 @@ public final class ReferentFieldLoad {
                 continue;
             }
             List<GeneratedFieldModel> fields = new ArrayList<>();
-            for (GeneratedFieldModel f : c.fields()) {
+            for (GeneratedFieldModel f : c.effectiveFields(model)) {
                 if (f != null && loadableType(f.type())
                         && clean(f.mapping().propertyPid()).matches("(?i)P\\d+")) {
                     fields.add(f);
@@ -191,9 +222,55 @@ public final class ReferentFieldLoad {
                 continue;
             }
             EntityFieldBatch entityBatch = loadEntityFields(
-                    e.getKey(), e.getValue(), objs, known, api, sink, deferLabels);
+                    e.getKey(), e.getValue(), objs, known, api, sink, deferLabels,
+                    manifest == null ? Set.of() : manifest.propertiesFor(e.getKey()));
+            for (WikidataDynamicObject obj : objs) {
+                WikidataApiClient.ApiEntity metadata = entityBatch.entities().get(obj.qid());
+                // Aliases name the Wikidata ENTITY, not an owned projection that merely
+                // borrows its QID (Name@Person.structuredName).
+                if (!obj.isPart() && metadata != null) obj.aliases(metadata.aliases());
+            }
             LiteralFieldBatch literalBatch = loadLiteralFields(
                     e.getKey(), e.getValue(), objs, known, api, sink);
+            // A literal-only load parses statements, not ApiEntity metadata, so those
+            // classes still need one identity pass. Where an entity request already ran,
+            // its response answered this and the pass below asks for nothing.
+            String aliasesKey = wikidata.explore.extract.LoadedDeclaration.key(
+                    e.getKey(), ALIASES_FIELD, ALIASES_PROPERTY);
+            wikidata.explore.extract.LoadedDeclaration aliasesDone = known.get(aliasesKey);
+            Set<String> aliasesCovered = aliasesDone == null
+                    ? new LinkedHashSet<>()
+                    : new LinkedHashSet<>(aliasesDone.coveredQids());
+            // Coverage follows what the response ANSWERED, never what it was assumed
+            // to answer: an entity request carries aliases (WikidataApiClient
+            // .entityProps), and the entity says so itself, so a document fetched
+            // without them can never be banked as though it had them.
+            entityBatch.entities().forEach((qid, metadata) -> {
+                if (metadata.aliasesAnswered()) aliasesCovered.add(qid);
+            });
+            List<String> metadataQids = objs.stream()
+                    .filter(obj -> !obj.isPart() && !aliasesCovered.contains(obj.qid()))
+                    .map(WikidataDynamicObject::qid).distinct().toList();
+            if (!metadataQids.isEmpty()) {
+                try (GenerationLog.Group group = sink.group(
+                        "Load entity aliases on " + e.getKey() + " for "
+                                + metadataQids.size() + " entities")) {
+                    Map<String, List<String>> metadata =
+                            api.getAliases(metadataQids, group.batchSink());
+                    for (WikidataDynamicObject obj : objs) {
+                        List<String> aliases = metadata.get(obj.qid());
+                        if (!obj.isPart() && aliases != null) obj.aliases(aliases);
+                    }
+                    aliasesCovered.addAll(metadata.keySet());
+                } catch (Exception ex) {
+                    sink.message("Entity aliases on " + e.getKey() + " unavailable ("
+                            + ex.getMessage() + ") — field values remain usable.\n");
+                }
+            }
+            if (!aliasesCovered.isEmpty()) {
+                completed.add(new wikidata.explore.extract.LoadedDeclaration(
+                        e.getKey(), ALIASES_FIELD, ALIASES_PROPERTY, aliasesCovered));
+            }
             for (GeneratedFieldModel f : e.getValue()) {
                 String pid = clean(f.mapping().propertyPid());
                 String key = wikidata.explore.extract.LoadedDeclaration.key(
@@ -282,7 +359,8 @@ public final class ReferentFieldLoad {
             String className, List<GeneratedFieldModel> fields,
             List<WikidataDynamicObject> objs,
             Map<String, wikidata.explore.extract.LoadedDeclaration> known,
-            WikidataApiClient api, GenerationLog log, boolean deferLabels) {
+            WikidataApiClient api, GenerationLog log, boolean deferLabels,
+            Set<String> prospectivePids) {
         Set<String> qids = new LinkedHashSet<>();
         Set<String> pids = new LinkedHashSet<>();
         for (GeneratedFieldModel field : fields) {
@@ -293,22 +371,29 @@ public final class ReferentFieldLoad {
                             className, field.name(), pid));
             Set<String> covered = done == null ? Set.of()
                     : new LinkedHashSet<>(done.coveredQids());
+            Set<String> fieldQids = new LinkedHashSet<>();
             for (WikidataDynamicObject obj : objs) {
                 if (!covered.contains(obj.qid()) && obj.get(field.name()) == null) {
                     qids.add(obj.qid());
+                    fieldQids.add(obj.qid());
                     pids.add(pid);
                 }
             }
+            api.facts().recordDemand(className, fieldQids, List.of(pid));
         }
         if (qids.isEmpty()) {
             return new EntityFieldBatch(Map.of(), Map.of(), Set.of());
         }
+        int declaredPidCount = pids.size();
+        pids.addAll(prospectivePids);
+        api.facts().recordRetentionPlan(className, qids, pids);
 
         Map<String, WikidataApiClient.ApiEntity> details;
         Set<String> unavailable;
-        try (GenerationLog.Group group = log.group("Load " + pids.size()
-                + " referent fields on " + className + " for " + qids.size()
-                + " entities (" + String.join(", ", pids) + ")")) {
+        try (GenerationLog.Group group = log.group("Load " + declaredPidCount
+                + " referent field(s) on " + className + " for " + qids.size()
+                + " entities; retain " + pids.size() + " planned property slice(s) ("
+                + String.join(", ", pids) + ")")) {
             // Partial, not all-or-nothing: what the reachable batches answered is real
             // data, and an entity that answered without the property genuinely lacks it.
             // Only the entities no batch reached are unresolved.
@@ -352,6 +437,89 @@ public final class ReferentFieldLoad {
         return new EntityFieldBatch(details, labels, unavailable);
     }
 
+    /**
+     * Properties that a member of {@code producerClass} may need after its kind is
+     * known. wbgetentities already sends the complete claims body, so retaining this
+     * model-derived closure on the FIRST evidence fetch avoids downloading that body
+     * again after classification. Parsing and declaration coverage remain separate:
+     * this only tells the run-scoped fact store what portion of the answer to bank.
+     */
+    public static AcquisitionManifest compileManifest(GeneratedProjectModel model) {
+        Map<String, Set<String>> byClass = new LinkedHashMap<>();
+        if (model != null) {
+            for (GeneratedClassModel clazz : model.classes()) {
+                if (clazz != null && loadsHere(MembershipPattern.of(clazz, model))) {
+                    Set<String> pids = prospectivePids(model, clazz.className());
+                    if (!pids.isEmpty()) byClass.put(clazz.className(), pids);
+                }
+            }
+        }
+        return new AcquisitionManifest(byClass);
+    }
+
+    private static Set<String> prospectivePids(
+            GeneratedProjectModel model, String producerClass) {
+        GeneratedClassModel producer = model == null
+                ? null : model.findClass(producerClass);
+        if (producer == null) return Set.of();
+        Set<String> producerPids = new LinkedHashSet<>();
+        for (GeneratedFieldModel field : producer.effectiveFields(model)) {
+            String pid = clean(field.mapping().propertyPid());
+            if (WikidataIds.isPid(pid)) producerPids.add(pid);
+        }
+        // Sibling entity and literal fields share the same physical claims response.
+        // Bank all of them on the first entity-valued/evidence fetch.
+        Set<String> planned = new LinkedHashSet<>(producerPids);
+        for (var rule : model.entityKindRules()) {
+            if (rule == null || !rule.isConfigured()
+                    || !producerPids.contains(rule.propertyPid())) continue;
+            collectOwnedPropertyClosure(model, rule.className(), planned,
+                    new LinkedHashSet<>());
+        }
+        return Collections.unmodifiableSet(planned);
+    }
+
+    /**
+     * The properties an entity of these KINDS will be asked about once it has one —
+     * each class's own declarations, following its owned components.
+     *
+     * <p>Shared so the two places that fetch kind evidence bank the same closure. The
+     * classifier's own fetch is the only one a model gets when it does not expose the
+     * evidence property as a field: without this it would retain P31 alone, and every
+     * property those entities need after classification would be fetched again.
+     */
+    public static Set<String> kindPropertyClosure(
+            GeneratedProjectModel model, Collection<String> classNames) {
+        Set<String> pids = new LinkedHashSet<>();
+        if (model == null || classNames == null) return pids;
+        Set<String> visited = new LinkedHashSet<>();
+        for (String className : classNames) {
+            collectOwnedPropertyClosure(model, className, pids, visited);
+        }
+        return Collections.unmodifiableSet(pids);
+    }
+
+    private static void collectOwnedPropertyClosure(
+            GeneratedProjectModel model, String className, Set<String> pids,
+            Set<String> visited) {
+        if (className == null || !visited.add(className)) return;
+        GeneratedClassModel clazz = model.findClass(className);
+        if (clazz == null) return;
+        for (GeneratedFieldModel field : clazz.effectiveFields(model)) {
+            String pid = clean(field.mapping().propertyPid());
+            if (WikidataIds.isPid(pid)) pids.add(pid);
+            if (field.type() != FieldType.ENTITY) continue;
+            GeneratedClassModel target = model.findClass(field.entityClassName());
+            boolean owned = field.mapping().productionKind()
+                    == FieldProductionKind.OWNED_COMPONENT
+                    || target != null && target.ownedClass();
+            if (owned && target != null) {
+                collectOwnedPropertyClosure(
+                        model, target.className(), pids, visited);
+            }
+        }
+    }
+
     /** Fetch DATE/STRING siblings from one claims body, just as entity-valued sibling
      * fields are grouped above. Parsing remains per PID and assignment per field. */
     private static LiteralFieldBatch loadLiteralFields(
@@ -369,14 +537,18 @@ public final class ReferentFieldLoad {
                             className, field.name(), pid));
             Set<String> covered = done == null ? Set.of()
                     : new LinkedHashSet<>(done.coveredQids());
+            Set<String> fieldQids = new LinkedHashSet<>();
             for (WikidataDynamicObject obj : objs) {
                 if (!covered.contains(obj.qid()) && obj.get(field.name()) == null) {
                     qids.add(obj.qid());
+                    fieldQids.add(obj.qid());
                     pids.add(pid);
                 }
             }
+            api.facts().recordDemand(className, fieldQids, List.of(pid));
         }
         if (qids.isEmpty()) return new LiteralFieldBatch(Map.of(), Set.of());
+        api.facts().recordRetentionPlan(className, qids, pids);
 
         try (GenerationLog.Group group = log.group("Load " + pids.size()
                 + " literal referent fields on " + className + " for " + qids.size()

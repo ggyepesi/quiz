@@ -2,6 +2,11 @@ package quiz.source;
 
 import objectview.ViewableAdapter;
 import objectview.annotations.Hidden;
+import objectview.annotations.Minor;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Base for code-generated domain entities (the runtime-compiled classes the
@@ -20,6 +25,13 @@ public abstract class GeneratedEntity extends ViewableAdapter {
     @Hidden
     private boolean part;
 
+    /** Wikidata "Also known as" values. Minor keeps large alias sets out of compact
+     * cards while leaving them available to view configuration, search and sort. */
+    @Minor
+    private List<String> alternateNames = new ArrayList<>();
+
+    public List<String> alternateNames() { return alternateNames; }
+
 
     @Override public String getIdentifier() { return identifier; }
 
@@ -32,6 +44,11 @@ public abstract class GeneratedEntity extends ViewableAdapter {
     }
 
     public void label(String label) { this.label = label == null ? "" : label; }
+
+    public void alternateNames(Collection<String> values) {
+        alternateNames.clear();
+        if (values != null) alternateNames.addAll(values);
+    }
 
     /** See {@link objectview.Viewable#isPart()} — carried from the source object so a
      *  rendered part behaves the same whichever pool it came from. */

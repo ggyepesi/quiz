@@ -20,6 +20,10 @@ class WbGetEntitiesParseTest {
             "Q11": {
               "id": "Q11",
               "labels": { "en": { "language": "en", "value": "First nominee" } },
+              "aliases": { "en": [
+                { "language": "en", "value": "Nominee one" },
+                { "language": "en", "value": "First person" }
+              ] },
               "claims": {
                 "P31": [
                   { "rank": "normal",
@@ -36,6 +40,7 @@ class WbGetEntitiesParseTest {
             "Q22": {
               "id": "Q22",
               "labels": { "mul": { "language": "mul", "value": "Second nominee" } },
+              "aliases": { },
               "claims": {}
             },
             "Q33": { "missing": "" }
@@ -57,6 +62,7 @@ class WbGetEntitiesParseTest {
 
         assertTrue(out.get("Q33").missing(), "explicit missing entity is retained as evidence");
         assertEquals("First nominee", out.get("Q11").label());
+        assertEquals(List.of("Nominee one", "First person"), out.get("Q11").aliases());
         assertEquals("Second nominee", out.get("Q22").label(),
                 "multilingual label is the fallback when English is absent");
 
@@ -115,6 +121,36 @@ class WbGetEntitiesParseTest {
           }
         }
         """;
+
+    /**
+     * Aliases ride the entity request, and the response — not an assumption about it —
+     * says whether they were answered. A load banks "this entity's names are known" from
+     * that bit, so a document fetched without aliases must report false: coverage
+     * recorded for a fact never requested is a fact that is then never fetched again.
+     */
+    @Test
+    void anEntityReportsWhetherItsAliasesWereAnswered() throws Exception {
+        assertTrue(WikidataApiClient.entityProps(true).contains("aliases"),
+                "the claims request asks for the identity metadata loads record as covered");
+        assertTrue(WikidataApiClient.entityProps(false).contains("aliases"),
+                "so does the labels-only request");
+
+        Map<String, WikidataApiClient.ApiEntity> answered = new LinkedHashMap<>();
+        WikidataApiClient.parseEntities(
+                new ObjectMapper().readTree(JSON), List.of("P31"), answered);
+        assertTrue(answered.get("Q11").aliasesAnswered());
+        assertTrue(answered.get("Q22").aliasesAnswered(),
+                "an entity WITH an aliases node but no values has been answered: it has none");
+        assertEquals(List.of(), answered.get("Q22").aliases());
+
+        Map<String, WikidataApiClient.ApiEntity> unanswered = new LinkedHashMap<>();
+        WikidataApiClient.parseEntities(new ObjectMapper().readTree("""
+                {"entities": {"Q11": {"id": "Q11",
+                  "labels": {"en": {"language": "en", "value": "First nominee"}},
+                  "claims": {}}}}"""), List.of("P31"), unanswered);
+        assertFalse(unanswered.get("Q11").aliasesAnswered(),
+                "no aliases node — nobody asked, and an empty list cannot say so");
+    }
 
     @Test
     void parsesStatementsWithEntityTimeAndRepeatedQualifiers() throws Exception {

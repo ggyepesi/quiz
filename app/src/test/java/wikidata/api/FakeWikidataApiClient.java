@@ -71,6 +71,17 @@ public class FakeWikidataApiClient extends WikidataApiClient {
     }
 
     @Override
+    public Map<String, List<String>> getAliases(List<String> qids, BatchLog batchLog) {
+        Map<String, List<String>> out = new LinkedHashMap<>();
+        if (qids == null) return out;
+        for (String qid : qids) {
+            ApiEntity entity = entities.get(qid);
+            out.put(qid, entity == null ? List.of() : entity.aliases());
+        }
+        return out;
+    }
+
+    @Override
     public PartialEntities getEntityClaimsPartial(
             List<String> qids, List<String> claimPids, BatchLog batchLog) {
         return new PartialEntities(getEntities(qids, claimPids, batchLog), 0);

@@ -965,6 +965,7 @@ public class RuleTreeExtractor {
         for (WikidataDynamicObject member : members) {
             WikidataApiClient.ApiEntity e = details.get(member.qid());
             if (e == null) continue;
+            member.aliases(e.aliases());
             if (isPlaceholderLabel(member) && !e.label().isBlank()) {
                 member.name(e.label());
             }
@@ -1059,7 +1060,10 @@ public class RuleTreeExtractor {
                 o.wikidataEntityMissing(true);
             } else if (e != null && !e.label().isBlank()) {
                 o.name(e.label());
+                o.aliases(e.aliases());
                 filled++;
+            } else if (e != null) {
+                o.aliases(e.aliases());
             }
         }
         return filled;
