@@ -45,6 +45,25 @@ public final class ProcessWorkflowPipeline {
         }
     }
 
+    /** Recreates a finished/read-only pipeline from a durable snapshot. */
+    public static ProcessWorkflowPipeline restored(List<PhaseState> snapshot) {
+        List<PhaseState> safe = snapshot == null ? List.of() : List.copyOf(snapshot);
+        ProcessWorkflowPipeline pipeline = new ProcessWorkflowPipeline(
+                safe.stream().map(PhaseState::phase).toList());
+        for (PhaseState state : safe) {
+            // A non-zero marker makes elapsed time visible without treating the
+            // restored phase as a live clock. RUNNING is frozen as CANCELLED: a
+            // saved run cannot still be executing in this process.
+            Status status = state.status() == Status.RUNNING
+                    ? Status.CANCELLED : state.status();
+            pipeline.states.put(state.phase().id(), new PhaseState(
+                    state.phase(), status, state.summary(),
+                    status == Status.PENDING ? 0 : 1,
+                    Math.max(0, state.elapsedMillis())));
+        }
+        return pipeline;
+    }
+
     public synchronized List<PhaseState> snapshot() {
         long now = System.nanoTime();
         return states.values().stream().map(state ->

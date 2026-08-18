@@ -20,7 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Interactive, compact block view of a {@link ProcessWorkflowPipeline}. */
-final class ProcessWorkflowPipelinePanel extends JPanel {
+public final class ProcessWorkflowPipelinePanel extends JPanel {
     private final ProcessWorkflowPipeline pipeline;
     private final JPanel graph = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 10));
     private final JTextArea details = new JTextArea();
@@ -28,7 +28,7 @@ final class ProcessWorkflowPipelinePanel extends JPanel {
     private final Timer elapsedClock = new Timer(1_000, e -> refresh());
     private String selectedId;
 
-    ProcessWorkflowPipelinePanel(ProcessWorkflowPipeline pipeline) {
+    public ProcessWorkflowPipelinePanel(ProcessWorkflowPipeline pipeline) {
         super(new BorderLayout(8, 8));
         this.pipeline = pipeline;
         details.setEditable(false);

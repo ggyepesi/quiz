@@ -95,6 +95,13 @@ public class QueryObjectResultPanel
         MultiView multi =
                 new MultiView();
 
+        // MultiView supplies its own shared RenderContext rather than going through
+        // SearchableView.Builder.cardDecorator(). Configure that context BEFORE build:
+        // cards read their header decoration while they are constructed. Without this,
+        // ModelBuilder showed QIDs for a one-type result but silently lost them as soon
+        // as the result contained several types (the normal generated-domain case).
+        multi.context().setCardDecorator(IdentityChip::ofInstance);
+
         for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
             List<Viewable> full = e.getValue();
 

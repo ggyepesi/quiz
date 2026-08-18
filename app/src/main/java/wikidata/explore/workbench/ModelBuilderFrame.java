@@ -113,6 +113,9 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton showQueryLogsButton =
             new JButton("Show query logs");
 
+    private final JButton openSavedRunButton =
+            new JButton("Open saved run…");
+
     private final JButton showExplorerButton =
             new JButton("Explorer tools");
 
@@ -303,6 +306,7 @@ public class ModelBuilderFrame extends JFrame {
                                                     + "plus coverage badges (example-first field discovery, #91).");
         runRow2.add(showStatementsButton);
         runRow2.add(showQueryLogsButton);
+        runRow2.add(openSavedRunButton);
 
         JPanel runSection = new JPanel(new GridLayout(0, 1, 0, 0));
         runSection.add(runRow1);
@@ -604,6 +608,8 @@ public class ModelBuilderFrame extends JFrame {
         queryRunner.registerCancelButton(cancelButton);
         processRunner.registerCancelButton(cancelButton);
         processRunner.registerRunButton(generateDomainButton);
+        processRunner.registerRunButton(remapButton);
+        processRunner.registerRunButton(enrichButton);
         queryRunner.registerRunButton(showGeneratedSourceButton);
         queryRunner.cancelAction(client::cancelCurrentQuery);
 
@@ -752,6 +758,8 @@ public class ModelBuilderFrame extends JFrame {
                                 if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
                             }
                         };
+                logWindow.registerPipeline(
+                        "Generate domain — " + snapshot.name(), generationPipeline);
                 process.swing.workflow.SwingProcessWorkflow.start(
                         this, processRunner, action);
             } catch (Exception ex) {
@@ -759,40 +767,61 @@ public class ModelBuilderFrame extends JFrame {
             }
         });
 
-        queryRunner.wireButton(
-                remapButton,
-                this::acceptGenerationRun,
-                () -> {
+        remapButton.addActionListener(e -> {
+            if (processRunner.isRunning() || queryRunner.isRunning()) return;
+            try {
                     sourceWorkbench.applyEdits();
                     if (lastRun == null) {
                         warnNothingToGenerate(
                                 "Nothing to remap yet — run Generate domain (or "
                                         + "instances) first.");
-                        return null;
+                        return;
                     }
                     // Reuse the last download; re-materialize with the current model
                     // so canonicalization / display-name edits apply without a
                     // re-fetch. Valid for local edits (same extraction).
-                    return new RemapInstancesQuery(lastRun, projectModel.copy());
-                },
-                this::reportGenerationError);
+                    GeneratedProjectModel snapshot = projectModel.copy();
+                    var pipeline = operationPipeline(
+                            "remap", "Remap locally",
+                            "Recompile the model and re-transform a staged copy; no network fetch.",
+                            java.util.List.of(lastRun.dynamicObjects().size()
+                                    + " existing objects", snapshot.classes().size()
+                                    + " configured classes"));
+                    startGenerationOperation(
+                            "Remap domain", "Preview local model changes without downloading data.",
+                            "remap", new RemapInstancesQuery(lastRun, snapshot), pipeline,
+                            snapshot);
+            } catch (Exception ex) {
+                reportGenerationError(ex);
+            }
+        });
 
-        queryRunner.wireButton(
-                enrichButton,
-                this::acceptGenerationRun,
-                () -> {
+        enrichButton.addActionListener(e -> {
+            if (processRunner.isRunning() || queryRunner.isRunning()) return;
+            try {
                     sourceWorkbench.applyEdits();
                     if (lastRun == null) {
                         warnNothingToGenerate(
                                 "Nothing to enrich yet — run Generate domain (or "
                                         + "instances) first.");
-                        return null;
+                        return;
                     }
                     // Additive: a field declared since the download needs its property
                     // fetched for the entities already here, not a new extraction.
-                    return new EnrichInstancesQuery(lastRun, projectModel.copy());
-                },
-                this::reportGenerationError);
+                    GeneratedProjectModel snapshot = projectModel.copy();
+                    var pipeline = operationPipeline(
+                            "enrich", "Enrich existing graph",
+                            "Load missing declared properties, converge semantics and finalize a staged copy.",
+                            enrichmentDetails(snapshot, lastRun));
+                    startGenerationOperation(
+                            "Enrich domain",
+                            "Add newly declared values to the existing population without rediscovery.",
+                            "enrich", new EnrichInstancesQuery(lastRun, snapshot), pipeline,
+                            snapshot);
+            } catch (Exception ex) {
+                reportGenerationError(ex);
+            }
+        });
 
         sourceWorkbench.onReloadField(this::forgetFetchedDeclaration);
 
@@ -849,8 +878,98 @@ public class ModelBuilderFrame extends JFrame {
         showGuideButton.addActionListener(e -> showGuide());
 
         showQueryLogsButton.addActionListener(e -> querySession.showLogs(this));
+        openSavedRunButton.addActionListener(e -> {
+            wikidata.explore.query.swing.RunInspectorFrame inspector =
+                    new wikidata.explore.query.swing.RunInspectorFrame();
+            inspector.setLocationRelativeTo(this);
+            inspector.setVisible(true);
+            inspector.chooseAndOpen(this);
+        });
 
         sourceWorkbench.edit(projectModel.rootClass());
+    }
+
+    private static process.ProcessWorkflowPipeline operationPipeline(
+            String id, String title, String description, java.util.List<String> details) {
+        return new process.ProcessWorkflowPipeline(java.util.List.of(
+                new process.ProcessWorkflowPipeline.Phase(
+                        id, title, description, details)));
+    }
+
+    private static java.util.List<String> enrichmentDetails(
+            GeneratedProjectModel snapshot, GenerationRun previous) {
+        java.util.List<String> details = new java.util.ArrayList<>();
+        details.add(previous.dynamicObjects().size() + " existing objects");
+        for (GeneratedClassModel clazz : snapshot.classes()) {
+            java.util.List<String> properties = clazz.fields().stream()
+                    .map(field -> field.mapping() == null
+                            ? "" : field.mapping().propertyPid())
+                    .filter(pid -> pid != null && !pid.isBlank())
+                    .distinct().toList();
+            if (!properties.isEmpty()) {
+                details.add(clazz.className() + " — " + String.join(", ", properties));
+            }
+        }
+        if (details.size() == 1) details.add("No property-backed fields configured");
+        return details;
+    }
+
+    private void startGenerationOperation(
+            String title, String description, String phaseId,
+            wikidata.explore.query.core.Query<GenerationRun> query,
+            process.ProcessWorkflowPipeline pipeline,
+            GeneratedProjectModel snapshot) {
+        var operation = new wikidata.explore.generation.GenerationOperationProcess(
+                title, description, phaseId, query, pipeline);
+        quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
+                title.toLowerCase(java.util.Locale.ROOT).replace(' ', '-'), snapshot.name());
+        summary.type("Domain operation");
+        summary.put("Existing objects", lastRun == null ? 0 : lastRun.size());
+        summary.put("Classes", snapshot.classes().size());
+        process.swing.workflow.ProcessWorkflowAction<GenerationRun, GenerationRun> action =
+                new process.swing.workflow.ProcessWorkflowAction<>() {
+                    @Override public String id() { return phaseId; }
+                    @Override public process.ProcessWorkflowPipeline pipeline() {
+                        return pipeline;
+                    }
+                    @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
+                        return new process.swing.workflow.ProcessWorkflowPlan(
+                                title, description, java.util.List.of(
+                                new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                        "Scope", java.util.List.of(summary))));
+                    }
+                    @Override public process.Process<GenerationRun> process() {
+                        return operation;
+                    }
+                    @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
+                            results(process.ProcessOutcome<GenerationRun> outcome) {
+                        GenerationRun run = outcome.result();
+                        quiz.transform.DynamicViewable result = new quiz.transform.DynamicViewable(
+                                phaseId + "-summary", snapshot.name());
+                        result.type("Generation result");
+                        result.put("Objects", run.size());
+                        var accept = new process.swing.workflow.ProcessWorkflowResults.Card<>(
+                                result, () -> run, true);
+                        java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
+                                GenerationRun>> instances = run.instances().stream()
+                                .map(instance ->
+                                        new process.swing.workflow.ProcessWorkflowResults.Card<
+                                                GenerationRun>(instance, () -> null, false))
+                                .toList();
+                        return new process.swing.workflow.ProcessWorkflowResults<>(
+                                title + " — results", outcome.summary(), "Accept",
+                                java.util.List.of(
+                                        new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                                                "Summary", java.util.List.of(accept)),
+                                        new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                                                "Instances", instances)));
+                    }
+                    @Override public void apply(java.util.List<GenerationRun> decisions) {
+                        if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
+                    }
+                };
+        logWindow.registerPipeline(title + " — " + snapshot.name(), pipeline);
+        process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
     }
 
     private void acceptGenerationRun(GenerationRun run) {

@@ -10,6 +10,7 @@ import wikidata.explore.query.log.LogListener;
 import wikidata.explore.query.log.LogNode;
 import wikidata.explore.query.log.LogText;
 import wikidata.explore.query.log.WorkflowRecorder;
+import wikidata.explore.query.log.SavedRunArtifact;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,6 +21,7 @@ public class WorkflowLogWindow implements LogListener {
 
     private final List<LogNode> workflows =
             new ArrayList<>();
+    private final List<RegisteredPipeline> pipelines = new ArrayList<>();
 
     private CardListView view;
     private JFrame frame;
@@ -163,6 +165,14 @@ public class WorkflowLogWindow implements LogListener {
         f.setVisible(true);
     }
 
+    /** Associates a live executable pipeline with the log history saved afterwards. */
+    public synchronized void registerPipeline(
+            String title, process.ProcessWorkflowPipeline pipeline) {
+        if (pipeline == null) return;
+        pipelines.add(new RegisteredPipeline(
+                title == null || title.isBlank() ? "Pipeline" : title, pipeline));
+    }
+
     private void saveLog(Component parent) {
         if (workflows.isEmpty()) {
             JOptionPane.showMessageDialog(parent, "The log is empty — nothing to save.");
@@ -176,13 +186,25 @@ public class WorkflowLogWindow implements LogListener {
         }
         java.io.File file = chooser.getSelectedFile();
         try {
-            java.nio.file.Files.writeString(file.toPath(), LogText.toText(workflows));
+            String text = LogText.toText(workflows);
+            java.nio.file.Files.writeString(file.toPath(), text);
+            List<SavedRunArtifact.PipelineRun> snapshots;
+            synchronized (this) {
+                snapshots = pipelines.stream().map(p ->
+                        new SavedRunArtifact.PipelineRun(
+                                p.title(), p.pipeline().snapshot())).toList();
+            }
+            SavedRunArtifact.capture(text, snapshots)
+                    .write(SavedRunArtifact.companionPath(file.toPath()));
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(parent,
                     "Could not save the log: " + ex.getMessage(),
                     "Save failed", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    private record RegisteredPipeline(
+            String title, process.ProcessWorkflowPipeline pipeline) {}
 
     public void info(String text) {
         if (text == null || text.isBlank()) {
