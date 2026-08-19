@@ -18,12 +18,18 @@ public final class ProcessWorkflowPipeline {
     public enum Status { PENDING, RUNNING, COMPLETED, PARTIAL, FAILED, CANCELLED }
 
     public record Phase(
-            String id, String title, String description, List<String> details) {
+            String id, String title, String description, List<String> details,
+            PhaseExplanation explanation) {
+        public Phase(String id, String title, String description, List<String> details) {
+            this(id, title, description, details, PhaseExplanation.EMPTY);
+        }
+
         public Phase {
             if (id == null || id.isBlank()) throw new IllegalArgumentException("phase id");
             title = title == null || title.isBlank() ? id : title;
             description = description == null ? "" : description;
             details = details == null ? List.of() : List.copyOf(details);
+            explanation = explanation == null ? PhaseExplanation.EMPTY : explanation;
         }
     }
 

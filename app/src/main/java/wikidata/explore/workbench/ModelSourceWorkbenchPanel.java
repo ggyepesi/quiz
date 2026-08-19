@@ -210,6 +210,11 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         return propertyPanel;
     }
 
+    /** Opens the existing property catalogue from explanatory/configuration links. */
+    public void showProperties() {
+        helperTabs.setSelectedComponent(propertyPanel);
+    }
+
     public void edit(Object selected) {
         this.selected = selected;
 

@@ -6,7 +6,8 @@ Three processes, in this order:
 2. **Vite dev server** — `cd web && npm run dev`, `:5173`. `vite.config.js` sets
    `host: true` (so a phone on the same Wi-Fi can reach it), `allowedHosts: true`,
    and proxies `/api` → `http://localhost:7070`.
-3. **A tunnel**, optional — `ngrok http 5173`.
+3. **A tunnel**, optional — `cloudflared tunnel --url http://localhost:5173`
+   (or `ngrok http 5173`, which has the interstitial problem below).
 
 The frontend calls **relative** `/api/...` paths (see `web/src/lib/api.js`), so the API
 and images travel through whatever serves the page: localhost, a LAN IP, or the tunnel.
@@ -61,3 +62,39 @@ Only affects that browser profile — a phone hits the crashed interstitial agai
 **Proper fixes.** Verify the ngrok account (still free, needs a card) — that removes the
 interstitial; a paid plan or custom domain likewise. Cloudflare Tunnel has no
 interstitial and works with this setup unchanged, pointed at 5173.
+
+## Cloudflare Tunnel
+
+The tunnel this project uses now, because it has no interstitial:
+
+```
+brew install cloudflared
+cloudflared tunnel --url http://localhost:5173
+```
+
+A **quick tunnel**: no account, no login, no card. It prints
+`https://<words>.trycloudflare.com` and serves the app directly. Vite's
+`allowedHosts: true` is what lets that random hostname through; without it Vite answers
+"Blocked request", which looks like another blank page.
+
+**Finding the URL again.** The banner prints once at startup, and a quick tunnel takes a
+NEW hostname every restart — so a scrolled-away terminal loses it. cloudflared's own
+metrics server knows the current one:
+
+```
+lsof -nP -a -p $(pgrep -f "cloudflared tunnel") -iTCP -sTCP:LISTEN   # → 127.0.0.1:<port>
+curl -s http://127.0.0.1:<port>/quicktunnel                          # → {"hostname":"…"}
+```
+
+A stable hostname needs a Cloudflare account with a domain on it: `cloudflared tunnel
+login`, `cloudflared tunnel create quiz`, `cloudflared tunnel route dns quiz
+quiz.<domain>`, then run the named tunnel instead of `--url`.
+
+**Checking a tunnel of either kind serves the real app**, rather than a warning page:
+
+```
+curl -s -o /dev/null -w "%{http_code}\n" https://<host>/api/types
+curl -s -A "Mozilla/5.0 … Chrome/126.0 Safari/537.36" https://<host>/ | wc -c
+```
+
+The app page is ~16 kB; ngrok's interstitial is ~2.8 kB and says `ERR_NGROK_6024`.

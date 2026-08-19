@@ -51,6 +51,7 @@ data/masks/needs-mask/
 # that are themselves untracked, so in git it only ever conflicts.
 data/wikidata/datasets.json
 data/query-log*.txt
+data/query-log*.run.json
 
 ### Generated correction overlays (rebuilt by the *FixMain tools from a snapshot)
 *.autofix.json

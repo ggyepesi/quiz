@@ -1,6 +1,7 @@
 package wikidata.explore.generation;
 
 import process.ProcessWorkflowPipeline;
+import process.PhaseExplanation;
 import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -47,7 +48,7 @@ public final class GenerateDomainPipeline {
                 phase(SEMANTIC, "Resolve semantic worklist",
                         "Repeat role stamping, field/evidence acquisition, kind classification "
                                 + "and owned-value construction until stable.",
-                        semanticDetails(model)),
+                        semanticDetails(model), semanticExplanation(model)),
                 phase(LABELS, "Hydrate final labels",
                         "Resolve labels once for placeholder QIDs in the closed graph.",
                         List.of("English labels with multilingual fallback")),
@@ -61,7 +62,15 @@ public final class GenerateDomainPipeline {
 
     private static ProcessWorkflowPipeline.Phase phase(
             String id, String title, String description, List<String> details) {
-        return new ProcessWorkflowPipeline.Phase(id, title, description, details);
+        return phase(id, title, description, details, new PhaseExplanation(
+                description, List.of(), details, List.of(), List.of(), List.of()));
+    }
+
+    private static ProcessWorkflowPipeline.Phase phase(
+            String id, String title, String description, List<String> details,
+            PhaseExplanation explanation) {
+        return new ProcessWorkflowPipeline.Phase(
+                id, title, description, details, explanation);
     }
 
     private static List<String> rootDetails(GeneratedProjectModel model) {
@@ -187,6 +196,112 @@ public final class GenerateDomainPipeline {
         out.addAll(ownedDetails(model));
         out.addAll(kindOwnedFieldDetails(model));
         return out.stream().distinct().toList();
+    }
+
+    private static PhaseExplanation semanticExplanation(GeneratedProjectModel model) {
+        List<String> inputs = new ArrayList<>(List.of(
+                "Reachable entities and statement records produced so far",
+                "Declared target classes on entity-valued fields",
+                "Persisted field coverage and retained Wikidata facts"));
+        List<String> operations = List.of(
+                "Stamp role membership from configured field targets",
+                "Acquire newly demanded properties in model-derived bundles",
+                "Classify entity kinds from configured evidence rules",
+                "Construct owned values that inherit their owner's QID",
+                "Repeat until no stamp, value, kind or owned component changes");
+        List<String> outputs = List.of(
+                "Role and entity-kind class memberships",
+                "Loaded referent and owned-field values",
+                "Owned components connected to their owners",
+                "Exact-QID declarations recording answered fields",
+                "A fixed-point object graph ready for final labels and validation");
+
+        List<PhaseExplanation.ModelReference> references = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (GeneratedClassModel clazz : model.classes()) {
+            for (GeneratedFieldModel field : clazz.effectiveFields(model)) {
+                String pid = field.mapping() == null ? "" : field.mapping().propertyPid();
+                boolean owned = field.mapping() != null
+                        && field.mapping().productionKind()
+                        == FieldProductionKind.OWNED_COMPONENT;
+                if (pid != null && pid.matches("(?i)P\\d+")) {
+                    references.add(PhaseExplanation.ModelReference.field(
+                            clazz.className(), field.name()));
+                    references.add(PhaseExplanation.ModelReference.property(pid));
+                    if (examples.size() < 3) examples.add(propertyExample(clazz, field, pid));
+                }
+                if (owned) {
+                    references.add(PhaseExplanation.ModelReference.field(
+                            clazz.className(), field.name()));
+                    references.add(PhaseExplanation.ModelReference.clazz(
+                            field.entityClassName()));
+                    examples.add(ownedExample(clazz, field));
+                }
+            }
+        }
+        for (var rule : model.entityKindRules()) {
+            if (!rule.isConfigured()) continue;
+            references.add(PhaseExplanation.ModelReference.kindRule(rule.className()));
+            references.add(PhaseExplanation.ModelReference.property(rule.propertyPid()));
+            references.add(PhaseExplanation.ModelReference.clazz(rule.className()));
+            examples.add(kindExample(model, rule));
+        }
+        return new PhaseExplanation(
+                "Close the semantic gap between records discovered from Wikidata and "
+                        + "the typed object graph promised by the model.",
+                inputs, operations, outputs,
+                references.stream().distinct().toList(),
+                examples.stream().limit(6).toList());
+    }
+
+    private static PhaseExplanation.PhaseExample propertyExample(
+            GeneratedClassModel owner, GeneratedFieldModel field, String pid) {
+        String target = field.entityClassName() == null || field.entityClassName().isBlank()
+                ? field.type().toString() : field.entityClassName();
+        return new PhaseExplanation.PhaseExample(
+                PhaseExplanation.ExampleKind.PLANNED,
+                "Load " + owner.className() + "." + field.name(),
+                List.of("A reachable " + owner.className() + " carrying a Wikidata QID"),
+                List.of(pid + " is the configured producing property"),
+                List.of("Store the answered value as " + target,
+                        "Record coverage even when Wikidata returns no value"),
+                List.of(PhaseExplanation.ModelReference.field(
+                                owner.className(), field.name()),
+                        PhaseExplanation.ModelReference.property(pid)));
+    }
+
+    private static PhaseExplanation.PhaseExample ownedExample(
+            GeneratedClassModel owner, GeneratedFieldModel field) {
+        return new PhaseExplanation.PhaseExample(
+                PhaseExplanation.ExampleKind.PLANNED,
+                "Compose owned " + field.entityClassName(),
+                List.of("A " + owner.className() + " instance with QID Q…"),
+                List.of(owner.className() + "." + field.name()
+                        + " declares owned production"),
+                List.of("Create " + field.entityClassName() + "@"
+                                + owner.className() + "." + field.name(),
+                        "The component inherits Q… only for loading its declared fields"),
+                List.of(PhaseExplanation.ModelReference.field(
+                                owner.className(), field.name()),
+                        PhaseExplanation.ModelReference.clazz(field.entityClassName())));
+    }
+
+    private static PhaseExplanation.PhaseExample kindExample(
+            GeneratedProjectModel model, wikidata.explore.model.EntityKindRule rule) {
+        String producers = evidenceProducerSuffix(model, rule.propertyPid())
+                .replace(" — candidates from ", "").replace(
+                        " — all role members (no modeled producer)", "role members");
+        return new PhaseExplanation.PhaseExample(
+                PhaseExplanation.ExampleKind.PLANNED,
+                "Classify an entity as " + rule.className(),
+                List.of("A candidate entity reached through " + producers),
+                List.of(rule.propertyPid() + " contains one of "
+                        + String.join(", ", rule.evidenceQids())),
+                List.of("Add " + rule.className() + " membership",
+                        "Use the deterministic most-specific kind as display carrier"),
+                List.of(PhaseExplanation.ModelReference.kindRule(rule.className()),
+                        PhaseExplanation.ModelReference.property(rule.propertyPid()),
+                        PhaseExplanation.ModelReference.clazz(rule.className())));
     }
 
     private static void addPropertyFields(List<String> out, GeneratedClassModel clazz) {

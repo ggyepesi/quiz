@@ -1,6 +1,7 @@
 package process.swing.workflow;
 
 import process.ProcessWorkflowPipeline;
+import process.PhaseExplanation;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -8,7 +9,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTextArea;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
@@ -16,6 +18,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -23,18 +26,17 @@ import java.util.Map;
 public final class ProcessWorkflowPipelinePanel extends JPanel {
     private final ProcessWorkflowPipeline pipeline;
     private final JPanel graph = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 10));
-    private final JTextArea details = new JTextArea();
+    private final JPanel details = new JPanel();
     private final Map<String, JButton> blocks = new LinkedHashMap<>();
     private final Timer elapsedClock = new Timer(1_000, e -> refresh());
     private String selectedId;
+    private java.util.function.Consumer<PhaseExplanation.ModelReference> navigateReference =
+            reference -> { };
 
     public ProcessWorkflowPipelinePanel(ProcessWorkflowPipeline pipeline) {
         super(new BorderLayout(8, 8));
         this.pipeline = pipeline;
-        details.setEditable(false);
-        details.setLineWrap(true);
-        details.setWrapStyleWord(true);
-        details.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
         details.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
@@ -46,6 +48,12 @@ public final class ProcessWorkflowPipelinePanel extends JPanel {
 
         pipeline.addListener(() -> SwingUtilities.invokeLater(this::refresh));
         refresh();
+    }
+
+    /** Routes a class/field/property chip into the host application's Explorer. */
+    public void onNavigateReference(
+            java.util.function.Consumer<PhaseExplanation.ModelReference> handler) {
+        navigateReference = handler == null ? reference -> { } : handler;
     }
 
     @Override public void addNotify() {
@@ -90,7 +98,7 @@ public final class ProcessWorkflowPipelinePanel extends JPanel {
         }
         ProcessWorkflowPipeline.PhaseState selected = snapshot.stream()
                 .filter(s -> s.phase().id().equals(selectedId)).findFirst().orElse(null);
-        if (selected != null) details.setText(detailText(selected));
+        if (selected != null) showExplanation(selected);
         graph.revalidate();
         graph.repaint();
     }
@@ -108,25 +116,136 @@ public final class ProcessWorkflowPipelinePanel extends JPanel {
                 + state.status() + elapsed + summary + "</center></html>";
     }
 
-    private static String detailText(ProcessWorkflowPipeline.PhaseState state) {
-        StringBuilder out = new StringBuilder();
-        out.append(state.phase().title()).append('\n')
-                .append("Status: ").append(state.status()).append('\n');
-        if (isTimed(state)) {
-            out.append("Elapsed: ").append(formatElapsed(state.elapsedMillis())).append('\n');
+    private void showExplanation(ProcessWorkflowPipeline.PhaseState state) {
+        details.removeAll();
+        JLabel title = new JLabel("<html><h2>" + escape(state.phase().title())
+                + "</h2></html>");
+        title.setAlignmentX(LEFT_ALIGNMENT);
+        details.add(title);
+
+        JPanel run = new JPanel(new GridLayout(0, 1, 2, 2));
+        run.setAlignmentX(LEFT_ALIGNMENT);
+        run.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(color(state.status()).darker()),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+        run.setBackground(color(state.status()));
+        run.add(new JLabel("Status: " + state.status()
+                + (isTimed(state) ? " · " + formatElapsed(state.elapsedMillis()) : "")));
+        if (!state.summary().isBlank()) run.add(wrapped("Run: " + state.summary()));
+        details.add(run);
+        details.add(Box.createVerticalStrut(8));
+
+        PhaseExplanation explanation = state.phase().explanation();
+        String purpose = explanation.isEmpty()
+                ? state.phase().description() : explanation.purpose();
+        addTextSection("Why", purpose);
+        addListSection("Consumes", explanation.inputs());
+        addListSection("What happens", explanation.operations().isEmpty()
+                ? state.phase().details() : explanation.operations());
+        addListSection("Produces", explanation.outputs());
+        addReferences(explanation.references());
+        addExamples(explanation.examples());
+
+        details.add(Box.createVerticalGlue());
+        details.revalidate();
+        details.repaint();
+    }
+
+    private void addTextSection(String heading, String text) {
+        if (text == null || text.isBlank()) return;
+        addHeading(heading);
+        JLabel label = wrapped(text);
+        label.setAlignmentX(LEFT_ALIGNMENT);
+        details.add(label);
+        details.add(Box.createVerticalStrut(7));
+    }
+
+    private void addListSection(String heading, java.util.List<String> values) {
+        if (values == null || values.isEmpty()) return;
+        addHeading(heading);
+        for (String value : values) {
+            JLabel label = wrapped("• " + value);
+            label.setAlignmentX(LEFT_ALIGNMENT);
+            details.add(label);
+            details.add(Box.createVerticalStrut(2));
         }
-        out.append('\n')
-                .append(state.phase().description()).append('\n');
-        if (!state.summary().isBlank()) {
-            out.append("\nRun: ").append(state.summary()).append('\n');
+        details.add(Box.createVerticalStrut(5));
+    }
+
+    private void addReferences(java.util.List<PhaseExplanation.ModelReference> refs) {
+        if (refs == null || refs.isEmpty()) return;
+        addHeading("Configuration");
+        JPanel chips = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 3));
+        chips.setAlignmentX(LEFT_ALIGNMENT);
+        for (PhaseExplanation.ModelReference reference : refs) {
+            JButton chip = new JButton(reference.label());
+            chip.setMargin(new java.awt.Insets(2, 6, 2, 6));
+            chip.setToolTipText(reference.kind() + " — open in Explorer");
+            chip.addActionListener(e -> navigateReference.accept(reference));
+            chips.add(chip);
         }
-        if (!state.phase().details().isEmpty()) {
-            out.append("\nConfigured operations\n");
-            for (String detail : state.phase().details()) {
-                out.append("  • ").append(detail).append('\n');
+        details.add(chips);
+        details.add(Box.createVerticalStrut(5));
+    }
+
+    private void addExamples(java.util.List<PhaseExplanation.PhaseExample> examples) {
+        if (examples == null || examples.isEmpty()) return;
+        addHeading("Examples");
+        for (PhaseExplanation.PhaseExample example : examples) {
+            JPanel card = new JPanel();
+            card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+            card.setAlignmentX(LEFT_ALIGNMENT);
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(190, 195, 202)),
+                    BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+            JLabel name = new JLabel("<html><b>" + escape(example.title())
+                    + "</b> <font color='#666666'>" + example.kind() + "</font></html>");
+            name.setAlignmentX(LEFT_ALIGNMENT);
+            card.add(name);
+            addExamplePart(card, "Input", example.input());
+            addExamplePart(card, "Evidence", example.evidence());
+            addExamplePart(card, "Result", example.output());
+            if (!example.references().isEmpty()) {
+                JPanel chips = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 2));
+                chips.setAlignmentX(LEFT_ALIGNMENT);
+                for (PhaseExplanation.ModelReference reference : example.references()) {
+                    JButton chip = new JButton(reference.label());
+                    chip.setMargin(new java.awt.Insets(1, 5, 1, 5));
+                    chip.addActionListener(e -> navigateReference.accept(reference));
+                    chips.add(chip);
+                }
+                card.add(chips);
             }
+            details.add(card);
+            details.add(Box.createVerticalStrut(6));
         }
-        return out.toString();
+    }
+
+    private static void addExamplePart(JPanel card, String title, java.util.List<String> rows) {
+        if (rows == null || rows.isEmpty()) return;
+        card.add(Box.createVerticalStrut(4));
+        JLabel heading = new JLabel("<html><b>" + escape(title) + "</b></html>");
+        heading.setAlignmentX(LEFT_ALIGNMENT);
+        card.add(heading);
+        for (String row : rows) {
+            JLabel label = wrapped("• " + row);
+            label.setAlignmentX(LEFT_ALIGNMENT);
+            card.add(label);
+        }
+    }
+
+    private void addHeading(String text) {
+        JLabel heading = new JLabel("<html><b>" + escape(text) + "</b></html>");
+        heading.setAlignmentX(LEFT_ALIGNMENT);
+        details.add(heading);
+        details.add(Box.createVerticalStrut(3));
+    }
+
+    private static JLabel wrapped(String text) {
+        JLabel label = new JLabel("<html><div style='width:310px'>"
+                + escape(text) + "</div></html>");
+        label.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        return label;
     }
 
     private static boolean isTimed(ProcessWorkflowPipeline.PhaseState state) {

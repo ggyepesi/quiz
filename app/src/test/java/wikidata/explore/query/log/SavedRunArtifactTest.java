@@ -3,6 +3,7 @@ package wikidata.explore.query.log;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import process.ProcessWorkflowPipeline;
+import process.PhaseExplanation;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,7 +17,17 @@ class SavedRunArtifactTest {
     @Test void roundTripsLogAndPipelineSnapshot() throws Exception {
         ProcessWorkflowPipeline pipeline = new ProcessWorkflowPipeline(List.of(
                 new ProcessWorkflowPipeline.Phase(
-                        "fetch", "Fetch", "Acquire facts", List.of("Person — P31, P569"))));
+                        "fetch", "Fetch", "Acquire facts", List.of("Person — P31, P569"),
+                        new PhaseExplanation(
+                                "Load the facts required by the configured model.",
+                                List.of("Person QIDs"), List.of("Fetch P31 and P569"),
+                                List.of("Answered declarations"),
+                                List.of(PhaseExplanation.ModelReference.property("P31")),
+                                List.of(new PhaseExplanation.PhaseExample(
+                                        PhaseExplanation.ExampleKind.PLANNED,
+                                        "Classify a human", List.of("Q5 evidence"),
+                                        List.of("P31 = Q5"), List.of("Person"),
+                                        List.of()))))));
         pipeline.start("fetch", "50 entities");
         pipeline.complete("fetch", "50 entities loaded");
         SavedRunArtifact original = SavedRunArtifact.capture("request [OK]\n", List.of(
@@ -32,6 +43,11 @@ class SavedRunArtifactTest {
         assertEquals("fetch", phase.phase().id());
         assertEquals(ProcessWorkflowPipeline.Status.COMPLETED, phase.status());
         assertEquals("50 entities loaded", phase.summary());
+        assertEquals("Load the facts required by the configured model.",
+                phase.phase().explanation().purpose());
+        assertEquals("P31", phase.phase().explanation().references().getFirst().name());
+        assertEquals("Classify a human",
+                phase.phase().explanation().examples().getFirst().title());
     }
 
     @Test void openingTextUsesCompanionWhenPresent() throws Exception {

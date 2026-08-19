@@ -81,6 +81,21 @@ class GenerateDomainPipelineTest {
         assertTrue(ownedDetails.contains("Person.name")
                 && ownedDetails.contains("Name") && ownedDetails.contains("owner QID"),
                 ownedDetails);
+
+        var semantic = pipeline.snapshot().stream()
+                .filter(state -> state.phase().id().equals(GenerateDomainPipeline.SEMANTIC))
+                .findFirst().orElseThrow().phase().explanation();
+        assertTrue(semantic.operations().stream().anyMatch(s -> s.startsWith("Repeat")),
+                semantic.operations().toString());
+        assertTrue(semantic.references().stream().anyMatch(r ->
+                r.kind() == process.PhaseExplanation.ReferenceKind.KIND_RULE
+                        && r.owner().equals("Person")));
+        assertTrue(semantic.examples().stream().anyMatch(e ->
+                e.title().contains("Classify") && e.evidence().stream()
+                        .anyMatch(value -> value.contains("Q5"))),
+                semantic.examples().toString());
+        assertTrue(semantic.examples().stream().anyMatch(e ->
+                e.title().contains("owned Name")), semantic.examples().toString());
     }
 
     private static String details(ProcessWorkflowPipeline pipeline, String id) {

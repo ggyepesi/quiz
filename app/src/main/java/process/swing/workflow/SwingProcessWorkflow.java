@@ -1,6 +1,7 @@
 package process.swing.workflow;
 
 import process.ProcessWorkflowPipeline;
+import process.PhaseExplanation.ModelReference;
 
 import objectview.Viewable;
 import objectview.render.RenderingMode;
@@ -25,6 +26,7 @@ import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /** One Plan → Running → Results → Apply Swing skeleton for every curation action. */
 public final class SwingProcessWorkflow {
@@ -32,7 +34,13 @@ public final class SwingProcessWorkflow {
 
     public static <R, D> JDialog start(
             Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action) {
-        Session<R, D> session = new Session<>(owner, runner, action);
+        return start(owner, runner, action, null);
+    }
+
+    public static <R, D> JDialog start(
+            Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
+            Consumer<ModelReference> navigateReference) {
+        Session<R, D> session = new Session<>(owner, runner, action, navigateReference);
         session.showPlan();
         session.dialog.setVisible(true);
         return session.dialog;
@@ -50,11 +58,15 @@ public final class SwingProcessWorkflow {
         final ProcessWorkflowPipeline pipeline;
         final ProcessWorkflowPipelinePanel pipelinePanel;
 
-        Session(Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action) {
+        Session(Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
+                Consumer<ModelReference> navigateReference) {
             this.owner = owner; this.runner = runner; this.action = action;
             this.pipeline = action.pipeline();
             this.pipelinePanel = pipeline == null ? null
                     : new ProcessWorkflowPipelinePanel(pipeline);
+            if (pipelinePanel != null) {
+                pipelinePanel.onNavigateReference(navigateReference);
+            }
             dialog = new JDialog(SwingUtilities.getWindowAncestor(owner),
                     action.plan().title(), Dialog.ModalityType.MODELESS);
             dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);

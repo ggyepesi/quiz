@@ -761,7 +761,7 @@ public class ModelBuilderFrame extends JFrame {
                 logWindow.registerPipeline(
                         "Generate domain — " + snapshot.name(), generationPipeline);
                 process.swing.workflow.SwingProcessWorkflow.start(
-                        this, processRunner, action);
+                        this, processRunner, action, this::openPipelineReference);
             } catch (Exception ex) {
                 reportGenerationError(ex);
             }
@@ -969,7 +969,35 @@ public class ModelBuilderFrame extends JFrame {
                     }
                 };
         logWindow.registerPipeline(title + " — " + snapshot.name(), pipeline);
-        process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
+        process.swing.workflow.SwingProcessWorkflow.start(
+                this, processRunner, action, this::openPipelineReference);
+    }
+
+    /** Turns the pipeline explanation into a map back to the configuration that
+     * produced it. Property references live in Explore; classes and fields live in
+     * the model tree. Unknown/stale references remain harmless in saved runs. */
+    private void openPipelineReference(process.PhaseExplanation.ModelReference reference) {
+        if (reference == null) return;
+        switch (reference.kind()) {
+            case CLASS -> {
+                GeneratedClassModel clazz = classByName(reference.name());
+                if (clazz != null) classModelPanel.selectClass(clazz);
+            }
+            case FIELD -> {
+                GeneratedClassModel owner = classByName(reference.owner());
+                if (owner == null) return;
+                owner.fields().stream()
+                        .filter(field -> reference.name().equals(field.name()))
+                        .findFirst()
+                        .ifPresent(classModelPanel::selectField);
+            }
+            case PROPERTY -> {
+                showExplorerWindow();
+                sourceWorkbench.showProperties();
+            }
+            case KIND_RULE -> showEntityKindsWindow();
+            case ROLE, PHASE -> { /* Informational until those editors expose navigation. */ }
+        }
     }
 
     private void acceptGenerationRun(GenerationRun run) {
