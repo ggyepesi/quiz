@@ -200,6 +200,40 @@ class WikidataFactStoreTest {
                 "a document the store never held is not an eviction cost");
     }
 
+    @Test void anEvictedPropertySliceDoesNotPolluteAnotherPropertyMetric()
+            throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore probe = new WikidataFactStore(Long.MAX_VALUE / 4);
+        probe.accept(entity(mapper, "Q1", "P1411"), true, List.of("P1411"));
+        long one = probe.estimatedBytes();
+        WikidataFactStore store = new WikidataFactStore(one + 32);
+        store.accept(entity(mapper, "Q1", "P1411"), true, List.of("P1411"));
+        store.accept(entity(mapper, "Q2", "P31"), true, List.of("P31"));
+
+        store.missing(List.of("Q1"), true, List.of("P136"));
+        assertEquals(0, store.evictedRefetches(),
+                "P136 was never retained, so this is its first fetch, not a re-fetch");
+
+        store.missing(List.of("Q1"), true, List.of("P1411"));
+        assertEquals(1, store.evictedRefetches(),
+                "the exact evicted P1411 capability is a genuine re-fetch");
+    }
+
+    @Test void anEvictedWholeClaimsBodyCanAnswerAPropertyRequest() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore probe = new WikidataFactStore(Long.MAX_VALUE / 4);
+        probe.accept(entity(mapper, "Q1", "P1411"), true, null);
+        long one = probe.estimatedBytes();
+        WikidataFactStore store = new WikidataFactStore(one + 32);
+        store.accept(entity(mapper, "Q1", "P1411"), true, null);
+        store.accept(entity(mapper, "Q2", "P31"), true, List.of("P31"));
+
+        store.missing(List.of("Q1"), true, List.of("P136"));
+
+        assertEquals(1, store.evictedRefetches(),
+                "a whole claims body really could have answered later P136 demand");
+    }
+
     /**
      * The whole claims body of an entity is what a run cannot afford to hold — measured
      * on this project's own pattern, the working set is ~18k documents at ~260 KB each.

@@ -34,6 +34,28 @@ public final class WikidataFactStore {
     private static final class RetentionTotals {
         long bankedEntities, estimatedBytes, demandedEntities, unusedEstimatedBytes;
     }
+    /** What an evicted document could actually have answered. A QID alone is too
+     * coarse: dropping a P1411 slice must not make the first P136 request look like a
+     * re-fetch, while dropping a whole claims body legitimately does. */
+    private static final class EvictedCapabilities {
+        boolean entityMetadata;
+        boolean wholeClaims;
+        final Set<String> claimPids = new LinkedHashSet<>();
+
+        void add(Document document) {
+            entityMetadata = true;
+            if (!document.claims()) return;
+            if (document.pids() == null) wholeClaims = true;
+            else claimPids.addAll(document.pids());
+        }
+
+        boolean answered(boolean requireClaims, Collection<String> pids) {
+            if (!entityMetadata) return false;
+            if (!requireClaims) return true;
+            if (wholeClaims) return true;
+            return pids != null && claimPids.containsAll(pids);
+        }
+    }
     public record PropertyUsage(
             String propertyPid, long bankedEntities, long estimatedBytes,
             long demandedEntities, long unusedEntities, long unusedEstimatedBytes,
@@ -51,13 +73,19 @@ public final class WikidataFactStore {
      * them. It is a cliff, not a gradient, and the earlier 64 MB sat just below it,
      * holding ~4,000 documents and recording 10 hits in a run that made 67,837 fetches.
      *
-     * <p>384 MB holds roughly 20,000 declared slices at the measured ~17 KB each, which
-     * is the whole working set. It is only affordable because a slice is retained
-     * instead of the whole claims body — the same 20,000 entities kept whole would be
-     * about five gigabytes. Weighed by payload, not by entry count, since Wikidata
-     * bodies differ by orders of magnitude.
+     * <p>A slice is retained instead of the whole claims body — the same entities kept
+     * whole would be about five gigabytes — and the budget is weighed by payload, not
+     * by entry count, since Wikidata bodies differ by orders of magnitude.
+     *
+     * <p>384 MB was sized from a measured ~17 KB per slice, and three runs since then
+     * say the slices are bigger than that: 383 MB held only ~11,000 documents (~35 KB
+     * each) and 2,566 documents were fetched a second time after eviction. By then the
+     * eviction ORDER had been exhausted as a lever — statement bodies nobody re-reads
+     * already yield first (8,879 of 10,019 evictions), and what remains is planned
+     * documents evicting planned documents, which no policy can fix. 768 MB holds the
+     * measured working set at its real size rather than its estimated one.
      */
-    public static final long DEFAULT_MAX_ESTIMATED_BYTES = 384L * 1024L * 1024L;
+    public static final long DEFAULT_MAX_ESTIMATED_BYTES = 768L * 1024L * 1024L;
 
     /**
      * A retained document, and WHICH claim properties it kept. Keeping the whole claims
@@ -80,10 +108,10 @@ public final class WikidataFactStore {
     private long estimatedBytes;
     private final AtomicLong hits = new AtomicLong();
     private final AtomicLong fetched = new AtomicLong();
-    // Every QID this store dropped to stay inside its budget. Kept as identifiers (a
-    // few bytes each, far below what one claims document costs) so a later lookup can
-    // tell "we never had it" from "we had it and threw it away".
-    private final java.util.Set<String> evictedKeys = new java.util.HashSet<>();
+    // Capability-aware eviction history: a later request is a preventable re-fetch only
+    // when the evicted document could have answered that exact request.
+    private final Map<String, EvictedCapabilities> evictedCapabilities =
+            new LinkedHashMap<>();
     private long evictions;
     private long oversized;
     private long evictedRefetches;
@@ -132,7 +160,8 @@ public final class WikidataFactStore {
             Document document = documents.get(qid);
             if (!answers(document, requireClaims, pids)) {
                 out.add(qid);
-                if (document == null && evictedKeys.contains(qid)) {
+                EvictedCapabilities evicted = evictedCapabilities.get(qid);
+                if (evicted != null && evicted.answered(requireClaims, pids)) {
                     evictedRefetches++;
                     if (pids != null) pids.forEach(pid ->
                             evictedRefetchesByProperty.merge(pid, 1L, Long::sum));
@@ -447,7 +476,9 @@ public final class WikidataFactStore {
             Map.Entry<String, Document> eldest = entries.next();
             if (!evictable.test(eldest.getKey(), eldest.getValue())) continue;
             estimatedBytes -= eldest.getValue().estimatedBytes();
-            evictedKeys.add(eldest.getKey());
+            evictedCapabilities.computeIfAbsent(
+                    eldest.getKey(), ignored -> new EvictedCapabilities())
+                    .add(eldest.getValue());
             evictions++;
             if (!planned(eldest.getKey(), eldest.getValue())) unplannedEvictions++;
             entries.remove();
