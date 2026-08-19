@@ -45,17 +45,66 @@ class WikidataFactStoreTest {
         // The planned slice arrives FIRST, the unplanned one after it: by age alone the
         // planned document is the one that would go.
         store.accept(entity(mapper, "Q2", "P31"), true, List.of("P31"));
-        store.accept(entity(mapper, "Q1", "P1411"), true, List.of("P1411"));
+        store.accept(entity(mapper, "Q1", "P1411"), true, null);
         assertEquals(2, store.size());
 
         store.accept(entity(mapper, "Q3", "P31"), true, List.of("P31"));
 
         assertEquals(1, store.unplannedEvictions());
-        assertEquals(List.of("Q1"), store.missing(List.of("Q1"), true, List.of("P1411")),
-                "the statement body nobody will re-read yields, despite being newer");
+        assertEquals(List.of("Q1"), store.missing(List.of("Q1"), true, null),
+                "an unplanned whole body yields despite being able to answer anything");
         assertTrue(store.missing(List.of("Q2"), true, List.of("P31")).isEmpty(),
                 "the older, planned slice a later pass asks for is still held");
         assertTrue(store.missing(List.of("Q3"), true, List.of("P31")).isEmpty());
+    }
+
+    /**
+     * Past the measurement cap a QID/PID pair simply has no record, and "no record" is
+     * not "nobody wants it". Reading absence as unplanned inverted the eviction order
+     * exactly where it matters most — a domain big enough to exhaust the measurement is
+     * a domain whose budget is under pressure — so the entity's own plan, one entry per
+     * entity rather than per pair, is what truncation falls back to.
+     */
+    @Test void aTruncatedMeasurementMakesPriorityCoarserNotBackwards() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore probe = new WikidataFactStore(Long.MAX_VALUE / 4);
+        probe.accept(entity(mapper, "Q1", "P31"), true, List.of("P31"));
+        long one = probe.estimatedBytes();
+
+        // A budget whose measurement share (an eighth) holds fewer pairs than the run
+        // plans, so the plan is recorded past the cap.
+        WikidataFactStore store = new WikidataFactStore(one * 2 + 1_024);
+        for (int i = 0; i < 100; i++) {
+            store.recordRetentionPlan("filler", List.of("QF" + i), List.of("P999"));
+        }
+        store.recordRetentionPlan("Person", List.of("Q2", "Q3"), List.of("P31"));
+        assertTrue(store.measurementTruncated(), "the cap is genuinely exhausted here");
+
+        store.accept(entity(mapper, "Q2", "P31"), true, List.of("P31"));
+        store.accept(entity(mapper, "Q1", "P31"), true, List.of("P31"));
+        store.accept(entity(mapper, "Q3", "P31"), true, List.of("P31"));
+
+        assertEquals(List.of("Q1"), store.missing(List.of("Q1"), true, List.of("P31")),
+                "the entity nobody planned still yields first");
+        assertTrue(store.missing(List.of("Q2"), true, List.of("P31")).isEmpty(),
+                "a planned entity is not evicted merely because its pair went unmeasured");
+    }
+
+    @Test void samePropertyDoesNotMakeAnUnrelatedEntityPlanned() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore probe = new WikidataFactStore(Long.MAX_VALUE / 4);
+        probe.accept(entity(mapper, "Q1", "P31"), true, List.of("P31"));
+        long one = probe.estimatedBytes();
+        WikidataFactStore store = new WikidataFactStore(one * 2 + 1_024);
+        store.recordRetentionPlan("Person", List.of("Q2", "Q3"), List.of("P31"));
+        store.accept(entity(mapper, "Q2", "P31"), true, List.of("P31"));
+        store.accept(entity(mapper, "Q1", "P31"), true, List.of("P31"));
+
+        store.accept(entity(mapper, "Q3", "P31"), true, List.of("P31"));
+
+        assertEquals(List.of("Q1"),
+                store.missing(List.of("Q1"), true, List.of("P31")));
+        assertTrue(store.missing(List.of("Q2", "Q3"), true, List.of("P31")).isEmpty());
     }
 
     @Test void batchAnswerKeepsCachedHalfWhenAcceptingFetchedHalfEvictsIt() throws Exception {

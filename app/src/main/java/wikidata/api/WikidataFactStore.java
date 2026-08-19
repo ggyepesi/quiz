@@ -96,11 +96,10 @@ public final class WikidataFactStore {
     private final Map<String, Long> cacheHitsByProperty = new LinkedHashMap<>();
     private final Map<String, Long> evictedRefetchesByProperty = new LinkedHashMap<>();
     private final Map<String, Map<String, Long>> demandsBySource = new LinkedHashMap<>();
-    // The properties some producer has declared it will come back for. Every document
-    // is still retained — one claims body answers every consumer that asks about the
-    // entity, declared or not — but under pressure the budget belongs to the slices
-    // somebody intends to re-read.
-    private final Set<String> plannedPids = new LinkedHashSet<>();
+    // QIDs with at least one bounded QID/PID retention plan. Exact properties live on
+    // the corresponding FactMeasurement; this companion index makes asking whether a
+    // whole-body document has ANY planned use O(1), without a second unbounded pair set.
+    private final Set<String> plannedQids = new LinkedHashSet<>();
     private long unplannedEvictions;
 
     public WikidataFactStore() { this(DEFAULT_MAX_ESTIMATED_BYTES); }
@@ -330,11 +329,14 @@ public final class WikidataFactStore {
             String source, Collection<String> qids, Collection<String> pids) {
         if (qids == null || pids == null) return;
         String owner = source == null || source.isBlank() ? "unspecified" : source;
-        // Declaring the plan is what earns retention. Every producer records it before
-        // the fetch it describes, so the fetch itself already knows it is wanted twice.
-        for (String pid : pids) if (pid != null) plannedPids.add(pid);
         for (String qid : qids) for (String pid : pids) {
             if (qid != null && pid != null) {
+                // The entity's plan is recorded whatever the measurement cap does: it is
+                // one entry per ENTITY, not per pair, and it is what eviction falls back
+                // on. Recording it only alongside a measurement made a truncated
+                // measurement silently invert the eviction order — ranking planned
+                // documents unplanned exactly when the budget is tight enough to matter.
+                plannedQids.add(qid);
                 FactMeasurement measurement = measurement(new FactKey(qid, pid));
                 if (measurement != null && measurement.retentionSource == null) {
                     measurement.retentionSource = owner;
@@ -415,29 +417,39 @@ public final class WikidataFactStore {
         // pass did read — 3,018 documents fetched a second time. Recency is the right
         // order among equals; it is the wrong order between a fact that is wanted again
         // and one that is not.
-        if (overBudget()) evict(document -> !planned(document));
-        if (overBudget()) evict(document -> true);
+        if (overBudget()) evict((qid, document) -> !planned(qid, document));
+        if (overBudget()) evict((qid, document) -> true);
     }
 
     private boolean overBudget() {
         return estimatedBytes + measurementEstimatedBytes() > maxEstimatedBytes;
     }
 
-    private boolean planned(Document document) {
-        if (document.pids() == null) return true; // a whole body answers anything
-        for (String pid : document.pids()) if (plannedPids.contains(pid)) return true;
-        return false;
+    private boolean planned(String qid, Document document) {
+        // A whole body can answer anything, but capability is not demand: it earns
+        // priority only when this entity has at least one declared future use.
+        if (document.pids() == null) return plannedQids.contains(qid);
+        boolean unmeasured = false;
+        for (String pid : document.pids()) {
+            FactMeasurement measurement = factMeasurements.get(new FactKey(qid, pid));
+            if (measurement == null) unmeasured = true;
+            else if (measurement.retentionSource != null) return true;
+        }
+        // Past the cap a pair has no record to consult, and "no record" is not "not
+        // wanted". Fall back to the entity's own plan so a truncated measurement makes
+        // the order coarser rather than backwards.
+        return unmeasured && measurementTruncated && plannedQids.contains(qid);
     }
 
-    private void evict(java.util.function.Predicate<Document> evictable) {
+    private void evict(java.util.function.BiPredicate<String, Document> evictable) {
         Iterator<Map.Entry<String, Document>> entries = documents.entrySet().iterator();
         while (overBudget() && entries.hasNext()) {
             Map.Entry<String, Document> eldest = entries.next();
-            if (!evictable.test(eldest.getValue())) continue;
+            if (!evictable.test(eldest.getKey(), eldest.getValue())) continue;
             estimatedBytes -= eldest.getValue().estimatedBytes();
             evictedKeys.add(eldest.getKey());
             evictions++;
-            if (!planned(eldest.getValue())) unplannedEvictions++;
+            if (!planned(eldest.getKey(), eldest.getValue())) unplannedEvictions++;
             entries.remove();
         }
     }

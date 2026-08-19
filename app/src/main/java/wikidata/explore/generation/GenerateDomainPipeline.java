@@ -38,13 +38,15 @@ public final class GenerateDomainPipeline {
                         List.of(model.classes().size() + " configured classes")),
                 phase(DISCOVER, "Discover populations",
                         "Discover root members and statement subjects.",
-                        rootDetails(model)),
+                        rootDetails(model), discoveryExplanation(model)),
                 phase(ACQUIRE_STATEMENTS, "Acquire statement facts",
                         "Load main statements and configured qualifier facts.",
-                        statementAcquisitionDetails(model)),
+                        statementAcquisitionDetails(model),
+                        statementAcquisitionExplanation(model)),
                 phase(CONSTRUCT, "Construct graph",
                         "Reify statement records, apply restrictions, inverts and projections.",
-                        statementConstructionDetails(model)),
+                        statementConstructionDetails(model),
+                        statementConstructionExplanation(model)),
                 phase(SEMANTIC, "Resolve semantic worklist",
                         "Repeat role stamping, field/evidence acquisition, kind classification "
                                 + "and owned-value construction until stable.",
@@ -204,6 +206,7 @@ public final class GenerateDomainPipeline {
                 "Declared target classes on entity-valued fields",
                 "Persisted field coverage and retained Wikidata facts"));
         List<String> operations = List.of(
+                "Preflight all currently knowable ⟨entity QID, property⟩ demands before acquisition",
                 "Stamp role membership from configured field targets",
                 "Acquire newly demanded properties in model-derived bundles",
                 "Classify entity kinds from configured evidence rules",
@@ -214,6 +217,7 @@ public final class GenerateDomainPipeline {
                 "Loaded referent and owned-field values",
                 "Owned components connected to their owners",
                 "Exact-QID declarations recording answered fields",
+                "Retention plans protecting facts that a later semantic operation will consume",
                 "A fixed-point object graph ready for final labels and validation");
 
         List<PhaseExplanation.ModelReference> references = new ArrayList<>();
@@ -246,12 +250,126 @@ public final class GenerateDomainPipeline {
             references.add(PhaseExplanation.ModelReference.clazz(rule.className()));
             examples.add(kindExample(model, rule));
         }
+        PhaseExplanation.PhaseExample preflight = preflightExample(model);
+        if (preflight != null) examples.add(0, preflight);
         return new PhaseExplanation(
                 "Close the semantic gap between records discovered from Wikidata and "
                         + "the typed object graph promised by the model.",
                 inputs, operations, outputs,
                 references.stream().distinct().toList(),
                 examples.stream().limit(6).toList());
+    }
+
+    private static PhaseExplanation.PhaseExample preflightExample(
+            GeneratedProjectModel model) {
+        var manifest = wikidata.explore.transform.ReferentFieldLoad.compileManifest(model);
+        var first = manifest.propertiesByClass().entrySet().stream()
+                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
+                .findFirst().orElse(null);
+        if (first == null) return null;
+        String className = first.getKey();
+        List<String> pids = List.copyOf(first.getValue());
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        refs.add(PhaseExplanation.ModelReference.clazz(className));
+        pids.stream().limit(4).map(PhaseExplanation.ModelReference::property)
+                .forEach(refs::add);
+        return new PhaseExplanation.PhaseExample(
+                PhaseExplanation.ExampleKind.PLANNED,
+                "Plan facts before loading " + className,
+                List.of("Every currently reachable " + className + " QID"),
+                List.of("The compiled acquisition slice needs "
+                        + String.join(", ", pids)),
+                List.of("Register exact ⟨QID, property⟩ retention plans first",
+                        "A fact fetched for one operation remains available to later consumers",
+                        "Newly discovered populations are planned before the next iteration"),
+                refs);
+    }
+
+    private static PhaseExplanation discoveryExplanation(GeneratedProjectModel model) {
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (GeneratedClassModel clazz : model.classes()) {
+            MembershipPattern pattern = MembershipPattern.of(clazz, model);
+            if (pattern == MembershipPattern.REFERENCED
+                    || pattern == MembershipPattern.OWNED_COMPONENT
+                    || pattern == MembershipPattern.EVIDENCE_KIND
+                    || clazz.reifiesStatements()) continue;
+            refs.add(PhaseExplanation.ModelReference.clazz(clazz.className()));
+            if (examples.size() < 3) examples.add(new PhaseExplanation.PhaseExample(
+                    PhaseExplanation.ExampleKind.PLANNED,
+                    "Discover " + clazz.className(),
+                    List.of("Configured source for " + clazz.className()),
+                    List.of("Membership pattern " + pattern,
+                            "Traversal depth " + clazz.generationDepth()),
+                    List.of("Seed QIDs that subsequent phases enrich and connect"),
+                    List.of(PhaseExplanation.ModelReference.clazz(clazz.className()))));
+        }
+        return new PhaseExplanation(
+                "Establish the root populations and statement subjects from which the domain graph grows.",
+                List.of("Compiled class sources and membership patterns"),
+                List.of("Execute root discovery", "Discover subjects required by statement classes"),
+                List.of("Root entity QIDs", "Statement subject populations"),
+                refs.stream().distinct().toList(), examples);
+    }
+
+    private static PhaseExplanation statementAcquisitionExplanation(
+            GeneratedProjectModel model) {
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+            var load = recipe.load();
+            refs.add(PhaseExplanation.ModelReference.clazz(load.statementType()));
+            refs.add(PhaseExplanation.ModelReference.property(load.propertyPid()));
+            var qualifiers = load.qualifiers() == null ? List
+                    .<wikidata.explore.transform.QualifierLoadConfig.Qualifier>of()
+                    : load.qualifiers();
+            qualifiers.forEach(q -> refs.add(
+                    PhaseExplanation.ModelReference.property(q.pid())));
+            if (examples.size() < 3) examples.add(new PhaseExplanation.PhaseExample(
+                    PhaseExplanation.ExampleKind.PLANNED,
+                    "Acquire " + load.statementType() + " facts",
+                    List.of(load.entityType() + " subject QIDs"),
+                    List.of("Main statement property " + load.propertyPid(),
+                            qualifiers.isEmpty() ? "No configured qualifiers"
+                                    : "Qualifier properties " + qualifiers.stream()
+                                    .map(q -> q.pid()).collect(
+                                            java.util.stream.Collectors.joining(", "))),
+                    List.of("Raw statement records ready for graph construction"),
+                    List.of(PhaseExplanation.ModelReference.clazz(load.statementType()),
+                            PhaseExplanation.ModelReference.property(load.propertyPid()))));
+        }
+        return new PhaseExplanation(
+                "Acquire the statements and qualifiers needed to build configured statement-class records.",
+                List.of("Discovered or reused statement subject QIDs", "Statement recipes"),
+                List.of("Load main statements", "Load configured qualifiers in batches"),
+                List.of("Raw statement and qualifier facts"),
+                refs.stream().distinct().toList(), examples);
+    }
+
+    private static PhaseExplanation statementConstructionExplanation(
+            GeneratedProjectModel model) {
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+            var load = recipe.load();
+            var construct = recipe.reify();
+            refs.add(PhaseExplanation.ModelReference.clazz(construct.targetType()));
+            if (examples.size() < 3) examples.add(new PhaseExplanation.PhaseExample(
+                    PhaseExplanation.ExampleKind.CHANGED,
+                    "Construct " + construct.targetType(),
+                    List.of("A raw " + load.statementField() + " statement record"),
+                    List.of("Source maps to " + construct.sourceField(),
+                            "Value maps to " + load.valueField()),
+                    List.of("A typed " + construct.targetType() + " object connected to its source and value"),
+                    List.of(PhaseExplanation.ModelReference.clazz(construct.targetType()))));
+        }
+        return new PhaseExplanation(
+                "Turn acquired statement facts into the typed records and relationships promised by the model.",
+                List.of("Raw statement and qualifier facts", "Reification recipes"),
+                List.of("Promote statement records", "Apply restrictions, inverses and projections",
+                        "Deduplicate by the configured canonical key"),
+                List.of("Typed statement-class records connected into the graph"),
+                refs.stream().distinct().toList(), examples);
     }
 
     private static PhaseExplanation.PhaseExample propertyExample(

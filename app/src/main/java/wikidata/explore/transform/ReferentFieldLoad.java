@@ -61,6 +61,12 @@ public final class ReferentFieldLoad {
         }
     }
 
+    /** Bounded, model-derived retention intentions registered before acquisition.
+     *  {@code coveredPairs} were NOT registered: their declaration is already loaded for
+     *  that entity, so nothing will ask again. */
+    public record RetentionPlan(
+            int classes, int entities, int factPairs, int coveredPairs) { }
+
     /** What a field load did: values assigned, and the entities it could NOT reach.
      *  Not a pass/fail flag — a load over thousands of entities normally answers for
      *  almost all of them, and throwing that away because one batch of 50 was
@@ -117,6 +123,71 @@ public final class ReferentFieldLoad {
     }
 
     private ReferentFieldLoad() {}
+
+    /**
+     * Announces every currently reachable class member's property closure before any
+     * loader starts fetching. Loaders still record actual demand and may repeat these
+     * idempotent plans; the preflight matters when one producer banks facts that a later
+     * producer consumes, because eviction must know about that later use immediately.
+     * Newly stamped kinds/components are picked up by the next convergence iteration.
+     *
+     * <p>A plan describes FUTURE use, so a declaration already loaded for an entity is
+     * not planned again: nothing will ask for it, and a plan that covers every
+     * conceivable fact makes every document equally worth keeping — which is no
+     * ordering at all, at the exact moment the budget needs one. Coverage is scoped to
+     * the declaring class: the same QID/PID may still be pending for another direct
+     * class carried by that entity. Prospective closure properties have no declaration
+     * on the producer class and therefore remain conservatively planned.
+     */
+    public static RetentionPlan planRetention(
+            Collection<WikidataDynamicObject> pool,
+            WikidataApiClient api,
+            AcquisitionManifest manifest,
+            Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded) {
+        if (pool == null || api == null || manifest == null
+                || manifest.propertiesByClass().isEmpty()) {
+            return new RetentionPlan(0, 0, 0, 0);
+        }
+        record ClassPid(String className, String pid) { }
+        Map<ClassPid, Set<String>> coveredByClassPid = new LinkedHashMap<>();
+        if (alreadyLoaded != null) {
+            for (wikidata.explore.extract.LoadedDeclaration done : alreadyLoaded) {
+                if (done == null) continue;
+                coveredByClassPid.computeIfAbsent(
+                        new ClassPid(done.className(), clean(done.propertyPid())),
+                        ignored -> new LinkedHashSet<>()).addAll(done.coveredQids());
+            }
+        }
+        Map<String, Set<String>> qidsByClass = new LinkedHashMap<>();
+        for (WikidataDynamicObject object : collectReachable(pool)) {
+            if (object == null || !WikidataIds.isQid(object.qid())) continue;
+            for (String className : object.directClassNames()) {
+                if (!manifest.propertiesFor(className).isEmpty()) {
+                    qidsByClass.computeIfAbsent(className, ignored -> new LinkedHashSet<>())
+                            .add(object.qid());
+                }
+            }
+        }
+        int entities = 0;
+        int pairs = 0;
+        int covered = 0;
+        for (Map.Entry<String, Set<String>> entry : qidsByClass.entrySet()) {
+            entities += entry.getValue().size();
+            for (String pid : manifest.propertiesFor(entry.getKey())) {
+                Set<String> done = coveredByClassPid.getOrDefault(
+                        new ClassPid(entry.getKey(), pid), Set.of());
+                Set<String> wanted = new LinkedHashSet<>(entry.getValue());
+                int before = wanted.size();
+                wanted.removeAll(done);
+                covered += before - wanted.size();
+                if (wanted.isEmpty()) continue;
+                api.facts().recordRetentionPlan(
+                        entry.getKey(), wanted, java.util.List.of(pid));
+                pairs += wanted.size();
+            }
+        }
+        return new RetentionPlan(qidsByClass.size(), entities, pairs, covered);
+    }
 
     /** @return the number of (referent, field) values loaded. */
     public static int apply(

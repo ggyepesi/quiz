@@ -20,6 +20,122 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ReferentFieldLoadTest {
 
+    @Test void retentionPreflightSeesAllKnownConsumersBeforeAnyLoaderRuns() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("ForWork");
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P31");
+        GeneratedClassModel forWork = new GeneratedClassModel("ForWork");
+        forWork.addField("genre", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P136");
+        model.rootClass(nomination);
+        model.addClass(nominee);
+        model.addClass(forWork);
+
+        WikidataDynamicObject record = new WikidataDynamicObject("N1", "Nomination");
+        record.type("Nomination");
+        record.put("nominee", new WikidataDynamicObject("Q1", "Nominee"));
+        record.put("forWork", new WikidataDynamicObject("Q2", "ForWork"));
+        RecordingApi api = new RecordingApi();
+
+        ReferentClassStamp.apply(model, List.of(record));
+        ReferentFieldLoad.RetentionPlan plan = ReferentFieldLoad.planRetention(
+                List.of(record), api, ReferentFieldLoad.compileManifest(model), List.of());
+
+        assertEquals(2, plan.classes());
+        assertEquals(2, plan.entities());
+        assertEquals(2, plan.factPairs());
+        assertEquals(0, plan.coveredPairs());
+        assertEquals(0, api.claimLoads,
+                "preflight registers intent without starting acquisition");
+    }
+
+    /**
+     * A plan describes what will be ASKED FOR. A declaration already loaded for an
+     * entity will not be asked for again, so planning it says "keep this" about a fact
+     * whose use is over — and since every planned document ranks equal under pressure,
+     * planning everything conceivable leaves eviction with no order to follow at the
+     * one moment it needs one.
+     */
+    @Test void preflightDoesNotPlanADeclarationAlreadyLoadedForThatEntity() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.name("oscars");
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("ForWork");
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P31");
+        GeneratedClassModel forWork = new GeneratedClassModel("ForWork");
+        forWork.addField("genre", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P136");
+        model.rootClass(nomination);
+        model.addClass(nominee);
+        model.addClass(forWork);
+
+        WikidataDynamicObject record = new WikidataDynamicObject("N1", "Nomination");
+        record.type("Nomination");
+        record.put("nominee", new WikidataDynamicObject("Q1", "Nominee"));
+        record.put("forWork", new WikidataDynamicObject("Q2", "ForWork"));
+        RecordingApi api = new RecordingApi();
+        ReferentClassStamp.apply(model, List.of(record));
+
+        var manifest = ReferentFieldLoad.compileManifest(model);
+        String nomineePid = manifest.propertiesFor("Nominee").iterator().next();
+        ReferentFieldLoad.RetentionPlan plan = ReferentFieldLoad.planRetention(
+                List.of(record), api, manifest,
+                List.of(new wikidata.explore.extract.LoadedDeclaration(
+                        "Nominee", "type", nomineePid, List.of("Q1"))));
+
+        assertEquals(1, plan.coveredPairs(),
+                "the loaded declaration is not planned again");
+        assertEquals(1, plan.factPairs(),
+                "what remains unloaded still is");
+        assertEquals(2, plan.entities(), "both members are still reachable");
+    }
+
+    @Test void coverageForOneClassDoesNotHideTheSamePendingQidPidOnAnother() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel recordClass = new GeneratedClassModel("Record");
+        recordClass.addField("subject", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("RoleA");
+        recordClass.addField("otherSubject", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("RoleB");
+        GeneratedClassModel roleA = new GeneratedClassModel("RoleA");
+        roleA.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P31");
+        GeneratedClassModel roleB = new GeneratedClassModel("RoleB");
+        roleB.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P31");
+        model.rootClass(recordClass);
+        model.addClass(roleA);
+        model.addClass(roleB);
+
+        WikidataDynamicObject shared = new WikidataDynamicObject("Q1", "Shared");
+        shared.assignClass("RoleA");
+        shared.assignClass("RoleB");
+        WikidataDynamicObject record = new WikidataDynamicObject("R1", "Record");
+        record.type("Record");
+        record.put("subject", shared);
+        record.put("otherSubject", shared);
+
+        ReferentFieldLoad.RetentionPlan plan = ReferentFieldLoad.planRetention(
+                List.of(record), new RecordingApi(), ReferentFieldLoad.compileManifest(model),
+                List.of(new wikidata.explore.extract.LoadedDeclaration(
+                        "RoleA", "type", "P31", List.of("Q1"))));
+
+        assertEquals(1, plan.coveredPairs());
+        assertEquals(1, plan.factPairs(),
+                "RoleB still needs Q1/P31 even though RoleA already loaded it");
+    }
+
     private static final class RecordingApi extends FakeWikidataApiClient {
         int claimLoads;
         int literalLoads;

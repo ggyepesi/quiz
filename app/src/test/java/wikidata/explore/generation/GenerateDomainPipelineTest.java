@@ -87,6 +87,17 @@ class GenerateDomainPipelineTest {
                 .findFirst().orElseThrow().phase().explanation();
         assertTrue(semantic.operations().stream().anyMatch(s -> s.startsWith("Repeat")),
                 semantic.operations().toString());
+        assertTrue(semantic.operations().stream().anyMatch(s ->
+                        s.contains("⟨entity QID, property⟩")
+                                && s.contains("before acquisition")),
+                semantic.operations().toString());
+        assertTrue(semantic.examples().stream().anyMatch(e ->
+                        e.title().startsWith("Plan facts before loading Nominee")
+                                && e.evidence().stream().anyMatch(value ->
+                                value.contains("P31"))
+                                && e.output().stream().anyMatch(value ->
+                                value.contains("retention plans"))),
+                semantic.examples().toString());
         assertTrue(semantic.references().stream().anyMatch(r ->
                 r.kind() == process.PhaseExplanation.ReferenceKind.KIND_RULE
                         && r.owner().equals("Person")));
@@ -96,6 +107,12 @@ class GenerateDomainPipelineTest {
                 semantic.examples().toString());
         assertTrue(semantic.examples().stream().anyMatch(e ->
                 e.title().contains("owned Name")), semantic.examples().toString());
+
+        var discovery = pipeline.snapshot().stream()
+                .filter(state -> state.phase().id().equals(GenerateDomainPipeline.DISCOVER))
+                .findFirst().orElseThrow().phase().explanation();
+        assertTrue(discovery.examples().stream().anyMatch(e ->
+                e.title().equals("Discover Nomination")), discovery.examples().toString());
     }
 
     private static String details(ProcessWorkflowPipeline pipeline, String id) {

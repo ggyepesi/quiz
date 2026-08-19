@@ -73,6 +73,15 @@ public final class SemanticConvergence {
             long fetchedBefore = api.facts().fetchedDocuments();
             long hitsBefore = api.facts().cacheHits();
             int stamped = ReferentClassStamp.apply(model, pool);
+            ReferentFieldLoad.RetentionPlan retention =
+                    ReferentFieldLoad.planRetention(
+                            pool, api, acquisition, completed.values());
+            sink.message("Semantic retention preflight iteration " + iteration + ": "
+                    + retention.factPairs() + " planned QID/property pair(s) across "
+                    + retention.entities() + " class member(s) in "
+                    + retention.classes() + " class(es), registered before acquisition; "
+                    + retention.coveredPairs() + " pair(s) already loaded and not "
+                    + "planned again.\n");
             ReferentFieldLoad.Result fields = ReferentFieldLoad.load(
                     model, pool, api, sink, completed.values(), true, acquisition);
             loaded += fields.loaded();
