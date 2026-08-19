@@ -23,6 +23,82 @@ class WikidataFactStoreTest {
         assertTrue(store.estimatedBytes() <= 1_536);
     }
 
+    /**
+     * Under pressure the budget belongs to the facts somebody intends to re-read. A
+     * statement body is fetched, parsed once and never asked for again; holding it in
+     * arrival order evicted the properties every later pass DID read, and one real run
+     * fetched 3,018 documents a second time for that reason. Retention itself is
+     * unchanged — one claims document still answers every consumer that asks — only the
+     * order in which the budget gives way.
+     */
+    @Test void anUnplannedSliceYieldsTheBudgetBeforeAPlannedOne() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+
+        // Size the budget from a real document rather than a guess: room for two.
+        WikidataFactStore probe = new WikidataFactStore(Long.MAX_VALUE / 4);
+        probe.accept(entity(mapper, "Q1", "P1411"), true, List.of("P1411"));
+        long one = probe.estimatedBytes();
+
+        WikidataFactStore store = new WikidataFactStore(one * 2 + 1_024);
+        store.recordRetentionPlan("Nominee", List.of("Q2", "Q3"), List.of("P31"));
+
+        // The planned slice arrives FIRST, the unplanned one after it: by age alone the
+        // planned document is the one that would go.
+        store.accept(entity(mapper, "Q2", "P31"), true, List.of("P31"));
+        store.accept(entity(mapper, "Q1", "P1411"), true, List.of("P1411"));
+        assertEquals(2, store.size());
+
+        store.accept(entity(mapper, "Q3", "P31"), true, List.of("P31"));
+
+        assertEquals(1, store.unplannedEvictions());
+        assertEquals(List.of("Q1"), store.missing(List.of("Q1"), true, List.of("P1411")),
+                "the statement body nobody will re-read yields, despite being newer");
+        assertTrue(store.missing(List.of("Q2"), true, List.of("P31")).isEmpty(),
+                "the older, planned slice a later pass asks for is still held");
+        assertTrue(store.missing(List.of("Q3"), true, List.of("P31")).isEmpty());
+    }
+
+    @Test void batchAnswerKeepsCachedHalfWhenAcceptingFetchedHalfEvictsIt() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore probe = new WikidataFactStore(Long.MAX_VALUE / 4);
+        probe.accept(entity(mapper, "Q1", "P31"), true, List.of("P31"));
+        long one = probe.estimatedBytes();
+        WikidataFactStore store = new WikidataFactStore(one + 32);
+        store.accept(entity(mapper, "Q1", "P31"), true, List.of("P31"));
+
+        class Client extends WikidataApiClient {
+            Client() { super("test"); facts(store); }
+            @Override protected JsonNode getEntitiesBatch(List<String> qids, boolean claims) {
+                try {
+                    return entity(mapper, "Q2", "P31");
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            JsonNode batch() throws Exception {
+                return getEntitiesBatchWithRetry(
+                        List.of("Q1", "Q2"), true, List.of("P31"));
+            }
+        }
+
+        JsonNode result = new Client().batch();
+
+        assertTrue(result.path("entities").has("Q1"),
+                "the entity answered from cache must survive in the returned batch");
+        assertTrue(result.path("entities").has("Q2"));
+        assertEquals(1, store.size(), "accepting Q2 really did force one cache eviction");
+    }
+
+    private static JsonNode entity(ObjectMapper mapper, String qid, String pid)
+            throws Exception {
+        return mapper.readTree("{\"entities\":{\"" + qid + "\":{\"id\":\"" + qid
+                + "\",\"labels\":{\"en\":{\"value\":\"" + qid + " padded label value"
+                + " long enough to weigh something\"}},\"claims\":{\"" + pid
+                + "\":[{\"id\":\"" + qid + "$s\",\"rank\":\"normal\",\"mainsnak\":"
+                + "{\"datavalue\":{\"type\":\"wikibase-entityid\",\"value\":"
+                + "{\"id\":\"Q7\"}}}}]}}}}");
+    }
+
     @Test void oneClaimsDocumentServesEntityAndStatementConsumers() throws Exception {
         class RecordingClient extends WikidataApiClient {
             int physical;

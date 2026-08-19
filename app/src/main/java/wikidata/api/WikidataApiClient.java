@@ -930,9 +930,14 @@ public class WikidataApiClient {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 JsonNode fetched = getEntitiesBatch(missing, withClaims);
+                // The answer is what was true when it was asked for: the entities this
+                // fetch carried, plus the ones the store already held. Assemble it
+                // BEFORE retaining anything, because retaining enforces the budget and
+                // may evict the very documents the cached half is made of — asking the
+                // store again afterwards would hand back whatever eviction had left.
+                JsonNode answer = facts.merged(fetched, qids, withClaims, pids, mapper);
                 facts.accept(fetched, withClaims, pids);
-                JsonNode combined = facts.response(qids, withClaims, pids, mapper);
-                return combined == null ? fetched : combined;
+                return answer;
             } catch (Exception e) {
                 last = e;
                 if (Thread.currentThread().isInterrupted()) throw e;

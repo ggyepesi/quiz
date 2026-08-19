@@ -116,6 +116,10 @@ public final class DisambiguationPrune {
         }
 
         if (!needFetch.isEmpty()) {
+            // This pass is a real consumer of P31, not a bystander: without saying so,
+            // the run's usage report counts the entities it reads as banked-but-unused
+            // and argues for dropping exactly the slice it depends on.
+            api.facts().recordDemand("disambiguation prune", needFetch, List.of("P31"));
             Map<String, WikidataApiClient.ApiEntity> details;
             try (GenerationLog.Group group = sink.group(
                     "Check " + needFetch.size()

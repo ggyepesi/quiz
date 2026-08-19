@@ -366,6 +366,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             + " re-fetch(es) of an evicted document"
                             + (facts.oversized() == 0 ? "" : ", " + facts.oversized()
                                     + " too large to retain")
+                            + (facts.unplannedEvictions() == 0 ? ""
+                                    : ", " + facts.unplannedEvictions()
+                                    + " of them holding facts nobody planned to re-read")
                             + ".\n");
                     genLog.message("Fact-store measurement: ~"
                             + facts.measurementEstimatedBytes() / 1024 + " KB"

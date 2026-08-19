@@ -96,6 +96,12 @@ public final class WikidataFactStore {
     private final Map<String, Long> cacheHitsByProperty = new LinkedHashMap<>();
     private final Map<String, Long> evictedRefetchesByProperty = new LinkedHashMap<>();
     private final Map<String, Map<String, Long>> demandsBySource = new LinkedHashMap<>();
+    // The properties some producer has declared it will come back for. Every document
+    // is still retained — one claims body answers every consumer that asks about the
+    // entity, declared or not — but under pressure the budget belongs to the slices
+    // somebody intends to re-read.
+    private final Set<String> plannedPids = new LinkedHashSet<>();
+    private long unplannedEvictions;
 
     public WikidataFactStore() { this(DEFAULT_MAX_ESTIMATED_BYTES); }
 
@@ -223,6 +229,34 @@ public final class WikidataFactStore {
         return root;
     }
 
+    /**
+     * The fetched response, completed with what is already held for the qids it does
+     * not carry. A fetch only asks for what was missing, so returning it alone drops
+     * every entity the store answered — which was invisible while everything fetched
+     * was also retained, and is not once retention follows a plan.
+     */
+    public synchronized JsonNode merged(
+            JsonNode fetched, Collection<String> qids, boolean requireClaims,
+            Collection<String> pids, ObjectMapper mapper) {
+        ObjectNode root = mapper.createObjectNode();
+        ObjectNode entities = root.putObject("entities");
+        JsonNode answered = fetched == null ? null : fetched.path("entities");
+        if (answered != null && answered.isObject()) {
+            answered.fields().forEachRemaining(
+                    entry -> entities.set(entry.getKey(), entry.getValue()));
+        }
+        if (qids != null) {
+            for (String qid : qids) {
+                if (entities.has(qid)) continue;
+                Document document = documents.get(qid);
+                if (answers(document, requireClaims, pids)) {
+                    entities.set(qid, document.json().deepCopy());
+                }
+            }
+        }
+        return root;
+    }
+
     /** Drops every claim property outside the slice. Labels, id and the rest of the
      *  entity document are untouched — they cost little and every consumer wants them. */
     private static void sliceClaims(JsonNode entity, Set<String> keep) {
@@ -250,6 +284,10 @@ public final class WikidataFactStore {
     public long cacheHits() { return hits.get(); }
     /** Documents dropped to stay inside the budget. */
     public synchronized long evictions() { return evictions; }
+    /** Evictions that fell on a slice no producer had planned to re-read — the budget
+     *  reclaimed from facts nobody was coming back for. */
+    public synchronized long unplannedEvictions() { return unplannedEvictions; }
+
     /** Documents too large to retain at all — the budget cannot hold even one. */
     public synchronized long oversized() { return oversized; }
     /** Lookups for a document this store had evicted: what a larger budget would have
@@ -292,6 +330,9 @@ public final class WikidataFactStore {
             String source, Collection<String> qids, Collection<String> pids) {
         if (qids == null || pids == null) return;
         String owner = source == null || source.isBlank() ? "unspecified" : source;
+        // Declaring the plan is what earns retention. Every producer records it before
+        // the fetch it describes, so the fetch itself already knows it is wanted twice.
+        for (String pid : pids) if (pid != null) plannedPids.add(pid);
         for (String qid : qids) for (String pid : pids) {
             if (qid != null && pid != null) {
                 FactMeasurement measurement = measurement(new FactKey(qid, pid));
@@ -368,13 +409,35 @@ public final class WikidataFactStore {
     public synchronized boolean measurementTruncated() { return measurementTruncated; }
 
     private void evictOldest() {
+        // A slice nobody planned to come back for goes first, however recently it
+        // arrived. One run held 194 MB of statement bodies that were parsed once and
+        // never read again, and paid for them by evicting the properties every later
+        // pass did read — 3,018 documents fetched a second time. Recency is the right
+        // order among equals; it is the wrong order between a fact that is wanted again
+        // and one that is not.
+        if (overBudget()) evict(document -> !planned(document));
+        if (overBudget()) evict(document -> true);
+    }
+
+    private boolean overBudget() {
+        return estimatedBytes + measurementEstimatedBytes() > maxEstimatedBytes;
+    }
+
+    private boolean planned(Document document) {
+        if (document.pids() == null) return true; // a whole body answers anything
+        for (String pid : document.pids()) if (plannedPids.contains(pid)) return true;
+        return false;
+    }
+
+    private void evict(java.util.function.Predicate<Document> evictable) {
         Iterator<Map.Entry<String, Document>> entries = documents.entrySet().iterator();
-        while (estimatedBytes + measurementEstimatedBytes() > maxEstimatedBytes
-                && entries.hasNext()) {
+        while (overBudget() && entries.hasNext()) {
             Map.Entry<String, Document> eldest = entries.next();
+            if (!evictable.test(eldest.getValue())) continue;
             estimatedBytes -= eldest.getValue().estimatedBytes();
             evictedKeys.add(eldest.getKey());
             evictions++;
+            if (!planned(eldest.getValue())) unplannedEvictions++;
             entries.remove();
         }
     }
