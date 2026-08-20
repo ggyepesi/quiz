@@ -36,6 +36,11 @@ class GenerateDomainPipelineTest {
         String construction = details(pipeline, GenerateDomainPipeline.CONSTRUCT);
         assertTrue(construction.contains("promote __Nomination records"), construction);
         assertTrue(construction.contains("value → category"), construction);
+        GenerationFactDemandPlan demands = GenerationFactDemandPlan.compile(model);
+        assertTrue(demands.all().stream().anyMatch(d ->
+                        d.consumer().equals("statement acquisition")
+                                && d.propertyPids().contains("P1411")),
+                demands.all().toString());
     }
 
     @Test void derivesFieldPropertyKindAndOwnedDetailsFromTheConfiguredModel() {
@@ -113,6 +118,18 @@ class GenerateDomainPipelineTest {
                 .findFirst().orElseThrow().phase().explanation();
         assertTrue(discovery.examples().stream().anyMatch(e ->
                 e.title().equals("Discover Nomination")), discovery.examples().toString());
+        assertTrue(discovery.operations().stream().anyMatch(e ->
+                        e.contains("downstream fact needs")), discovery.operations().toString());
+        assertTrue(discovery.examples().stream().anyMatch(e ->
+                        e.title().equals("Carry facts forward for Nomination")
+                                && e.evidence().stream().anyMatch(v -> v.contains("P31"))
+                                && e.output().stream().anyMatch(v -> v.contains("instead of refetching"))),
+                discovery.examples().toString());
+        assertTrue(GenerationFactDemandPlan.compile(model).all().stream().anyMatch(d ->
+                        d.consumer().equals("semantic convergence")
+                                && d.targetClass().equals("Nominee")
+                                && d.propertyPids().contains("P31")),
+                GenerationFactDemandPlan.compile(model).all().toString());
     }
 
     private static String details(ProcessWorkflowPipeline pipeline, String id) {

@@ -102,6 +102,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     RuleNode rootPlan = null;
                     int classesRun = 0;
                     int childQueryFailures = 0;
+                    wikidata.explore.generation.GenerationFactDemandPlan factDemandPlan =
+                            wikidata.explore.generation.GenerationFactDemandPlan.compile(project);
 
                     for (GeneratedClassModel cls : project.classes()) {
                         if (!generatable(cls)) {
@@ -117,7 +119,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         GenerationPipeline.ExtractionResult extraction =
                                 pipeline.extractResult(
                                 context.sparql(Datasource.WIKIDATA), plan, cls.generationDepth(),
-                                genLog, shared, context.cancellation(), entityApi);
+                                genLog, shared, context.cancellation(), entityApi,
+                                factDemandPlan.forClass(cls.className()));
                         List<WikidataDynamicObject> roots = extraction.objects();
                         childQueryFailures += extraction.childQueryFailures();
                         genLog.message("  -> " + roots.size() + " "
@@ -159,7 +162,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     .enrichWithReport(
                                             compiledProject, reifyPool,
                                             context.sparql(Datasource.WIKIDATA), genLog,
-                                            entityApi, true);
+                                            entityApi, true, factDemandPlan);
                     progress(
                             wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
                             statementAcquisition.summary());
@@ -370,6 +373,13 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     : ", " + facts.unplannedEvictions()
                                     + " of them holding facts nobody planned to re-read")
                             + ".\n");
+                    genLog.message("Fact-demand timing: "
+                            + facts.preplannedDemandPairs()
+                            + " QID/property demand pair(s) known or retained before "
+                            + "first acquisition, " + facts.lateDemandPairs()
+                            + " unplanned demand pair(s) discovered after the entity "
+                            + "had already been fetched; " + facts.cacheHits()
+                            + " request(s) avoided by retained facts.\n");
                     genLog.message("Fact-store measurement: ~"
                             + facts.measurementEstimatedBytes() / 1024 + " KB"
                             + (facts.measurementTruncated()
@@ -379,7 +389,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             facts.propertyUsage();
                     if (!usage.isEmpty()) {
                         genLog.message("Fact-store property usage (banked / demanded / "
-                                + "unused, retained bytes, cache hits, eviction re-fetches):\n");
+                                + "unused, retained bytes, cache hits, eviction re-fetches, "
+                                + "late demands):\n");
                         for (var property : usage) {
                             genLog.message("  " + property.propertyPid() + ": "
                                     + property.bankedEntities() + " / "
@@ -389,7 +400,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     + property.unusedEstimatedBytes() / 1024
                                     + " KB unused, " + property.cacheHits()
                                     + " hit(s), " + property.evictedRefetches()
-                                    + " eviction re-fetch(es).\n");
+                                    + " eviction re-fetch(es), "
+                                    + property.lateDemands() + " late demand(s).\n");
                         }
                     }
                     if (!facts.demandsBySource().isEmpty()) {

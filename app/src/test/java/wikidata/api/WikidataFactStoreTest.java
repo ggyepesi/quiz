@@ -165,7 +165,8 @@ class WikidataFactStoreTest {
         RecordingClient client = new RecordingClient();
 
         assertEquals(List.of("Q5"),
-                client.getEntities(List.of("Q1"), List.of("P31")).get("Q1").claim("P31"));
+                client.getEntities(List.of("Q1"), List.of("P31")).get("Q1")
+                        .entityQids("P31"));
         assertEquals("Q5", client.getStatements(
                 List.of("Q1"), "P31", List.of(), null).get("Q1").getFirst().value());
         assertEquals(1, client.physical);
@@ -302,6 +303,8 @@ class WikidataFactStoreTest {
         assertEquals(1, usage.get("P31").demandedEntities());
         assertEquals(0, usage.get("P31").unusedEntities());
         assertEquals(1, usage.get("P31").cacheHits());
+        assertEquals(0, usage.get("P31").lateDemands(),
+                "a retained-before-fetch fact is planned even when consumed later");
         assertEquals(0, usage.get("P569").demandedEntities());
         assertEquals(1, usage.get("P569").unusedEntities(),
                 "a prospective property is visible until a later consumer needs it");
@@ -312,6 +315,22 @@ class WikidataFactStoreTest {
                         WikidataFactStore.RetentionUsage::propertyPid, p -> p));
         assertEquals("Nominee", retention.get("P569").source());
         assertTrue(retention.get("P569").unusedEstimatedBytes() > 0);
+        assertEquals(1, store.preplannedDemandPairs());
+        assertEquals(0, store.lateDemandPairs());
+    }
+
+    @Test void demandAfterAnUnplannedFirstFetchIsReportedAsLate() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore store = new WikidataFactStore();
+        store.accept(mapper.readTree("""
+                {"entities":{"Q42":{"id":"Q42","claims":{"P31":[]}}}}
+                """), true, List.of("P31"));
+
+        store.recordDemand("late consumer", List.of("Q42"), List.of("P31"));
+
+        assertEquals(1, store.lateDemandPairs());
+        assertEquals(0, store.preplannedDemandPairs());
+        assertEquals(1, store.propertyUsage().getFirst().lateDemands());
     }
 
     @Test void aLaterSliceDoesNotDowngradeACompleteClaimsDocument() throws Exception {

@@ -80,10 +80,12 @@ public class GenerationPipeline {
             GenerationLog log,
             wikidata.explore.extract.WikidataObjectRegistry registry,
             process.CancellationToken cancellation,
-            wikidata.api.WikidataApiClient entityApi) throws Exception {
+            wikidata.api.WikidataApiClient entityApi,
+            List<FactDemand> factDemands) throws Exception {
         RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry)
                 .cancellation(cancellation)
                 .api(entityApi)
+                .factDemands(factDemands)
                 .deferLabels(true);
         extractor.log(log);
         List<WikidataDynamicObject> objects = extractor.load(plan, depth, log);

@@ -6,17 +6,20 @@ import wikidata.WikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.RuleDirection;
+import wikidata.explore.generation.FactDemand;
 import wikidata.explore.rule.RuleIncludedField;
 import wikidata.explore.rule.RuleNode;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class RuleTreeExtractorBatchedFieldTest {
 
@@ -123,11 +126,47 @@ class RuleTreeExtractorBatchedFieldTest {
         }
     }
 
-    /** A scalar field must not re-scan the class: the members are already known,
-     *  so its query is bounded by VALUES and batched like every other Stage-2 pass.
-     *  The whole-class form is what soft-timed-out on a large membership. */
     @Test
-    void scalarFieldsAreFetchedOverTheKnownMembersNotTheWholeClass() {
+    void rootFetchRetainsAProspectiveDownstreamPropertyWithoutMaterializingIt()
+            throws Exception {
+        AtomicReference<List<String>> requested = new AtomicReference<>(List.of());
+        try (WikidataSparqlClient sparql = new WikidataSparqlClient("test") {
+            @Override public List<WikidataBinding> query(String query) {
+                return List.of(new WikidataBinding(Map.of(
+                        "value", "http://www.wikidata.org/entity/Q11",
+                        "valueLabel", "Example film")));
+            }
+        }) {
+            FakeWikidataApiClient api = new FakeWikidataApiClient() {
+                @Override public Map<String, ApiEntity> getEntities(
+                        List<String> qids, List<String> pids, BatchLog log) {
+                    if (!pids.isEmpty()) requested.set(List.copyOf(pids));
+                    return super.getEntities(qids, pids, log);
+                }
+            };
+            api.entity("Q11", "Example film", Map.of(
+                    "P840", List.of("Q1044"), "P31", List.of("Q11424")))
+               .entity("Q1044", "Sierra Leone")
+               .entity("Q11424", "film");
+
+            List<WikidataDynamicObject> movies = new RuleTreeExtractor(sparql)
+                    .api(api)
+                    .factDemands(List.of(FactDemand.of(
+                            "disambiguation prune", "Movies", List.of("P31"),
+                            "vet internal pages")))
+                    .load(moviesWithLocations(), 0);
+
+            assertEquals(List.of("P840", "P31"), requested.get());
+            assertTrue(movies.getFirst().get("locations") instanceof WikidataDynamicObject);
+            assertNull(movies.getFirst().get("type"),
+                    "a retained fact must not invent a configured field");
+        }
+    }
+
+    /** An outgoing scalar rides the same claims documents as outgoing entity fields;
+     * the plan must not schedule the old residual SPARQL pass. */
+    @Test
+    void outgoingScalarFieldsRideTheRootEntityRequest() {
         RuleNode node = moviesWithLocations();
         RuleIncludedField duration = new RuleIncludedField(
                 "duration", "P2047", "duration",
@@ -135,17 +174,64 @@ class RuleTreeExtractorBatchedFieldTest {
         node.addIncludedField(duration);
 
         List<String> plan = new RuleTreeExtractor(null).previewQueries(node, 0);
-        String residual = plan.stream()
-                              .filter(p -> p.contains("Residual scalar/media"))
-                              .findFirst()
-                              .orElseThrow(() -> new AssertionError(
-                                      "no residual query in plan: " + plan));
+        String joined = String.join("\n", plan);
+        assertTrue(joined.contains("duration\" via wbgetentities"), joined);
+        assertFalse(joined.contains("Residual scalar/media"), joined);
+    }
 
-        assertTrue(residual.contains("VALUES ?value"), residual);
-        assertTrue(residual.contains("<member batch>"), residual);
-        assertTrue(residual.contains("P2047"), residual);
-        assertFalse(residual.contains("P840"),
-                    "the entity-list field is captured by Stage 2, not the residual");
+    @Test
+    void malformedOutgoingPropertyFailsInsteadOfProducingASilentEmptyField() {
+        RuleNode node = moviesWithLocations();
+        RuleIncludedField broken = new RuleIncludedField(
+                "composer", "", "composer",
+                RuleIncludedField.FieldKind.ENTITY, true);
+        node.addIncludedField(broken);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new RuleTreeExtractor(null).previewQueries(node, 0));
+
+        assertTrue(error.getMessage().contains("Movies.composer"), error.getMessage());
+        assertTrue(error.getMessage().contains("property PID"), error.getMessage());
+    }
+
+    @Test
+    void loadDecodesOutgoingDateAndEntityFromOneApiPass() throws Exception {
+        RuleNode node = moviesWithLocations();
+        RuleIncludedField released = new RuleIncludedField(
+                "publicationDate", "P577", "publication date",
+                RuleIncludedField.FieldKind.AUTO, true);
+        node.addIncludedField(released);
+
+        AtomicInteger sparqlCalls = new AtomicInteger();
+        AtomicReference<List<String>> requested = new AtomicReference<>(List.of());
+        try (WikidataSparqlClient sparql = new WikidataSparqlClient("test") {
+            @Override public List<WikidataBinding> query(String query) {
+                sparqlCalls.incrementAndGet();
+                return List.of(new WikidataBinding(Map.of(
+                        "value", "http://www.wikidata.org/entity/Q11",
+                        "valueLabel", "Example film")));
+            }
+        }) {
+            FakeWikidataApiClient api = new FakeWikidataApiClient() {
+                @Override public Map<String, ApiEntity> getEntities(
+                        List<String> qids, List<String> pids, BatchLog log) {
+                    if (!pids.isEmpty()) requested.set(List.copyOf(pids));
+                    return super.getEntities(qids, pids, log);
+                }
+            };
+            api.entity("Q11", "Example film", Map.of(
+                    "P840", List.of("Q1044"),
+                    "P577", List.of("+1974-06-20T00:00:00Z")))
+               .entity("Q1044", "Sierra Leone");
+
+            WikidataDynamicObject movie = new RuleTreeExtractor(sparql).api(api)
+                    .load(node, 0).getFirst();
+
+            assertEquals(1, sparqlCalls.get(), "only membership uses SPARQL");
+            assertEquals(List.of("P840", "P577"), requested.get());
+            assertTrue(movie.get("locations") instanceof WikidataDynamicObject);
+            assertTrue(movie.get("publicationDate") instanceof aux.FlexibleDate);
+        }
     }
 
     @Test

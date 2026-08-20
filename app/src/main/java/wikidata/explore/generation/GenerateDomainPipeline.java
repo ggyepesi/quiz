@@ -87,11 +87,22 @@ public final class GenerateDomainPipeline {
                         + ", depth " + clazz.generationDepth());
             }
         }
+        for (FactDemand demand : GenerationFactDemandPlan.compile(model).all()) {
+            if (!demand.propertyPids().isEmpty()) {
+                out.add(demand.targetClass() + " — retain "
+                        + String.join(", ", demand.propertyPids()) + " for "
+                        + demand.consumer());
+            }
+        }
+        if (!model.classes().isEmpty()) {
+            out.add("Entity metadata — labels and aliases ride every planned entity request");
+        }
         return none(out, "No directly extracted root classes");
     }
 
     private static List<String> statementAcquisitionDetails(GeneratedProjectModel model) {
         List<String> out = new ArrayList<>();
+        GenerationFactDemandPlan demandPlan = GenerationFactDemandPlan.compile(model);
         for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
             var load = recipe.load();
             String source = load.discoverSubjects()
@@ -105,6 +116,22 @@ public final class GenerateDomainPipeline {
             out.add(load.statementType() + " — " + source + "; load "
                     + load.propertyPid() + " statements; " + qualifiers
                     + "; value domain: " + load.valueDomainLabel());
+            GeneratedClassModel statementClass = model.findClass(load.statementType());
+            if (statementClass != null) {
+                java.util.LinkedHashSet<String> subjectClosure = new java.util.LinkedHashSet<>();
+                for (var role : recipe.reify().roles()) {
+                    if (!role.fallbackToSource()) continue;
+                    statementClass.fields().stream()
+                            .filter(field -> role.field().equals(field.name()))
+                            .findFirst().ifPresent(field -> demandPlan
+                                    .forClass(field.entityClassName()).forEach(demand ->
+                                            subjectClosure.addAll(demand.propertyPids())));
+                }
+                if (!subjectClosure.isEmpty()) {
+                    out.add(load.entityType() + " subject response — retain role closure "
+                            + String.join(", ", subjectClosure));
+                }
+            }
         }
         return none(out, "No statement classes");
     }
@@ -304,11 +331,31 @@ public final class GenerateDomainPipeline {
                     List.of("Seed QIDs that subsequent phases enrich and connect"),
                     List.of(PhaseExplanation.ModelReference.clazz(clazz.className()))));
         }
+        for (FactDemand demand : GenerationFactDemandPlan.compile(model).all()) {
+            if (demand.propertyPids().isEmpty()) continue;
+            demand.propertyPids().forEach(pid -> refs.add(
+                    PhaseExplanation.ModelReference.property(pid)));
+            if (examples.size() < 5) examples.add(new PhaseExplanation.PhaseExample(
+                    PhaseExplanation.ExampleKind.PLANNED,
+                    "Carry facts forward for " + demand.targetClass(),
+                    List.of("Discovered " + demand.targetClass() + " QIDs"),
+                    List.of("Fetch " + String.join(", ", demand.propertyPids())
+                                    + " with the root fields",
+                            demand.reason()),
+                    List.of(demand.consumer() + " can reuse the retained response instead of refetching"),
+                    demand.propertyPids().stream()
+                            .map(PhaseExplanation.ModelReference::property).toList()));
+        }
         return new PhaseExplanation(
                 "Establish the root populations and statement subjects from which the domain graph grows.",
                 List.of("Compiled class sources and membership patterns"),
-                List.of("Execute root discovery", "Discover subjects required by statement classes"),
-                List.of("Root entity QIDs", "Statement subject populations"),
+                List.of("Execute root discovery",
+                        "Bind prospective downstream fact needs to the discovered QIDs",
+                        "Acquire configured root fields and retained downstream facts together",
+                        "Carry labels and aliases on those same entity responses",
+                        "Discover subjects required by statement classes"),
+                List.of("Root entity QIDs", "Statement subject populations",
+                        "Retained facts for later pipeline consumers"),
                 refs.stream().distinct().toList(), examples);
     }
 
@@ -341,7 +388,9 @@ public final class GenerateDomainPipeline {
         return new PhaseExplanation(
                 "Acquire the statements and qualifiers needed to build configured statement-class records.",
                 List.of("Discovered or reused statement subject QIDs", "Statement recipes"),
-                List.of("Load main statements", "Load configured qualifiers in batches"),
+                List.of("Propagate the statement property into subject acquisition",
+                        "Reuse retained statement bodies when available",
+                        "Load main statements", "Load configured qualifiers in batches"),
                 List.of("Raw statement and qualifier facts"),
                 refs.stream().distinct().toList(), examples);
     }

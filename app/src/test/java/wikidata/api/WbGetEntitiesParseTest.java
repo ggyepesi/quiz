@@ -25,6 +25,11 @@ class WbGetEntitiesParseTest {
                 { "language": "en", "value": "First person" }
               ] },
               "claims": {
+                "P577": [
+                  { "rank": "normal",
+                    "mainsnak": { "datavalue": { "type": "time",
+                                                   "value": { "time": "+1974-06-20T00:00:00Z" } } } }
+                ],
                 "P31": [
                   { "rank": "normal",
                     "mainsnak": { "datavalue": { "type": "wikibase-entityid",
@@ -57,6 +62,17 @@ class WbGetEntitiesParseTest {
     }
 
     @Test
+    void extractsLiteralAndEntityValuesFromTheSameClaimsDocument() throws Exception {
+        WikidataApiClient.ApiEntity entity = parse(List.of("P31", "P577")).get("Q11");
+
+        // Q11 marks one P31 preferred, so that is the truthy value — as wdt:P31 gives.
+        assertEquals(List.of("Q215627"), entity.values("P31"));
+        assertEquals(List.of("+1974-06-20T00:00:00Z"), entity.values("P577"));
+        assertTrue(entity.entityQids("P577").isEmpty(),
+                "the entity-only accessor remains honest for literal properties");
+    }
+
+    @Test
     void extractsLabelsAndClaimEntityQidsSkippingDeprecatedAndMissing() throws Exception {
         Map<String, WikidataApiClient.ApiEntity> out = parse(List.of("P31"));
 
@@ -67,17 +83,18 @@ class WbGetEntitiesParseTest {
                 "multilingual label is the fallback when English is absent");
 
         // both id and numeric-id forms resolve; deprecated is skipped, in order.
-        assertEquals(List.of("Q5", "Q215627"), out.get("Q11").claim("P31"));
+        assertEquals(List.of("Q215627"), out.get("Q11").entityQids("P31"),
+                "the preferred statement outranks the normal one, deprecated is dropped");
 
         // an entity with no P31 has an empty claim list.
-        assertTrue(out.get("Q22").claim("P31").isEmpty());
+        assertTrue(out.get("Q22").entityQids("P31").isEmpty());
     }
 
     @Test
     void withoutRequestedPidsOnlyLabelsAreParsed() throws Exception {
         Map<String, WikidataApiClient.ApiEntity> out = parse(List.of());
         assertEquals("First nominee", out.get("Q11").label());
-        assertTrue(out.get("Q11").claim("P31").isEmpty(),
+        assertTrue(out.get("Q11").entityQids("P31").isEmpty(),
                 "no PIDs requested → no claims extracted");
     }
 
@@ -153,6 +170,54 @@ class WbGetEntitiesParseTest {
     }
 
     @Test
+    void aliasesReuseAClaimsDocumentRetainedByAnEarlierConsumer() throws Exception {
+        WikidataApiClient api = new WikidataApiClient("test");
+        api.facts().accept(new ObjectMapper().readTree(JSON), true, List.of("P31"));
+
+        Map<String, List<String>> aliases = api.getAliases(List.of("Q11", "Q22"), null);
+
+        assertEquals(List.of("Nominee one", "First person"), aliases.get("Q11"));
+        assertEquals(List.of(), aliases.get("Q22"));
+        assertEquals(2, api.facts().cacheHits(),
+                "the retained response avoids a standalone alias request");
+    }
+
+    /**
+     * A field takes the property's TRUTHY value — preferred if the entity says which
+     * one is, otherwise every normal statement. A film states a release date per country
+     * and marks the first preferred; reading all of them turned a single-valued field
+     * into a dozen values the moment it moved off the SPARQL path onto this one. A
+     * statement CLASS is the other case and keeps them all, which is why reification
+     * does not read through here.
+     */
+    @Test void aFieldTakesThePreferredStatementWhenTheEntityRanksOne() throws Exception {
+        String json = """
+            {"entities": {"Q1": {"id": "Q1", "claims": {
+              "P577": [
+                {"rank": "normal", "mainsnak": {"datavalue":
+                  {"type": "time", "value": {"time": "+1958-10-10T00:00:00Z"}}}},
+                {"rank": "preferred", "mainsnak": {"datavalue":
+                  {"type": "time", "value": {"time": "+1958-01-01T00:00:00Z"}}}},
+                {"rank": "deprecated", "mainsnak": {"datavalue":
+                  {"type": "time", "value": {"time": "+1900-01-01T00:00:00Z"}}}}],
+              "P31": [
+                {"rank": "normal", "mainsnak": {"datavalue":
+                  {"type": "wikibase-entityid", "value": {"id": "Q5"}}}},
+                {"rank": "normal", "mainsnak": {"datavalue":
+                  {"type": "wikibase-entityid", "value": {"id": "Q215627"}}}}]}}}}""";
+
+        Map<String, WikidataApiClient.ApiEntity> out = new LinkedHashMap<>();
+        WikidataApiClient.parseEntities(
+                new ObjectMapper().readTree(json), List.of("P577", "P31"), out);
+        WikidataApiClient.ApiEntity entity = out.get("Q1");
+
+        assertEquals(List.of("+1958-01-01T00:00:00Z"), entity.values("P577"),
+                "the ranked statement is the one the field takes");
+        assertEquals(List.of("Q5", "Q215627"), entity.entityQids("P31"),
+                "with no preference stated, every normal statement is truthy");
+    }
+
+    @Test
     void parsesStatementsWithEntityTimeAndRepeatedQualifiers() throws Exception {
         Map<String, List<WikidataApiClient.ApiStatement>> out = new LinkedHashMap<>();
         WikidataApiClient.parseStatements(
@@ -173,5 +238,26 @@ class WbGetEntitiesParseTest {
         // second statement: numeric-id form, no qualifiers requested-present
         assertEquals("Q281939", stmts.get(1).value());
         assertTrue(stmts.get(1).qualifier("P805").isEmpty());
+    }
+
+    @Test
+    void statementConsumerReusesThePropertyRetainedWithSubjectDiscovery()
+            throws Exception {
+        WikidataApiClient api = new WikidataApiClient("test");
+        api.facts().recordRetentionPlan(
+                "subject discovery", List.of("Q11"), List.of("P1411"));
+        api.facts().accept(
+                new ObjectMapper().readTree(STATEMENTS_JSON), true, List.of("P1411"));
+        api.facts().recordDemand(
+                "statement acquisition", List.of("Q11"), List.of("P1411"));
+
+        Map<String, List<WikidataApiClient.ApiStatement>> statements =
+                api.getStatements(List.of("Q11"), "P1411",
+                        List.of("P805", "P2453", "P585"), null);
+
+        assertEquals(2, statements.get("Q11").size());
+        assertEquals(1, api.facts().cacheHits());
+        assertEquals(0, api.facts().lateDemandPairs(),
+                "the later consumer was announced before subject acquisition");
     }
 }

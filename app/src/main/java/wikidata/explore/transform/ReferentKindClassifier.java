@@ -6,6 +6,8 @@ import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.generation.FactDemand;
+import wikidata.explore.generation.FactDemandBinder;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -65,8 +67,10 @@ public final class ReferentKindClassifier {
         }
         properties.addAll(ReferentFieldLoad.kindPropertyClosure(model,
                 rules.stream().map(EntityKindRule::className).toList()));
-        api.facts().recordRetentionPlan(
-                "entity-kind evidence", candidates.keySet(), properties);
+        FactDemandBinder.bind(FactDemand.of(
+                        "entity-kind evidence", "kind candidates", properties,
+                        "retain evidence and possible classified-kind closure"),
+                candidates.keySet(), api.facts(), "kind classification");
         WikidataApiClient.PartialEntities partial;
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group group = sink.group(
@@ -102,7 +106,7 @@ public final class ReferentKindClassifier {
             boolean changed = false;
             for (EntityKindRule rule : rules) {
                 if (!candidatePlan.eligible(candidate.qid(), rule.propertyPid())) continue;
-                if (entity != null && entity.claim(rule.propertyPid()).stream()
+                if (entity != null && entity.entityQids(rule.propertyPid()).stream()
                         .anyMatch(rule.evidenceQids()::contains)) {
                     if (!candidate.directClassNames().contains(rule.className())) {
                         candidate.assignClass(rule.className());

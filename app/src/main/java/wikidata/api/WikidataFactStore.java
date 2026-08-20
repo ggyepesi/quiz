@@ -25,6 +25,8 @@ public final class WikidataFactStore {
     private static final class FactMeasurement {
         Long bankedBytes;
         boolean demanded;
+        boolean lateDemand;
+        boolean retentionPlannedBeforeAcquisition;
         String retentionSource;
     }
     private static final class PropertyTotals {
@@ -59,7 +61,7 @@ public final class WikidataFactStore {
     public record PropertyUsage(
             String propertyPid, long bankedEntities, long estimatedBytes,
             long demandedEntities, long unusedEntities, long unusedEstimatedBytes,
-            long cacheHits, long evictedRefetches) { }
+            long cacheHits, long evictedRefetches, long lateDemands) { }
     public record RetentionUsage(
             String source, String propertyPid, long bankedEntities,
             long estimatedBytes, long demandedEntities, long unusedEstimatedBytes) { }
@@ -345,6 +347,10 @@ public final class WikidataFactStore {
                 FactMeasurement measurement = measurement(new FactKey(qid, pid));
                 if (measurement != null && !measurement.demanded) {
                     measurement.demanded = true;
+                    boolean entityAlreadyFetched = documents.containsKey(qid)
+                            || evictedCapabilities.containsKey(qid);
+                    measurement.lateDemand = entityAlreadyFetched
+                            && !measurement.retentionPlannedBeforeAcquisition;
                     byPid.merge(pid, 1L, Long::sum);
                 }
             }
@@ -369,6 +375,9 @@ public final class WikidataFactStore {
                 FactMeasurement measurement = measurement(new FactKey(qid, pid));
                 if (measurement != null && measurement.retentionSource == null) {
                     measurement.retentionSource = owner;
+                    measurement.retentionPlannedBeforeAcquisition =
+                            !documents.containsKey(qid)
+                                    && !evictedCapabilities.containsKey(qid);
                 }
             }
         }
@@ -392,10 +401,28 @@ public final class WikidataFactStore {
                         e.getValue().estimatedBytes, e.getValue().demandedEntities,
                         e.getValue().unusedEntities, e.getValue().unusedEstimatedBytes,
                         cacheHitsByProperty.getOrDefault(e.getKey(), 0L),
-                        evictedRefetchesByProperty.getOrDefault(e.getKey(), 0L)))
+                        evictedRefetchesByProperty.getOrDefault(e.getKey(), 0L),
+                        lateDemands(e.getKey())))
                 .sorted(java.util.Comparator.comparingLong(PropertyUsage::estimatedBytes)
                         .reversed().thenComparing(PropertyUsage::propertyPid))
                 .toList();
+    }
+
+    private long lateDemands(String pid) {
+        return factMeasurements.entrySet().stream()
+                .filter(e -> e.getKey().pid().equals(pid) && e.getValue().lateDemand)
+                .count();
+    }
+
+    /** Unique measured QID/property needs discovered after the entity was fetched. */
+    public synchronized long lateDemandPairs() {
+        return factMeasurements.values().stream().filter(m -> m.lateDemand).count();
+    }
+
+    /** Unique measured needs known before the entity's first acquisition boundary. */
+    public synchronized long preplannedDemandPairs() {
+        return factMeasurements.values().stream()
+                .filter(m -> m.demanded && !m.lateDemand).count();
     }
 
     public synchronized Map<String, Map<String, Long>> demandsBySource() {

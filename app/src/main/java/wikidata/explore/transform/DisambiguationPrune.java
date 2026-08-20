@@ -9,6 +9,7 @@ import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.generation.FactDemand;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -55,6 +56,33 @@ public final class DisambiguationPrune {
             "Q13406463");  // Wikimedia list article
 
     private DisambiguationPrune() {}
+
+    /**
+     * Prospective input for the generation demand planner. Every modeled root may
+     * reach this finalizer; whether its P31 is already a configured field is cheap
+     * to discover here and avoids describing a redundant propagated demand.
+     */
+    public static List<FactDemand> factDemands(GeneratedProjectModel model) {
+        if (model == null) return List.of();
+        List<FactDemand> out = new ArrayList<>();
+        for (GeneratedClassModel clazz : model.classes()) {
+            if (clazz == null || hasDeclaredP31(clazz)) continue;
+            out.add(FactDemand.of(
+                    "disambiguation prune", clazz.className(), List.of("P31"),
+                    "vet modeled entities for Wikimedia-internal page types"));
+        }
+        return out;
+    }
+
+    private static boolean hasDeclaredP31(GeneratedClassModel clazz) {
+        for (GeneratedFieldModel field : clazz.fields()) {
+            if (field != null && field.type() == FieldType.ENTITY
+                    && "P31".equals(clean(field.mapping().propertyPid()))) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /** @return the pruned top-level objects — the caller removes them from the served
      *  pool (nested ones simply become unreachable once references are scrubbed). */
@@ -140,7 +168,7 @@ public final class DisambiguationPrune {
                 if (e == null) {
                     continue;
                 }
-                for (String t : e.claim("P31")) {
+                for (String t : e.entityQids("P31")) {
                     if (INTERNAL_TYPES.contains(t)) {
                         badQids.add(q);
                         break;

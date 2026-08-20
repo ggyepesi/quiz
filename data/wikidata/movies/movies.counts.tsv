@@ -7,3 +7,6 @@
 2026-08-11T20:18:25	total=20000	Movies=20000
 2026-08-11T21:13:53	total=20000	Movies=20000
 2026-08-12T00:33:36	total=20000	Movies=20000
+# counts every saved entity by class membership (ids include statement ids); classes overlap, so columns may exceed total
+2026-08-19T19:38:21	total=20000	Movies=20000
+2026-08-20T10:13:20	total=20000	Movies=20000

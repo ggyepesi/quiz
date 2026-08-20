@@ -11,6 +11,8 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
+import wikidata.explore.generation.FactDemand;
+import wikidata.explore.generation.FactDemandBinder;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -181,9 +183,11 @@ public final class ReferentFieldLoad {
                 wanted.removeAll(done);
                 covered += before - wanted.size();
                 if (wanted.isEmpty()) continue;
-                api.facts().recordRetentionPlan(
-                        entry.getKey(), wanted, java.util.List.of(pid));
-                pairs += wanted.size();
+                FactDemandBinder.Binding binding = FactDemandBinder.bind(
+                        FactDemand.of("semantic convergence", entry.getKey(),
+                                List.of(pid), "load referent/kind/owned fields"),
+                        wanted, api.facts(), "semantic preflight");
+                pairs += Math.toIntExact(binding.claimPairs());
             }
         }
         return new RetentionPlan(qidsByClass.size(), entities, pairs, covered);
@@ -457,7 +461,10 @@ public final class ReferentFieldLoad {
         }
         int declaredPidCount = pids.size();
         pids.addAll(prospectivePids);
-        api.facts().recordRetentionPlan(className, qids, pids);
+        FactDemandBinder.bind(FactDemand.of(
+                        "semantic field acquisition", className, pids,
+                        "retain sibling and prospective kind/owned properties"),
+                qids, api.facts(), "referent entity fields");
 
         Map<String, WikidataApiClient.ApiEntity> details;
         Set<String> unavailable;
@@ -491,7 +498,7 @@ public final class ReferentFieldLoad {
 
         Set<String> valueQids = new LinkedHashSet<>();
         for (WikidataApiClient.ApiEntity entity : details.values()) {
-            for (String pid : pids) valueQids.addAll(entity.claim(pid));
+            for (String pid : pids) valueQids.addAll(entity.entityQids(pid));
         }
         Map<String, WikidataApiClient.ApiEntity> labels;
         if (deferLabels) {
@@ -517,15 +524,31 @@ public final class ReferentFieldLoad {
      */
     public static AcquisitionManifest compileManifest(GeneratedProjectModel model) {
         Map<String, Set<String>> byClass = new LinkedHashMap<>();
-        if (model != null) {
-            for (GeneratedClassModel clazz : model.classes()) {
-                if (clazz != null && loadsHere(MembershipPattern.of(clazz, model))) {
-                    Set<String> pids = prospectivePids(model, clazz.className());
-                    if (!pids.isEmpty()) byClass.put(clazz.className(), pids);
-                }
-            }
+        for (FactDemand demand : factDemands(model)) {
+            byClass.computeIfAbsent(demand.targetClass(), ignored -> new LinkedHashSet<>())
+                    .addAll(demand.propertyPids());
         }
         return new AcquisitionManifest(byClass);
+    }
+
+    /**
+     * Model-derived semantic property closure in the shared pipeline-demand form.
+     * The QID population is bound later, after role stamping or kind classification
+     * makes instances of the target class reachable.
+     */
+    public static List<FactDemand> factDemands(GeneratedProjectModel model) {
+        List<FactDemand> out = new ArrayList<>();
+        if (model == null) return out;
+        for (GeneratedClassModel clazz : model.classes()) {
+            if (clazz == null || !loadsHere(MembershipPattern.of(clazz, model))) continue;
+            Set<String> pids = prospectivePids(model, clazz.className());
+            if (!pids.isEmpty()) {
+                out.add(FactDemand.of(
+                        "semantic convergence", clazz.className(), pids,
+                        "load declared referent/kind fields and owned-component closure"));
+            }
+        }
+        return List.copyOf(out);
     }
 
     private static Set<String> prospectivePids(
@@ -619,7 +642,10 @@ public final class ReferentFieldLoad {
             api.facts().recordDemand(className, fieldQids, List.of(pid));
         }
         if (qids.isEmpty()) return new LiteralFieldBatch(Map.of(), Set.of());
-        api.facts().recordRetentionPlan(className, qids, pids);
+        FactDemandBinder.bind(FactDemand.of(
+                        "semantic literal acquisition", className, pids,
+                        "retain sibling literal properties"),
+                qids, api.facts(), "referent literal fields");
 
         try (GenerationLog.Group group = log.group("Load " + pids.size()
                 + " literal referent fields on " + className + " for " + qids.size()
@@ -749,7 +775,7 @@ public final class ReferentFieldLoad {
                 continue;   // no data, or already populated
             }
             List<WikidataDynamicObject> values = new ArrayList<>();
-            for (String vq : e.claim(pid)) {
+            for (String vq : e.entityQids(pid)) {
                 WikidataApiClient.ApiEntity le = batch.labels().get(vq);
                 String label = le == null || le.label() == null || le.label().isBlank()
                         ? vq : le.label();

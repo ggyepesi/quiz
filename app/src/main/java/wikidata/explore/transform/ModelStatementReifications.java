@@ -937,11 +937,25 @@ public final class ModelStatementReifications {
             GenerationLog log,
             wikidata.api.WikidataApiClient entityApi,
             boolean deferLabels) {
+        return enrichWithReport(project, pool, client, log, entityApi, deferLabels, null);
+    }
+
+    /** Acquisition with the generation-wide prospective demand plan. */
+    public static AcquisitionReport enrichWithReport(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            boolean deferLabels,
+            wikidata.explore.generation.GenerationFactDemandPlan demandPlan) {
         if (client == null) return new AcquisitionReport(List.of());
         QualifierLoader loader = new QualifierLoader().api(entityApi)
                 .deferLabels(deferLabels);
         List<AcquiredStatementClass> acquired = new ArrayList<>();
         for (Reification reification : derive(project)) {
+            loader.factDemands(StatementFactDemands.compile(
+                    project, reification, demandPlan));
             QualifierLoadConfig cfg = reification.load();
             int before = pool.size();
             List<WikidataDynamicObject> statements =

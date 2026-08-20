@@ -373,13 +373,14 @@ public class WikidataApiClient {
     }
 
     // ------------------------------------------------------------------
-    // wbgetentities by QID — labels (+ selected claim PIDs as entity-QID lists)
+    // wbgetentities by QID — labels (+ selected claim PIDs as decoded values)
     // ------------------------------------------------------------------
 
     /**
      * One entity as returned by {@link #getEntities}: its English label (blank if
-     * absent) and, for each requested claim PID, the list of entity-QID values (in
-     * document order, deprecated-rank statements skipped).
+     * absent) and, for each requested claim PID, decoded values in document order
+     * (deprecated-rank statements skipped). {@link #entityQids} retains the narrower
+     * entity-QID-only view for existing referent consumers.
      */
     public record ApiEntity(
             String qid,
@@ -388,13 +389,15 @@ public class WikidataApiClient {
             boolean missing,
             Map<String, String> valuelessClaims,
             List<String> aliases,
-            boolean aliasesAnswered) {
+            boolean aliasesAnswered,
+            Map<String, List<String>> claimValues) {
 
         public ApiEntity(
                 String qid,
                 String label,
                 Map<String, List<String>> claimEntityQids) {
-            this(qid, label, claimEntityQids, false, Map.of(), List.of(), false);
+            this(qid, label, claimEntityQids, false, Map.of(), List.of(), false,
+                    claimEntityQids);
         }
 
         public ApiEntity(
@@ -402,13 +405,15 @@ public class WikidataApiClient {
                 String label,
                 Map<String, List<String>> claimEntityQids,
                 boolean missing) {
-            this(qid, label, claimEntityQids, missing, Map.of(), List.of(), false);
+            this(qid, label, claimEntityQids, missing, Map.of(), List.of(), false,
+                    claimEntityQids);
         }
 
         public ApiEntity(
                 String qid, String label, Map<String, List<String>> claimEntityQids,
                 boolean missing, Map<String, String> valuelessClaims) {
-            this(qid, label, claimEntityQids, missing, valuelessClaims, List.of(), false);
+            this(qid, label, claimEntityQids, missing, valuelessClaims, List.of(), false,
+                    claimEntityQids);
         }
 
         /** For a caller that HAS asked about aliases; an empty list then means the
@@ -417,13 +422,15 @@ public class WikidataApiClient {
                 String qid, String label, Map<String, List<String>> claimEntityQids,
                 boolean missing, Map<String, String> valuelessClaims,
                 List<String> aliases) {
-            this(qid, label, claimEntityQids, missing, valuelessClaims, aliases, true);
+            this(qid, label, claimEntityQids, missing, valuelessClaims, aliases, true,
+                    claimEntityQids);
         }
 
         public ApiEntity {
             valuelessClaims = valuelessClaims == null ? Map.of()
                     : Map.copyOf(valuelessClaims);
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
+            claimValues = claimValues == null ? Map.of() : Map.copyOf(claimValues);
         }
 
         /**
@@ -440,8 +447,15 @@ public class WikidataApiClient {
         }
 
         /** The entity-QID values for a claim PID (empty if absent). */
-        public List<String> claim(String pid) {
+        public List<String> entityQids(String pid) {
             return claimEntityQids.getOrDefault(pid, List.of());
+        }
+
+        /** Every decoded mainsnak value for a requested PID. Unlike
+         * {@link #entityQids},
+         * this includes literals (dates, strings and media names) as well as QIDs. */
+        public List<String> values(String pid) {
+            return claimValues.getOrDefault(pid, List.of());
         }
     }
 
@@ -449,9 +463,9 @@ public class WikidataApiClient {
      * Resolves entities by QID through the {@code wbgetentities} action API, in
      * batches of 50 (the API limit). Always returns English labels; when
      * {@code claimPids} is non-empty, {@code props=claims} is requested and each
-     * listed PID's entity-QID values are extracted. This is the reliable,
-     * non-SPARQL path for labels + outgoing entity claims (no query-engine timeout,
-     * no full-index scan) — see docs/extraction-batched-membership.md, slice 3.
+     * listed PID's entity and literal values are extracted. This is the reliable,
+     * non-SPARQL path for labels + outgoing claims (no query-engine timeout, no
+     * full-index scan) — see docs/extraction-batched-membership.md, slice 3.
      */
     /** Per-batch log hook so a caller (e.g. the generation query log) can show each
      *  wbgetentities request as a structured entry. All three args are the request
@@ -572,10 +586,35 @@ public class WikidataApiClient {
         Map<String, List<String>> out = new LinkedHashMap<>();
         if (qids == null) return out;
         List<String> clean = qids.stream().filter(WikidataIds::isQid).distinct().toList();
+
+        List<String> notParsed = new ArrayList<>();
+        for (String qid : clean) {
+            if (aliasCache.containsKey(qid)) out.put(qid, aliasCache.get(qid));
+            else notParsed.add(qid);
+        }
+
+        // Statement/literal acquisition also receives labels and aliases. Reuse that
+        // retained entity document before consulting the small parsed-value cache; this
+        // is what lets metadata demands ride a claims request instead of paying for a
+        // later props=aliases pass.
+        JsonNode held = facts.merged(null, notParsed, false, List.of(), mapper);
+        Map<String, ApiEntity> heldEntities = new LinkedHashMap<>();
+        parseEntities(held, List.of(), heldEntities);
+        int reused = 0;
+        for (String qid : notParsed) {
+            ApiEntity entity = heldEntities.get(qid);
+            if (entity != null && entity.aliasesAnswered()) {
+                aliasCache.put(qid, entity.aliases());
+                out.put(qid, entity.aliases());
+                reused++;
+            }
+        }
+        facts.recordHits(reused);
+
         List<String> missing = new ArrayList<>();
         for (String qid : clean) {
-            if (aliasCache.containsKey(qid)) {
-                out.put(qid, aliasCache.get(qid));
+            if (out.containsKey(qid)) {
+                continue;
             } else {
                 missing.add(qid);
             }
@@ -1061,6 +1100,7 @@ public class WikidataApiClient {
             }
 
             Map<String, List<String>> claims = new LinkedHashMap<>();
+            Map<String, List<String>> values = new LinkedHashMap<>();
             Map<String, String> valueless = new LinkedHashMap<>();
             for (String pid : claimPids) {
                 com.fasterxml.jackson.databind.JsonNode statements =
@@ -1068,8 +1108,10 @@ public class WikidataApiClient {
                 List<String> vals = entityQids(statements);
                 if (!vals.isEmpty()) {
                     claims.put(pid, vals);
-                    continue;
                 }
+                List<String> rawValues = statementValues(statements);
+                if (!rawValues.isEmpty()) values.put(pid, rawValues);
+                if (!rawValues.isEmpty()) continue;
                 // Statements exist but none carries a value: the source is SAYING
                 // something (unknown / none), not staying silent. Recorded so a caller
                 // can tell that apart from a property with no statement at all.
@@ -1077,7 +1119,8 @@ public class WikidataApiClient {
                 if (snakType != null) valueless.put(pid, snakType);
             }
             out.put(qid, new ApiEntity(
-                    qid, label, claims, false, valueless, aliases, aliasesAnswered));
+                    qid, label, claims, false, valueless, aliases, aliasesAnswered,
+                    values));
             parsed[0]++;
         });
         return parsed[0];
@@ -1091,8 +1134,7 @@ public class WikidataApiClient {
     private static String onlySnakType(JsonNode claimsArray) {
         if (!claimsArray.isArray() || claimsArray.isEmpty()) return null;
         String seen = null;
-        for (JsonNode claim : claimsArray) {
-            if ("deprecated".equals(claim.path("rank").asText())) continue;
+        for (JsonNode claim : truthy(claimsArray)) {
             String snakType = claim.path("mainsnak").path("snaktype").asText("");
             if (!"somevalue".equals(snakType) && !"novalue".equals(snakType)) return null;
             if (seen != null && !seen.equals(snakType)) return null;
@@ -1101,12 +1143,11 @@ public class WikidataApiClient {
         return seen;
     }
 
-    /** Every entity-QID value in a claims array, in order, skipping deprecated. */
+    /** The entity-QID values a FIELD takes: the property's truthy statements. */
     private static List<String> entityQids(JsonNode claimsArray) {
         if (!claimsArray.isArray()) return List.of();
         List<String> out = new ArrayList<>();
-        for (JsonNode claim : claimsArray) {
-            if ("deprecated".equals(claim.path("rank").asText())) continue;
+        for (JsonNode claim : truthy(claimsArray)) {
             JsonNode val = claim.path("mainsnak").path("datavalue").path("value");
             String id = val.path("id").asText("");
             if (id.isBlank() && val.has("numeric-id")) {
@@ -1115,6 +1156,42 @@ public class WikidataApiClient {
             if (WikidataIds.isQid(id)) out.add(id);
         }
         return out;
+    }
+
+    /** The values a FIELD takes: every truthy mainsnak in document order, decoded
+     * with the same datatype rules used by grouped statement acquisition. */
+    private static List<String> statementValues(JsonNode claimsArray) {
+        if (!claimsArray.isArray()) return List.of();
+        List<String> out = new ArrayList<>();
+        for (JsonNode claim : truthy(claimsArray)) {
+            String value = snakValue(claim.path("mainsnak").path("datavalue"));
+            if (value != null) out.add(value);
+        }
+        return out;
+    }
+
+    /**
+     * A property's TRUTHY statements: the preferred ones if it has any, otherwise its
+     * normal ones, never the deprecated ones. This is what {@code wdt:} means in SPARQL,
+     * and what a field projected from a claim has always meant — a film states a release
+     * date per country and marks the first one preferred, so reading every non-deprecated
+     * statement gave a single-valued field a dozen values once the field moved off the
+     * SPARQL path onto this one.
+     *
+     * <p>Reification does NOT go through here: a statement class exists to represent
+     * each statement, so it keeps every non-deprecated one, rank and all.
+     */
+    private static List<JsonNode> truthy(JsonNode claimsArray) {
+        if (!claimsArray.isArray()) return List.of();
+        List<JsonNode> preferred = new ArrayList<>();
+        List<JsonNode> normal = new ArrayList<>();
+        for (JsonNode claim : claimsArray) {
+            String rank = claim.path("rank").asText("normal");
+            if ("deprecated".equals(rank)) continue;
+            if ("preferred".equals(rank)) preferred.add(claim);
+            else normal.add(claim);
+        }
+        return preferred.isEmpty() ? normal : preferred;
     }
 
     /**

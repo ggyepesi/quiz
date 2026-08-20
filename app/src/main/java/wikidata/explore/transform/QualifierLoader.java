@@ -7,11 +7,14 @@ import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.generation.FactDemand;
+import wikidata.explore.generation.FactDemandBinder;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +41,7 @@ public class QualifierLoader {
 
     private WikidataApiClient api;
     private boolean deferLabels;
+    private StatementFactDemands factDemands = StatementFactDemands.EMPTY;
 
     /** Override the action-API client (share one / inject a stub for tests). */
     public QualifierLoader api(WikidataApiClient api) {
@@ -47,6 +51,11 @@ public class QualifierLoader {
 
     public QualifierLoader deferLabels(boolean defer) {
         deferLabels = defer;
+        return this;
+    }
+
+    public QualifierLoader factDemands(StatementFactDemands demands) {
+        factDemands = demands == null ? StatementFactDemands.EMPTY : demands;
         return this;
     }
 
@@ -105,8 +114,10 @@ public class QualifierLoader {
                             pool, cfg.propertyPid(), allowedValues,
                             cfg.entityType(), cfg.valueDomainLabel(), client, log);
 
-            // SPARQL discovery yields QIDs only — load the subjects' labels via
-            // wbgetentities so they render as names, not bare QIDs, when referenced.
+            // SPARQL discovery yields QIDs only. The very next consumer needs this
+            // statement property, while labels and aliases ride every entity response,
+            // so fetch all three once rather than labels now and the same documents
+            // again in the qualifier stage below.
             List<String> newQids = new ArrayList<>();
             for (WikidataDynamicObject s : discovered) {
                 if (s != null && s.qid() != null && WikidataIds.isQid(s.qid())) {
@@ -115,8 +126,28 @@ public class QualifierLoader {
             }
             if (!newQids.isEmpty()) {
                 try {
+                    api().facts().recordDemand(
+                            "statement acquisition " + cfg.statementType(),
+                            newQids, List.of(cfg.propertyPid()));
+                    FactDemandBinder.bind(FactDemand.of(
+                                    "statement acquisition", cfg.entityType(),
+                                    List.of(cfg.propertyPid()),
+                                    "load statements and qualifiers"),
+                            newQids, api().facts(), "discovered statement subjects");
+                    FactDemandBinder.Binding roleBinding = FactDemandBinder.bind(
+                            factDemands.subjectDemands(), newQids, api().facts(),
+                            "statement-subject role propagation");
+                    LinkedHashSet<String> firstRequestPids = new LinkedHashSet<>();
+                    firstRequestPids.add(cfg.propertyPid());
+                    factDemands.subjectDemands().forEach(d ->
+                            firstRequestPids.addAll(d.propertyPids()));
                     Map<String, WikidataApiClient.ApiEntity> details =
-                            api().getEntities(newQids, java.util.List.of());
+                            api().getEntities(newQids, new ArrayList<>(firstRequestPids));
+                    if (log != null && roleBinding.claimPairs() > 0) {
+                        log.message("Statement-subject propagation: retained "
+                                + roleBinding.claimPairs() + " QID/property pair(s) for "
+                                + roleBinding.consumers() + " downstream role consumer(s).\n");
+                    }
                     for (WikidataDynamicObject s : discovered) {
                         WikidataApiClient.ApiEntity e = details.get(s.qid());
                         if (e != null && e.label() != null && !e.label().isBlank()) {
@@ -161,6 +192,9 @@ public class QualifierLoader {
 
             Map<String, List<WikidataApiClient.ApiStatement>> statements;
             try {
+                api().facts().recordDemand(
+                        "statement acquisition " + cfg.statementType(),
+                        byQid.keySet(), List.of(cfg.propertyPid()));
                 statements = api().getStatements(new ArrayList<>(byQid.keySet()),
                         cfg.propertyPid(), qualifierPids, g.batchSink());
             } catch (Exception e) {
@@ -196,6 +230,8 @@ public class QualifierLoader {
                 }
             }
 
+            bindFieldPopulations(created, cfg, api().facts(), sink);
+
             // Name the value/qualifier refs that weren't already pooled+labelled,
             // then let each statement's name follow its (now-labelled) value.
             if (!deferLabels) resolveRefLabels(refCache, g);
@@ -209,6 +245,36 @@ public class QualifierLoader {
                     + " -> " + created.size() + " " + stmtType + " statements\n");
         }
         return created;
+    }
+
+    private void bindFieldPopulations(
+            List<WikidataDynamicObject> statements,
+            QualifierLoadConfig cfg,
+            wikidata.api.WikidataFactStore facts,
+            GenerationLog log) {
+        if (statements == null || statements.isEmpty()) return;
+        for (Map.Entry<String, List<FactDemand>> route : factDemands.fieldDemands().entrySet()) {
+            LinkedHashSet<String> qids = new LinkedHashSet<>();
+            for (WikidataDynamicObject statement : statements) {
+                collectQids(statement.get(route.getKey()), qids);
+            }
+            FactDemandBinder.Binding binding = FactDemandBinder.bind(
+                    route.getValue(), qids, facts,
+                    "statement field " + cfg.statementType() + "." + route.getKey());
+            if (binding.claimPairs() > 0 && log != null) {
+                log.message("Statement-field propagation " + cfg.statementType() + "."
+                        + route.getKey() + ": " + binding.entities() + " QID(s), "
+                        + binding.claimPairs() + " planned property pair(s).\n");
+            }
+        }
+    }
+
+    private static void collectQids(Object value, Set<String> out) {
+        if (value instanceof WikidataDynamicObject object) {
+            if (WikidataIds.isQid(object.qid())) out.add(object.qid());
+        } else if (value instanceof Collection<?> values) {
+            values.forEach(item -> collectQids(item, out));
+        }
     }
 
     /** Apply each configured qualifier from the statement onto the reified object,

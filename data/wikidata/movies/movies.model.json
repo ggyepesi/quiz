@@ -8,6 +8,7 @@
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -38,6 +39,7 @@
       "name" : "locations",
       "type" : "ENTITY",
       "entityClassName" : "Location",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : true,
@@ -77,6 +79,7 @@
       "name" : "publicationDate",
       "type" : "DATE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "AUTO",
       "required" : false,
@@ -116,6 +119,7 @@
       "name" : "director",
       "type" : "ENTITY",
       "entityClassName" : "Director",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -155,6 +159,7 @@
       "name" : "screenwriter",
       "type" : "ENTITY",
       "entityClassName" : "Screenwriter",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -194,6 +199,7 @@
       "name" : "composer",
       "type" : "ENTITY",
       "entityClassName" : "Composer",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -248,6 +254,7 @@
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -278,6 +285,7 @@
       "name" : "locations",
       "type" : "ENTITY",
       "entityClassName" : "Location",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : true,
@@ -317,6 +325,7 @@
       "name" : "publicationDate",
       "type" : "DATE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "AUTO",
       "required" : false,
@@ -356,6 +365,7 @@
       "name" : "director",
       "type" : "ENTITY",
       "entityClassName" : "Director",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -395,6 +405,7 @@
       "name" : "screenwriter",
       "type" : "ENTITY",
       "entityClassName" : "Screenwriter",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -434,6 +445,7 @@
       "name" : "composer",
       "type" : "ENTITY",
       "entityClassName" : "Composer",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -480,5 +492,6 @@
       "labelLanguage" : "en"
     }
   } ] ],
-  "selections" : [ "java.util.ArrayList", [ ] ]
+  "selections" : [ "java.util.ArrayList", [ ] ],
+  "entityKindRules" : [ "java.util.ArrayList", [ ] ]
 }
