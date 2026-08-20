@@ -34,6 +34,27 @@ class FlexibleDateTest {
         assertNull(FlexibleDate.fromWikidataLiteral("1959"));
     }
 
+    /**
+     * The action API states an unspecified month or day as 00, where WDQS pads the same
+     * value to -01-01. Reading only the padding convention made every 00 literal fail
+     * LocalDate validation and fall back to its raw text: 2,571 films came out of one
+     * generation with "+2015-00-00T00:00:00Z" sitting in a date field.
+     */
+    @Test void wikidataZeroMonthOrDayIsThePrecisionTheSourceStated() {
+        assertNotNull(FlexibleDate.fromWikidataLiteral("+2015-00-00T00:00:00Z"),
+                "a 00 month is a stated precision, not an invalid date");
+        assertEquals("2015", FlexibleDate.fromWikidataLiteral(
+                "+2015-00-00T00:00:00Z").format());
+        assertEquals("2015-06", FlexibleDate.fromWikidataLiteral(
+                "+2015-06-00T00:00:00Z").format());
+        assertEquals(FlexibleDate.Precision.YEAR, FlexibleDate.fromWikidataLiteral(
+                "+2015-00-00T00:00:00Z").precision());
+        assertEquals(FlexibleDate.Precision.MONTH, FlexibleDate.fromWikidataLiteral(
+                "+2015-06-00T00:00:00Z").precision());
+        assertEquals("500 BC", FlexibleDate.fromWikidataLiteral(
+                "-0500-00-00T00:00:00Z").format());
+    }
+
     @Test void nonDatesParseToNull() {
         assertNull(FlexibleDate.parse(null));
         assertNull(FlexibleDate.parse(""));

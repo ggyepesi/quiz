@@ -108,9 +108,12 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable {
         }
     }
 
-    // Wikidata's truthy time value ([+-]YYYY-MM-DDThh:mm:ssZ) loses the stated
-    // precision, so collapse the conventional padding: -01-01 means year
-    // precision, a -01 day means month precision.
+    // A Wikidata time value ([+-]YYYY-MM-DDThh:mm:ssZ) carries its precision in a
+    // separate field, so the literal alone has to be read for it. The API says what it
+    // means — an unspecified month or day is 00 — while WDQS pads the same value to
+    // -01-01. Both are read here: 00 first, because it is the source's own encoding,
+    // then the padding convention, which cannot tell a year-precision date from a real
+    // first of January.
     private static final java.util.regex.Pattern WD_TIME =
             java.util.regex.Pattern.compile("^([+-]?)0*(\\d+)-(\\d{2})-(\\d{2})T");
 
@@ -133,6 +136,12 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable {
             }
             int mm = Integer.parseInt(m.group(3));
             int dd = Integer.parseInt(m.group(4));
+            if (mm == 0) {
+                return new FlexibleDate(y);
+            }
+            if (dd == 0) {
+                return new FlexibleDate(y, mm);
+            }
             if (mm == 1 && dd == 1) {
                 return new FlexibleDate(y);
             }
