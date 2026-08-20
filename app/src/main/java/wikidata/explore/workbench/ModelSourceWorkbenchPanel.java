@@ -49,6 +49,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                             2));
 
     private boolean updatingKind = false;
+    private boolean editingEnabled = true;
 
     private final JPanel cardPanel =
             new JPanel(new CardLayout());
@@ -215,6 +216,16 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         helperTabs.setSelectedComponent(propertyPanel);
     }
 
+    /** Locks every mutation surface owned by the workbench, including helper tools
+     * currently hosted in the separate Explorer window. Labels and containers remain
+     * enabled so the selected configuration can still be read. */
+    public void setEditingEnabled(boolean enabled) {
+        editingEnabled = enabled;
+        EditableComponents.setEditable(cardPanel, enabled);
+        EditableComponents.setEditable(kindHeader, enabled);
+        EditableComponents.setEditable(helperTabs, enabled);
+    }
+
     public void edit(Object selected) {
         this.selected = selected;
 
@@ -226,7 +237,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             MembershipPattern pattern = MembershipPattern.of(clazz, projectModel);
             kindBox.setSelectedIndex(clazz.reifiesStatements()
                     ? 1 : pattern == MembershipPattern.OWNED_COMPONENT ? 2 : 0);
-            kindBox.setEnabled(true);
+            kindBox.setEnabled(editingEnabled);
             updatingKind = false;
 
             kindHeader.setVisible(true);
@@ -243,17 +254,22 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             }
         } else if (selected
                 instanceof GeneratedFieldModel field) {
-            kindBox.setEnabled(true);
+            kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
             fieldSourcePanel.edit(field);
             layout.show(cardPanel, "field");
         } else {
-            kindBox.setEnabled(true);
+            kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
             layout.show(cardPanel, "empty");
         }
 
         discoveryPanel.refreshNodeTitle();
+
+        // The editors for the newly shown card are built (or rebuilt) enabled. The lock
+        // is a property of THIS panel, so re-applying it here keeps every caller of
+        // edit() from having to remember it — which is how a lock quietly springs open.
+        if (!editingEnabled) setEditingEnabled(false);
     }
 
     private String selectedNodeTitle() {

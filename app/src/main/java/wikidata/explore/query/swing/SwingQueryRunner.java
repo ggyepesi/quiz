@@ -18,6 +18,8 @@ public class SwingQueryRunner {
 
     private final java.util.List<AbstractButton> cancelButtons =
             new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final java.util.List<java.util.function.Consumer<Boolean>> runningListeners =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
 
     private SwingWorker<?, ?> currentWorker;
     private Runnable cancelAction = () -> {};
@@ -47,6 +49,10 @@ public class SwingQueryRunner {
             button.setEnabled(isRunning());
             button.addActionListener(e -> cancel());
         }
+    }
+
+    public void onRunningChanged(java.util.function.Consumer<Boolean> listener) {
+        if (listener != null) runningListeners.add(listener);
     }
 
     public <R> void wireButton(
@@ -142,6 +148,17 @@ public class SwingQueryRunner {
         run(new QueryWorkflow<>(context, sink, logListener), query, onError);
     }
 
+    /**
+     * A lookup that does not count as "the runner is busy": it never becomes the current
+     * worker, so it neither disables the run buttons nor locks configuration, and a lock
+     * held elsewhere does not stop it.
+     *
+     * <p>That exemption is the whole point — filling a panel with what Wikidata says
+     * about one QID has to stay available while a long operation runs — and it is only
+     * sound for a READ. A quiet query that changed the model or the pool would let a
+     * user edit configuration underneath a running generation, which is exactly what the
+     * lock exists to prevent.
+     */
     public <R> void runQuiet(
             Query<R> query,
             QueryResultSink<R> sink,
@@ -209,6 +226,7 @@ public class SwingQueryRunner {
             for (AbstractButton b : cancelButtons) {
                 b.setEnabled(running);
             }
+            runningListeners.forEach(listener -> listener.accept(running));
         });
     }
 }

@@ -129,6 +129,9 @@ public class ModelBuilderFrame extends JFrame {
 
     private final JButton showGuideButton =
             new JButton("Guide…");
+    private final JLabel configurationLockLabel = new JLabel(
+            "Configuration locked while a process is running — inspect or cancel to edit.");
+    private boolean configurationLocked;
 
     private JFrame guideWindow;
     private ModelingGuidePanel guidePanel;
@@ -339,8 +342,14 @@ public class ModelBuilderFrame extends JFrame {
                                                + "what's done, what's next, the tool for it, and the hint");
         header.add(showGuideButton);
 
+        configurationLockLabel.setForeground(new Color(155, 90, 0));
+        configurationLockLabel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 2));
+        configurationLockLabel.setVisible(false);
+        JPanel top = new JPanel(new BorderLayout());
+        top.add(header, BorderLayout.NORTH);
+        top.add(configurationLockLabel, BorderLayout.SOUTH);
         JPanel panel = new JPanel(new BorderLayout(4, 4));
-        panel.add(header, BorderLayout.NORTH);
+        panel.add(top, BorderLayout.NORTH);
         panel.add(sourceWorkbench, BorderLayout.CENTER);
         return panel;
     }
@@ -605,11 +614,15 @@ public class ModelBuilderFrame extends JFrame {
     private void wireActions() {
         SwingQueryRunner queryRunner = querySession.runner();
 
+        queryRunner.onRunningChanged(ignored -> updateConfigurationLock());
+        processRunner.onRunningChanged(ignored -> updateConfigurationLock());
+
         queryRunner.registerCancelButton(cancelButton);
         processRunner.registerCancelButton(cancelButton);
-        processRunner.registerRunButton(generateDomainButton);
-        processRunner.registerRunButton(remapButton);
-        processRunner.registerRunButton(enrichButton);
+        // The lock owns these, not registerRunButton: Remap and Enrich also require a
+        // previous run, and two owners for one button's enabled state means whichever
+        // runs last wins — which was only correct while the listeners happened to fire
+        // in the right order.
         queryRunner.registerRunButton(showGeneratedSourceButton);
         queryRunner.cancelAction(client::cancelCurrentQuery);
 
@@ -1302,6 +1315,50 @@ public class ModelBuilderFrame extends JFrame {
         if (guidePanel != null && guideWindow != null && guideWindow.isVisible()) {
             guidePanel.refresh();
         }
+    }
+
+    private void updateConfigurationLock() {
+        setConfigurationLocked(processRunner.isRunning() || querySession.runner().isRunning());
+    }
+
+    private void setConfigurationLocked(boolean locked) {
+        if (configurationLocked == locked) return;
+        configurationLocked = locked;
+        configurationLockLabel.setVisible(locked);
+
+        domainBox.setEnabled(!locked);
+        newDomainButton.setEnabled(!locked);
+        renameDomainButton.setEnabled(!locked);
+        deleteDomainButton.setEnabled(!locked);
+        loadModelButton.setEnabled(!locked);
+        loadSavedButton.setEnabled(!locked);
+        saveEverythingButton.setEnabled(!locked);
+        depthSpinner.setEnabled(!locked);
+        classModelPanel.setEditingEnabled(!locked);
+        sourceWorkbench.setEditingEnabled(!locked);
+        showEntityKindsButton.setEnabled(!locked);
+        showSelectionsButton.setEnabled(!locked);
+        showGuideButton.setEnabled(!locked);
+
+        generateButton.setEnabled(!locked);
+        generateDomainButton.setEnabled(!locked);
+        remapButton.setEnabled(!locked && lastRun != null);
+        enrichButton.setEnabled(!locked && lastRun != null);
+        // Read-only, not switched off: a disabled JFrame ignores every event including
+        // its own close button, so a window opened before a 25-minute generation could
+        // neither be used nor dismissed.
+        if (entityKindsWindow != null) {
+            EditableComponents.setEditable(entityKindsWindow.getContentPane(), !locked);
+        }
+        if (selectionsWindow != null) {
+            EditableComponents.setEditable(selectionsWindow.getContentPane(), !locked);
+        }
+        if (guideWindow != null) {
+            EditableComponents.setEditable(guideWindow.getContentPane(), !locked);
+        }
+
+        revalidate();
+        repaint();
     }
 
     private void showGuide() {
@@ -1998,7 +2055,36 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void saveEverything() {
-        sourceWorkbench.applyEdits();
+        GeneratedProjectModel modelToSave = projectModel;
+        boolean recoverCompletedRun = false;
+        try {
+            sourceWorkbench.applyEdits();
+        } catch (LinkageError brokenRuntime) {
+            // A live JVM can straddle an incremental/parallel compile: an editor class
+            // already loaded from one build may reference a helper absent from that
+            // class loader. Do not let that strand a completed 20–30 minute generation.
+            // The run owns the exact immutable model that produced its objects, so it
+            // can still be saved as a consistent model/rules/snapshot triple without
+            // consulting the broken live editor.
+            if (lastRun == null || lastRun.modelSnapshot() == null
+                    || lastRun.dynamicObjects() == null
+                    || lastRun.dynamicObjects().isEmpty()) {
+                reportGenerationError(brokenRuntime);
+                return;
+            }
+            int recover = JOptionPane.showConfirmDialog(this,
+                    "The live configuration editor could not be applied because the "
+                            + "running application has an inconsistent classpath:\n"
+                            + brokenRuntime + "\n\n"
+                            + "Save the completed generation using the immutable model "
+                            + "snapshot that produced it?\n"
+                            + "Pending editor changes will not be included.",
+                    "Recover completed generation",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (recover != JOptionPane.OK_OPTION) return;
+            modelToSave = lastRun.modelSnapshot();
+            recoverCompletedRun = true;
+        }
 
         // Confirm BEFORE writing — show the exact paths and what each will get,
         // so Escape actually cancels (the old dialog appeared after the files
@@ -2010,8 +2096,8 @@ public class ModelBuilderFrame extends JFrame {
         // Drift guard: the snapshot we'd write came from lastRun's model; if the
         // current model has changed since, the saved instances will be stale.
         String runSig = generatedInstancesSignature();
-        if (haveInstances && !runSig.isEmpty()
-                && !runSig.equals(modelSignature(projectModel))) {
+        if (!recoverCompletedRun && haveInstances && !runSig.isEmpty()
+                && !runSig.equals(modelSignature(modelToSave))) {
             int d = JOptionPane.showConfirmDialog(this,
                                                   "The model has changed since these instances were generated.\n"
                                                           + "The saved snapshot will be STALE (not match the saved model).\n\n"
@@ -2047,7 +2133,7 @@ public class ModelBuilderFrame extends JFrame {
             }
         }
 
-        String plan = "Save the domain \"" + projectModel.name()
+        String plan = "Save the domain \"" + modelToSave.name()
                 + "\" — write these files?\n\n"
                 + "Config:    " + modelFile().getPath() + "\n"
                 + "Rule tree: " + ruleTreeFile().getPath() + "\n"
@@ -2067,7 +2153,7 @@ public class ModelBuilderFrame extends JFrame {
 
             // Depth is now per-class (saved on each class via the spinner change
             // listener); make sure the active class has the latest spinner value.
-            GeneratedClassModel active = activeClass();
+            GeneratedClassModel active = recoverCompletedRun ? null : activeClass();
             if (active != null) {
                 active.generationDepth(((Number) depthSpinner.getValue()).intValue());
             }
@@ -2075,7 +2161,7 @@ public class ModelBuilderFrame extends JFrame {
             // data, not authored — persist it as an EMPTY shell (still declared, so the
             // field target resolves and the tree shows it) and re-derive its values from
             // the snapshot on load. This keeps it from ever being saved stale.
-            GeneratedProjectModel toSave = projectModel.copy();
+            GeneratedProjectModel toSave = modelToSave.copy();
             for (String name
                     : wikidata.explore.transform.DescriptiveVocabularyBuild.targets(toSave)) {
                 if (toSave.findSelection(name) instanceof VocabularySelection v) {
@@ -2085,7 +2171,7 @@ public class ModelBuilderFrame extends JFrame {
             new GeneratedProjectModelStore().save(toSave, modelFile());
             report.append("Config:    ").append(modelFile().getPath()).append('\n');
 
-            RuleNode root = RuleTreeCompiler.compileProject(projectModel);
+            RuleNode root = RuleTreeCompiler.compileProject(modelToSave);
             new RuleTreeSerializer().save(root, ruleTreeFile());
             report.append("Rule tree: ").append(ruleTreeFile().getPath()).append('\n');
 

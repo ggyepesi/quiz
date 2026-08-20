@@ -50,6 +50,14 @@ public class SingleRootClassModelPanel extends JPanel {
         tree.addTreeSelectionListener(listener);
     }
 
+    /** Keeps the model tree navigable while preventing structural edits. */
+    public void setEditingEnabled(boolean enabled) {
+        renameClassButton.setEnabled(enabled);
+        addClassButton.setEnabled(enabled);
+        addFieldButton.setEnabled(enabled);
+        removeButton.setEnabled(enabled);
+    }
+
     public Object selectedUserObject() {
         DefaultMutableTreeNode n =
                 (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();

@@ -24,6 +24,7 @@ public final class SwingProcessRunner {
     private final ProcessInputHandler inputs;
     private final List<AbstractButton> runButtons = new CopyOnWriteArrayList<>();
     private final List<AbstractButton> cancelButtons = new CopyOnWriteArrayList<>();
+    private final List<Consumer<Boolean>> runningListeners = new CopyOnWriteArrayList<>();
     private volatile SwingWorker<?, ?> worker;
     private volatile Thread workerThread;
     private volatile CancellationToken cancellation;
@@ -48,6 +49,10 @@ public final class SwingProcessRunner {
             button.setEnabled(isRunning());
             button.addActionListener(e -> cancel());
         }
+    }
+
+    public void onRunningChanged(Consumer<Boolean> listener) {
+        if (listener != null) runningListeners.add(listener);
     }
 
     public <R> void run(
@@ -112,6 +117,7 @@ public final class SwingProcessRunner {
         SwingUtilities.invokeLater(() -> {
             runButtons.forEach(button -> button.setEnabled(!running));
             cancelButtons.forEach(button -> button.setEnabled(running));
+            runningListeners.forEach(listener -> listener.accept(running));
         });
     }
 }
