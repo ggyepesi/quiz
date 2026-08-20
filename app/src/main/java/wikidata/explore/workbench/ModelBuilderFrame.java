@@ -713,8 +713,10 @@ public class ModelBuilderFrame extends JFrame {
                 GeneratedProjectModel snapshot = projectModel.copy();
                 process.ProcessWorkflowPipeline generationPipeline =
                         wikidata.explore.generation.GenerateDomainPipeline.configured(snapshot);
+                var executionSettings =
+                        new wikidata.explore.generation.GenerationExecutionSettings();
                 GenerateDomainProcess generation =
-                        new GenerateDomainProcess(snapshot, generationPipeline);
+                        new GenerateDomainProcess(snapshot, generationPipeline, executionSettings);
                 java.util.List<objectview.Viewable> classCards = snapshot.classes().stream()
                         .map(model -> {
                             quiz.transform.DynamicViewable card =
@@ -731,6 +733,15 @@ public class ModelBuilderFrame extends JFrame {
                             @Override public String id() { return "generate-domain"; }
                             @Override public process.ProcessWorkflowPipeline
                                     pipeline() { return generationPipeline; }
+                            @Override public javax.swing.JComponent executionSettings() {
+                                return new wikidata.explore.generation.GenerationExecutionSettingsPanel(
+                                        executionSettings);
+                            }
+                            @Override public boolean applyAllowed(
+                                    process.ProcessStatus status) {
+                                return status != process.ProcessStatus.PARTIAL
+                                        || !executionSettings.requireComplete();
+                            }
                             @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
                                 return new process.swing.workflow.ProcessWorkflowPlan(
                                         "Generate domain",
@@ -794,6 +805,8 @@ public class ModelBuilderFrame extends JFrame {
                     // so canonicalization / display-name edits apply without a
                     // re-fetch. Valid for local edits (same extraction).
                     GeneratedProjectModel snapshot = projectModel.copy();
+                    var operationSettings =
+                            new wikidata.explore.generation.GenerationExecutionSettings();
                     var pipeline = operationPipeline(
                             "remap", "Remap locally",
                             "Recompile the model and re-transform a staged copy; no network fetch.",
@@ -803,7 +816,7 @@ public class ModelBuilderFrame extends JFrame {
                     startGenerationOperation(
                             "Remap domain", "Preview local model changes without downloading data.",
                             "remap", new RemapInstancesQuery(lastRun, snapshot), pipeline,
-                            snapshot);
+                            snapshot, operationSettings, false);
             } catch (Exception ex) {
                 reportGenerationError(ex);
             }
@@ -822,6 +835,8 @@ public class ModelBuilderFrame extends JFrame {
                     // Additive: a field declared since the download needs its property
                     // fetched for the entities already here, not a new extraction.
                     GeneratedProjectModel snapshot = projectModel.copy();
+                    var operationSettings =
+                            new wikidata.explore.generation.GenerationExecutionSettings();
                     var pipeline = operationPipeline(
                             "enrich", "Enrich existing graph",
                             "Load missing declared properties, converge semantics and finalize a staged copy.",
@@ -829,8 +844,9 @@ public class ModelBuilderFrame extends JFrame {
                     startGenerationOperation(
                             "Enrich domain",
                             "Add newly declared values to the existing population without rediscovery.",
-                            "enrich", new EnrichInstancesQuery(lastRun, snapshot), pipeline,
-                            snapshot);
+                            "enrich", new EnrichInstancesQuery(
+                                    lastRun, snapshot, operationSettings), pipeline,
+                            snapshot, operationSettings, true);
             } catch (Exception ex) {
                 reportGenerationError(ex);
             }
@@ -931,9 +947,11 @@ public class ModelBuilderFrame extends JFrame {
             String title, String description, String phaseId,
             wikidata.explore.query.core.Query<GenerationRun> query,
             process.ProcessWorkflowPipeline pipeline,
-            GeneratedProjectModel snapshot) {
+            GeneratedProjectModel snapshot,
+            wikidata.explore.generation.GenerationExecutionSettings executionSettings,
+            boolean networked) {
         var operation = new wikidata.explore.generation.GenerationOperationProcess(
-                title, description, phaseId, query, pipeline);
+                title, description, phaseId, query, pipeline, executionSettings, networked);
         quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
                 title.toLowerCase(java.util.Locale.ROOT).replace(' ', '-'), snapshot.name());
         summary.type("Domain operation");
@@ -944,6 +962,14 @@ public class ModelBuilderFrame extends JFrame {
                     @Override public String id() { return phaseId; }
                     @Override public process.ProcessWorkflowPipeline pipeline() {
                         return pipeline;
+                    }
+                    @Override public javax.swing.JComponent executionSettings() {
+                        return new wikidata.explore.generation.GenerationExecutionSettingsPanel(
+                                executionSettings, networked);
+                    }
+                    @Override public boolean applyAllowed(process.ProcessStatus status) {
+                        return status != process.ProcessStatus.PARTIAL
+                                || !executionSettings.requireComplete();
                     }
                     @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
                         return new process.swing.workflow.ProcessWorkflowPlan(

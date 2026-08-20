@@ -83,6 +83,12 @@ public final class SwingProcessWorkflow {
                         "Configured execution pipeline", 0);
                 planTabs.setSelectedIndex(0);
             }
+            JComponent executionSettings = action.executionSettings();
+            if (executionSettings != null) {
+                planTabs.insertTab("Execution settings", null, executionSettings,
+                        "Run-scoped resource and reliability settings",
+                        pipelinePanel == null ? 0 : 1);
+            }
             panel.add(planTabs, BorderLayout.CENTER);
             JButton cancel = new JButton("Cancel");
             JButton execute = new JButton(plan.executable()
@@ -133,20 +139,21 @@ public final class SwingProcessWorkflow {
             try {
                 results = action.results(outcome);
             } catch (Throwable resultFailure) {
-                showFallbackResults(outcome.summary(), resultFailure, null);
+                showFallbackResults(outcome.summary(), resultFailure, null, outcome.status());
                 return;
             }
             try {
                 showResults(results, outcome.status());
             } catch (Throwable renderingFailure) {
-                showFallbackResults(outcome.summary(), renderingFailure, results);
+                showFallbackResults(outcome.summary(), renderingFailure, results,
+                        outcome.status());
             }
         }
 
         /** Never leave a completed process looking RUNNING because its rich result
          * page failed. Actions with one safe result (generation) can still be accepted. */
         void showFallbackResults(String summary, Throwable failure,
-                                 ProcessWorkflowResults<D> results) {
+                                 ProcessWorkflowResults<D> results, ProcessStatus status) {
             JPanel panel = page("3 · Results", summary);
             JLabel message = new JLabel("<html>The detailed result preview could not be "
                     + "rendered.<br>" + html(failure.getMessage()) + "</html>");
@@ -157,7 +164,7 @@ public final class SwingProcessWorkflow {
             List<ProcessWorkflowResults.Card<D>> safe = results == null ? List.of()
                     : results.tabs().stream().flatMap(tab -> tab.cards().stream())
                             .filter(ProcessWorkflowResults.Card::includeInApplyAll).toList();
-            accept.setEnabled(!safe.isEmpty());
+            accept.setEnabled(action.applyAllowed(status) && !safe.isEmpty());
             accept.addActionListener(e -> apply(safe));
             panel.add(buttons(close, accept), BorderLayout.SOUTH);
             install(action.plan().title() + " — results", panel);
@@ -165,8 +172,12 @@ public final class SwingProcessWorkflow {
 
         void showResults(ProcessWorkflowResults<D> results, ProcessStatus status) {
             applyVerb = results.applyVerb();
+            boolean applicationAllowed = action.applyAllowed(status);
             JPanel panel = page("3 · Results", results.summary()
-                    + (status == ProcessStatus.PARTIAL ? " (partial result)" : ""));
+                    + (status == ProcessStatus.PARTIAL
+                    ? applicationAllowed ? " (partial result)"
+                    : " (partial result — applying is disabled by execution settings)"
+                    : ""));
             AtomicReference<ProcessWorkflowResults.Card<D>> selected = new AtomicReference<>();
             JButton applySelected = new JButton(results.applyVerb() + " selected card");
             applySelected.setEnabled(false);
@@ -198,7 +209,8 @@ public final class SwingProcessWorkflow {
                         || !builtTabs.add(resultIndex)) return;
                 ProcessWorkflowResults.Tab<D> tab = results.tabs().get(resultIndex);
                 try {
-                    tabs.setComponentAt(index, resultTab(tab, selected, applySelected));
+                    tabs.setComponentAt(index, resultTab(
+                            tab, selected, applySelected, applicationAllowed));
                 } catch (Throwable failure) {
                     tabs.setComponentAt(index, new JLabel("  Could not render this tab: "
                             + (failure.getMessage() == null
@@ -211,7 +223,7 @@ public final class SwingProcessWorkflow {
             JButton close = new JButton("Close without applying");
             JButton applyAll = new JButton(
                     results.applyVerb() + " all safe results (" + bulk.size() + ")");
-            applyAll.setEnabled(!bulk.isEmpty());
+            applyAll.setEnabled(applicationAllowed && !bulk.isEmpty());
             close.addActionListener(e -> dialog.dispose());
             applySelected.addActionListener(e -> apply(List.of(selected.get())));
             applyAll.addActionListener(e -> apply(bulk));
@@ -222,7 +234,8 @@ public final class SwingProcessWorkflow {
         private JComponent resultTab(
                 ProcessWorkflowResults.Tab<D> tab,
                 AtomicReference<ProcessWorkflowResults.Card<D>> selected,
-                JButton applySelected) {
+                JButton applySelected,
+                boolean applicationAllowed) {
             List<Viewable> views = tab.cards().stream()
                     .map(ProcessWorkflowResults.Card::view).toList();
             if (views.isEmpty()) return new JLabel("  (none)");
@@ -241,7 +254,7 @@ public final class SwingProcessWorkflow {
                         ProcessWorkflowResults.Card<D> card = value instanceof Viewable view
                                 ? cards.get(view) : null;
                         selected.set(card);
-                        applySelected.setEnabled(card != null
+                        applySelected.setEnabled(applicationAllowed && card != null
                                 && card.decision().get() != null);
                     }).build();
         }

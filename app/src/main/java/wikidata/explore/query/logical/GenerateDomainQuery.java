@@ -34,16 +34,26 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
 
     private final GeneratedProjectModel project;
     private final process.ProcessWorkflowPipeline pipelineProgress;
+    private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
 
     public GenerateDomainQuery(GeneratedProjectModel project) {
-        this(project, null);
+        this(project, null, new wikidata.explore.generation.GenerationExecutionSettings());
     }
 
     public GenerateDomainQuery(
             GeneratedProjectModel project,
             process.ProcessWorkflowPipeline pipelineProgress) {
+        this(project, pipelineProgress,
+                new wikidata.explore.generation.GenerationExecutionSettings());
+    }
+
+    public GenerateDomainQuery(
+            GeneratedProjectModel project,
+            process.ProcessWorkflowPipeline pipelineProgress,
+            wikidata.explore.generation.GenerationExecutionSettings executionSettings) {
         this.project = project;
         this.pipelineProgress = pipelineProgress;
+        this.executionSettings = executionSettings;
     }
 
     @Override public String purpose() { return "Generate domain"; }
@@ -56,6 +66,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
         Map<String, String> p = new LinkedHashMap<>();
         p.put("domain", project.name());
         p.put("classes", String.valueOf(project.classes().size()));
+        p.put("cacheMb", String.valueOf(executionSettings.resolvedMemoryMb()));
+        p.put("entityConcurrency", String.valueOf(executionSettings.concurrency()));
+        p.put("requireComplete", String.valueOf(executionSettings.requireComplete()));
         return p;
     }
 
@@ -78,6 +91,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.api.WikidataApiClient entityApi =
                             new wikidata.api.WikidataApiClient(
                                     wikidata.api.WikidataApiClient.DEFAULT_USER_AGENT)
+                                    .facts(executionSettings.newFactStore())
+                                    .entityConcurrency(executionSettings.concurrency())
                                     .cancellation(context.cancellation());
 
                     // ONE runtime for the whole domain — every class compiled
@@ -373,6 +388,17 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     : ", " + facts.unplannedEvictions()
                                     + " of them holding facts nobody planned to re-read")
                             + ".\n");
+                    // The budget is a profile the reader chose, so say when the run has
+                    // nearly used it: a domain that fits today evicts tomorrow, and the
+                    // AUTO profile never grows past its own ceiling on its own.
+                    long budget = facts.maxEstimatedBytes();
+                    if (budget > 0 && facts.estimatedBytes() * 10L >= budget * 9L) {
+                        genLog.message("Fact store held ~"
+                                + (facts.estimatedBytes() * 100L / budget)
+                                + "% of its " + (budget / (1024 * 1024))
+                                + " MB budget — a larger memory profile buys headroom "
+                                + "before this domain starts evicting.\n");
+                    }
                     genLog.message("Fact-demand timing: "
                             + facts.preplannedDemandPairs()
                             + " QID/property demand pair(s) known or retained before "

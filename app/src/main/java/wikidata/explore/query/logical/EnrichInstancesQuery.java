@@ -23,13 +23,22 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
 
     private final GenerationRun previousRun;
     private final GeneratedProjectModel projectModel;
+    private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
 
     public EnrichInstancesQuery(
             GenerationRun previousRun,
             GeneratedProjectModel projectModel) {
 
+        this(previousRun, projectModel,
+                new wikidata.explore.generation.GenerationExecutionSettings());
+    }
+
+    public EnrichInstancesQuery(
+            GenerationRun previousRun, GeneratedProjectModel projectModel,
+            wikidata.explore.generation.GenerationExecutionSettings executionSettings) {
         this.previousRun = previousRun;
         this.projectModel = projectModel;
+        this.executionSettings = executionSettings;
     }
 
     @Override
@@ -49,6 +58,9 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
         p.put("rootClass", projectModel.rootClass().className());
         p.put("reusedObjects", String.valueOf(previousRun.dynamicObjects().size()));
         p.put("depth", String.valueOf(previousRun.depth()));
+        p.put("cacheMb", String.valueOf(executionSettings.resolvedMemoryMb()));
+        p.put("entityConcurrency", String.valueOf(executionSettings.concurrency()));
+        p.put("requireComplete", String.valueOf(executionSettings.requireComplete()));
         return p;
     }
 
@@ -67,6 +79,8 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                     wikidata.api.WikidataApiClient entityApi =
                             new wikidata.api.WikidataApiClient(
                                     wikidata.api.WikidataApiClient.DEFAULT_USER_AGENT)
+                                    .facts(executionSettings.newFactStore())
+                                    .entityConcurrency(executionSettings.concurrency())
                                     .cancellation(context.cancellation());
 
                     // Also teed to stdout: a fetch over thousands of entities is

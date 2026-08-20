@@ -49,6 +49,7 @@ public class WikidataApiClient {
     private final String userAgent;
     private process.CancellationToken cancellation = new process.CancellationToken();
     private WikidataFactStore facts = new WikidataFactStore();
+    private int entityConcurrency = 6;
     private final Map<String, List<String>> aliasCache =
             new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -123,6 +124,10 @@ public class WikidataApiClient {
     }
 
     public WikidataFactStore facts() { return facts; }
+    public WikidataApiClient entityConcurrency(int value) {
+        entityConcurrency = Math.max(1, Math.min(16, value));
+        return this;
+    }
     /**
      * Searches for Wikidata entities matching a natural language expression.
      *
@@ -627,7 +632,7 @@ public class WikidataApiClient {
         new BatchExecutor<Map<String, List<String>>>(
                 BatchPolicy.defaults().withResume(false), batchProgress(batchLog),
                 WikidataBatchFailureClassifier.INSTANCE, cancellation,
-                batch.BatchCheckpointStore.NONE, GET_ENTITIES_CONCURRENCY)
+                batch.BatchCheckpointStore.NONE, entityConcurrency)
                 .run(roots, (descriptor, aliases) -> {
                     aliases.forEach((qid, values) -> {
                         aliasCache.put(qid, values);
@@ -669,7 +674,7 @@ public class WikidataApiClient {
     private BatchExecutor<Map<String, ApiEntity>> entityExecutor(BatchLog batchLog) {
         return new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
                 batchProgress(batchLog), WikidataBatchFailureClassifier.INSTANCE,
-                cancellation, batch.BatchCheckpointStore.NONE, GET_ENTITIES_CONCURRENCY);
+                cancellation, batch.BatchCheckpointStore.NONE, entityConcurrency);
     }
 
     private WorkUnit<Map<String, ApiEntity>> entityUnit(
@@ -732,7 +737,7 @@ public class WikidataApiClient {
                 BatchPolicy.defaults().withResume(false), batchProgress(batchLog),
                 WikidataBatchFailureClassifier.INSTANCE,
                 cancellation, batch.BatchCheckpointStore.NONE,
-                GET_ENTITIES_CONCURRENCY);
+                entityConcurrency);
         executor.run(roots, (descriptor, statements) -> out.putAll(statements));
         return out;
     }
@@ -765,7 +770,7 @@ public class WikidataApiClient {
                 new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
                         batchProgress(batchLog), WikidataBatchFailureClassifier.INSTANCE,
                         cancellation, batch.BatchCheckpointStore.NONE,
-                        GET_ENTITIES_CONCURRENCY);
+                        entityConcurrency);
         executor.run(roots, (descriptor, statements) -> statements.forEach((pid, byQid) ->
                 out.computeIfAbsent(pid, ignored -> new LinkedHashMap<>()).putAll(byQid)));
         return out;
@@ -816,7 +821,7 @@ public class WikidataApiClient {
                 new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
                         batchProgress(batchLog), WikidataBatchFailureClassifier.INSTANCE,
                         cancellation, batch.BatchCheckpointStore.NONE,
-                        GET_ENTITIES_CONCURRENCY);
+                        entityConcurrency);
         List<WorkDescriptor> failed = executor.runBestEffort(roots,
                 (descriptor, statements) -> statements.forEach((pid, byQid) ->
                         out.computeIfAbsent(pid, ignored -> new LinkedHashMap<>())
@@ -938,8 +943,6 @@ public class WikidataApiClient {
     private static String encodePipes(String value) {
         return value.replace("|", "%7C");
     }
-
-    private static final int GET_ENTITIES_CONCURRENCY = 6;
 
     /** One physical batch, with the transport's own short retry. Overridable so a test
      *  can fail a single batch and exercise the real fan-out around it — there is no

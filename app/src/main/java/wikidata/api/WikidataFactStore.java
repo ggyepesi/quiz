@@ -142,6 +142,9 @@ public final class WikidataFactStore {
                 this.maxEstimatedBytes / 8 / ESTIMATED_MEASUREMENT_BYTES);
     }
 
+    /** Configured retained-payload ceiling for this run. */
+    public long maxEstimatedBytes() { return maxEstimatedBytes; }
+
     /**
      * Pure lookup: metrics are changed only when a cached response is actually used —
      * except for one count that can only be taken here. A document this store HELD and
