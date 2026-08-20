@@ -68,6 +68,9 @@ public class ModelBuilderFrame extends JFrame {
     // Name collisions from the last run (names mapping to >1 entity), shown on
     // demand in their own panel from the instances window.
     private java.util.List<NameCollision> lastCollisions = java.util.List.of();
+    // Retained so its window is reused: the view owns the window, so keeping the view
+    // is what keeps one window instead of one per press.
+    private CardListView nameCollisionsView;
 
     private final JButton nameCollisionsButton =
             new JButton("Name collisions");
@@ -378,8 +381,7 @@ public class ModelBuilderFrame extends JFrame {
         // renders as a plain search view with no type label, so without this
         // there's no on-screen indication of which class you're looking at.
         instancesWindow.setTitle(instancesTitle());
-        instancesWindow.setVisible(true);
-        instancesWindow.toFront();
+        showAndFocus(instancesWindow);
     }
 
     // Lazily-created window hosting the discovery tools moved out of the main
@@ -422,8 +424,7 @@ public class ModelBuilderFrame extends JFrame {
             statementsWindow.setSize(780, 720);
             statementsWindow.setLocationRelativeTo(this);
         }
-        statementsWindow.setVisible(true);
-        statementsWindow.toFront();
+        showAndFocus(statementsWindow);
         if (!qids.isEmpty()) {
             statementsPanel.showFor(qids);
         }
@@ -438,8 +439,7 @@ public class ModelBuilderFrame extends JFrame {
             explorerWindow.setSize(900, 850);
             explorerWindow.setLocationByPlatform(true);
         }
-        explorerWindow.setVisible(true);
-        explorerWindow.toFront();
+        showAndFocus(explorerWindow);
     }
 
     // Model-as-graph view: classes are nodes, entity-reference fields are edges.
@@ -460,14 +460,16 @@ public class ModelBuilderFrame extends JFrame {
             selectionsWindow.setLocationByPlatform(true);
         }
         selectionsPanel.refreshSelections();
-        selectionsWindow.setVisible(true);
-        selectionsWindow.toFront();
+        showAndFocus(selectionsWindow);
     }
 
     private void showEntityKindsWindow() {
-        if (entityKindsWindow != null) entityKindsWindow.dispose();
-        entityKindsWindow = new JFrame("Evidence-derived entity kinds");
-        entityKindsWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        if (entityKindsWindow == null) {
+            entityKindsWindow = new JFrame("Evidence-derived entity kinds");
+            entityKindsWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            entityKindsWindow.setSize(700, 420);
+            entityKindsWindow.setLocationByPlatform(true);
+        }
         // Labels for the vocabulary picker come from the loaded pool — the same objects
         // the vocabulary was derived from, so a value always reads as what it is.
         // REACHABLE, not the roots: a vocabulary value (Q5 "human") is a nested field
@@ -492,14 +494,21 @@ public class ModelBuilderFrame extends JFrame {
                 }
             }.execute();
         }
+        entityKindsWindow.getContentPane().removeAll();
         entityKindsWindow.add(new EntityKindRulesPanel(projectModel, this::modelChanged,
                 labels::get,
                 (seed, onPicked) -> ExploreByExamplePanel.showPicker(
                         entityKindsWindow, querySession.runner(), seed, false,
                         (qid, label) -> onPicked.accept(qid))));
-        entityKindsWindow.setSize(700, 420);
-        entityKindsWindow.setLocationByPlatform(true);
-        entityKindsWindow.setVisible(true);
+        entityKindsWindow.revalidate();
+        entityKindsWindow.repaint();
+        showAndFocus(entityKindsWindow);
+        // Content built fresh is built enabled, and the lock was applied to the content
+        // this just replaced. Re-applying it here is what keeps the window from being
+        // the one editable surface during a run.
+        if (configurationLocked) {
+            EditableComponents.setEditable(entityKindsWindow.getContentPane(), false);
+        }
     }
 
     private void showGraphWindow() {
@@ -545,8 +554,7 @@ public class ModelBuilderFrame extends JFrame {
             });
         }
         graphPanel.setModel(projectModel);
-        graphWindow.setVisible(true);
-        graphWindow.toFront();
+        showAndFocus(graphWindow);
     }
 
     private String instancesTitle() {
@@ -1227,7 +1235,8 @@ public class ModelBuilderFrame extends JFrame {
         if (lastCollisions.isEmpty()) {
             return;
         }
-        CardListView view = new CardListView();
+        CardListView view = nameCollisionsView == null
+                ? (nameCollisionsView = new CardListView()) : nameCollisionsView;
         // Share the instances panel's render context so clicking a colliding
         // entity navigates to (focuses + scrolls to) its card in the instances
         // window instead of opening a detached copy.
@@ -1236,10 +1245,24 @@ public class ModelBuilderFrame extends JFrame {
             view.setRenderContext(shared);
             view.setInPlaceNavigation(true);
         }
-        for (NameCollision c : lastCollisions) {
-            view.addViewable(c);
+        view.setViewables(lastCollisions);
+        view.createCardsPanel(1);
+        // The card window reuses itself, search bar and all. Rebuilding that here to
+        // gain reuse would be a second copy of it in the app, and the two would drift
+        // apart the moment the shared window gains anything.
+        view.show("Name collisions", 1);
+    }
+
+    /** Information buttons are idempotent: reveal and focus their retained window
+     * instead of silently creating another copy. Also restores a minimized frame. */
+    private static void showAndFocus(JFrame window) {
+        if (window == null) return;
+        if ((window.getExtendedState() & Frame.ICONIFIED) != 0) {
+            window.setExtendedState(window.getExtendedState() & ~Frame.ICONIFIED);
         }
-        view.show("Name collisions (" + lastCollisions.size() + ")", 1);
+        window.setVisible(true);
+        window.toFront();
+        window.requestFocus();
     }
 
     // Returns a human-readable reason the class can't be populated, or null if it
@@ -1397,8 +1420,7 @@ public class ModelBuilderFrame extends JFrame {
             guideWindow.setLocationRelativeTo(this);
         }
         guidePanel.refresh();
-        guideWindow.setVisible(true);
-        guideWindow.toFront();
+        showAndFocus(guideWindow);
     }
 
     // The context follows the exact tree selection: domain, class or field.

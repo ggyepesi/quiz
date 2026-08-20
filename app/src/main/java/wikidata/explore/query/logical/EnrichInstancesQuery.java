@@ -5,6 +5,7 @@ import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.GenerationRun;
+import wikidata.explore.extract.GenerationLog;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -76,6 +77,9 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                 null,
                 parameters(),
                 step -> {
+                    GenerationLog genLog =
+                            StepGenerationLog.of(context, step, "enrich");
+                    genLog.message(executionSettings.resolvedDescription());
                     wikidata.api.WikidataApiClient entityApi =
                             new wikidata.api.WikidataApiClient(
                                     wikidata.api.WikidataApiClient.DEFAULT_USER_AGENT)
@@ -88,7 +92,7 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                     // cannot answer "working, or blocked?".
                     return new GenerationPipeline().enrich(
                             previousRun, projectModel, entityApi,
-                            StepGenerationLog.of(context, step, "enrich"));
+                            genLog);
                 });
     }
 

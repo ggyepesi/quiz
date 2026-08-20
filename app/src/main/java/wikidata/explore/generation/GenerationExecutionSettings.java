@@ -75,6 +75,21 @@ public final class GenerationExecutionSettings {
         return new WikidataFactStore(resolvedMemoryMb() * 1024L * 1024L);
     }
 
+    /** The effective policy written into the durable run log. Profiles alone are not
+     * enough here: AUTO and CUSTOM must be recorded as the values this run actually
+     * used, so a saved log can explain months later why it behaved as it did.
+     *
+     * <p>It states only what the policy owns. Whether a run could have resumed from a
+     * checkpoint is a property of the executor's wiring, not of these settings, and a
+     * durable log that asserts it would go on asserting it after that wiring changes. */
+    public String resolvedDescription() {
+        return "Execution settings: cache " + resolvedMemoryMb() + " MB ("
+                + memoryProfile.name().toLowerCase() + "), network "
+                + networkProfile.name().toLowerCase() + " ("
+                + concurrency() + " concurrent entity requests), completeness "
+                + (requireComplete ? "require complete" : "keep partial results") + ".";
+    }
+
     private void save() {
         if (!persist) return;
         PREFS.put("memoryProfile", memoryProfile.name());

@@ -79,8 +79,12 @@ public class WorkflowLogWindow implements LogListener {
 
     public void show(Component owner) {
         if (frame != null) {
+            if ((frame.getExtendedState() & Frame.ICONIFIED) != 0) {
+                frame.setExtendedState(frame.getExtendedState() & ~Frame.ICONIFIED);
+            }
             frame.setVisible(true);
             frame.toFront();
+            frame.requestFocus();
             return;
         }
 

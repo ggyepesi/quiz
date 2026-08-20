@@ -8,6 +8,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -56,6 +57,25 @@ class GenerationExecutionSettingsTest {
 
         settings.customMemoryMb(20_000);
         assertEquals(8192, settings.resolvedMemoryMb());
+    }
+
+    @Test
+    void durableDescriptionRecordsResolvedValuesAndPolicy() {
+        GenerationExecutionSettings settings = new GenerationExecutionSettings(false);
+        settings.memoryProfile(GenerationExecutionSettings.MemoryProfile.CUSTOM);
+        settings.customMemoryMb(960);
+        settings.networkProfile(GenerationExecutionSettings.NetworkProfile.FAST);
+        settings.requireComplete(false);
+
+        String description = settings.resolvedDescription();
+        assertTrue(description.contains("cache 960 MB (custom)"));
+        assertTrue(description.contains("network fast (10 concurrent entity requests)"));
+        assertTrue(description.contains("keep partial results"));
+        // Only what the policy owns. Whether a run could resume is the executor's
+        // wiring, and a durable log asserting it would keep asserting it after that
+        // wiring changes.
+        assertFalse(description.contains("checkpoint"),
+                "the policy does not speak for the executor");
     }
 
     @Test
