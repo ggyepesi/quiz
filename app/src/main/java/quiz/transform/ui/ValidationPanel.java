@@ -1,5 +1,7 @@
 package quiz.transform.ui;
 
+import datasource.SourceRef;
+
 import objectview.Viewable;
 import objectview.field.FieldPath;
 import objectview.field.FieldSet;
@@ -9,7 +11,7 @@ import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
 import quiz.enrichment.EnrichmentDecisionApplier;
-import quiz.enrichment.EnrichmentProposal;
+import datasource.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
 import quiz.enrichment.EnrichmentRoute;
 import quiz.enrichment.EnrichmentSources;
@@ -88,11 +90,13 @@ public final class ValidationPanel extends JPanel {
     private final JButton checkButton = new JButton();
     private final JButton fieldSourceButton = new JButton("Choose Wikidata source…");
     private final JButton fieldSourceDbpediaButton = new JButton("Choose Wikipedia fallback…");
+    private final JButton wikipediaEvidenceButton = new JButton("Find text evidence…");
     private final JButton exploreIdentityButton = new JButton("Explore Wikidata…");
     private final JButton cancelProcessButton = new JButton("Cancel Find Data");
     private final JButton resolveMissingButton = new JButton("Resolve identities…");
     private final JButton applyButton = new JButton("Save staged changes");
     private final JLabel selectedLabel = new JLabel("No instance selected");
+    private final JLabel batchTargetLabel = new JLabel("Batch actions: current scope");
     private final JTextField manualValue = new JTextField(18);
     private final JButton setValueButton = new JButton("Set / replace");
     private final JButton addValueButton = new JButton("Add to collection");
@@ -133,6 +137,7 @@ public final class ValidationPanel extends JPanel {
     private final Runnable onCurated;
     private final IdentityResolutionLauncher identityResolver;
     private List<Viewable> drilledInstances = List.of();
+    private List<Viewable> selectedCards = List.of();
     // null = ordinary field-gap drill; true/false = identified/unresolved identity drill.
     private Boolean identityDrill;
     private boolean identityTask;
@@ -214,16 +219,19 @@ public final class ValidationPanel extends JPanel {
                 "Pick a Wikipedia infobox (DBpedia) property from a sample member — "
                         + "the fallback source for values Wikidata lacks");
         fieldSourceDbpediaButton.addActionListener(e -> chooseDbpediaSourceForSelected());
+        wikipediaEvidenceButton.addActionListener(e -> findWikipediaEvidence());
         queryRunner.registerRunButton(checkButton);
         findDataRunner.registerRunButton(checkButton);
+        findDataRunner.registerRunButton(wikipediaEvidenceButton);
         exploreIdentityButton.addActionListener(e -> exploreIdentity());
         exploreIdentityButton.setEnabled(false);
         applyButton.addActionListener(e -> applyStaged());
         applyButton.setEnabled(false);
         resolveMissingButton.addActionListener(e -> {
-            if (this.identityResolver != null && !drilledInstances.isEmpty()) {
+            List<Viewable> targets = actionInstances();
+            if (this.identityResolver != null && !targets.isEmpty()) {
                 this.identityResolver.resolve(
-                        List.copyOf(drilledInstances),
+                        targets,
                         identityDrill != null
                                 ? "Validate: unresolved " + type + " identities"
                                 : "Validate: members missing " + selectedFieldType + "."
@@ -423,6 +431,7 @@ public final class ValidationPanel extends JPanel {
         instances = type == null ? List.of() : byType.getOrDefault(type, List.of());
         selected = null;
         drilledInstances = List.of();
+        selectedCards = List.of();
         identityDrill = null;
         identityTask = false;
         syncScopeChoices();
@@ -481,6 +490,8 @@ public final class ValidationPanel extends JPanel {
     /** Render the field drill over the CURRENT drilledInstances (no re-filter), so a
      *  just-staged value keeps its instance visible until Apply. */
     private void renderFieldDrill() {
+        selectedCards = List.of();
+        updateBatchTargetLabel();
         selectedChanged(null);
         instancesHolder.removeAll();
         List<Viewable> matching = drilledInstances;
@@ -537,6 +548,8 @@ public final class ValidationPanel extends JPanel {
 
     /** Render the identity drill over the CURRENT drilledInstances (no re-filter). */
     private void renderIdentityDrill() {
+        selectedCards = List.of();
+        updateBatchTargetLabel();
         selectedChanged(null);
         Boolean identified = identityDrill;
         List<Viewable> matching = drilledInstances;
@@ -692,6 +705,10 @@ public final class ValidationPanel extends JPanel {
         DomainField field = selectedDomainField();
         boolean media = field != null && field.kind() == objectview.field.FieldKind.MEDIA;
 
+        batchTargetLabel.setToolTipText(
+                "Click one card, or Ctrl/Cmd-click several cards, to limit batch actions");
+        target.add(headerLine(batchTargetLabel));
+
         // Wikidata: identity is datasource-dependent, so it sits with the Wikidata source;
         // the property is what yields this field's value.
         JPanel wikidata = titledBlock("Wikidata");
@@ -721,6 +738,19 @@ public final class ValidationPanel extends JPanel {
             why.setEnabled(false);
             fallback.add(headerLine(why));
             target.add(fallback);
+
+            JPanel articleEvidence = titledBlock("Wikipedia article evidence");
+            wikipediaEvidenceButton.setToolTipText(
+                    "Find exact mentions supporting values already present in this field; "
+                            + "results keep the article revision and excerpt for review");
+            articleEvidence.add(headerLine(new JLabel("Existing values"),
+                    wikipediaEvidenceButton));
+            JLabel evidenceWhy = new JLabel(
+                    "<html>Corroborates current values from versioned article text. "
+                            + "It does not infer arbitrary missing fields.</html>");
+            evidenceWhy.setEnabled(false);
+            articleEvidence.add(headerLine(evidenceWhy));
+            target.add(articleEvidence);
         }
 
         // Repairing a reference's NAME is not the same job as filling the field: the
@@ -853,8 +883,10 @@ public final class ValidationPanel extends JPanel {
         StringBuilder plan = new StringBuilder("<html><b>Load values for ")
                 .append(key.type()).append('.').append(key.path())
                 .append("</b><br><br>");
-        plan.append("Members: <b>").append(drilledInstances.size()).append("</b> ")
-            .append(scopeDescription(scopeFilter)).append("<br>");
+        List<Viewable> targets = actionInstances();
+        plan.append("Members: <b>").append(targets.size()).append("</b> ")
+            .append(selectedCards.isEmpty() ? scopeDescription(scopeFilter)
+                    : "selected card(s)").append("<br>");
         if (media) {
             plan.append("Source: Wikidata image (P18) / Wikimedia Commons<br>");
         } else {
@@ -1275,7 +1307,7 @@ public final class ValidationPanel extends JPanel {
     /** The first missing member that carries (or resolves to) a QID — the sample entity
      *  whose properties the picker lists. */
     private ExploreSeed sampleForSourceDiscovery(quiz.curation.ManualCuration curation) {
-        for (Viewable member : drilledInstances) {
+        for (Viewable member : actionInstances()) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
             String qid = resolvedQid(member,
                                      EnrichmentSources.collect(member, concreteType(member), curation));
@@ -1295,10 +1327,10 @@ public final class ValidationPanel extends JPanel {
 
         List<FindDataProcess> jobs = new ArrayList<>();
         int skipped = 0;
-        for (Viewable member : drilledInstances) {
+        for (Viewable member : actionInstances()) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
             String memberType = concreteType(member);
-            List<EnrichmentProposal.SourceRef> sources =
+            List<SourceRef> sources =
                     EnrichmentSources.collect(member, memberType, curation);
             String qid = resolvedQid(member, sources);
             String label = member.getDisplayName();
@@ -1335,7 +1367,7 @@ public final class ValidationPanel extends JPanel {
                     FindDataBatchResult result = outcome.result();
                     quiz.curation.ManualCuration store = curationStore();
                     if (result != null && store != null) {
-                        List<quiz.enrichment.EnrichmentProposal> proposals = result.results()
+                        List<datasource.enrichment.EnrichmentProposal> proposals = result.results()
                                 .stream().map(quiz.enrichment.FindDataResult::proposal).toList();
                         quiz.enrichment.ui.FindDataBatchReviewPanel.showModeless(
                                 this,
@@ -1351,6 +1383,92 @@ public final class ValidationPanel extends JPanel {
                 }),
                 ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
                                                     "Lookup failed: " + ex.getMessage()));
+    }
+
+    /** Corroborates existing values from versioned Wikipedia prose. This is deliberately
+     * a separate action from Load values: exact mention is evidence for a reviewed value,
+     * not a general-purpose inference rule for filling an arbitrary missing field. */
+    private void findWikipediaEvidence() {
+        String path = selectedFieldPath;
+        if (path == null || path.isBlank()) return;
+        DomainField drilled = domain.fields(selectedFieldType).stream()
+                .filter(f -> path.equals(f.field())).findFirst().orElse(null);
+        if (drilled != null && drilled.kind() == objectview.field.FieldKind.MEDIA) {
+            JOptionPane.showMessageDialog(this,
+                    "Text evidence is available for data and reference fields, not media.");
+            return;
+        }
+        quiz.curation.ManualCuration curation = curationStore();
+        List<FindDataProcess> jobs = new ArrayList<>();
+        wikidata.explore.model.WikipediaCategoryRule categoryRule =
+                domain.wikipediaCategoryRule(selectedFieldType, path);
+        quiz.enrichment.WikipediaTextEvidenceProvider provider =
+                new quiz.enrichment.WikipediaTextEvidenceProvider(categoryRule);
+        int skipped = 0;
+        for (Viewable member : actionInstances()) {
+            if (!domain.isInstanceOf(member, selectedFieldType)) continue;
+            Object current = objectview.field.FieldAccess.getPath(member, path);
+            boolean hasCategories = member instanceof
+                    wikidata.explore.extract.WikidataDynamicObject wikidata
+                    && !wikidata.categoryMemberships().isEmpty()
+                    && categoryRule != null && categoryRule.configured();
+            if ((current == null || current instanceof Collection<?> values && values.isEmpty())
+                    && !hasCategories) {
+                skipped++;
+                continue;
+            }
+            String memberType = concreteType(member);
+            List<SourceRef> sources = EnrichmentSources.collect(member, memberType, curation);
+            String qid = resolvedQid(member, sources);
+            if (!isQid(qid)) {
+                skipped++;
+                continue;
+            }
+            EnrichmentRequest request = new EnrichmentRequest(
+                    new EnrichmentProposal.Subject(memberType, member.getIdentifier(), qid,
+                            member.getDisplayName()),
+                    path, drilled != null && drilled.collection(), sources,
+                    DomainSchemas.resolve(domain, memberType, path), current,
+                    member instanceof wikidata.explore.extract.WikidataDynamicObject wikidata
+                            ? wikidata.categoryMemberships() : List.of());
+            jobs.add(new FindDataProcess(request,
+                    EnrichmentRoute.all(List.of(provider)), false));
+        }
+        if (jobs.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No member in this scope has both an existing value and a Wikidata identity.");
+            return;
+        }
+        String message = "<html><b>Find Wikipedia evidence for " + selectedFieldType + "."
+                + path + "</b><br><br>Eligible members: <b>" + jobs.size() + "</b><br>"
+                + "Skipped: <b>" + skipped + "</b> (no usable value/category evidence or identity)<br><br>"
+                + "Existing values are checked against article text. Configured category "
+                + "relations can also propose new values from memberships acquired by ModelBuilder. "
+                + "Every result retains its article revision and exact source evidence; "
+                + "nothing is saved until you stage it.</html>";
+        if (JOptionPane.showConfirmDialog(this, new JLabel(message),
+                "Find Wikipedia text evidence", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
+
+        findDataRunner.run(new FindDataBatchProcess(jobs, skipped, path),
+                outcome -> SwingUtilities.invokeLater(() -> {
+                    FindDataBatchResult result = outcome.result();
+                    quiz.curation.ManualCuration store = curationStore();
+                    if (result != null && store != null) {
+                        List<datasource.enrichment.EnrichmentProposal> proposals = result.results()
+                                .stream().map(quiz.enrichment.FindDataResult::proposal).toList();
+                        quiz.enrichment.ui.FindDataBatchReviewPanel.showModeless(this,
+                                "Review Wikipedia evidence — " + path,
+                                "Review exact article mentions and configured category relations.",
+                                proposals, reviewed -> reviewed.accepted().forEach(
+                                        decision -> applyDecision(store, decision)));
+                    }
+                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
+                        JOptionPane.showMessageDialog(this,
+                                "Wikipedia lookup failed: " + outcome.error().getMessage());
+                    }
+                }), ex -> JOptionPane.showMessageDialog(this,
+                        "Wikipedia lookup failed: " + ex.getMessage()));
     }
 
     private EnrichmentRoute routeFor(
@@ -1380,15 +1498,14 @@ public final class ValidationPanel extends JPanel {
             quiz.curation.ManualCuration curation,
             quiz.enrichment.EnrichmentDecision decision) {
         try {
-            // Find Data has its own reviewed, durable transaction. It cannot persist the
-            // detached manual/identity staging session, which remains pending afterwards.
-            EnrichmentDecisionApplier.apply(domain, curation, decision);
+            EnrichmentDecisionApplier.stage(domain, staging, decision);
+            Corrections.apply(domain.instances(), List.of(staging));
             updateApplyButton();
             refreshCoverage();
             onCurated.run();
-            onFieldSelected();
+            renderFieldDrill();
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, "Could not stage result: " + ex.getMessage());
         }
     }
 
@@ -1595,6 +1712,23 @@ public final class ValidationPanel extends JPanel {
         updateIdentityButton();
     }
 
+    private void selectedCardsChanged(List<Object> values) {
+        selectedCards = values == null ? List.of() : values.stream()
+                .filter(Viewable.class::isInstance).map(Viewable.class::cast).toList();
+        updateBatchTargetLabel();
+    }
+
+    private List<Viewable> actionInstances() {
+        return selectedCards.isEmpty() ? List.copyOf(drilledInstances) : selectedCards;
+    }
+
+    private void updateBatchTargetLabel() {
+        batchTargetLabel.setText(selectedCards.isEmpty()
+                ? "Batch actions: all " + drilledInstances.size() + " cards in this scope"
+                : "Batch actions: " + selectedCards.size() + " selected card"
+                        + (selectedCards.size() == 1 ? "" : "s"));
+    }
+
     private String concreteType(Viewable member) {
         String concrete = domain.mostSpecificClass(member);
         if (concrete != null && !concrete.isBlank()) {
@@ -1608,12 +1742,12 @@ public final class ValidationPanel extends JPanel {
      *  one carried by an approved Wikidata identity selected in Explore.
      *  Null when there's none — QID-only providers skip, name-based ones still run. */
     private static String resolvedQid(Viewable member,
-                                      List<EnrichmentProposal.SourceRef> sources) {
+                                      List<SourceRef> sources) {
         String id = member.getIdentifier();
         if (isQid(id)) {
             return id;
         }
-        for (EnrichmentProposal.SourceRef source : sources) {
+        for (SourceRef source : sources) {
             if ("Wikidata".equalsIgnoreCase(source.kind())
                     && isQid(source.sourceId())) {
                 return source.sourceId();
@@ -1635,7 +1769,9 @@ public final class ValidationPanel extends JPanel {
                                                    .collapsible(true)
                                                    .selectionListener(o -> {
                                                        selectedChanged(o instanceof Viewable q ? q : null);
-                                                   }).build();
+                                                   })
+                                                   .selectionSetListener(this::selectedCardsChanged)
+                                                   .build();
     }
 
     private static boolean has(Viewable q, String path) {

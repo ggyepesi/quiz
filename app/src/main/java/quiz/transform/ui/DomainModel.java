@@ -16,6 +16,10 @@ import java.util.List;
  */
 public interface DomainModel {
 
+    /** Optional additive Wikipedia-category recipe declared by the producing model. */
+    default wikidata.explore.model.WikipediaCategoryRule wikipediaCategoryRule(
+            String type, String field) { return null; }
+
     /** Every class represented in the domain — one uniform set derived the same way
      *  for built-in and snapshot backings: the classes carried by (or referenced from)
      *  the domain's instances. Built-in domains discover these by reflection (walking

@@ -68,6 +68,9 @@ public final class PoolCopy {
         c.type(o.typeName());
         c.typeKey(o.typeKey());
         c.valueObject(o.isValueObject());
+        if (o.categoryMembershipsAnswered()) {
+            c.categoryMemberships(o.categoryMemberships());
+        }
         clones.put(o, c);
         work.add(o);   // its fields still need copying
         return c;

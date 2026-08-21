@@ -344,6 +344,19 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
                             convergence.iterations() + " semantic iteration(s)");
+                    phase(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                            "Wikipedia category memberships");
+                    wikidata.explore.generation.WikipediaCategoryAcquisition.Result categories =
+                            wikidata.explore.generation.WikipediaCategoryAcquisition.apply(
+                                    project, pool, genLog, context.cancellation(), entityApi);
+                    if (categories.memberships() > 0) {
+                        progress(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                                categories.memberships()
+                                        + " Wikipedia category membership(s) acquired");
+                    }
+                    completePhase(
+                            wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                            categories.memberships() + " category membership(s)");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.LABELS,
                             "Hydrating final reachable QIDs");
                     wikidata.explore.generation.FinalLabelHydration.Result labels =

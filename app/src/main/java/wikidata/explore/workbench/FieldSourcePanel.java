@@ -37,6 +37,9 @@ public class FieldSourcePanel extends JPanel {
     private final JButton fallbackButton = new JButton("Set Wikipedia fallback…");
     private final JButton clearFallbackButton = new JButton("Clear");
     private final JLabel fallbackLabel = new JLabel("none");
+    private final JButton categoryButton = new JButton("Configure…");
+    private final JButton clearCategoryButton = new JButton("Clear");
+    private final JLabel categoryLabel = new JLabel("none");
     private final JButton examplesButton = new JButton("Examples…");
     private final JLabel applyStatusLabel = new JLabel(" ");
 
@@ -323,6 +326,50 @@ public class FieldSourcePanel extends JPanel {
         clearFallbackButton.setEnabled(set);
     }
 
+    private void configureCategoryRule() {
+        if (field == null) return;
+        WikipediaCategoryRule existing = field.wikipediaCategoryRule();
+        JTextField pattern = new JTextField(existing == null || existing.pattern().isBlank()
+                ? suggestedCategoryPattern(field.name()) : existing.pattern(), 28);
+        JComboBox<CategoryCandidatePolicy> policy =
+                new JComboBox<>(CategoryCandidatePolicy.values());
+        policy.setSelectedItem(existing == null
+                ? CategoryCandidatePolicy.REVIEW : existing.policy());
+        JPanel form = new JPanel(new GridLayout(0, 1, 4, 4));
+        form.add(new JLabel("Category title pattern (one <value> placeholder):"));
+        form.add(pattern);
+        form.add(new JLabel("Result policy:"));
+        form.add(policy);
+        if (JOptionPane.showConfirmDialog(this, form, "Wikipedia category relation",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                != JOptionPane.OK_OPTION) return;
+        String entered = pattern.getText().trim();
+        if (entered.indexOf("<value>") < 0 || entered.indexOf("<value>")
+                != entered.lastIndexOf("<value>")) {
+            JOptionPane.showMessageDialog(this,
+                    "The pattern must contain exactly one <value> placeholder.");
+            return;
+        }
+        WikipediaCategoryRule rule = field.ensureWikipediaCategoryRule();
+        rule.pattern(entered);
+        rule.policy((CategoryCandidatePolicy) policy.getSelectedItem());
+        refreshCategoryLabel();
+        afterChange.accept(null);
+    }
+
+    private static String suggestedCategoryPattern(String fieldName) {
+        String name = fieldName == null ? "" : fieldName.toLowerCase(java.util.Locale.ROOT);
+        return name.contains("location") || name.contains("setting")
+                ? "Films set in <value>" : "<value>";
+    }
+
+    private void refreshCategoryLabel() {
+        WikipediaCategoryRule rule = field == null ? null : field.wikipediaCategoryRule();
+        boolean set = rule != null && rule.configured();
+        categoryLabel.setText(set ? rule.pattern() + " — " + rule.policy() : "none");
+        clearCategoryButton.setEnabled(set);
+    }
+
     /** The owning class's Wikidata type QID, or null (with a prompt) if unset. For a
      *  field on an owned component the type is the OWNER's: the component's instances
      *  are the owner's entities, so they are the ones that carry the properties. */
@@ -418,6 +465,7 @@ public class FieldSourcePanel extends JPanel {
 
         refreshCompanionRows();
         refreshFallbackLabel();
+        refreshCategoryLabel();
         updateRecommendation();
         updateSampleButtonState();
     }
@@ -546,6 +594,20 @@ public class FieldSourcePanel extends JPanel {
         fallbackRow.add(fallbackButton);
         fallbackRow.add(clearFallbackButton);
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia fallback:", fallbackRow);
+        JPanel categoryRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        categoryLabel.setForeground(new java.awt.Color(90, 90, 90));
+        categoryRow.add(categoryLabel);
+        categoryButton.setToolTipText("Interpret matching Wikipedia category memberships "
+                + "as an additive, versioned source for this field.");
+        categoryButton.addActionListener(e -> configureCategoryRule());
+        clearCategoryButton.addActionListener(e -> {
+            if (field != null) field.wikipediaCategoryRule(null);
+            refreshCategoryLabel();
+            afterChange.accept(null);
+        });
+        categoryRow.add(categoryButton);
+        categoryRow.add(clearCategoryButton);
+        GridBagUtils.labeledRow(form, c, y++, "Wikipedia categories:", categoryRow);
         qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
                                                  + "reification</b> class (the class \"Reifies statements of\" "
                                                  + "another): the <b>qualifier</b> PID this field draws from "

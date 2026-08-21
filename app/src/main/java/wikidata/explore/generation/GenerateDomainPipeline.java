@@ -18,6 +18,7 @@ public final class GenerateDomainPipeline {
     public static final String ACQUIRE_STATEMENTS = "statement-facts";
     public static final String CONSTRUCT = "construct";
     public static final String SEMANTIC = "semantic-worklist";
+    public static final String EXTERNAL_EVIDENCE = "external-evidence";
     public static final String LABELS = "labels";
     public static final String FINALIZE = "finalize";
     public static final String MATERIALIZE = "materialize";
@@ -51,6 +52,9 @@ public final class GenerateDomainPipeline {
                         "Repeat role stamping, field/evidence acquisition, kind classification "
                                 + "and owned-value construction until stable.",
                         semanticDetails(model), semanticExplanation(model)),
+                phase(EXTERNAL_EVIDENCE, "Acquire external evidence",
+                        "Acquire configured non-Wikidata source facts in reusable batches.",
+                        categoryDetails(model), categoryExplanation(model)),
                 phase(LABELS, "Hydrate final labels",
                         "Resolve labels once for placeholder QIDs in the closed graph.",
                         List.of("English labels with multilingual fallback")),
@@ -225,6 +229,53 @@ public final class GenerateDomainPipeline {
         out.addAll(ownedDetails(model));
         out.addAll(kindOwnedFieldDetails(model));
         return out.stream().distinct().toList();
+    }
+
+    private static List<String> categoryDetails(GeneratedProjectModel model) {
+        List<String> out = new ArrayList<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            for (GeneratedFieldModel field : owner.fields()) {
+                var rule = field.wikipediaCategoryRule();
+                if (rule != null && rule.configured()) {
+                    out.add(owner.className() + "." + field.name() + " — \""
+                            + rule.pattern() + "\" → " + rule.policy());
+                }
+            }
+        }
+        return none(out, "No external category recipes");
+    }
+
+    private static PhaseExplanation categoryExplanation(GeneratedProjectModel model) {
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            for (GeneratedFieldModel field : owner.fields()) {
+                var rule = field.wikipediaCategoryRule();
+                if (rule == null || !rule.configured()) continue;
+                var ref = PhaseExplanation.ModelReference.field(owner.className(), field.name());
+                refs.add(ref);
+                examples.add(new PhaseExplanation.PhaseExample(
+                        PhaseExplanation.ExampleKind.PLANNED,
+                        "Interpret categories for " + owner.className() + "." + field.name(),
+                        List.of("Wikipedia pages linked from reachable " + owner.className()
+                                + " QIDs"),
+                        List.of("Category pattern " + rule.pattern(),
+                                "Policy " + rule.policy()),
+                        List.of("Versioned category memberships retained on each source entity",
+                                "Matched values remain traceable to category + recipe"),
+                        List.of(ref)));
+            }
+        }
+        return new PhaseExplanation(
+                "Acquire source facts once at domain scale; interpretation remains explicit and auditable.",
+                List.of("Reachable entity QIDs", "Configured Wikipedia-category recipes"),
+                List.of("Resolve English Wikipedia sitelinks in batches of 50",
+                        "Fetch visible category memberships with continuation",
+                        "Retain page revision, category digest and retrieval time",
+                        "Expose matched values to generation/review according to policy"),
+                List.of("Snapshot-backed category memberships",
+                        "Per-value provenance usable by Explore and TransformApp"),
+                refs, examples);
     }
 
     private static PhaseExplanation semanticExplanation(GeneratedProjectModel model) {

@@ -21,6 +21,8 @@ class GeneratedFieldModelFallbackTest {
         withFallback.mapping().propertyPid("P1082");
         withFallback.ensureFallbackMapping().sourceType(FieldSourceType.DBPEDIA);
         withFallback.fallbackMapping().propertyPid("populationTotal");
+        withFallback.ensureWikipediaCategoryRule().pattern("Places with <value>");
+        withFallback.wikipediaCategoryRule().policy(CategoryCandidatePolicy.EVIDENCE_ONLY);
 
         GeneratedFieldModel noFallback = project.rootClass().addField(
                 "area", FieldType.NUMBER, FieldCardinality.SINGLE);
@@ -37,8 +39,14 @@ class GeneratedFieldModelFallbackTest {
                 field(loaded, "population").fallbackMapping().sourceType());
         assertEquals("populationTotal",
                 field(loaded, "population").fallbackMapping().propertyPid());
+        assertEquals("Places with <value>",
+                field(loaded, "population").wikipediaCategoryRule().pattern());
+        assertEquals(CategoryCandidatePolicy.EVIDENCE_ONLY,
+                field(loaded, "population").wikipediaCategoryRule().policy());
         assertNull(field(loaded, "area").fallbackMapping(),
                 "a field with no fallback loads a null fallback");
+        assertNull(field(loaded, "area").wikipediaCategoryRule(),
+                "a field with no category recipe preserves the old model shape");
     }
 
     private static GeneratedFieldModel field(GeneratedProjectModel model, String name) {

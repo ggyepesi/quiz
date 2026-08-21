@@ -62,6 +62,10 @@ public class GeneratedFieldModel {
     @com.fasterxml.jackson.annotation.JsonInclude(
             com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     private FieldSourceMapping fallbackMapping;
+    /** Optional additive Wikipedia-category relation; null preserves old model JSON. */
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private WikipediaCategoryRule wikipediaCategoryRule;
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
 
     // For deserialization (GeneratedProjectModelStore).
@@ -222,6 +226,9 @@ public class GeneratedFieldModel {
             c.fallbackMapping = new FieldSourceMapping();
             c.fallbackMapping.copyFrom(fallbackMapping);
         }
+        if (wikipediaCategoryRule != null) {
+            c.wikipediaCategoryRule = wikipediaCategoryRule.copy();
+        }
 
         for (GeneratedFieldModel f : fields) {
             if (f != null) {
@@ -247,6 +254,17 @@ public class GeneratedFieldModel {
             fallbackMapping = new FieldSourceMapping();
         }
         return fallbackMapping;
+    }
+
+    public WikipediaCategoryRule wikipediaCategoryRule() { return wikipediaCategoryRule; }
+
+    public void wikipediaCategoryRule(WikipediaCategoryRule value) {
+        wikipediaCategoryRule = value;
+    }
+
+    public WikipediaCategoryRule ensureWikipediaCategoryRule() {
+        if (wikipediaCategoryRule == null) wikipediaCategoryRule = new WikipediaCategoryRule();
+        return wikipediaCategoryRule;
     }
 
     public List<GeneratedFieldModel> fields() { return fields; }

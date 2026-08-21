@@ -92,7 +92,7 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                     // cannot answer "working, or blocked?".
                     return new GenerationPipeline().enrich(
                             previousRun, projectModel, entityApi,
-                            genLog);
+                            genLog, context.cancellation());
                 });
     }
 

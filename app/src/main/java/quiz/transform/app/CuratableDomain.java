@@ -89,9 +89,37 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
     }
     @Override public Viewable representativeSample(String type) { return base.representativeSample(type); }
     @Override public Collection<? extends Viewable> instances() { return base.instances(); }
-    @Override public List<String> selectionNames() { return base.selectionNames(); }
+    @Override public List<String> selectionNames() {
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>(base.selectionNames());
+        curation.corrections().stream().filter(c -> c.source() != null
+                        && c.source().kind() != null && !c.source().kind().isBlank())
+                .map(CuratableDomain::sourceSelectionName).forEach(names::add);
+        return List.copyOf(names);
+    }
     @Override public List<Viewable> selectionMembers(String name) {
-        return base.selectionMembers(name);
+        List<Viewable> inherited = base.selectionMembers(name);
+        if (!inherited.isEmpty() || name == null || !name.startsWith("Source / ")) {
+            return inherited;
+        }
+        java.util.Set<String> ids = curation.corrections().stream()
+                .filter(c -> name.equals(sourceSelectionName(c)))
+                .map(quiz.curation.Correction::qid)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        return instances().stream().filter(value -> ids.contains(value.getIdentifier()))
+                .map(Viewable.class::cast).distinct().toList();
+    }
+
+    private static String sourceSelectionName(quiz.curation.Correction correction) {
+        String owner = correction.type() == null || correction.type().isBlank()
+                ? "*" : correction.type();
+        return "Source / " + correction.source().kind() + " / " + owner + "."
+                + correction.field();
+    }
+
+    private wikidata.explore.model.GeneratedProjectModel loadModel() {
+        if (modelFile == null || !modelFile.isFile()) return null;
+        try { return new wikidata.explore.model.GeneratedProjectModelStore().load(modelFile); }
+        catch (Exception ignored) { return null; }
     }
     @Override public boolean exposesEntityUniverse() { return base.exposesEntityUniverse(); }
     @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
@@ -105,6 +133,23 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
         return groupRootBindings;
     }
     @Override public Class<? extends Viewable> universe() { return base.universe(); }
+
+    @Override public wikidata.explore.model.WikipediaCategoryRule wikipediaCategoryRule(
+            String type, String field) {
+        try {
+            wikidata.explore.model.GeneratedProjectModel model = loadModel();
+            if (model == null) return null;
+            wikidata.explore.model.GeneratedClassModel owner = model.findClass(type);
+            if (owner == null) return null;
+            return owner.effectiveFields(model).stream()
+                    .filter(value -> value != null && java.util.Objects.equals(field, value.name()))
+                    .map(wikidata.explore.model.GeneratedFieldModel::wikipediaCategoryRule)
+                    .filter(java.util.Objects::nonNull).findFirst()
+                    .map(wikidata.explore.model.WikipediaCategoryRule::copy).orElse(null);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
 
     @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
             quiz.curation.Correction correction) {

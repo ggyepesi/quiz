@@ -124,6 +124,10 @@ public class WikidataApiClient {
     }
 
     public WikidataFactStore facts() { return facts; }
+    /** The concurrency this run was told to use, so a second acquisition path can obey
+     *  the same policy instead of choosing its own. */
+    public int entityConcurrency() { return entityConcurrency; }
+
     public WikidataApiClient entityConcurrency(int value) {
         entityConcurrency = Math.max(1, Math.min(16, value));
         return this;
@@ -395,14 +399,15 @@ public class WikidataApiClient {
             Map<String, String> valuelessClaims,
             List<String> aliases,
             boolean aliasesAnswered,
-            Map<String, List<String>> claimValues) {
+            Map<String, List<String>> claimValues,
+            String enwikiTitle) {
 
         public ApiEntity(
                 String qid,
                 String label,
                 Map<String, List<String>> claimEntityQids) {
             this(qid, label, claimEntityQids, false, Map.of(), List.of(), false,
-                    claimEntityQids);
+                    claimEntityQids, "");
         }
 
         public ApiEntity(
@@ -411,14 +416,14 @@ public class WikidataApiClient {
                 Map<String, List<String>> claimEntityQids,
                 boolean missing) {
             this(qid, label, claimEntityQids, missing, Map.of(), List.of(), false,
-                    claimEntityQids);
+                    claimEntityQids, "");
         }
 
         public ApiEntity(
                 String qid, String label, Map<String, List<String>> claimEntityQids,
                 boolean missing, Map<String, String> valuelessClaims) {
             this(qid, label, claimEntityQids, missing, valuelessClaims, List.of(), false,
-                    claimEntityQids);
+                    claimEntityQids, "");
         }
 
         /** For a caller that HAS asked about aliases; an empty list then means the
@@ -428,7 +433,7 @@ public class WikidataApiClient {
                 boolean missing, Map<String, String> valuelessClaims,
                 List<String> aliases) {
             this(qid, label, claimEntityQids, missing, valuelessClaims, aliases, true,
-                    claimEntityQids);
+                    claimEntityQids, "");
         }
 
         public ApiEntity {
@@ -920,6 +925,7 @@ public class WikidataApiClient {
     private static String entitiesUrl(List<String> qids, boolean withClaims) {
         return WIKIDATA_API + "?action=wbgetentities&ids=" + String.join("|", qids)
                 + "&props=" + entityProps(withClaims)
+                + "&sitefilter=" + SITE_FILTER
                 + "&languages=en|mul&format=json";
     }
 
@@ -937,8 +943,12 @@ public class WikidataApiClient {
      * fetched at all and nothing said so.
      */
     static String entityProps(boolean withClaims) {
-        return withClaims ? "labels|claims|aliases" : "labels|aliases";
+        return withClaims ? "labels|claims|aliases|sitelinks" : "labels|aliases|sitelinks";
     }
+
+    /** Only the English article: an entity's full sitelink set is one line per language
+     *  and nobody here reads the other three hundred. */
+    private static final String SITE_FILTER = "enwiki";
 
     private static String encodePipes(String value) {
         return value.replace("|", "%7C");
@@ -1039,6 +1049,7 @@ public class WikidataApiClient {
         params.put("action",    "wbgetentities");
         params.put("ids",       String.join("%7C", qids));
         params.put("props",     encodePipes(entityProps(withClaims)));
+        params.put("sitefilter", SITE_FILTER);
         // en + mul (the language-agnostic label) so an item without an English label
         // still resolves to a name instead of staying a QID — matches the SPARQL
         // SERVICE "en,mul".
@@ -1123,7 +1134,7 @@ public class WikidataApiClient {
             }
             out.put(qid, new ApiEntity(
                     qid, label, claims, false, valueless, aliases, aliasesAnswered,
-                    values));
+                    values, entity.path("sitelinks").path("enwiki").path("title").asText("")));
             parsed[0]++;
         });
         return parsed[0];

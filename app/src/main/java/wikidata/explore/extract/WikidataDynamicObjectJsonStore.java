@@ -361,6 +361,16 @@ public class WikidataDynamicObjectJsonStore {
         java.util.LinkedHashSet<String> aliases = new java.util.LinkedHashSet<>();
         for (WikidataDynamicObject o : instances) aliases.addAll(o.aliases());
         e.aliases.addAll(aliases);
+        java.util.LinkedHashSet<datasource.evidence.CategoryMembership> categories =
+                new java.util.LinkedHashSet<>();
+        for (WikidataDynamicObject o : instances) categories.addAll(o.categoryMemberships());
+        if (!categories.isEmpty()) {
+            e.wikipediaCategoryDocument = categories.iterator().next().document();
+            categories.stream().map(datasource.evidence.CategoryMembership::category)
+                    .forEach(e.wikipediaCategories::add);
+        }
+        e.categoryMembershipsAnswered = instances.stream()
+                .anyMatch(WikidataDynamicObject::categoryMembershipsAnswered);
         for (WikidataDynamicObject o : instances) {
             String label = o.getReferenceLabel();
             if (label != null && !label.isBlank()
@@ -614,6 +624,9 @@ public class WikidataDynamicObjectJsonStore {
             }
             o.referenceLabel(e.referenceLabel);
             o.aliases(e.aliases);
+            if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
+                o.categoryMemberships(categoryMemberships(e));
+            }
             e.fieldStatus.forEach((field, token) -> {
                 FieldStatus status = FieldStatus.fromStored(token);
                 if (status != null) o.fieldStatus(field, status);
@@ -629,6 +642,17 @@ public class WikidataDynamicObjectJsonStore {
             }
         }
         return byKey;
+    }
+
+    private static List<datasource.evidence.CategoryMembership> categoryMemberships(Entity e) {
+        if (e == null || e.wikipediaCategoryDocument == null
+                || e.wikipediaCategories == null || e.wikipediaCategories.isEmpty()) {
+            return List.of();
+        }
+        return e.wikipediaCategories.stream().filter(java.util.Objects::nonNull)
+                .filter(value -> !value.isBlank())
+                .map(value -> new datasource.evidence.CategoryMembership(
+                        value, e.wikipediaCategoryDocument)).toList();
     }
 
     /** Map each qid to its entity only when that qid has a single entity. This resolves
@@ -703,6 +727,13 @@ public class WikidataDynamicObjectJsonStore {
         e.id = null;                       // a value has no identity
         e.name = w.getDisplayName();
         e.aliases.addAll(w.aliases());
+        if (!w.categoryMemberships().isEmpty()) {
+            e.wikipediaCategoryDocument = w.categoryMemberships().getFirst().document();
+            w.categoryMemberships().stream()
+                    .map(datasource.evidence.CategoryMembership::category)
+                    .forEach(e.wikipediaCategories::add);
+        }
+        e.categoryMembershipsAnswered = w.categoryMembershipsAnswered();
         String referenceLabel = w.getReferenceLabel();
         if (referenceLabel != null
                 && !referenceLabel.equals(w.getDisplayName())) {
@@ -728,6 +759,9 @@ public class WikidataDynamicObjectJsonStore {
         o.directClasses(e.classes);
         o.referenceLabel(e.referenceLabel);
         o.aliases(e.aliases);
+        if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
+            o.categoryMemberships(categoryMemberships(e));
+        }
         o.valueObject(true);
         for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
             o.dynamicFields().put(entry.getKey(), decode(entry.getValue(), byKey, byQidSingle));
@@ -780,6 +814,11 @@ public class WikidataDynamicObjectJsonStore {
         public String name;
         // wbgetentities "Also known as" identity metadata (not a claim field).
         public List<String> aliases = new ArrayList<>();
+        public datasource.evidence.SourceDocument wikipediaCategoryDocument;
+        public List<String> wikipediaCategories = new ArrayList<>();
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT)
+        public boolean categoryMembershipsAnswered;
         // Generic Viewable reference label when it differs from the display name.
         public String referenceLabel;
         // The stamped domain class (e.g. "Constellation", "Star"); null for an

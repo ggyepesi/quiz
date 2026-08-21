@@ -378,6 +378,15 @@ public class GenerationPipeline {
             GeneratedProjectModel snapshot,
             wikidata.api.WikidataApiClient entityApi,
             GenerationLog log) throws Exception {
+        return enrich(previous, snapshot, entityApi, log, new process.CancellationToken());
+    }
+
+    public GenerationRun enrich(
+            GenerationRun previous,
+            GeneratedProjectModel snapshot,
+            wikidata.api.WikidataApiClient entityApi,
+            GenerationLog log,
+            process.CancellationToken cancellation) throws Exception {
 
         // Say what is happening BEFORE each slow phase, not after: compiling the
         // runtime and copying tens of thousands of objects take real time and used to
@@ -402,6 +411,10 @@ public class GenerationPipeline {
         SemanticConvergence.Result convergence = SemanticConvergence.apply(
                 snapshot, pool, entityApi, log, previous.loadedDeclarations(), quality);
         int loaded = convergence.loadedFields();
+        WikipediaCategoryAcquisition.Result categories =
+                WikipediaCategoryAcquisition.apply(snapshot, pool, sink,
+                        cancellation == null ? new process.CancellationToken() : cancellation,
+                        entityApi);
 
         // Finalization is deliberately after semantic convergence: names, expectations
         // and vocabularies describe the final classes/fields rather than iteration one.
@@ -415,7 +428,9 @@ public class GenerationPipeline {
 
         sink.message("Enrich: " + convergence.ownedCreated() + " component(s) materialized, "
                 + loaded + " declared field value(s) loaded over "
-                + pool.size() + " objects (no re-extraction). Re-materializing...\n");
+                + pool.size() + " objects, " + categories.memberships()
+                + " Wikipedia category membership(s) acquired (no re-extraction). "
+                + "Re-materializing...\n");
 
         List<Viewable> instances = materialize(runtime, pool);
 

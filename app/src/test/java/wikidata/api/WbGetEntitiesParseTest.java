@@ -170,6 +170,18 @@ class WbGetEntitiesParseTest {
     }
 
     @Test
+    void entityRequestsCarryAndParseOnlyTheEnglishWikipediaSitelink() throws Exception {
+        assertTrue(WikidataApiClient.entityProps(true).contains("sitelinks"));
+        assertTrue(WikidataApiClient.entityProps(false).contains("sitelinks"));
+        Map<String, WikidataApiClient.ApiEntity> parsed = new LinkedHashMap<>();
+        WikidataApiClient.parseEntities(new ObjectMapper().readTree("""
+                {"entities":{"Q157058":{"labels":{"en":{"value":"Blood Diamond"}},
+                  "sitelinks":{"enwiki":{"title":"Blood Diamond"}}}}}
+                """), List.of(), parsed);
+        assertEquals("Blood Diamond", parsed.get("Q157058").enwikiTitle());
+    }
+
+    @Test
     void aliasesReuseAClaimsDocumentRetainedByAnEarlierConsumer() throws Exception {
         WikidataApiClient api = new WikidataApiClient("test");
         api.facts().accept(new ObjectMapper().readTree(JSON), true, List.of("P31"));

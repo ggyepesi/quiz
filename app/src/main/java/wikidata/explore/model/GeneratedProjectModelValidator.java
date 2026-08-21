@@ -273,6 +273,21 @@ public final class GeneratedProjectModelValidator {
                                 + field.entityClassName()
                                 + "' is not modeled; the field renders as a string."));
             }
+            WikipediaCategoryRule category = field.wikipediaCategoryRule();
+            if (category != null) {
+                long placeholders = category.pattern().split("<value>", -1).length - 1L;
+                if (placeholders != 1) {
+                    problems.add(Problem.error(path(clazz, field),
+                            "A Wikipedia category pattern must contain exactly one "
+                                    + "<value> placeholder."));
+                }
+                if (category.policy() != CategoryCandidatePolicy.EVIDENCE_ONLY
+                        && field.type() != FieldType.ENTITY) {
+                    problems.add(Problem.error(path(clazz, field),
+                            "A category relation that produces values requires an "
+                                    + "entity-valued field."));
+                }
+            }
         }
     }
 

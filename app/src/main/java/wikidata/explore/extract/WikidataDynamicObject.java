@@ -38,6 +38,14 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @Hidden
     private List<String> aliases = new ArrayList<>();
 
+    /** Acquired source facts, kept outside the rendered field graph until a configured
+     * recipe interprets them. */
+    @Hidden
+    private List<datasource.evidence.CategoryMembership> categoryMemberships =
+            new ArrayList<>();
+    @Hidden
+    private boolean categoryMembershipsAnswered;
+
     @Hidden
     @JsonIgnore
     private String referenceLabel;
@@ -124,6 +132,20 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
             }
         }
     }
+
+    public List<datasource.evidence.CategoryMembership> categoryMemberships() {
+        return List.copyOf(categoryMemberships);
+    }
+
+    public void categoryMemberships(
+            java.util.Collection<datasource.evidence.CategoryMembership> values) {
+        categoryMemberships.clear();
+        if (values != null) values.stream().filter(java.util.Objects::nonNull)
+                .distinct().forEach(categoryMemberships::add);
+        categoryMembershipsAnswered = true;
+    }
+
+    public boolean categoryMembershipsAnswered() { return categoryMembershipsAnswered; }
 
     /** A PART of another object — an owned component, carrying its owner's identity.
      *  It is in the pool because it is reachable, not because it is a root, so it is

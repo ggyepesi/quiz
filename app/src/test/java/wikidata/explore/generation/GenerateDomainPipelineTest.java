@@ -75,7 +75,7 @@ class GenerateDomainPipelineTest {
 
         ProcessWorkflowPipeline pipeline = GenerateDomainPipeline.configured(model);
 
-        assertEquals(8, pipeline.snapshot().size());
+        assertEquals(9, pipeline.snapshot().size());
         String roleDetails = details(pipeline, GenerateDomainPipeline.ROLE_EVIDENCE);
         assertTrue(roleDetails.contains("Nominee.type")
                 && roleDetails.contains("NomineeType") && roleDetails.contains("P31"),

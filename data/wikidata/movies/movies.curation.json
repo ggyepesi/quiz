@@ -21257,8 +21257,65 @@
     "valueKind" : null,
     "policy" : "REPLACE",
     "source" : null
+  }, {
+    "type" : "Movies",
+    "qid" : "Q74958",
+    "field" : "locations",
+    "value" : "Liberia",
+    "origin" : "wikipedia-english-",
+    "valueKind" : null,
+    "policy" : "EVIDENCE_ONLY",
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Blood Diamond",
+      "propertyId" : "field:locations",
+      "propertyLabel" : "",
+      "direction" : "",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Blood_Diamond",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q74958"
+        },
+        "semanticProperty" : "field:locations",
+        "proposedValue" : "Liberia",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Blood Diamond",
+            "title" : "Blood Diamond",
+            "url" : "https://en.wikipedia.org/wiki/Blood_Diamond",
+            "revision" : "1368207443",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "a5358bf9431077e22dd1c47799a8e37d24ddc1d9ae1a2ca953457113f57237fd"
+            },
+            "retrievedAt" : "2026-08-21T15:00:37.668162Z"
+          },
+          "section" : "Article",
+          "startOffset" : 2330,
+          "endOffset" : 2566,
+          "excerpt" : "eetown with Danny Archer, a white Rhodesian gunrunner and Angola War veteran jailed for trying to smuggle diamonds into Liberia. The diamonds were intended for Rudolph van de Kaap, a corrupt Afrikaner mining executive from South Africa."
+        } ],
+        "extractionMethod" : "exact value-label mention",
+        "recipeVersion" : "exact-value-mention-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.72,
+        "warnings" : [ "Exact mention corroborates the value but does not prove its field role" ]
+      } ]
+    }
   } ],
   "fieldDefinitions" : [ ],
   "merges" : [ ],
-  "identityLinks" : [ ]
+  "identityLinks" : [ {
+    "type" : "Movies",
+    "targetId" : "Q74958",
+    "sourceKind" : "Wikipedia (English)",
+    "sourceId" : "Blood Diamond",
+    "recordUrl" : "https://en.wikipedia.org/wiki/Blood_Diamond",
+    "canonicalName" : "Blood Diamond",
+    "origin" : "wikipedia-english-",
+    "evidence" : [ ]
+  } ]
 }
