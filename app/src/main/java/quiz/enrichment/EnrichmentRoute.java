@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
 import java.util.ArrayList;
 import java.util.List;
 

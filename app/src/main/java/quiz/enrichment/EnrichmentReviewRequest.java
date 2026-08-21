@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
 import process.ProcessInputRequest;
 
 /** Typed UI pause emitted by Find Data after discovery, not by its Swing caller. */

@@ -1,5 +1,9 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
+import datasource.SourceRef;
+
 import org.junit.jupiter.api.Test;
 import process.CancellationToken;
 import process.ProcessInputHandler;
@@ -105,11 +109,16 @@ class FindDataProcessTest {
                         "one", "identity", "portrait",
                         "https://example.test/image.jpg",
                         "https://example.test/image.jpg",
-                        new EnrichmentProposal.SourceRef("Test", "1", "https://example.test/1"),
+                        new SourceRef("Test", "1", "https://example.test/1"),
                         "test", 1.0, "", "", false);
+        EnrichmentProposal.IdentityCandidate identity =
+                new EnrichmentProposal.IdentityCandidate(
+                        "identity", "One", List.of(), "",
+                        candidate.source(), 1.0, List.of());
 
         EnrichmentProvider succeeds = provider("Good", context ->
-                new EnrichmentProposal(request.subject(), List.of(), List.of(), List.of(candidate)));
+                new EnrichmentProposal(request.subject(), List.of(identity),
+                        List.of(), List.of(candidate)));
         EnrichmentProvider fails = provider("Bad", context -> {
             throw new IllegalStateException("provider down");
         });
@@ -166,8 +175,8 @@ class FindDataProcessTest {
         EnrichmentRequest request = new EnrichmentRequest(
                 new EnrichmentProposal.Subject("Country", "hawaii", "Q782", "Hawaii"),
                 "population", false, List.of());
-        EnrichmentProposal.SourceRef source =
-                new EnrichmentProposal.SourceRef("Wikidata", "Q782", "url");
+        SourceRef source =
+                new SourceRef("Wikidata", "Q782", "url");
         EnrichmentProposal.IdentityCandidate identity =
                 new EnrichmentProposal.IdentityCandidate(
                         "wikimedia-wikidata", "Hawaii", List.of(), "", source, 1.0, List.of());
@@ -210,6 +219,39 @@ class FindDataProcessTest {
         assertEquals(1440000L, decision.fields().get(0).candidate().proposedValue());
     }
 
+    @Test
+    void corroborationDoesNotSuppressAValueProducingFallback() {
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Country", "local-1", "Q1", "One"),
+                "population", false, List.of(), null, 10L);
+        SourceRef evidenceSource = new SourceRef(
+                "Wikipedia", "One", "https://example.test/One", "field:population");
+        EnrichmentProposal.IdentityCandidate evidenceIdentity =
+                new EnrichmentProposal.IdentityCandidate(
+                        "wikipedia", "One", List.of(), "", evidenceSource, 1, List.of());
+        EnrichmentProposal.FieldCandidate corroboration =
+                new EnrichmentProposal.FieldCandidate(
+                        "support", "wikipedia", "population", 10L, 10L,
+                        evidenceSource, EnrichmentProposal.ReviewAction.CORROBORATE);
+        int[] fallbackCalls = {0};
+        EnrichmentProvider primary = provider("Evidence", context -> new EnrichmentProposal(
+                request.subject(), List.of(evidenceIdentity),
+                List.of(corroboration), List.of()));
+        EnrichmentProvider fallback = provider("Fallback", context -> {
+            fallbackCalls[0]++;
+            return fieldProposal(request, "DBpedia", "population", 20L, null);
+        });
+
+        ProcessOutcome<FindDataResult> outcome = run(request,
+                EnrichmentRoute.of(List.of(primary), List.of(fallback)));
+
+        assertEquals(ProcessStatus.SUCCEEDED, outcome.status());
+        assertEquals(1, fallbackCalls[0]);
+        assertEquals(2, outcome.result().proposal().fields().size());
+        assertTrue(outcome.result().proposal().hasUsableCandidate("population"));
+        assertEquals(1, outcome.result().proposal().corroborationCount());
+    }
+
     private static EnrichmentProvider provider(
             String name, ThrowingDiscovery discovery) {
         return new EnrichmentProvider() {
@@ -244,7 +286,7 @@ class FindDataProcessTest {
             Object value,
             String incompatibility) {
         String identityId = sourceKind.toLowerCase();
-        EnrichmentProposal.SourceRef source = new EnrichmentProposal.SourceRef(
+        SourceRef source = new SourceRef(
                 sourceKind, request.subject().id(), "url", property);
         EnrichmentProposal.IdentityCandidate identity =
                 new EnrichmentProposal.IdentityCandidate(

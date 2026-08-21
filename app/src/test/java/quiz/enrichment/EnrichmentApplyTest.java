@@ -1,5 +1,9 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
+import datasource.SourceRef;
+
 import objectview.Viewable;
 import objectview.field.DynamicFields;
 import objectview.field.FieldSet;
@@ -31,8 +35,8 @@ class EnrichmentApplyTest {
     private static EnrichmentDecision decision(String targetId, String field, Object value) {
         EnrichmentProposal.Subject subject =
                 new EnrichmentProposal.Subject("Country", targetId, "Q1", targetId);
-        EnrichmentProposal.SourceRef source =
-                new EnrichmentProposal.SourceRef("Wikidata", "Q1", "url");
+        SourceRef source =
+                new SourceRef("Wikidata", "Q1", "url");
         EnrichmentProposal.FieldCandidate candidate = new EnrichmentProposal.FieldCandidate(
                 "cand", "id", field, null, value, source,
                 EnrichmentProposal.ReviewAction.FILL_IF_EMPTY);

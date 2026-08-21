@@ -1,8 +1,10 @@
 package quiz.transform.ui;
 
+import datasource.SourceRef;
+
 import wikidata.WikidataIds;
 
-import quiz.enrichment.EnrichmentProposal;
+import datasource.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentProvider;
 import quiz.enrichment.EnrichmentRequest;
 import wikidata.explore.query.core.Query;
@@ -82,8 +84,8 @@ final class DBpediaImageEnrichmentProvider implements EnrichmentProvider {
             String identityId = "dbpedia-" + identityIndex++;
             String resource = entry.getKey();
             String canonicalName = resourceName(resource, request.subject().displayName());
-            EnrichmentProposal.SourceRef source =
-                    new EnrichmentProposal.SourceRef("DBpedia", resource, resource);
+            SourceRef source =
+                    new SourceRef("DBpedia", resource, resource);
             identities.add(new EnrichmentProposal.IdentityCandidate(
                     identityId,
                     canonicalName,

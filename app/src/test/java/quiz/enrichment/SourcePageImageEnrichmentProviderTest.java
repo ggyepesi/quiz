@@ -1,5 +1,9 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
+import datasource.SourceRef;
+
 import org.junit.jupiter.api.Test;
 import wikidata.explore.query.core.QueryContext;
 
@@ -24,7 +28,7 @@ class SourcePageImageEnrichmentProviderTest {
                 """;
         SourcePageImageEnrichmentProvider provider =
                 new SourcePageImageEnrichmentProvider(uri -> html);
-        EnrichmentProposal.SourceRef source = new EnrichmentProposal.SourceRef(
+        SourceRef source = new SourceRef(
                 "NobelPrize.org", "421",
                 "https://www.nobelprize.org/prizes/medicine/1980/snell/facts/");
         EnrichmentRequest request = new EnrichmentRequest(

@@ -1,5 +1,9 @@
 package quiz.curation;
 
+import datasource.evidence.ExtractedClaim;
+
+import java.util.List;
+
 /**
  * Durable provenance of one accepted field value. Entity identity and field-value
  * evidence are deliberately separate: {@code entityId} says which source record was
@@ -12,6 +16,8 @@ public final class ValueSource {
     public String propertyLabel;
     public String direction;
     public String recordUrl;
+    /** Structured assertions and exact source fragments accepted for this value. */
+    public List<ExtractedClaim> evidence = List.of();
 
     public ValueSource() { }
 
@@ -22,12 +28,19 @@ public final class ValueSource {
 
     public ValueSource(String kind, String entityId, String propertyId,
                        String propertyLabel, String direction, String recordUrl) {
+        this(kind, entityId, propertyId, propertyLabel, direction, recordUrl, List.of());
+    }
+
+    public ValueSource(String kind, String entityId, String propertyId,
+                       String propertyLabel, String direction, String recordUrl,
+                       List<ExtractedClaim> evidence) {
         this.kind = kind;
         this.entityId = entityId;
         this.propertyId = propertyId;
         this.propertyLabel = propertyLabel;
         this.direction = direction;
         this.recordUrl = recordUrl;
+        this.evidence = evidence == null ? List.of() : List.copyOf(evidence);
     }
 
     public String kind() { return kind; }
@@ -36,11 +49,15 @@ public final class ValueSource {
     public String propertyLabel() { return propertyLabel; }
     public String direction() { return direction; }
     public String recordUrl() { return recordUrl; }
+    public List<ExtractedClaim> evidence() {
+        return evidence == null ? List.of() : List.copyOf(evidence);
+    }
 
     @com.fasterxml.jackson.annotation.JsonIgnore
     public boolean isPresent() {
         return present(kind) || present(entityId) || present(propertyId)
-                || present(propertyLabel) || present(direction) || present(recordUrl);
+                || present(propertyLabel) || present(direction) || present(recordUrl)
+                || !evidence().isEmpty();
     }
 
     private static boolean present(String value) {

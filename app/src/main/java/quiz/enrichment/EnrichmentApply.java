@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
 import objectview.Viewable;
 import objectview.field.DynamicFields;
 
@@ -33,6 +35,7 @@ public final class EnrichmentApply {
                 continue;
             }
             for (EnrichmentDecision.FieldDecision field : decision.fields()) {
+                if (field.action() == EnrichmentProposal.ReviewAction.CORROBORATE) continue;
                 EnrichmentProposal.FieldCandidate candidate = field.candidate();
                 dynamic.dynamicFieldValues().put(candidate.field(), candidate.proposedValue());
                 applied++;

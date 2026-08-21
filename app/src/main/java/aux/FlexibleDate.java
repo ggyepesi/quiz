@@ -18,7 +18,7 @@ import java.util.Set;
  * field. BC dates are held as a negative year (matching the sign of Wikidata's
  * time literal). Immutable, comparable chronologically.
  */
-public class FlexibleDate implements Comparable<FlexibleDate>, Addressable {
+public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, StableValue {
 
     public enum Precision { YEAR, MONTH, DAY }
 
@@ -210,6 +210,9 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable {
     public Set<String> viewNames() {
         return VIEWS;
     }
+
+    /** The canonical form is the one this date is persisted and compared by. */
+    @Override public String stableForm() { return format(); }
 
     // Format method: "1959", "1959-04", "1959-04-06", "500 BC".
     public String format() {

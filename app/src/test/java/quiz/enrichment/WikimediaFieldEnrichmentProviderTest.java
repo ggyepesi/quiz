@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
 import org.junit.jupiter.api.Test;
 import wikidata.explore.query.core.QueryContext;
 import wikidata.explore.model.FieldSourceMapping;

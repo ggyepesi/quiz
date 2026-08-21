@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 

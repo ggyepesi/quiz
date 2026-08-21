@@ -1,8 +1,10 @@
 package quiz.transform.ui;
 
+import datasource.SourceRef;
+
 import wikidata.WikidataIds;
 
-import quiz.enrichment.EnrichmentProposal;
+import datasource.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentProvider;
 import quiz.enrichment.EnrichmentRequest;
 import quiz.enrichment.FieldValueCompatibility;
@@ -82,7 +84,7 @@ final class DBpediaFieldEnrichmentProvider implements EnrichmentProvider {
     private EnrichmentProposal proposal(EnrichmentRequest request, List<String> values) {
         String qid = request.subject().id();
         String identityId = "dbpedia-field";
-        EnrichmentProposal.SourceRef source = new EnrichmentProposal.SourceRef(
+        SourceRef source = new SourceRef(
                 "DBpedia", qid, "http://dbpedia.org/sparql", propertyName, propertyLabel, "");
         EnrichmentProposal.IdentityCandidate identity =
                 new EnrichmentProposal.IdentityCandidate(

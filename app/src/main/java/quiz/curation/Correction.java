@@ -59,6 +59,7 @@ public record Correction(String type, String qid, String field, Object value,
 
     /** Whether this directive takes precedence over ordinary fill-if-empty proposals. */
     public boolean authoritative() {
-        return effectivePolicy() != CorrectionPolicy.FILL_IF_EMPTY;
+        return effectivePolicy() != CorrectionPolicy.FILL_IF_EMPTY
+                && effectivePolicy() != CorrectionPolicy.EVIDENCE_ONLY;
     }
 }

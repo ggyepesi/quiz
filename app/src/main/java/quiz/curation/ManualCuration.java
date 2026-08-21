@@ -72,7 +72,7 @@ public final class ManualCuration implements CorrectionSource {
                     for (IdentityEntry e : doc.identityLinks) {
                         identityLinks.add(new IdentityLink(
                                 e.type, e.targetId, e.sourceKind, e.sourceId,
-                                e.recordUrl, e.canonicalName, e.origin));
+                                e.recordUrl, e.canonicalName, e.origin, e.evidence));
                     }
                 }
             } catch (IOException unreadable) {
@@ -170,7 +170,8 @@ public final class ManualCuration implements CorrectionSource {
         if (survivorLink == null && loserLink != null) {
             putIdentityLink(new IdentityLink(
                     survivorType, survivorId, loserLink.sourceKind(), loserLink.sourceId(),
-                    loserLink.recordUrl(), loserLink.canonicalName(), loserLink.origin()));
+                    loserLink.recordUrl(), loserLink.canonicalName(), loserLink.origin(),
+                    loserLink.evidence()));
         }
         if (loserLink != null) {
             removeIdentityLink(loserLink.type(), loserLink.targetId(), loserLink.sourceKind());
@@ -328,6 +329,7 @@ public final class ManualCuration implements CorrectionSource {
         public String recordUrl;
         public String canonicalName;
         public String origin;
+        public java.util.List<datasource.evidence.ExtractedClaim> evidence;
 
         IdentityEntry() { }
 
@@ -339,6 +341,7 @@ public final class ManualCuration implements CorrectionSource {
             this.recordUrl = link.recordUrl();
             this.canonicalName = link.canonicalName();
             this.origin = link.origin();
+            this.evidence = link.evidence();
         }
     }
 }

@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
 import process.Process;
 import process.ProcessContext;
 import process.ProcessOutcome;

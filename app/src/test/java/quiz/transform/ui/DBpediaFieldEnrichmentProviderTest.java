@@ -1,6 +1,6 @@
 package quiz.transform.ui;
 
-import quiz.enrichment.EnrichmentProposal;
+import datasource.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;

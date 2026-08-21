@@ -564,6 +564,19 @@ public final class CurationOverviewPanel extends JPanel {
         }
     }
 
+    private static String evidenceDetail(
+            List<datasource.evidence.ExtractedClaim> claims) {
+        if (claims == null || claims.isEmpty()) return "\nEvidence: —";
+        String ids = claims.stream().map(datasource.evidence.ExtractedClaim::assessmentId)
+                .map(id -> id.substring(0, Math.min(12, id.length())))
+                .collect(java.util.stream.Collectors.joining(", "));
+        int fragments = claims.stream().mapToInt(c -> c.evidence().size()).sum();
+        return "\nEvidence: " + claims.size() + " claim(s), " + fragments + " fragment(s)"
+                + "\nAssessment IDs: " + ids
+                + "\nEvidence state: accepted at recorded source version; "
+                + "refresh source to revalidate";
+    }
+
     private static String sourceSuffix(Correction correction) {
         return correction.source() == null || !correction.source().isPresent()
                 ? "" : " · " + sourceSummary(correction);
@@ -652,6 +665,8 @@ public final class CurationOverviewPanel extends JPanel {
                                 : blankAsDash(correction.source().propertyId()))
                         + "\nSource URL: " + (correction.source() == null ? "—"
                                 : blankAsDash(correction.source().recordUrl()))
+                        + evidenceDetail(correction.source() == null ? List.of()
+                                : correction.source().evidence())
                         + "\nValue kind: " + blankAsDash(correction.valueKind())
                         + "\nSaved value:\n" + pretty(correction.value());
             }
@@ -659,7 +674,8 @@ public final class CurationOverviewPanel extends JPanel {
                 return "Source: " + blankAsDash(link.sourceKind())
                         + "\nSource ID: " + blankAsDash(link.sourceId())
                         + "\nCanonical name: " + blankAsDash(link.canonicalName())
-                        + "\nRecord URL: " + blankAsDash(link.recordUrl());
+                        + "\nRecord URL: " + blankAsDash(link.recordUrl())
+                        + evidenceDetail(link.evidence());
             }
             if (source instanceof FieldDeclaration field) {
                 return "Field: " + field.name()
@@ -680,10 +696,13 @@ public final class CurationOverviewPanel extends JPanel {
                     : source instanceof Correction correction
                     ? oneLine(correction.value()) + " " + correction.valueKind()
                             + " " + correction.effectivePolicy() + " "
-                            + sourceSummary(correction)
+                            + sourceSummary(correction) + " "
+                            + evidenceSearch(correction.source() == null ? List.of()
+                                    : correction.source().evidence())
                     : source instanceof IdentityLink link
                     ? link.sourceKind() + " " + link.sourceId() + " "
-                            + link.canonicalName() + " " + link.recordUrl()
+                            + link.canonicalName() + " " + link.recordUrl() + " "
+                            + evidenceSearch(link.evidence())
                     : source instanceof FieldDeclaration field
                     ? field.name() + " " + field.typeLabel() + " " + field.targetType()
                     : "";
@@ -691,6 +710,19 @@ public final class CurationOverviewPanel extends JPanel {
                     + " " + kind.label + " " + title + " " + summary + " "
                     + origin + " " + extra).toLowerCase(Locale.ROOT);
         }
+    }
+
+    private static String evidenceSearch(
+            List<datasource.evidence.ExtractedClaim> claims) {
+        if (claims == null) return "";
+        return claims.stream().flatMap(claim -> java.util.stream.Stream.concat(
+                        java.util.stream.Stream.of(claim.semanticProperty(), claim.claimId(),
+                                claim.assessmentId(), String.valueOf(claim.proposedValue()),
+                                claim.extractionMethod(), claim.recipeVersion()),
+                        claim.evidence().stream().flatMap(fragment -> java.util.stream.Stream.of(
+                                fragment.excerpt(), fragment.section(),
+                                fragment.document().sourceId(), fragment.document().url()))))
+                .collect(java.util.stream.Collectors.joining(" "));
     }
 
     private final class OperationTableModel extends AbstractTableModel {

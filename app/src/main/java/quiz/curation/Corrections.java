@@ -66,6 +66,7 @@ public final class Corrections {
 
         // Pass 1 — authoritative reviewed values override or extend the base.
         for (Correction c : all) {
+            if (c.effectivePolicy() == CorrectionPolicy.EVIDENCE_ONLY) continue;
             if (!c.authoritative()) {
                 continue;
             }
@@ -85,6 +86,7 @@ public final class Corrections {
         // empty flagVersions the same as it fills a null portrait — matching what the
         // coverage view counts as missing. Never clobbers a field that already has data.
         for (Correction c : all) {
+            if (c.effectivePolicy() == CorrectionPolicy.EVIDENCE_ONLY) continue;
             if (c.authoritative() || manualKeys.contains(key(c))) {
                 continue;
             }

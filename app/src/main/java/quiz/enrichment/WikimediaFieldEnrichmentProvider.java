@@ -1,5 +1,9 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
+import datasource.SourceRef;
+
 import wikidata.WikidataIds;
 
 import wikidata.explore.query.core.Query;
@@ -123,7 +127,7 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
                         lookup.byQid(qid).execute(context);
 
                 String identityId = "wikimedia-wikidata";
-                EnrichmentProposal.SourceRef source = new EnrichmentProposal.SourceRef(
+                SourceRef source = new SourceRef(
                         "Wikidata", qid, "https://www.wikidata.org/wiki/" + qid,
                         property, propertyLabel, direction.name());
                 EnrichmentProposal.IdentityCandidate identity =

@@ -1,7 +1,7 @@
 package quiz.transform.ui;
 
 import org.junit.jupiter.api.Test;
-import quiz.enrichment.EnrichmentProposal;
+import datasource.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentRequest;
 
 import java.util.List;

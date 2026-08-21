@@ -7,5 +7,7 @@ public enum CorrectionPolicy {
     /** Apply only while the target field has no usable value. */
     FILL_IF_EMPTY,
     /** Add the reviewed value(s) to the target collection without duplicates. */
-    ADD_TO_COLLECTION
+    ADD_TO_COLLECTION,
+    /** Retain source/evidence for the observed value but never write it into an instance. */
+    EVIDENCE_ONLY
 }

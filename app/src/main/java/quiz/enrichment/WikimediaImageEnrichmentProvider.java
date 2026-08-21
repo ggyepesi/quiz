@@ -1,5 +1,9 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
+import datasource.SourceRef;
+
 import wikidata.WikidataIds;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -86,8 +90,8 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
                 Set<String> seenUrls = new LinkedHashSet<>();
 
                 String wikidataIdentity = "wikimedia-wikidata";
-                EnrichmentProposal.SourceRef wikidataSource =
-                        new EnrichmentProposal.SourceRef(
+                SourceRef wikidataSource =
+                        new SourceRef(
                                 "Wikidata", qid,
                                 "https://www.wikidata.org/wiki/" + qid);
                 identities.add(identity(wikidataIdentity, request, wikidataSource,
@@ -161,8 +165,8 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
                 continue;
             }
             String identityId = "wikimedia-enwiki";
-            EnrichmentProposal.SourceRef source =
-                    new EnrichmentProposal.SourceRef(
+            SourceRef source =
+                    new SourceRef(
                             "Wikipedia (English)", title, wikipediaPage(title));
             identities.add(identity(identityId, request, source,
                     "English Wikipedia article linked from Wikidata"));
@@ -188,7 +192,7 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
             String method,
             double confidence,
             String identityId,
-            EnrichmentProposal.SourceRef source,
+            SourceRef source,
             EnrichmentRequest request,
             List<EnrichmentProposal.MediaCandidate> media,
             Set<String> seenUrls) {
@@ -205,8 +209,8 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
             if (!seenUrls.add(url)) {
                 continue;
             }
-            EnrichmentProposal.SourceRef propertySource =
-                    new EnrichmentProposal.SourceRef(
+            SourceRef propertySource =
+                    new SourceRef(
                             source.kind(), source.sourceId(), source.recordUrl(), property);
             media.add(new EnrichmentProposal.MediaCandidate(
                     "wikidata-" + property.toLowerCase() + "-" + index++,
@@ -263,7 +267,7 @@ public final class WikimediaImageEnrichmentProvider implements EnrichmentProvide
     private static EnrichmentProposal.IdentityCandidate identity(
             String id,
             EnrichmentRequest request,
-            EnrichmentProposal.SourceRef source,
+            SourceRef source,
             String description) {
         return new EnrichmentProposal.IdentityCandidate(
                 id,

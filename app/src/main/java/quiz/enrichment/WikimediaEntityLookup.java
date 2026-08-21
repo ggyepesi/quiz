@@ -84,6 +84,41 @@ public final class WikimediaEntityLookup {
         };
     }
 
+    /** Resolve an English Wikipedia article title to its Wikidata entity. */
+    public Query<EntityRecord> byWikipediaTitle(String title) {
+        String requested = title == null ? "" : title.trim();
+        if (requested.isBlank()) throw new IllegalArgumentException("A Wikipedia title is required");
+        URI uri = URI.create("https://www.wikidata.org/w/api.php?action=wbgetentities"
+                + "&sites=enwiki&titles=" + java.net.URLEncoder.encode(requested,
+                java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20")
+                + "&props=labels%7Cdescriptions&languages=en&format=json");
+        return new Query<>() {
+            @Override public String purpose() { return "Resolve Wikipedia subject"; }
+            @Override public String skeleton() { return "enwiki title to Wikidata entity"; }
+            @Override public String queryType() { return "Wikidata API"; }
+            @Override public String description() { return "Resolve a category relation value"; }
+            @Override public Map<String, String> parameters() { return Map.of("title", requested); }
+            @Override public EntityRecord execute(QueryContext context) throws Exception {
+                return context.step("Resolve category value", "Wikidata API", skeleton(),
+                        parameters(), step -> {
+                            step.request(uri.toString());
+                            JsonNode entities = MAPPER.readTree(fetcher.fetch(uri)).path("entities");
+                            if (!entities.isObject()) return null;
+                            var fields = entities.fields();
+                            while (fields.hasNext()) {
+                                var entry = fields.next();
+                                if (!entry.getKey().startsWith("Q")
+                                        || entry.getValue().path("missing").asBoolean(false)) continue;
+                                return parse(entry.getKey(), MAPPER.createObjectNode()
+                                        .set("entities", entities));
+                            }
+                            return null;
+                        });
+            }
+            @Override public int rowCount(EntityRecord result) { return result == null ? 0 : 1; }
+        };
+    }
+
     /** Resolve the English labels of properties/entities (P- or Q-ids) in one
      *  {@code wbgetentities} call — the API path, so it works regardless of which SPARQL
      *  endpoint the shared context points at. Ids beyond the API's 50-per-call limit are

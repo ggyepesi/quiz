@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
 import process.Process;
 import process.ProcessContext;
 import process.ProcessOutcome;
@@ -140,9 +142,13 @@ public final class FindDataProcess implements Process<FindDataResult> {
     }
 
     private static String summary(EnrichmentProposal proposal, String state) {
-        int count = proposal.identities().size()
-                + proposal.fields().size() + proposal.media().size();
-        return count + " candidate(s), " + state;
+        long corroborations = proposal.corroborationCount();
+        long count = proposal.identities().size()
+                + proposal.fields().size() + proposal.media().size() - corroborations;
+        return count + " candidate(s)"
+                + (corroborations == 0 ? "" : " and " + corroborations
+                        + " corroboration(s) of what is already there")
+                + ", " + state;
     }
 
     private String routeState(int attempted, String state) {

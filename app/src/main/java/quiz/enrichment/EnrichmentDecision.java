@@ -1,17 +1,38 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.Locale;
 
 /** The explicit user decision produced by the enrichment review component. */
 public record EnrichmentDecision(
         EnrichmentProposal.Subject subject,
-        EnrichmentProposal.IdentityCandidate identity,
+        List<EnrichmentProposal.IdentityCandidate> identities,
         List<FieldDecision> fields,
         EnrichmentProposal.MediaCandidate media) {
 
     public EnrichmentDecision {
+        subject = Objects.requireNonNull(subject, "Decision subject is required");
+        identities = identities == null ? List.of() : List.copyOf(identities);
         fields = fields == null ? List.of() : List.copyOf(fields);
+    }
+
+    /** Compatibility form for callers which approve one source identity. */
+    public EnrichmentDecision(EnrichmentProposal.Subject subject,
+                              EnrichmentProposal.IdentityCandidate identity,
+                              List<FieldDecision> fields,
+                              EnrichmentProposal.MediaCandidate media) {
+        this(subject, identity == null ? List.of() : List.of(identity), fields, media);
+    }
+
+    /** Compatibility accessor; new code should use {@link #identities()}. */
+    public EnrichmentProposal.IdentityCandidate identity() {
+        return identities.isEmpty() ? null : identities.get(0);
     }
 
     public record FieldDecision(
@@ -26,7 +47,7 @@ public record EnrichmentDecision(
      * review to offer each member a default accept without the full single-member UI.
      */
     public static EnrichmentDecision acceptDefault(EnrichmentProposal proposal) {
-        if (proposal == null || proposal.identities().isEmpty()) {
+        if (proposal == null) {
             return null;
         }
         List<FieldDecision> fields = proposal.fields().stream()
@@ -41,13 +62,46 @@ public record EnrichmentDecision(
         if (fields.isEmpty() && media == null) {
             return null;
         }
-        String identityId = media != null
-                ? media.identityCandidateId()
-                : fields.get(0).candidate().identityCandidateId();
-        EnrichmentProposal.IdentityCandidate identity = proposal.identities().stream()
-                .filter(candidate -> candidate.candidateId().equals(identityId))
-                .findFirst()
-                .orElse(proposal.identities().get(0));
-        return new EnrichmentDecision(proposal.subject(), identity, fields, media);
+        Set<String> identityIds = new LinkedHashSet<>();
+        fields.stream().map(FieldDecision::candidate)
+                .map(EnrichmentProposal.FieldCandidate::identityCandidateId)
+                .filter(id -> id != null && !id.isBlank()).forEach(identityIds::add);
+        if (media != null && media.identityCandidateId() != null
+                && !media.identityCandidateId().isBlank()) {
+            identityIds.add(media.identityCandidateId());
+        }
+        List<EnrichmentProposal.IdentityCandidate> identities = proposal.identities().stream()
+                .filter(candidate -> identityIds.contains(candidate.candidateId())).toList();
+        if (hasAmbiguousIdentitySources(identities)) {
+            return null; // choosing between two records from one source needs explicit review
+        }
+        return new EnrichmentDecision(proposal.subject(), identities, fields, media);
+    }
+
+    /** True when applying automatically would silently replace one identity link with
+     * another because the curation sidecar stores one link per source kind. */
+    public static boolean requiresIdentityChoice(EnrichmentProposal proposal) {
+        if (proposal == null) return false;
+        Set<String> used = new LinkedHashSet<>();
+        proposal.fields().stream().filter(EnrichmentProposal.FieldCandidate::compatible)
+                .filter(c -> c.suggestedAction() != EnrichmentProposal.ReviewAction.IGNORE)
+                .map(EnrichmentProposal.FieldCandidate::identityCandidateId)
+                .filter(id -> id != null && !id.isBlank()).forEach(used::add);
+        proposal.media().stream()
+                .max(Comparator.comparingDouble(EnrichmentProposal.MediaCandidate::confidence))
+                .map(EnrichmentProposal.MediaCandidate::identityCandidateId)
+                .filter(id -> id != null && !id.isBlank()).ifPresent(used::add);
+        return hasAmbiguousIdentitySources(proposal.identities().stream()
+                .filter(i -> used.contains(i.candidateId())).toList());
+    }
+
+    private static boolean hasAmbiguousIdentitySources(
+            List<EnrichmentProposal.IdentityCandidate> identities) {
+        Set<String> kinds = new LinkedHashSet<>();
+        for (EnrichmentProposal.IdentityCandidate identity : identities) {
+            String kind = identity.source().kind().toLowerCase(Locale.ROOT);
+            if (!kinds.add(kind)) return true;
+        }
+        return false;
     }
 }

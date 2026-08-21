@@ -141,6 +141,19 @@ class CorrectionsTest {
         assertEquals(List.of("base", "curated"), state.get("aliases"));
     }
 
+    @Test void evidenceOnlyDirectiveNeverChangesTheGeneratedValue() {
+        WikidataDynamicObject film = new WikidataDynamicObject("Q1", "Film");
+        film.type("Film");
+        film.put("location", "Sierra Leone");
+        CorrectionSource source = () -> List.of(new Correction(
+                "Film", "Q1", "location", "Paris", "wikipedia", null,
+                CorrectionPolicy.EVIDENCE_ONLY,
+                new ValueSource("Wikipedia (English)", "Film", "field:location", null)));
+
+        assertEquals(0, Corrections.apply(List.of(film), List.of(source)));
+        assertEquals("Sierra Leone", film.get("location"));
+    }
+
     @Test void approvedIdentityLinkRoundTrips(@TempDir Path dir) throws Exception {
         File f = new File(dir.toFile(), "people.curation.json");
         ManualCuration c = new ManualCuration(f);

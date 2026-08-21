@@ -1,5 +1,7 @@
 package quiz.enrichment;
 
+import datasource.SourceRef;
+
 import objectview.Viewable;
 import quiz.curation.IdentityLink;
 import quiz.curation.ManualCuration;
@@ -15,9 +17,9 @@ public final class EnrichmentSources {
 
     private EnrichmentSources() { }
 
-    public static List<EnrichmentProposal.SourceRef> collect(
+    public static List<SourceRef> collect(
             Viewable member, String type, ManualCuration curation) {
-        Map<String, EnrichmentProposal.SourceRef> result = new LinkedHashMap<>();
+        Map<String, SourceRef> result = new LinkedHashMap<>();
         quiz.source.WikidataSource wikidata = SourceIdentities.wikidata(member);
         if (wikidata != null) {
             add(result, "Wikidata", wikidata.qid(), wikidata.wikidataUrl());
@@ -47,10 +49,10 @@ public final class EnrichmentSources {
                 && collect(member, type, curation).isEmpty();
     }
 
-    private static void add(Map<String, EnrichmentProposal.SourceRef> result,
+    private static void add(Map<String, SourceRef> result,
                             String kind, String sourceId, String url) {
-        EnrichmentProposal.SourceRef source =
-                new EnrichmentProposal.SourceRef(kind, sourceId, url);
+        SourceRef source =
+                new SourceRef(kind, sourceId, url);
         result.put(String.valueOf(kind) + '\u0000' + sourceId + '\u0000' + url, source);
     }
 }

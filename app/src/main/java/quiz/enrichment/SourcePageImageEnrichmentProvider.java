@@ -1,5 +1,9 @@
 package quiz.enrichment;
 
+import datasource.enrichment.EnrichmentProposal;
+
+import datasource.SourceRef;
+
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 
@@ -50,7 +54,7 @@ public final class SourcePageImageEnrichmentProvider implements EnrichmentProvid
     }
 
     @Override public Query<EnrichmentProposal> discover(EnrichmentRequest request) {
-        List<EnrichmentProposal.SourceRef> sources = request.sources().stream()
+        List<SourceRef> sources = request.sources().stream()
                 .filter(source -> httpUri(source.recordUrl()) != null)
                 .toList();
         return new Query<>() {
@@ -67,7 +71,7 @@ public final class SourcePageImageEnrichmentProvider implements EnrichmentProvid
                 List<EnrichmentProposal.MediaCandidate> media = new ArrayList<>();
                 int sourceIndex = 0;
                 int mediaIndex = 0;
-                for (EnrichmentProposal.SourceRef source : sources) {
+                for (SourceRef source : sources) {
                     URI page = httpUri(source.recordUrl());
                     String html = context.step(
                             "Read " + source.kind() + " source page",
