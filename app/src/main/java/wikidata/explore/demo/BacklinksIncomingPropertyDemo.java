@@ -180,16 +180,15 @@ public class BacklinksIncomingPropertyDemo {
                   ?prop wikibase:directClaim ?propUri .
                   OPTIONAL {
                     ?example rdfs:label ?exampleLabel .
-                    FILTER(LANG(?exampleLabel) = "en")
+                    %s
                   }
-                  SERVICE wikibase:label {
-                    bd:serviceParam wikibase:language "en" .
-                  }
-                }
+                %s}
                 GROUP BY ?prop ?propLabel
                 ORDER BY DESC(?count)
                 LIMIT 50
-                """.formatted(subjectValues, cleanQid(targetQid));
+                """.formatted(subjectValues, cleanQid(targetQid),
+                        wikidata.query.LabelService.labelFilter("exampleLabel", null),
+                        wikidata.query.LabelService.service());
     }
 
     private static String wdValues(Collection<String> qids) {

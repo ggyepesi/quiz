@@ -637,10 +637,12 @@ public final class RuleNodeQueryBuilder {
             q.rawWhere("""
                 OPTIONAL {
                   ?category rdfs:label %s .
-                  FILTER(LANG(%s) = "en")
+                  %s
                 }
                 BIND(CONCAT(STR(?category), "%s", COALESCE(%s, "")) AS ?%s)
-                """.formatted(labelVar, labelVar, PAIR_SEPARATOR, labelVar, pairVar));
+                """.formatted(labelVar,
+                        wikidata.query.LabelService.labelFilter(labelVar, null),
+                        PAIR_SEPARATOR, labelVar, pairVar));
         } else {
             appendInlinedFieldPatterns(q, List.of(field), node, false);
         }
@@ -1085,10 +1087,12 @@ public final class RuleNodeQueryBuilder {
                 q.rawWhere("""
                     OPTIONAL {
                       ?root rdfs:label %s .
-                      FILTER(LANG(%s) = "en")
+                      %s
                     }
                     BIND(CONCAT(STR(?root), "§", COALESCE(%s, "")) AS ?%s)
-                    """.formatted(labelVar, labelVar, labelVar, pairVar));
+                    """.formatted(labelVar,
+                            wikidata.query.LabelService.labelFilter(labelVar, null),
+                            labelVar, pairVar));
                 continue;
             }
 
@@ -1107,7 +1111,7 @@ public final class RuleNodeQueryBuilder {
                   %s
                 %s  OPTIONAL {
                     %s rdfs:label %s .
-                    FILTER(LANG(%s) = "en")
+                    %s
                   }
                   BIND(CONCAT(STR(%s), "§", COALESCE(%s, "")) AS ?%s)
                 }
@@ -1116,7 +1120,7 @@ public final class RuleNodeQueryBuilder {
                     typeConstraint,
                     valueVar,
                     labelVar,
-                    labelVar,
+                    wikidata.query.LabelService.labelFilter(labelVar, null),
                     valueVar,
                     labelVar,
                     pairVar));

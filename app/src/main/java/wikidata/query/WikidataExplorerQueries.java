@@ -86,12 +86,9 @@ public final class WikidataExplorerQueries {
 
               ?property wikibase:directClaim ?p .
 
-              SERVICE wikibase:label {
-                bd:serviceParam wikibase:language "en" .
-              }
-            }
+            %s}
             ORDER BY DESC(?count)
-            """.formatted(rootQid, limit);
+            """.formatted(rootQid, limit, LabelService.service());
     }
 
     public static String incomingValuesForProperty(
@@ -106,15 +103,9 @@ public final class WikidataExplorerQueries {
         pid = cleanPid(pid);
 
         String labelPart = requireLabel
-                ? """
-              ?value rdfs:label ?valueLabel .
-              FILTER(LANG(?valueLabel) = "en")
-              """
-                : """
-              SERVICE wikibase:label {
-                bd:serviceParam wikibase:language "en" .
-              }
-              """;
+                ? "  ?value rdfs:label ?valueLabel .\n  "
+                        + LabelService.labelFilter("valueLabel", null) + "\n"
+                : LabelService.service();
 
         String mediaPart = includeMedia
                 ? "OPTIONAL { ?value wdt:P18 ?image . }\n"
@@ -189,10 +180,10 @@ FILTER(
     ||
     EXISTS {
       ?value rdfs:label ?_label .
-      FILTER(LANG(?_label) = "en")
+      %s
     }
 )
-""");
+""".formatted(LabelService.labelFilter("_label", null)));
         }
         if (minLengthKm != null) {
             q.rawWhere("?value wdt:P2043 ?length .");

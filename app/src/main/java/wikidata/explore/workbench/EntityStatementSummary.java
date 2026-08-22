@@ -58,14 +58,14 @@ public final class EntityStatementSummary {
                 ?st ?pq ?qv .
                 ?qualp wikibase:qualifier ?pq .
               }
-              SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+            %s
             }
             ORDER BY ?prop ?st
             """;
 
     public static EntityStatementSummary fetch(String qid, WikidataSparqlClient client)
             throws Exception {
-        List<WikidataBinding> rows = client.query(QUERY.formatted(qid));
+        List<WikidataBinding> rows = client.query(QUERY.formatted(qid, wikidata.query.LabelService.service()));
 
         // property PID -> (statement node -> aggregated statement)
         Map<String, PropAgg> byProp = new LinkedHashMap<>();

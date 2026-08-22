@@ -36,9 +36,9 @@ public final class ConstellationSnapshotMain {
               OPTIONAL { ?c wdt:P361 ?fam. }
               OPTIONAL { ?c wdt:P138 ?after. }
               OPTIONAL { ?c wdt:P18  ?img. }
-              SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+            %s
             } ORDER BY ?cLabel
-            """;
+            """.formatted(wikidata.query.LabelService.service());
 
     public static void main(String[] args) throws Exception {
         File out = new File(args.length > 0 ? args[0]

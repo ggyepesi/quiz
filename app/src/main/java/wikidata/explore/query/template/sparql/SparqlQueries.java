@@ -1,6 +1,7 @@
 package wikidata.explore.query.template.sparql;
 
 import work.QueryTemplate;
+import wikidata.query.LabelService;
 import wikidata.query.WikidataExplorerQueries;
 import wikidata.query.WikidataQueryBuilder;
 import wikidata.query.WikidataRootQuery;
@@ -23,15 +24,14 @@ public final class SparqlQueries {
                     """
                     SELECT * WHERE {
                       {
-                        SELECT DISTINCT ?value ?valueLabel WHERE {
+                        SELECT DISTINCT ?value WHERE {
                           BIND(wd:${classQid} AS ?root)
                           ?value wdt:P31 ?root .
-                          ?value rdfs:label ?valueLabel .
-                          FILTER(LANG(?valueLabel) = "${lang}")
+                          FILTER EXISTS { ?value rdfs:label ?anyLabel . }
                         }
                         LIMIT ${limit}
                       }
-                    }
+                    ${labelService}}
                     ORDER BY ?valueLabel
                     """);
 
@@ -64,9 +64,7 @@ public final class SparqlQueries {
                       ?prop wikibase:directClaim ?propUri .
                       OPTIONAL { ?prop wikibase:propertyType ?type . }
 
-                      SERVICE wikibase:label {
-                        bd:serviceParam wikibase:language "en" .
-                      }
+                      ${labelService}
                     }
                     ORDER BY DESC(?count)
                     LIMIT ${limit}
@@ -88,8 +86,9 @@ public final class SparqlQueries {
                     """
                     SELECT ?label WHERE {
                       wd:${qid} rdfs:label ?label .
-                      FILTER(LANG(?label) = "${lang}")
+                      ${labelFilter}
                     }
+                    ORDER BY (LANG(?label) != "${lang}")
                     LIMIT 1
                     """);
 
@@ -126,14 +125,11 @@ public final class SparqlQueries {
                    ORDER BY DESC(?nNew)
                    LIMIT %d
                  }
-                 SERVICE wikibase:label {
-                   bd:serviceParam wikibase:language "en".
-                   ?type rdfs:label ?typeLabel .
-                   ?example rdfs:label ?examples .
-                 }
-               }
+               %s}
                ORDER BY DESC(?nNew)
-               """.formatted(base, n);
+               """.formatted(base, n, LabelService.serviceBinding(null,
+                       "    ?type rdfs:label ?typeLabel .\n"
+                               + "    ?example rdfs:label ?examples .\n"));
     }
 
     /**
@@ -180,7 +176,8 @@ public final class SparqlQueries {
 
         return ENTITY_LABEL.render(Map.of(
                 "qid", WikidataQueryBuilder.cleanQid(qid),
-                "lang", lang == null || lang.isBlank() ? "en" : lang));
+                "lang", LabelService.searchLanguage(lang),
+                "labelFilter", LabelService.labelFilter("label", lang)));
     }
 
     public static String sampleClassInstances(
@@ -190,7 +187,7 @@ public final class SparqlQueries {
 
         return SAMPLE_CLASS_INSTANCES.render(Map.of(
                 "classQid", WikidataQueryBuilder.cleanQid(classQid),
-                "lang", lang == null || lang.isBlank() ? "en" : lang,
+                "labelService", LabelService.service(lang),
                 "limit", Math.max(1, limit)));
     }
 
@@ -243,6 +240,7 @@ public final class SparqlQueries {
         return DISCOVER_INCOMING_PROPERTIES_TO_CLASS.render(Map.of(
                 "classQid", WikidataQueryBuilder.cleanQid(classQid),
                 "innerLimit", 40,
+                "labelService", LabelService.service(),
                 "limit", n));
     }
 

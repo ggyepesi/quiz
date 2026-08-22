@@ -43,17 +43,15 @@ public class WikidataQueryBuilder {
                     bd:serviceParam wikibase:endpoint "www.wikidata.org" .
                     bd:serviceParam wikibase:api "EntitySearch" .
                     bd:serviceParam mwapi:search "%s" .
-                    bd:serviceParam mwapi:language "en" .
+                    bd:serviceParam mwapi:language "%s" .
                     ?item wikibase:apiOutputItem mwapi:item .
                   }
-                  SERVICE wikibase:label {
-                    bd:serviceParam wikibase:language "en" .
-                    ?item rdfs:label ?itemLabel .
-                    ?item schema:description ?itemDescription .
-                  }
-                }
+                %s}
                 LIMIT %d
-                """.formatted(escaped, Math.max(1, limit));
+                """.formatted(escaped,
+                        LabelService.searchLanguage(null),
+                        itemLabelAndDescription(),
+                        Math.max(1, limit));
     }
 
     public static String exactLabelOrAlias(String text, int limit) {
@@ -63,14 +61,17 @@ public class WikidataQueryBuilder {
                   { ?item rdfs:label "%s"@en . }
                   UNION
                   { ?item skos:altLabel "%s"@en . }
-                  SERVICE wikibase:label {
-                    bd:serviceParam wikibase:language "en" .
-                    ?item rdfs:label ?itemLabel .
-                    ?item schema:description ?itemDescription .
-                  }
-                }
+                %s}
                 LIMIT %d
-                """.formatted(escaped, escaped, Math.max(1, limit));
+                """.formatted(escaped, escaped,
+                        itemLabelAndDescription(), Math.max(1, limit));
+    }
+
+    /** The label+description binding both entity searches project. */
+    private static String itemLabelAndDescription() {
+        return LabelService.serviceBinding(null,
+                "    ?item rdfs:label ?itemLabel .\n"
+                        + "    ?item schema:description ?itemDescription .\n");
     }
 
     /**
@@ -102,9 +103,9 @@ public class WikidataQueryBuilder {
                       OPTIONAL { ?prop wikibase:propertyType ?type . }
                       OPTIONAL {
                         ?v rdfs:label ?vLabel .
-                        FILTER(LANG(?vLabel) = "en")
+                        %s
                       }
-                      SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+                    %s
                     }
                     GROUP BY ?prop ?propLabel ?type
                     ORDER BY DESC(?count)
@@ -124,9 +125,9 @@ public class WikidataQueryBuilder {
                       OPTIONAL { ?prop wikibase:propertyType ?type . }
                       OPTIONAL {
                         ?subject rdfs:label ?subjectLabel .
-                        FILTER(LANG(?subjectLabel) = "en")
+                        %s
                       }
-                      SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+                    %s
                     }
                     GROUP BY ?prop ?propLabel ?type
                     ORDER BY DESC(?count)
@@ -134,7 +135,11 @@ public class WikidataQueryBuilder {
                   }
                 }
                 ORDER BY ?direction DESC(?count)
-                """.formatted(values, n, values, n);
+                """.formatted(
+                        values, LabelService.labelFilter("vLabel", null),
+                        LabelService.service(), n,
+                        values, LabelService.labelFilter("subjectLabel", null),
+                        LabelService.service(), n);
     }
 
     public static String outgoingDirectStatements(String qid, int limit) {
@@ -146,12 +151,13 @@ public class WikidataQueryBuilder {
                   ?property wikibase:directClaim ?p .
                   OPTIONAL {
                     ?value rdfs:label ?valueLabel .
-                    FILTER(LANG(?valueLabel) = "en")
+                    %s
                   }
                 }
                 ORDER BY ?property ?valueLabel
                 LIMIT %d
-                """.formatted(qid, Math.max(1, limit));
+                """.formatted(qid, LabelService.labelFilter("valueLabel", null),
+                        Math.max(1, limit));
     }
 
     // ------------------------------------------------------------------
@@ -354,12 +360,7 @@ public class WikidataQueryBuilder {
     }
 
     public WikidataQueryBuilder serviceLabel(String language) {
-        where("""
-              SERVICE wikibase:label {
-                bd:serviceParam wikibase:language "%s".
-              }
-              """.formatted(language == null || language.isBlank()
-                      ? "en" : language));
+        where(LabelService.service(language));
         return this;
     }
 
@@ -390,8 +391,7 @@ public class WikidataQueryBuilder {
         String triple = "?" + entityVar + " rdfs:label ?" + labelVar + " .";
         String langFilter = anyLang
                 ? null
-                : "FILTER(LANG(?" + labelVar + ") = \""
-                  + sparqlString(lang) + "\")";
+                : LabelService.labelFilter(labelVar, lang);
 
         if (required) {
             where.append("  ").append(triple).append("\n");
