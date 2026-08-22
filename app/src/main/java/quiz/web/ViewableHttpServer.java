@@ -9,7 +9,6 @@ import com.sun.net.httpserver.HttpServer;
 import quiz.group.ViewableGroup;
 import objectview.media.ImageRef;
 import objectview.Viewable;
-import objectview.ViewableAdapter;
 import quiz.ordering.EqualValuePolicy;
 import quiz.ordering.OrderKey;
 import quiz.ordering.OrderValueType;
@@ -20,7 +19,6 @@ import quiz.web.ordering.OrderingQuizView;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -321,21 +319,11 @@ public class ViewableHttpServer {
     }
 
     private static Object fieldValue(Viewable q, String fieldName) {
-        // Snapshot-served objects are map-held (WikidataDynamicObject) — read the field
-        // from the dynamic map; only a hand-written bean needs reflection.
-        if (q instanceof objectview.field.DynamicFields dyn) {
-            return dyn.dynamicFieldValues().get(fieldName);
-        }
-        Field f = ViewableAdapter.getField(q.getClass(), fieldName);
-        if (f == null) {
-            return null;
-        }
-        try {
-            f.setAccessible(true);
-            return f.get(q);
-        } catch (Exception e) {
-            return null;
-        }
+        // A map-held snapshot object and a hand-written bean are one question (#87):
+        // FieldSet picks the backing, so this reads the same either way — and a served
+        // field that is DECLARED by the schema but not stored (a reference's display
+        // name) resolves the way rendering resolves it, instead of coming back null.
+        return objectview.field.FieldAccess.getPath(q, fieldName);
     }
 
     private void sendStatus(HttpExchange ex, int code) throws IOException {

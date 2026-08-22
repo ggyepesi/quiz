@@ -3,7 +3,6 @@ package quiz.enrichment;
 import datasource.enrichment.EnrichmentProposal;
 
 import objectview.Viewable;
-import objectview.field.DynamicFields;
 
 import java.util.HashMap;
 import java.util.List;
@@ -31,14 +30,24 @@ public final class EnrichmentApply {
         for (EnrichmentDecision decision
                 : decisions == null ? List.<EnrichmentDecision>of() : decisions) {
             Viewable instance = byId.get(decision.subject().targetId());
-            if (!(instance instanceof DynamicFields dynamic)) {
+            if (instance == null) {
                 continue;
             }
+            // A map-held snapshot object and a hand-written bean are one question (#87):
+            // FieldSet writes to whichever backing the instance has. A backing with no
+            // settable field of that name refuses, and that decision is skipped — the
+            // same outcome as before for an instance that could not take the value, but
+            // now reached by asking rather than by testing the class.
+            objectview.field.FieldSet fields = objectview.field.FieldSet.of(instance);
             for (EnrichmentDecision.FieldDecision field : decision.fields()) {
                 if (field.action() == EnrichmentProposal.ReviewAction.CORROBORATE) continue;
                 EnrichmentProposal.FieldCandidate candidate = field.candidate();
-                dynamic.dynamicFieldValues().put(candidate.field(), candidate.proposedValue());
-                applied++;
+                try {
+                    fields.write(candidate.field(), candidate.proposedValue());
+                    applied++;
+                } catch (RuntimeException refused) {
+                    // no settable field of that name on this instance
+                }
             }
         }
         return applied;
