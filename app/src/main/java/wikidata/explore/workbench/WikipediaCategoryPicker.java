@@ -30,7 +30,10 @@ public final class WikipediaCategoryPicker {
         SourceDiscoveryPicker.run(parent, runner, query,
                 new SourceDiscoveryPicker.Spec<TableQueryResult>(
                         "Observed Wikipedia categories",
-                        "Categories actually found on the selected/sample articles. Choose "
+                        "Categories actually found on the selected/sample articles, "
+                                + "<b>least shared first</b>: one that every article carries "
+                                + "describes the sample, not the member, so it cannot name a "
+                                + "value that varies. <b>Have</b> is how many carry it. Choose "
                                 + "one, then replace the part that names the desired field "
                                 + "value with <b>&lt;value&gt;</b>.",
                         "No English Wikipedia categories were found for the selected sample.",

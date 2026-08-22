@@ -72,13 +72,37 @@ public final class DiscoverWikipediaCategoriesQuery implements Query<TableQueryR
         seen.forEach((category, value) -> rows.add(List.of(
                 category, value.articles.size(), String.join(", ", value.articles.stream()
                         .limit(3).toList()))));
+        rankByDistinctiveness(rows);
+        return new TableQueryResult(List.of("Category", "Have", "Examples"), rows);
+    }
+
+    /**
+     * Least-shared first.
+     *
+     * <p>Ranking by coverage was exactly backwards for the job. Sampling films put
+     * "English-language films" and "American films" at the top and left "Films set in
+     * Sierra Leone" at the bottom — the one category that actually names a field value.
+     * A category every sampled article carries describes the SAMPLE, not the member, so
+     * it cannot be naming something that varies per member; the fewer articles share a
+     * category, the more it is saying about those articles specifically.
+     *
+     * <p>This is a ranking, not a filter: nothing is hidden, and a common category is
+     * still one scroll away for a field that genuinely wants one. With a single seed
+     * there is nothing to discriminate — every category is shared by everything read —
+     * and the order falls back to alphabetical, which is the honest answer rather than a
+     * confident-looking one.
+     */
+    static void rankByDistinctiveness(List<List<Object>> rows) {
+        if (rows == null) return;
         rows.sort((left, right) -> {
-            int count = Integer.compare(((Number) right.get(1)).intValue(),
-                    ((Number) left.get(1)).intValue());
-            return count != 0 ? count : String.valueOf(left.get(0))
+            int shared = Integer.compare(shareCount(left), shareCount(right));
+            return shared != 0 ? shared : String.valueOf(left.get(0))
                     .compareToIgnoreCase(String.valueOf(right.get(0)));
         });
-        return new TableQueryResult(List.of("Category", "Have", "Examples"), rows);
+    }
+
+    private static int shareCount(List<Object> row) {
+        return row.size() > 1 && row.get(1) instanceof Number count ? count.intValue() : 0;
     }
 
     private List<String> sample(QueryContext context) throws Exception {
