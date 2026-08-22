@@ -1051,20 +1051,20 @@ public class ModelBuilderFrame extends JFrame {
 
     private void acceptGenerationRun(GenerationRun run) {
         SwingUtilities.invokeLater(() -> {
-            if (lastRun != null && lastRun.runtime() != null) {
-                lastRun.runtime().close();
-            }
-
-            lastRun = run;
+            // Closes the runtime this run supersedes — unless the incoming run carries it,
+            // which is how forgetFetchedDeclaration replaces a run without shutting one
+            // that is still in use.
+            lastRun = wikidata.explore.generation.GenerationRuns.handOver(lastRun, run);
 
             if (run != null) {
                 instancesPanel.accept(run.objectResult());
                 // Generation runs on a COPY of the model, so a descriptive vocabulary
                 // built from the loaded data (e.g. NomineeType, WorkGenre) lands on
                 // that copy and is otherwise lost. Fold the built values back into the
-                // live model so "Save domain" persists them — only filling vocabularies
-                // that are still EMPTY here, never overwriting authored constraint
-                // vocabularies (e.g. OscarCategories).
+                // live model so this session shows them. Descriptive vocabularies are
+                // REFRESHED, not filled-if-empty — they are derived, so a stale value
+                // must not linger; an authored constraint vocabulary (OscarCategories)
+                // is not a descriptive target and is never touched.
                 int filledVocabs = mergeBuiltVocabularies(run.modelSnapshot());
                 if (filledVocabs > 0) {
                     modelChanged();
@@ -1327,10 +1327,11 @@ public class ModelBuilderFrame extends JFrame {
                     + "the next Enrich loads it anyway.");
             return;
         }
-        lastRun = new GenerationRun(
-                lastRun.modelSnapshot(), lastRun.depth(), lastRun.plan(),
-                lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
-                lastRun.remapState(), kept);
+        lastRun = wikidata.explore.generation.GenerationRuns.handOver(lastRun,
+                new GenerationRun(
+                        lastRun.modelSnapshot(), lastRun.depth(), lastRun.plan(),
+                        lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
+                        lastRun.remapState(), kept));
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 
