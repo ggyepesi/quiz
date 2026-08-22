@@ -126,12 +126,12 @@ public final class ValidationPanel extends JPanel {
     // A curation source rule has the same representation as a ModelBuilder field source.
     // It is session-scoped until explicitly promoted, while accepted values remain durable
     // per-instance Corrections. The qualified key prevents same-named fields from colliding.
-    private final Map<FieldKey, FieldSourceMapping> fieldSources = new java.util.HashMap<>();
+    // Which source each field is read from — and the ORDER in which that is decided —
+    // is quiz.curation.FieldSourceChoices'; this panel shows it and takes the answer.
+    private final quiz.curation.FieldSourceChoices fieldSourceChoices;
     // A fallback is an additional route, not a replacement for the field's primary source.
     // Keeping both mappings in the same ModelBuilder representation lets Find Data try
     // Wikidata first and consult DBpedia only for members where that property is missing.
-    private final Map<FieldKey, FieldSourceMapping> fallbackFieldSources =
-            new java.util.HashMap<>();
     // Pending edits are deliberately separate from ManualCuration. The staging object is
     // shared by every panel for the same sidecar, so modeless windows cannot accidentally
     // save one another's pending work or display contradictory Apply counts.
@@ -185,6 +185,7 @@ public final class ValidationPanel extends JPanel {
             IdentityResolutionLauncher identityResolver) {
         super(new BorderLayout(6, 6));
         this.domain = domain;
+        this.fieldSourceChoices = new quiz.curation.FieldSourceChoices(domain);
         this.onCurated = onCurated == null ? () -> { } : onCurated;
         this.identityResolver = identityResolver;
         this.staging = CurationStaging.forCuration(curationStore());
@@ -1161,7 +1162,7 @@ public final class ValidationPanel extends JPanel {
                     source.propertyLabel(label);
                     source.direction(RuleDirection.ROOT_TO_ITEM);
                     source.productionKind(FieldProductionKind.AUTO);
-                    fieldSources.put(key, source);
+                    fieldSourceChoices.choosePrimary(key.type(), key.path(), source);
                     updateFieldSourceButton();
                     if (produceAfterChoice) {
                         // Through the same confirmation as every other start. Choosing a
@@ -1204,10 +1205,7 @@ public final class ValidationPanel extends JPanel {
     }
 
     private void clearAdditionalSource(FieldKey key) {
-        fallbackFieldSources.remove(key);
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation != null) curation.removeSourceRecipe(key.type(), key.path(),
-                quiz.curation.FieldSourceRecipe.ADDITIONAL_SOURCE);
+        fieldSourceChoices.clearAdditional(key.type(), key.path());
         updateFieldSourceButton();
     }
 
@@ -1223,138 +1221,20 @@ public final class ValidationPanel extends JPanel {
         source.propertyPid(property);
         source.propertyLabel(label);
         source.productionKind(FieldProductionKind.AUTO);
-        fallbackFieldSources.put(key, source);
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation != null) {
-            curation.putSourceRecipe(quiz.curation.FieldSourceRecipeCodec.scoped(
-                    key.type(), key.path(), source));
-        }
+        fieldSourceChoices.recordAdditional(key.type(), key.path(), source);
         updateFieldSourceButton();
     }
 
     private FieldSourceMapping sourceFor(FieldKey key) {
-        if (key != null && !fieldSources.containsKey(key)) {
-            // The model's declaration first: it is what the domain was generated with,
-            // so asking for it again is asking the user to re-enter known configuration.
-            // Past corrections are the fallback, for a field the model never declared.
-            if (!seedFieldSourceFromModel(key)) {
-                seedFieldSourceFromCuration(key);
-            }
-        }
-        return key == null ? null : fieldSources.get(key);
+        return key == null ? null : fieldSourceChoices.primary(key.type(), key.path());
     }
 
-    /** Seed this field's source from the backing ModelBuilder model. True when the model
-     *  declared one — {@code locations -> P840} is already in movies.model.json, and
-     *  re-asking for it was the gap this closes. */
-    private boolean seedFieldSourceFromModel(FieldKey key) {
-        quiz.curation.FieldRulePromoter modelBacked =
-                domain.capability(quiz.curation.FieldRulePromoter.class);
-        if (modelBacked == null) {
-            return false;
-        }
-        FieldSourceMapping declared = modelBacked.declaredSource(key.type(), key.path());
-        if (declared == null || declared.propertyPid() == null
-                || declared.propertyPid().isBlank()) {
-            return false;
-        }
-        fieldSources.put(key, declared);
-        return true;
-    }
-
-    /** Reuse a property already recorded for this field rather than re-discovering it: every
-     *  filled value in the curation sidecar carries the source ({@code propertyId}) that
-     *  produced it, so a field curated before (e.g. population -> P1082) is seeded from that
-     *  provenance. The most-used property wins when several appear. */
-    private void seedFieldSourceFromCuration(FieldKey key) {
-        quiz.curation.ManualCuration curation = curationStore();
-        if (key == null || curation == null) {
-            return;
-        }
-        FieldSourceMapping reused = reusableSource(
-                curation.corrections(), key.type(), key.path());
-        if (reused != null) {
-            fieldSources.put(key, reused);
-        }
-    }
-
-    /** The primary (Wikidata) source to reuse for {@code type.field}, rebuilt from the
-     *  provenance already recorded on that field's filled values — the most-used property
-     *  when several appear — or null when nothing was ever sourced for it. */
-    static FieldSourceMapping reusableSource(
-            List<Correction> corrections, String type, String field) {
-        java.util.Map<String, quiz.curation.ValueSource> byPid = new java.util.LinkedHashMap<>();
-        java.util.Map<String, Integer> counts = new java.util.HashMap<>();
-        for (Correction c : corrections == null ? List.<Correction>of() : corrections) {
-            if (!type.equals(c.type()) || !field.equals(c.field())) {
-                continue;
-            }
-            quiz.curation.ValueSource s = c.source();
-            // Primary (Wikidata) provenance only; the DBpedia fallback is a separate slot.
-            if (s == null || s.propertyId() == null || s.propertyId().isBlank()
-                    || !"Wikidata".equalsIgnoreCase(s.kind())) {
-                continue;
-            }
-            byPid.putIfAbsent(s.propertyId(), s);
-            counts.merge(s.propertyId(), 1, Integer::sum);
-        }
-        if (byPid.isEmpty()) {
-            return null;
-        }
-        quiz.curation.ValueSource best = byPid.get(counts.entrySet().stream()
-                .max(java.util.Map.Entry.comparingByValue())
-                .map(java.util.Map.Entry::getKey).orElseThrow());
-        FieldSourceMapping mapping = new FieldSourceMapping();
-        mapping.sourceType(FieldSourceType.SPARQL);
-        mapping.propertyPid(best.propertyId());
-        mapping.propertyLabel(best.propertyLabel() == null ? "" : best.propertyLabel());
-        mapping.direction(directionOf(best.direction()));
-        mapping.productionKind(FieldProductionKind.AUTO);
-        return mapping;
-    }
-
-    private static RuleDirection directionOf(String direction) {
-        try {
-            return direction == null ? RuleDirection.ROOT_TO_ITEM
-                    : RuleDirection.valueOf(direction);
-        } catch (IllegalArgumentException e) {
-            return RuleDirection.ROOT_TO_ITEM;
-        }
-    }
-
-    /** This DATASET's own choice, which shadows whatever the model declares — the same
-     *  direction the category rule already takes, and the reason an override is clearable:
-     *  without that the model could never be heard on this field again. */
     private FieldSourceMapping datasetFallbackOverride(FieldKey key) {
-        if (key == null) return null;
-        FieldSourceMapping source = fallbackFieldSources.get(key);
-        if (source != null) return source;
-        quiz.curation.ManualCuration curation = curationStore();
-        quiz.curation.FieldSourceRecipe recipe = curation == null ? null
-                : curation.sourceRecipe(key.type(), key.path(),
-                        quiz.curation.FieldSourceRecipe.ADDITIONAL_SOURCE);
-        source = quiz.curation.FieldSourceRecipeCodec.mapping(recipe);
-        if (source != null) fallbackFieldSources.put(key, source);
-        return source;
+        return key == null ? null : fieldSourceChoices.datasetOverride(key.type(), key.path());
     }
 
     private FieldSourceMapping fallbackSourceFor(FieldKey key) {
-        return key == null ? null
-                : fallbackSource(datasetFallbackOverride(key), domain, key.type(), key.path());
-    }
-
-    /**
-     * A dataset's own choice SHADOWS the model's declaration — the same order the category
-     * recipe takes, and the reason the choice is clearable. The model's declaration is heard
-     * only where this dataset has said nothing, and is never cached into the override map:
-     * that map means "the dataset chose this", which is what makes clearing meaningful.
-     */
-    static FieldSourceMapping fallbackSource(FieldSourceMapping datasetOverride,
-            DomainModel domain, String type, String field) {
-        if (datasetOverride != null) return datasetOverride;
-        quiz.curation.FieldRulePromoter modelBacked =
-                domain.capability(quiz.curation.FieldRulePromoter.class);
-        return modelBacked == null ? null : modelBacked.declaredFallbackSource(type, field);
+        return key == null ? null : fieldSourceChoices.additional(key.type(), key.path());
     }
 
     private void updateFieldSourceButton() {

@@ -1,9 +1,6 @@
-package quiz.transform.ui;
+package quiz.curation;
 
 import org.junit.jupiter.api.Test;
-import quiz.curation.Correction;
-import quiz.curation.CorrectionPolicy;
-import quiz.curation.ValueSource;
 import wikidata.explore.model.FieldSourceMapping;
 
 import java.util.List;
@@ -27,7 +24,7 @@ class ReusableSourceTest {
                 filled("State", "population", 200, "P1082"));
 
         FieldSourceMapping reused =
-                ValidationPanel.reusableSource(corrections, "State", "population");
+                FieldSourceChoices.reusableSource(corrections, "State", "population");
 
         assertEquals("P1082", reused.propertyPid());
         assertEquals("population", reused.propertyLabel());
@@ -40,14 +37,14 @@ class ReusableSourceTest {
                 filled("State", "population", 3, "P1120"));   // outlier, used once
 
         assertEquals("P1082",
-                ValidationPanel.reusableSource(corrections, "State", "population").propertyPid());
+                FieldSourceChoices.reusableSource(corrections, "State", "population").propertyPid());
     }
 
     @Test void nullWhenTheFieldWasNeverSourced() {
         List<Correction> corrections = List.of(
                 filled("State", "capital", 1, "P36"));   // a different field
-        assertNull(ValidationPanel.reusableSource(corrections, "State", "population"));
-        assertNull(ValidationPanel.reusableSource(List.of(), "State", "population"));
+        assertNull(FieldSourceChoices.reusableSource(corrections, "State", "population"));
+        assertNull(FieldSourceChoices.reusableSource(List.of(), "State", "population"));
     }
 
     @Test void ignoresNonWikidataProvenance() {
@@ -57,6 +54,6 @@ class ReusableSourceTest {
                 "State", "Q1", "population", 5, "dbpedia", null,
                 CorrectionPolicy.FILL_IF_EMPTY, dbpedia));
         // Only the primary (Wikidata) source is reused here; the DBpedia fallback is separate.
-        assertNull(ValidationPanel.reusableSource(corrections, "State", "population"));
+        assertNull(FieldSourceChoices.reusableSource(corrections, "State", "population"));
     }
 }

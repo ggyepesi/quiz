@@ -48,6 +48,7 @@ public class ModelBuilderFrame extends JFrame {
     private final WikidataApiClient apiClient =
             new WikidataApiClient("QuizProject/1.0");
 
+    private final dataset.DomainStorage storage = dataset.DomainStorage.inDefaultLocation();
     private final GeneratedProjectModel projectModel =
             GeneratedProjectModel.constellationDemo();
 
@@ -1499,21 +1500,7 @@ public class ModelBuilderFrame extends JFrame {
         try {
             java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
             names.add(projectModel.name());
-            try {
-                for (quiz.DatasetRegistry.Dataset d
-                        : quiz.DatasetRegistry.load().datasets()) {
-                    // Only MODEL-backed domains: a dataset saved from a TransformApp
-                    // working set has no model or rule tree, so ModelBuilder could
-                    // neither open nor regenerate it — listing it only offered a
-                    // switch that lands on a model file that does not exist.
-                    if (d.isModelBacked()
-                            && d.name() != null && !d.name().isBlank()) {
-                        names.add(d.name());
-                    }
-                }
-            } catch (Exception ignore) {
-                // a missing/corrupt registry just means only the current domain
-            }
+            names.addAll(storage.modelBackedNames());
             domainBox.removeAllItems();
             for (String n : names) {
                 domainBox.addItem(n);
@@ -1525,25 +1512,11 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private quiz.DatasetRegistry.Dataset findDataset(String name) {
-        try {
-            for (quiz.DatasetRegistry.Dataset d
-                    : quiz.DatasetRegistry.load().datasets()) {
-                if (name.equals(d.name()) || domainKey(name).equals(d.key())) {
-                    return d;
-                }
-            }
-        } catch (Exception ignore) {
-        }
-        return null;
+        return storage.find(name);
     }
 
     private File domainModelFile(String name) {
-        quiz.DatasetRegistry.Dataset d = findDataset(name);
-        if (d != null && !d.modelPath().isBlank()) {
-            return new File(d.modelPath());
-        }
-        String k = domainKey(name);
-        return new File(Constants.wikidataDataDirectory + k + "/" + k + ".model.json");
+        return storage.modelFileOf(name);
     }
 
     private boolean confirmDiscardChanges(String title) {
@@ -1652,63 +1625,24 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
 
-        String newKey = domainKey(name);
-        File oldDir = new File(Constants.wikidataDataDirectory + oldKey + "/");
-        File newDir = new File(Constants.wikidataDataDirectory + newKey + "/");
-        if (!newKey.equals(oldKey) && newDir.exists()) {
-            JOptionPane.showMessageDialog(this,
-                                          "A domain folder already exists at\n" + newDir.getPath()
-                                                  + "\nChoose a different name.",
-                                          "Rename domain", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        try {
-            if (!newKey.equals(oldKey) && oldDir.isDirectory()) {
-                java.nio.file.Files.move(oldDir.toPath(), newDir.toPath());
-                for (String ext : new String[]{
-                        ".model.json", ".ruletree.json", ".snapshot.json"}) {
-                    File from = new File(newDir, oldKey + ext);
-                    File to = new File(newDir, newKey + ext);
-                    if (from.isFile()) {
-                        java.nio.file.Files.move(from.toPath(), to.toPath());
-                    }
-                }
+        switch (storage.rename(oldName, name)) {
+            case dataset.DomainStorage.Rename.FolderTaken taken -> JOptionPane.showMessageDialog(
+                    this, "A domain folder already exists at\n" + taken.existing().getPath()
+                            + "\nChoose a different name.",
+                    "Rename domain", JOptionPane.WARNING_MESSAGE);
+            case dataset.DomainStorage.Rename.Failed failed ->
+                    reportGenerationError(failed.cause());
+            case dataset.DomainStorage.Rename.Done done -> {
+                projectModel.name(done.name()); // file paths now use the new key
+                modelChanged();
+                refreshDomainBox();
+                logWindow.info("Renamed domain \"" + oldName + "\" -> \"" + done.name() + "\".");
             }
-            projectModel.name(name); // projectKey()/file paths now use newKey
-            rekeyRegistry(oldKey);
-            modelChanged();
-            refreshDomainBox();
-            logWindow.info("Renamed domain \"" + oldName + "\" -> \"" + name + "\".");
-        } catch (Exception ex) {
-            reportGenerationError(ex);
-        }
-    }
-
-    // Point an existing registry entry (found by its old key) at the renamed
-    // domain's new name/key/paths. No entry yet = nothing to do (the next
-    // "Save domain" registers it).
-    private void rekeyRegistry(String oldKey) {
-        try {
-            quiz.DatasetRegistry reg = quiz.DatasetRegistry.load();
-            for (quiz.DatasetRegistry.Dataset d : reg.datasets()) {
-                if (oldKey.equals(d.key())) {
-                    d.name(projectModel.name());
-                    d.key(projectKey());
-                    d.modelPath(modelFile().getPath());
-                    d.ruletreePath(ruleTreeFile().getPath());
-                    d.snapshotPath(snapshotFile().getPath());
-                    reg.save();
-                    return;
-                }
-            }
-        } catch (Exception ex) {
-            logWindow.info("Could not re-key registry: " + ex.getMessage());
         }
     }
 
     private void deleteDomain() {
         String name = projectModel.name();
-        String key = projectKey();
         File dir = projectDataDir();
         int c = JOptionPane.showConfirmDialog(this,
                                               "Delete domain \"" + name + "\"?\n\n"
@@ -1721,27 +1655,14 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         try {
-            quiz.DatasetRegistry reg = quiz.DatasetRegistry.load();
-            reg.datasets().removeIf(x -> key.equals(x.key()));
-            reg.save();
-            deleteRecursively(dir);
+            storage.delete(name);
             logWindow.info("Deleted domain \"" + name + "\".");
         } catch (Exception ex) {
             reportGenerationError(ex);
         }
 
         // Switch to another registered domain, or fall back to a fresh demo.
-        String next = null;
-        try {
-            for (quiz.DatasetRegistry.Dataset d
-                    : quiz.DatasetRegistry.load().datasets()) {
-                if (d.name() != null && !d.name().isBlank()) {
-                    next = d.name();
-                    break;
-                }
-            }
-        } catch (Exception ignore) {
-        }
+        String next = storage.anyRegisteredNameOtherThan(name);
         if (next != null) {
             doLoadDomain(domainModelFile(next));
         } else {
@@ -1753,18 +1674,6 @@ public class ModelBuilderFrame extends JFrame {
             syncDepthSpinnerToActiveClass();
         }
         refreshDomainBox();
-    }
-
-    private static void deleteRecursively(File f) throws java.io.IOException {
-        if (f == null || !f.exists()) {
-            return;
-        }
-        try (java.util.stream.Stream<java.nio.file.Path> walk =
-                     java.nio.file.Files.walk(f.toPath())) {
-            walk.sorted(java.util.Comparator.reverseOrder())
-                .map(java.nio.file.Path::toFile)
-                .forEach(File::delete);
-        }
     }
 
     private void loadSavedModelIfPresent() {
@@ -2014,38 +1923,20 @@ public class ModelBuilderFrame extends JFrame {
         return sub;
     }
 
-    // The project's data directory, keyed off its name so it lands where the
-    // web client looks: "Constellations" -> data/wikidata/constellations/,
-    // i.e. the exact folder the web GeneratedSource and "Load saved" read.
-    private String projectKey() {
-        return domainKey(projectModel.name());
-    }
+    // Where a domain's files live is dataset.DomainStorage's business; this frame only says
+    // which domain it is currently editing. The layout — "Constellations" ->
+    // data/wikidata/constellations/ — is the one the web client and "Load saved" read.
+    private String projectKey() { return dataset.DomainStorage.key(projectModel.name()); }
 
-    // The filesystem key for a domain name (folder + file prefix under
-    // data/wikidata/), e.g. "Greek Myth" -> "greekmyth".
-    private static String domainKey(String name) {
-        if (name == null || name.isBlank()) {
-            return "generated";
-        }
-        String key = name.toLowerCase().replaceAll("[^a-z0-9]+", "");
-        return key.isBlank() ? "generated" : key;
-    }
+    private static String domainKey(String name) { return dataset.DomainStorage.key(name); }
 
-    private File projectDataDir() {
-        return new File(Constants.wikidataDataDirectory + projectKey() + "/");
-    }
+    private File projectDataDir() { return storage.directory(projectModel.name()); }
 
-    private File snapshotFile() {
-        return new File(projectDataDir(), projectKey() + ".snapshot.json");
-    }
+    private File snapshotFile() { return storage.snapshotFile(projectModel.name()); }
 
-    private File ruleTreeFile() {
-        return new File(projectDataDir(), projectKey() + ".ruletree.json");
-    }
+    private File ruleTreeFile() { return storage.ruleTreeFile(projectModel.name()); }
 
-    private File modelFile() {
-        return new File(projectDataDir(), projectKey() + ".model.json");
-    }
+    private File modelFile() { return storage.modelFile(projectModel.name()); }
 
     // Saves config (the editable project model), the compiled rule tree, and
     // the generated instances together into the project's data directory — the

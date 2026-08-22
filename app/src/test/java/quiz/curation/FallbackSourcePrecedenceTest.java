@@ -1,11 +1,10 @@
-package quiz.transform.ui;
+package quiz.curation;
 
 import objectview.Viewable;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
 
-import quiz.curation.FieldRulePromoter.PromotionPreview;
 
 import java.util.List;
 
@@ -27,31 +26,31 @@ class FallbackSourcePrecedenceTest {
     @Test void theDatasetsOwnChoiceShadowsTheModelsDeclaration() {
         FieldSourceMapping chosen = mapping("Infobox film.country");
 
-        FieldSourceMapping effective = ValidationPanel.fallbackSource(
+        FieldSourceMapping effective = FieldSourceChoices.additionalSource(
                 chosen, new DeclaringDomain(), "Movie", "location");
 
         assertSame(chosen, effective, "an override that the model can veto is not an override");
     }
 
     @Test void theModelIsHeardWhereTheDatasetHasSaidNothing() {
-        FieldSourceMapping effective = ValidationPanel.fallbackSource(
+        FieldSourceMapping effective = FieldSourceChoices.additionalSource(
                 null, new DeclaringDomain(), "Movie", "location");
 
         assertEquals("Infobox film.based_on", effective.propertyPid());
     }
 
     @Test void clearingTheOverrideLetsTheModelBeHeardAgain() {
-        assertEquals("Infobox film.based_on", ValidationPanel.fallbackSource(
+        assertEquals("Infobox film.based_on", FieldSourceChoices.additionalSource(
                 null, new DeclaringDomain(), "Movie", "location").propertyPid());
     }
 
     @Test void aFieldNeitherDeclaresNorOverridesHasNoFallback() {
-        assertNull(ValidationPanel.fallbackSource(
+        assertNull(FieldSourceChoices.additionalSource(
                 null, new DeclaringDomain(), "Movie", "awards"));
     }
 
     @Test void aDomainThatCannotBeAskedIsNotAnError() {
-        assertNull(ValidationPanel.fallbackSource(null, new PlainDomain(), "Movie", "location"));
+        assertNull(FieldSourceChoices.additionalSource(null, new PlainDomain(), "Movie", "location"));
     }
 
     private static FieldSourceMapping mapping(String key) {
