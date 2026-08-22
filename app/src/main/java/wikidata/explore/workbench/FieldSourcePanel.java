@@ -31,7 +31,7 @@ public class FieldSourcePanel extends JPanel {
             java.util.List::of;
     private SwingQueryRunner queryRunner;
 
-    private final JButton discoverDbpediaButton = new JButton("Discover properties");
+    private final JButton discoverExternalButton = new JButton("Discover properties");
     // Optional Wikipedia (DBpedia) fallback for this field — used per instance only when the
     // primary source has no usable value (persisted on the field model).
     private final JButton fallbackButton = new JButton("Set Wikipedia fallback…");
@@ -291,12 +291,25 @@ public class FieldSourcePanel extends JPanel {
         if (queryRunner != null) queryRunner.registerRunButton(categoryButton);
         // Discovery + the pick dialog live in the shared DbpediaPropertyPicker (the same one
         // curate uses), so the two source-config flows can't drift apart.
-        discoverDbpediaButton.addActionListener(e -> discoverDbpediaProperties());
+        discoverExternalButton.addActionListener(e -> discoverExternalProperty());
     }
 
-    private void discoverDbpediaProperties() {
+    /** Discover the PRIMARY source's property, from whichever structure it names. The
+     *  fallback path already offered both; a primary source could only ever discover a
+     *  DBpedia property, so choosing the native infobox left the field to be typed by
+     *  hand — with no way to see which parameters the articles actually carry. */
+    private void discoverExternalProperty() {
         String typeQid = classTypeQid();
         if (typeQid == null) return;
+        if (sourceTypeBox.getSelectedItem() == FieldSourceType.WIKIPEDIA_INFOBOX) {
+            WikipediaInfoboxPicker.findByType(this, queryRunner, typeQid, 8,
+                    key -> {
+                        if (key == null || key.isBlank()) return;
+                        propertyPidField.setText(key);
+                        propertyLabel.setText("(native Wikipedia infobox parameter)");
+                    });
+            return;
+        }
         DbpediaPropertyPicker.findPropertyByType(this, queryRunner, typeQid, 8,
                 (property, example) -> {
                     propertyPidField.setText(property);
@@ -605,8 +618,8 @@ public class FieldSourcePanel extends JPanel {
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         propRow.add(propertyPidField);
         propRow.add(propertyLabel);
-        discoverDbpediaButton.setVisible(false);
-        propRow.add(discoverDbpediaButton);
+        discoverExternalButton.setVisible(false);
+        propRow.add(discoverExternalButton);
         GridBagUtils.labeledRow(form, c, y++, "Property:", propRow);
 
         JPanel fallbackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -884,10 +897,11 @@ public class FieldSourcePanel extends JPanel {
         }
         m.direction((RuleDirection) directionBox.getSelectedItem());
 
-        // autoAdjustFromProperty inspects a WIKIDATA property; skip it for a
-        // DBpedia infobox property (e.g. "numbermainstars" isn't a Pxx).
+        // autoAdjustFromProperty inspects a WIKIDATA property. A post-extraction source
+        // does not name one — "numbermainstars", "Infobox film.country" — so the source
+        // itself says whether there is a PID here to inspect.
         if (typeBox.getSelectedItem() == FieldType.AUTO
-                && m.sourceType() != FieldSourceType.DBPEDIA) {
+                && !m.sourceType().filledAfterExtraction()) {
             autoAdjustFromProperty(m.propertyPid(), m.propertyLabel());
         }
 
@@ -1241,8 +1255,8 @@ public class FieldSourcePanel extends JPanel {
         FieldSourceType sourceType =
                 (FieldSourceType) sourceTypeBox.getSelectedItem();
 
-        discoverDbpediaButton.setVisible(
-                sourceType == FieldSourceType.DBPEDIA && queryRunner != null);
+        discoverExternalButton.setVisible(
+                sourceType != null && sourceType.filledAfterExtraction() && queryRunner != null);
 
         if (sourceType != null && !sourceType.implementedNow()) {
             recommendationLabel.setText(
@@ -1255,6 +1269,14 @@ public class FieldSourcePanel extends JPanel {
                     "DBpedia: 'Property' = the Wikipedia infobox property "
                             + "(e.g. numbermainstars, brighteststarname). Joined by "
                             + "owl:sameAs to the entity's Wikidata QID, after extraction.");
+            return;
+        }
+
+        if (sourceType == FieldSourceType.WIKIPEDIA_INFOBOX) {
+            recommendationLabel.setText(
+                    "Wikipedia infobox: 'Property' = Template.parameter "
+                            + "(e.g. Infobox film.country). Read from the entity's English "
+                            + "Wikipedia article, after extraction.");
             return;
         }
 

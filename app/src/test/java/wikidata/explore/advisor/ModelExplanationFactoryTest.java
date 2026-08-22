@@ -10,6 +10,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.RuleDirection;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModelExplanationFactoryTest {
@@ -53,6 +54,30 @@ class ModelExplanationFactoryTest {
         assertEquals("?city dbo:populationTotal ?population .", explanation.example());
         assertTrue(explanation.advice().stream()
                 .anyMatch(a -> a.contains("after Wikidata extraction")));
+    }
+
+    /** A primary infobox source is now selectable, so the advisor has to describe how it
+     *  is really filled. It used to render a Wikidata triple pattern, telling the reader
+     *  a SPARQL query would ask for a value no SPARQL query ever asks about. */
+    @Test void explainsAPrimaryInfoboxSourceAsWhatItActuallyReads() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        GeneratedFieldModel country = movie.addField(
+                "country", FieldType.TEXT, FieldCardinality.SINGLE);
+        country.mapping().sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+        country.mapping().propertyPid("Infobox film.country");
+        project.rootClass(movie);
+
+        ModelElementExplanation explanation =
+                ModelExplanationFactory.explainField(project, movie, country);
+
+        assertEquals("?movie enwiki {{Infobox film}} | country = ?country",
+                explanation.example());
+        assertFalse(explanation.example().contains("wdt:"), "it is not a Wikidata triple");
+        assertTrue(explanation.advice().stream()
+                .anyMatch(a -> a.contains("after Wikidata extraction")));
+        assertTrue(explanation.advice().stream()
+                .noneMatch(a -> a.contains("not implemented yet")));
     }
 
     @Test void modelScopeSummarizesUnmappedFields() {

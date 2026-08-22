@@ -174,6 +174,27 @@ class WikipediaInfoboxAcquisitionTest {
                 + ",\"wikitext\":" + json.valueToTree(wikitext) + "}}";
     }
 
+    /** #106: the parameter is selectable as a field's OWN source, not only as a fallback
+     *  for one Wikidata could not fill. The acquisition already read the primary mapping;
+     *  nothing proved it, and the editor around it was wired for the fallback alone. */
+    @Test void aFieldWhosePrimarySourceIsAnInfoboxParameterIsFilledFromIt() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        var country = movie.addField("country", FieldType.TEXT, FieldCardinality.SINGLE);
+        country.mapping().sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+        country.mapping().propertyPid("Infobox film.country");
+        model.rootClass(movie);
+        List<WikidataDynamicObject> objects = films(1);
+
+        var result = WikipediaInfoboxAcquisition.apply(model, objects, GenerationLog.NOOP,
+                new process.CancellationToken(), new SitelinkClient(),
+                uri -> response("Film 1", 7, "{{Infobox film|country=Sierra Leone}}"));
+
+        assertEquals(1, result.values());
+        assertEquals("Sierra Leone", objects.getFirst().get("country"));
+        assertEquals("7", objects.getFirst().infoboxParameters().document().revision());
+    }
+
     private static String digestOf(String wikitext) throws Exception {
         List<WikidataDynamicObject> objects = films(1);
         WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,

@@ -125,8 +125,9 @@ public final class ModelExplanationFactory {
             advice.add("Scalar literal fields are queried as outgoing triples; the configured "
                                + source.direction() + " direction is not used by generation.");
         }
-        if (source.sourceType() == FieldSourceType.DBPEDIA) {
-            advice.add("DBpedia supplies this field after Wikidata extraction; preserve its source in review results.");
+        if (source.sourceType().filledAfterExtraction()) {
+            advice.add(source.sourceType() + " supplies this field after Wikidata extraction; "
+                               + "preserve its source in review results.");
         }
         if (field.expectation() == wikidata.explore.model.FieldExpectation.EXPECTED) {
             advice.add("Missing values are reported but retained.");
@@ -186,6 +187,15 @@ public final class ModelExplanationFactory {
         }
         if (source.sourceType() == FieldSourceType.DBPEDIA) {
             return entity + " dbo:" + source.propertyPid() + " " + value + " .";
+        }
+        if (source.sourceType() == FieldSourceType.WIKIPEDIA_INFOBOX) {
+            // Not a triple at all: showing one claimed a Wikidata statement would be
+            // queried for a value no SPARQL query will ever ask about.
+            var key = datasource.evidence.InfoboxParameters.Key.parse(source.propertyPid());
+            return key == null
+                    ? entity + " → " + value + " (infobox parameter not configured)"
+                    : entity + " enwiki {{" + key.template() + "}} | "
+                            + key.parameter() + " = " + value;
         }
         return direction.triplePattern(entity, value, source.propertyPid());
     }
