@@ -13,11 +13,15 @@ public record FieldSourceRecipe(
         String type, String field, String provider, Map<String, String> parameters) {
 
     public static final String WIKIPEDIA_CATEGORY = "wikipedia-category";
-    public static final String WIKIPEDIA_INFOBOX = "wikipedia-infobox";
+    /** Where else this field may be read from — ONE slot per field, because the choices
+     * offered for it are alternatives. Keying it per provider meant picking DBpedia left
+     * an earlier native-infobox recipe behind, and a reload heard the abandoned one. */
+    public static final String ADDITIONAL_SOURCE = "additional-source";
     public static final String PATTERN = "pattern";
     public static final String POLICY = "policy";
-    public static final String INFOBOX_KEY = "key";
-    public static final String INFOBOX_LABEL = "label";
+    public static final String SOURCE_TYPE = "sourceType";
+    public static final String PROPERTY = "property";
+    public static final String LABEL = "label";
 
     public FieldSourceRecipe {
         type = clean(type);
@@ -37,19 +41,14 @@ public record FieldSourceRecipe(
                         POLICY, (policy == null ? CategoryCandidatePolicy.REVIEW : policy).name()));
     }
 
-    /** A native Wikipedia template parameter, identified as Template.parameter. */
-    public static FieldSourceRecipe wikipediaInfobox(
-            String type, String field, String key, String label) {
-        return new FieldSourceRecipe(type, field, WIKIPEDIA_INFOBOX,
-                Map.of(INFOBOX_KEY, clean(key), INFOBOX_LABEL, clean(label)));
-    }
-
-    public String infoboxKey() {
-        return WIKIPEDIA_INFOBOX.equals(provider()) ? parameter(INFOBOX_KEY) : "";
-    }
-
-    public String infoboxLabel() {
-        return WIKIPEDIA_INFOBOX.equals(provider()) ? parameter(INFOBOX_LABEL) : "";
+    /** An additional source for one field: which kind of source, and what it names there
+     *  — a Template.parameter, a DBpedia property. The recipe stays provider-neutral, so
+     *  {@link FieldSourceRecipeCodec} is the one place that reads the kind back. */
+    public static FieldSourceRecipe additionalSource(
+            String type, String field, String sourceType, String property, String label) {
+        return new FieldSourceRecipe(type, field, ADDITIONAL_SOURCE,
+                Map.of(SOURCE_TYPE, clean(sourceType), PROPERTY, clean(property),
+                        LABEL, clean(label)));
     }
 
     public String parameter(String name) {

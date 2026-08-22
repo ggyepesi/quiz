@@ -1201,7 +1201,7 @@ public final class ValidationPanel extends JPanel {
             fallbackFieldSources.remove(key);
             quiz.curation.ManualCuration curation = curationStore();
             if (curation != null) curation.removeSourceRecipe(key.type(), key.path(),
-                    quiz.curation.FieldSourceRecipe.WIKIPEDIA_INFOBOX);
+                    quiz.curation.FieldSourceRecipe.ADDITIONAL_SOURCE);
             updateFieldSourceButton();
             return;
         }
@@ -1212,36 +1212,36 @@ public final class ValidationPanel extends JPanel {
                     .filter(ValidationPanel::isQid).distinct().limit(12).toList();
             if (qids.isEmpty()) qids = List.of(seed.qid());
             wikidata.explore.workbench.WikipediaInfoboxPicker.findForEntities(
-                    this, queryRunner, qids, selected -> {
-                        if (selected == null || selected.isBlank()) return;
-                        FieldSourceMapping source = new FieldSourceMapping();
-                        source.sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
-                        source.propertyPid(selected);
-                        source.propertyLabel("Native Wikipedia infobox parameter");
-                        source.productionKind(FieldProductionKind.AUTO);
-                        fallbackFieldSources.put(key, source);
-                        quiz.curation.ManualCuration curation = curationStore();
-                        if (curation != null) {
-                            curation.putSourceRecipe(
-                                    quiz.curation.FieldSourceRecipeCodec.scoped(
-                                            key.type(), key.path(), source));
-                        }
-                        updateFieldSourceButton();
-                    });
+                    this, queryRunner, qids, selected -> recordAdditionalSource(key,
+                            FieldSourceType.WIKIPEDIA_INFOBOX, selected,
+                            "Native Wikipedia infobox parameter"));
             return;
         }
         wikidata.explore.workbench.DbpediaPropertyPicker.findProperty(
                 this, queryRunner, List.of(seed.qid()),
-                (property, example) -> {
-                    if (property == null || property.isBlank()) return;
-                    FieldSourceMapping source = new FieldSourceMapping();
-                    source.sourceType(FieldSourceType.DBPEDIA);
-                    source.propertyPid(property);
-                    source.propertyLabel("DBpedia infobox property");
-                    source.productionKind(FieldProductionKind.AUTO);
-                    fallbackFieldSources.put(key, source);
-                    updateFieldSourceButton();
-                });
+                (property, example) -> recordAdditionalSource(key, FieldSourceType.DBPEDIA,
+                        property, "DBpedia infobox property"));
+    }
+
+    /** Record this DATASET's additional source for a field, whichever kind was chosen.
+     *  Only the native branch used to write the sidecar, so a DBpedia choice lived until
+     *  the panel closed and then had to be made again — while the abandoned native recipe
+     *  was still there to be heard on reload. One choice, one slot, written one way. */
+    private void recordAdditionalSource(FieldKey key, FieldSourceType sourceType,
+            String property, String label) {
+        if (property == null || property.isBlank()) return;
+        FieldSourceMapping source = new FieldSourceMapping();
+        source.sourceType(sourceType);
+        source.propertyPid(property);
+        source.propertyLabel(label);
+        source.productionKind(FieldProductionKind.AUTO);
+        fallbackFieldSources.put(key, source);
+        quiz.curation.ManualCuration curation = curationStore();
+        if (curation != null) {
+            curation.putSourceRecipe(quiz.curation.FieldSourceRecipeCodec.scoped(
+                    key.type(), key.path(), source));
+        }
+        updateFieldSourceButton();
     }
 
     private FieldSourceMapping sourceFor(FieldKey key) {
@@ -1342,7 +1342,7 @@ public final class ValidationPanel extends JPanel {
         quiz.curation.ManualCuration curation = curationStore();
         quiz.curation.FieldSourceRecipe recipe = curation == null ? null
                 : curation.sourceRecipe(key.type(), key.path(),
-                        quiz.curation.FieldSourceRecipe.WIKIPEDIA_INFOBOX);
+                        quiz.curation.FieldSourceRecipe.ADDITIONAL_SOURCE);
         source = quiz.curation.FieldSourceRecipeCodec.mapping(recipe);
         if (source != null) fallbackFieldSources.put(key, source);
         return source;
