@@ -3,8 +3,12 @@ package wikidata.explore.generation;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.codegen.GeneratedViewableRuntime;
 
+import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -63,9 +67,38 @@ class GenerationRunsTest {
         assertNull(GenerationRuns.handOver(run(runtime("previous")), null));
     }
 
+    @Test void handOverClosesTheRuntimeThatIsNoLongerCarried() {
+        AtomicInteger closes = new AtomicInteger();
+        GeneratedViewableRuntime previous = runtime("previous", closes);
+
+        GenerationRuns.handOver(run(previous), run(runtime("next")));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, closes.get());
+    }
+
+    @Test void handOverDoesNotCloseARuntimeCarriedByTheReplacement() {
+        AtomicInteger closes = new AtomicInteger();
+        GeneratedViewableRuntime shared = runtime("shared", closes);
+
+        GenerationRuns.handOver(run(shared), run(shared));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, closes.get());
+    }
+
     private static GeneratedViewableRuntime runtime(String name) {
         // A record with no loaders: close() is a no-op, and identity is what the rule turns on.
         return new GeneratedViewableRuntime(null, name, "", null, null, Map.of());
+    }
+
+    private static GeneratedViewableRuntime runtime(String name, AtomicInteger closes) {
+        URLClassLoader loader = new URLClassLoader(new URL[0], null) {
+            @Override public void close() throws IOException {
+                closes.incrementAndGet();
+                super.close();
+            }
+        };
+        // A null byType represents a single-loader runtime and exercises closeLoader directly.
+        return new GeneratedViewableRuntime(null, name, "", null, loader, null);
     }
 
     private static GenerationRun run(GeneratedViewableRuntime runtime) {

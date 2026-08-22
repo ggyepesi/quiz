@@ -221,6 +221,7 @@ public class ModelBuilderFrame extends JFrame {
      *  caller-owned, matching QueryFactory's ownership contract. */
     @Override
     public void dispose() {
+        replaceGenerationRun(null);
         queryFactory.close();
         super.dispose();
     }
@@ -1054,7 +1055,7 @@ public class ModelBuilderFrame extends JFrame {
             // Closes the runtime this run supersedes — unless the incoming run carries it,
             // which is how forgetFetchedDeclaration replaces a run without shutting one
             // that is still in use.
-            lastRun = wikidata.explore.generation.GenerationRuns.handOver(lastRun, run);
+            replaceGenerationRun(run);
 
             if (run != null) {
                 instancesPanel.accept(run.objectResult());
@@ -1086,12 +1087,21 @@ public class ModelBuilderFrame extends JFrame {
         });
     }
 
+    /**
+     * The single assignment boundary for the active run. A run owns its generated runtime,
+     * so replacing or clearing it must first release whatever the replacement does not carry.
+     */
+    private void replaceGenerationRun(GenerationRun next) {
+        lastRun = wikidata.explore.generation.GenerationRuns.handOver(lastRun, next);
+    }
+
     /** Fold vocabularies BUILT during generation (from a referenced field's loaded
-     *  values) back into the live model, so they survive "Save domain". Fills only a
-     *  vocabulary that is still empty here — a built descriptive vocab (NomineeType,
-     *  WorkGenre) — and never overwrites an authored constraint vocab that already has
-     *  values (OscarCategories). Creates the vocab locally if generation invented it.
-     *  @return how many vocabularies were newly filled/created. */
+     *  values) back into the live model, so this session shows them. Descriptive vocabs
+     *  (NomineeType, WorkGenre) are REFRESHED — they are derived, so a stale value must
+     *  not linger — and created locally if generation invented them. An authored
+     *  constraint vocab (OscarCategories) is untouched because it is not a descriptive
+     *  target, not because anything checks whether it already has values.
+     *  @return how many vocabularies were refreshed/created. */
     private int mergeBuiltVocabularies(GeneratedProjectModel built) {
         return mergeBuiltVocabularies(built, projectModel);
     }
@@ -1327,11 +1337,10 @@ public class ModelBuilderFrame extends JFrame {
                     + "the next Enrich loads it anyway.");
             return;
         }
-        lastRun = wikidata.explore.generation.GenerationRuns.handOver(lastRun,
-                new GenerationRun(
-                        lastRun.modelSnapshot(), lastRun.depth(), lastRun.plan(),
-                        lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
-                        lastRun.remapState(), kept));
+        replaceGenerationRun(new GenerationRun(
+                lastRun.modelSnapshot(), lastRun.depth(), lastRun.plan(),
+                lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
+                lastRun.remapState(), kept));
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 
@@ -1532,7 +1541,7 @@ public class ModelBuilderFrame extends JFrame {
         try {
             projectModel.copyContentsFrom(
                     new GeneratedProjectModelStore().load(model));
-            lastRun = null;
+            replaceGenerationRun(null);
             instancesPanel.clear();
             modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
@@ -1576,7 +1585,7 @@ public class ModelBuilderFrame extends JFrame {
         fresh.rootClass().className(
                 GeneratedViewableSourceGenerator.sanitizeClassName(name));
         projectModel.copyContentsFrom(fresh);
-        lastRun = null;
+        replaceGenerationRun(null);
         instancesPanel.clear();
         modelChanged();
         sourceWorkbench.edit(projectModel.rootClass());
@@ -1644,7 +1653,7 @@ public class ModelBuilderFrame extends JFrame {
             doLoadDomain(domainModelFile(next));
         } else {
             projectModel.copyContentsFrom(GeneratedProjectModel.constellationDemo());
-            lastRun = null;
+            replaceGenerationRun(null);
             instancesPanel.clear();
             modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
@@ -1922,20 +1931,7 @@ public class ModelBuilderFrame extends JFrame {
     // what drives generation, so two models with the same signature produce the
     // same instances. Used to detect a model drifting past its saved snapshot.
     private static String modelSignature(GeneratedProjectModel model) {
-        try {
-            RuleNode root = RuleTreeCompiler.compileProject(model);
-            String json = new RuleTreeSerializer().mapper()
-                                                  .writeValueAsString(RuleTreeConfig.of(root));
-            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
-                                                     .digest(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            return ""; // best-effort: no signature -> no drift check
-        }
+        return wikidata.explore.generation.DomainSave.signature(model);
     }
 
     // The signature of the model the in-memory instances (lastRun) were
@@ -1947,27 +1943,16 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     // The distinct class-types stamped on a set of generated objects.
-    private static java.util.Set<String> stampedTypes(
-            java.util.Collection<WikidataDynamicObject> objs) {
-        java.util.Set<String> out = new java.util.LinkedHashSet<>();
-        if (objs != null) {
-            for (WikidataDynamicObject o : objs) {
-                if (o != null && o.typeName() != null && !o.typeName().isBlank()) {
-                    out.add(o.typeName());
-                }
-            }
-        }
-        return out;
-    }
+
 
     // The types already present in the saved snapshot (to detect a single-class
     // run about to overwrite a multi-class one).
-    private java.util.Set<String> snapshotTypesOnDisk() {
+    /** What the snapshot on disk holds, or nothing when there is none to read. */
+    private java.util.List<WikidataDynamicObject> snapshotObjectsOnDisk() {
         try {
-            return stampedTypes(
-                    new WikidataDynamicObjectJsonStore().load(snapshotFile()));
-        } catch (Exception e) {
-            return java.util.Set.of();
+            return new WikidataDynamicObjectJsonStore().load(snapshotFile());
+        } catch (Exception unreadable) {
+            return java.util.List.of();
         }
     }
 
@@ -2013,8 +1998,8 @@ public class ModelBuilderFrame extends JFrame {
         // Drift guard: the snapshot we'd write came from lastRun's model; if the
         // current model has changed since, the saved instances will be stale.
         String runSig = generatedInstancesSignature();
-        if (!recoverCompletedRun && haveInstances && !runSig.isEmpty()
-                && !runSig.equals(modelSignature(modelToSave))) {
+        if (!recoverCompletedRun && haveInstances
+                && wikidata.explore.generation.DomainSave.instancesWouldBeStale(runSig, modelToSave)) {
             int d = JOptionPane.showConfirmDialog(this,
                                                   "The model has changed since these instances were generated.\n"
                                                           + "The saved snapshot will be STALE (not match the saved model).\n\n"
@@ -2031,10 +2016,9 @@ public class ModelBuilderFrame extends JFrame {
         // silently replace a multi-class snapshot (e.g. Episode, Labour). Warn
         // about types on disk that this run would drop. (Use "Generate domain".)
         if (haveInstances && snapshotFile().isFile()) {
-            java.util.Set<String> runTypes = stampedTypes(lastRun.dynamicObjects());
-            java.util.Set<String> dropped =
-                    new java.util.LinkedHashSet<>(snapshotTypesOnDisk());
-            dropped.removeAll(runTypes);
+            java.util.Set<String> runTypes = wikidata.explore.generation.DomainSave.stampedTypes(lastRun.dynamicObjects());
+            java.util.List<String> dropped = wikidata.explore.generation.DomainSave.typesDropped(
+                    lastRun.dynamicObjects(), snapshotObjectsOnDisk());
             if (!dropped.isEmpty()) {
                 int d = JOptionPane.showConfirmDialog(this,
                                                       "This run produced only: "
@@ -2074,18 +2058,8 @@ public class ModelBuilderFrame extends JFrame {
             if (active != null) {
                 active.generationDepth(((Number) depthSpinner.getValue()).intValue());
             }
-            // A DESCRIPTIVE vocabulary (NomineeType, WorkGenre) is derived from the
-            // data, not authored — persist it as an EMPTY shell (still declared, so the
-            // field target resolves and the tree shows it) and re-derive its values from
-            // the snapshot on load. This keeps it from ever being saved stale.
-            GeneratedProjectModel toSave = modelToSave.copy();
-            for (String name
-                    : wikidata.explore.transform.DescriptiveVocabularyBuild.targets(toSave)) {
-                if (toSave.findSelection(name) instanceof VocabularySelection v) {
-                    v.valueQids(new java.util.ArrayList<>());
-                }
-            }
-            new GeneratedProjectModelStore().save(toSave, modelFile());
+            new GeneratedProjectModelStore().save(
+                    wikidata.explore.generation.DomainSave.persistedModel(modelToSave), modelFile());
             report.append("Config:    ").append(modelFile().getPath()).append('\n');
 
             RuleNode root = RuleTreeCompiler.compileProject(modelToSave);
