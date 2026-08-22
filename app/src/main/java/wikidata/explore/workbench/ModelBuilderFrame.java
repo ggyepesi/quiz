@@ -1140,36 +1140,13 @@ public class ModelBuilderFrame extends JFrame {
         if (run == null || run.dynamicObjects() == null) {
             return;
         }
-        java.util.Map<String, java.util.LinkedHashSet<String>> byName =
-                new java.util.LinkedHashMap<>();
-        for (WikidataDynamicObject o : run.dynamicObjects()) {
-            if (o == null) {
-                continue;
-            }
-            String name = o.getDisplayName();
-            String qid = o.qid();
-            if (name == null || name.isBlank() || qid == null || qid.isBlank()) {
-                continue;
-            }
-            // Only real ENTITIES (pure Q-ids). Reified statement atoms
-            // (Q123-UUID / Q123__Q456) are named by a shared field on purpose
-            // (e.g. a Nomination shows its nominee), so a person with many
-            // nominations would otherwise look like a huge "collision".
-            if (!WikidataIds.isQid(qid)) {
-                continue;
-            }
-            byName.computeIfAbsent(name, k -> new java.util.LinkedHashSet<>()).add(qid);
-        }
-        java.util.List<java.util.Map.Entry<String, java.util.LinkedHashSet<String>>> collisions =
-                byName.entrySet().stream()
-                      .filter(e -> e.getValue().size() > 1)
-                      .sorted((a, b) -> Integer.compare(
-                              b.getValue().size(), a.getValue().size()))
-                      .toList();
+        // What counts as a collision is NameCollisions'; this frame reports it.
+        java.util.List<wikidata.explore.generation.NameCollisions.Collision> collisions =
+                wikidata.explore.generation.NameCollisions.detect(run.dynamicObjects());
         if (collisions.isEmpty()) {
             return;
         }
-        int instances = collisions.stream().mapToInt(e -> e.getValue().size()).sum();
+        int instances = wikidata.explore.generation.NameCollisions.entityCount(collisions);
 
         // Structured, collapsible entry — one row per colliding name (name ×count),
         // biggest first — instead of one blob listing every QID (which buried the
@@ -1179,15 +1156,14 @@ public class ModelBuilderFrame extends JFrame {
         java.util.List<wikidata.explore.query.swing.WorkflowLogWindow.Row> rows =
                 new java.util.ArrayList<>();
         int shown = 0;
-        for (var e : collisions) {
+        for (var collision : collisions) {
             if (shown++ >= cap) {
                 break;
             }
-            int n = e.getValue().size();
             // Name + count only; no QID dump (that swamped the row). The QIDs are
             // clickable via the "Name collisions" button.
             rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
-                    e.getKey(), n + " entities share this name", ""));
+                    collision.name(), collision.size() + " entities share this name", ""));
         }
         if (collisions.size() > cap) {
             rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
@@ -1214,13 +1190,13 @@ public class ModelBuilderFrame extends JFrame {
         }
 
         java.util.List<NameCollision> cards = new java.util.ArrayList<>();
-        for (var e : collisions) {
+        for (var collision : collisions) {
             java.util.List<objectview.Viewable> entities = new java.util.ArrayList<>();
-            for (String qid : e.getValue()) {
+            for (String qid : collision.qids()) {
                 objectview.Viewable used = byQid.get(qid);
                 entities.add(used != null ? used : new quiz.source.WikidataSource(qid));
             }
-            cards.add(new NameCollision(e.getKey(), entities));
+            cards.add(new NameCollision(collision.name(), entities));
         }
         lastCollisions = cards;
         updateNameCollisionsButton();
