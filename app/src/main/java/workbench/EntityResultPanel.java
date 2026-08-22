@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package workbench;
 
 import wikidata.WikidataIds;
 
@@ -12,6 +12,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import workbench.WikidataLinks;
 
 /**
  * Reusable Wikidata result table: a filter/search box, rows of values, one

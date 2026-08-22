@@ -16,6 +16,7 @@ import wikidata.explore.rule.RuleTreeCompiler;
 import javax.swing.*;
 import java.awt.*;
 import java.util.function.Consumer;
+import workbench.ExploreByExamplePanel;
 
 /**
  * Hosts the mutually exclusive editors for qid-identity source classes,

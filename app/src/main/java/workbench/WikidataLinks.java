@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package workbench;
 
 import javax.swing.*;
 import javax.swing.event.HyperlinkEvent;

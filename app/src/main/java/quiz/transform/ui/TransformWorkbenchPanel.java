@@ -15,7 +15,7 @@ import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.swing.SwingQuerySession;
-import wikidata.explore.workbench.IdentityChip;
+import workbench.IdentityChip;
 
 import javax.swing.*;
 import java.awt.*;
@@ -230,8 +230,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JOptionPane.showMessageDialog(this, "Pick a member type first.");
             return;
         }
-        wikidata.explore.workbench.FieldDefinitionPanel editor =
-                new wikidata.explore.workbench.FieldDefinitionPanel();
+        workbench.FieldDefinitionPanel editor =
+                new workbench.FieldDefinitionPanel();
         editor.availableTargetTypes(controller.types());
         editor.edit(new wikidata.explore.model.FieldDefinition(
                 "", wikidata.explore.model.FieldType.STRING, "",

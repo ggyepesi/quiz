@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import workbench.EntityResultPanel;
 
 /**
  * Finds curated seed pages from Wikipedia/WikiProject assessment categories,

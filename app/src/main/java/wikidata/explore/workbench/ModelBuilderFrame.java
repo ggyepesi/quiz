@@ -39,6 +39,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.util.List;
+import workbench.ExploreByExamplePanel;
 
 public class ModelBuilderFrame extends JFrame {
 

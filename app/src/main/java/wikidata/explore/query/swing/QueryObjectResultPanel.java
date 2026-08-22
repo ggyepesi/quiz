@@ -1,7 +1,7 @@
 package wikidata.explore.query.swing;
 
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.workbench.IdentityChip;
+import workbench.IdentityChip;
 
 import objectview.demo.MultiView;
 import objectview.render.RenderContext;

@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package workbench;
 
 import objectview.utils.swing.GridBagUtils;
 import wikidata.explore.model.FieldCardinality;
@@ -119,11 +119,13 @@ public final class FieldDefinitionPanel extends JPanel {
         return null;
     }
 
-    JTextField nameField() { return name; }
-    JComboBox<FieldType> typeBox() { return type; }
-    JComboBox<String> targetTypeBox() { return targetType; }
-    JComboBox<FieldCardinality> cardinalityBox() { return cardinality; }
-    JComboBox<FieldRenderMode> renderModeBox() { return renderMode; }
+    // A host panel lays these out inside its own form rather than nesting this one, so the
+    // widgets are reachable. They were package-private when the only host lived next door.
+    public JTextField nameField() { return name; }
+    public JComboBox<FieldType> typeBox() { return type; }
+    public JComboBox<String> targetTypeBox() { return targetType; }
+    public JComboBox<FieldCardinality> cardinalityBox() { return cardinality; }
+    public JComboBox<FieldRenderMode> renderModeBox() { return renderMode; }
 
     private void refreshEnabled() {
         boolean entity = type.getSelectedItem() == FieldType.ENTITY;

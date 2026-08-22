@@ -17,6 +17,10 @@ import java.awt.*;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import workbench.DbpediaPropertyPicker;
+import workbench.FieldDefinitionPanel;
+import workbench.WikipediaCategoryPicker;
+import workbench.WikipediaInfoboxPicker;
 
 public class FieldSourcePanel extends JPanel {
 
@@ -317,40 +321,24 @@ public class FieldSourcePanel extends JPanel {
                 });
     }
 
-    /** Pick a DBpedia property as this field's fallback source and persist it on the model. */
+    /** Choose this field's additional source and write it onto the model. Choosing is
+     *  {@link workbench.AdditionalSourcePicker}'s; what to do with the answer is this
+     *  panel's, and it is the only part the two workbenches did not have in common. */
     private void chooseFallback() {
         if (field == null) return;
         String typeQid = classTypeQid();
         if (typeQid == null) return;
-        Object choice = JOptionPane.showInputDialog(this,
-                "Which Wikipedia structure should be sampled?",
-                "Choose additional source", JOptionPane.PLAIN_MESSAGE, null,
-                new Object[]{"Native Wikipedia infobox", "DBpedia projection"},
-                "Native Wikipedia infobox");
-        if (choice == null) return;
-        if (choice.toString().startsWith("Native")) {
-            WikipediaInfoboxPicker.findByType(this, queryRunner, typeQid, 8,
-                    (key) -> {
-                        if (key == null || key.isBlank()) return;
-                        FieldSourceMapping fallback = field.ensureFallbackMapping();
-                        fallback.sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
-                        fallback.propertyPid(key);
-                        fallback.propertyLabel("Native Wikipedia infobox parameter");
-                        refreshFallbackLabel();
-                        afterChange.accept(null);
-                    });
-            return;
-        }
-        DbpediaPropertyPicker.findPropertyByType(this, queryRunner, typeQid, 8,
-                (property, example) -> {
-                    if (property == null || property.isBlank()) return;
+        workbench.AdditionalSourcePicker.choose(this, queryRunner,
+                workbench.AdditionalSourcePicker.ofType(typeQid, 8),
+                choice -> {
                     FieldSourceMapping fallback = field.ensureFallbackMapping();
-                    fallback.sourceType(FieldSourceType.DBPEDIA);
-                    fallback.propertyPid(property);
-                    fallback.propertyLabel("DBpedia infobox property");
+                    fallback.sourceType(choice.sourceType());
+                    fallback.propertyPid(choice.property());
+                    fallback.propertyLabel(choice.label());
                     refreshFallbackLabel();
                     afterChange.accept(null);
-                });
+                },
+                null);
     }
 
     private void refreshFallbackLabel() {

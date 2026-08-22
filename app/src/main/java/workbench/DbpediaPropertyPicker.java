@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package workbench;
 
 import wikidata.explore.query.logical.DiscoverDBpediaPropertiesQuery;
 import wikidata.explore.query.result.TableQueryResult;

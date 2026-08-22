@@ -135,7 +135,7 @@ public final class CurationOverviewPanel extends JPanel {
         });
 
         JPanel right = new JPanel(new BorderLayout(6, 6));
-        wikidata.explore.workbench.WikidataLinks.installOnColumn(table, 3);
+        workbench.WikidataLinks.installOnColumn(table, 3);
         JScrollPane operations = new JScrollPane(table);
         operations.setBorder(BorderFactory.createTitledBorder("Curation directives"));
         detail.setBorder(BorderFactory.createTitledBorder("Directive details"));
@@ -492,11 +492,11 @@ public final class CurationOverviewPanel extends JPanel {
      *  link's target when present, else the entity's own id when Wikidata-shaped. */
     private String entityQid(Operation operation) {
         if (operation.source() instanceof IdentityLink link
-                && wikidata.explore.workbench.WikidataLinks.isId(link.sourceId())) {
+                && workbench.WikidataLinks.isId(link.sourceId())) {
             return link.sourceId();
         }
         String id = operation.entity().id();
-        return wikidata.explore.workbench.WikidataLinks.isId(id) ? id : "";
+        return workbench.WikidataLinks.isId(id) ? id : "";
     }
 
     private String entityLabel(EntityKey entity) {

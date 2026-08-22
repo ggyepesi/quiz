@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package workbench;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;

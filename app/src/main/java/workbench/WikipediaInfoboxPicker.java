@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package workbench;
 
 import wikidata.explore.query.logical.DiscoverWikipediaInfoboxQuery;
 import wikidata.explore.query.result.TableQueryResult;

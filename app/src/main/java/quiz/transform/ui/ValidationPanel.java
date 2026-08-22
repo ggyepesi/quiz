@@ -28,7 +28,7 @@ import quiz.curation.IdentityLink;
 import quiz.curation.ScopeFilter;
 
 import wikidata.explore.query.swing.SwingQueryRunner;
-import wikidata.explore.workbench.IdentityChip;
+import workbench.IdentityChip;
 import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
@@ -1151,7 +1151,7 @@ public final class ValidationPanel extends JPanel {
             ExploreSeed seed, FieldKey key, boolean produceAfterChoice) {
         // Explore mode 2: pick a property of the resolved sample entity and RETURN it —
         // the caller (here) sets the field source. No bespoke property-picker path.
-        wikidata.explore.workbench.ExploreByExamplePanel.findProperty(
+        workbench.ExploreByExamplePanel.findProperty(
                 this, queryRunner, seed.qid(), seed.label(),
                 (pid, label) -> {
                     if (pid == null || pid.isBlank()) return;
@@ -1189,41 +1189,26 @@ public final class ValidationPanel extends JPanel {
             return;
         }
         FieldKey key = new FieldKey(selectedFieldType, selectedFieldPath);
-        boolean configured = datasetFallbackOverride(key) != null;
-        Object[] choices = configured
-                ? new Object[]{"Native Wikipedia infobox", "DBpedia projection",
-                        "Clear curation choice"}
-                : new Object[]{"Native Wikipedia infobox", "DBpedia projection"};
-        Object kind = JOptionPane.showInputDialog(this,
-                "Which Wikipedia structure should be sampled?",
-                "Choose additional source", JOptionPane.PLAIN_MESSAGE, null,
-                choices,
-                "Native Wikipedia infobox");
-        if (kind == null) return;
-        if (kind.toString().startsWith("Clear")) {
-            fallbackFieldSources.remove(key);
-            quiz.curation.ManualCuration curation = curationStore();
-            if (curation != null) curation.removeSourceRecipe(key.type(), key.path(),
-                    quiz.curation.FieldSourceRecipe.ADDITIONAL_SOURCE);
-            updateFieldSourceButton();
-            return;
-        }
-        if (kind.toString().startsWith("Native")) {
-            List<String> qids = actionInstances().stream()
-                    .map(v -> resolvedQid(v, EnrichmentSources.collect(
-                            v, concreteType(v), curationStore())))
-                    .filter(ValidationPanel::isQid).distinct().limit(12).toList();
-            if (qids.isEmpty()) qids = List.of(seed.qid());
-            wikidata.explore.workbench.WikipediaInfoboxPicker.findForEntities(
-                    this, queryRunner, qids, selected -> recordAdditionalSource(key,
-                            FieldSourceType.WIKIPEDIA_INFOBOX, selected,
-                            "Native Wikipedia infobox parameter"));
-            return;
-        }
-        wikidata.explore.workbench.DbpediaPropertyPicker.findProperty(
-                this, queryRunner, List.of(seed.qid()),
-                (property, example) -> recordAdditionalSource(key, FieldSourceType.DBPEDIA,
-                        property, "DBpedia infobox property"));
+        List<String> qids = actionInstances().stream()
+                .map(v -> resolvedQid(v, EnrichmentSources.collect(
+                        v, concreteType(v), curationStore())))
+                .filter(ValidationPanel::isQid).distinct().limit(12).toList();
+        // Choosing is shared with ModelBuilder; RECORDING is this dataset's own business,
+        // and so is having something to clear — the model side has no curation sidecar.
+        workbench.AdditionalSourcePicker.choose(this, queryRunner,
+                workbench.AdditionalSourcePicker.ofEntities(
+                        qids.isEmpty() ? List.of(seed.qid()) : qids),
+                choice -> recordAdditionalSource(key, choice.sourceType(),
+                        choice.property(), choice.label()),
+                datasetFallbackOverride(key) == null ? null : () -> clearAdditionalSource(key));
+    }
+
+    private void clearAdditionalSource(FieldKey key) {
+        fallbackFieldSources.remove(key);
+        quiz.curation.ManualCuration curation = curationStore();
+        if (curation != null) curation.removeSourceRecipe(key.type(), key.path(),
+                quiz.curation.FieldSourceRecipe.ADDITIONAL_SOURCE);
+        updateFieldSourceButton();
     }
 
     /** Record this DATASET's additional source for a field, whichever kind was chosen.
@@ -1518,7 +1503,7 @@ public final class ValidationPanel extends JPanel {
             editWikipediaCategorySource(curation, null);
             return;
         }
-        wikidata.explore.workbench.WikipediaCategoryPicker.findForEntities(
+        workbench.WikipediaCategoryPicker.findForEntities(
                 this, queryRunner, qids, observed ->
                         editWikipediaCategorySource(curation, observed));
     }
@@ -1767,7 +1752,7 @@ public final class ValidationPanel extends JPanel {
             return;
         }
         Viewable target = selected;
-        wikidata.explore.workbench.ExploreByExamplePanel.showPicker(
+        workbench.ExploreByExamplePanel.showPicker(
                 this, queryRunner, target.getDisplayName(), false,
                 (qid, label) -> approveWikidataIdentity(target, qid, label));
     }
@@ -2012,7 +1997,7 @@ public final class ValidationPanel extends JPanel {
     // curation panel uses), so a missing member is the object — click to select it.
     private JComponent instancesView(List<Viewable> missing, String type) {
         return objectview.view.SearchableView.builder(missing)
-                .valueLinker(wikidata.explore.workbench.WikidataLinks.valueLinker())
+                .valueLinker(workbench.WikidataLinks.valueLinker())
                                                    .sample(missing.get(0))
                                                    .hiddenFields(domain.structuralFields(type))
                                                    .fieldTypes(domain.fieldTypes(type))

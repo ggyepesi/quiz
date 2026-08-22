@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package workbench;
 
 import wikidata.WikidataIds;
 
