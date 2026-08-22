@@ -199,113 +199,36 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     List<WikidataDynamicObject> enrichedSnapshot =
                             wikidata.explore.transform.PoolCopy.deepCopy(shared.values());
-                    java.util.Set<WikidataDynamicObject> demoted =
-                            java.util.Collections.newSetFromMap(
-                                    new java.util.IdentityHashMap<>());
-                    List<WikidataDynamicObject> reified =
-                            wikidata.explore.transform.ModelStatementReifications.reify(
-                                    compiledProject, reifyPool, genLog, demoted);
 
-                    // Enforce per-field allowedQids (the query layer doesn't): e.g.
-                    // the auto-injected `target` field restricted to the membership's
-                    // Oscar categories drops Grammy categories that share P1411.
-                    wikidata.explore.transform.FieldValueRestrictions.apply(
-                            compiledProject, shared.values());
-
-                    // Derived (production = INVERT) fields: reverse forward
-                    // references already in the pool (e.g. Category.nominees =
-                    // reverse of Oscarnominations.categories) — no query, no depth.
-                    wikidata.explore.transform.ModelInverts.apply(
-                            compiledProject, shared.values(), genLog);
-
-                    // Year projections (a DATE field overlaid from a referent's date,
-                    // e.g. Nomination.year <- YEAR(edition.date)) — a field-level
-                    // transform, authoritative + year-precision. Over the base pool
-                    // AND the reified records, so a reified Nomination sees the
-                    // generated Edition (with its date) by qid.
-                    List<WikidataDynamicObject> forYear =
-                            new ArrayList<>(shared.values());
-                    forYear.addAll(reified);
-                    wikidata.explore.transform.ModelYearProjections.apply(
-                            compiledProject, forYear, genLog);
-
-                    // Companion-match (production = COMPANION_MATCH) boolean fields
-                    // (e.g. Nomination.won). Load the sets (network), then match
-                    // (pure) — caching the sets so a Remap re-matches offline.
+                    // The ONE transform sequence (#97). Generate differs from Remap only
+                    // in that it FETCHES the companion sets instead of replaying cached
+                    // ones — and it caches them here for the next Remap.
+                    wikidata.explore.transform.StatementTransforms.Result transformed =
+                            wikidata.explore.transform.StatementTransforms.apply(
+                                    project, compiledProject, reifyPool,
+                                    records -> {
+                                        try {
+                                            return wikidata.explore.transform.CompanionMatch
+                                                    .loadSets(compiledProject, records,
+                                                            WikidataAccess.sparql(
+                                                                    context, Datasource.WIKIDATA),
+                                                            genLog);
+                                        } catch (RuntimeException failed) {
+                                            throw failed;
+                                        } catch (Exception failed) {
+                                            throw new RuntimeException(failed);
+                                        }
+                                    },
+                                    genLog);
+                    List<WikidataDynamicObject> reified = transformed.reified();
                     java.util.Map<String, java.util.Set<java.util.List<String>>>
-                            companionSets =
-                            wikidata.explore.transform.CompanionMatch.loadSets(
-                                    compiledProject, reified, WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog);
-                    wikidata.explore.transform.CompanionMatch.applyWithSets(
-                            compiledProject, reified, companionSets, genLog);
+                            companionSets = transformed.companionSets();
 
-                    // Clean internal plumbing off the served pool: (1) un-stamp the
-                    // __subject_ load type — discovered POPULATION subjects sourced the
-                    // reify but are not a served product, so they stay as plain
-                    // labelled referents (nominee/forWork/source), not a served type;
-                    // (2) strip __-prefixed statement-list fields (e.g. __Nomination) —
-                    // the reify already promoted those to top-level records, so a
-                    // referent must not carry the raw statement list (a nominee/forWork
-                    // showing __Nomination). Runs after reify + transforms have used them.
-                    int unstampedSubjects = 0;
-                    int strippedFields = 0;
-                    for (WikidataDynamicObject o : shared.values()) {
-                        if (o == null) {
-                            continue;
-                        }
-                        // RETRACT, not clear: type(null) leaves the internal name behind
-                        // as a membership, and the save path then reads it back as the
-                        // object's most-specific class.
-                        java.util.List<String> internalTypes = o.directClassNames().stream()
-                                .filter(wikidata.explore.extract.WikidataDynamicObject::isInternalClassName)
-                                .toList();
-                        for (String internal : internalTypes) {
-                            o.removeClass(internal);
-                            unstampedSubjects++;
-                        }
-                        java.util.List<String> internal = new java.util.ArrayList<>();
-                        for (String k : o.dynamicFields().keySet()) {
-                            if (k != null && k.startsWith("__")) {
-                                internal.add(k);
-                            }
-                        }
-                        for (String k : internal) {
-                            o.remove(k);
-                            strippedFields++;
-                        }
-                    }
-                    if (unstampedSubjects > 0 || strippedFields > 0) {
-                        genLog.message("Un-stamped " + unstampedSubjects
-                                + " discovered subject(s), stripped " + strippedFields
-                                + " internal statement field(s) — kept as referents, "
-                                + "not served.\n");
-                    }
-
-                    // Stamp each statement instance's ENTITY-field referents with the
-                    // (bare) class the field declares — e.g. Nomination.nominee ->
-                    // Nominee, forWork -> ForWork, category -> Category. This resolves
-                    // the reference (typeName reads the class instead of falling back,
-                    // and it is no longer collapsed to a bare label) and readies the
-                    // class to grow fields later. Runs AFTER the __subject_ un-stamp so
-                    // a discovered subject that is also a referent gets its real class.
-                    int stampedReferents =
-                            wikidata.explore.transform.ReferentClassStamp.apply(
-                                    project, reified);
-                    if (stampedReferents > 0) {
-                        genLog.message("Stamped " + stampedReferents
-                                + " referent(s) with their declared class.\n");
-                    }
-
-                    // Build the initial served pool before kind classification. Owned
-                    // components deliberately come later: Person.name can only be
-                    // produced after a Nominee has actually been classified as Person.
-                    List<WikidataDynamicObject> pool = new ArrayList<>();
-                    for (WikidataDynamicObject o : shared.values()) {
-                        if (!demoted.contains(o)) {
-                            pool.add(o);
-                        }
-                    }
-                    pool.addAll(reified);
+                    // reifyPool is now the served set: the reified records added, the
+                    // demoted duplicates removed, no internal plumbing left. The registry
+                    // keeps every object it already knew, so the snapshot still carries
+                    // them; what is SERVED is this pool.
+                    List<WikidataDynamicObject> pool = reifyPool;
 
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.CONSTRUCT,
                             reified.size() + " statement record(s)");

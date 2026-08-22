@@ -127,15 +127,7 @@ public class GenerationPipeline {
     // Fills DBpedia-sourced root fields (Wikipedia infobox) after the Wikidata
     // extraction, joined by owl:sameAs QID. No-op unless the root class has any
     // DBpedia field; failures are logged, not fatal (the run still succeeds).
-    // Build every production = INVERT field from the forward references already in
-    // the pool (e.g. Category.nominees = reverse of Oscarnominations.categories).
-    private void applyModelInverts(
-            GeneratedProjectModel snapshot,
-            List<WikidataDynamicObject> pool,
-            GenerationLog log) {
 
-        wikidata.explore.transform.ModelInverts.apply(snapshot, pool, log);
-    }
 
     private void enrichFromDBpedia(
             GeneratedProjectModel snapshot,
@@ -297,9 +289,12 @@ public class GenerationPipeline {
                     + "Enrich, and would be empty here.\n");
         }
 
-        // Derived (production = INVERT) fields: build each as the reverse of a
-        // forward reference already in the pool — no query, no extra depth.
-        applyModelInverts(snapshot, dynamicObjects, log);
+        // The idempotent transforms — inverts, value restrictions, projections. Preview
+        // never reifies, so those stages are simply no-ops here; running the same
+        // construct is what stops preview quietly showing values a declared restriction
+        // would have pruned.
+        wikidata.explore.transform.StatementTransforms.applyIdempotent(
+                snapshot, dynamicObjects, log);
 
         // displayName from each class's CanonicalSpec (see Canonicalization).
         wikidata.explore.transform.Canonicalization.apply(snapshot, dynamicObjects, log);
@@ -348,7 +343,7 @@ public class GenerationPipeline {
         // never mutate the previous run that remains visible until Apply succeeds.
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(previous.dynamicObjects());
-        int filled = wikidata.explore.transform.ModelYearProjections.apply(
+        int filled = wikidata.explore.transform.StatementTransforms.applyIdempotent(
                 snapshot, pool, log);
         wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
                 wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
@@ -446,9 +441,8 @@ public class GenerationPipeline {
         // and vocabularies describe the final classes/fields rather than iteration one.
         wikidata.explore.compiled.CompiledProjectModel compiled =
                 wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
-        wikidata.explore.transform.FieldValueRestrictions.apply(compiled, pool);
-        wikidata.explore.transform.ModelInverts.apply(compiled, pool, log);
-        wikidata.explore.transform.ModelYearProjections.apply(compiled, pool, log);
+        wikidata.explore.transform.StatementTransforms.applyIdempotent(
+                compiled, pool, log);
         FinalLabelHydration.apply(pool, entityApi, log, quality);
         DomainFinalization.apply(snapshot, compiled, pool, List.of(), entityApi, log);
 
@@ -562,32 +556,18 @@ public class GenerationPipeline {
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(rs.enrichedPool());
 
-        java.util.Set<WikidataDynamicObject> demoted =
-                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         // Reify from the compiled model — parity-proven with the editable one.
         wikidata.explore.compiled.CompiledProjectModel compiledSnapshot =
                 wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
-        List<WikidataDynamicObject> reified =
-                wikidata.explore.transform.ModelStatementReifications.reify(
-                        compiledSnapshot, pool, log, demoted);   // pool.addAll(reified) inside
+        // The ONE transform sequence (#97). Remap differs from Generate only in where
+        // the companion sets come from: it replays the ones Generate cached.
+        wikidata.explore.transform.StatementTransforms.Result transformed =
+                wikidata.explore.transform.StatementTransforms.apply(
+                        snapshot, compiledSnapshot, pool,
+                        records -> rs.companionSets(), log);
+        List<WikidataDynamicObject> reified = transformed.reified();
+        int filled = transformed.projectedFields();
 
-        // Compiled-model transforms (parity-proven); the rest still read raw.
-        wikidata.explore.transform.FieldValueRestrictions.apply(compiledSnapshot, pool);
-        wikidata.explore.transform.ModelInverts.apply(compiledSnapshot, pool, null);
-        // Year projections (e.g. Nomination.year <- YEAR(edition.date)) — same
-        // transform stage as the generate path; pool already holds the reified
-        // records + their referenced (dated) entities.
-        int filled = wikidata.explore.transform.ModelYearProjections.apply(
-                compiledSnapshot, pool, log);
-        wikidata.explore.transform.CompanionMatch.applyWithSets(
-                compiledSnapshot, reified, rs.companionSets(), null);
-
-        // Drop the dropped-duplicate stubs from the served pool (not just untype).
-        pool.removeIf(demoted::contains);
-        // Recreate the semantic role carriers that generation stamps after reify.
-        // The cached enriched pool predates both this stamp and referent-field loading.
-        wikidata.explore.transform.ReferentClassStamp.apply(snapshot, reified);
-        removeInternalTypesAndFields(pool);
         wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
                 wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
                         snapshot, pool, previous.dynamicObjects(), log);
@@ -616,21 +596,6 @@ public class GenerationPipeline {
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, rs,
                 previous.loadedDeclarations(), previous.quality());
-    }
-
-    private static void removeInternalTypesAndFields(
-            Collection<WikidataDynamicObject> pool) {
-        for (WikidataDynamicObject object : pool) {
-            if (object == null) continue;
-            for (String type : new ArrayList<>(object.directClassNames())) {
-                if (WikidataDynamicObject.isInternalClassName(type)) {
-                    object.removeClass(type);
-                }
-            }
-            for (String field : new ArrayList<>(object.dynamicFields().keySet())) {
-                if (field != null && field.startsWith("__")) object.remove(field);
-            }
-        }
     }
 
     /**
