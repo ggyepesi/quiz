@@ -171,6 +171,20 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
         return new ModelFieldRulePromoter(modelFile, this).promote(recipe);
     }
 
+    @Override public wikidata.explore.model.EntityKindRule entityKindRule(String className) {
+        if (className == null || className.isBlank()) return null;
+        try {
+            wikidata.explore.model.GeneratedProjectModel model = loadModel();
+            if (model == null) return null;
+            return model.entityKindRules().stream()
+                    .filter(rule -> rule != null && className.equals(rule.className()))
+                    .filter(wikidata.explore.model.EntityKindRule::isConfigured)
+                    .findFirst().map(wikidata.explore.model.EntityKindRule::copy).orElse(null);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     @Override public wikidata.explore.model.FieldSourceMapping declaredSource(
             String type, String field) {
         return new ModelFieldRulePromoter(modelFile, this).declaredSource(type, field);

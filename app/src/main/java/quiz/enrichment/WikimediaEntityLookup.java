@@ -143,7 +143,7 @@ public final class WikimediaEntityLookup {
         URI uri = URI.create("https://www.wikidata.org/w/api.php?action=wbgetentities"
                 + "&sites=enwiki&titles=" + java.net.URLEncoder.encode(requested,
                 java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20")
-                + "&props=labels%7Cdescriptions&languages=en&format=json");
+                + "&props=labels%7Cdescriptions%7Cclaims&languages=en&format=json");
         return new Query<>() {
             @Override public String purpose() { return "Resolve Wikipedia subject"; }
             @Override public String skeleton() { return "enwiki title to Wikidata entity"; }
@@ -356,6 +356,26 @@ public final class WikimediaEntityLookup {
 
         public String sitelink(String site) {
             return sitelinks.getOrDefault(site, "");
+        }
+
+        /**
+         * The entity QIDs this entity claims for {@code property} — its P31 values, for
+         * the usual caller. Spelled once here so that asking "what kind of thing is
+         * this?" reads the same whether the answer came from the API record or from
+         * {@code WikidataApiClient.ApiEntity.entityQids}; two spellings of one question
+         * is how two callers come to disagree about the same entity.
+         */
+        public List<String> entityQids(String property) {
+            List<String> out = new ArrayList<>();
+            for (Claim claim : claims(property)) {
+                if (claim.deprecated() || claim.value() == null) continue;
+                if (claim.value().value() instanceof Map<?, ?> map
+                        && map.get("id") instanceof String id
+                        && WikidataIds.isQid(id)) {
+                    out.add(id);
+                }
+            }
+            return List.copyOf(out);
         }
     }
 

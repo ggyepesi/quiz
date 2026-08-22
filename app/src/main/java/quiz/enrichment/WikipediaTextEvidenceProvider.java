@@ -28,25 +28,41 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
     private final WikimediaEntityLookup lookup;
     private final wikipedia.WikipediaArticleClient articles;
     private final wikidata.explore.model.WikipediaCategoryRule categoryRule;
+    private final wikidata.explore.model.EntityKindRule referentKind;
 
     public WikipediaTextEvidenceProvider() {
-        this(WikimediaEntityLookup.defaultFetcher(), null);
+        this(WikimediaEntityLookup.defaultFetcher(), null, null);
     }
 
     public WikipediaTextEvidenceProvider(
             wikidata.explore.model.WikipediaCategoryRule categoryRule) {
-        this(WikimediaEntityLookup.defaultFetcher(), categoryRule);
+        this(WikimediaEntityLookup.defaultFetcher(), categoryRule, null);
+    }
+
+    /** {@code referentKind} is the model's rule for the class the target field REFERS TO,
+     *  or null when the model declares none for it. */
+    public WikipediaTextEvidenceProvider(
+            wikidata.explore.model.WikipediaCategoryRule categoryRule,
+            wikidata.explore.model.EntityKindRule referentKind) {
+        this(WikimediaEntityLookup.defaultFetcher(), categoryRule, referentKind);
     }
 
     WikipediaTextEvidenceProvider(WikimediaEntityLookup.JsonFetcher fetcher) {
-        this(fetcher, null);
+        this(fetcher, null, null);
     }
 
     WikipediaTextEvidenceProvider(WikimediaEntityLookup.JsonFetcher fetcher,
             wikidata.explore.model.WikipediaCategoryRule categoryRule) {
+        this(fetcher, categoryRule, null);
+    }
+
+    WikipediaTextEvidenceProvider(WikimediaEntityLookup.JsonFetcher fetcher,
+            wikidata.explore.model.WikipediaCategoryRule categoryRule,
+            wikidata.explore.model.EntityKindRule referentKind) {
         this.lookup = new WikimediaEntityLookup(fetcher);
         this.articles = new wikipedia.WikipediaArticleClient(fetcher::fetch);
         this.categoryRule = categoryRule == null ? null : categoryRule.copy();
+        this.referentKind = referentKind == null ? null : referentKind.copy();
     }
 
     @Override public String name() { return "Wikipedia text evidence"; }
@@ -106,7 +122,8 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                     if (valueTitle == null) continue;
                     WikimediaEntityLookup.EntityRecord value =
                             lookup.byWikipediaTitle(valueTitle).execute(context);
-                    if (value != null && WikidataIds.isQid(value.qid())) {
+                    if (value != null && WikidataIds.isQid(value.qid())
+                            && isReferentOfTargetKind(value)) {
                         categoryValues.add(new CategoryValue(category, value));
                     }
                 }
@@ -183,6 +200,28 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                     null, request.collection(), List.of(claim)));
         }
         return new EnrichmentProposal(request.subject(), List.of(identity), fields, List.of());
+    }
+
+    /**
+     * Whether a resolved category value is the KIND of thing the target field refers to.
+     *
+     * <p>A pattern matches by title alone, so "Films set in 1999" is exactly as good a
+     * match for {@code Films set in <value>} as "Films set in Sierra Leone" — and the
+     * year resolves to a real entity, which was then offered as a Location. Review caught
+     * it every time, which is the point: it was noise a reviewer had to reject on every
+     * run.
+     *
+     * <p>The test is the model's OWN {@link wikidata.explore.model.EntityKindRule} for the
+     * class the field refers to — the same declaration, read the same way, that decides an
+     * entity's kind during generation. Nothing here infers a kind from a field or class
+     * NAME. A class the model declares no kind rule for admits everything, exactly as
+     * before: the check is only ever as good as what the model says, and that is the one
+     * place to improve it.
+     */
+    private boolean isReferentOfTargetKind(WikimediaEntityLookup.EntityRecord value) {
+        if (referentKind == null || !referentKind.isConfigured()) return true;
+        return value.entityQids(referentKind.propertyPid()).stream()
+                .anyMatch(referentKind.evidenceQids()::contains);
     }
 
     /**

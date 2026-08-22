@@ -1557,8 +1557,15 @@ public final class ValidationPanel extends JPanel {
         List<FindDataProcess> jobs = new ArrayList<>();
         wikidata.explore.model.WikipediaCategoryRule categoryRule =
                 effectiveWikipediaCategoryRule(selectedFieldType, path);
+        // What this field REFERS TO decides which category candidates are even plausible:
+        // "Films set in <value>" matches "Films set in 1999" as honestly as it matches a
+        // place, and a year offered as a Location is noise the reviewer rejects every run.
+        objectview.field.FieldRef fieldSchema =
+                DomainSchemas.resolve(domain, selectedFieldType, path);
+        wikidata.explore.model.EntityKindRule referentKind = fieldSchema == null
+                ? null : domain.entityKindRule(fieldSchema.targetType());
         quiz.enrichment.WikipediaTextEvidenceProvider provider =
-                new quiz.enrichment.WikipediaTextEvidenceProvider(categoryRule);
+                new quiz.enrichment.WikipediaTextEvidenceProvider(categoryRule, referentKind);
         int skipped = 0;
         for (Viewable member : actionInstances()) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
@@ -1600,6 +1607,10 @@ public final class ValidationPanel extends JPanel {
                 + "Skipped: <b>" + skipped + "</b> (no usable value/category evidence or identity)<br><br>"
                 + "Existing values are checked against article text. Configured category "
                 + "relations can also propose new values from memberships acquired by ModelBuilder. "
+                + (referentKind == null ? ""
+                        : "Category candidates must be a " + fieldSchema.targetType()
+                                + " by the model's rule (" + referentKind.propertyPid()
+                                + "); others are not offered.<br>")
                 + "Every result retains its article revision and exact source evidence; "
                 + "nothing is saved until you stage it.</div></html>";
         if (JOptionPane.showConfirmDialog(this, new JLabel(message),

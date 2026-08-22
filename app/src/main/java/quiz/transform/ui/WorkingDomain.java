@@ -82,6 +82,19 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return base instanceof SchemaView sv ? sv.schemaView() : null;
     }
 
+    // What the producing model declares travels through the working layer unchanged.
+    // Without this the base's answer is replaced by the interface default — the model's
+    // own category recipe and kind rules would be invisible the moment a PROJECT-derived
+    // class is layered over the domain.
+    @Override public wikidata.explore.model.WikipediaCategoryRule wikipediaCategoryRule(
+            String type, String field) {
+        return base.wikipediaCategoryRule(type, field);
+    }
+
+    @Override public wikidata.explore.model.EntityKindRule entityKindRule(String className) {
+        return base.entityKindRule(className);
+    }
+
     @Override public quiz.curation.ManualCuration curation() {
         return base instanceof quiz.curation.Curatable c ? c.curation() : null;
     }

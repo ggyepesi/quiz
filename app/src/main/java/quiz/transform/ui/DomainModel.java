@@ -20,6 +20,13 @@ public interface DomainModel {
     default wikidata.explore.model.WikipediaCategoryRule wikipediaCategoryRule(
             String type, String field) { return null; }
 
+    /** How the producing model decides that an entity IS a {@code className} — normally
+     *  its P31 values. Null when the model declares no kind rule for that class, which
+     *  admits everything: what a class means is the model's to say. */
+    default wikidata.explore.model.EntityKindRule entityKindRule(String className) {
+        return null;
+    }
+
     /** Every class represented in the domain — one uniform set derived the same way
      *  for built-in and snapshot backings: the classes carried by (or referenced from)
      *  the domain's instances. Built-in domains discover these by reflection (walking
