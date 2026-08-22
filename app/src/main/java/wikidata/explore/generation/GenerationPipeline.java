@@ -333,7 +333,8 @@ public class GenerationPipeline {
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
         GenerationRun.RemapState rs = previous.remapState();
-        if (rs != null && rs.enrichedPool() != null && !rs.enrichedPool().isEmpty()) {
+        RemapScope scope = RemapScope.of(previous);
+        if (scope.retransform()) {
             return retransform(previous, snapshot, plan, runtime, rs, log);
         }
 
@@ -362,11 +363,12 @@ public class GenerationPipeline {
         int restricted = DomainFinalization.apply(
                 snapshot, compiled, pool, List.of(), null, log).requiredDropped();
         if (log != null) {
-            log.message("Remap (display-only, no cached pool): "
+            log.message("Remap (idempotent transforms only): "
                     + pool.size() + " objects re-materialized, "
                     + filled + " projected field(s) filled, "
                     + kinds.classified() + " entity kind(s) assigned, "
-                    + restricted + " dropped (required-field).\n");
+                    + restricted + " dropped (required-field).\n"
+                    + scope.limitation() + "\n");
         }
 
         List<Viewable> instances = materialize(runtime, pool);

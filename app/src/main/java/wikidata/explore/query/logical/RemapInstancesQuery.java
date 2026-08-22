@@ -39,6 +39,12 @@ public class RemapInstancesQuery
         return "reuse downloaded dynamic objects -> recompile generated class -> remap";
     }
 
+    /** What this Remap can actually apply — asked BEFORE it runs, so the plan can say
+     *  which stages will not re-run rather than reporting a success that skipped them. */
+    public wikidata.explore.generation.RemapScope scope() {
+        return wikidata.explore.generation.RemapScope.of(previousRun);
+    }
+
     @Override
     public Map<String, String> parameters() {
         Map<String, String> p = new LinkedHashMap<>();
@@ -46,6 +52,7 @@ public class RemapInstancesQuery
         p.put("reusedObjects",
               String.valueOf(previousRun.dynamicObjects().size()));
         p.put("depth", String.valueOf(previousRun.depth()));
+        p.put("scope", scope().describe());
         return p;
     }
 
@@ -56,6 +63,10 @@ public class RemapInstancesQuery
         context.message("Reusing "
                                 + previousRun.dynamicObjects().size()
                                 + " downloaded objects from the previous run.");
+        String limitation = scope().limitation();
+        if (!limitation.isEmpty()) {
+            context.message(limitation);
+        }
 
         return new GenerationPipeline().remap(
                 previousRun, projectModel,
