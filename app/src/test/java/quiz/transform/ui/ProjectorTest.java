@@ -10,6 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import domain.DomainField;
 
 /**
  * PROJECT materializes a new class from selected (possibly nested) fields, and the

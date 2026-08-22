@@ -9,7 +9,7 @@ import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 import quiz.transform.app.SnapshotDomain;
 import quiz.transform.app.ViewableToWdo;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 import quiz.transform.ui.ReflectionDomain;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 

@@ -5,7 +5,7 @@ import quiz.curation.Correction;
 import quiz.curation.FieldRulePromoter;
 import quiz.curation.FieldSourceRecipe;
 import quiz.curation.ValueSource;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 import quiz.transform.ui.FieldDefinitions;
 import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldSourceMapping;

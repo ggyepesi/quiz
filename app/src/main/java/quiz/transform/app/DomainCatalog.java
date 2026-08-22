@@ -11,6 +11,7 @@ import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import domain.DomainModel;
 
 /**
  * Assembles the {@link DomainEntry} catalog for the navigator from the saved Wikidata
@@ -51,7 +52,7 @@ public final class DomainCatalog {
      * into a typed {@link ProductDomain} (model-authoritative schema); a dataset
      * without a model uses the snapshot's persisted field graph.
      */
-    private static quiz.transform.ui.DomainModel open(File snap, File model)
+    private static DomainModel open(File snap, File model)
             throws Exception {
         var loaded = new WikidataDynamicObjectJsonStore()
                 .loadAllWithFieldGraph(snap);
@@ -69,7 +70,7 @@ public final class DomainCatalog {
         quiz.curation.Merges.apply(
                 pool, curation.merges(), loaded.fieldGraph()::baseType);
 
-        quiz.transform.ui.DomainModel base =
+        DomainModel base =
                 compile(model, pool, loaded.fieldGraph(), loaded.roleSelections());
         // Carry the curation store so the workbench can offer a "Curate…" action.
         java.util.List<objectview.viewconfig.DomainGroupRoot> groupRoots =
@@ -88,7 +89,7 @@ public final class DomainCatalog {
                 model != null && model.isFile() ? model : null);
     }
 
-    private static quiz.transform.ui.DomainModel compile(
+    private static DomainModel compile(
             File model,
             java.util.List<wikidata.explore.extract.WikidataDynamicObject> pool,
             wikidata.explore.extract.SnapshotFieldGraph fieldGraph,

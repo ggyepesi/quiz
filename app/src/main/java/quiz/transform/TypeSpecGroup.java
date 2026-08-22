@@ -1,7 +1,7 @@
 package quiz.transform;
 
 import objectview.Viewable;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 
 import java.util.Collection;
 

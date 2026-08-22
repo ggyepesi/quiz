@@ -3,9 +3,9 @@ package quiz.transform.app;
 import objectview.Viewable;
 import quiz.curation.Curatable;
 import quiz.curation.ManualCuration;
-import quiz.transform.ui.DelegatingDomainModel;
-import quiz.transform.ui.DomainField;
-import quiz.transform.ui.DomainModel;
+import domain.DelegatingDomainModel;
+import domain.DomainField;
+import domain.DomainModel;
 import quiz.transform.ui.SchemaView;
 import objectview.field.FieldSchema;
 import objectview.viewconfig.FieldTypeSource;
@@ -14,6 +14,7 @@ import javax.swing.JComponent;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import domain.DomainSchemas;
 
 /**
  * A {@link DomainModel} that also carries its {@link ManualCuration} store, so the
@@ -82,10 +83,10 @@ final class CuratableDomain extends DelegatingDomainModel implements SchemaView,
         return () -> immutable;
     }
     @Override public Set<String> structuralFields(String type) {
-        return quiz.transform.ui.DomainSchemas.structuralFields(fieldSchema(type));
+        return DomainSchemas.structuralFields(fieldSchema(type));
     }
     @Override public FieldTypeSource fieldTypes(String type) {
-        return quiz.transform.ui.DomainSchemas.fieldTypes(this, type);
+        return DomainSchemas.fieldTypes(this, type);
     }
     @Override public Viewable representativeSample(String type) { return base.representativeSample(type); }
     @Override public Collection<? extends Viewable> instances() { return base.instances(); }

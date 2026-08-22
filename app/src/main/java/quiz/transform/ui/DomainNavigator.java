@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import domain.DomainModel;
 
 /**
  * First-navigation screen for the transform workbench: lists the given

@@ -8,6 +8,8 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import domain.DomainModel;
+import domain.DomainField;
 
 /** Mutable working-tree node shared by manual and rule-produced groups. */
 public class EditableGroup extends ViewableGroupAdapter {
@@ -86,14 +88,14 @@ public class EditableGroup extends ViewableGroupAdapter {
     }
 
     public static EditableGroup copyOf(
-            ViewableGroup<?> source, quiz.transform.ui.DomainModel domain) {
+            ViewableGroup<?> source, DomainModel domain) {
         return copyOf(source, domain, new java.util.IdentityHashMap<>());
     }
 
     // A revisited source returns its in-progress copy, so a cyclic/DAG persisted graph
     // reconstructs without infinite recursion (and shared nodes copy once).
     private static EditableGroup copyOf(
-            ViewableGroup<?> source, quiz.transform.ui.DomainModel domain,
+            ViewableGroup<?> source, DomainModel domain,
             Map<ViewableGroup<?>, EditableGroup> seen) {
         EditableGroup existing = seen.get(source);
         if (existing != null) return existing;
@@ -111,8 +113,8 @@ public class EditableGroup extends ViewableGroupAdapter {
             quiz.transform.pipeline.ui.FilterOperator operator =
                     quiz.transform.pipeline.ui.FilterOperator.valueOf(
                             text(fields.read("filterOperator")));
-            quiz.transform.ui.DomainField domainField =
-                    new quiz.transform.ui.DomainField(memberType, path, false, false);
+            DomainField domainField =
+                    new DomainField(memberType, path, false, false);
             copy = new OperationGroup(name, memberType,
                     new quiz.transform.pipeline.ui.FilterCondition(
                             domainField, operator,

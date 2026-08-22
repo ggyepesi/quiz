@@ -21,6 +21,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import domain.DomainField;
+import domain.DomainModel;
 
 /**
  * Structural transform workbench over a {@link DomainModel} — a Wikidata snapshot or

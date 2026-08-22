@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.transform.app.SnapshotDomain;
-import quiz.transform.ui.DomainField;
+import domain.DomainField;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;

@@ -4,7 +4,7 @@ import objectview.Viewable;
 import quiz.ViewableGroup;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 import quiz.web.ViewableSource;
 import quiz.web.ViewableStore;
 

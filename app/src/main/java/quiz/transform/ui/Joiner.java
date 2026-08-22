@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import domain.DomainField;
+import domain.DomainModel;
 
 /**
  * Equi-joins two classes on a key value: each LEFT instance is matched to a RIGHT

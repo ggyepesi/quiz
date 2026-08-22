@@ -1,4 +1,4 @@
-package quiz.transform.ui;
+package domain;
 
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +10,10 @@ import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import domain.Declared;
+import domain.DelegatingDomainModel;
+import domain.Derived;
+import domain.DomainModel;
 
 /**
  * A wrapping domain must forward everything its base declares, and recompute everything
@@ -84,6 +88,58 @@ class DomainContractTest {
                 + " — a backing overrides it, so it states something and is @Declared");
     }
 
+    /**
+     * The contract describes a domain; it is not part of an app and it is not a view. It sat in
+     * a Swing package, so the snapshot store imported the transform workbench's user interface
+     * to describe a saved file. Only the two model-declaration types are allowed through, and
+     * they are named here so that allowance stays a decision rather than a drift.
+     */
+    @Test void theContractDependsOnTheFoundationAndOnTwoModelDeclarations() throws Exception {
+        Set<String> offenders = new TreeSet<>();
+        for (java.nio.file.Path file : contractSources()) {
+            String source = java.nio.file.Files.readString(file);
+            for (String reference : references(source)) {
+                if (reference.startsWith("java.") || reference.startsWith("objectview.")) continue;
+                if (ALLOWED_DECLARATIONS.contains(reference)) continue;
+                offenders.add(file.getFileName() + " → " + reference);
+            }
+        }
+
+        assertEquals(Set.of(), offenders,
+                "a domain contract that names a UI type, an app type or a third source is "
+                        + "no longer describing a domain");
+    }
+
+    private static final Set<String> ALLOWED_DECLARATIONS = Set.of(
+            "wikidata.explore.model.WikipediaCategoryRule",
+            "wikidata.explore.model.EntityKindRule");
+
+    /** Imports AND fully-qualified uses: the two allowances above are written inline, so an
+     *  import scan alone would have reported this package as depending on nothing. Comments
+     *  are stripped first — prose naming a type is not a dependency on it, and the package
+     *  documentation has to be able to say what belongs on the other side of this line. */
+    private static Set<String> references(String source) {
+        source = source.replaceAll("(?s)/\\*.*?\\*/", " ").replaceAll("(?m)//.*$", " ");
+        Set<String> found = new TreeSet<>();
+        java.util.regex.Matcher imports = java.util.regex.Pattern
+                .compile("^import\\s+(?:static\\s+)?([\\w.]+);", java.util.regex.Pattern.MULTILINE)
+                .matcher(source);
+        while (imports.find()) found.add(imports.group(1));
+        java.util.regex.Matcher qualified = java.util.regex.Pattern
+                .compile("(?<![\\w.])((?:[a-z][\\w]*\\.){2,}[A-Z][\\w]*)").matcher(source);
+        while (qualified.find()) found.add(qualified.group(1));
+        return found;
+    }
+
+    private static List<java.nio.file.Path> contractSources() throws Exception {
+        java.nio.file.Path source = java.nio.file.Path.of("src/main/java/domain");
+        assertTrue(java.nio.file.Files.isDirectory(source),
+                "run from the app module: " + source.toAbsolutePath());
+        try (java.util.stream.Stream<java.nio.file.Path> files = java.nio.file.Files.walk(source)) {
+            return files.filter(f -> f.toString().endsWith(".java")).sorted().toList();
+        }
+    }
+
     private static List<Method> annotated(Class<? extends java.lang.annotation.Annotation> kind) {
         return Arrays.stream(DomainModel.class.getDeclaredMethods())
                 .filter(m -> !m.isSynthetic())
@@ -114,6 +170,6 @@ class DomainContractTest {
     /** Package-private backings referenced by class rather than by name. */
     private static final class SnapshotDomainNames {
         static final Class<?> SNAPSHOT = quiz.transform.app.SnapshotDomain.class;
-        static final Class<?> REFLECTION = ReflectionDomain.class;
+        static final Class<?> REFLECTION = quiz.transform.ui.ReflectionDomain.class;
     }
 }

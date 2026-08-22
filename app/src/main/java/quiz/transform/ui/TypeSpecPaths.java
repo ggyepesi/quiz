@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import domain.DomainModel;
 
 /**
  * What class a dotted path holds inside a {@link TypeSpec}'s scope: the spec's explicit

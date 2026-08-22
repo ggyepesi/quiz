@@ -25,6 +25,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import domain.DomainModel;
+import domain.DomainField;
+import domain.DomainSchemas;
 
 class GeneratedSourceGroupingTest {
 
@@ -194,11 +197,11 @@ class GeneratedSourceGroupingTest {
                 new quiz.transform.DynamicViewable("Tokyo", "Tokyo");
         tokyo.type("City");
         tokyo.put("region", "Asia");
-        quiz.transform.ui.DomainModel base = new quiz.transform.ui.DomainModel() {
+        DomainModel base = new DomainModel() {
             @Override public List<String> types() { return List.of("City"); }
             @Override public objectview.field.FieldSchema fieldSchema(String type) {
-                return quiz.transform.ui.DomainSchemas.flatSchema(List.of(
-                        new quiz.transform.ui.DomainField(
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField(
                                 "City", "region", false, false)));
             }
             @Override public java.util.Collection<? extends objectview.Viewable> instances() {
@@ -213,7 +216,7 @@ class GeneratedSourceGroupingTest {
         quiz.transform.EditableGroup root =
                 (quiz.transform.EditableGroup) controller.groupRoot("City");
         controller.addFacetGroup("City", root, "Regions",
-                new quiz.transform.ui.DomainField("City", "region", false, false));
+                new DomainField("City", "region", false, false));
 
         var converted = ViewableToWdo.convertDomain(
                 controller.domain().memberRoots(),

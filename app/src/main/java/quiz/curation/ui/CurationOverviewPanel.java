@@ -7,7 +7,7 @@ import quiz.curation.FieldDeclaration;
 import quiz.curation.IdentityLink;
 import quiz.curation.ManualCuration;
 import quiz.curation.Merge;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;

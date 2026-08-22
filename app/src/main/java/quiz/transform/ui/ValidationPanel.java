@@ -60,6 +60,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import domain.DomainField;
+import domain.DomainModel;
+import domain.DomainSchemas;
 
 /**
  * Consistency validation in the transform app — the front of the CURATE stage. It runs

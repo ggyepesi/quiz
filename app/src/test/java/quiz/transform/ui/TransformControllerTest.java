@@ -8,6 +8,9 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import domain.DomainField;
+import domain.DomainModel;
+import domain.DomainSchemas;
 
 /**
  * The headless workbench logic: building the per-type group tree, adding named

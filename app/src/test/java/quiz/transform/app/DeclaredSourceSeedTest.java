@@ -3,7 +3,7 @@ package quiz.transform.app;
 import objectview.Viewable;
 import objectview.ViewableAdapter;
 import org.junit.jupiter.api.Test;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;

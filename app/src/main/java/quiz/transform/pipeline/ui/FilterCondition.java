@@ -1,6 +1,6 @@
 package quiz.transform.pipeline.ui;
 
-import quiz.transform.ui.DomainField;
+import domain.DomainField;
 
 public record FilterCondition(
         DomainField field,

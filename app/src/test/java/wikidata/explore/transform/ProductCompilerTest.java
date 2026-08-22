@@ -2,7 +2,7 @@ package wikidata.explore.transform;
 
 import org.junit.jupiter.api.Test;
 import quiz.transform.app.ProductDomain;
-import quiz.transform.ui.DomainField;
+import domain.DomainField;
 import quiz.curation.Correction;
 import quiz.curation.Corrections;
 import objectview.field.FieldPath;
@@ -17,6 +17,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import domain.DomainModel;
 
 /**
  * The compile step reads the declared model as the authority: a reference to a
@@ -146,7 +147,7 @@ class ProductCompilerTest {
      */
     @Test void entityProvenanceSurvivesTheWorkingDomainWrapper() {
         ProductDomain compiled = ProductCompiler.compile(model(), pool());
-        quiz.transform.ui.DomainModel working =
+        DomainModel working =
                 new quiz.transform.ui.WorkingDomain(compiled);
 
         assertTrue(working.entityOrigin("Nomination", FieldPath.parse("forWork")),

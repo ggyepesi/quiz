@@ -7,7 +7,7 @@ import objectview.field.FieldRef;
 import objectview.field.FieldRole;
 import objectview.field.FieldSchema;
 import objectview.Viewable;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;

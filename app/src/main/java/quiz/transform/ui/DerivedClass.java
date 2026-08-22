@@ -4,6 +4,8 @@ import objectview.Viewable;
 import objectview.field.FieldSchema;
 
 import java.util.List;
+import domain.DomainField;
+import domain.DomainSchemas;
 
 /**
  * A class produced by a PROJECT operation: a new type name, the fields it carries

@@ -1,4 +1,4 @@
-package quiz.transform.ui;
+package domain;
 
 import objectview.viewconfig.FieldTypeSource;
 import objectview.Viewable;

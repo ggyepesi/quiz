@@ -6,6 +6,7 @@ import objectview.viewconfig.FieldTypeSource;
 
 import java.util.Map;
 import java.util.function.Function;
+import domain.DomainField;
 
 /**
  * Builds the Type-column label for the flat field picker / coverage table

@@ -1,7 +1,7 @@
 package quiz.transform.app;
 
 import org.junit.jupiter.api.Test;
-import quiz.transform.ui.DomainField;
+import domain.DomainField;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;

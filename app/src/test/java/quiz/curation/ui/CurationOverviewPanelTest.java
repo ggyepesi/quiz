@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.curation.IdentityLink;
 import quiz.curation.ManualCuration;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 
 import java.io.File;
 import java.nio.file.Path;

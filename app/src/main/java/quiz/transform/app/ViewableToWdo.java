@@ -4,7 +4,7 @@ import objectview.field.DynamicFields;
 import objectview.media.ImagePane;
 import objectview.utils.swing.CachedImage;
 import objectview.Viewable;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataMediaValue;
 

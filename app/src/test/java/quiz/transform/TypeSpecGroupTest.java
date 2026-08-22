@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import domain.DomainModel;
+import domain.DomainField;
 
 class TypeSpecGroupTest {
 
@@ -130,7 +132,7 @@ class TypeSpecGroupTest {
                 new TypeSpec("Nomination", Map.of("forWork", Set.of("Film"))));
         controller.selectGroup(child);
         Set<String> paths = controller.fields("Nomination").stream()
-                .map(quiz.transform.ui.DomainField::field).collect(java.util.stream.Collectors.toSet());
+                .map(DomainField::field).collect(java.util.stream.Collectors.toSet());
         org.junit.jupiter.api.Assertions.assertTrue(paths.contains("nominee.birthDate"));
         org.junit.jupiter.api.Assertions.assertTrue(paths.contains("forWork.releaseDate"));
     }
@@ -180,10 +182,10 @@ class TypeSpecGroupTest {
         nomination.put("nominee", person);
         EditableGroup original = new EditableGroup("All Nomination");
         original.replaceMembers(List.of(nomination));
-        quiz.transform.ui.DomainModel base =
+        DomainModel base =
                 new SnapshotDomain(List.of(nomination, person));
         // Provide the loaded binding through a thin domain view.
-        quiz.transform.ui.DomainModel loaded = new quiz.transform.ui.DomainModel() {
+        DomainModel loaded = new DomainModel() {
             @Override public List<String> types() { return base.types(); }
             @Override public objectview.field.FieldSchema fieldSchema(String type) {
                 return base.fieldSchema(type);
@@ -280,7 +282,7 @@ class TypeSpecGroupTest {
         controller.selectGroup(group);
 
         Set<String> paths = controller.fields("Nomination").stream()
-                .map(quiz.transform.ui.DomainField::field)
+                .map(DomainField::field)
                 .collect(java.util.stream.Collectors.toSet());
         org.junit.jupiter.api.Assertions.assertTrue(paths.contains("forWork.releaseDate"),
                 "the intermediate's own fields survive the projection: " + paths);

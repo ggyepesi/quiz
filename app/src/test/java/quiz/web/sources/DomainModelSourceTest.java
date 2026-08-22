@@ -3,8 +3,8 @@ package quiz.web.sources;
 import org.junit.jupiter.api.Test;
 import objectview.Viewable;
 import quiz.transform.DynamicViewable;
-import quiz.transform.ui.DomainField;
-import quiz.transform.ui.DomainModel;
+import domain.DomainField;
+import domain.DomainModel;
 import quiz.web.ViewableStore;
 
 import java.util.Collection;

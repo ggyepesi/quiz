@@ -1,4 +1,4 @@
-package quiz.transform.ui;
+package domain;
 
 import objectview.Viewable;
 import objectview.field.FieldSchema;

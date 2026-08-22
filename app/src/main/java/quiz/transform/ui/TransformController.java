@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import domain.DomainField;
+import domain.DomainModel;
 
 /**
  * The transform workbench's logic, with NO Swing: it owns the {@link WorkingDomain}

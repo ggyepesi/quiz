@@ -1,9 +1,9 @@
 package quiz.transform.app;
 
 import objectview.Viewable;
-import quiz.transform.ui.DomainField;
-import quiz.transform.ui.DomainModel;
-import quiz.transform.ui.DomainSchemas;
+import domain.DomainField;
+import domain.DomainModel;
+import domain.DomainSchemas;
 import quiz.transform.ui.SchemaView;
 import objectview.field.FieldSchema;
 import objectview.viewconfig.FieldTypeSource;

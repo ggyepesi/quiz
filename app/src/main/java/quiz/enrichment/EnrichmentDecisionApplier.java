@@ -9,7 +9,7 @@ import quiz.curation.Corrections;
 import quiz.curation.CurationStaging;
 import quiz.curation.IdentityLink;
 import quiz.curation.ManualCuration;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,6 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import domain.DomainSchemas;
 
 /**
  * Persists an approved enrichment decision as identity metadata plus ordinary
@@ -98,7 +99,7 @@ public final class EnrichmentDecisionApplier {
             EnrichmentProposal.FieldCandidate candidate = fieldDecision.candidate();
             if (!candidate.compatible()) throw new IllegalArgumentException("Cannot apply "
                     + candidate.field() + ": " + candidate.compatibilityError());
-            objectview.field.FieldRef schema = quiz.transform.ui.DomainSchemas.resolve(
+            objectview.field.FieldRef schema = DomainSchemas.resolve(
                     domain, type, candidate.field());
             if (fieldDecision.action() == EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
                     && (schema == null || !schema.collection())) {

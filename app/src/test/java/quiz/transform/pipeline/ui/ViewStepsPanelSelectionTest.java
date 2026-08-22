@@ -3,7 +3,7 @@ package quiz.transform.pipeline.ui;
 import flag.State;
 import org.junit.jupiter.api.Test;
 import quiz.curation.ScopeFilter;
-import quiz.transform.ui.DomainField;
+import domain.DomainField;
 import quiz.transform.ui.ReflectionDomain;
 import quiz.transform.ui.TransformController;
 

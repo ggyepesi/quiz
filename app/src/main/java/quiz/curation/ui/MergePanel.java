@@ -9,7 +9,7 @@ import quiz.curation.ManualCuration;
 import quiz.curation.Merge;
 import quiz.curation.Mergeable;
 import quiz.curation.Merges;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 
 import javax.swing.*;
 import java.awt.*;

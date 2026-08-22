@@ -2,7 +2,7 @@ package quiz.transform;
 
 import objectview.Viewable;
 import objectview.field.FieldAccess;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;

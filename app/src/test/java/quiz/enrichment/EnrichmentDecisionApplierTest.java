@@ -15,8 +15,8 @@ import objectview.Viewable;
 import quiz.curation.ManualCuration;
 import quiz.curation.CurationStaging;
 import quiz.curation.Corrections;
-import quiz.transform.ui.DomainField;
-import quiz.transform.ui.DomainModel;
+import domain.DomainField;
+import domain.DomainModel;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataMediaValue;
 
@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import domain.DomainSchemas;
 
 class EnrichmentDecisionApplierTest {
 
@@ -39,7 +40,7 @@ class EnrichmentDecisionApplierTest {
         DomainModel domain = new DomainModel() {
             @Override public List<String> types() { return List.of("Person"); }
             @Override public objectview.field.FieldSchema fieldSchema(String type) {
-                return quiz.transform.ui.DomainSchemas.flatSchema(List.of(
+                return DomainSchemas.flatSchema(List.of(
                         new DomainField("Person", "birthName", false, false)));
             }
             @Override public Collection<? extends Viewable> instances() { return List.of(person); }
@@ -144,7 +145,7 @@ class EnrichmentDecisionApplierTest {
         DomainModel domain = new DomainModel() {
             @Override public List<String> types() { return List.of("Person"); }
             @Override public objectview.field.FieldSchema fieldSchema(String type) {
-                return quiz.transform.ui.DomainSchemas.flatSchema(List.of(
+                return DomainSchemas.flatSchema(List.of(
                         new DomainField("Person", "population", false, false,
                                 FieldKind.ORDERED)));
             }
@@ -187,7 +188,7 @@ class EnrichmentDecisionApplierTest {
         return new DomainModel() {
             @Override public List<String> types() { return List.of("Person"); }
             @Override public objectview.field.FieldSchema fieldSchema(String type) {
-                return quiz.transform.ui.DomainSchemas.flatSchema(List.of(
+                return DomainSchemas.flatSchema(List.of(
                         new DomainField("Person", "image", false, false,
                                 FieldKind.MEDIA)));
             }

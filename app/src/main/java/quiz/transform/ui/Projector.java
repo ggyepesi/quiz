@@ -14,6 +14,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import domain.DomainField;
+import domain.DomainModel;
+import domain.DomainSchemas;
 
 /**
  * Materializes a PROJECT: for each member of {@code memberType}, a new instance of

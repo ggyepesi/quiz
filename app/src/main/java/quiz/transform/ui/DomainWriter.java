@@ -3,6 +3,7 @@ package quiz.transform.ui;
 import objectview.Viewable;
 
 import java.util.Collection;
+import domain.DomainModel;
 
 /** Persists a transform result (the current view's members) as a first-class
  *  domain, returning a human-readable confirmation. Implemented outside this

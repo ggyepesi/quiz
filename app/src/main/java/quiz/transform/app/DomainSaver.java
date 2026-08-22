@@ -2,7 +2,7 @@ package quiz.transform.app;
 
 import quiz.DatasetRegistry;
 import objectview.Viewable;
-import quiz.transform.ui.DomainModel;
+import domain.DomainModel;
 import quiz.transform.ui.DomainWriter;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;

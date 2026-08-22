@@ -17,6 +17,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import domain.DomainModel;
+import domain.DomainSchemas;
 
 /**
  * A {@link DomainModel} over hand-written {@code Viewable} domain objects (Nobel,

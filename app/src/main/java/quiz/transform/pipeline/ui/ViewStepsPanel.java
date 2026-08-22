@@ -6,7 +6,7 @@ import objectview.viewconfig.FieldRow;
 import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
-import quiz.transform.ui.DomainField;
+import domain.DomainField;
 import objectview.field.FieldKind;
 import quiz.curation.ScopeFilter;
 import quiz.transform.ui.FieldCoverageColumns;
@@ -17,6 +17,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import domain.DomainSchemas;
 
 public final class ViewStepsPanel extends JPanel {
 
@@ -298,7 +299,7 @@ public final class ViewStepsPanel extends JPanel {
             // Subclass-aware, like the coverage picker: show a subtype's OWN fields
             // (e.g. USState.admissionDate) under its heading, so Filter can target them.
             fieldPicker.setClassBranches(
-                    quiz.transform.ui.DomainSchemas.classBranches(controller.domain(), type));
+                    DomainSchemas.classBranches(controller.domain(), type));
         }
         onFieldSelectionChanged();
     }

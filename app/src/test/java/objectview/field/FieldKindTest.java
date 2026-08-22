@@ -1,7 +1,7 @@
 package objectview.field;
 
 import org.junit.jupiter.api.Test;
-import quiz.transform.ui.DomainField;
+import domain.DomainField;
 
 import java.util.List;
 

@@ -11,6 +11,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import domain.DelegatingDomainModel;
+import domain.DomainModel;
+import domain.DomainSchemas;
 
 /** Group-scoped schema projection driven exclusively by an explicit {@link TypeSpec}. */
 final class TypeSpecDomainView extends DelegatingDomainModel {
