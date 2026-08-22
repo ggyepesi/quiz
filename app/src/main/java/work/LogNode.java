@@ -134,73 +134,34 @@ public class LogNode extends ViewableAdapter {
         }
     }
 
+    private static volatile RequestLinks links = RequestLinks.NONE;
+
+    /**
+     * Installs the rules for the sources this application has. Called once at start-up;
+     * until it is, no request is browsable — the log knows how to SHOW a link and nothing
+     * about where any request could be opened.
+     */
+    public static void linksProvidedBy(RequestLinks provider) {
+        links = provider == null ? RequestLinks.NONE : provider;
+    }
+
     private void updateLink() {
         if (blank(request) || blank(queryType)) {
             link = null;
             return;
         }
-
-        String qt = queryType.toLowerCase();
-        String req = request.strip();
-
-        // An action-API request (wbgetentities, …) is an HTTP URL, not SPARQL —
-        // even when the surrounding group inherited a "sparql" type. Detect it by
-        // content so its link opens the API URL, not a WDQS page (which fails).
-        boolean apiRequest = req.contains("api.php")
-                || req.contains("wbgetentities")
-                || req.startsWith("http");
-
-        if (qt.contains("api") || apiRequest) {
-            // Correct a mislabeled type: subqueries are logged as "SPARQL" by
-            // default, but an action-API request is not SPARQL — relabel it so the
-            // display reads "API", not "SPARQL".
-            if (apiRequest && !qt.contains("api")) {
-                queryType = "API";
-            }
-            String url = firstHttpLine(request);
-            // The api.php query carries raw '|' (ids=Q1|Q2, props=labels|claims) and
-            // spaces, which java.net.URI rejects ("Illegal character") so the browser
-            // never opens. Percent-encode those so the link works.
-            link = url == null ? null : "Open request|" + sanitizeUrl(url);
-        } else if (qt.contains("dbpedia") && qt.contains("sparql")) {
-            link = "Open in DBpedia query service|https://dbpedia.org/sparql?query="
-                    + encodeQueryParameter(req);
-        } else if (qt.contains("sparql")) {
-            link = "Open in query service|https://query.wikidata.org/#"
-                    + encodeFragment(req);
-        } else {
+        RequestLinks.Resolved resolved = links.forRequest(queryType, request.strip());
+        if (resolved == null) {
             link = null;
+            return;
         }
-    }
-
-    private static String encodeFragment(String s) {
-        return URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20");
-    }
-
-    private static String encodeQueryParameter(String s) {
-        return URLEncoder.encode(s, StandardCharsets.UTF_8);
-    }
-
-    // Percent-encode the characters an api.php URL commonly carries unescaped that
-    // java.net.URI rejects, so BrowserLauncher can open it. Leaves already-valid
-    // characters (incl. already-'%'-escaped sequences) untouched.
-    private static String sanitizeUrl(String url) {
-        return url.replace(" ", "%20")
-                .replace("|", "%7C")
-                .replace("{", "%7B")
-                .replace("}", "%7D")
-                .replace("\\", "%5C")
-                .replace("^", "%5E");
-    }
-
-    private static String firstHttpLine(String text) {
-        for (String line : text.split("\n")) {
-            String t = line.strip();
-            if (t.startsWith("http://") || t.startsWith("https://")) {
-                return t;
-            }
+        // A source may report that the step was mislabelled — a sub-query logged under a
+        // default type that turns out to be something else — because only something that
+        // reads the request can tell.
+        if (!blank(resolved.correctedQueryType())) {
+            queryType = resolved.correctedQueryType();
         }
-        return null;
+        link = resolved.link();
     }
 
     LogNode queryType(String queryType) {

@@ -2,11 +2,8 @@ package wikidata.explore.generation;
 
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.model.VocabularySelection;
-import wikidata.explore.rule.RuleNode;
-import wikidata.explore.rule.RuleTreeCompiler;
-import wikidata.explore.rule.RuleTreeConfig;
-import wikidata.explore.rule.RuleTreeSerializer;
 import wikidata.explore.transform.DescriptiveVocabularyBuild;
 
 import java.nio.charset.StandardCharsets;
@@ -27,6 +24,8 @@ import java.util.Set;
  * silently erase from a wider one. None could be run.
  */
 public final class DomainSave {
+
+    private static final String SIGNATURE_VERSION = "model-v2:";
 
     private DomainSave() { }
 
@@ -51,23 +50,24 @@ public final class DomainSave {
     }
 
     /**
-     * A fingerprint of what a model would generate — the compiled rule tree, hashed. Two
-     * models sharing it produce the same instances, which is the only thing a saved snapshot
-     * has to agree with.
+     * A fingerprint of everything in the model that can affect generated instances. This is
+     * deliberately broader than the compiled Wikidata rule tree: post-extraction sources,
+     * entity-kind rules and later semantic transforms are model configuration too, although
+     * the rule compiler must omit them. Derived vocabulary VALUES are excluded through the
+     * same persistence projection used on disk, so refreshing observed values does not make
+     * the model appear to have changed.
      *
      * <p>Best effort: a model that cannot be compiled has no signature, and an empty
      * signature means no drift claim rather than a claim of drift.
      */
     public static String signature(GeneratedProjectModel model) {
         try {
-            RuleNode root = RuleTreeCompiler.compileProject(model);
-            String json = new RuleTreeSerializer().mapper()
-                    .writeValueAsString(RuleTreeConfig.of(root));
+            String json = new GeneratedProjectModelStore().toJson(persistedModel(model));
             byte[] hash = MessageDigest.getInstance("SHA-256")
                     .digest(json.getBytes(StandardCharsets.UTF_8));
             StringBuilder out = new StringBuilder();
             for (byte b : hash) out.append(String.format("%02x", b));
-            return out.toString();
+            return SIGNATURE_VERSION + out;
         } catch (Exception uncompilable) {
             return "";
         }
@@ -82,7 +82,22 @@ public final class DomainSave {
             String runSignature, GeneratedProjectModel modelToSave) {
         if (runSignature == null || runSignature.isBlank()) return false;
         String saving = signature(modelToSave);
-        return !saving.isEmpty() && !runSignature.equals(saving);
+        return signaturesDisagree(runSignature, saving);
+    }
+
+    /**
+     * Whether two comparable, current-generation fingerprints disagree. Unversioned hashes
+     * were produced by the former rule-tree-only algorithm and cannot be compared honestly
+     * with a complete-model fingerprint; they become current the next time the domain is saved.
+     */
+    public static boolean signaturesDisagree(String first, String second) {
+        return isCurrentSignature(first)
+                && isCurrentSignature(second)
+                && !first.equals(second);
+    }
+
+    private static boolean isCurrentSignature(String signature) {
+        return signature != null && signature.startsWith(SIGNATURE_VERSION);
     }
 
     /**

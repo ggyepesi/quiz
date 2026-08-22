@@ -29,6 +29,10 @@ public final class WikidataAccess implements CancellableWork {
 
     /** {@code sparql} is the WIKIDATA (default) client; bind others with {@link #with}. */
     public static WikidataAccess of(WikidataSparqlClient sparql, WikidataApiClient api) {
+        // Binding this source is exactly when its requests become browsable, so the log's
+        // link rules arrive with it. Installing at each entry point instead was one more
+        // thing to remember, and forgetting it costs a link with nothing to say why.
+        WikidataRequestLinks.install();
         Map<Datasource, WikidataSparqlClient> clients = new EnumMap<>(Datasource.class);
         if (sparql != null) {
             clients.put(Datasource.WIKIDATA, sparql);

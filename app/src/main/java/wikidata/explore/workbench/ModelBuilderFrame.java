@@ -1765,8 +1765,8 @@ public class ModelBuilderFrame extends JFrame {
             // Drift guard: warn if these instances were generated from a
             // different model version than the one we'll map them through.
             quiz.DatasetRegistry.Dataset ds = datasetForSnapshot(file);
-            if (ds != null && !ds.modelSignature().isEmpty()
-                    && !ds.modelSignature().equals(modelSignature(projectModel))) {
+            if (ds != null && wikidata.explore.generation.DomainSave.signaturesDisagree(
+                    ds.modelSignature(), modelSignature(projectModel))) {
                 JOptionPane.showMessageDialog(this,
                                               "These saved instances were generated from a DIFFERENT model\n"
                                                       + "version than the current model. Fields may not match —\n"

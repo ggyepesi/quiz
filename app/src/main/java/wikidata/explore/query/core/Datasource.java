@@ -23,4 +23,24 @@ public enum Datasource {
     public String endpoint() {
         return endpoint;
     }
+
+    /** Where a PERSON opens this query to read or re-run it. Sometimes a different service
+     *  from {@link #endpoint()} — Wikidata answers machines at one host and people at another
+     *  — and sometimes the same URL wearing its HTML form, as DBpedia's does. Either way it is
+     *  the datasource's to know, not the log's. */
+    public String browseUrl(String query) {
+        String text = query == null ? "" : query;
+        return switch (this) {
+            case WIKIDATA -> "https://query.wikidata.org/#"
+                    + java.net.URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8)
+                            .replace("+", "%20");
+            case DBPEDIA -> "https://dbpedia.org/sparql?query="
+                    + java.net.URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8);
+        };
+    }
+
+    /** How a link to {@link #browseUrl} reads. */
+    public String browseLabel() {
+        return this == WIKIDATA ? "Open in query service" : "Open in DBpedia query service";
+    }
 }

@@ -2,9 +2,12 @@ package wikidata.explore.generation;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.VocabularySelection;
 
@@ -83,12 +86,56 @@ class DomainSaveTest {
         assertFalse(DomainSave.instancesWouldBeStale(fromTheRun, movies("P840")));
     }
 
+    @Test void aPostExtractionSourceChangeChangesTheSignature() {
+        GeneratedProjectModel one = movies("P840");
+        GeneratedProjectModel edited = movies("P840");
+        GeneratedFieldModel original = one.rootClass()
+                .addField("summary", FieldType.TEXT, FieldCardinality.SINGLE);
+        original.mapping().sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+        original.mapping().propertyPid("Infobox film.plot");
+        GeneratedFieldModel changed = edited.rootClass()
+                .addField("summary", FieldType.TEXT, FieldCardinality.SINGLE);
+        changed.mapping().sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+        changed.mapping().propertyPid("Infobox film.synopsis");
+
+        assertFalse(DomainSave.signature(one).equals(DomainSave.signature(edited)),
+                "the rule tree omits both fields, but the generated values differ");
+    }
+
+    @Test void anEntityKindRuleChangeChangesTheSignature() {
+        GeneratedProjectModel one = moviesWithKind("Q5");
+        GeneratedProjectModel edited = moviesWithKind("Q95074");
+
+        assertFalse(DomainSave.signature(one).equals(DomainSave.signature(edited)),
+                "classification happens after acquisition, outside the rule tree");
+    }
+
+    @Test void refreshedDescriptiveValuesDoNotChangeTheSignature() {
+        GeneratedProjectModel one = modelWithDescriptiveVocabulary("NomineeType", "Q5");
+        GeneratedProjectModel refreshed =
+                modelWithDescriptiveVocabulary("NomineeType", "Q5", "Q11424");
+
+        assertEquals(DomainSave.signature(one), DomainSave.signature(refreshed),
+                "observed values are derived from the snapshot rather than authored config");
+    }
+
     /** Best effort: an unknown signature is not a claim that anything drifted. */
     @Test void anUnknownSignatureMakesNoClaim() {
         assertFalse(DomainSave.instancesWouldBeStale(null, movies("P840")));
         assertFalse(DomainSave.instancesWouldBeStale("", movies("P840")));
         assertFalse(DomainSave.instancesWouldBeStale("whatever", null),
                 "a model that cannot be compiled has no signature to disagree with");
+        assertFalse(DomainSave.instancesWouldBeStale("0123456789abcdef", movies("P840")),
+                "a legacy rule-tree hash is not comparable with a complete-model hash");
+    }
+
+    @Test void onlyCurrentVersionSignaturesCanClaimDisagreement() {
+        String one = DomainSave.signature(movies("P840"));
+        String edited = DomainSave.signature(movies("P495"));
+
+        assertTrue(DomainSave.signaturesDisagree(one, edited));
+        assertFalse(DomainSave.signaturesDisagree(one, one));
+        assertFalse(DomainSave.signaturesDisagree("legacy-hash", edited));
     }
 
     // ---- what a narrow run would erase ----------------------------------------------
@@ -144,6 +191,13 @@ class DomainSaveTest {
         movie.addField("location", FieldType.TEXT, FieldCardinality.SINGLE)
                 .mapping().propertyPid(locationPid);
         model.rootClass(movie);
+        return model;
+    }
+
+    private static GeneratedProjectModel moviesWithKind(String evidenceQid) {
+        GeneratedProjectModel model = movies("P840");
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new EntityKindRule("Person", List.of(evidenceQid)));
         return model;
     }
 
