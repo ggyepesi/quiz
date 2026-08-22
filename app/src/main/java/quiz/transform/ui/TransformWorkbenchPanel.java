@@ -305,27 +305,18 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                             + "curation window before starting another.");
             return;
         }
-        // A reified statement (a Nomination, a held position) is already anchored in
-        // Wikidata by its statement id, and it is not a thing with a label — so no search
-        // can find it, while its display name is borrowed from the entity the statement is
-        // ABOUT. Searching by that name would confidently link the statement to that
-        // entity, which is wrong by construction. Such members are never subjects.
-        List<Viewable> statements = members.stream()
-                .filter(member -> wikidata.WikidataIds.isStatementId(member.getIdentifier()))
-                .toList();
-        List<Viewable> untyped = members.stream()
-                .filter(member -> !wikidata.WikidataIds.isStatementId(member.getIdentifier()))
-                .filter(member -> quiz.curation.IdentityLinks.stableType(member) == null)
-                .toList();
-        List<Viewable> resolvable = members.stream()
-                .filter(member -> !wikidata.WikidataIds.isStatementId(member.getIdentifier()))
-                .filter(member -> quiz.curation.IdentityLinks.stableType(member) != null)
-                .toList();
-        if (resolvable.isEmpty()) {
+        // Who actually HAS an entity identity to resolve is one rule, stated once
+        // (#102) — a statement is anchored by its statement id and has no label of its
+        // own, an untyped instance has nothing to key a link under.
+        quiz.curation.IdentitySubjects split =
+                quiz.curation.IdentitySubjects.of(members);
+        List<Viewable> statements = split.statements();
+        List<Viewable> untyped = split.untyped();
+        List<Viewable> resolvable = split.resolvable();
+        if (split.hasNothingToResolve()) {
             JOptionPane.showMessageDialog(this,
-                    statements.size() + " statement(s) are already anchored; "
-                            + untyped.size() + " untyped instance(s) have no stable "
-                            + "identity class. There is no identity to resolve in this scope.",
+                    split.excludedSummary()
+                            + " There is no identity to resolve in this scope.",
                     "Nothing to resolve", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
