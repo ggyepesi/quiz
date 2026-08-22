@@ -2,9 +2,7 @@ package wikidata.explore.generation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import datasource.evidence.ContentDigest;
 import datasource.evidence.InfoboxParameters;
-import datasource.evidence.SourceDocument;
 import wikidata.WikidataIds;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -16,14 +14,10 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 /** Domain-scale native Infobox acquisition: one revision request per 50 articles. */
 public final class WikipediaInfoboxAcquisition {
@@ -82,15 +76,21 @@ public final class WikipediaInfoboxAcquisition {
                                     targets.get(titleToQid.get(title));
                             if (copies == null || copies.isEmpty()) return;
                             if (acquired != null) pages.incrementAndGet();
+                            // What this page SUPPLIED, counted once however many in-memory
+                            // views of the entity received it. Adding up the copies made a
+                            // reported count depend on carrier history rather than on what
+                            // was acquired.
+                            java.util.Set<String> supplied = new java.util.LinkedHashSet<>();
                             for (WikidataDynamicObject object : copies) {
                                 // One source document belongs to every in-memory view of
                                 // this entity. Keeping it on only the first QID copy made
                                 // provenance depend on registry/carrier history.
                                 object.infoboxParameters(acquired);
                                 if (acquired != null) {
-                                    values.addAndGet(fill(model, object, declarations, acquired));
+                                    supplied.addAll(fill(model, object, declarations, acquired));
                                 }
                             }
+                            values.addAndGet(supplied.size());
                         });
                         batches.incrementAndGet();
                     });
@@ -102,18 +102,18 @@ public final class WikipediaInfoboxAcquisition {
 
     /** Interpretation is a read of the acquired evidence, never of the response: a value
      *  the run keeps must be one the recorded document supports. */
-    private static int fill(GeneratedProjectModel model, WikidataDynamicObject object,
-            List<Declaration> declarations, InfoboxParameters acquired) {
-        int filled = 0;
+    private static List<String> fill(GeneratedProjectModel model,
+            WikidataDynamicObject object, List<Declaration> declarations,
+            InfoboxParameters acquired) {
+        List<String> filled = new ArrayList<>();
         for (Declaration declaration : declarations) {
             if (!applies(model, object, declaration)
                     || object.get(declaration.field().name()) != null) continue;
-            String[] key = split(source(declaration.field()).propertyPid());
-            if (key == null || !acquired.isTemplate(key[0])) continue;
-            String value = acquired.value(key[1]);
+            String value = acquired.valueOf(
+                    InfoboxParameters.Key.parse(source(declaration.field()).propertyPid()));
             if (value != null && !value.isBlank()) {
                 object.put(declaration.field().name(), value);
-                filled++;
+                filled.add(declaration.owner().className() + "." + declaration.field().name());
             }
         }
         return filled;
@@ -146,9 +146,9 @@ public final class WikipediaInfoboxAcquisition {
                     var box = wikipedia.WikipediaInfoboxClient.parseWikitext(text);
                     if (box == null) continue;
                     String title = page.path("title").asText("");
-                    parsed.put(title, new InfoboxParameters(box.template(), box.parameters(),
-                            document(title, revisions.get(0).path("revid").asText(""),
-                                    box.template(), box.parameters())));
+                    parsed.put(title, InfoboxParameters.fromEnglishWikipedia(
+                            box.template(), box.parameters(), title,
+                            revisions.get(0).path("revid").asText("")));
                 }
                 Map<String, InfoboxParameters> out = new LinkedHashMap<>();
                 for (String requested : titles) {
@@ -169,22 +169,6 @@ public final class WikipediaInfoboxAcquisition {
                         unit(titles.subList(middle, titles.size()), log, fetcher));
             }
         };
-    }
-
-    /** Digests the PARAMETERS read, not the article body: they are the evidence, and a
-     *  page whose prose changes while its infobox does not still supports the value. */
-    private static SourceDocument document(String title, String revision, String template,
-            Map<String, String> parameters) {
-        StringBuilder material = new StringBuilder(template);
-        new TreeMap<>(parameters).forEach((name, value) ->
-                material.append('\n').append(name).append('=').append(value));
-        // No revision rather than the word "unknown": a document is compared by revision
-        // AND digest, and a sentinel equal to itself would report an edited page as the
-        // same version. The digest carries the version on its own.
-        return new SourceDocument("Wikipedia (English)", title, title,
-                "https://en.wikipedia.org/wiki/" + encode(title.replace(' ', '_')),
-                revision, new ContentDigest("sha256", sha256(material.toString())),
-                Instant.now().toString());
     }
 
     private static String url(List<String> titles) {
@@ -221,7 +205,7 @@ public final class WikipediaInfoboxAcquisition {
         for (GeneratedClassModel owner : model.classes()) {
             for (GeneratedFieldModel field : owner.effectiveFields(model)) {
                 if (field != null && source(field) != null
-                        && split(source(field).propertyPid()) != null) {
+                        && InfoboxParameters.Key.parse(source(field).propertyPid()) != null) {
                     result.add(new Declaration(owner, field));
                 }
             }
@@ -256,20 +240,8 @@ public final class WikipediaInfoboxAcquisition {
         }
         return false;
     }
-    private static String[] split(String key) {
-        if (key == null) return null;
-        int dot = key.indexOf('.');
-        return dot <= 0 || dot == key.length() - 1 ? null
-                : new String[]{key.substring(0, dot).trim(), key.substring(dot + 1).trim()};
-    }
     private static String encode(String text) {
         return URLEncoder.encode(text, StandardCharsets.UTF_8).replace("+", "%20");
-    }
-    private static String sha256(String value) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception impossible) { throw new IllegalStateException(impossible); }
     }
     private record Declaration(GeneratedClassModel owner, GeneratedFieldModel field) { }
     public record Result(int pages, int values, int batches) { }

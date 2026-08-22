@@ -41,6 +41,67 @@ final class SourceDiscoveryPicker {
         return List.copyOf(result);
     }
 
+    /** Infobox identity is structured: keep Template.parameter as the durable selection
+     * key, but present the template title and parameter separately to the reader. The
+     * key is split by the grammar's owner, so the card cannot describe a different key
+     * than the acquisition and the provider will read. */
+    static List<DiscoveredValueView> infoboxRows(List<List<Object>> rows) {
+        List<DiscoveredValueView> result = new ArrayList<>();
+        for (List<Object> row : rows == null ? List.<List<Object>>of() : rows) {
+            String text = cell(row, 0);
+            datasource.evidence.InfoboxParameters.Key key =
+                    datasource.evidence.InfoboxParameters.Key.parse(text);
+            if (key == null) continue;
+            int have;
+            try { have = Integer.parseInt(cell(row, 1)); }
+            catch (NumberFormatException ignored) { have = 0; }
+            result.add(new DiscoveredValueView(text, key.parameter(), key.template(),
+                    have, cell(row, 2)));
+        }
+        return List.copyOf(result);
+    }
+
+    /** With one source article, "have = 1" and repeating that article's title on every
+     * card are invariants of the request, not properties of a candidate. Do not make the
+     * reader scan two identical fields on every result. Other discoveries retain the
+     * metadata whenever it distinguishes candidates.
+     *
+     * <p>A field every candidate leaves EMPTY is redundant for the same reason one they
+     * all fill identically is; the earlier rule kept the blank one and rendered an empty
+     * row on every card. Nothing is redundant among fewer than two candidates, though:
+     * "they all agree" is vacuous for one card, and hiding on it strips the only result
+     * of everything but its title. */
+    static java.util.Set<String> redundantMetadata(List<DiscoveredValueView> values) {
+        if (values == null || values.size() < 2) return java.util.Set.of();
+        java.util.Set<String> redundant = new java.util.LinkedHashSet<>();
+        if (values.stream().allMatch(value -> value.have() == 1)) redundant.add("have");
+        String example = values.getFirst().examples();
+        if (values.stream().allMatch(value -> example.equals(value.examples()))) {
+            redundant.add("examples");
+        }
+        return java.util.Set.copyOf(redundant);
+    }
+
+    /** The card renders its display name as a header, so the value field beneath it would
+     * say the same thing twice — except that a card whose every other field is redundant
+     * would then have an empty body. So the twin is kept ONLY as the body of last resort,
+     * and dropped as soon as anything else is left to render, or as soon as it differs
+     * from the title (an infobox card shows the parameter, the header the whole key). */
+    static java.util.Set<String> hiddenFields(List<DiscoveredValueView> values) {
+        java.util.Set<String> hidden = new java.util.LinkedHashSet<>(java.util.Set.of("value"));
+        java.util.Set<String> redundant = redundantMetadata(values);
+        hidden.addAll(redundant);
+        boolean noStructure = values == null || values.stream().allMatch(
+                value -> value.sourceStructure().isBlank());
+        if (noStructure) hidden.add("sourceStructure");
+        boolean repeatsTitle = values == null || values.stream().allMatch(
+                value -> value.discoveredValue().equals(value.value()));
+        boolean bodyWouldBeEmpty = noStructure
+                && redundant.contains("have") && redundant.contains("examples");
+        if (repeatsTitle && !bodyWouldBeEmpty) hidden.add("discoveredValue");
+        return java.util.Set.copyOf(hidden);
+    }
+
     private static String cell(List<Object> row, int at) {
         return row != null && at >= 0 && at < row.size() && row.get(at) != null
                 ? String.valueOf(row.get(at)) : "";
@@ -88,9 +149,9 @@ final class SourceDiscoveryPicker {
         JButton use = new JButton(spec.acceptVerb());
         use.setEnabled(false);
         AtomicReference<DiscoveredValueView> selected = new AtomicReference<>();
-        // The value is the card's own title; repeating it as a field says it twice.
+        // The value is the card's own title; hiddenFields decides what may repeat it.
         JComponent cards = objectview.view.SearchableView.builder(values)
-                .sample(values.getFirst()).hiddenFields(java.util.Set.of("value"))
+                .sample(values.getFirst()).hiddenFields(hiddenFields(values))
                 .collapsible(false).selectionListener(value -> {
                     DiscoveredValueView choice = value instanceof DiscoveredValueView view
                             ? view : null;

@@ -27,10 +27,15 @@ public final class WikipediaCategoryPicker {
 
     private static void run(Component parent, SwingQueryRunner runner,
             DiscoverWikipediaCategoriesQuery query, Consumer<String> selected) {
+        boolean singleArticle = query.singleArticle();
         SourceDiscoveryPicker.run(parent, runner, query,
                 new SourceDiscoveryPicker.Spec<TableQueryResult>(
                         "Observed Wikipedia categories",
-                        "Categories actually found on the selected/sample articles, "
+                        singleArticle
+                                ? "Categories actually found on the selected article. Choose "
+                                + "one, then replace the part that names the desired field "
+                                + "value with <b>&lt;value&gt;</b>."
+                                : "Categories actually found on the selected/sample articles, "
                                 + "<b>least shared first</b>: one that every article carries "
                                 + "describes the sample, not the member, so it cannot name a "
                                 + "value that varies. <b>Have</b> is how many carry it. Choose "

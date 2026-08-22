@@ -29,4 +29,22 @@ class WikipediaInfoboxClientTest {
         assertNotNull(box);
         assertEquals("2010", box.parameters().get("year"));
     }
+
+    @Test void theRequestAsksForTheRevisionTheResultRequires() throws Exception {
+        var requested = new java.util.concurrent.atomic.AtomicReference<java.net.URI>();
+        WikipediaInfoboxClient client = new WikipediaInfoboxClient(uri -> {
+            requested.set(uri);
+            return """
+                    {"parse":{"title":"Blood Diamond","revid":7,
+                    "wikitext":"{{Infobox film|country=United States}}"}}
+                    """;
+        });
+
+        var result = client.byTitle("Blood Diamond").execute(
+                new wikidata.explore.query.core.QueryContext(null, null));
+
+        assertNotNull(result);
+        assertEquals("7", result.document().revision());
+        assertTrue(requested.get().getRawQuery().contains("prop=wikitext%7Crevid"));
+    }
 }

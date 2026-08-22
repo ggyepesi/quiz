@@ -1,6 +1,7 @@
 package quiz.transform.ui;
 
 import datasource.SourceRef;
+import datasource.evidence.InfoboxParameters;
 import datasource.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentProvider;
 import quiz.enrichment.EnrichmentRequest;
@@ -30,7 +31,8 @@ final class WikipediaInfoboxEnrichmentProvider implements EnrichmentProvider {
     @Override public String name() { return "Wikipedia infobox values"; }
     @Override public boolean supports(EnrichmentRequest request) {
         return request != null && request.subject() != null
-                && WikidataIds.isQid(request.subject().id()) && split(key) != null;
+                && WikidataIds.isQid(request.subject().id())
+                && InfoboxParameters.Key.parse(key) != null;
     }
 
     @Override public Query<EnrichmentProposal> discover(EnrichmentRequest request) {
@@ -50,12 +52,11 @@ final class WikipediaInfoboxEnrichmentProvider implements EnrichmentProvider {
                 String title = entity == null ? "" : entity.sitelink("enwiki");
                 if (title == null || title.isBlank()) return empty(request);
                 var infobox = new wikipedia.WikipediaInfoboxClient().byTitle(title).execute(context);
-                String[] configured = split(key);
-                if (infobox == null || !infobox.template().equalsIgnoreCase(configured[0])) {
-                    return empty(request);
-                }
-                String lexical = infobox.value(configured[1]);
-                return proposal(request, infobox, lexical);
+                if (infobox == null) return empty(request);
+                // Whether this page's infobox is the template the key names is the key's
+                // own question, asked the same way the domain-scale acquisition asks it.
+                return proposal(request, infobox,
+                        infobox.valueOf(InfoboxParameters.Key.parse(key)));
             }
             @Override public int rowCount(EnrichmentProposal result) {
                 return result == null ? 0 : result.fields().size();
@@ -64,7 +65,7 @@ final class WikipediaInfoboxEnrichmentProvider implements EnrichmentProvider {
     }
 
     private EnrichmentProposal proposal(EnrichmentRequest request,
-            wikipedia.WikipediaInfoboxClient.Infobox infobox, String lexical) {
+            InfoboxParameters infobox, String lexical) {
         if (lexical == null || lexical.isBlank()) return empty(request);
         String identityId = "wikipedia-infobox";
         SourceRef source = new SourceRef("Wikipedia", request.subject().id(),
@@ -87,12 +88,5 @@ final class WikipediaInfoboxEnrichmentProvider implements EnrichmentProvider {
 
     private static EnrichmentProposal empty(EnrichmentRequest request) {
         return new EnrichmentProposal(request.subject(), List.of(), List.of(), List.of());
-    }
-
-    private static String[] split(String key) {
-        if (key == null) return null;
-        int dot = key.indexOf('.');
-        return dot <= 0 || dot == key.length() - 1 ? null
-                : new String[]{key.substring(0, dot).trim(), key.substring(dot + 1).trim()};
     }
 }

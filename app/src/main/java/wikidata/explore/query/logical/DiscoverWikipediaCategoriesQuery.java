@@ -36,6 +36,15 @@ public final class DiscoverWikipediaCategoriesQuery implements Query<TableQueryR
         this.sampleSize = Math.max(1, Math.min(12, sampleSize));
     }
 
+    /** How many articles this discovery will read. The seed rule lives HERE, so a
+     *  caller wording its explanation cannot describe a different sample than the one
+     *  that runs — it was recomputing the filter and would have drifted from it. */
+    public int seedCount() {
+        return qids.isEmpty() ? sampleSize : qids.size();
+    }
+
+    public boolean singleArticle() { return seedCount() == 1; }
+
     @Override public String purpose() { return "Discover Wikipedia categories"; }
     @Override public String skeleton() {
         return "selected/sample entities -> English Wikipedia sitelinks -> observed categories";

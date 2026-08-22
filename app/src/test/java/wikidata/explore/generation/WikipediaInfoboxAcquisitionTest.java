@@ -90,9 +90,9 @@ class WikipediaInfoboxAcquisitionTest {
         WikidataDynamicObject second = new WikidataDynamicObject("Q1", "Film 1 reference");
         second.type("Movie");
 
-        WikipediaInfoboxAcquisition.apply(model, List.of(first, second), GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(), uri -> response(
-                        "Film 1", 7, "{{Infobox film|country=Ghana}}"));
+        var result = WikipediaInfoboxAcquisition.apply(model, List.of(first, second),
+                GenerationLog.NOOP, new process.CancellationToken(), new SitelinkClient(),
+                uri -> response("Film 1", 7, "{{Infobox film|country=Ghana}}"));
 
         assertEquals("Ghana", first.get("country"));
         assertEquals("Ghana", second.get("country"));
@@ -100,6 +100,78 @@ class WikipediaInfoboxAcquisitionTest {
         assertNotNull(second.infoboxParameters());
         assertEquals(first.infoboxParameters().document(),
                 second.infoboxParameters().document());
+        assertEquals(1, result.pages());
+        assertEquals(1, result.values(),
+                "one page supplied one field; how many carriers received it is not a count "
+                        + "of what was acquired");
+    }
+
+    @Test void aDottedParameterNameIsReadTheWayThePickerShowedIt() throws Exception {
+        GeneratedProjectModel model = model("Infobox film.module.runtime");
+        List<WikidataDynamicObject> objects = films(1);
+
+        WikipediaInfoboxAcquisition.apply(model, objects, GenerationLog.NOOP,
+                new process.CancellationToken(), new SitelinkClient(), uri -> response(
+                        "Film 1", 7, "{{Infobox film\n| module.runtime = 143 minutes\n}}"));
+
+        assertEquals("143 minutes", objects.getFirst().get("country"),
+                "the template is the part before the FIRST dot, everywhere");
+    }
+
+    /**
+     * The two paths that can read one infobox must agree on WHICH fact they read.
+     *
+     * <p>Comparing the bulk digest against a hand-built expectation only proved the
+     * construction rule was deterministic; it re-spelled the title and URL the test was
+     * supposed to be checking, so a path passing different ones still passed. Both paths
+     * are run here over the same article instead, and compared by the identity the
+     * evidence layer actually uses.
+     */
+    @Test void bothAcquisitionPathsIdentifyTheSameInfoboxFact() throws Exception {
+        String wikitext = "lead prose the two paths need not agree about\n"
+                + "{{Infobox film\n| country = [[Sierra Leone]]\n| runtime = 143 minutes\n}}";
+        List<WikidataDynamicObject> objects = films(1);
+
+        WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,
+                new process.CancellationToken(), new SitelinkClient(),
+                uri -> response("Film 1", 7, wikitext));
+        var bulk = objects.getFirst().infoboxParameters();
+
+        var single = new wikipedia.WikipediaInfoboxClient(uri -> parseResponse("Film 1", 7,
+                wikitext)).byTitle("Film 1").execute(
+                        new wikidata.explore.query.core.QueryContext(null, null));
+
+        assertNotNull(bulk);
+        assertNotNull(single);
+        assertTrue(bulk.document().sameVersion(single.document()),
+                "one infobox read two ways is one version of one document");
+        assertEquals(single.document().url(), bulk.document().url());
+        assertEquals(single.document().contentDigest(), bulk.document().contentDigest());
+        assertEquals(single.parameters(), bulk.parameters());
+    }
+
+    @Test void proseTheTwoPathsSeeDifferentlyDoesNotSplitTheIdentity() throws Exception {
+        String infobox = "{{Infobox film\n| country = Ghana\n}}";
+        List<WikidataDynamicObject> objects = films(1);
+
+        WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,
+                new process.CancellationToken(), new SitelinkClient(),
+                uri -> response("Film 1", 7, "one lead\n" + infobox));
+
+        var single = new wikipedia.WikipediaInfoboxClient(uri -> parseResponse("Film 1", 7,
+                "a rewritten lead\n" + infobox + "\nand a new section")).byTitle("Film 1")
+                .execute(new wikidata.explore.query.core.QueryContext(null, null));
+
+        assertEquals(single.document().contentDigest(),
+                objects.getFirst().infoboxParameters().document().contentDigest(),
+                "the digest follows the parameters, so prose cannot fork the identity");
+    }
+
+    /** The single-page shape: action=parse, which answers with the whole wikitext. */
+    private static String parseResponse(String title, int revid, String wikitext) {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        return "{\"parse\":{\"title\":" + json.valueToTree(title) + ",\"revid\":" + revid
+                + ",\"wikitext\":" + json.valueToTree(wikitext) + "}}";
     }
 
     private static String digestOf(String wikitext) throws Exception {
@@ -115,12 +187,16 @@ class WikipediaInfoboxAcquisitionTest {
     }
 
     private static GeneratedProjectModel model() {
+        return model("Infobox film.country");
+    }
+
+    private static GeneratedProjectModel model(String key) {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
         var country = movie.addField("country", FieldType.TEXT, FieldCardinality.SINGLE);
         var fallback = country.ensureFallbackMapping();
         fallback.sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
-        fallback.propertyPid("Infobox film.country");
+        fallback.propertyPid(key);
         model.rootClass(movie);
         return model;
     }

@@ -2,18 +2,14 @@ package wikipedia;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import datasource.evidence.ContentDigest;
-import datasource.evidence.SourceDocument;
+import datasource.evidence.InfoboxParameters;
 import wikidata.explore.query.core.Query;
 import wikidata.explore.query.core.QueryContext;
 
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +31,7 @@ public final class WikipediaInfoboxClient {
         this.fetcher = java.util.Objects.requireNonNull(fetcher);
     }
 
-    public Query<Infobox> byTitle(String title) {
+    public Query<InfoboxParameters> byTitle(String title) {
         String requested = title == null ? "" : title.trim();
         if (requested.isBlank()) throw new IllegalArgumentException("Article title is required");
         URI uri = api(requested);
@@ -45,24 +41,25 @@ public final class WikipediaInfoboxClient {
             @Override public String queryType() { return "Wikipedia API"; }
             @Override public String description() { return "Versioned native template values"; }
             @Override public Map<String, String> parameters() { return Map.of("title", requested); }
-            @Override public Infobox execute(QueryContext context) throws Exception {
+            @Override public InfoboxParameters execute(QueryContext context) throws Exception {
                 return context.step("Read Wikipedia infobox", "Wikipedia API", skeleton(),
                         parameters(), step -> {
                             step.request(uri.toString());
-                            Infobox result = parseResponse(JSON.readTree(fetcher.fetch(uri)));
+                            InfoboxParameters result =
+                                    parseResponse(JSON.readTree(fetcher.fetch(uri)));
                             step.summary(result == null ? "No infobox"
                                     : result.template() + ": " + result.parameters().size()
                                     + " parameter(s)");
                             return result;
                         });
             }
-            @Override public int rowCount(Infobox result) {
+            @Override public int rowCount(InfoboxParameters result) {
                 return result == null ? 0 : result.parameters().size();
             }
         };
     }
 
-    static Infobox parseResponse(JsonNode root) {
+    static InfoboxParameters parseResponse(JsonNode root) {
         JsonNode parse = root.path("parse");
         String title = parse.path("title").asText("");
         String revision = parse.path("revid").asText("");
@@ -70,10 +67,8 @@ public final class WikipediaInfoboxClient {
         String text = node.isTextual() ? node.asText() : node.path("*").asText("");
         Parsed parsed = parseWikitext(text);
         if (title.isBlank() || revision.isBlank() || parsed == null) return null;
-        SourceDocument document = new SourceDocument("Wikipedia (English)", title, title,
-                pageUrl(title), revision, new ContentDigest("sha256", sha256(text)),
-                Instant.now().toString());
-        return new Infobox(document, parsed.template(), parsed.parameters());
+        return InfoboxParameters.fromEnglishWikipedia(parsed.template(), parsed.parameters(),
+                title, revision);
     }
 
     /** Balanced parsing keeps pipes and equals signs inside links/templates in the value. */
@@ -154,28 +149,19 @@ public final class WikipediaInfoboxClient {
     }
 
     private static URI api(String title) {
-        return URI.create("https://en.wikipedia.org/w/api.php?action=parse&prop=wikitext"
+        // parseResponse deliberately refuses an unversioned document. Ask for the
+        // revision in the SAME request; action=parse does not include it merely because
+        // wikitext was requested (the live Blood Diamond response exposed this gap).
+        return URI.create("https://en.wikipedia.org/w/api.php?action=parse&prop=wikitext%7Crevid"
                 + "&redirects=1&format=json&formatversion=2&page=" + encode(title));
-    }
-    private static String pageUrl(String title) {
-        return "https://en.wikipedia.org/wiki/" + encode(title.replace(' ', '_'));
     }
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
     }
-    private static String sha256(String value) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception impossible) { throw new IllegalStateException(impossible); }
-    }
-
+    /** An infobox read out of wikitext alone, before any document can vouch for it.
+     *  It becomes an {@link InfoboxParameters} the moment a version is known — which is
+     *  why it is a separate type and not a nullable-document one. */
     public record Parsed(String template, Map<String, String> parameters) {
         public Parsed { parameters = Map.copyOf(new LinkedHashMap<>(parameters)); }
-    }
-    public record Infobox(SourceDocument document, String template,
-                          Map<String, String> parameters) {
-        public Infobox { parameters = Map.copyOf(new LinkedHashMap<>(parameters)); }
-        public String value(String key) { return parameters.get(key); }
     }
 }
