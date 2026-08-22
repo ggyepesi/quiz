@@ -146,7 +146,7 @@ public final class ModelStatementReifications {
 
         List<QualifierLoadConfig.Qualifier> qualifiers =
                 new ArrayList<>();
-        String primaryListField = "";
+        List<String> listQualifiers = new ArrayList<>();
 
         for (GeneratedFieldModel field : statementClass.fields()) {
             if (!StatementFieldSemantics.isRuntimeStatementField(field)
@@ -164,15 +164,12 @@ public final class ModelStatementReifications {
                     kind,
                     multi));
 
-            if (kind == QualifierLoadConfig.Kind.ENTITY
-                    && multi
-                    && primaryListField.isEmpty()) {
-                // A multi ENTITY qualifier (the shared-award nominee list) is
-                // the canonical marker: the record that has it is the complete
-                // statement copy. It is not itself a fallback role.
-                primaryListField = field.name();
+            if (kind == QualifierLoadConfig.Kind.ENTITY && multi) {
+                listQualifiers.add(field.name());
             }
         }
+        String primaryListField = canonicalListMarker(
+                statementClass.canonical().primaryListField(), listQualifiers);
 
         List<ReifyConstruct.Role> roles =
                 fallbackRoles(statementClass, valueField);
@@ -293,7 +290,7 @@ public final class ModelStatementReifications {
                 : valueQids(statementClass, sourceClassModel, statementPid, valueField);
 
         List<QualifierLoadConfig.Qualifier> qualifiers = new ArrayList<>();
-        String primaryListField = "";
+        List<String> listQualifiers = new ArrayList<>();
 
         for (CompiledField field : statementClass.ownFields()) {
             if (!runtimeStatementField(field)
@@ -310,12 +307,12 @@ public final class ModelStatementReifications {
                     kind,
                     multi));
 
-            if (kind == QualifierLoadConfig.Kind.ENTITY
-                    && multi
-                    && primaryListField.isEmpty()) {
-                primaryListField = field.name();
+            if (kind == QualifierLoadConfig.Kind.ENTITY && multi) {
+                listQualifiers.add(field.name());
             }
         }
+        String primaryListField = canonicalListMarker(
+                statementClass.canonical().primaryListField(), listQualifiers);
 
         List<ReifyConstruct.Role> roles =
                 fallbackRoles(statementClass, valueField);
@@ -474,6 +471,29 @@ public final class ModelStatementReifications {
         }
 
         return roles;
+    }
+
+    /**
+     * Which collection field marks the CANONICAL copy of a reified statement (#92).
+     *
+     * <p>The declaration on the class wins. It has to: with two multi-valued entity
+     * qualifiers the old rule — "the first one" — answered by field order, so reordering
+     * fields silently changed which copies were kept and which were dropped as
+     * denormalized duplicates.
+     *
+     * <p>A blank declaration keeps that structural inference, because every model saved
+     * before the declaration existed depends on it, and it is right whenever there is
+     * exactly one candidate. A declaration naming a field that is not a multi-valued
+     * entity qualifier cannot mark anything, so it is ignored rather than silently
+     * disabling canonicalization; {@code GeneratedProjectModelValidator} is where a
+     * wrong name is reported.
+     */
+    static String canonicalListMarker(String declared, List<String> listQualifiers) {
+        String name = clean(declared);
+        if (!name.isEmpty() && listQualifiers.contains(name)) {
+            return name;
+        }
+        return listQualifiers.isEmpty() ? "" : listQualifiers.get(0);
     }
 
     /** Compiled fields are never name fields (the compiler drops those), so a
@@ -683,7 +703,7 @@ public final class ModelStatementReifications {
                 + " of " + load.entityType()
                 + " → " + reify.targetType()
                 + "\n value: " + load.valueField()
-                + "\n canonical nominee-list: "
+                + "\n canonical list: "
                 + (reify.canonicalizesByList()
                 ? reify.primaryListField()
                 : "—")

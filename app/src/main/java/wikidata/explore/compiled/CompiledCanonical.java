@@ -16,7 +16,8 @@ public record CompiledCanonical(
         CanonicalSpec.DisplayNameMode displayNameMode,
         String displayNameField,
         String displayNameTemplate,
-        String labelLanguage) {
+        String labelLanguage,
+        String primaryListField) {
 
     public CompiledCanonical {
         kind = kind == null ? CanonicalSpec.Kind.WIKIDATA_ENTITY : kind;
@@ -30,6 +31,16 @@ public record CompiledCanonical(
         if (labelLanguage.isBlank()) {
             labelLanguage = "en";
         }
+        primaryListField = clean(primaryListField);
+    }
+
+    /** Back-compat: no declared canonical list marker (the inference decides). */
+    public CompiledCanonical(CanonicalSpec.Kind kind, List<String> keyFields,
+                             CanonicalSpec.DisplayNameMode displayNameMode,
+                             String displayNameField, String displayNameTemplate,
+                             String labelLanguage) {
+        this(kind, keyFields, displayNameMode, displayNameField,
+                displayNameTemplate, labelLanguage, "");
     }
 
     public boolean entityIdentity() {
@@ -48,7 +59,8 @@ public record CompiledCanonical(
                 .displayNameMode(displayNameMode)
                 .displayNameField(displayNameField)
                 .displayNameTemplate(displayNameTemplate)
-                .labelLanguage(labelLanguage);
+                .labelLanguage(labelLanguage)
+                .primaryListField(primaryListField);
         spec.keyFields().addAll(keyFields);
         return spec;
     }
@@ -61,7 +73,8 @@ public record CompiledCanonical(
                 source.displayNameMode(),
                 source.displayNameField(),
                 source.displayNameTemplate(),
-                source.labelLanguage());
+                source.labelLanguage(),
+                source.primaryListField());
     }
 
     private static String clean(String value) {

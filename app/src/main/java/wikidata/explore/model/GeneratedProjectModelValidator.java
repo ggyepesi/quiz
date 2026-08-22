@@ -517,6 +517,28 @@ public final class GeneratedProjectModelValidator {
             }
         }
 
+        // #92: a declared canonical-list marker that cannot mark anything would fall
+        // back to the inference it was written to override — silently, and only for
+        // this class. Say so at validation instead.
+        String primaryList = clean(canonical.primaryListField());
+        if (!primaryList.isBlank()) {
+            GeneratedFieldModel field = findField(clazz, primaryList);
+            if (field == null) {
+                problems.add(Problem.error(
+                        clazz.className(),
+                        "Canonical list field '" + primaryList + "' does not exist."));
+            } else if (!StatementFieldSemantics.isRuntimeStatementField(field)
+                    || !field.mapping().isQualifier()
+                    || field.type() != FieldType.ENTITY
+                    || field.cardinality() == null
+                    || !field.cardinality().isCollection()) {
+                problems.add(Problem.error(
+                        path(clazz, field),
+                        "Only a multi-valued entity qualifier can mark the canonical "
+                                + "copy of a statement."));
+            }
+        }
+
         if (canonical.displayNameMode()
                 == CanonicalSpec.DisplayNameMode.FIELD) {
             String displayField =

@@ -43,6 +43,9 @@ public class StatementSourcePanel extends JPanel {
     private Supplier<List<String>> sourceClassCandidates = List::of;
 
     private final JLabel titleLabel = new JLabel("Statement class");
+    /** The "no declaration — infer it" choice, shown instead of a blank row. */
+    private static final String INFER_PRIMARY_LIST = "(infer)";
+
     private final JTextField classNameField = new JTextField(18);
     private final JComboBox<String> reifyFromBox = new JComboBox<>();
     private final JTextField statementPropField =
@@ -55,6 +58,10 @@ public class StatementSourcePanel extends JPanel {
             new LinkedHashMap<>();
 
     private final JComboBox<String> displayNameFieldBox =
+            new JComboBox<>();
+    /** #92: which collection field marks the canonical copy of a shared statement.
+     *  "" = infer structurally (right when there is exactly one candidate). */
+    private final JComboBox<String> primaryListFieldBox =
             new JComboBox<>();
 
     private final JLabel identityValue = new JLabel(" ");
@@ -219,6 +226,8 @@ public class StatementSourcePanel extends JPanel {
 
         displayNameFieldBox.removeAllItems();
         displayNameFieldBox.addItem("");
+        primaryListFieldBox.removeAllItems();
+        primaryListFieldBox.addItem(INFER_PRIMARY_LIST);
 
         if (clazz == null) {
             keyFieldsPanel.revalidate();
@@ -254,6 +263,22 @@ public class StatementSourcePanel extends JPanel {
             displayNameFieldBox.addItem(field.name());
         }
 
+        // The canonical-list candidates are the multi-valued ENTITY qualifiers — the
+        // shared-award recipient list. Listing them is what makes a second one visible
+        // instead of being silently outranked by field order.
+        for (GeneratedFieldModel field : clazz.fields()) {
+            if (StatementFieldSemantics.isRuntimeStatementField(field)
+                    && field.mapping().isQualifier()
+                    && field.type() == wikidata.explore.model.FieldType.ENTITY
+                    && field.cardinality() != null
+                    && field.cardinality().isCollection()) {
+                primaryListFieldBox.addItem(field.name());
+            }
+        }
+        primaryListFieldBox.setSelectedItem(
+                canonical.primaryListField().isBlank()
+                        ? INFER_PRIMARY_LIST : canonical.primaryListField());
+
         if (canonical.displayNameMode()
                 == CanonicalSpec.DisplayNameMode.FIELD) {
             displayNameFieldBox.setSelectedItem(
@@ -281,6 +306,10 @@ public class StatementSourcePanel extends JPanel {
 
     private void applyCanonicalControls() {
         CanonicalSpec canonical = clazz.canonical();
+
+        String primaryList = selectedText(primaryListFieldBox);
+        canonical.primaryListField(
+                INFER_PRIMARY_LIST.equals(primaryList) ? "" : primaryList);
 
         canonical.kind(CanonicalSpec.Kind.DERIVED);
         canonical.keyFields().clear();
@@ -529,6 +558,18 @@ public class StatementSourcePanel extends JPanel {
             "Display-name field:",
             displayNameFieldBox);
 
+        primaryListFieldBox.setToolTipText("<html>Which multi-valued entity qualifier "
+                + "marks the CANONICAL copy of a shared statement (#92).<br>"
+                + "Wikidata records a shared award on every recipient, so the same "
+                + "nomination arrives once per endpoint.<br>The copy carrying the full "
+                + "recipient list is the complete one; the others are denormalized "
+                + "duplicates and are dropped.<br><b>" + INFER_PRIMARY_LIST + "</b> takes "
+                + "the first such qualifier — correct with one candidate, decided by "
+                + "field order with two.</html>");
+        GridBagUtils.labeledRow(canonical, cc, 2,
+            "Canonical list:",
+            primaryListFieldBox);
+
         JButton rederive =
                 new JButton("Re-derive identity");
         rederive.setToolTipText(
@@ -537,7 +578,7 @@ public class StatementSourcePanel extends JPanel {
         rederive.addActionListener(
                 event -> rederiveIdentity());
 
-        GridBagUtils.wideRow(canonical, 2, rederive);
+        GridBagUtils.wideRow(canonical, 3, rederive);
         GridBagUtils.wideRow(form, row++, canonical);
 
         JPanel buttons =

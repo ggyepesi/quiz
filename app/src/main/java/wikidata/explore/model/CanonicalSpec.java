@@ -40,6 +40,10 @@ public class CanonicalSpec {
     private String displayNameTemplate = "";    // DisplayNameMode.TEMPLATE
     private String labelLanguage = "en";        // DisplayNameMode.LABEL
 
+    // Which collection field marks the CANONICAL copy of a reified statement (#92).
+    // Blank => fall back to structural inference; see primaryListField().
+    private String primaryListField = "";
+
     public CanonicalSpec() {}
 
     public Kind kind() { return kind; }
@@ -54,6 +58,27 @@ public class CanonicalSpec {
 
     /** The natural-key fields for a DERIVED class (mutable). */
     public List<String> keyFields() { return keyFields; }
+
+    /**
+     * Which collection field marks the canonical copy of a reified statement (#92).
+     *
+     * <p>Wikidata records a shared award on every recipient, so the same nomination
+     * arrives once per endpoint. The copy that carries the full recipient LIST is the
+     * complete one; the copies that carry only an inverse reference are denormalized
+     * duplicates and are dropped. Which field that is used to be inferred — "the first
+     * multi-valued entity qualifier" — so a class with two such qualifiers had the
+     * answer decided by field order, silently. It belongs here, next to
+     * {@link #keyFields()}: both are how the class decides which record is the real one.
+     *
+     * <p>Blank keeps the structural inference, which is what every model saved before
+     * this declaration existed relies on.
+     */
+    public String primaryListField() { return primaryListField; }
+
+    public CanonicalSpec primaryListField(String field) {
+        this.primaryListField = field == null ? "" : field.trim();
+        return this;
+    }
 
     public DisplayNameMode displayNameMode() { return displayNameMode; }
 
