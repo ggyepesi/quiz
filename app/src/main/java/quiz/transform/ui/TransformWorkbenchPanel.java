@@ -969,10 +969,26 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JOptionPane.showMessageDialog(this, "Select a field first.");
             return;
         }
+        // Bucketing by VALUE produces no bucket at all for a member whose field is
+        // empty, so the records an EXPECTED field reports as missing stay invisible.
+        // Present/missing is how that count becomes a set you can select (#96).
+        Object[] choices = {"One bucket per value", "Present / missing"};
+        int choice = JOptionPane.showOptionDialog(this,
+                "How should '" + field.path() + "' bucket its members?",
+                "Facet group", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+        if (choice < 0) return;
+        quiz.transform.FacetGroup.Bucketing bucketing = choice == 1
+                ? quiz.transform.FacetGroup.Bucketing.PRESENCE
+                : quiz.transform.FacetGroup.Bucketing.VALUE;
+        String suggested = (bucketing
+                == quiz.transform.FacetGroup.Bucketing.PRESENCE ? "Has " : "By ")
+                + field.path();
         String name = JOptionPane.showInputDialog(this,
-                "Name the new facet group:", "By " + field.path());
+                "Name the new facet group:", suggested);
         if (name == null || name.isBlank()) return;
-        controller.addFacetGroup(type, selectedOrRoot(root), name.trim(), field);
+        controller.addFacetGroup(type, selectedOrRoot(root), name.trim(),
+                field, bucketing);
         render();
     }
 

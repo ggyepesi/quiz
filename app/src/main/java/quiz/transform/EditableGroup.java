@@ -105,8 +105,11 @@ public class EditableGroup extends ViewableGroupAdapter {
         String name = storedName.isBlank() ? source.getDisplayName() : storedName;
         EditableGroup copy;
         if ("facet".equals(producer)) {
+            String bucketing = text(fields.read("facetBucketing"));
             copy = new FacetGroup(name, text(fields.read("memberType")),
-                    text(fields.read("facetField")));
+                    text(fields.read("facetField")),
+                    bucketing.isBlank() ? FacetGroup.Bucketing.VALUE
+                            : FacetGroup.Bucketing.valueOf(bucketing));
         } else if ("filter".equals(producer)) {
             String memberType = text(fields.read("memberType"));
             String path = text(fields.read("filterField"));

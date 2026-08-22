@@ -22,14 +22,37 @@ import java.util.Map;
  */
 public final class FacetGroup extends EditableGroup implements ProducedGroup {
 
+    /**
+     * How the facet buckets its members.
+     *
+     * <p>{@link #VALUE} makes one bucket per distinct value — and produces NO bucket for
+     * a member whose field is empty, which is exactly what hides an expectation's
+     * coverage gap. {@link #PRESENCE} makes two, present and missing, so the N records
+     * an EXPECTED field reported as missing become a set you can select and curate
+     * rather than a number in the run log (#96).
+     */
+    public enum Bucketing { VALUE, PRESENCE }
+
     private final String memberType;
     private final String field;
+    private final Bucketing bucketing;
 
     public FacetGroup(String label, String memberType, String field) {
+        this(label, memberType, field, Bucketing.VALUE);
+    }
+
+    public FacetGroup(String label, String memberType, String field,
+                      Bucketing bucketing) {
         super(label);
         this.memberType = memberType;
         this.field = field;
+        this.bucketing = bucketing == null ? Bucketing.VALUE : bucketing;
         role(Role.UNIVERSE);
+    }
+
+    /** Whether this group buckets by value or by present/missing. */
+    public Bucketing bucketing() {
+        return bucketing;
     }
 
     /** The type (typeName) whose instances this group scopes/reproduces from — remembered
@@ -45,16 +68,19 @@ public final class FacetGroup extends EditableGroup implements ProducedGroup {
     }
 
     @Override public String getDisplayName() {
-        return name() + "  [facet: " + field + "]";
+        return name() + "  [facet: " + field
+                + (bucketing == Bucketing.PRESENCE ? " present/missing" : "") + "]";
     }
 
     @Override public String ruleDescription() {
-        return "Facet by " + field;
+        return bucketing == Bucketing.PRESENCE
+                ? "Facet by whether " + field + " is present"
+                : "Facet by " + field;
     }
 
     @Override protected Map<String, Object> ruleFields() {
         return Map.of("producer", "facet", "memberType", memberType,
-                "facetField", field);
+                "facetField", field, "facetBucketing", bucketing.name());
     }
 
     /** Rebuild children + members by partitioning {@code parentMembers} by {@link #field}
@@ -63,7 +89,9 @@ public final class FacetGroup extends EditableGroup implements ProducedGroup {
         clearChildren();
         replaceMembers(java.util.List.of());
         setRole(Role.UNIVERSE);
-        Facet<Viewable> facet = Facet.field(field);
+        Facet<Viewable> facet = bucketing == Bucketing.PRESENCE
+                ? Facet.presence(field, field)
+                : Facet.field(field);
         EditableGroup dimension = new EditableGroup(facet.label());
         dimension.setRole(Role.FACET);
         addGroup(dimension);

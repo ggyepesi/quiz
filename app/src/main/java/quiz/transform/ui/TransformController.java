@@ -173,9 +173,17 @@ public final class TransformController {
     public quiz.transform.FacetGroup addFacetGroup(
             String type, quiz.transform.EditableGroup parent,
             String name, DomainField field) {
+        return addFacetGroup(type, parent, name, field,
+                quiz.transform.FacetGroup.Bucketing.VALUE);
+    }
+
+    public quiz.transform.FacetGroup addFacetGroup(
+            String type, quiz.transform.EditableGroup parent,
+            String name, DomainField field,
+            quiz.transform.FacetGroup.Bucketing bucketing) {
         if (parent == null || field == null) return null;
         quiz.transform.FacetGroup group = new quiz.transform.FacetGroup(
-                name, type, field.field());
+                name, type, field.field(), bucketing);
         group.reproduce(parent.getMembers());
         parent.addGroup(group);
         return group;

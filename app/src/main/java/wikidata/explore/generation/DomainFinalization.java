@@ -11,7 +11,18 @@ import java.util.List;
 
 /** Shared post-convergence stages for Generate, Enrich and Remap. */
 public final class DomainFinalization {
-    public record Result(int dead, int disambiguation, int orphans, int requiredDropped) { }
+    public record Result(int dead, int disambiguation, int orphans, int requiredDropped,
+                         List<wikidata.explore.transform.FieldExpectations.FieldCoverage>
+                                 coverage) {
+        public Result {
+            coverage = List.copyOf(coverage == null ? List.of() : coverage);
+        }
+
+        /** Back-compat: a result with no coverage report. */
+        public Result(int dead, int disambiguation, int orphans, int requiredDropped) {
+            this(dead, disambiguation, orphans, requiredDropped, List.of());
+        }
+    }
 
     private DomainFinalization() { }
 
@@ -34,6 +45,10 @@ public final class DomainFinalization {
             WikidataApiClient api,
             GenerationLog log) throws Exception {
         int[] counts = new int[4];
+        // What EXPECTED found is the point of declaring it, so it leaves this stage as
+        // a value rather than only a log line (#96).
+        List<wikidata.explore.transform.FieldExpectations.FieldCoverage> coverage =
+                new java.util.ArrayList<>();
         List<GenerationStage> stages = List.of(
                 stage("canonicalize", "Canonicalize final names",
                         () -> wikidata.explore.transform.Canonicalization.apply(
@@ -55,9 +70,12 @@ public final class DomainFinalization {
                     counts[2] = orphans.size();
                     pool.removeIf(orphans::contains);
                 }),
-                stage("expectations", "Apply field expectations", () -> counts[3] =
-                        wikidata.explore.transform.FieldExpectations.apply(
-                                compiled, pool, log).dropped().size()),
+                stage("expectations", "Apply field expectations", () -> {
+                    var expectations = wikidata.explore.transform.FieldExpectations.apply(
+                            compiled, pool, log);
+                    counts[3] = expectations.dropped().size();
+                    coverage.addAll(expectations.coverage());
+                }),
                 stage("vocabularies", "Build descriptive vocabularies",
                         () -> wikidata.explore.transform.DescriptiveVocabularyBuild.apply(
                                 model, vocabularyEvidence == null ? pool
@@ -70,7 +88,7 @@ public final class DomainFinalization {
                     }
                 }));
         for (GenerationStage stage : stages) stage.execute();
-        return new Result(counts[0], counts[1], counts[2], counts[3]);
+        return new Result(counts[0], counts[1], counts[2], counts[3], coverage);
     }
 
     private static GenerationStage stage(String id, String title, Checked action) {
