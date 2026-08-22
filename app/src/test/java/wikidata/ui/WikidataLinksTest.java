@@ -1,4 +1,4 @@
-package workbench;
+package wikidata.ui;
 
 import org.junit.jupiter.api.Test;
 

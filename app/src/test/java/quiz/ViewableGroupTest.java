@@ -4,6 +4,7 @@ import objectview.ViewableAdapter;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import quiz.group.ViewableGroup;
 
 class ViewableGroupTest {
 

@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.*;
+import quiz.group.ViewableGroup;
 
 class QuizGenerationTest {
 

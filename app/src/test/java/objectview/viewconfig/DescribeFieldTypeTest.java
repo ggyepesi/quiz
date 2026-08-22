@@ -51,8 +51,8 @@ class DescribeFieldTypeTest {
     // the real bound types, not show bare G / T.
     @Test void inheritedGenericFieldsResolveTypeVariables() {
         assertEquals("Map<String, ViewableGroup>",
-                labelOn(quiz.ViewableGroup.class, "children"));
+                labelOn(quiz.group.ViewableGroup.class, "children"));
         assertEquals("Map<String, Viewable>",
-                labelOn(quiz.ViewableGroup.class, "members"));
+                labelOn(quiz.group.ViewableGroup.class, "members"));
     }
 }

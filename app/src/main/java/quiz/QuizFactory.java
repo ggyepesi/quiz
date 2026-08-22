@@ -32,6 +32,7 @@ import java.util.prefs.Preferences;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
+import quiz.group.ViewableGroup;
 
 public class QuizFactory {
 

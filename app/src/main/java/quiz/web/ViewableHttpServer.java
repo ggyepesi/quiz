@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import objectview.media.ImageRef;
 import objectview.Viewable;
 import objectview.ViewableAdapter;

@@ -14,6 +14,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import quiz.group.ViewableGroup;
 
 public class QuizSixDegrees extends Quiz {
 

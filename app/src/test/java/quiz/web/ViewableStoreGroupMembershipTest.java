@@ -1,7 +1,7 @@
 package quiz.web;
 
 import org.junit.jupiter.api.Test;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import quiz.transform.DynamicViewable;
 
 import java.util.Collection;

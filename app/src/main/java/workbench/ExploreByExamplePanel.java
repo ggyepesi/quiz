@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import wikidata.ui.WikidataLinks;
 
 /**
  * "Explore by example": name a thing (e.g. "Labours of Hercules", "Argonauts"),

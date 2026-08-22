@@ -16,7 +16,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import workbench.WikidataLinks;
+import wikidata.ui.WikidataLinks;
 
 /**
  * Compact ModelBuilder editor for evidence-QID to modeled-kind mappings.

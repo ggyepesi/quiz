@@ -5,7 +5,7 @@ import objectview.ViewableAdapter;
 import objectview.annotations.Reference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import quiz.transform.app.ViewableToWdo;
 import quiz.transform.ui.ReflectionDomain;
 import wikidata.explore.extract.WikidataDynamicObject;

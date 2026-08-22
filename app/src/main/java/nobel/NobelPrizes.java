@@ -15,7 +15,7 @@ import java.util.TreeSet;
 
 import aux.ResourceFinder;
 import objectview.viewconfig.DomainViews;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import objectview.media.ImagePane;
 import objectview.Viewable;
 

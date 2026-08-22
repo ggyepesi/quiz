@@ -11,7 +11,7 @@ import java.util.TreeSet;
 import language.Language;
 import objectview.annotations.Hidden;
 import objectview.annotations.Reference;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import objectview.media.ImagePane;
 import quiz.source.ManualEntity;
 

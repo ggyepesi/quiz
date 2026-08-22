@@ -1,6 +1,6 @@
 package language;
 
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

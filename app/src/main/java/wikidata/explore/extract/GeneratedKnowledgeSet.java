@@ -6,7 +6,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import objectview.viewconfig.DomainViews;
 import objectview.Viewable;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 
 import java.io.File;
 import java.util.LinkedHashMap;

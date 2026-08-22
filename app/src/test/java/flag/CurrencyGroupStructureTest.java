@@ -1,7 +1,7 @@
 package flag;
 
 import org.junit.jupiter.api.Test;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 
 import java.io.BufferedReader;
 import java.io.StringReader;

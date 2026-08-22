@@ -1,5 +1,7 @@
 package wikidata.explore.generation;
 
+import wikidata.api.FactDemand;
+import wikidata.api.FactDemandPlan;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.transform.DisambiguationPrune;
 import wikidata.explore.transform.ModelStatementReifications;
@@ -8,16 +10,19 @@ import wikidata.explore.transform.ReferentFieldLoad;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Compiles the prospective fact needs that can be known before discovery. */
+/**
+ * Compiles the prospective fact needs that can be known before discovery.
+ *
+ * <p>Only the compiling lives here, because only the compiling needs to know the transform
+ * steps. What it produces is a {@link FactDemandPlan}, which those same steps are handed —
+ * and which names nothing in this package, so the two stages no longer depend on each other.
+ */
 public final class GenerationFactDemandPlan {
-    private final List<FactDemand> demands;
 
-    private GenerationFactDemandPlan(List<FactDemand> demands) {
-        this.demands = List.copyOf(demands);
-    }
+    private GenerationFactDemandPlan() { }
 
-    public static GenerationFactDemandPlan compile(GeneratedProjectModel model) {
-        if (model == null) return new GenerationFactDemandPlan(List.of());
+    public static FactDemandPlan compile(GeneratedProjectModel model) {
+        if (model == null) return FactDemandPlan.empty();
         List<FactDemand> planned = new ArrayList<>();
         planned.addAll(DisambiguationPrune.factDemands(model));
         planned.addAll(ReferentFieldLoad.factDemands(model));
@@ -39,17 +44,6 @@ public final class GenerationFactDemandPlan {
                     List.of(FactDemand.EntityMetadata.ALIASES),
                     "carry alternate names on any entity response"));
         }
-        return new GenerationFactDemandPlan(planned);
-    }
-
-    public List<FactDemand> forClass(String className) {
-        if (className == null) return List.of();
-        return demands.stream()
-                .filter(d -> className.equals(d.targetClass()))
-                .toList();
-    }
-
-    public List<FactDemand> all() {
-        return demands;
+        return new FactDemandPlan(planned);
     }
 }

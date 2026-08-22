@@ -13,6 +13,7 @@ import java.awt.event.MouseListener;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
+import quiz.group.ViewableGroup;
 
 /**
  * Base quiz class — manages shared indexing, exhaustion counters, and UI utilities.

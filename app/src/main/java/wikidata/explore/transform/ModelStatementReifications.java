@@ -948,7 +948,7 @@ public final class ModelStatementReifications {
             GenerationLog log,
             wikidata.api.WikidataApiClient entityApi,
             boolean deferLabels,
-            wikidata.explore.generation.GenerationFactDemandPlan demandPlan) {
+            wikidata.api.FactDemandPlan demandPlan) {
         if (client == null) return new AcquisitionReport(List.of());
         QualifierLoader loader = new QualifierLoader().api(entityApi)
                 .deferLabels(deferLabels);

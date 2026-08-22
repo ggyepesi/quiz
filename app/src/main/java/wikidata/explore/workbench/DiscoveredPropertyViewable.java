@@ -7,7 +7,7 @@ import objectview.media.MediaValue;
 import wikidata.explore.CommonsMedia;
 import wikidata.explore.extract.WikidataMediaValue;
 import wikidata.explore.query.result.DiscoveredProperty;
-import workbench.WikidataLinks;
+import wikidata.ui.WikidataLinks;
 
 /**
  * One discovered property, as a Viewable.

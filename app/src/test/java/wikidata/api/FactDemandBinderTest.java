@@ -1,4 +1,4 @@
-package wikidata.explore.generation;
+package wikidata.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

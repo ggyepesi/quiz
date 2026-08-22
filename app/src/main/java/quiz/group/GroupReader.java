@@ -1,4 +1,4 @@
-package quiz;
+package quiz.group;
 
 import java.util.ArrayList;
 import java.util.List;

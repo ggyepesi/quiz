@@ -2,6 +2,7 @@ package wikidata.explore.transform;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.ProjectModelCompiler;
+import wikidata.api.FactDemandPlan;
 import wikidata.explore.generation.GenerationFactDemandPlan;
 import wikidata.explore.generation.GenerateDomainPipeline;
 import wikidata.explore.model.GeneratedProjectModelStore;

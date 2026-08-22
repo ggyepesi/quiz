@@ -16,8 +16,8 @@ import language.CountryLanguagesReader;
 import language.Language;
 import language.Languages;
 import objectview.viewconfig.DomainViews;
-import quiz.GroupReader;
-import quiz.ViewableGroup;
+import quiz.group.GroupReader;
+import quiz.group.ViewableGroup;
 import objectview.Viewable;
 
 import objectview.media.ImagePane;

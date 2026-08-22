@@ -8,7 +8,7 @@ import objectview.viewconfig.ConfigFieldRowSource;
 import objectview.viewconfig.FieldRowContext;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.DomainViews;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import objectview.ViewableAdapter;
 
 import java.util.List;

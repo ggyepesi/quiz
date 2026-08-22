@@ -14,6 +14,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import quiz.group.ViewableGroup;
 
 /** Side‑by‑side pairing quiz with exhaustion awareness. */
 public class QuizPairs extends Quiz {

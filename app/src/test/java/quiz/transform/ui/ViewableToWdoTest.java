@@ -10,7 +10,7 @@ import objectview.render.RenderContext;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import objectview.ViewableAdapter;
 import quiz.transform.app.SnapshotDomain;
 import quiz.transform.app.ViewableToWdo;

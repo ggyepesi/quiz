@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import wikidata.explore.query.core.WikidataAccess;
+import wikidata.api.FactDemandPlan;
 
 /**
  * Generates EVERY generatable class in the domain as its own root, pooling all
@@ -119,7 +120,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     RuleNode rootPlan = null;
                     int classesRun = 0;
                     int childQueryFailures = 0;
-                    wikidata.explore.generation.GenerationFactDemandPlan factDemandPlan =
+                    FactDemandPlan factDemandPlan =
                             wikidata.explore.generation.GenerationFactDemandPlan.compile(project);
 
                     for (GeneratedClassModel cls : project.classes()) {

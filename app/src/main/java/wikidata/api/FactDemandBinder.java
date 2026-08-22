@@ -1,7 +1,6 @@
-package wikidata.explore.generation;
+package wikidata.api;
 
 import wikidata.WikidataIds;
-import wikidata.api.WikidataFactStore;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;

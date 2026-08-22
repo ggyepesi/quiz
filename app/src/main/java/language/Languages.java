@@ -2,7 +2,7 @@ package language;
 
 import aux.Constants;
 import objectview.viewconfig.DomainViews;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 
 
 import java.io.File;

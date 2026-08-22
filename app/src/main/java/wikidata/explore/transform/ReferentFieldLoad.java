@@ -11,8 +11,8 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
-import wikidata.explore.generation.FactDemand;
-import wikidata.explore.generation.FactDemandBinder;
+import wikidata.api.FactDemand;
+import wikidata.api.FactDemandBinder;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

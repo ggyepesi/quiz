@@ -6,7 +6,7 @@ import wikidata.WikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.RuleDirection;
-import wikidata.explore.generation.FactDemand;
+import wikidata.api.FactDemand;
 import wikidata.explore.rule.RuleIncludedField;
 import wikidata.explore.rule.RuleNode;
 

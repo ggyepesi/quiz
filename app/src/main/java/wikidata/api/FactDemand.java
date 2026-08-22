@@ -1,4 +1,4 @@
-package wikidata.explore.generation;
+package wikidata.api;
 
 import wikidata.WikidataIds;
 

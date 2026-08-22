@@ -6,8 +6,8 @@ import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.generation.FactDemand;
-import wikidata.explore.generation.FactDemandBinder;
+import wikidata.api.FactDemand;
+import wikidata.api.FactDemandBinder;
 
 import java.util.ArrayList;
 import java.util.Collection;

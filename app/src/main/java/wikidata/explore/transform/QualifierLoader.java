@@ -7,8 +7,8 @@ import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.generation.FactDemand;
-import wikidata.explore.generation.FactDemandBinder;
+import wikidata.api.FactDemand;
+import wikidata.api.FactDemandBinder;
 
 import java.util.ArrayList;
 import java.util.Collection;

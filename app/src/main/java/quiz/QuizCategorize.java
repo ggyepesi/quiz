@@ -11,6 +11,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
+import quiz.group.ViewableGroup;
 
 public class QuizCategorize extends Quiz {
     private static final String ASSIGNED_CATEGORY_LABEL = "quiz.categorize.assignedCategoryLabel";

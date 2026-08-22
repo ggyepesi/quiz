@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
+import wikidata.api.FactDemand;
 
 /**
  * The generation pipeline as separately callable stages:

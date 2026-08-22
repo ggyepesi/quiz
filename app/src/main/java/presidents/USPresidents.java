@@ -17,7 +17,7 @@ import org.jsoup.select.Elements;
 
 import objectview.utils.swing.CachedImage;
 import aux.FlexibleDate;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import objectview.render.GroupView;
 import objectview.media.ImagePane;
 import objectview.Viewable;

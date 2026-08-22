@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.generation.FactDemand;
+import wikidata.api.FactDemand;
 
 import java.util.ArrayList;
 import java.util.List;

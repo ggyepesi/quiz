@@ -13,7 +13,7 @@ import aux.UrlLineProcessor;
 import aux.UrlReader;
 import objectview.viewconfig.DomainViews;
 import objectview.facet.Facet;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import objectview.media.ImagePane;
 import objectview.Viewable;
 

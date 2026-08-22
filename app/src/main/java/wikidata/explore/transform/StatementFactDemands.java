@@ -3,8 +3,8 @@ package wikidata.explore.transform;
 import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledField;
 import wikidata.explore.compiled.CompiledProjectModel;
-import wikidata.explore.generation.FactDemand;
-import wikidata.explore.generation.GenerationFactDemandPlan;
+import wikidata.api.FactDemand;
+import wikidata.api.FactDemandPlan;
 import wikidata.explore.model.FieldType;
 
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public record StatementFactDemands(
     public static StatementFactDemands compile(
             CompiledProjectModel project,
             ModelStatementReifications.Reification recipe,
-            GenerationFactDemandPlan demands) {
+            FactDemandPlan demands) {
         if (project == null || recipe == null || demands == null) return EMPTY;
         CompiledClass statementClass = project.findClass(recipe.load().statementType())
                 .orElse(null);

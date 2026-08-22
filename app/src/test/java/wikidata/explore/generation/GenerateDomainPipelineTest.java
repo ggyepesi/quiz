@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import wikidata.api.FactDemandPlan;
 
 class GenerateDomainPipelineTest {
 
@@ -36,7 +37,7 @@ class GenerateDomainPipelineTest {
         String construction = details(pipeline, GenerateDomainPipeline.CONSTRUCT);
         assertTrue(construction.contains("promote __Nomination records"), construction);
         assertTrue(construction.contains("value → category"), construction);
-        GenerationFactDemandPlan demands = GenerationFactDemandPlan.compile(model);
+        FactDemandPlan demands = GenerationFactDemandPlan.compile(model);
         assertTrue(demands.all().stream().anyMatch(d ->
                         d.consumer().equals("statement acquisition")
                                 && d.propertyPids().contains("P1411")),

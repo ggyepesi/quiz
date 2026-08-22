@@ -1,4 +1,4 @@
-package quiz;
+package quiz.group;
 
 import objectview.Viewable;
 import objectview.group.DefaultViewableGroup;

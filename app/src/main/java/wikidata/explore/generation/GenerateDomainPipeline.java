@@ -10,6 +10,8 @@ import wikidata.explore.model.MembershipPattern;
 
 import java.util.ArrayList;
 import java.util.List;
+import wikidata.api.FactDemandPlan;
+import wikidata.api.FactDemand;
 
 /** The executable Generate Domain phases and their model-derived explanation. */
 public final class GenerateDomainPipeline {
@@ -106,7 +108,7 @@ public final class GenerateDomainPipeline {
 
     private static List<String> statementAcquisitionDetails(GeneratedProjectModel model) {
         List<String> out = new ArrayList<>();
-        GenerationFactDemandPlan demandPlan = GenerationFactDemandPlan.compile(model);
+        FactDemandPlan demandPlan = GenerationFactDemandPlan.compile(model);
         for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
             var load = recipe.load();
             String source = load.discoverSubjects()

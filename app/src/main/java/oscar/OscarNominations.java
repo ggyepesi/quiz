@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import objectview.viewconfig.DomainViews;
 import objectview.Viewable;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.io.File;

@@ -3,8 +3,8 @@ package flag;
 import aux.Constants;
 import aux.UrlLineProcessor;
 import aux.UrlReader;
-import quiz.GroupReader;
-import quiz.ViewableGroup;
+import quiz.group.GroupReader;
+import quiz.group.ViewableGroup;
 
 import java.io.BufferedReader;
 import java.net.URL;

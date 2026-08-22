@@ -8,14 +8,14 @@ import process.ProcessInputRequest;
 import process.swing.SwingProcessInput;
 import process.swing.SwingProcessRunner;
 import objectview.Viewable;
-import quiz.ViewableGroup;
+import quiz.group.ViewableGroup;
 import quiz.transform.pipeline.ui.ViewStepsPanel;
 import quiz.curation.ScopeFilter;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.swing.SwingQuerySession;
-import workbench.IdentityChip;
+import wikidata.ui.IdentityChip;
 
 import javax.swing.*;
 import java.awt.*;

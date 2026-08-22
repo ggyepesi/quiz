@@ -1,4 +1,4 @@
-package workbench;
+package wikidata.ui;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
