@@ -123,8 +123,8 @@ public class FieldSourcePanel extends JPanel {
 
     // Reify decomposition (#92): for a qualifier field of a statement class.
     // What a statement-class ENTITY qualifier gets when the qualifier is absent
-    // (MissingQualifierPolicy). "Auto" = the legacy inferred default (subject).
-    private static final String POL_AUTO = "Auto (subject)";
+    // (MissingQualifierPolicy). "Auto" is the safe default: absence stays absent.
+    private static final String POL_AUTO = "Auto (leave missing)";
     private static final String POL_SUBJECT = "Statement subject";
     private static final String POL_VALUE = "Statement value";
     private static final String POL_MISSING = "Leave missing";
@@ -666,7 +666,7 @@ public class FieldSourcePanel extends JPanel {
                                                    + "<b>Statement value</b> — the ps: value of the statement.<br>"
                                                    + "<b>Leave missing</b> — stay empty (right for a plain reference like "
                                                    + "<b>edition</b>: an absent ceremony must not become the film).<br>"
-                                                   + "<b>Auto</b> — the legacy default (subject).</html>");
+                                                   + "<b>Auto</b> — leave missing; any fallback must be explicit.</html>");
         GridBagUtils.labeledRow(
                 form,
                 c,
@@ -818,7 +818,7 @@ public class FieldSourcePanel extends JPanel {
         renderModeBox.addActionListener(e -> updateRecommendation());
     }
 
-    // MissingQualifierPolicy ↔ combo label (null = Auto = the legacy default).
+    // MissingQualifierPolicy ↔ combo label (null = safe Auto = leave missing).
     private static String policyLabel(
             wikidata.explore.model.MissingQualifierPolicy p) {
         if (p == null) {

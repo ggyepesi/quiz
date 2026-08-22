@@ -4,10 +4,12 @@ import objectview.media.MediaValue;
 import org.junit.jupiter.api.Test;
 import objectview.ViewableAdapter;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataMediaValue;
+import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Path;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -104,7 +106,8 @@ class MediaCorrectionTest {
     }
 
     @Test
-    void explicitMediaShapeUsesTheSnapshotMediaTypeForAnEmptyDynamicField() {
+    void emptyDynamicMediaIsStructuralAndRoundTripsWithoutItsJavaClass(
+            @TempDir Path dir) throws Exception {
         WikidataDynamicObject missing = new WikidataDynamicObject("Q1", "Missing");
         missing.type("Person");
         CorrectionSource dbpedia = () -> List.of(new Correction(
@@ -113,8 +116,20 @@ class MediaCorrectionTest {
                 "dbpedia", Correction.MEDIA));
 
         assertEquals(1, Corrections.apply(List.of(missing), List.of(dbpedia)));
-        WikidataMediaValue media =
-                assertInstanceOf(WikidataMediaValue.class, missing.get("image"));
+        MediaValue media = assertInstanceOf(MediaValue.class, missing.get("image"));
         assertTrue(media.mediaSvg());
+
+        java.io.File snapshot = dir.resolve("media.json").toFile();
+        new WikidataDynamicObjectJsonStore().save(List.of(missing), snapshot);
+        String json = java.nio.file.Files.readString(snapshot.toPath());
+        assertFalse(json.contains(media.getClass().getName()),
+                "a snapshot stores media facts, never the supplying Java class");
+
+        Object restored = new WikidataDynamicObjectJsonStore()
+                .load(snapshot).getFirst().get("image");
+        MediaValue restoredMedia = assertInstanceOf(MediaValue.class, restored);
+        assertEquals(media.mediaUrl(), restoredMedia.mediaUrl());
+        assertEquals(media.mediaLabel(), restoredMedia.mediaLabel());
+        assertEquals(media.mediaSvg(), restoredMedia.mediaSvg());
     }
 }

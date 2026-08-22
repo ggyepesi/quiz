@@ -5,7 +5,7 @@ import objectview.utils.swing.CachedImage;
 import org.junit.jupiter.api.Test;
 import objectview.ViewableAdapter;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataMediaValue;
+import objectview.media.MediaValueData;
 
 import java.awt.GraphicsEnvironment;
 import java.util.List;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 /**
  * Saving a hand-written domain that holds live Swing {@link ImagePane} fields (State,
  * NobelPrize, …): {@link ViewableToWdo} must persist those as serializable
- * {@link WikidataMediaValue}s (label + source url + svg) instead of raw panels — which
+ * {@link MediaValueData}s (label + source url + svg) instead of raw panels — which
  * previously blew up Jackson with "ImagePane not BeanSerializable".
  */
 class ViewableToWdoMediaTest {
@@ -62,8 +62,8 @@ class ViewableToWdoMediaTest {
         WikidataDynamicObject wdo = pool.get(0);
 
         Object p = wdo.get("portrait");
-        assertInstanceOf(WikidataMediaValue.class, p, "portrait should convert to a media value");
-        WikidataMediaValue pv = (WikidataMediaValue) p;
+        assertInstanceOf(MediaValueData.class, p, "portrait should convert to a media value");
+        MediaValueData pv = (MediaValueData) p;
         assertEquals("file:/nobel/portraits/germany.jpg", pv.url());
         assertEquals("Portrait", pv.label());
         assertFalse(pv.svg());
@@ -71,8 +71,8 @@ class ViewableToWdoMediaTest {
         Object versions = wdo.get("versions");
         assertInstanceOf(List.class, versions);
         Object first = ((List<?>) versions).get(0);
-        assertInstanceOf(WikidataMediaValue.class, first, "list images should convert too");
-        WikidataMediaValue fv = (WikidataMediaValue) first;
+        assertInstanceOf(MediaValueData.class, first, "list images should convert too");
+        MediaValueData fv = (MediaValueData) first;
         assertEquals("https://commons.example/germany.svg", fv.url());
         assertTrue(fv.svg());
 

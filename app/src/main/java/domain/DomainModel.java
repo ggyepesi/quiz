@@ -50,6 +50,12 @@ public interface DomainModel {
     @Declared
     default String baseType(String type) { return null; }
 
+    /** Whether instances of {@code type} have an independent entity identity that may
+     * be resolved. Reflection domains are entity-oriented by default; compiled domains
+     * override this for derived statement records and owned components. */
+    @Declared
+    default boolean entityIdentity(String type) { return true; }
+
     /** Whether {@code candidate} is {@code expected} or extends it. */
     @Derived
     default boolean isSubclassOf(String candidate, String expected) {

@@ -33,6 +33,74 @@ public final class StatementTransforms {
 
     private StatementTransforms() {}
 
+    /** A replayable stage, in whichever form of the model the caller holds. Both
+     *  overloads exist on the transforms themselves; a stage names both so neither path
+     *  can quietly run a different set. Returns how many values it filled (0 when the
+     *  stage does not fill). */
+    @FunctionalInterface
+    private interface CompiledRun {
+        int run(CompiledProjectModel model, List<WikidataDynamicObject> pool,
+                GenerationLog log);
+    }
+
+    @FunctionalInterface
+    private interface ModelRun {
+        int run(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
+                GenerationLog log);
+    }
+
+    /**
+     * The stages, in the order they run — and the ONE statement of which of them a
+     * loaded snapshot can replay.
+     *
+     * <p>Reify and companion match are not replayable: reify would build a second copy
+     * of every record, and companion match needs sets only a request can produce. The
+     * rest are overwrite-only, which is why a projection declared after a snapshot was
+     * saved still fills on those paths.
+     *
+     * <p>A replayable stage carries the call itself rather than only its name, so the
+     * inventory {@link RemapScope} reports and the work {@link #applyIdempotent}
+     * performs are the same list. Naming them separately is what let the plan tell a
+     * user their restriction edits had been skipped while they were in fact applied.
+     */
+    public enum Stage {
+        REIFY("reify", null, null),
+        FIELD_VALUE_RESTRICTIONS("field-value restrictions",
+                (model, pool, log) -> { FieldValueRestrictions.apply(model, pool); return 0; },
+                (model, pool, log) -> { FieldValueRestrictions.apply(model, pool); return 0; }),
+        INVERTS("inverts",
+                (model, pool, log) -> { ModelInverts.apply(model, pool, log); return 0; },
+                (model, pool, log) -> { ModelInverts.apply(model, pool, log); return 0; }),
+        YEAR_PROJECTIONS("year projections",
+                ModelYearProjections::apply,
+                ModelYearProjections::apply),
+        COMPANION_MATCH("companion match", null, null);
+
+        private final String displayName;
+        private final CompiledRun compiled;
+        private final ModelRun editable;
+
+        Stage(String displayName, CompiledRun compiled, ModelRun editable) {
+            this.displayName = displayName;
+            this.compiled = compiled;
+            this.editable = editable;
+        }
+
+        public String displayName() { return displayName; }
+
+        /** Replayable exactly when the stage can be run again — i.e. it carries a call. */
+        public boolean snapshotReplayable() { return compiled != null; }
+    }
+
+    /** What a Remap on a loaded snapshot cannot re-run, read off the same list that
+     *  decides what it does run. */
+    public static List<String> unavailableOnLoadedSnapshot() {
+        return java.util.Arrays.stream(Stage.values())
+                .filter(stage -> !stage.snapshotReplayable())
+                .map(Stage::displayName)
+                .toList();
+    }
+
     /**
      * @param reified            the statement records this pass created
      * @param demoted            duplicate records dropped during canonicalization
@@ -73,19 +141,10 @@ public final class StatementTransforms {
         List<WikidataDynamicObject> reified =
                 ModelStatementReifications.reify(compiled, pool, log, demoted);
 
-        // Per-field allowedQids: the query layer does not enforce them, so e.g. the
-        // auto-injected `target` field restricted to the membership's Oscar categories
-        // drops the Grammy categories that share P1411.
-        FieldValueRestrictions.apply(compiled, pool);
-
-        // Derived (production = INVERT) fields: reverse references already in the pool
-        // (Category.nominees is the reverse of Oscarnominations.categories). No query.
-        ModelInverts.apply(compiled, pool, log);
-
-        // A DATE field overlaid from a referent's date (Nomination.year <-
-        // YEAR(edition.date)). Over the reified records too, so a Nomination sees the
-        // generated Edition by qid.
-        int projectedFields = ModelYearProjections.apply(compiled, pool, log);
+        // The replayable stages — per-field allowedQids (the query layer does not
+        // enforce them), INVERT fields, and a DATE overlaid from a referent's date.
+        // Run from the same list a Remap consults, over the reified records too.
+        int projectedFields = applyIdempotent(compiled, pool, log);
 
         // Companion-match booleans (Nomination.won). The sets are the one input that
         // costs a request; Remap replays the ones Generate cached.
@@ -141,9 +200,13 @@ public final class StatementTransforms {
             List<WikidataDynamicObject> pool,
             GenerationLog log) {
 
-        FieldValueRestrictions.apply(compiled, pool);
-        ModelInverts.apply(compiled, pool, log);
-        return ModelYearProjections.apply(compiled, pool, log);
+        int filled = 0;
+        for (Stage stage : Stage.values()) {
+            if (stage.snapshotReplayable()) {
+                filled += stage.compiled.run(compiled, pool, log);
+            }
+        }
+        return filled;
     }
 
     /** Editable-model overload, for a path that has no compiled model to hand. */
@@ -152,9 +215,13 @@ public final class StatementTransforms {
             List<WikidataDynamicObject> pool,
             GenerationLog log) {
 
-        FieldValueRestrictions.apply(project, pool);
-        ModelInverts.apply(project, pool, log);
-        return ModelYearProjections.apply(project, pool, log);
+        int filled = 0;
+        for (Stage stage : Stage.values()) {
+            if (stage.snapshotReplayable()) {
+                filled += stage.editable.run(project, pool, log);
+            }
+        }
+        return filled;
     }
 
     /**

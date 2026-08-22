@@ -103,6 +103,7 @@
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "missingQualifierPolicy" : "STATEMENT_SUBJECT",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
@@ -143,6 +144,7 @@
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "missingQualifierPolicy" : "STATEMENT_SUBJECT",
         "roleKind" : "IDENTITY",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
@@ -249,7 +251,8 @@
       "displayNameMode" : "FIELD",
       "displayNameField" : "nominee",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   },
   "generationDepth" : 1,
@@ -355,6 +358,7 @@
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "missingQualifierPolicy" : "STATEMENT_SUBJECT",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
@@ -395,6 +399,7 @@
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "missingQualifierPolicy" : "STATEMENT_SUBJECT",
         "roleKind" : "IDENTITY",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
@@ -501,7 +506,8 @@
       "displayNameMode" : "FIELD",
       "displayNameField" : "nominee",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
@@ -585,7 +591,8 @@
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
@@ -669,7 +676,8 @@
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
@@ -753,7 +761,8 @@
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
@@ -997,7 +1006,8 @@
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
@@ -1121,7 +1131,8 @@
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ {

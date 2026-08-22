@@ -112,6 +112,15 @@ class ProductCompilerTest {
         assertEquals(List.of("OscarNominations", "Category", "Nomination"), d.types());
     }
 
+    @Test void compiledSchemaDeclaresWhichClassesHaveIndependentEntityIdentity() {
+        ProductDomain domain = ProductCompiler.compile(model(), pool());
+
+        assertTrue(domain.entityIdentity("OscarNominations"));
+        assertFalse(domain.entityIdentity("Nomination"),
+                "a statement record is DERIVED even when its identifier is synthetic");
+        assertFalse(domain.entityIdentity("DoesNotExist"));
+    }
+
     @Test void modeledReferenceStaysAReference() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
         DomainField nominee = field(d, "Nomination", "nominee");

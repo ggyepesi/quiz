@@ -18,7 +18,7 @@ import quiz.curation.Corrections;
 import domain.DomainField;
 import domain.DomainModel;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataMediaValue;
+import objectview.media.MediaValue;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -118,8 +118,7 @@ class EnrichmentDecisionApplierTest {
                 identity, List.of(), media);
 
         assertEquals(1, EnrichmentDecisionApplier.apply(domain, curation, decision));
-        WikidataMediaValue applied =
-                assertInstanceOf(WikidataMediaValue.class, person.get("image"));
+        MediaValue applied = assertInstanceOf(MediaValue.class, person.get("image"));
         assertEquals(media.imageUrl(), applied.mediaUrl());
 
         ManualCuration reloaded =

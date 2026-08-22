@@ -64,6 +64,11 @@ public final class ProductDomain implements DomainModel, SchemaView {
                 ? null : productClass.baseClassName();
     }
 
+    @Override public boolean entityIdentity(String type) {
+        ProductClass productClass = schema.get(type);
+        return productClass != null && productClass.entityIdentity();
+    }
+
     @Override public Set<String> structuralFields(String type) {
         return DomainSchemas.structuralFields(fieldSchema(type));
     }

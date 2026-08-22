@@ -220,6 +220,18 @@ class SnapshotFieldGraphStoreTest {
                 .map(WikidataDynamicObjectJsonStore.LoadedGroupRoot::memberType).toList());
     }
 
+    @Test void anUnsupportedFieldValueFailsBeforeADeadSnapshotIsWritten() {
+        WikidataDynamicObject object = wdo("Q1", "Thing", false);
+        object.put("opaque", new Object());
+        File file = new File(dir, "unsupported.snapshot.json");
+
+        java.io.IOException failure = assertThrows(java.io.IOException.class,
+                () -> new WikidataDynamicObjectJsonStore().save(List.of(object), file));
+
+        assertTrue(failure.getMessage().contains("Unsupported snapshot field value"));
+        assertFalse(file.exists(), "validation must precede opening the destination file");
+    }
+
     private static WikidataDynamicObject wdo(
             String id, String type, boolean valueObject) {
         WikidataDynamicObject object =

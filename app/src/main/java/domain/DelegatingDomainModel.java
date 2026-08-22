@@ -49,6 +49,10 @@ public abstract class DelegatingDomainModel implements DomainModel {
 
     @Override public String baseType(String type) { return base.baseType(type); }
 
+    @Override public boolean entityIdentity(String type) {
+        return base.entityIdentity(type);
+    }
+
     @Override public Set<String> directClasses(Viewable instance) {
         return base.directClasses(instance);
     }

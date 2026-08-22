@@ -5,6 +5,7 @@ import wikidata.WikidataIds;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Who, in a scope of instances, actually has a Wikidata entity identity to resolve
@@ -32,18 +33,30 @@ import java.util.List;
 public record IdentitySubjects(
         List<Viewable> resolvable,
         List<Viewable> statements,
+        List<Viewable> nonEntities,
         List<Viewable> untyped) {
 
     public IdentitySubjects {
         resolvable = List.copyOf(resolvable == null ? List.of() : resolvable);
         statements = List.copyOf(statements == null ? List.of() : statements);
+        nonEntities = List.copyOf(nonEntities == null ? List.of() : nonEntities);
         untyped = List.copyOf(untyped == null ? List.of() : untyped);
     }
 
-    /** Split {@code members} into the three groups, in one pass, preserving order. */
+    /** Split {@code members} into the four groups, in one pass, preserving order. */
     public static IdentitySubjects of(List<Viewable> members) {
+        return of(members, member -> true);
+    }
+
+    /**
+     * Split using the domain's identity semantics. Identifier syntax remains a defensive
+     * statement guard, but the schema decides whether a stamped class is an entity at all.
+     */
+    public static IdentitySubjects of(
+            List<Viewable> members, Predicate<Viewable> entityIdentity) {
         List<Viewable> resolvable = new ArrayList<>();
         List<Viewable> statements = new ArrayList<>();
+        List<Viewable> nonEntities = new ArrayList<>();
         List<Viewable> untyped = new ArrayList<>();
 
         for (Viewable member : members == null ? List.<Viewable>of() : members) {
@@ -54,11 +67,13 @@ public record IdentitySubjects(
                 statements.add(member);
             } else if (IdentityLinks.stableType(member) == null) {
                 untyped.add(member);
+            } else if (entityIdentity != null && !entityIdentity.test(member)) {
+                nonEntities.add(member);
             } else {
                 resolvable.add(member);
             }
         }
-        return new IdentitySubjects(resolvable, statements, untyped);
+        return new IdentitySubjects(resolvable, statements, nonEntities, untyped);
     }
 
     public boolean hasNothingToResolve() {
@@ -68,6 +83,7 @@ public record IdentitySubjects(
     /** Why nothing can be resolved here — for the message that replaces the workflow. */
     public String excludedSummary() {
         return statements.size() + " statement(s) are already anchored; "
+                + nonEntities.size() + " derived/owned instance(s) have no independent identity; "
                 + untyped.size() + " untyped instance(s) have no stable identity class.";
     }
 }

@@ -1080,6 +1080,13 @@ public class ModelBuilderFrame extends JFrame {
                                        + " objects (in memory — use \"Save domain\" to persist "
                                        + "to " + snapshotFile().getName() + ").");
                 reportNameCollisions(run);
+                // What the declared expectations found. Silent when they all held, so a
+                // clean run says nothing and a gap is the only thing that speaks up.
+                String coverage = wikidata.explore.generation.CoverageReport.message(
+                        run.fieldCoverage());
+                if (!coverage.isEmpty()) {
+                    logWindow.info(coverage);
+                }
                 showInstancesWindow(); // pop the results window on a fresh run
             } else {
                 instancesPanel.clear();
@@ -1340,7 +1347,7 @@ public class ModelBuilderFrame extends JFrame {
         replaceGenerationRun(new GenerationRun(
                 lastRun.modelSnapshot(), lastRun.depth(), lastRun.plan(),
                 lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
-                lastRun.remapState(), kept));
+                lastRun.remapState(), kept, lastRun.quality(), lastRun.fieldCoverage()));
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 

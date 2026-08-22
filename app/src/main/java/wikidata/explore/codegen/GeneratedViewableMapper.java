@@ -2,7 +2,6 @@ package wikidata.explore.codegen;
 
 import wikidata.WikidataIds;
 
-import wikidata.explore.extract.WikidataMediaValue;
 import wikidata.explore.extract.WikidataDynamicObject;
 import objectview.Viewable;
 import objectview.media.ImagePane;
@@ -308,7 +307,7 @@ public class GeneratedViewableMapper {
                 return raw;
             }
 
-            if (raw instanceof WikidataMediaValue media) {
+            if (raw instanceof objectview.media.MediaValue media) {
                 return toImagePane(media);
             }
 
@@ -374,14 +373,14 @@ public class GeneratedViewableMapper {
         return field.type();
     }
 
-    private ImagePane toImagePane(WikidataMediaValue media) {
+    private ImagePane toImagePane(objectview.media.MediaValue media) {
         try {
             return new ImagePane(
-                    media.label(),
-                    media.url(),
+                    media.mediaLabel(),
+                    media.mediaUrl(),
                     null,
                     false,
-                    media.svg(),
+                    media.mediaSvg(),
                     false);   // loadThumbnailImmediately = false
 
         } catch (Exception e) {

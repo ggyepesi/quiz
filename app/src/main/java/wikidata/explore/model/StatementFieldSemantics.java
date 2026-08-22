@@ -99,6 +99,16 @@ public final class StatementFieldSemantics {
     }
 
     /**
+     * The one runtime interpretation of an omitted missing-qualifier policy.
+     * Absence remains absence: copying the statement subject or value must be an
+     * explicit modelling decision.
+     */
+    public static MissingQualifierPolicy effectiveMissingQualifierPolicy(
+            MissingQualifierPolicy configured) {
+        return configured == null ? MissingQualifierPolicy.MISSING : configured;
+    }
+
+    /**
      * Removes a fallback policy which is no longer valid after the field's
      * qualifier, type, cardinality or production kind was changed.
      *

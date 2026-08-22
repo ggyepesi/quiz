@@ -241,9 +241,8 @@ public final class Corrections {
             if (declared != null) {
                 return declared;
             }
-            Object dynamicMedia = dynamicMedia(target, url);
-            objectview.media.MediaValue media = dynamicMedia instanceof objectview.media.MediaValue m
-                    ? m : new CuratedMediaValue(mediaLabel(url), url, isSvg(url));
+            objectview.media.MediaValue media = new objectview.media.MediaValueData(
+                    mediaLabel(url), url, isSvg(url));
             return collection ? List.of(media) : media;
         }
         return coerce(correction.value(), sample);
@@ -348,22 +347,6 @@ public final class Corrections {
         }
     }
 
-    /** Dynamic snapshot fields have no declared Java field to inspect. Use their
-     *  backing media value when it is present, without coupling curation to that class. */
-    private static Object dynamicMedia(Viewable target, String url) {
-        if (!"wikidata.explore.extract.WikidataDynamicObject"
-                .equals(target.getClass().getName())) {
-            return null;
-        }
-        try {
-            Class<?> mediaClass =
-                    Class.forName("wikidata.explore.extract.WikidataMediaValue");
-            return buildMediaValue(mediaClass, url);
-        } catch (ClassNotFoundException ignored) {
-            return null;
-        }
-    }
-
     /**
      * The instances a correction applies to.
      *
@@ -393,6 +376,4 @@ public final class Corrections {
     private record TargetKey(String type, String qid) { }
     private record SampleKey(String type, String field) { }
 
-    private record CuratedMediaValue(String mediaLabel, String mediaUrl, boolean mediaSvg)
-            implements objectview.media.MediaValue { }
 }

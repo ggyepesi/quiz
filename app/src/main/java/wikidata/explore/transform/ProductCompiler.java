@@ -169,7 +169,8 @@ public final class ProductCompiler {
             fields.add(ProductField.structural("source"));
         }
         return new ProductClass(c.className(), c.displayClassName(),
-                c.baseClassName(), fields);
+                c.baseClassName(), c.canonical().isEntity()
+                        && !wikidata.explore.model.OwnedClassSemantics.isOwnedClass(c), fields);
     }
 
     private static ProductField compileField(GeneratedProjectModel model,

@@ -451,10 +451,8 @@ public final class ModelStatementReifications {
             }
 
             MissingQualifierPolicy policy =
-                    field.source().missingQualifierPolicy();
-            if (policy == null) {
-                policy = MissingQualifierPolicy.STATEMENT_SUBJECT;
-            }
+                    StatementFieldSemantics.effectiveMissingQualifierPolicy(
+                            field.source().missingQualifierPolicy());
 
             switch (policy) {
                 case STATEMENT_SUBJECT ->
@@ -584,7 +582,7 @@ public final class ModelStatementReifications {
      *   <li>STATEMENT_SUBJECT: use the qualifier field, falling back to source.</li>
      *   <li>STATEMENT_VALUE: copy the main ps: value when the qualifier is absent.</li>
      *   <li>MISSING: create no fallback role.</li>
-     *   <li>null: preserve the legacy default for single ENTITY qualifiers.</li>
+     *   <li>null: leave missing — subject/value fallback must be explicit.</li>
      * </ul>
      */
     private static List<ReifyConstruct.Role> fallbackRoles(
@@ -602,13 +600,8 @@ public final class ModelStatementReifications {
             }
 
             MissingQualifierPolicy policy =
-                    field.mapping().missingQualifierPolicy();
-
-            if (policy == null) {
-                // Legacy behavior: every single ENTITY qualifier defaulted to
-                // the statement subject unless explicitly disabled.
-                policy = MissingQualifierPolicy.STATEMENT_SUBJECT;
-            }
+                    StatementFieldSemantics.effectiveMissingQualifierPolicy(
+                            field.mapping().missingQualifierPolicy());
 
             switch (policy) {
                 case STATEMENT_SUBJECT ->

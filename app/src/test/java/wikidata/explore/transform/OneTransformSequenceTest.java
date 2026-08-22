@@ -19,6 +19,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -114,6 +115,46 @@ class OneTransformSequenceTest {
             assertFalse(object.dynamicFields().containsKey("__Nomination"),
                     object.getIdentifier() + " still carries the raw statement list");
         }
+    }
+
+    @Test void whatARemapSaysItSkippedIsWhatItActuallySkips() {
+        // The plan named field-value restrictions and inverts as unavailable on a loaded
+        // snapshot while applyIdempotent was running both — so a user was told their
+        // restriction edits had not been applied when they had. A stage is reported as
+        // replayable exactly when it carries the call, so the two cannot disagree.
+        List<String> reportedSkipped = StatementTransforms.unavailableOnLoadedSnapshot();
+
+        for (StatementTransforms.Stage stage : StatementTransforms.Stage.values()) {
+            assertEquals(!stage.snapshotReplayable(),
+                    reportedSkipped.contains(stage.displayName()),
+                    stage + " is reported as skipped but not as unreplayable, or vice versa");
+        }
+        assertEquals(List.of("reify", "companion match"), reportedSkipped,
+                "only the two genuinely non-idempotent stages are skipped");
+    }
+
+    @Test void theReplayableSubsetRunsEverythingItClaimsAndNothingItDoesNot() {
+        // Behavioural, not by name: the restriction takes effect (so the stage really
+        // ran) and no record is created (so reify really did not).
+        List<WikidataDynamicObject> pool = loadedPool();
+        StatementTransforms.apply(
+                null, modelRestrictingCategory(), pool, records -> Map.of(), null);
+        int afterFullPass = pool.size();
+
+        // Put the disallowed category back, then replay as a loaded snapshot would.
+        WikidataDynamicObject record = pool.stream()
+                .filter(o -> "Nomination".equals(o.typeName()))
+                .filter(o -> o.get("category") == null)
+                .findFirst().orElseThrow();
+        record.put("category", obj("Q47170", "Grammy", "Category"));
+
+        StatementTransforms.applyIdempotent(modelRestrictingCategory(), pool, null);
+
+        assertEquals(afterFullPass, pool.size(),
+                "the replay must create no records — reify is not replayable");
+        assertNull(record.get("category"),
+                "and the value restriction must still take effect, which is exactly what "
+                        + "the plan used to claim had been skipped");
     }
 
     @Test void neitherPathSpellsTheSequenceForItself() throws IOException {

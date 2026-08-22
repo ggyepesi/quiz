@@ -315,7 +315,7 @@ public class WikidataDynamicObjectJsonStore {
      *  reference copies) are absorbed into the single stamped entity; only when there are
      *  genuinely 2+ real types do they split, with any untyped remainder kept on its own. */
     private List<Entity> toEntities(List<WikidataDynamicObject> instances,
-                                    SnapshotFieldGraph graph) {
+                                    SnapshotFieldGraph graph) throws IOException {
         LinkedHashMap<String, List<WikidataDynamicObject>> byType = new LinkedHashMap<>();
         List<WikidataDynamicObject> untyped = new ArrayList<>();
         for (WikidataDynamicObject o : instances) {
@@ -348,7 +348,7 @@ public class WikidataDynamicObjectJsonStore {
     // UNION of every field's values (so a rich carrier's `type` isn't lost to a
     // field-poor reference copy). Object-valued fields become ⟨type, qid⟩ refs.
     private Entity toEntity(List<WikidataDynamicObject> instances, String typeKey,
-                            SnapshotFieldGraph graph) {
+                            SnapshotFieldGraph graph) throws IOException {
         WikidataDynamicObject first = instances.get(0);
         Entity e = new Entity();
         e.id = first.getIdentifier();
@@ -458,7 +458,7 @@ public class WikidataDynamicObjectJsonStore {
         return a != null && a.equals(b);
     }
 
-    private Object encode(Object v) {
+    private Object encode(Object v) throws IOException {
         if (v instanceof WikidataDynamicObject w) {
             // A value object is serialized INLINE (a nested Entity) rather than a Ref to
             // a pooled entity — it has no identity and belongs to this parent.
@@ -468,6 +468,20 @@ public class WikidataDynamicObjectJsonStore {
             // The compact form carries the precision ("1959" vs "1959-04-06"),
             // so a marker string is enough to restore the typed date on load.
             return new DateVal(d.format());
+        }
+        if (v instanceof objectview.media.MediaValue media) {
+            // Media is a value shape, not a Java subtype to restore. Keep it structural
+            // so snapshots never depend on the curation, UI, or datasource class that
+            // happened to supply it.
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("$media", true);
+            out.put("label", media.mediaLabel());
+            out.put("url", media.mediaUrl());
+            out.put("svg", media.mediaSvg());
+            return out;
+        }
+        if (v instanceof Enum<?> e) {
+            return e.toString();
         }
         if (v instanceof java.util.Collection<?> list) {
             List<Object> out = new ArrayList<>(list.size());
@@ -481,7 +495,13 @@ public class WikidataDynamicObjectJsonStore {
             }
             return out;
         }
-        return v;
+        if (v == null || v instanceof String || v instanceof Number
+                || v instanceof Boolean || v instanceof Character) {
+            return v;
+        }
+        throw new IOException("Unsupported snapshot field value "
+                + v.getClass().getName()
+                + "; convert it to a scalar, reference, collection, map, date, or MediaValue");
     }
 
     // ------------------------------------------------------------------
@@ -734,6 +754,14 @@ public class WikidataDynamicObjectJsonStore {
             return out;
         }
         if (v instanceof Map<?, ?> map) {
+            if (Boolean.TRUE.equals(map.get("$media"))) {
+                Object label = map.get("label");
+                Object url = map.get("url");
+                return new objectview.media.MediaValueData(
+                        label == null ? "" : String.valueOf(label),
+                        url == null ? "" : String.valueOf(url),
+                        Boolean.TRUE.equals(map.get("svg")));
+            }
             Map<String, Object> out = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 out.put(String.valueOf(entry.getKey()),
@@ -746,7 +774,7 @@ public class WikidataDynamicObjectJsonStore {
 
     /** A value object serialized in place: a nested {@link Entity} (no qid) with its
      *  fields recursively encoded (entity fields still become Refs). */
-    private Entity inlineEntity(WikidataDynamicObject w) {
+    private Entity inlineEntity(WikidataDynamicObject w) throws IOException {
         Entity e = new Entity();
         e.id = null;                       // a value has no identity
         e.name = w.getDisplayName();

@@ -355,8 +355,9 @@ public class GenerationPipeline {
         wikidata.explore.transform.ReferentClassStamp.apply(snapshot, owned.components());
         wikidata.explore.compiled.CompiledProjectModel compiled =
                 wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
-        int restricted = DomainFinalization.apply(
-                snapshot, compiled, pool, List.of(), null, log).requiredDropped();
+        DomainFinalization.Result finalization = DomainFinalization.apply(
+                snapshot, compiled, pool, List.of(), null, log);
+        int restricted = finalization.requiredDropped();
         if (log != null) {
             log.message("Remap (idempotent transforms only): "
                     + pool.size() + " objects re-materialized, "
@@ -371,7 +372,7 @@ public class GenerationPipeline {
         return new GenerationRun(
                 snapshot, previous.depth(), plan,
                 pool, runtime, instances, rs,
-                previous.loadedDeclarations(), previous.quality());
+                previous.loadedDeclarations(), previous.quality(), finalization.coverage());
     }
 
     /**
@@ -444,7 +445,8 @@ public class GenerationPipeline {
         wikidata.explore.transform.StatementTransforms.applyIdempotent(
                 compiled, pool, log);
         FinalLabelHydration.apply(pool, entityApi, log, quality);
-        DomainFinalization.apply(snapshot, compiled, pool, List.of(), entityApi, log);
+        DomainFinalization.Result finalization = DomainFinalization.apply(
+                snapshot, compiled, pool, List.of(), entityApi, log);
 
         sink.message("Enrich: " + convergence.ownedCreated() + " component(s) materialized, "
                 + loaded + " declared field value(s) loaded over "
@@ -465,7 +467,8 @@ public class GenerationPipeline {
                 previous.quality(), quality.quality());
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, null,
-                List.copyOf(convergence.completedDeclarations().values()), finalQuality);
+                List.copyOf(convergence.completedDeclarations().values()), finalQuality,
+                finalization.coverage());
     }
 
     /**
@@ -579,9 +582,10 @@ public class GenerationPipeline {
         owned.addTo(pool);
         wikidata.explore.transform.ReferentClassStamp.apply(
                 snapshot, owned.components());
-        int restricted = DomainFinalization.apply(
+        DomainFinalization.Result finalization = DomainFinalization.apply(
                 snapshot, compiledSnapshot, pool, reified, previous.dynamicObjects(),
-                null, log).requiredDropped();
+                null, log);
+        int restricted = finalization.requiredDropped();
 
         if (log != null) {
             log.message("Remap (retransform): " + pool.size()
@@ -595,7 +599,7 @@ public class GenerationPipeline {
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, rs,
-                previous.loadedDeclarations(), previous.quality());
+                previous.loadedDeclarations(), previous.quality(), finalization.coverage());
     }
 
     /**

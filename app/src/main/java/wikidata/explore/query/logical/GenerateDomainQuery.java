@@ -295,7 +295,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             labels.resolved() + " label(s) resolved");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
                             "Canonicalize, prune, validate and build vocabularies");
-                    wikidata.explore.generation.DomainFinalization.apply(
+                    wikidata.explore.generation.DomainFinalization.Result finalization =
+                            wikidata.explore.generation.DomainFinalization.apply(
                             project, compiledProject, pool, reified, entityApi, genLog);
                     // Fetched vs avoided says whether the cache paid; the eviction
                     // figures say WHY. A poor hit rate with no evicted re-fetches means
@@ -508,7 +509,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     ? GenerationRun.Quality.completeQuality()
                                     : GenerationRun.Quality.partial(
                                             qualityWarnings,
-                                            java.util.List.copyOf(unavailableQids)));
+                                            java.util.List.copyOf(unavailableQids)),
+                            finalization.coverage());
                 });
     }
 

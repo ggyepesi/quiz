@@ -1,12 +1,9 @@
 package quiz.transform.app;
 
 import objectview.field.DynamicFields;
-import objectview.media.ImagePane;
-import objectview.utils.swing.CachedImage;
 import objectview.Viewable;
 import domain.DomainModel;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataMediaValue;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -349,17 +346,19 @@ public final class ViewableToWdo {
             }
             return out;
         }
-        // A live Swing ImagePane can't be serialized into the pool — persist it as a
-        // metadata-only WikidataMediaValue (label + source url + svg), which round-trips
-        // and renders back to an ImagePane on load via FieldKind.MEDIA.
-        if (v instanceof ImagePane p) {
-            return toMediaValue(p);
-        }
-        // A hand-written domain's enum (e.g. NobelPrize.Domain) can't round-trip through
-        // the pool's locked-down Jackson typing — store its display string, which becomes
-        // a plain scalar facet dimension.
-        if (v instanceof Enum<?> e) {
-            return e.toString();
+        // Reduce every media implementation to the snapshot's backing-neutral value.
+        // This is the same representation used for live ImagePanes and curated URLs.
+        if (v instanceof objectview.media.MediaValue media) {
+            // An in-memory-only image (a live ImagePane with no source URL) has nothing
+            // to persist. Return null so the caller omits the field, as the ImagePane
+            // case did before: a stored empty media value would read as PRESENT to a
+            // field expectation and to a present/missing facet, quietly turning missing
+            // media into satisfied media.
+            if (media.mediaUrl() == null || media.mediaUrl().isBlank()) {
+                return null;
+            }
+            return new objectview.media.MediaValueData(
+                    media.mediaLabel(), media.mediaUrl(), media.mediaSvg());
         }
         return v;
     }
@@ -401,15 +400,4 @@ public final class ViewableToWdo {
         return copy;
     }
 
-    private static Object toMediaValue(ImagePane p) {
-        CachedImage image = p.getCachedImage();
-        if (image == null) {
-            return null;   // an in-memory-only image (no source) — nothing to persist
-        }
-        String url = image.sourceUrl();
-        if (url == null || url.isBlank()) {
-            return null;
-        }
-        return new WikidataMediaValue(p.getTitle(), url, image.isSvg());
-    }
 }

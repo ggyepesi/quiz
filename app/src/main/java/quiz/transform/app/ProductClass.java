@@ -18,11 +18,18 @@ import java.util.List;
 public record ProductClass(String className,
                            String displayName,
                            String baseClassName,
+                           boolean entityIdentity,
                            List<ProductField> fields) {
 
     public ProductClass(String className, String displayName,
                         List<ProductField> fields) {
-        this(className, displayName, null, fields);
+        this(className, displayName, null, true, fields);
+    }
+
+    /** Back-compat for callers created before identity semantics joined the schema. */
+    public ProductClass(String className, String displayName, String baseClassName,
+                        List<ProductField> fields) {
+        this(className, displayName, baseClassName, true, fields);
     }
 
     public ProductField field(String name) {

@@ -63,6 +63,17 @@ class IdentitySubjectsTest {
         assertFalse(split.hasNothingToResolve());
     }
 
+    @Test void schemaDeclaredNonEntityIsExcludedEvenWithANonStatementIdentifier() {
+        WikidataDynamicObject derived = entity("synthetic-1", "A derived record", "Credit");
+
+        IdentitySubjects split = IdentitySubjects.of(
+                List.of(derived), member -> !"Credit".equals(member.typeName()));
+
+        assertEquals(List.of(derived), split.nonEntities());
+        assertTrue(split.resolvable().isEmpty(),
+                "identifier spelling cannot turn a derived record into an entity");
+    }
+
     @Test void anUnstampedInstanceHasNoTypeToKeyALinkUnder() {
         WikidataDynamicObject unstamped =
                 new WikidataDynamicObject("Q999", "Something");   // never stamped
@@ -71,6 +82,15 @@ class IdentitySubjectsTest {
 
         assertEquals(1, split.untyped().size());
         assertTrue(split.resolvable().isEmpty());
+    }
+
+    @Test void untypedRemainsTheReasonEvenWhenTheSchemaRejectsItsFallbackJavaType() {
+        WikidataDynamicObject unstamped = new WikidataDynamicObject("Q999", "Something");
+
+        IdentitySubjects split = IdentitySubjects.of(List.of(unstamped), member -> false);
+
+        assertEquals(List.of(unstamped), split.untyped());
+        assertTrue(split.nonEntities().isEmpty());
     }
 
     @Test void aMixedScopeSplitsThreeWaysAndKeepsOrder() {

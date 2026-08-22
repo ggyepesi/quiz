@@ -505,13 +505,13 @@ public final class ViewableJson {
         // -- value shape (backing-agnostic) --
         // A media value (e.g. a Commons sky chart, P18) carries its own URL; render it
         // as an image rather than letting it fall through to text (a bare filename).
-        if (value instanceof wikidata.explore.extract.WikidataMediaValue media
-                && media.hasUrl()) {
+        if (value instanceof objectview.media.MediaValue media
+                && media.mediaUrl() != null && !media.mediaUrl().isBlank()) {
             // An http(s) url the browser can fetch directly (e.g. a Commons image);
             // anything else (file:/bundled, from a saved manual domain) must be rendered
             // by the server — same path as a declared ImageRef.
-            String url = isHttp(media.url())
-                    ? httpsUrl(media.url())
+            String url = isHttp(media.mediaUrl())
+                    ? httpsUrl(media.mediaUrl())
                     : "/api/image/" + enc(ownerType) + "/" + enc(ownerId) + "/" + enc(name);
             return ViewableView.Field.image(name, url);
         }
@@ -612,12 +612,13 @@ public final class ViewableJson {
         List<String> imageUrls = new ArrayList<>();
         int idx = 0;
         for (Object item : items) {
-            if (item instanceof wikidata.explore.extract.WikidataMediaValue m
-                    && m.hasUrl() && isHttp(m.url())) {
-                imageUrls.add(httpsUrl(m.url()));             // browser-fetchable directly
+            if (item instanceof objectview.media.MediaValue m
+                    && m.mediaUrl() != null && !m.mediaUrl().isBlank()
+                    && isHttp(m.mediaUrl())) {
+                imageUrls.add(httpsUrl(m.mediaUrl()));        // browser-fetchable directly
             } else if (item instanceof ImageRef
-                    || (item instanceof wikidata.explore.extract.WikidataMediaValue m2
-                            && m2.hasUrl())) {
+                    || (item instanceof objectview.media.MediaValue m2
+                            && m2.mediaUrl() != null && !m2.mediaUrl().isBlank())) {
                 imageUrls.add("/api/image/"                  // server-rendered (file:/bundled)
                         + enc(ownerType) + "/" + enc(ownerId) + "/" + enc(name) + "/" + idx);
             }
@@ -704,9 +705,10 @@ public final class ViewableJson {
         objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
         for (objectview.field.FieldRef fr : fs.fields()) {
             Object v = fs.read(fr.name());
-            if (v instanceof wikidata.explore.extract.WikidataMediaValue m && m.hasUrl()) {
-                return isHttp(m.url())
-                        ? httpsUrl(m.url())
+            if (v instanceof objectview.media.MediaValue m
+                    && m.mediaUrl() != null && !m.mediaUrl().isBlank()) {
+                return isHttp(m.mediaUrl())
+                        ? httpsUrl(m.mediaUrl())
                         : imageApi(q.typeName(), q.getIdentifier(), fr.name());
             }
             if (v instanceof objectview.media.ImageRef) {

@@ -459,10 +459,10 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
                 && b instanceof WikidataDynamicObject wb) {
             return safe(wa.getIdentifier()).equals(safe(wb.getIdentifier()));
         }
-        if (a instanceof WikidataMediaValue ma
-                && b instanceof WikidataMediaValue mb) {
-            return safe(ma.url()).equals(safe(mb.url()))
-                    && safe(ma.label()).equals(safe(mb.label()));
+        if (a instanceof objectview.media.MediaValue ma
+                && b instanceof objectview.media.MediaValue mb) {
+            return safe(ma.mediaUrl()).equals(safe(mb.mediaUrl()))
+                    && safe(ma.mediaLabel()).equals(safe(mb.mediaLabel()));
         }
         return a.equals(b);
     }

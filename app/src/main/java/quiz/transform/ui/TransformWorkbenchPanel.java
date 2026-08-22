@@ -309,8 +309,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // (#102) — a statement is anchored by its statement id and has no label of its
         // own, an untyped instance has nothing to key a link under.
         quiz.curation.IdentitySubjects split =
-                quiz.curation.IdentitySubjects.of(members);
+                quiz.curation.IdentitySubjects.of(members,
+                        member -> controller.domain().entityIdentity(member.typeName()));
         List<Viewable> statements = split.statements();
+        List<Viewable> nonEntities = split.nonEntities();
         List<Viewable> untyped = split.untyped();
         List<Viewable> resolvable = split.resolvable();
         if (split.hasNothingToResolve()) {
@@ -356,6 +358,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                                         + (statements.isEmpty() ? "" : " " + statements.size()
                                                 + " statement(s) are anchored already and "
                                                 + "cannot be searched at all.")
+                                        + (nonEntities.isEmpty() ? "" : " " + nonEntities.size()
+                                                + " derived/owned instance(s) have no "
+                                                + "independent entity identity.")
                                         + (untyped.isEmpty() ? "" : " " + untyped.size()
                                                 + " untyped instance(s) need a stable kind "
                                                 + "before identity resolution."),
@@ -369,6 +374,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                                         // members would make the counts unexplainable.
                                         new process.swing.workflow.ProcessWorkflowPlan.Tab(
                                                 "Statements (nothing to resolve)", statements),
+                                        new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                                "Derived/owned (no entity identity)", nonEntities),
                                         new process.swing.workflow.ProcessWorkflowPlan.Tab(
                                                 "Untyped (needs a kind)", untyped)),
                                 !plan.unresolved().isEmpty(),
@@ -710,16 +717,15 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             identitiesButton.setEnabled(false);
             return;
         }
-        long statements = scope.visibleMembers().stream()
-                .filter(member -> wikidata.WikidataIds.isStatementId(
-                        member.getIdentifier()))
-                .count();
-        long identified = scope.visibleMembers().stream()
-                .filter(member -> !wikidata.WikidataIds.isStatementId(
-                        member.getIdentifier()))
+        quiz.curation.IdentitySubjects identitySubjects = quiz.curation.IdentitySubjects.of(
+                scope.visibleMembers(),
+                member -> controller.domain().entityIdentity(member.typeName()));
+        long statements = identitySubjects.statements().size();
+        long nonEntities = identitySubjects.nonEntities().size();
+        long identified = identitySubjects.resolvable().stream()
                 .filter(member -> currentQid(curation, member.typeName(), member) != null)
                 .count();
-        long unresolved = scope.visibleMembers().size() - statements - identified;
+        long unresolved = identitySubjects.resolvable().size() - identified;
         java.util.Set<String> roleNames = new java.util.LinkedHashSet<>(
                 controller.domain().selectionNames());
         long unknownKind = scope.visibleMembers().stream()
@@ -735,6 +741,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 + " · " + count + " · "
                 + identified + " identified · " + unresolved + " unresolved"
                 + (statements == 0 ? "" : " · " + statements + " statements")
+                + (nonEntities == 0 ? "" : " · " + nonEntities + " derived/owned")
                 + (unknownKind == 0 ? "" : " · " + unknownKind + " unknown kind"));
 
         curateFieldButton.setText(selectedField == null ? "Curate field…"
@@ -743,8 +750,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         // Resolution acts on the visible scope, so it needs one; the staging controls beside
         // it stay available even when the scope is empty (they act on what is already staged).
-        boolean hasResolvable = scope.visibleMembers().stream().anyMatch(member ->
-                !wikidata.WikidataIds.isStatementId(member.getIdentifier()));
+        boolean hasResolvable = !identitySubjects.resolvable().isEmpty();
         identitiesButton.setEnabled(curation != null && hasResolvable);
     }
 

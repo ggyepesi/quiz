@@ -391,6 +391,25 @@ public final class GeneratedProjectModelValidator {
                     "A statement class cannot reify its own statements."));
         }
 
+        // Whether an absent qualifier stays absent or resolves to the statement subject
+        // decides both what the record contains and whether its denormalized copy
+        // collapses into it. A field that states nothing takes whatever the default is
+        // at the time, so the same model can mean two different things in two releases
+        // — which is precisely how the Oscars nominee/forWork fallbacks were lost.
+        // A warning, not an error: it must be visible without blocking a save.
+        for (GeneratedFieldModel field : clazz.fields()) {
+            if (StatementFieldSemantics.supportsMissingQualifierPolicy(clazz, field)
+                    && field.mapping().missingQualifierPolicy() == null) {
+                problems.add(Problem.warning(
+                        path(clazz, field),
+                        "No missing-qualifier policy: this field follows the current "
+                                + "default (leave missing). State it explicitly — a "
+                                + "reference like an edition should stay missing, while "
+                                + "a role the subject itself plays needs the statement "
+                                + "subject."));
+            }
+        }
+
         // The value role is explicit: a non-qualifier runtime field must map to the
         // statement property. Its absence means the reified records get an empty
         // value (the old code guessed a field instead) — surface it as a warning so

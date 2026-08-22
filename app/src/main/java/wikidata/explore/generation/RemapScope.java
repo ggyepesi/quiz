@@ -22,8 +22,8 @@ import java.util.List;
 public record RemapScope(boolean retransform, List<String> skippedStages) {
 
     /** The stages that need the enriched pool, in the order the pipeline runs them. */
-    private static final List<String> NEEDS_ENRICHED_POOL = List.of(
-            "reify", "field-value restrictions", "inverts", "companion match");
+    private static final List<String> NEEDS_ENRICHED_POOL =
+            wikidata.explore.transform.StatementTransforms.unavailableOnLoadedSnapshot();
 
     public RemapScope {
         skippedStages = List.copyOf(skippedStages == null ? List.of() : skippedStages);

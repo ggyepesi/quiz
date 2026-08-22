@@ -34,7 +34,10 @@ class ModelStatementReificationsTest {
         nom.instanceMapping().sourceQid("Q19020");      // value-type filter (categories)
         nom.fields().add(field("category", FieldType.ENTITY, "P1411", ""));   // ps: value
         nom.fields().add(field("year", FieldType.DATE, "", "P585"));          // qualifier → YEAR
-        nom.fields().add(field("nominee", FieldType.ENTITY, "", "P2453"));    // qualifier → ENTITY (role)
+        GeneratedFieldModel nominee = field("nominee", FieldType.ENTITY, "", "P2453");
+        nominee.mapping().missingQualifierPolicy(
+                wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT);
+        nom.fields().add(nominee);    // qualifier → ENTITY (explicit subject role)
         StatementCanonicalDefaults.replaceWithSuggestion(nom);
 
         GeneratedProjectModel p = new GeneratedProjectModel();
@@ -60,7 +63,7 @@ class ModelStatementReificationsTest {
         assertEquals("Oscarnominations", reify.sourceType());
         assertEquals("Nomination", reify.targetType());
         assertTrue(reify.promote());
-        // the ENTITY qualifier becomes a subject-fallback role; dedup spans value+quals
+        // the explicitly configured ENTITY qualifier becomes a subject-fallback role
         assertTrue(reify.roles().stream().anyMatch(
                 r -> r.field().equals("nominee") && r.fallbackToSource()));
         // Identity = value + entity qualifiers; the DATE qualifier (year) is an

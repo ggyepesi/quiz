@@ -40,8 +40,10 @@ class RemapScopeTest {
 
         assertFalse(scope.retransform());
         assertTrue(scope.skippedStages().containsAll(
-                        List.of("reify", "inverts", "companion match")),
+                        List.of("reify", "companion match")),
                 "the stages that would double-apply are named: " + scope.skippedStages());
+        assertFalse(scope.skippedStages().contains("inverts"),
+                "the idempotent snapshot path does replay inverts");
     }
 
     @Test void theLimitationSaysWhatWillNotBeAppliedAndWhatToDoInstead() {
