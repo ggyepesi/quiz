@@ -17,12 +17,14 @@ import java.util.List;
 public interface DomainModel {
 
     /** Optional additive Wikipedia-category recipe declared by the producing model. */
+    @Declared
     default wikidata.explore.model.WikipediaCategoryRule wikipediaCategoryRule(
             String type, String field) { return null; }
 
     /** How the producing model decides that an entity IS a {@code className} — normally
      *  its P31 values. Null when the model declares no kind rule for that class, which
      *  admits everything: what a class means is the model's to say. */
+    @Declared
     default wikidata.explore.model.EntityKindRule entityKindRule(String className) {
         return null;
     }
@@ -34,18 +36,22 @@ public interface DomainModel {
      *  pool. This is the CURATABLE set — a field-only class such as {@code Language}
      *  belongs here even though nothing serves it. {@link #servedTypes()} is the subset
      *  shown on the quiz web UI. */
+    @Declared
     List<String> types();
 
     /** The subset of {@link #types()} served on the quiz web UI (the "domain class"
      *  bit). A snapshot serves its explicit member roots; a built-in domain serves the
      *  same classes it exposes by default. Web-facing sources enumerate THIS, never
      *  {@link #types()}, so curation can reach every class without publishing it. */
+    @Declared
     default List<String> servedTypes() { return types(); }
 
     /** Explicit base class, or null for a root class. */
+    @Declared
     default String baseType(String type) { return null; }
 
     /** Whether {@code candidate} is {@code expected} or extends it. */
+    @Derived
     default boolean isSubclassOf(String candidate, String expected) {
         if (candidate == null || expected == null) return false;
         java.util.Set<String> seen = new java.util.HashSet<>();
@@ -59,6 +65,7 @@ public interface DomainModel {
 
     /** Class membership belongs to the instance; inherited membership is derived
      * from the explicit class hierarchy. */
+    @Derived
     default boolean isInstanceOf(Viewable instance, String type) {
         if (instance == null || type == null) return false;
         for (String direct : directClasses(instance)) {
@@ -69,12 +76,14 @@ public interface DomainModel {
 
     /** Direct claims carried by an instance. A mutable working domain may overlay
      * newly assigned classes until they are materialized into a snapshot. */
+    @Declared
     default java.util.Set<String> directClasses(Viewable instance) {
         return instance == null ? java.util.Set.of() : instance.directClassNames();
     }
 
     /** The deepest direct class claim, used by consumers that need one concrete
      * schema/rendering type while membership itself remains multi-valued. */
+    @Derived
     default String mostSpecificClass(Viewable instance) {
         String best = null;
         int bestDepth = -1;
@@ -94,6 +103,7 @@ public interface DomainModel {
         return best;
     }
 
+    @Derived
     default List<Viewable> instancesOf(String type) {
         return instances().stream().filter(value -> isInstanceOf(value, type))
                 .map(Viewable.class::cast).toList();
@@ -101,20 +111,25 @@ public interface DomainModel {
 
     /** Named semantic subsets (roles, saved searches, vocabularies) over canonical
      * entities. They are intentionally separate from class/kind membership. */
+    @Declared
     default List<String> selectionNames() { return List.of(); }
 
+    @Declared
     default List<Viewable> selectionMembers(String selectionName) { return List.of(); }
 
     /** Whether this backing has a meaningful canonical entity pool that can be
      * browsed independently of class membership. */
+    @Declared
     default boolean exposesEntityUniverse() { return false; }
 
+    @Derived
     default List<String> subtypesOf(String type) {
         return types().stream().filter(candidate -> !candidate.equals(type)
                 && isSubclassOf(candidate, type)).toList();
     }
 
     /** Fields introduced by this subtype rather than inherited from its base. */
+    @Derived
     default java.util.Set<String> additionalFields(String subtype) {
         FieldSchema schema = fieldSchema(subtype);
         String base = baseType(subtype);
@@ -139,12 +154,14 @@ public interface DomainModel {
 
     /** The fields of a type — possibly NESTED paths (e.g. {@code nominee.name}) —
      *  each carrying its dotted path and leaf shape (reference/collection). */
+    @Derived
     default List<DomainField> fields(String type) {
         return DomainSchemas.fields(this, type);
     }
 
     /** Whether a field originated as an entity-valued declaration, even if compilation
      *  collapsed its runtime value to a display-name String. */
+    @Declared
     default boolean entityOrigin(String type, objectview.field.FieldPath path) {
         objectview.field.FieldRef field = DomainSchemas.resolve(this, type, path);
         return field != null && field.reference();
@@ -157,6 +174,7 @@ public interface DomainModel {
      * Every domain supplies this canonical representation. Operation paths,
      * structural fields and field-config metadata are projections of it.
      */
+    @Declared
     FieldSchema fieldSchema(String type);
 
     /**
@@ -167,6 +185,7 @@ public interface DomainModel {
      * into plain field names here, so the workbench applies them without any
      * knowledge of the backing.
      */
+    @Declared
     default java.util.Set<String> structuralFields(String type) {
         return DomainSchemas.structuralFields(fieldSchema(type));
     }
@@ -177,6 +196,7 @@ public interface DomainModel {
      * a compiled model rather than sample reflection. Null (default) reflects the
      * sample, as before.
      */
+    @Declared
     default FieldTypeSource fieldTypes(String type) {
         return DomainSchemas.fieldTypes(this, type);
     }
@@ -187,6 +207,7 @@ public interface DomainModel {
      *  subclass's inherited + own fields included) cannot drift from {@link #fieldSchema},
      *  and no synthetic shape sample is needed. The {@link #representativeSample} is only a
      *  fallback for schema-less domains. Value pickers and coverage still read instances. */
+    @Derived
     default Viewable configSample(String type) {
         FieldTypeSource types = fieldTypes(type);
         return types != null && !types.fieldNames().isEmpty()
@@ -196,6 +217,7 @@ public interface DomainModel {
     /** A representative instance for enumerating {@code type}'s fields. The default is
      *  the first matching instance; a persisted snapshot may return a small shape sample
      *  built from its saved field graph instead of scanning its instance pool. */
+    @Declared
     default Viewable representativeSample(String type) {
         for (Viewable q : instances()) {
             if (q != null && type != null && directClasses(q).contains(type)) {
@@ -206,16 +228,19 @@ public interface DomainModel {
     }
 
     /** The instances to run the view over. */
+    @Declared
     Collection<? extends Viewable> instances();
 
     /** Explicit ordinary roots of the domain graph. Referenced instances remain in
      * {@link #instances()} but are not promoted to roots merely because they are reachable. */
+    @Declared
     default Collection<? extends Viewable> memberRoots() {
         return instances();
     }
 
     /** Explicit group-graph roots to render. Their descendants remain ordinary
      * reachable Viewable references and need not be rediscovered as presentation roots. */
+    @Declared
     default List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
         return groupRootBindings().stream()
                 .map(objectview.viewconfig.DomainGroupRoot::root)
@@ -224,10 +249,12 @@ public interface DomainModel {
 
     /** One explicit group root per member type. The association belongs to the domain,
      *  not to the group implementation or its runtime Java class. */
+    @Declared
     default List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {
         return List.of();
     }
 
+    @Derived
     default objectview.group.ViewableGroup<?> groupRoot(String memberType) {
         if (memberType == null) return null;
         List<objectview.group.ViewableGroup<?>> matches = groupRootBindings().stream()
@@ -242,5 +269,6 @@ public interface DomainModel {
     }
 
     /** The universe class for the {@code ClassTransformPlan} (kept-instances plan). */
+    @Declared
     Class<? extends Viewable> universe();
 }

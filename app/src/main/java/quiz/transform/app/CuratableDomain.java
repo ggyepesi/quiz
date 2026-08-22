@@ -3,6 +3,7 @@ package quiz.transform.app;
 import objectview.Viewable;
 import quiz.curation.Curatable;
 import quiz.curation.ManualCuration;
+import quiz.transform.ui.DelegatingDomainModel;
 import quiz.transform.ui.DomainField;
 import quiz.transform.ui.DomainModel;
 import quiz.transform.ui.SchemaView;
@@ -20,10 +21,9 @@ import java.util.Set;
  * domain — it only adds the {@link Curatable} capability (and forwards {@link
  * SchemaView} when the base has one).
  */
-final class CuratableDomain implements DomainModel, SchemaView, Curatable,
+final class CuratableDomain extends DelegatingDomainModel implements SchemaView, Curatable,
         quiz.curation.FieldRulePromoter {
 
-    private final DomainModel base;
     private final ManualCuration curation;
     private final Collection<? extends Viewable> memberRoots;
     private final List<objectview.viewconfig.DomainGroupRoot> groupRootBindings;
@@ -47,7 +47,7 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
             Collection<? extends Viewable> memberRoots,
             List<objectview.viewconfig.DomainGroupRoot> groupRootBindings,
             java.io.File modelFile) {
-        this.base = base;
+        super(base);
         this.curation = curation;
         this.memberRoots = memberRoots == null ? List.of() : List.copyOf(memberRoots);
         this.groupRootBindings = groupRootBindings == null
@@ -127,7 +127,11 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
     }
     @Override public Collection<? extends Viewable> memberRoots() { return memberRoots; }
     @Override public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
-        return DomainModel.super.groupRoots();
+        // Derived from THIS domain's bindings, not the base's: the curated domain is
+        // constructed with its own group roots.
+        return groupRootBindings().stream()
+                .map(objectview.viewconfig.DomainGroupRoot::root)
+                .toList();
     }
     @Override public List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {
         return groupRootBindings;

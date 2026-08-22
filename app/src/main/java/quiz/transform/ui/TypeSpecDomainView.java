@@ -13,28 +13,34 @@ import java.util.Map;
 import java.util.Set;
 
 /** Group-scoped schema projection driven exclusively by an explicit {@link TypeSpec}. */
-final class TypeSpecDomainView implements DomainModel {
+final class TypeSpecDomainView extends DelegatingDomainModel {
     private static final String VIRTUAL = "@type-spec:";
-    private final DomainModel base;
     private final TypeSpec spec;
     private final TypeSpecPaths paths;
 
     TypeSpecDomainView(DomainModel base, TypeSpec spec) {
-        this.base = java.util.Objects.requireNonNull(base);
+        super(base);
         this.spec = java.util.Objects.requireNonNull(spec);
         this.paths = new TypeSpecPaths(base, spec);
     }
 
-    @Override public List<String> types() { return base.types(); }
-    @Override public List<String> servedTypes() { return base.servedTypes(); }
-    @Override public String baseType(String type) { return base.baseType(type); }
-    @Override public Set<String> directClasses(Viewable instance) { return base.directClasses(instance); }
-    @Override public Collection<? extends Viewable> instances() { return base.instances(); }
-    @Override public Collection<? extends Viewable> memberRoots() { return base.memberRoots(); }
-    @Override public List<String> selectionNames() { return base.selectionNames(); }
-    @Override public List<Viewable> selectionMembers(String name) { return base.selectionMembers(name); }
-    @Override public boolean exposesEntityUniverse() { return base.exposesEntityUniverse(); }
-    @Override public Class<? extends Viewable> universe() { return base.universe(); }
+    // Everything the base declares is forwarded by DelegatingDomainModel. The three below
+    // are declarations this view answers for ITSELF, because they describe a schema and the
+    // schema here is the projected one: asking the base about a virtual @type-spec: type
+    // would get nothing back, and asking it about the real class would describe fields this
+    // projection has removed.
+    @Override public Set<String> structuralFields(String type) {
+        return DomainSchemas.structuralFields(fieldSchema(type));
+    }
+
+    @Override public objectview.viewconfig.FieldTypeSource fieldTypes(String type) {
+        return DomainSchemas.fieldTypes(this, type);
+    }
+
+    @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
+        objectview.field.FieldRef field = DomainSchemas.resolve(this, type, path);
+        return field != null && field.reference();
+    }
 
     @Override public FieldSchema fieldSchema(String type) {
         if (type == null) return null;

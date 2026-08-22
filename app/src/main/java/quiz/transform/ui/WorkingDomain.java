@@ -19,11 +19,10 @@ import java.util.Map;
  * operation can consume a class produced by an earlier PROJECT — the composable
  * transform graph. Derived instances are added to {@link #instances()} for the view.
  */
-public final class WorkingDomain implements DomainModel, SchemaView,
+public final class WorkingDomain extends DelegatingDomainModel implements SchemaView,
         quiz.curation.Curatable, quiz.curation.Mergeable,
         quiz.curation.FieldRulePromoter {
 
-    private final DomainModel base;
     private final Map<String, DerivedClass> derived = new LinkedHashMap<>();
     private final Map<String, String> subclassBases = new LinkedHashMap<>();
     private final java.util.IdentityHashMap<Viewable, java.util.Set<String>>
@@ -42,7 +41,7 @@ public final class WorkingDomain implements DomainModel, SchemaView,
     private final Map<String, List<String>> groupRootSignatures = new HashMap<>();
 
     public WorkingDomain(DomainModel base) {
-        this.base = base;
+        super(base);
     }
 
     @Override public List<String> selectionNames() { return base.selectionNames(); }
@@ -129,6 +128,17 @@ public final class WorkingDomain implements DomainModel, SchemaView,
             throw new IllegalStateException("This dataset has no ModelBuilder model.");
         }
         return promoter.promote(recipe);
+    }
+
+    /** Derived classes and their instances exist only here, so the sample has to be found
+     *  here too: the base has never heard of a PROJECT-derived class and would answer null. */
+    @Override public objectview.Viewable representativeSample(String type) {
+        for (objectview.Viewable value : instances()) {
+            if (value != null && type != null && directClasses(value).contains(type)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     @Override public wikidata.explore.model.FieldSourceMapping declaredSource(
@@ -325,9 +335,14 @@ public final class WorkingDomain implements DomainModel, SchemaView,
      * behind it, so it keeps the default.
      */
     @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
-        return derived.containsKey(type)
-                ? DomainModel.super.entityOrigin(type, path)
-                : base.entityOrigin(baseTypeOrSelf(type), path);
+        if (!derived.containsKey(type)) {
+            return base.entityOrigin(baseTypeOrSelf(type), path);
+        }
+        // A derived class exists only here, so its fields resolve against THIS domain's
+        // schema rather than the base's — the derivation DomainModel would have applied,
+        // written out because a wrapper no longer implements the interface directly.
+        objectview.field.FieldRef field = DomainSchemas.resolve(this, type, path);
+        return field != null && field.reference();
     }
 
     /** A subclass is served by its base class's model declaration. */
@@ -359,7 +374,10 @@ public final class WorkingDomain implements DomainModel, SchemaView,
 
     @Override
     public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
-        return DomainModel.super.groupRoots();
+        // Derived from THIS domain's bindings, which include the groups edited here.
+        return groupRootBindings().stream()
+                .map(objectview.viewconfig.DomainGroupRoot::root)
+                .toList();
     }
 
     @Override

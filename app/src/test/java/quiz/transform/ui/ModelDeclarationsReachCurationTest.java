@@ -41,6 +41,37 @@ class ModelDeclarationsReachCurationTest {
         assertEquals("P31", kind.propertyPid());
     }
 
+    /**
+     * The same hole, in the OTHER wrapper. A group-scoped view projects a restricted schema
+     * over the domain, and it forwarded the eleven methods whoever wrote it thought of. The
+     * category recipe and the kind rule were not among them, so selecting a group would have
+     * silenced both — the identical failure to the one above, waiting for the first curation
+     * flow to ask through a selected group.
+     */
+    @Test void aGroupScopedViewDoesNotAnswerForTheDomainItProjects() {
+        DomainModel domain = new WorkingDomain(new DeclaringDomain());
+        TypeSpecDomainView scoped = new TypeSpecDomainView(
+                domain, new quiz.transform.TypeSpec("Movie", java.util.Map.of()));
+
+        assertNotNull(scoped.wikipediaCategoryRule("Movie", "location"),
+                "projecting a schema says nothing about what a category means");
+        assertEquals("Films set in <value>",
+                scoped.wikipediaCategoryRule("Movie", "location").pattern());
+        assertNotNull(scoped.entityKindRule("Location"),
+                "nor about what a class means");
+        assertEquals(List.of("Q6256"), scoped.entityKindRule("Location").evidenceQids());
+    }
+
+    /** …and it still projects: forwarding the declarations must not flatten the wrapper
+     *  back into its base. */
+    @Test void theProjectionItselfSurvivesTheForwarding() {
+        TypeSpecDomainView scoped = new TypeSpecDomainView(
+                new DeclaringDomain(), new quiz.transform.TypeSpec("Movie", java.util.Map.of()));
+
+        assertEquals(List.of("Movie"), scoped.types());
+        assertNotNull(scoped.fieldSchema("Movie"), "the view answers for its own schema");
+    }
+
     @Test void aClassTheModelSaysNothingAboutStaysNull() {
         assertEquals(null, new WorkingDomain(new DeclaringDomain()).entityKindRule("Award"));
     }
