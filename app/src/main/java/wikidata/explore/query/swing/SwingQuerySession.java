@@ -1,6 +1,6 @@
 package wikidata.explore.query.swing;
 
-import wikidata.explore.query.core.QueryContext;
+import work.QueryContext;
 
 import java.awt.Component;
 

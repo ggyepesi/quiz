@@ -7,8 +7,8 @@ import wikidata.WikidataIds;
 import datasource.enrichment.EnrichmentProposal;
 import quiz.enrichment.EnrichmentProvider;
 import quiz.enrichment.EnrichmentRequest;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;

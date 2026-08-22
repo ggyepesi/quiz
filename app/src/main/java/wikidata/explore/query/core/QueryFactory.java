@@ -2,6 +2,7 @@ package wikidata.explore.query.core;
 
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
+import work.QueryContext;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -53,11 +54,11 @@ public final class QueryFactory implements AutoCloseable {
         if (closed) {
             throw new IllegalStateException("QueryFactory is closed");
         }
-        QueryContext context = new QueryContext(wikidata, api);
+        WikidataAccess access = WikidataAccess.of(wikidata, api);
         for (Map.Entry<Datasource, WikidataSparqlClient> e : owned.entrySet()) {
-            context = context.withDatasource(e.getKey(), e.getValue());
+            access = access.with(e.getKey(), e.getValue());
         }
-        return context;
+        return access.bind();
     }
 
     @Override

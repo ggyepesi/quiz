@@ -26,14 +26,14 @@ public final class WikipediaInfoboxAcquisition {
     private WikipediaInfoboxAcquisition() { }
 
     public static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
-            GenerationLog log, process.CancellationToken cancellation,
+            GenerationLog log, work.CancellationToken cancellation,
             wikidata.api.WikidataApiClient api) throws Exception {
         return apply(model, pool, log, cancellation, api,
                 WikipediaInfoboxAcquisition::fetchRemote);
     }
 
     static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
-            GenerationLog log, process.CancellationToken cancellation,
+            GenerationLog log, work.CancellationToken cancellation,
             wikidata.api.WikidataApiClient api, Fetcher fetcher) throws Exception {
         List<Declaration> declarations = declarations(model);
         if (declarations.isEmpty()) return new Result(0, 0, 0);

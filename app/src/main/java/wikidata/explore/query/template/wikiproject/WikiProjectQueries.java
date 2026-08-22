@@ -1,6 +1,6 @@
 package wikidata.explore.query.template.wikiproject;
 
-import wikidata.explore.query.core.QueryTemplate;
+import work.QueryTemplate;
 
 import java.util.Map;
 import java.util.Set;

@@ -1,4 +1,4 @@
-package wikidata.explore.query.core;
+package work;
 
 public enum QueryStatus {
     RUNNING,

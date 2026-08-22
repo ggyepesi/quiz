@@ -1,4 +1,4 @@
-package wikidata.explore.query.log;
+package work;
 
 @FunctionalInterface
 public interface LogStepBody<T> {

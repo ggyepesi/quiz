@@ -13,14 +13,15 @@ import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.rule.RuleNode;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Generates EVERY generatable class in the domain as its own root, pooling all
@@ -103,7 +104,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // Resolve each quantity field's unit once (the truthy value
                     // drops it), so the mapper can render "1538 K". Before building
                     // the runtime, so it holds fully-resolved field models.
-                    pipeline.resolveUnits(project, context.sparql(Datasource.WIKIDATA), genLog);
+                    pipeline.resolveUnits(project, WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog);
 
                     wikidata.explore.compiled.CompiledProjectModel compiledProject =
                             wikidata.explore.compiled.ProjectModelCompiler.compile(project);
@@ -134,7 +135,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
 
                         GenerationPipeline.ExtractionResult extraction =
                                 pipeline.extractResult(
-                                context.sparql(Datasource.WIKIDATA), plan, cls.generationDepth(),
+                                WikidataAccess.sparql(context, Datasource.WIKIDATA), plan, cls.generationDepth(),
                                 genLog, shared, context.cancellation(), entityApi,
                                 factDemandPlan.forClass(cls.className()));
                         List<WikidataDynamicObject> roots = extraction.objects();
@@ -177,7 +178,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             wikidata.explore.transform.ModelStatementReifications
                                     .enrichWithReport(
                                             compiledProject, reifyPool,
-                                            context.sparql(Datasource.WIKIDATA), genLog,
+                                            WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog,
                                             entityApi, true, factDemandPlan);
                     progress(
                             wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
@@ -233,7 +234,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     java.util.Map<String, java.util.Set<java.util.List<String>>>
                             companionSets =
                             wikidata.explore.transform.CompanionMatch.loadSets(
-                                    compiledProject, reified, context.sparql(Datasource.WIKIDATA), genLog);
+                                    compiledProject, reified, WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog);
                     wikidata.explore.transform.CompanionMatch.applyWithSets(
                             compiledProject, reified, companionSets, genLog);
 

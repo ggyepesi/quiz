@@ -1,9 +1,9 @@
 package wikidata.explore.query.swing;
 
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.core.QueryResultSink;
-import wikidata.explore.query.log.LogListener;
+import work.Query;
+import work.QueryContext;
+import work.QueryResultSink;
+import work.LogListener;
 import wikidata.explore.query.workflow.QueryWorkflow;
 
 import javax.swing.*;

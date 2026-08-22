@@ -1,8 +1,8 @@
 package wikidata.explore.query.logical;
 
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.GenerationRun;
 import wikidata.explore.extract.GenerationLog;

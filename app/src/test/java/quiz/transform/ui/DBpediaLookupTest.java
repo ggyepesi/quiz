@@ -3,8 +3,8 @@ package quiz.transform.ui;
 import org.junit.jupiter.api.Test;
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.LogNode;
+import work.QueryContext;
+import work.LogNode;
 import wikidata.explore.query.workflow.QueryWorkflow;
 
 import java.util.ArrayList;
@@ -28,7 +28,8 @@ class DBpediaLookupTest {
             List<LogNode> roots = new ArrayList<>();
             List<String> accepted = new ArrayList<>();
             QueryWorkflow<List<String>> workflow = new QueryWorkflow<>(
-                    new QueryContext(client, null).withDatasource(wikidata.explore.query.core.Datasource.DBPEDIA, client),
+                    wikidata.explore.query.core.WikidataAccess.of(client, null)
+                            .with(wikidata.explore.query.core.Datasource.DBPEDIA, client).bind(),
                     accepted::addAll,
                     (root, added) -> {
                         if (added && !roots.contains(root)) {
@@ -57,7 +58,8 @@ class DBpediaLookupTest {
                         "img", "https://example.test/image.jpg"))))) {
 
             List<DBpediaLookup.ImageHit> result = DBpediaLookup.images(null, "Ada Lovelace")
-                    .execute(new QueryContext(client, null).withDatasource(wikidata.explore.query.core.Datasource.DBPEDIA, client));
+                    .execute(wikidata.explore.query.core.WikidataAccess.of(client, null)
+                            .with(wikidata.explore.query.core.Datasource.DBPEDIA, client).bind());
 
             assertEquals(List.of(new DBpediaLookup.ImageHit(
                     "http://dbpedia.org/resource/Ada_Lovelace",

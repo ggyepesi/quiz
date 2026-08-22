@@ -2,7 +2,7 @@ package quiz.transform.ui;
 
 import objectview.demo.MultiView;
 import objectview.render.GroupTreeView;
-import process.CancellationToken;
+import work.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessInputRequest;
 import process.swing.SwingProcessInput;

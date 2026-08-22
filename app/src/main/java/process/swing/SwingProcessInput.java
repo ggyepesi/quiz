@@ -1,6 +1,6 @@
 package process.swing;
 
-import process.CancellationToken;
+import work.CancellationToken;
 
 import javax.swing.SwingUtilities;
 import java.awt.Window;

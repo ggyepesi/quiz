@@ -1,6 +1,6 @@
-package wikidata.explore.query.log;
+package work;
 
-import wikidata.explore.query.core.QueryStatus;
+import work.QueryStatus;
 
 public enum LogStatus {
 

@@ -56,7 +56,7 @@ class WikipediaCategoryAcquisitionTest {
         }
 
         var result = WikipediaCategoryAcquisition.apply(model, objects, GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(), uri -> {
+                new work.CancellationToken(), new SitelinkClient(), uri -> {
                     wikipediaCalls.incrementAndGet();
                     boolean continued = uri.getRawQuery().contains("clcontinue=");
                     String continuation = continued ? ""

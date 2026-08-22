@@ -2,7 +2,7 @@ package wikidata.explore.query.swing;
 
 import process.ProcessWorkflowPipeline;
 import process.swing.workflow.ProcessWorkflowPipelinePanel;
-import wikidata.explore.query.log.SavedRunArtifact;
+import process.SavedRunArtifact;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;

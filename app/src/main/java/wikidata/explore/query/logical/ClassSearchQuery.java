@@ -5,8 +5,8 @@ import wikidata.WikidataIds;
 import wikidata.WikidataBinding;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.query.WikidataQueryBuilder;
 
@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 public class ClassSearchQuery implements Query<TableQueryResult> {
 
@@ -104,7 +105,7 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
                     // Capture only the HTTP URL the API client requests;
                     // drop the "[API n] GET/OK timeMs=..." log decoration
                     // (duration is already the step's timeMs field).
-                    context.api().log(line -> {
+                    WikidataAccess.api(context).log(line -> {
                         if (line == null) {
                             return;
                         }
@@ -118,7 +119,7 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
                         List<Row> out = new ArrayList<>();
 
                         for (WikidataApiClient.SearchResult r :
-                                context.api().searchEntities(text, limit)) {
+                                WikidataAccess.api(context).searchEntities(text, limit)) {
 
                             String qid = r.qid();
 
@@ -137,7 +138,7 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
                         step.summary(out.size() + " results");
                         return out;
                     } finally {
-                        context.api().log(null);
+                        WikidataAccess.api(context).log(null);
                     }
                 });
     }
@@ -158,7 +159,7 @@ public class ClassSearchQuery implements Query<TableQueryResult> {
 
                     List<Row> out = new ArrayList<>();
 
-                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
+                    for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
                         String qid = b.qid("item");
                         String label = b.label("item");
                         String desc = b.value("itemDescription");

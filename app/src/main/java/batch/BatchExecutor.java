@@ -1,6 +1,6 @@
 package batch;
 
-import process.CancellationToken;
+import work.CancellationToken;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

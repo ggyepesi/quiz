@@ -1,7 +1,7 @@
 package batch;
 
 import org.junit.jupiter.api.Test;
-import process.CancellationToken;
+import work.CancellationToken;
 
 import java.util.List;
 import java.util.Map;

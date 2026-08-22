@@ -2,7 +2,7 @@ package wikidata.explore.query.swing;
 
 import wikidata.WikidataIds;
 
-import wikidata.explore.query.core.QueryResultSink;
+import work.QueryResultSink;
 import wikidata.explore.query.result.TableQueryResult;
 
 import javax.swing.*;

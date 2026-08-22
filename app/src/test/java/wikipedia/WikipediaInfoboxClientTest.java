@@ -41,7 +41,7 @@ class WikipediaInfoboxClientTest {
         });
 
         var result = client.byTitle("Blood Diamond").execute(
-                new wikidata.explore.query.core.QueryContext(null, null));
+                new work.QueryContext());
 
         assertNotNull(result);
         assertEquals("7", result.document().revision());

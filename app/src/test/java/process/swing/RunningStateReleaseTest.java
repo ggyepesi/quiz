@@ -1,15 +1,15 @@
 package process.swing;
 
 import org.junit.jupiter.api.Test;
-import process.CancellationToken;
+import work.CancellationToken;
 import process.Process;
 import process.ProcessContext;
 import process.ProcessInputHandler;
 import process.ProcessOutcome;
 import process.ProcessPlan;
 import process.ProcessStatus;
-import wikidata.explore.query.log.LogListener;
-import wikidata.explore.query.log.LogNode;
+import work.LogListener;
+import work.LogNode;
 
 import javax.swing.SwingUtilities;
 import java.util.Map;

@@ -3,7 +3,7 @@ package quiz.enrichment;
 import datasource.enrichment.EnrichmentProposal;
 import datasource.evidence.EvidenceStatus;
 import org.junit.jupiter.api.Test;
-import wikidata.explore.query.core.QueryContext;
+import work.QueryContext;
 
 import java.util.List;
 
@@ -91,7 +91,7 @@ class WikipediaTextEvidenceProviderTest {
                 new wikidata.explore.model.EntityKindRule("Location", List.of("Q6256"));
 
         EnrichmentProposal result = categoryProvider(places, YEAR_1999)
-                .discover(locationRequest()).execute(new QueryContext(null, null));
+                .discover(locationRequest()).execute(new QueryContext());
 
         assertEquals(1, result.fields().size(),
                 "the year matched the pattern honestly but is not a Location");
@@ -110,7 +110,7 @@ class WikipediaTextEvidenceProviderTest {
                 new wikidata.explore.model.EntityKindRule("Location", List.of("Q6256"));
 
         EnrichmentProposal result = categoryProvider(places, NAMELESS_THING)
-                .discover(locationRequest()).execute(new QueryContext(null, null));
+                .discover(locationRequest()).execute(new QueryContext());
 
         assertEquals(1, result.fields().size());
         assertEquals("Q1044", ((objectview.Viewable) result.fields().get(0)
@@ -125,7 +125,7 @@ class WikipediaTextEvidenceProviderTest {
     @Test
     void aClassTheModelSaysNothingAboutStillAdmitsEveryCandidate() throws Exception {
         EnrichmentProposal result = categoryProvider(null, YEAR_1999)
-                .discover(locationRequest()).execute(new QueryContext(null, null));
+                .discover(locationRequest()).execute(new QueryContext());
 
         assertEquals(2, result.fields().size());
     }
@@ -139,7 +139,7 @@ class WikipediaTextEvidenceProviderTest {
                 "location", false, List.of(), null, "Sierra Leone");
 
         EnrichmentProposal result = provider.discover(request)
-                .execute(new QueryContext(null, null));
+                .execute(new QueryContext());
 
         assertEquals(1, result.fields().size());
         EnrichmentProposal.FieldCandidate field = result.fields().get(0);
@@ -166,7 +166,7 @@ class WikipediaTextEvidenceProviderTest {
                 "location", false, List.of(), null, "Budapest");
 
         EnrichmentProposal result = provider.discover(request)
-                .execute(new QueryContext(null, null));
+                .execute(new QueryContext());
 
         assertTrue(result.fields().isEmpty());
     }
@@ -193,7 +193,7 @@ class WikipediaTextEvidenceProviderTest {
                 "location", true, List.of(), location, List.of());
 
         EnrichmentProposal result = provider.discover(request)
-                .execute(new QueryContext(null, null));
+                .execute(new QueryContext());
 
         // Both categories match the declared pattern, including "Films set in 1999" —
         // the rule says what a category means, and a pattern that also admits a year is
@@ -232,7 +232,7 @@ class WikipediaTextEvidenceProviderTest {
                 "location", true, List.of(), location, List.of());
 
         EnrichmentProposal result = provider.discover(request)
-                .execute(new QueryContext(null, null));
+                .execute(new QueryContext());
 
         assertTrue(result.fields().isEmpty());
     }
@@ -257,7 +257,7 @@ class WikipediaTextEvidenceProviderTest {
                 aux.FlexibleDate.parse("2006-12-08"));
 
         EnrichmentProposal result = provider.discover(request)
-                .execute(new QueryContext(null, null));
+                .execute(new QueryContext());
 
         assertEquals(1, result.fields().size(), "a date mention corroborates like any other");
         var claim = result.fields().get(0).evidence().get(0);

@@ -2,12 +2,13 @@ package wikidata.explore.query.logical;
 
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.template.sparql.SparqlQueries;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Resolves the English label of one entity. Cheap side lookup — run it
@@ -42,7 +43,7 @@ public class EntityLabelQuery implements Query<String> {
     public String execute(QueryContext context) throws Exception {
         String sparql = SparqlQueries.entityLabel(qid, "en");
 
-        for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
+        for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
             return b.value("label");
         }
 

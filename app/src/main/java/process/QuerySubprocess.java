@@ -1,6 +1,6 @@
 package process;
 
-import wikidata.explore.query.core.Query;
+import work.Query;
 
 import java.util.Objects;
 

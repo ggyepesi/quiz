@@ -5,8 +5,8 @@ import wikidata.WikidataIds;
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.template.sparql.SparqlQueries;
 
@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Discovers which Wikipedia-infobox (DBpedia {@code dbp:}) properties are
@@ -83,7 +84,7 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
                     step.request(dbSparql);
 
                     List<List<Object>> rows = new ArrayList<>();
-                    WikidataSparqlClient dbpedia = context.sparql(Datasource.DBPEDIA);
+                    WikidataSparqlClient dbpedia = WikidataAccess.sparql(context, Datasource.DBPEDIA);
                     for (WikidataBinding b : dbpedia.query(dbSparql)) {
                         String prop = localName(b.value("p"));
                         if (prop.isEmpty()) {
@@ -115,7 +116,7 @@ public class DiscoverDBpediaPropertiesQuery implements Query<TableQueryResult> {
                 step -> {
                     step.request(sparql);
                     List<String> qids = new ArrayList<>();
-                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
+                    for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
                         String qid = b.qid("item");
                         if (qid != null && WikidataIds.isQid(qid)) {
                             qids.add(qid);

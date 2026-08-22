@@ -4,4 +4,4 @@
  * {@code QueryTemplate}, and the small supporting types ({@code QueryExecutor},
  * {@code QueryResultSink}, {@code QueryStatus}, …). No concrete queries here.
  */
-package wikidata.explore.query.core;
+package work;

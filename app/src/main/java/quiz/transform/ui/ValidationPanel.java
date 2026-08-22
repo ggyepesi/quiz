@@ -33,7 +33,7 @@ import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.RuleDirection;
-import process.CancellationToken;
+import work.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessInputRequest;
 import process.ProcessStatus;

@@ -1,7 +1,7 @@
-package wikidata.explore.query.log;
+package work;
 
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryStatus;
+import work.Query;
+import work.QueryStatus;
 
 import java.util.ArrayDeque;
 import java.util.Deque;

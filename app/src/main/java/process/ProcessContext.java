@@ -1,12 +1,13 @@
 package process;
 
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.LogNode;
-import wikidata.explore.query.log.LogStatus;
-import wikidata.explore.query.log.WorkflowRecorder;
+import work.QueryContext;
+import work.LogNode;
+import work.LogStatus;
+import work.WorkflowRecorder;
 
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
+import work.CancellationToken;
 
 /** Run-scoped services. Child contexts own independent cancellation and log nodes. */
 public final class ProcessContext {

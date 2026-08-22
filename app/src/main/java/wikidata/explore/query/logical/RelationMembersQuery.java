@@ -4,13 +4,14 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Fetches the members of ONE relation of an entity, on demand — e.g. every entity
@@ -71,7 +72,7 @@ public class RelationMembersQuery implements Query<TableQueryResult> {
                 step -> {
                     step.request(sparql);
                     List<List<Object>> rows = new ArrayList<>();
-                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
+                    for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
                         String m = b.qid("m");
                         if (m == null || !WikidataIds.isQid(m)) {
                             continue;

@@ -2,11 +2,11 @@ package wikidata.explore.query.logical;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.LogKind;
-import wikidata.explore.query.log.LogNode;
-import wikidata.explore.query.log.LogStatus;
-import wikidata.explore.query.log.WorkflowRecorder;
+import work.QueryContext;
+import work.LogKind;
+import work.LogNode;
+import work.LogStatus;
+import work.WorkflowRecorder;
 
 import java.util.Map;
 
@@ -19,7 +19,7 @@ class StepGenerationLogStatusTest {
         LogNode root = new LogNode(LogKind.WORKFLOW, "Generate domain");
         WorkflowRecorder recorder = new WorkflowRecorder(root);
         recorder.start();
-        QueryContext context = new QueryContext(null, null).withRecorder(recorder);
+        QueryContext context = new QueryContext().withRecorder(recorder);
 
         context.step("Generate", "Domain", null, Map.of(), step -> {
             GenerationLog log = StepGenerationLog.of(context, step);
@@ -43,7 +43,7 @@ class StepGenerationLogStatusTest {
         LogNode root = new LogNode(LogKind.WORKFLOW, "Generate domain");
         WorkflowRecorder recorder = new WorkflowRecorder(root);
         recorder.start();
-        QueryContext context = new QueryContext(null, null).withRecorder(recorder);
+        QueryContext context = new QueryContext().withRecorder(recorder);
 
         context.step("Generate", "Domain", null, Map.of(), step -> {
             step.partial("26058 objects; Nominee.type (P31) unresolved");

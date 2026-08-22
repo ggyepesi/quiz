@@ -29,14 +29,14 @@ public final class WikipediaCategoryAcquisition {
     private WikipediaCategoryAcquisition() {}
 
     public static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
-                               GenerationLog log, process.CancellationToken cancellation,
+                               GenerationLog log, work.CancellationToken cancellation,
                                wikidata.api.WikidataApiClient api) throws Exception {
         return apply(model, pool, log, cancellation, api,
                 WikipediaCategoryAcquisition::fetchRemote);
     }
 
     static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
-                        GenerationLog log, process.CancellationToken cancellation,
+                        GenerationLog log, work.CancellationToken cancellation,
                         wikidata.api.WikidataApiClient api, Fetcher fetcher) throws Exception {
         if (!configured(model)) return new Result(0, 0, 0);
         java.util.Objects.requireNonNull(api, "Wikidata entity client is required");
@@ -81,7 +81,7 @@ public final class WikipediaCategoryAcquisition {
     }
 
     private static batch.WorkUnit<Map<String, List<CategoryMembership>>> unit(
-            List<String> qids, GenerationLog log, process.CancellationToken cancellation,
+            List<String> qids, GenerationLog log, work.CancellationToken cancellation,
             wikidata.api.WikidataApiClient api, Fetcher fetcher) {
         return new batch.WorkUnit<>() {
             @Override public batch.WorkDescriptor descriptor() {
@@ -154,7 +154,7 @@ public final class WikipediaCategoryAcquisition {
     }
 
     private static Map<String, Page> categories(java.util.Collection<String> titles,
-            GenerationLog log, process.CancellationToken cancellation, Fetcher fetcher)
+            GenerationLog log, work.CancellationToken cancellation, Fetcher fetcher)
             throws Exception {
         Map<String, PageBuilder> pages = new LinkedHashMap<>();
         Map<String, String> aliases = new LinkedHashMap<>();

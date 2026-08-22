@@ -1,8 +1,9 @@
 package wikidata.explore.query.workflow;
 
 import wikidata.explore.query.core.*;
-import wikidata.explore.query.log.LogListener;
-import wikidata.explore.query.log.WorkflowRecorder;
+import work.*;
+import work.LogListener;
+import work.WorkflowRecorder;
 
 import java.util.concurrent.CancellationException;
 import java.util.function.Supplier;

@@ -7,7 +7,7 @@ import process.ProcessPlan;
 import process.ProcessStatus;
 import process.ProcessWorkflowPipeline;
 import process.QuerySubprocess;
-import wikidata.explore.query.core.Query;
+import work.Query;
 
 import java.util.Map;
 

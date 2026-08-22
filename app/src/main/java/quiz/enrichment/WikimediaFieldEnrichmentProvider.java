@@ -6,8 +6,8 @@ import datasource.SourceRef;
 
 import wikidata.WikidataIds;
 
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.RuleDirection;

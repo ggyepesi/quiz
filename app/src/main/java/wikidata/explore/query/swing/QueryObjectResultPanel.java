@@ -7,7 +7,7 @@ import objectview.demo.MultiView;
 import objectview.render.RenderContext;
 import objectview.Viewable;
 import quiz.source.WikidataSource;
-import wikidata.explore.query.core.QueryResultSink;
+import work.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
 import javax.swing.*;

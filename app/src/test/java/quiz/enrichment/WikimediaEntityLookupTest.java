@@ -1,7 +1,7 @@
 package quiz.enrichment;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.query.core.QueryContext;
+import work.QueryContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,7 +25,7 @@ class WikimediaEntityLookupTest {
         });
 
         var entities = lookup.byQids(java.util.List.of("Q1", "Q2"))
-                .execute(new QueryContext(null, null));
+                .execute(new QueryContext());
 
         assertEquals(1, requests.get());
         assertEquals("One", entities.get("Q1").label());
@@ -77,7 +77,7 @@ class WikimediaEntityLookupTest {
                 new WikimediaEntityLookup(uri -> json);
 
         WikimediaEntityLookup.EntityRecord entity =
-                lookup.byQid("Q42970").execute(new QueryContext(null, null));
+                lookup.byQid("Q42970").execute(new QueryContext());
 
         assertEquals("Amnesty International", entity.label());
         assertEquals("AI", entity.aliases().getFirst());

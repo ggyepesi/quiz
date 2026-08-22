@@ -1,12 +1,12 @@
 package quiz.enrichment;
 
 import org.junit.jupiter.api.Test;
-import process.CancellationToken;
+import work.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessOutcome;
 import process.ProcessRunner;
 import process.ProcessStatus;
-import wikidata.explore.query.core.QueryContext;
+import work.QueryContext;
 
 import java.util.List;
 
@@ -30,7 +30,7 @@ class ResolveIdentitiesProcessTest {
         // Null query clients and an unsupported input handler make this a regression guard:
         // either a search or a review would fail the process.
         ProcessOutcome<ResolveIdentitiesProcess.Result> outcome = new ProcessRunner(
-                new QueryContext(null, null), null, ProcessInputHandler.unsupported())
+                new QueryContext(), null, ProcessInputHandler.unsupported())
                 .run(new ResolveIdentitiesProcess(List.of(
                                 new ResolveIdentitiesProcess.Subject(
                                         "State", "local-france", "France", "Q142")),
@@ -45,7 +45,7 @@ class ResolveIdentitiesProcessTest {
     @Test
     void reportsFailureWhenEveryUnresolvedSearchFails() {
         ProcessOutcome<ResolveIdentitiesProcess.Result> outcome = new ProcessRunner(
-                new QueryContext(null, null), null, ProcessInputHandler.unsupported())
+                new QueryContext(), null, ProcessInputHandler.unsupported())
                 .run(new ResolveIdentitiesProcess(List.of(
                                 new ResolveIdentitiesProcess.Subject(
                                         "State", "local-france", "France", "")),

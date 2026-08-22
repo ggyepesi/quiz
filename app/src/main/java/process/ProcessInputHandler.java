@@ -1,4 +1,5 @@
 package process;
+import work.CancellationToken;
 
 @FunctionalInterface
 public interface ProcessInputHandler {

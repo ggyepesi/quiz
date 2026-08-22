@@ -2,13 +2,14 @@ package wikidata.explore.query.logical;
 
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.GenerationRun;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Expects a snapshot of the project model (see
@@ -85,8 +86,10 @@ public class GenerateInstancesQuery
                             pipeline.fullRun(
                                     projectModel,
                                     depth,
-                                    context.sparql(Datasource.WIKIDATA),
-                                    genLog);
+                                    WikidataAccess.sparql(context, Datasource.WIKIDATA),
+                                    genLog,
+                                    WikidataAccess.api(context),
+                                    context.cancellation());
 
                     step.summary(run.size() + " objects");
                     return run;

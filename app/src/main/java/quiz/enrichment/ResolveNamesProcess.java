@@ -100,7 +100,9 @@ public final class ResolveNamesProcess implements Process<ResolveNamesProcess.Re
             }
             List<String> batch = all.subList(from, Math.min(from + BATCH, all.size()));
             WikidataEntityLabelResolver.Result resolved =
-                    new WikidataEntityLabelResolver(context.queries().api()).resolve(
+                    new WikidataEntityLabelResolver(
+                            wikidata.explore.query.core.WikidataAccess.api(
+                                    context.queries())).resolve(
                             batch, WikidataEntityLabelResolver.Execution.SEQUENTIAL,
                             (title, request, summary) ->
                                     context.message(title + " — " + summary + "\n"));

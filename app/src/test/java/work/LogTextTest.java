@@ -1,4 +1,4 @@
-package wikidata.explore.query.log;
+package work;
 
 import org.junit.jupiter.api.Test;
 

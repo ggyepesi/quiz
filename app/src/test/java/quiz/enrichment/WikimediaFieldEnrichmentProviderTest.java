@@ -3,7 +3,7 @@ package quiz.enrichment;
 import datasource.enrichment.EnrichmentProposal;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.query.core.QueryContext;
+import work.QueryContext;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.RuleDirection;
 
@@ -46,7 +46,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 "population", false, List.of());
 
         EnrichmentProposal result =
-                provider.discover(request).execute(new QueryContext(null, null));
+                provider.discover(request).execute(new QueryContext());
 
         assertEquals(1, result.fields().size());
         EnrichmentProposal.FieldCandidate field = result.fields().get(0);
@@ -71,7 +71,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 "population", false, List.of(), null, 10L);
 
         EnrichmentProposal.FieldCandidate field = provider.discover(request)
-                .execute(new QueryContext(null, null)).fields().get(0);
+                .execute(new QueryContext()).fields().get(0);
 
         assertEquals(10L, field.currentValue());
         assertEquals(EnrichmentProposal.ReviewAction.REPLACE, field.suggestedAction());
@@ -95,7 +95,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 "population", false, List.of());
 
         EnrichmentProposal result =
-                provider.discover(request).execute(new QueryContext(null, null));
+                provider.discover(request).execute(new QueryContext());
 
         assertEquals(200L, result.fields().get(0).proposedValue());
     }
@@ -127,7 +127,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 "population", false, List.of());
 
         EnrichmentProposal result =
-                provider.discover(request).execute(new QueryContext(null, null));
+                provider.discover(request).execute(new QueryContext());
 
         assertEquals(300L, result.fields().get(0).proposedValue());
     }
@@ -168,7 +168,7 @@ class WikimediaFieldEnrichmentProviderTest {
 
         assertTrue(provider.supports(request));
         EnrichmentProposal result =
-                provider.discover(request).execute(new QueryContext(null, null));
+                provider.discover(request).execute(new QueryContext());
 
         assertEquals(1, result.fields().size());
         // formatted by shape: a non-Jan-1 time → the full ISO date
@@ -197,7 +197,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 "capitals", true, List.of(), capitals);
 
         EnrichmentProposal.FieldCandidate candidate = provider.discover(request)
-                .execute(new QueryContext(null, null)).fields().get(0);
+                .execute(new QueryContext()).fields().get(0);
 
         assertEquals("Washington, D.C.", candidate.proposedValue());
         assertEquals(EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
@@ -225,7 +225,7 @@ class WikimediaFieldEnrichmentProviderTest {
                 "shapeVersions", true, List.of(), shapeVersions);
 
         EnrichmentProposal.FieldCandidate candidate = provider.discover(request)
-                .execute(new QueryContext(null, null)).fields().get(0);
+                .execute(new QueryContext()).fields().get(0);
 
         assertFalse(candidate.compatible());
         assertEquals(EnrichmentProposal.ReviewAction.IGNORE,

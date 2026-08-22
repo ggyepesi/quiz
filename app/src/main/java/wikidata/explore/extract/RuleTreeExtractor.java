@@ -62,7 +62,7 @@ public class RuleTreeExtractor {
     // How the batched stages retry and narrow. Run-scoped, never part of the model:
     // with correct partitioning the result is identical whatever the batch size.
     private batch.BatchPolicy batchPolicy = batch.BatchPolicy.defaults().withResume(false);
-    private process.CancellationToken cancellation = new process.CancellationToken();
+    private work.CancellationToken cancellation = new work.CancellationToken();
 
     public RuleTreeExtractor batchPolicy(batch.BatchPolicy policy) {
         this.batchPolicy = policy == null
@@ -71,8 +71,8 @@ public class RuleTreeExtractor {
     }
 
     /** Binds every adaptive batch stage to the owning process cancellation token. */
-    public RuleTreeExtractor cancellation(process.CancellationToken token) {
-        this.cancellation = token == null ? new process.CancellationToken() : token;
+    public RuleTreeExtractor cancellation(work.CancellationToken token) {
+        this.cancellation = token == null ? new work.CancellationToken() : token;
         return this;
     }
 

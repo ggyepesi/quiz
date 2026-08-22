@@ -3,8 +3,8 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.wikiproject.WikiProjectArticle;
 import wikidata.explore.wikiproject.WikiProjectCategoryReader;
 import wikidata.explore.wikiproject.WikiProjectMediaWikiClient;
@@ -13,6 +13,7 @@ import wikidata.explore.wikiproject.WikiProjectQidResolver;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Pulls the article members of a plain Wikipedia content category (namespace 0,
@@ -65,7 +66,7 @@ public class CategorySeedQuery implements Query<List<WikiProjectArticle>> {
                     if (!articles.isEmpty()) {
                         context.message("Resolving Wikidata QIDs for "
                                 + articles.size() + " pages…\n");
-                        new WikiProjectQidResolver(context.sparql(Datasource.WIKIDATA)).attachQids(articles);
+                        new WikiProjectQidResolver(WikidataAccess.sparql(context, Datasource.WIKIDATA)).attachQids(articles);
                     }
                     long resolved = articles.stream()
                             .filter(a -> a != null && a.qid() != null

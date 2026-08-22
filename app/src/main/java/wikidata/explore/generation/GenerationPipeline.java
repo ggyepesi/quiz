@@ -79,7 +79,7 @@ public class GenerationPipeline {
             int depth,
             GenerationLog log,
             wikidata.explore.extract.WikidataObjectRegistry registry,
-            process.CancellationToken cancellation,
+            work.CancellationToken cancellation,
             wikidata.api.WikidataApiClient entityApi,
             List<FactDemand> factDemands) throws Exception {
         RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry)
@@ -99,7 +99,7 @@ public class GenerationPipeline {
             int depth,
             GenerationLog log,
             wikidata.explore.extract.WikidataObjectRegistry registry,
-            process.CancellationToken cancellation,
+            work.CancellationToken cancellation,
             wikidata.api.WikidataApiClient entityApi) throws Exception {
         RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry)
                 .cancellation(cancellation)
@@ -115,7 +115,7 @@ public class GenerationPipeline {
             int depth,
             GenerationLog log,
             wikidata.explore.extract.WikidataObjectRegistry registry,
-            process.CancellationToken cancellation) throws Exception {
+            work.CancellationToken cancellation) throws Exception {
 
         RuleTreeExtractor extractor = new RuleTreeExtractor(client, registry)
                 .cancellation(cancellation);
@@ -257,6 +257,19 @@ public class GenerationPipeline {
             int depth,
             WikidataSparqlClient client,
             GenerationLog log) throws Exception {
+        return fullRun(snapshot, depth, client, log, null, null);
+    }
+
+    /** Single-class preview with the same post-extraction source orbit as domain
+     * generation. The compatibility overload remains for offline/tests without an entity
+     * client; interactive Generate instances supplies both dependencies. */
+    public GenerationRun fullRun(
+            GeneratedProjectModel snapshot,
+            int depth,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            work.CancellationToken cancellation) throws Exception {
 
         RuleNode plan = plan(snapshot);
 
@@ -264,6 +277,12 @@ public class GenerationPipeline {
                 extract(client, plan, depth, log);
 
         enrichFromDBpedia(snapshot, dynamicObjects, log);
+        if (entityApi != null) {
+            WikipediaInfoboxAcquisition.apply(snapshot, dynamicObjects,
+                    log == null ? GenerationLog.NOOP : log,
+                    cancellation == null ? new work.CancellationToken() : cancellation,
+                    entityApi);
+        }
 
         // NO owned components here. This is the single-class PREVIEW: it answers "who is
         // in this class, carrying what", and materializing a component per owner answers
@@ -378,7 +397,7 @@ public class GenerationPipeline {
             GeneratedProjectModel snapshot,
             wikidata.api.WikidataApiClient entityApi,
             GenerationLog log) throws Exception {
-        return enrich(previous, snapshot, entityApi, log, new process.CancellationToken());
+        return enrich(previous, snapshot, entityApi, log, new work.CancellationToken());
     }
 
     public GenerationRun enrich(
@@ -386,7 +405,7 @@ public class GenerationPipeline {
             GeneratedProjectModel snapshot,
             wikidata.api.WikidataApiClient entityApi,
             GenerationLog log,
-            process.CancellationToken cancellation) throws Exception {
+            work.CancellationToken cancellation) throws Exception {
 
         // Say what is happening BEFORE each slow phase, not after: compiling the
         // runtime and copying tens of thousands of objects take real time and used to
@@ -413,11 +432,11 @@ public class GenerationPipeline {
         int loaded = convergence.loadedFields();
         WikipediaCategoryAcquisition.Result categories =
                 WikipediaCategoryAcquisition.apply(snapshot, pool, sink,
-                        cancellation == null ? new process.CancellationToken() : cancellation,
+                        cancellation == null ? new work.CancellationToken() : cancellation,
                         entityApi);
         WikipediaInfoboxAcquisition.Result infoboxes = WikipediaInfoboxAcquisition.apply(
                 snapshot, pool, sink,
-                cancellation == null ? new process.CancellationToken() : cancellation,
+                cancellation == null ? new work.CancellationToken() : cancellation,
                 entityApi);
 
         // Finalization is deliberately after semantic convergence: names, expectations

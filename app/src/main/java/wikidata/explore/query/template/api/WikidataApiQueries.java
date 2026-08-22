@@ -1,7 +1,7 @@
 package wikidata.explore.query.template.api;
 
 import wikidata.api.WikidataApiClient;
-import wikidata.explore.query.core.QueryTemplate;
+import work.QueryTemplate;
 
 import java.util.List;
 import java.util.Map;

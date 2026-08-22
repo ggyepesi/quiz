@@ -1,4 +1,4 @@
-package wikidata.explore.query.log;
+package process;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;

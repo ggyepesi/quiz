@@ -5,14 +5,14 @@ import datasource.enrichment.EnrichmentProposal;
 import datasource.SourceRef;
 
 import org.junit.jupiter.api.Test;
-import process.CancellationToken;
+import work.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessInputRequest;
 import process.ProcessOutcome;
 import process.ProcessRunner;
 import process.ProcessStatus;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 
 import java.util.List;
 import java.util.Map;
@@ -124,7 +124,7 @@ class FindDataProcessTest {
         });
 
         ProcessOutcome<FindDataResult> outcome = new ProcessRunner(
-                new QueryContext(null, null), null, ProcessInputHandler.unsupported())
+                new QueryContext(), null, ProcessInputHandler.unsupported())
                 .run(new FindDataProcess(request, List.of(succeeds, fails), false),
                      new CancellationToken());
 
@@ -156,7 +156,7 @@ class FindDataProcessTest {
             }
         };
         ProcessOutcome<FindDataBatchResult> outcome = new ProcessRunner(
-                new QueryContext(null, null), null, acceptNothing)
+                new QueryContext(), null, acceptNothing)
                 .run(new FindDataBatchProcess(List.of(
                              new FindDataProcess(firstRequest, List.of(succeeds), false),
                              new FindDataProcess(secondRequest, List.of(fails), false)),
@@ -204,7 +204,7 @@ class FindDataProcessTest {
         };
 
         ProcessOutcome<FindDataBatchResult> outcome = new ProcessRunner(
-                new QueryContext(null, null), null, acceptAll)
+                new QueryContext(), null, acceptAll)
                 .run(new FindDataBatchProcess(List.of(
                              new FindDataProcess(request, List.of(provider), false)),
                                               0, "population"),
@@ -306,7 +306,7 @@ class FindDataProcessTest {
     private static ProcessOutcome<FindDataResult> run(
             EnrichmentRequest request, EnrichmentRoute route) {
         return new ProcessRunner(
-                new QueryContext(null, null), null, ProcessInputHandler.unsupported())
+                new QueryContext(), null, ProcessInputHandler.unsupported())
                 .run(new FindDataProcess(request, route, false), new CancellationToken());
     }
 

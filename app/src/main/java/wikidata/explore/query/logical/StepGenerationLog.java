@@ -1,13 +1,13 @@
 package wikidata.explore.query.logical;
 
 import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.LogNode;
-import wikidata.explore.query.log.LogStep;
+import work.QueryContext;
+import work.LogNode;
+import work.LogStep;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import wikidata.explore.query.log.LogStatus;
+import work.LogStatus;
 
 /**
  * A {@link GenerationLog} that records into the query log's TREE, not just its text.

@@ -5,8 +5,8 @@ import wikidata.WikidataIds;
 import wikidata.WikidataBinding;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.transform.QualifierLoadConfig;
@@ -14,6 +14,7 @@ import wikidata.explore.transform.QualifierLoadConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Generic qualifier discovery for a RELATIONAL membership: sample some members,
@@ -104,7 +105,7 @@ public class DiscoverQualifiersQuery implements Query<TableQueryResult> {
                     step.request(sparql);
 
                     List<List<Object>> rows = new ArrayList<>();
-                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
+                    for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
                         String qual = b.qid("qual");
                         if (qual == null || !WikidataIds.isPid(qual)) {
                             continue;

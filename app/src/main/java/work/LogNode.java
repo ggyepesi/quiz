@@ -1,4 +1,4 @@
-package wikidata.explore.query.log;
+package work;
 
 import objectview.annotations.Hidden;
 import objectview.annotations.Inline;

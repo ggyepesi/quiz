@@ -7,8 +7,8 @@ import datasource.evidence.EvidenceFragment;
 import datasource.evidence.ExtractedClaim;
 import objectview.Viewable;
 import wikidata.WikidataIds;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 
 import java.util.ArrayList;
 import java.util.Collection;

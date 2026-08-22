@@ -1,15 +1,16 @@
 package process;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.LogNode;
+import work.Query;
+import work.QueryContext;
+import work.LogNode;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
+import work.CancellationToken;
 
 class ProcessInfrastructureTest {
 
@@ -64,7 +65,7 @@ class ProcessInfrastructureTest {
         };
 
         ProcessOutcome<String> outcome = new ProcessRunner(
-                new QueryContext(null, null),
+                new QueryContext(),
                 (node, added) -> root.set(node),
                 ProcessInputHandler.unsupported())
                 .run(parent, new CancellationToken());
@@ -97,7 +98,7 @@ class ProcessInfrastructureTest {
             }
         };
 
-        new ProcessRunner(new QueryContext(null, null),
+        new ProcessRunner(new QueryContext(),
                 (node, added) -> root.set(node), ProcessInputHandler.unsupported())
                 .run(process, new CancellationToken());
 

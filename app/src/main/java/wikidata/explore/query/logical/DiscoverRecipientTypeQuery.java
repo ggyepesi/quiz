@@ -4,14 +4,15 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.rule.RuleNode;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Discover the recipient TYPE (instance-of, P31) per membership target, so the
@@ -92,7 +93,7 @@ public class DiscoverRecipientTypeQuery implements Query<TableQueryResult> {
                             s1, null);
 
                     StringBuilder pairs = new StringBuilder();
-                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(s1)) {
+                    for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(s1)) {
                         String t = b.qid("target");
                         String insts = b.value("insts");
                         if (t == null || !WikidataIds.isQid(t) || insts == null) {
@@ -128,7 +129,7 @@ public class DiscoverRecipientTypeQuery implements Query<TableQueryResult> {
                     step.subquery("recipient P31 per target", s2, null);
 
                     List<List<Object>> rows = new ArrayList<>();
-                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(s2)) {
+                    for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(s2)) {
                         String typeQid = b.qid("type");
                         String tQid = b.qid("target");
                         rows.add(List.of(

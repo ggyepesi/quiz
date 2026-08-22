@@ -1,6 +1,6 @@
 package wikidata.explore.query.template.sparql;
 
-import wikidata.explore.query.core.QueryTemplate;
+import work.QueryTemplate;
 import wikidata.query.WikidataExplorerQueries;
 import wikidata.query.WikidataQueryBuilder;
 import wikidata.query.WikidataRootQuery;

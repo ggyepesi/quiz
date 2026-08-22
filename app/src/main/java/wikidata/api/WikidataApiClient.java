@@ -47,7 +47,7 @@ public class WikidataApiClient {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final String userAgent;
-    private process.CancellationToken cancellation = new process.CancellationToken();
+    private work.CancellationToken cancellation = new work.CancellationToken();
     private WikidataFactStore facts = new WikidataFactStore();
     private int entityConcurrency = 6;
     private final Map<String, List<String>> aliasCache =
@@ -113,8 +113,8 @@ public class WikidataApiClient {
         this.log = log == null ? s -> {} : log;
     }
 
-    public WikidataApiClient cancellation(process.CancellationToken token) {
-        cancellation = token == null ? new process.CancellationToken() : token;
+    public WikidataApiClient cancellation(work.CancellationToken token) {
+        cancellation = token == null ? new work.CancellationToken() : token;
         return this;
     }
 

@@ -5,7 +5,7 @@ import datasource.enrichment.EnrichmentProposal;
 import datasource.SourceRef;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.query.core.QueryContext;
+import work.QueryContext;
 
 import java.util.List;
 
@@ -36,7 +36,7 @@ class SourcePageImageEnrichmentProviderTest {
                 "image", false, List.of(source));
 
         EnrichmentProposal result =
-                provider.discover(request).execute(new QueryContext(null, null));
+                provider.discover(request).execute(new QueryContext());
 
         assertEquals(1, result.identities().size());
         assertEquals(source, result.identities().get(0).source());

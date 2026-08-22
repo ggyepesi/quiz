@@ -3,7 +3,7 @@ package quiz.enrichment;
 import datasource.enrichment.EnrichmentProposal;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.query.core.QueryContext;
+import work.QueryContext;
 
 import java.util.List;
 
@@ -46,7 +46,7 @@ class WikimediaImageEnrichmentProviderTest {
                 "flagVersions", true, List.of());
 
         EnrichmentProposal result =
-                provider.discover(request).execute(new QueryContext(null, null));
+                provider.discover(request).execute(new QueryContext());
 
         assertEquals(1, result.media().size());   // only the flag; no article page image
         EnrichmentProposal.MediaCandidate flag = result.media().get(0);
@@ -96,7 +96,7 @@ class WikimediaImageEnrichmentProviderTest {
                 "image", false, List.of());
 
         EnrichmentProposal result =
-                provider.discover(request).execute(new QueryContext(null, null));
+                provider.discover(request).execute(new QueryContext());
 
         assertEquals(2, result.media().size());
         assertTrue(result.media().stream().anyMatch(candidate ->

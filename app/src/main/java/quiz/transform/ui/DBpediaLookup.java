@@ -5,14 +5,15 @@ import wikidata.WikidataIds;
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /** Query definitions for DBpedia-backed curation suggestions. */
 final class DBpediaLookup {
@@ -131,7 +132,7 @@ final class DBpediaLookup {
             }
 
             @Override public List<T> execute(QueryContext context) throws Exception {
-                WikidataSparqlClient client = context.sparql(Datasource.DBPEDIA);
+                WikidataSparqlClient client = WikidataAccess.sparql(context, Datasource.DBPEDIA);
                 return context.step(
                         description,
                         "DBpedia SPARQL",

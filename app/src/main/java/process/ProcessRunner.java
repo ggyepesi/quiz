@@ -1,10 +1,11 @@
 package process;
 
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.LogKind;
-import wikidata.explore.query.log.LogListener;
-import wikidata.explore.query.log.LogNode;
-import wikidata.explore.query.log.WorkflowRecorder;
+import work.QueryContext;
+import work.LogKind;
+import work.LogListener;
+import work.LogNode;
+import work.WorkflowRecorder;
+import work.CancellationToken;
 
 /** Executes one root process and guarantees a terminal root log entry. */
 public final class ProcessRunner {
@@ -31,7 +32,7 @@ public final class ProcessRunner {
                 queries, recorder, root, cancellation, inputs);
         ProcessOutcome<R> outcome;
         try (CancellationToken.Registration ignored =
-                     cancellation.onCancel(queries::cancelActiveQueries)) {
+                     cancellation.onCancel(queries::cancelActiveWork)) {
             cancellation.throwIfCancelled();
             outcome = process.execute(context);
             if (outcome == null) {

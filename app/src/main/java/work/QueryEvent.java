@@ -1,4 +1,4 @@
-package wikidata.explore.query.core;
+package work;
 
 public record QueryEvent(
         long id,

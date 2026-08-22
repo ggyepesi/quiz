@@ -32,7 +32,7 @@ class WikipediaInfoboxAcquisitionTest {
         List<WikidataDynamicObject> objects = films(1);
 
         var result = WikipediaInfoboxAcquisition.apply(model, objects, GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(), uri -> response(
+                new work.CancellationToken(), new SitelinkClient(), uri -> response(
                         "Film 1", 7, "{{Infobox film\n| country = [[Sierra Leone]]\n}}"));
 
         assertEquals(1, result.values());
@@ -60,7 +60,7 @@ class WikipediaInfoboxAcquisitionTest {
         List<WikidataDynamicObject> objects = films(1);
 
         WikipediaInfoboxAcquisition.apply(model, objects, GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(),
+                new work.CancellationToken(), new SitelinkClient(),
                 uri -> response("Film 1", 7, "a stub with no infobox at all"));
 
         WikidataDynamicObject film = objects.getFirst();
@@ -76,7 +76,7 @@ class WikipediaInfoboxAcquisitionTest {
 
         for (int run = 0; run < 2; run++) {
             WikipediaInfoboxAcquisition.apply(model, objects, GenerationLog.NOOP,
-                    new process.CancellationToken(), new SitelinkClient(), uri -> {
+                    new work.CancellationToken(), new SitelinkClient(), uri -> {
                         calls.incrementAndGet();
                         return response("Film 1", 7, "a stub with no infobox at all");
                     });
@@ -91,7 +91,7 @@ class WikipediaInfoboxAcquisitionTest {
         second.type("Movie");
 
         var result = WikipediaInfoboxAcquisition.apply(model, List.of(first, second),
-                GenerationLog.NOOP, new process.CancellationToken(), new SitelinkClient(),
+                GenerationLog.NOOP, new work.CancellationToken(), new SitelinkClient(),
                 uri -> response("Film 1", 7, "{{Infobox film|country=Ghana}}"));
 
         assertEquals("Ghana", first.get("country"));
@@ -111,7 +111,7 @@ class WikipediaInfoboxAcquisitionTest {
         List<WikidataDynamicObject> objects = films(1);
 
         WikipediaInfoboxAcquisition.apply(model, objects, GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(), uri -> response(
+                new work.CancellationToken(), new SitelinkClient(), uri -> response(
                         "Film 1", 7, "{{Infobox film\n| module.runtime = 143 minutes\n}}"));
 
         assertEquals("143 minutes", objects.getFirst().get("country"),
@@ -133,13 +133,13 @@ class WikipediaInfoboxAcquisitionTest {
         List<WikidataDynamicObject> objects = films(1);
 
         WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(),
+                new work.CancellationToken(), new SitelinkClient(),
                 uri -> response("Film 1", 7, wikitext));
         var bulk = objects.getFirst().infoboxParameters();
 
         var single = new wikipedia.WikipediaInfoboxClient(uri -> parseResponse("Film 1", 7,
                 wikitext)).byTitle("Film 1").execute(
-                        new wikidata.explore.query.core.QueryContext(null, null));
+                        new work.QueryContext());
 
         assertNotNull(bulk);
         assertNotNull(single);
@@ -155,12 +155,12 @@ class WikipediaInfoboxAcquisitionTest {
         List<WikidataDynamicObject> objects = films(1);
 
         WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(),
+                new work.CancellationToken(), new SitelinkClient(),
                 uri -> response("Film 1", 7, "one lead\n" + infobox));
 
         var single = new wikipedia.WikipediaInfoboxClient(uri -> parseResponse("Film 1", 7,
                 "a rewritten lead\n" + infobox + "\nand a new section")).byTitle("Film 1")
-                .execute(new wikidata.explore.query.core.QueryContext(null, null));
+                .execute(new work.QueryContext());
 
         assertEquals(single.document().contentDigest(),
                 objects.getFirst().infoboxParameters().document().contentDigest(),
@@ -187,7 +187,7 @@ class WikipediaInfoboxAcquisitionTest {
         List<WikidataDynamicObject> objects = films(1);
 
         var result = WikipediaInfoboxAcquisition.apply(model, objects, GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(),
+                new work.CancellationToken(), new SitelinkClient(),
                 uri -> response("Film 1", 7, "{{Infobox film|country=Sierra Leone}}"));
 
         assertEquals(1, result.values());
@@ -198,7 +198,7 @@ class WikipediaInfoboxAcquisitionTest {
     private static String digestOf(String wikitext) throws Exception {
         List<WikidataDynamicObject> objects = films(1);
         WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,
-                new process.CancellationToken(), new SitelinkClient(),
+                new work.CancellationToken(), new SitelinkClient(),
                 uri -> response("Film 1", 7, wikitext));
         return objects.getFirst().infoboxParameters().document().contentDigest().value();
     }

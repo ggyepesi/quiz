@@ -20,7 +20,7 @@ import process.ProcessStatus;
 import process.swing.SwingProcessInputHandler;
 import process.swing.SwingProcessRunner;
 import wikidata.explore.model.*;
-import wikidata.explore.query.core.QueryContext;
+import work.QueryContext;
 import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.logical.EnrichInstancesQuery;
@@ -953,7 +953,7 @@ public class ModelBuilderFrame extends JFrame {
 
     private void startGenerationOperation(
             String title, String description, String phaseId,
-            wikidata.explore.query.core.Query<GenerationRun> query,
+            work.Query<GenerationRun> query,
             process.ProcessWorkflowPipeline pipeline,
             GeneratedProjectModel snapshot,
             wikidata.explore.generation.GenerationExecutionSettings executionSettings,

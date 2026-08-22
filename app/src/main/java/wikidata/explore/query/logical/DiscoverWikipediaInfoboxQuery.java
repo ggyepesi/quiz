@@ -4,8 +4,8 @@ import quiz.enrichment.WikimediaEntityLookup;
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.template.sparql.SparqlQueries;
 
@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /** Discovers native Wikipedia Infobox template parameters from selected/sample articles. */
 public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResult> {
@@ -87,7 +88,7 @@ public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResu
     private List<String> sample(QueryContext context) throws Exception {
         if (!WikidataIds.isQid(typeQid)) return List.of();
         List<String> result = new ArrayList<>();
-        for (WikidataBinding row : context.sparql(Datasource.WIKIDATA)
+        for (WikidataBinding row : WikidataAccess.sparql(context, Datasource.WIKIDATA)
                 .query(SparqlQueries.sampleInstancesByP31(typeQid, sampleSize))) {
             String qid = row.qid("item");
             if (WikidataIds.isQid(qid)) result.add(qid);

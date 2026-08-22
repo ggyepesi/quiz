@@ -4,8 +4,8 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.template.sparql.SparqlQueries;
 
@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Lists the direct subclasses of a class's membership type, each with the
@@ -60,7 +61,7 @@ public class DiscoverSubtypesQuery implements Query<TableQueryResult> {
                     step.request(sparql);
 
                     List<List<Object>> rows = new ArrayList<>();
-                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
+                    for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
                         String qid = b.qid("type");
                         if (qid == null || !WikidataIds.isQid(qid)) {
                             continue;

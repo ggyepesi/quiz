@@ -1,6 +1,6 @@
 package wikidata.explore.workbench;
 
-import wikidata.explore.query.core.Query;
+import work.Query;
 import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;

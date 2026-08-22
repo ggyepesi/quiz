@@ -4,14 +4,15 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.LogStep;
+import work.Query;
+import work.QueryContext;
+import work.LogStep;
 import wikidata.explore.query.result.TableQueryResult;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * General relation explorer: given one entity, lists ALL of its outgoing and
@@ -117,7 +118,7 @@ public class ExploreEntityQuery implements Query<TableQueryResult> {
         String sparql = sparql(incoming);
         step.subquery(incoming ? "Incoming relations" : "Outgoing relations",
                 sparql, null);
-        for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sparql)) {
+        for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
             String pid = b.qid("p");
             if (pid == null || !WikidataIds.isPid(pid)) {
                 continue;

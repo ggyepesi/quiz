@@ -4,8 +4,8 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.DiscoveredProperty;
 import wikidata.explore.query.result.DiscoveredProperty.PropertyKind;
 import wikidata.explore.query.template.rule.RuleNodeQueryBuilder;
@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Class-level property discovery: samples N instances of a class, then
@@ -115,13 +116,13 @@ public class DiscoverClassPropertiesQuery
                                 + "\n");
 
         CompletableFuture<List<DiscoveredProperty>> outgoing =
-                context.sparql(Datasource.WIKIDATA)
+                WikidataAccess.sparql(context, Datasource.WIKIDATA)
                        .queryAsync(outgoingSparql)
                        .thenApply(rows ->
                                           parseBindings(rows, qids.size(), "outgoing"));
 
         CompletableFuture<List<DiscoveredProperty>> incoming =
-                context.sparql(Datasource.WIKIDATA)
+                WikidataAccess.sparql(context, Datasource.WIKIDATA)
                        .queryAsync(incomingSparql)
                        .thenApply(rows ->
                                           parseBindings(rows, qids.size(), "incoming"));
@@ -190,7 +191,7 @@ public class DiscoverClassPropertiesQuery
 
                     List<String> qids = new ArrayList<>();
 
-                    for (WikidataBinding b : context.sparql(Datasource.WIKIDATA).query(sampleSparql)) {
+                    for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sampleSparql)) {
                         String qid = b.qid(sampleVar);
 
                         if (qid != null && WikidataIds.isQid(qid)) {

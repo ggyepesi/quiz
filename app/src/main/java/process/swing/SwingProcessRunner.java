@@ -1,12 +1,12 @@
 package process.swing;
 
-import process.CancellationToken;
+import work.CancellationToken;
 import process.Process;
 import process.ProcessInputHandler;
 import process.ProcessOutcome;
 import process.ProcessRunner;
-import wikidata.explore.query.core.QueryContext;
-import wikidata.explore.query.log.LogListener;
+import work.QueryContext;
+import work.LogListener;
 
 import javax.swing.AbstractButton;
 import javax.swing.SwingUtilities;

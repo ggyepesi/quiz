@@ -1,4 +1,4 @@
-package wikidata.explore.query.log;
+package work;
 
 /**
  * Handle to a single open log step, passed to a {@link LogStepBody}. The

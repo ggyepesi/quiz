@@ -10,8 +10,8 @@ import quiz.enrichment.EnrichmentRequest;
 import quiz.enrichment.FieldValueCompatibility;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 
 import java.util.ArrayList;
 import java.util.List;

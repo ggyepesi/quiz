@@ -4,8 +4,8 @@ import quiz.enrichment.WikimediaEntityLookup;
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.template.sparql.SparqlQueries;
 
@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import wikidata.explore.query.core.WikidataAccess;
 
 /** Discovers observed English Wikipedia categories for supplied or sampled entities.
  * It does not infer a relation pattern; the user chooses an observed category and marks
@@ -118,7 +119,7 @@ public final class DiscoverWikipediaCategoriesQuery implements Query<TableQueryR
         if (!WikidataIds.isQid(typeQid)) return List.of();
         List<String> result = new ArrayList<>();
         String sparql = SparqlQueries.sampleInstancesByP31(typeQid, sampleSize);
-        for (WikidataBinding binding : context.sparql(Datasource.WIKIDATA).query(sparql)) {
+        for (WikidataBinding binding : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
             String qid = binding.qid("item");
             if (WikidataIds.isQid(qid)) result.add(qid);
         }

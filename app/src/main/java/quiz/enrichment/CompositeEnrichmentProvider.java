@@ -2,8 +2,8 @@ package quiz.enrichment;
 
 import datasource.enrichment.EnrichmentProposal;
 
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

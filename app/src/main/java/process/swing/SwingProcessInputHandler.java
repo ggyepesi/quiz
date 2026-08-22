@@ -1,6 +1,6 @@
 package process.swing;
 
-import process.CancellationToken;
+import work.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessInputRequest;
 

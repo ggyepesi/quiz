@@ -4,8 +4,8 @@ import datasource.enrichment.EnrichmentProposal;
 
 import datasource.SourceRef;
 
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 
 import java.net.URI;
 import java.util.ArrayList;

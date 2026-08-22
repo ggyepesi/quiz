@@ -2,7 +2,7 @@ package quiz.enrichment;
 
 import datasource.enrichment.EnrichmentProposal;
 
-import wikidata.explore.query.core.Query;
+import work.Query;
 
 /**
  * Pluggable discovery source. Implementations may use linked data, an originating

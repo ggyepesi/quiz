@@ -1,8 +1,8 @@
 package wikidata.explore.query.logical;
 
 import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 import wikidata.explore.wikiproject.WikiProjectArticle;
 import wikidata.explore.wikiproject.WikiProjectCategoryReader;
 import wikidata.explore.wikiproject.WikiProjectMediaWikiClient;
@@ -14,6 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Loads curated seed pages from Wikipedia/WikiProject assessment
@@ -119,7 +120,7 @@ public class WikiProjectSeedQuery
                                 + " pages...\n");
 
         if (!articles.isEmpty()) {
-            new WikiProjectQidResolver(context.sparql(Datasource.WIKIDATA))
+            new WikiProjectQidResolver(WikidataAccess.sparql(context, Datasource.WIKIDATA))
                     .attachQids(articles);
         }
 

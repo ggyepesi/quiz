@@ -9,8 +9,8 @@ import wikidata.WikidataIds;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import wikidata.explore.CommonsMedia;
-import wikidata.explore.query.core.Query;
-import wikidata.explore.query.core.QueryContext;
+import work.Query;
+import work.QueryContext;
 
 import java.net.URI;
 import java.net.URLEncoder;
