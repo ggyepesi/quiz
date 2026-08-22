@@ -122,6 +122,19 @@ final class ModelFieldRulePromoter {
         }
     }
 
+    FieldSourceMapping declaredFallbackSource(String type, String field) {
+        if (modelFile == null || !modelFile.isFile() || type == null || field == null) return null;
+        try {
+            GeneratedProjectModel model = new GeneratedProjectModelStore().load(modelFile);
+            GeneratedFieldModel declared = findField(model.findClass(type), field);
+            if (declared == null || declared.fallbackMapping() == null
+                    || declared.fallbackMapping().propertyPid().isBlank()) return null;
+            FieldSourceMapping copy = new FieldSourceMapping();
+            copy.copyFrom(declared.fallbackMapping());
+            return copy;
+        } catch (Exception unreadable) { return null; }
+    }
+
     private GeneratedProjectModel loadModel() throws Exception {
         if (modelFile == null || !modelFile.isFile()) {
             throw new IllegalArgumentException("This dataset has no ModelBuilder model.");

@@ -291,6 +291,7 @@ public class ModelGraphPanel extends JPanel {
         String source = switch (field.mapping().sourceType()) {
             case SPARQL -> "WD";
             case DBPEDIA -> "DB";
+            case WIKIPEDIA_INFOBOX -> "infobox";
             case WIKIDATA_API -> "WD-API";
             case BACKLINKS -> "backlinks";
             case WIKIPEDIA_CATEGORY -> "category";

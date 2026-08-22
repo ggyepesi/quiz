@@ -13,8 +13,11 @@ public record FieldSourceRecipe(
         String type, String field, String provider, Map<String, String> parameters) {
 
     public static final String WIKIPEDIA_CATEGORY = "wikipedia-category";
+    public static final String WIKIPEDIA_INFOBOX = "wikipedia-infobox";
     public static final String PATTERN = "pattern";
     public static final String POLICY = "policy";
+    public static final String INFOBOX_KEY = "key";
+    public static final String INFOBOX_LABEL = "label";
 
     public FieldSourceRecipe {
         type = clean(type);
@@ -32,6 +35,21 @@ public record FieldSourceRecipe(
         return new FieldSourceRecipe(type, field, WIKIPEDIA_CATEGORY,
                 Map.of(PATTERN, pattern == null ? "" : pattern.trim(),
                         POLICY, (policy == null ? CategoryCandidatePolicy.REVIEW : policy).name()));
+    }
+
+    /** A native Wikipedia template parameter, identified as Template.parameter. */
+    public static FieldSourceRecipe wikipediaInfobox(
+            String type, String field, String key, String label) {
+        return new FieldSourceRecipe(type, field, WIKIPEDIA_INFOBOX,
+                Map.of(INFOBOX_KEY, clean(key), INFOBOX_LABEL, clean(label)));
+    }
+
+    public String infoboxKey() {
+        return WIKIPEDIA_INFOBOX.equals(provider()) ? parameter(INFOBOX_KEY) : "";
+    }
+
+    public String infoboxLabel() {
+        return WIKIPEDIA_INFOBOX.equals(provider()) ? parameter(INFOBOX_LABEL) : "";
     }
 
     public String parameter(String name) {

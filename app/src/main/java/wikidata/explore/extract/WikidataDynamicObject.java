@@ -46,6 +46,13 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @Hidden
     private boolean categoryMembershipsAnswered;
 
+    /** The native infobox read from the same article, kept the same way and for the
+     * same reason: a parameter is what the page said, not yet what a field holds. */
+    @Hidden
+    private datasource.evidence.InfoboxParameters infoboxParameters;
+    @Hidden
+    private boolean infoboxAnswered;
+
     @Hidden
     @JsonIgnore
     private String referenceLabel;
@@ -146,6 +153,19 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     }
 
     public boolean categoryMembershipsAnswered() { return categoryMembershipsAnswered; }
+
+    public datasource.evidence.InfoboxParameters infoboxParameters() {
+        return infoboxParameters;
+    }
+
+    /** Records what the article's infobox said, including that it said nothing: an
+     *  article without an infobox has been asked and must not be asked again. */
+    public void infoboxParameters(datasource.evidence.InfoboxParameters value) {
+        infoboxParameters = value;
+        infoboxAnswered = true;
+    }
+
+    public boolean infoboxAnswered() { return infoboxAnswered; }
 
     /** A PART of another object — an owned component, carrying its owner's identity.
      *  It is in the pool because it is reachable, not because it is a root, so it is

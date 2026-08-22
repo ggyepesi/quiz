@@ -157,7 +157,8 @@ public final class RuleTreeCompiler {
         // DBpedia-sourced fields aren't Wikidata properties; they're filled by a
         // separate post-extraction enrichment (DBpediaEnrichment), so they must
         // not be compiled into the Wikidata rule tree.
-        if (field.mapping().sourceType() == FieldSourceType.DBPEDIA) {
+        if (field.mapping().sourceType() == FieldSourceType.DBPEDIA
+                || field.mapping().sourceType() == FieldSourceType.WIKIPEDIA_INFOBOX) {
             return;
         }
 
@@ -419,7 +420,8 @@ public final class RuleTreeCompiler {
         if (field == null) {
             return;
         }
-        if (field.source().sourceType() == FieldSourceType.DBPEDIA) {
+        if (field.source().sourceType() == FieldSourceType.DBPEDIA
+                || field.source().sourceType() == FieldSourceType.WIKIPEDIA_INFOBOX) {
             return;
         }
 

@@ -189,4 +189,9 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
             String type, String field) {
         return new ModelFieldRulePromoter(modelFile, this).declaredSource(type, field);
     }
+
+    @Override public wikidata.explore.model.FieldSourceMapping declaredFallbackSource(
+            String type, String field) {
+        return new ModelFieldRulePromoter(modelFile, this).declaredFallbackSource(type, field);
+    }
 }

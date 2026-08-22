@@ -58,6 +58,44 @@ class EntityAliasSnapshotTest {
                 "the snapshot must not fall back to the document-per-category shape");
     }
 
+    @Test void infoboxEvidenceSurvivesWithoutBecomingADomainField(@TempDir Path dir)
+            throws Exception {
+        WikidataDynamicObject movie = new WikidataDynamicObject("Q157058", "Blood Diamond");
+        movie.type("Movie");
+        var document = new datasource.evidence.SourceDocument(
+                "Wikipedia (English)", "Blood Diamond", "Blood Diamond",
+                "https://en.wikipedia.org/wiki/Blood_Diamond", "987654",
+                new datasource.evidence.ContentDigest("sha256", "abc"),
+                "2026-08-21T12:00:00Z");
+        movie.infoboxParameters(new datasource.evidence.InfoboxParameters(
+                "Infobox film", java.util.Map.of("country", "Sierra Leone"), document));
+
+        var file = dir.resolve("infobox-snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(List.of(movie), file);
+        WikidataDynamicObject loaded = store.load(file).getFirst();
+
+        assertEquals("Sierra Leone", loaded.infoboxParameters().value("country"));
+        assertEquals("987654", loaded.infoboxParameters().document().revision());
+        assertEquals(null, loaded.get("infoboxParameters"),
+                "source facts stay outside the rendered field graph");
+    }
+
+    @Test void answeredWithoutInfoboxSurvivesTheSnapshotBoundary(@TempDir Path dir)
+            throws Exception {
+        WikidataDynamicObject movie = new WikidataDynamicObject("Q1", "Film");
+        movie.type("Movie");
+        movie.infoboxParameters(null);
+
+        var file = dir.resolve("no-infobox-snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(List.of(movie), file);
+        WikidataDynamicObject loaded = store.load(file).getFirst();
+
+        org.junit.jupiter.api.Assertions.assertTrue(loaded.infoboxAnswered());
+        assertEquals(null, loaded.infoboxParameters());
+    }
+
     private static int occurrences(String value, String needle) {
         int count = 0;
         for (int at = 0; (at = value.indexOf(needle, at)) >= 0; at += needle.length()) {

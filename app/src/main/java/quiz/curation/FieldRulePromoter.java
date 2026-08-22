@@ -34,6 +34,12 @@ public interface FieldRulePromoter {
         return null;
     }
 
+    /** Optional additional/fallback source declared by ModelBuilder. */
+    default wikidata.explore.model.FieldSourceMapping declaredFallbackSource(
+            String type, String field) {
+        return null;
+    }
+
     record PromotionPreview(
             boolean eligible,
             String reason,

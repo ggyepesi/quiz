@@ -869,7 +869,7 @@ public final class ValidationPanel extends JPanel {
 
         FieldKey key = new FieldKey(selectedFieldType, path);
         if (!media && sourceFor(key) == null
-                && !fallbackFieldSources.containsKey(key)) {
+                && fallbackSourceFor(key) == null) {
             if (chooseSourceForSelected(true)) return;
             // No route is configured and no member resolves to a Wikidata entity yet —
             // fall through so runFillBatch reports that identities must be resolved first.
@@ -1172,7 +1172,7 @@ public final class ValidationPanel extends JPanel {
                 });
     }
 
-    /** Pick a Wikipedia-infobox (DBpedia) property from a sample member and set it as the
+    /** Pick a Wikipedia infobox source from sample members and set it as the
      *  selected field's fallback source. The primary Wikidata mapping remains intact; the
      *  ordinary Find Data process decides per member whether this fallback is needed. */
     private void chooseDbpediaSourceForSelected() {
@@ -1186,6 +1186,50 @@ public final class ValidationPanel extends JPanel {
             return;
         }
         FieldKey key = new FieldKey(selectedFieldType, selectedFieldPath);
+        boolean configured = datasetFallbackOverride(key) != null;
+        Object[] choices = configured
+                ? new Object[]{"Native Wikipedia infobox", "DBpedia projection",
+                        "Clear curation choice"}
+                : new Object[]{"Native Wikipedia infobox", "DBpedia projection"};
+        Object kind = JOptionPane.showInputDialog(this,
+                "Which Wikipedia structure should be sampled?",
+                "Choose additional source", JOptionPane.PLAIN_MESSAGE, null,
+                choices,
+                "Native Wikipedia infobox");
+        if (kind == null) return;
+        if (kind.toString().startsWith("Clear")) {
+            fallbackFieldSources.remove(key);
+            quiz.curation.ManualCuration curation = curationStore();
+            if (curation != null) curation.removeSourceRecipe(key.type(), key.path(),
+                    quiz.curation.FieldSourceRecipe.WIKIPEDIA_INFOBOX);
+            updateFieldSourceButton();
+            return;
+        }
+        if (kind.toString().startsWith("Native")) {
+            List<String> qids = actionInstances().stream()
+                    .map(v -> resolvedQid(v, EnrichmentSources.collect(
+                            v, concreteType(v), curationStore())))
+                    .filter(ValidationPanel::isQid).distinct().limit(12).toList();
+            if (qids.isEmpty()) qids = List.of(seed.qid());
+            wikidata.explore.workbench.WikipediaInfoboxPicker.findForEntities(
+                    this, queryRunner, qids, selected -> {
+                        if (selected == null || selected.isBlank()) return;
+                        FieldSourceMapping source = new FieldSourceMapping();
+                        source.sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+                        source.propertyPid(selected);
+                        source.propertyLabel("Native Wikipedia infobox parameter");
+                        source.productionKind(FieldProductionKind.AUTO);
+                        fallbackFieldSources.put(key, source);
+                        quiz.curation.ManualCuration curation = curationStore();
+                        if (curation != null) {
+                            curation.putSourceRecipe(
+                                    quiz.curation.FieldSourceRecipeCodec.scoped(
+                                            key.type(), key.path(), source));
+                        }
+                        updateFieldSourceButton();
+                    });
+            return;
+        }
         wikidata.explore.workbench.DbpediaPropertyPicker.findProperty(
                 this, queryRunner, List.of(seed.qid()),
                 (property, example) -> {
@@ -1288,8 +1332,38 @@ public final class ValidationPanel extends JPanel {
         }
     }
 
+    /** This DATASET's own choice, which shadows whatever the model declares — the same
+     *  direction the category rule already takes, and the reason an override is clearable:
+     *  without that the model could never be heard on this field again. */
+    private FieldSourceMapping datasetFallbackOverride(FieldKey key) {
+        if (key == null) return null;
+        FieldSourceMapping source = fallbackFieldSources.get(key);
+        if (source != null) return source;
+        quiz.curation.ManualCuration curation = curationStore();
+        quiz.curation.FieldSourceRecipe recipe = curation == null ? null
+                : curation.sourceRecipe(key.type(), key.path(),
+                        quiz.curation.FieldSourceRecipe.WIKIPEDIA_INFOBOX);
+        source = quiz.curation.FieldSourceRecipeCodec.mapping(recipe);
+        if (source != null) fallbackFieldSources.put(key, source);
+        return source;
+    }
+
     private FieldSourceMapping fallbackSourceFor(FieldKey key) {
-        return key == null ? null : fallbackFieldSources.get(key);
+        return key == null ? null
+                : fallbackSource(datasetFallbackOverride(key), domain, key.type(), key.path());
+    }
+
+    /**
+     * A dataset's own choice SHADOWS the model's declaration — the same order the category
+     * recipe takes, and the reason the choice is clearable. The model's declaration is heard
+     * only where this dataset has said nothing, and is never cached into the override map:
+     * that map means "the dataset chose this", which is what makes clearing meaningful.
+     */
+    static FieldSourceMapping fallbackSource(FieldSourceMapping datasetOverride,
+            DomainModel domain, String type, String field) {
+        if (datasetOverride != null) return datasetOverride;
+        return domain instanceof quiz.curation.FieldRulePromoter modelBacked
+                ? modelBacked.declaredFallbackSource(type, field) : null;
     }
 
     private void updateFieldSourceButton() {
@@ -1302,7 +1376,8 @@ public final class ValidationPanel extends JPanel {
                 "Choose a property from a sample member's real Wikidata claims");
         fieldSourceDbpediaButton.setText("Choose Wikipedia fallback…");
         fieldSourceDbpediaButton.setToolTipText(
-                "Choose the DBpedia fallback used only when Wikidata has no usable value");
+                "Choose a native Wikipedia or DBpedia infobox fallback used only when "
+                        + "Wikidata has no usable value");
         if (source != null && !source.propertyPid().isBlank()) {
             String label = source.propertyLabel().isBlank()
                     ? source.propertyPid() : source.propertyLabel();

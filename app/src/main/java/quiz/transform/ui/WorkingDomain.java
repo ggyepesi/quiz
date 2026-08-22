@@ -131,6 +131,18 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return promoter.promote(recipe);
     }
 
+    @Override public wikidata.explore.model.FieldSourceMapping declaredSource(
+            String type, String field) {
+        return base instanceof quiz.curation.FieldRulePromoter promoter
+                ? promoter.declaredSource(type, field) : null;
+    }
+
+    @Override public wikidata.explore.model.FieldSourceMapping declaredFallbackSource(
+            String type, String field) {
+        return base instanceof quiz.curation.FieldRulePromoter promoter
+                ? promoter.declaredFallbackSource(type, field) : null;
+    }
+
     /** Apply a merge to the REAL base pool — not the throwaway combined copy that
      *  {@link #instances()} returns — so the duplicate's removal takes effect live. */
     @Override public int applyMerge(quiz.curation.Merge merge) {

@@ -41,6 +41,7 @@ public final class FieldEnrichmentRoutes {
             case SPARQL ->
                     new quiz.enrichment.WikimediaFieldEnrichmentProvider(source, references);
             case DBPEDIA -> new DBpediaFieldEnrichmentProvider(source);
+            case WIKIPEDIA_INFOBOX -> new WikipediaInfoboxEnrichmentProvider(source);
             default -> null;
         };
     }

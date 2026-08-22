@@ -309,6 +309,25 @@ public class FieldSourcePanel extends JPanel {
         if (field == null) return;
         String typeQid = classTypeQid();
         if (typeQid == null) return;
+        Object choice = JOptionPane.showInputDialog(this,
+                "Which Wikipedia structure should be sampled?",
+                "Choose additional source", JOptionPane.PLAIN_MESSAGE, null,
+                new Object[]{"Native Wikipedia infobox", "DBpedia projection"},
+                "Native Wikipedia infobox");
+        if (choice == null) return;
+        if (choice.toString().startsWith("Native")) {
+            WikipediaInfoboxPicker.findByType(this, queryRunner, typeQid, 8,
+                    (key) -> {
+                        if (key == null || key.isBlank()) return;
+                        FieldSourceMapping fallback = field.ensureFallbackMapping();
+                        fallback.sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+                        fallback.propertyPid(key);
+                        fallback.propertyLabel("Native Wikipedia infobox parameter");
+                        refreshFallbackLabel();
+                        afterChange.accept(null);
+                    });
+            return;
+        }
         DbpediaPropertyPicker.findPropertyByType(this, queryRunner, typeQid, 8,
                 (property, example) -> {
                     if (property == null || property.isBlank()) return;
@@ -317,13 +336,15 @@ public class FieldSourcePanel extends JPanel {
                     fallback.propertyPid(property);
                     fallback.propertyLabel("DBpedia infobox property");
                     refreshFallbackLabel();
+                    afterChange.accept(null);
                 });
     }
 
     private void refreshFallbackLabel() {
         FieldSourceMapping fallback = field == null ? null : field.fallbackMapping();
         boolean set = fallback != null && !fallback.propertyPid().isBlank();
-        fallbackLabel.setText(set ? fallback.propertyPid() + " (Wikipedia)" : "none");
+        fallbackLabel.setText(set ? fallback.propertyPid() + " ("
+                + fallback.sourceType() + ")" : "none");
         clearFallbackButton.setEnabled(set);
     }
 
@@ -591,8 +612,8 @@ public class FieldSourcePanel extends JPanel {
         JPanel fallbackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         fallbackLabel.setForeground(new java.awt.Color(90, 90, 90));
         fallbackRow.add(fallbackLabel);
-        fallbackButton.setToolTipText("Pick a DBpedia (Wikipedia infobox) property used only "
-                + "when the primary source has no value for an instance.");
+        fallbackButton.setToolTipText("Discover either a native Wikipedia Infobox parameter "
+                + "or its DBpedia projection, used only when the primary has no value.");
         fallbackButton.addActionListener(e -> chooseFallback());
         clearFallbackButton.addActionListener(e -> {
             if (field != null) field.fallbackMapping(null);

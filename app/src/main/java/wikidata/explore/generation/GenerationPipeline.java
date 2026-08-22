@@ -415,6 +415,10 @@ public class GenerationPipeline {
                 WikipediaCategoryAcquisition.apply(snapshot, pool, sink,
                         cancellation == null ? new process.CancellationToken() : cancellation,
                         entityApi);
+        WikipediaInfoboxAcquisition.Result infoboxes = WikipediaInfoboxAcquisition.apply(
+                snapshot, pool, sink,
+                cancellation == null ? new process.CancellationToken() : cancellation,
+                entityApi);
 
         // Finalization is deliberately after semantic convergence: names, expectations
         // and vocabularies describe the final classes/fields rather than iteration one.
@@ -429,7 +433,8 @@ public class GenerationPipeline {
         sink.message("Enrich: " + convergence.ownedCreated() + " component(s) materialized, "
                 + loaded + " declared field value(s) loaded over "
                 + pool.size() + " objects, " + categories.memberships()
-                + " Wikipedia category membership(s) acquired (no re-extraction). "
+                + " Wikipedia category membership(s) and " + infoboxes.values()
+                + " native infobox value(s) acquired (no re-extraction). "
                 + "Re-materializing...\n");
 
         List<Viewable> instances = materialize(runtime, pool);

@@ -240,6 +240,11 @@ public final class GenerateDomainPipeline {
                     out.add(owner.className() + "." + field.name() + " — \""
                             + rule.pattern() + "\" → " + rule.policy());
                 }
+                var source = WikipediaInfoboxAcquisition.source(field);
+                if (source != null) {
+                    out.add(owner.className() + "." + field.name()
+                            + " — native Infobox " + source.propertyPid());
+                }
             }
         }
         return none(out, "No external category recipes");
@@ -266,12 +271,30 @@ public final class GenerateDomainPipeline {
                         List.of(ref)));
             }
         }
+        for (GeneratedClassModel owner : model.classes()) {
+            for (GeneratedFieldModel field : owner.fields()) {
+                var source = WikipediaInfoboxAcquisition.source(field);
+                if (source == null) continue;
+                var ref = PhaseExplanation.ModelReference.field(owner.className(), field.name());
+                refs.add(ref);
+                examples.add(new PhaseExplanation.PhaseExample(
+                        PhaseExplanation.ExampleKind.PLANNED,
+                        "Read native Infobox value for " + owner.className() + "." + field.name(),
+                        List.of("Wikipedia pages linked from reachable " + owner.className()
+                                + " QIDs"),
+                        List.of("Batch article revisions in groups of 50",
+                                "Parse " + source.propertyPid() + " without flattening nested markup"),
+                        List.of("Fill only members whose primary source left the field empty",
+                                "Expose the parsed value to final materialization"), List.of(ref)));
+            }
+        }
         return new PhaseExplanation(
                 "Acquire source facts once at domain scale; interpretation remains explicit and auditable.",
-                List.of("Reachable entity QIDs", "Configured Wikipedia-category recipes"),
+                List.of("Reachable entity QIDs", "Configured Wikipedia-category and Infobox recipes"),
                 List.of("Resolve English Wikipedia sitelinks in batches of 50",
                         "Fetch visible category memberships with continuation",
-                        "Retain page revision, category digest and retrieval time",
+                        "Fetch native Infobox wikitext in retryable batches of 50",
+                        "Retain page revision, evidence digest and retrieval time",
                         "Expose matched values to generation/review according to policy"),
                 List.of("Snapshot-backed category memberships",
                         "Per-value provenance usable by Explore and TransformApp"),
