@@ -450,6 +450,12 @@ public class FieldSourcePanel extends JPanel {
                 afterApplyField == null ? f -> {} : afterApplyField;
     }
 
+    /** The pending property value, package-private so a test can leave one unflushed —
+     *  which is the state the whole flush-before-save rule exists for. */
+    javax.swing.JTextField pendingPropertyField() {
+        return propertyPidField;
+    }
+
     public void edit(GeneratedFieldModel field) {
         this.field = field;
 
@@ -571,7 +577,16 @@ public class FieldSourcePanel extends JPanel {
         afterApplyField.accept(field);
     }
 
-    public void applyEdits() { apply(); }
+    /**
+     * Flushes pending editor values into the model before a save, a generation or a preview.
+     *
+     * <p>Quietly: no confirmation flash, and no {@code afterApplyField}. That hook re-selects
+     * the edited field in the class tree, which is right when a person presses Apply and
+     * wrong when a save happens to flush an editor the person has already navigated away
+     * from — saving while reading a class node used to jump the selection to whichever field
+     * was last touched.
+     */
+    public void applyEdits() { apply(false); }
 
     private void buildUi() {
         JPanel form = new JPanel(new GridBagLayout());
@@ -831,7 +846,12 @@ public class FieldSourcePanel extends JPanel {
         return null;   // Auto
     }
 
+    /** An explicit Apply: write the values, say so, and leave this field selected. */
     private void apply() {
+        apply(true);
+    }
+
+    private void apply(boolean announce) {
         if (field == null) {
             return;
         }
@@ -959,10 +979,15 @@ public class FieldSourcePanel extends JPanel {
         titleLabel.setText("Field: " + field.name());
 
         updateRecommendation();
-        flashApplied(field.name());
 
+        // The model changed either way — the tree labels and the dirty state depend on it.
+        // Only the ANNOUNCEMENT is optional: a confirmation flash and a re-selection make
+        // sense for someone who pressed Apply, not for a flush on the way to saving.
         afterChange.accept(null);
-        afterApplyField.accept(field);
+        if (announce) {
+            flashApplied(field.name());
+            afterApplyField.accept(field);
+        }
     }
 
     // Brief "✓ Applied" confirmation so it's obvious the edit took (the change
