@@ -1263,7 +1263,9 @@ public final class ValidationPanel extends JPanel {
      *  declared one — {@code locations -> P840} is already in movies.model.json, and
      *  re-asking for it was the gap this closes. */
     private boolean seedFieldSourceFromModel(FieldKey key) {
-        if (!(domain instanceof quiz.curation.FieldRulePromoter modelBacked)) {
+        quiz.curation.FieldRulePromoter modelBacked =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        if (modelBacked == null) {
             return false;
         }
         FieldSourceMapping declared = modelBacked.declaredSource(key.type(), key.path());
@@ -1365,8 +1367,9 @@ public final class ValidationPanel extends JPanel {
     static FieldSourceMapping fallbackSource(FieldSourceMapping datasetOverride,
             DomainModel domain, String type, String field) {
         if (datasetOverride != null) return datasetOverride;
-        return domain instanceof quiz.curation.FieldRulePromoter modelBacked
-                ? modelBacked.declaredFallbackSource(type, field) : null;
+        quiz.curation.FieldRulePromoter modelBacked =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        return modelBacked == null ? null : modelBacked.declaredFallbackSource(type, field);
     }
 
     private void updateFieldSourceButton() {
@@ -1566,7 +1569,8 @@ public final class ValidationPanel extends JPanel {
         wikipediaCategoryButton.setText(effective != null && effective.configured()
                 ? (override == null ? "Model: " : "Override: ") + effective.pattern() + "…"
                 : "Configure category source…");
-        boolean promotable = override != null && domain instanceof quiz.curation.FieldRulePromoter;
+        boolean promotable = override != null
+                && domain.capability(quiz.curation.FieldRulePromoter.class) != null;
         promoteWikipediaCategoryButton.setVisible(promotable);
         promoteWikipediaCategoryButton.setEnabled(promotable);
         clearWikipediaCategoryButton.setVisible(override != null);
@@ -1591,7 +1595,9 @@ public final class ValidationPanel extends JPanel {
 
     private void promoteWikipediaCategorySource() {
         quiz.curation.FieldSourceRecipe recipe = wikipediaCategoryRecipe();
-        if (recipe == null || !(domain instanceof quiz.curation.FieldRulePromoter promoter)) return;
+        quiz.curation.FieldRulePromoter promoter =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        if (recipe == null || promoter == null) return;
         quiz.curation.FieldRulePromoter.PromotionPreview preview =
                 promoter.previewPromotion(recipe);
         if (!preview.eligible()) {
@@ -1736,7 +1742,8 @@ public final class ValidationPanel extends JPanel {
 
 
     private quiz.curation.ManualCuration curationStore() {
-        return domain instanceof quiz.curation.Curatable c ? c.curation() : null;
+        quiz.curation.Curatable c = domain.capability(quiz.curation.Curatable.class);
+        return c == null ? null : c.curation();
     }
 
     private void applyDecision(

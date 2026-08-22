@@ -191,7 +191,8 @@ public final class MergePanel extends JPanel {
         Merge merge = new Merge(type, pid, did, fieldSource, Merge.MANUAL);
         int n;
         try {
-            n = domain instanceof Mergeable mg
+            Mergeable mg = domain.capability(Mergeable.class);
+            n = mg != null
                     ? mg.applyMerge(merge)
                     : Merges.apply(
                             domain.instances(), List.of(merge), domain::baseType);
@@ -390,7 +391,8 @@ public final class MergePanel extends JPanel {
     }
 
     private Collection<? extends Viewable> mergeableInstances() {
-        return domain instanceof Mergeable mergeable
+        Mergeable mergeable = domain.capability(Mergeable.class);
+        return mergeable != null
                 ? mergeable.mergeableInstances()
                 : domain.instances();
     }

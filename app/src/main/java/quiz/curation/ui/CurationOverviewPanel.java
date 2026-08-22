@@ -307,7 +307,9 @@ public final class CurationOverviewPanel extends JPanel {
     }
 
     private void updatePromotionAction(Operation operation) {
-        if (!(domain instanceof quiz.curation.FieldRulePromoter promoter)
+        quiz.curation.FieldRulePromoter promoter =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        if ((promoter == null)
                 || operation == null
                 || !(operation.source() instanceof Correction correction)) {
             promoteRule.setEnabled(false);
@@ -324,7 +326,9 @@ public final class CurationOverviewPanel extends JPanel {
     }
 
     private void promoteSelectedRule() {
-        if (!(domain instanceof quiz.curation.FieldRulePromoter promoter)
+        quiz.curation.FieldRulePromoter promoter =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        if ((promoter == null)
                 || selectedOperation == null
                 || !(selectedOperation.source() instanceof Correction correction)) {
             return;

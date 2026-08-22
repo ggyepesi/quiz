@@ -271,4 +271,19 @@ public interface DomainModel {
     /** The universe class for the {@code ClassTransformPlan} (kept-instances plan). */
     @Declared
     Class<? extends Viewable> universe();
+
+    /**
+     * What else this domain can do, or null when it cannot do that. A domain answers for
+     * itself; a wrapper answers for itself first and then for what it wraps, so a capability
+     * held three layers down is still found — see {@link DelegatingDomainModel}.
+     *
+     * <p>This replaces {@code instanceof}, which could only ever see the outermost object.
+     * A wrapper that did not implement a capability hid its base's, so each wrapper carried a
+     * forwarding shim per capability and each new capability needed another shim in every
+     * wrapper — or, more often, was quietly unavailable through that wrapper.
+     */
+    @Declared
+    default <T extends DomainCapability> T capability(Class<T> type) {
+        return type != null && type.isInstance(this) ? type.cast(this) : null;
+    }
 }

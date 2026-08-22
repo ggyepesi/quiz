@@ -7,7 +7,7 @@ package quiz.curation;
  * curation's side: a domain whose model already declared {@code locations -> P840} still
  * asked which property to use, because nothing ever read the declaration back.
  */
-public interface FieldRulePromoter {
+public interface FieldRulePromoter extends domain.DomainCapability {
 
     PromotionPreview previewPromotion(Correction correction);
 

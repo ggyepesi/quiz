@@ -137,7 +137,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.Y_AXIS));
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         top.setAlignmentX(Component.LEFT_ALIGNMENT);
-        if (controller.domain() instanceof SchemaView) {
+        if (controller.domain().capability(SchemaView.class) != null) {
             top.add(button("Schema…", this::showSchema));
         }
         // "New field…" now sits next to the Class selector (it acts on that class), and
@@ -154,7 +154,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         top.add(cancelIdentityButton);
         toolbar.add(top);
 
-        if (controller.domain() instanceof quiz.curation.Curatable c && c.curation() != null) {
+        quiz.curation.Curatable c =
+                controller.domain().capability(quiz.curation.Curatable.class);
+        if (c != null && c.curation() != null) {
             JPanel curationActions = new JPanel(
                     new FlowLayout(FlowLayout.LEFT, 4, 2));
             curationActions.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -504,7 +506,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     private quiz.curation.ManualCuration curation() {
-        return controller.domain() instanceof quiz.curation.Curatable c
+        quiz.curation.Curatable c =
+                controller.domain().capability(quiz.curation.Curatable.class);
+        return c != null
                 ? c.curation() : null;
     }
 
@@ -1245,7 +1249,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     /** Show the compiled-schema inspector (ModelClass ↔ ProductClass) in a dialog. */
     private void showSchema() {
-        JComponent view = controller.domain() instanceof SchemaView sv ? sv.schemaView() : null;
+        SchemaView sv = controller.domain().capability(SchemaView.class);
+        JComponent view = sv == null ? null : sv.schemaView();
         if (view == null) {
             return;
         }

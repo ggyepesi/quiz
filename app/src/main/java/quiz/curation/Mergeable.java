@@ -7,7 +7,7 @@ package quiz.curation;
  * duplicate has to target the real pool to take effect in the live session, not just on
  * the next reload.
  */
-public interface Mergeable {
+public interface Mergeable extends domain.DomainCapability {
 
     /** Instances whose merge can be applied to durable domain state. */
     java.util.Collection<? extends objectview.Viewable> mergeableInstances();

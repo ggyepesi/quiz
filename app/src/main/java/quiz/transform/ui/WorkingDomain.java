@@ -23,9 +23,8 @@ import domain.DomainSchemas;
  * operation can consume a class produced by an earlier PROJECT — the composable
  * transform graph. Derived instances are added to {@link #instances()} for the view.
  */
-public final class WorkingDomain extends DelegatingDomainModel implements SchemaView,
-        quiz.curation.Curatable, quiz.curation.Mergeable,
-        quiz.curation.FieldRulePromoter {
+public final class WorkingDomain extends DelegatingDomainModel
+        implements quiz.curation.Mergeable {
 
     private final Map<String, DerivedClass> derived = new LinkedHashMap<>();
     private final Map<String, String> subclassBases = new LinkedHashMap<>();
@@ -67,7 +66,9 @@ public final class WorkingDomain extends DelegatingDomainModel implements Schema
         if (!(sample instanceof WikidataDynamicObject)) {
             return false;
         }
-        quiz.curation.ManualCuration curation = curation();
+        quiz.curation.Curatable curatable = capability(quiz.curation.Curatable.class);
+        quiz.curation.ManualCuration curation =
+                curatable == null ? null : curatable.curation();
         if (curation != null) {
             curation.putFieldDeclaration(type, field);
             try {
@@ -79,10 +80,6 @@ public final class WorkingDomain extends DelegatingDomainModel implements Schema
         }
         declaredFields.computeIfAbsent(type, t -> new ArrayList<>()).add(field);
         return true;
-    }
-
-    @Override public javax.swing.JComponent schemaView() {
-        return base instanceof SchemaView sv ? sv.schemaView() : null;
     }
 
     // What the producing model declares travels through the working layer unchanged.
@@ -98,42 +95,6 @@ public final class WorkingDomain extends DelegatingDomainModel implements Schema
         return base.entityKindRule(className);
     }
 
-    @Override public quiz.curation.ManualCuration curation() {
-        return base instanceof quiz.curation.Curatable c ? c.curation() : null;
-    }
-
-    @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
-            quiz.curation.Correction correction) {
-        return base instanceof quiz.curation.FieldRulePromoter promoter
-                ? promoter.previewPromotion(correction)
-                : quiz.curation.FieldRulePromoter.PromotionPreview.ineligible(
-                        "This dataset has no ModelBuilder model.");
-    }
-
-    @Override public quiz.curation.FieldRulePromoter.PromotionPreview promote(
-            quiz.curation.Correction correction) throws Exception {
-        if (!(base instanceof quiz.curation.FieldRulePromoter promoter)) {
-            throw new IllegalStateException("This dataset has no ModelBuilder model.");
-        }
-        return promoter.promote(correction);
-    }
-
-    @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
-            quiz.curation.FieldSourceRecipe recipe) {
-        return base instanceof quiz.curation.FieldRulePromoter promoter
-                ? promoter.previewPromotion(recipe)
-                : quiz.curation.FieldRulePromoter.PromotionPreview.ineligible(
-                        "This dataset has no ModelBuilder model.");
-    }
-
-    @Override public quiz.curation.FieldRulePromoter.PromotionPreview promote(
-            quiz.curation.FieldSourceRecipe recipe) throws Exception {
-        if (!(base instanceof quiz.curation.FieldRulePromoter promoter)) {
-            throw new IllegalStateException("This dataset has no ModelBuilder model.");
-        }
-        return promoter.promote(recipe);
-    }
-
     /** Derived classes and their instances exist only here, so the sample has to be found
      *  here too: the base has never heard of a PROJECT-derived class and would answer null. */
     @Override public objectview.Viewable representativeSample(String type) {
@@ -143,18 +104,6 @@ public final class WorkingDomain extends DelegatingDomainModel implements Schema
             }
         }
         return null;
-    }
-
-    @Override public wikidata.explore.model.FieldSourceMapping declaredSource(
-            String type, String field) {
-        return base instanceof quiz.curation.FieldRulePromoter promoter
-                ? promoter.declaredSource(type, field) : null;
-    }
-
-    @Override public wikidata.explore.model.FieldSourceMapping declaredFallbackSource(
-            String type, String field) {
-        return base instanceof quiz.curation.FieldRulePromoter promoter
-                ? promoter.declaredFallbackSource(type, field) : null;
     }
 
     /** Apply a merge to the REAL base pool — not the throwaway combined copy that

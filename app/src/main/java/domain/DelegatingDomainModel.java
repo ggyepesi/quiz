@@ -90,4 +90,12 @@ public abstract class DelegatingDomainModel implements DomainModel {
     }
 
     @Override public Class<? extends Viewable> universe() { return base.universe(); }
+
+    /** This wrapper's own capability wins — it is the one that knows about whatever it
+     *  changed — and anything it does not implement is asked of what it wraps, however
+     *  deeply that is nested. */
+    @Override public <T extends DomainCapability> T capability(Class<T> type) {
+        if (type == null) return null;
+        return type.isInstance(this) ? type.cast(this) : base.capability(type);
+    }
 }

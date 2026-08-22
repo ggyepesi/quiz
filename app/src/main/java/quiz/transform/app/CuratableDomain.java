@@ -22,7 +22,7 @@ import domain.DomainSchemas;
  * domain — it only adds the {@link Curatable} capability (and forwards {@link
  * SchemaView} when the base has one).
  */
-final class CuratableDomain extends DelegatingDomainModel implements SchemaView, Curatable,
+final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         quiz.curation.FieldRulePromoter {
 
     private final ManualCuration curation;
@@ -58,9 +58,6 @@ final class CuratableDomain extends DelegatingDomainModel implements SchemaView,
 
     @Override public ManualCuration curation() { return curation; }
 
-    @Override public JComponent schemaView() {
-        return base instanceof SchemaView sv ? sv.schemaView() : null;
-    }
 
     @Override public List<String> types() { return base.types(); }
     @Override public List<String> servedTypes() { return base.servedTypes(); }

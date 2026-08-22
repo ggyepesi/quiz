@@ -5,7 +5,7 @@ package quiz.curation;
  * offer a "Curate…" action only when the backing domain supports it — a capability
  * seam like {@code SchemaView}, without the UI knowing what's inside.
  */
-public interface Curatable {
+public interface Curatable extends domain.DomainCapability {
 
     /** The manual-curation store for this domain, or null if it isn't curatable. */
     ManualCuration curation();
