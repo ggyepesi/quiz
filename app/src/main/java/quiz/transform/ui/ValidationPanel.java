@@ -91,6 +91,9 @@ public final class ValidationPanel extends JPanel {
     private final JButton fieldSourceButton = new JButton("Choose Wikidata source…");
     private final JButton fieldSourceDbpediaButton = new JButton("Choose Wikipedia fallback…");
     private final JButton wikipediaEvidenceButton = new JButton("Find text evidence…");
+    private final JButton wikipediaCategoryButton = new JButton("Configure category source…");
+    private final JButton promoteWikipediaCategoryButton = new JButton("Promote to model…");
+    private final JButton clearWikipediaCategoryButton = new JButton("Clear override");
     private final JButton exploreIdentityButton = new JButton("Explore Wikidata…");
     private final JButton cancelProcessButton = new JButton("Cancel Find Data");
     private final JButton resolveMissingButton = new JButton("Resolve identities…");
@@ -220,7 +223,13 @@ public final class ValidationPanel extends JPanel {
                         + "the fallback source for values Wikidata lacks");
         fieldSourceDbpediaButton.addActionListener(e -> chooseDbpediaSourceForSelected());
         wikipediaEvidenceButton.addActionListener(e -> findWikipediaEvidence());
+        wikipediaCategoryButton.addActionListener(e -> configureWikipediaCategorySource());
+        promoteWikipediaCategoryButton.addActionListener(e -> promoteWikipediaCategorySource());
+        clearWikipediaCategoryButton.addActionListener(e -> clearWikipediaCategorySource());
+        clearWikipediaCategoryButton.setToolTipText(
+                "Drop this dataset's category override and fall back to the model's rule");
         queryRunner.registerRunButton(checkButton);
+        queryRunner.registerRunButton(wikipediaCategoryButton);
         findDataRunner.registerRunButton(checkButton);
         findDataRunner.registerRunButton(wikipediaEvidenceButton);
         exploreIdentityButton.addActionListener(e -> exploreIdentity());
@@ -740,6 +749,10 @@ public final class ValidationPanel extends JPanel {
             target.add(fallback);
 
             JPanel articleEvidence = titledBlock("Wikipedia article evidence");
+            updateWikipediaCategoryButtons();
+            articleEvidence.add(headerLine(new JLabel("Category relation"),
+                    wikipediaCategoryButton, promoteWikipediaCategoryButton,
+                    clearWikipediaCategoryButton));
             wikipediaEvidenceButton.setToolTipText(
                     "Find exact mentions supporting values already present in this field; "
                             + "results keep the article revision and excerpt for review");
@@ -1385,6 +1398,148 @@ public final class ValidationPanel extends JPanel {
                                                     "Lookup failed: " + ex.getMessage()));
     }
 
+    private wikidata.explore.model.WikipediaCategoryRule effectiveWikipediaCategoryRule(
+            String ownerType, String field) {
+        quiz.curation.ManualCuration curation = curationStore();
+        quiz.curation.FieldSourceRecipe override = curation == null ? null
+                : curation.sourceRecipe(ownerType, field,
+                        quiz.curation.FieldSourceRecipe.WIKIPEDIA_CATEGORY);
+        // The recipe decides what it means (FieldSourceRecipe.categoryRule); promotion
+        // reads the same one, so what is previewed here is what gets written there.
+        return override != null ? override.categoryRule()
+                : domain.wikipediaCategoryRule(ownerType, field);
+    }
+
+    private quiz.curation.FieldSourceRecipe wikipediaCategoryRecipe() {
+        quiz.curation.ManualCuration curation = curationStore();
+        return curation == null || selectedFieldType == null || selectedFieldPath == null
+                ? null : curation.sourceRecipe(selectedFieldType, selectedFieldPath,
+                        quiz.curation.FieldSourceRecipe.WIKIPEDIA_CATEGORY);
+    }
+
+    private void configureWikipediaCategorySource() {
+        if (selectedFieldType == null || selectedFieldPath == null) return;
+        quiz.curation.ManualCuration curation = curationStore();
+        if (curation == null) {
+            JOptionPane.showMessageDialog(this, "This domain has no curation sidecar.");
+            return;
+        }
+        List<String> qids = new ArrayList<>();
+        for (Viewable member : actionInstances()) {
+            String qid = resolvedQid(member,
+                    EnrichmentSources.collect(member, concreteType(member), curation));
+            if (isQid(qid) && !qids.contains(qid)) qids.add(qid);
+            if (qids.size() >= 12) break;
+        }
+        if (qids.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No selected/sample instance has a Wikidata identity.");
+            editWikipediaCategorySource(curation, null);
+            return;
+        }
+        wikidata.explore.workbench.WikipediaCategoryPicker.findForEntities(
+                this, queryRunner, qids, observed ->
+                        editWikipediaCategorySource(curation, observed));
+    }
+
+    private void editWikipediaCategorySource(
+            quiz.curation.ManualCuration curation, String observedCategory) {
+        wikidata.explore.model.WikipediaCategoryRule current =
+                effectiveWikipediaCategoryRule(selectedFieldType, selectedFieldPath);
+        // An observed category replaces the pattern; without one, the configured pattern
+        // is what there is to edit. Discovery that found nothing must not cost it.
+        JTextField pattern = new JTextField(observedCategory != null ? observedCategory
+                : current == null ? "" : current.pattern(), 30);
+        JComboBox<wikidata.explore.model.CategoryCandidatePolicy> policy =
+                new JComboBox<>(wikidata.explore.model.CategoryCandidatePolicy.values());
+        policy.setSelectedItem(current == null
+                ? wikidata.explore.model.CategoryCandidatePolicy.REVIEW : current.policy());
+        JPanel form = new JPanel(new java.awt.GridLayout(0, 1, 4, 4));
+        form.add(new JLabel("Category title pattern (one <value> placeholder):"));
+        form.add(pattern);
+        form.add(new JLabel("Replace the part naming the field value with <value>."));
+        form.add(new JLabel("Result policy:"));
+        form.add(policy);
+        if (JOptionPane.showConfirmDialog(this, form,
+                "Additional Wikipedia category source",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                != JOptionPane.OK_OPTION) return;
+        String entered = pattern.getText().trim();
+        if (entered.indexOf("<value>") < 0
+                || entered.indexOf("<value>") != entered.lastIndexOf("<value>")) {
+            JOptionPane.showMessageDialog(this,
+                    "The pattern must contain exactly one <value> placeholder.");
+            return;
+        }
+        curation.putSourceRecipe(quiz.curation.FieldSourceRecipe.wikipediaCategory(
+                selectedFieldType, selectedFieldPath, entered,
+                (wikidata.explore.model.CategoryCandidatePolicy) policy.getSelectedItem()));
+        updateWikipediaCategoryButtons();
+        JOptionPane.showMessageDialog(this,
+                "The curation override is ready. Use Find Wikipedia evidence to preview "
+                        + "its effect; Save writes it to the curation sidecar.");
+    }
+
+    private void updateWikipediaCategoryButtons() {
+        quiz.curation.FieldSourceRecipe override = wikipediaCategoryRecipe();
+        wikidata.explore.model.WikipediaCategoryRule effective =
+                selectedFieldType == null || selectedFieldPath == null ? null
+                        : effectiveWikipediaCategoryRule(selectedFieldType, selectedFieldPath);
+        wikipediaCategoryButton.setText(effective != null && effective.configured()
+                ? (override == null ? "Model: " : "Override: ") + effective.pattern() + "…"
+                : "Configure category source…");
+        boolean promotable = override != null && domain instanceof quiz.curation.FieldRulePromoter;
+        promoteWikipediaCategoryButton.setVisible(promotable);
+        promoteWikipediaCategoryButton.setEnabled(promotable);
+        clearWikipediaCategoryButton.setVisible(override != null);
+        clearWikipediaCategoryButton.setEnabled(override != null);
+    }
+
+    /** An override SHADOWS the model's rule, so without this the model can never be heard
+     *  again on this field — including the rule just promoted into it. */
+    private void clearWikipediaCategorySource() {
+        quiz.curation.ManualCuration curation = curationStore();
+        quiz.curation.FieldSourceRecipe override = wikipediaCategoryRecipe();
+        if (curation == null || override == null) return;
+        if (JOptionPane.showConfirmDialog(this,
+                "Drop the category override for " + selectedFieldType + "."
+                        + selectedFieldPath + "?\n\nThe model's own rule, if it has one, "
+                        + "applies again. Save writes the removal to the sidecar.",
+                "Clear category override", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
+        curation.removeSourceRecipe(override.type(), override.field(), override.provider());
+        updateWikipediaCategoryButtons();
+    }
+
+    private void promoteWikipediaCategorySource() {
+        quiz.curation.FieldSourceRecipe recipe = wikipediaCategoryRecipe();
+        if (recipe == null || !(domain instanceof quiz.curation.FieldRulePromoter promoter)) return;
+        quiz.curation.FieldRulePromoter.PromotionPreview preview =
+                promoter.previewPromotion(recipe);
+        if (!preview.eligible()) {
+            JOptionPane.showMessageDialog(this, preview.reason(),
+                    "Cannot promote source", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        String message = "<html><div style='width: 480px'><b>Promote category source to "
+                + preview.targetType() + "." + preview.field() + "?</b><br><br>Pattern: "
+                + recipe.parameter(quiz.curation.FieldSourceRecipe.PATTERN)
+                + "<br>Model: " + preview.modelPath()
+                + "<br><br>The override stays until you Clear it, and keeps shadowing the "
+                + "model; future generation and enrichment will use this rule.</div></html>";
+        if (JOptionPane.showConfirmDialog(this, new JLabel(message), "Promote to ModelBuilder",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                != JOptionPane.OK_OPTION) return;
+        try {
+            promoter.promote(recipe);
+            updateWikipediaCategoryButtons();
+            JOptionPane.showMessageDialog(this, "Category source promoted to ModelBuilder.");
+        } catch (Exception failure) {
+            JOptionPane.showMessageDialog(this, "Promotion failed: " + failure.getMessage(),
+                    "Promotion failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     /** Corroborates existing values from versioned Wikipedia prose. This is deliberately
      * a separate action from Load values: exact mention is evidence for a reviewed value,
      * not a general-purpose inference rule for filling an arbitrary missing field. */
@@ -1401,7 +1556,7 @@ public final class ValidationPanel extends JPanel {
         quiz.curation.ManualCuration curation = curationStore();
         List<FindDataProcess> jobs = new ArrayList<>();
         wikidata.explore.model.WikipediaCategoryRule categoryRule =
-                domain.wikipediaCategoryRule(selectedFieldType, path);
+                effectiveWikipediaCategoryRule(selectedFieldType, path);
         quiz.enrichment.WikipediaTextEvidenceProvider provider =
                 new quiz.enrichment.WikipediaTextEvidenceProvider(categoryRule);
         int skipped = 0;
@@ -1439,13 +1594,14 @@ public final class ValidationPanel extends JPanel {
                     "No member in this scope has both an existing value and a Wikidata identity.");
             return;
         }
-        String message = "<html><b>Find Wikipedia evidence for " + selectedFieldType + "."
+        String message = "<html><div style='width: 520px'><b>Find Wikipedia evidence for "
+                + selectedFieldType + "."
                 + path + "</b><br><br>Eligible members: <b>" + jobs.size() + "</b><br>"
                 + "Skipped: <b>" + skipped + "</b> (no usable value/category evidence or identity)<br><br>"
                 + "Existing values are checked against article text. Configured category "
                 + "relations can also propose new values from memberships acquired by ModelBuilder. "
                 + "Every result retains its article revision and exact source evidence; "
-                + "nothing is saved until you stage it.</html>";
+                + "nothing is saved until you stage it.</div></html>";
         if (JOptionPane.showConfirmDialog(this, new JLabel(message),
                 "Find Wikipedia text evidence", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;

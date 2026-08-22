@@ -3,6 +3,7 @@ package quiz.transform.app;
 import objectview.field.FieldRef;
 import quiz.curation.Correction;
 import quiz.curation.FieldRulePromoter;
+import quiz.curation.FieldSourceRecipe;
 import quiz.curation.ValueSource;
 import quiz.transform.ui.DomainModel;
 import quiz.transform.ui.FieldDefinitions;
@@ -65,20 +66,31 @@ final class ModelFieldRulePromoter {
         field.mapping().direction(direction(source.direction()));
         field.mapping().productionKind(FieldProductionKind.AUTO);
 
-        File parent = modelFile.getAbsoluteFile().getParentFile();
-        File temporary = File.createTempFile(modelFile.getName() + ".promote-", ".tmp", parent);
+        saveModel(store, model);
+        return preview;
+    }
+
+    FieldRulePromoter.PromotionPreview preview(FieldSourceRecipe recipe) {
         try {
-            store.save(model, temporary);
-            try {
-                Files.move(temporary.toPath(), modelFile.toPath(),
-                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
-                Files.move(temporary.toPath(), modelFile.toPath(),
-                        StandardCopyOption.REPLACE_EXISTING);
-            }
-        } finally {
-            Files.deleteIfExists(temporary.toPath());
+            return inspect(recipe, loadModel());
+        } catch (Exception ex) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "Model cannot be read: " + ex.getMessage());
         }
+    }
+
+    FieldRulePromoter.PromotionPreview promote(FieldSourceRecipe recipe) throws Exception {
+        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
+        GeneratedProjectModel model = loadModel();
+        FieldRulePromoter.PromotionPreview preview = inspect(recipe, model);
+        if (!preview.eligible()) throw new IllegalArgumentException(preview.reason());
+        GeneratedFieldModel field = findField(
+                model.findClass(recipe.type()), recipe.field());
+        wikidata.explore.model.WikipediaCategoryRule promoted = recipe.categoryRule();
+        wikidata.explore.model.WikipediaCategoryRule rule = field.ensureWikipediaCategoryRule();
+        rule.pattern(promoted.pattern());
+        rule.policy(promoted.policy());
+        saveModel(store, model);
         return preview;
     }
 
@@ -118,6 +130,61 @@ final class ModelFieldRulePromoter {
             throw new IllegalArgumentException("Model is not writable: " + modelFile);
         }
         return new GeneratedProjectModelStore().load(modelFile);
+    }
+
+    private void saveModel(GeneratedProjectModelStore store,
+                           GeneratedProjectModel model) throws Exception {
+        File parent = modelFile.getAbsoluteFile().getParentFile();
+        File temporary = File.createTempFile(modelFile.getName() + ".promote-", ".tmp", parent);
+        try {
+            store.save(model, temporary);
+            try {
+                Files.move(temporary.toPath(), modelFile.toPath(),
+                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary.toPath(), modelFile.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary.toPath());
+        }
+    }
+
+    private FieldRulePromoter.PromotionPreview inspect(
+            FieldSourceRecipe recipe, GeneratedProjectModel model) {
+        if (recipe == null || !FieldSourceRecipe.WIKIPEDIA_CATEGORY.equals(recipe.provider())) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "Only Wikipedia category recipes can currently be promoted here.");
+        }
+        GeneratedClassModel owner = model.findClass(recipe.type());
+        GeneratedFieldModel field = findField(owner, recipe.field());
+        if (owner == null || field == null) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "The model must already declare " + recipe.type() + "." + recipe.field() + ".");
+        }
+        String pattern = recipe.parameter(FieldSourceRecipe.PATTERN);
+        if (pattern.indexOf("<value>") < 0
+                || pattern.indexOf("<value>") != pattern.lastIndexOf("<value>")) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "The category pattern must contain exactly one <value> placeholder.");
+        }
+        String policy = recipe.parameter(FieldSourceRecipe.POLICY);
+        try {
+            wikidata.explore.model.CategoryCandidatePolicy.valueOf(policy);
+        } catch (RuntimeException invalid) {
+            return FieldRulePromoter.PromotionPreview.ineligible("Unknown category policy: " + policy);
+        }
+        wikidata.explore.model.WikipediaCategoryRule declared = field.wikipediaCategoryRule();
+        String previous = declared == null ? "" : declared.pattern();
+        if (declared != null && pattern.equals(previous)
+                && policy.equals(declared.policy().name())) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "The model already contains this category recipe.");
+        }
+        return new FieldRulePromoter.PromotionPreview(true,
+                previous.isBlank() ? "Add category source recipe" : "Update category source recipe",
+                modelFile.getAbsolutePath(), recipe.type(), recipe.field(), "",
+                "Wikipedia category", "", pattern, false, previous);
     }
 
     private FieldRulePromoter.PromotionPreview inspect(

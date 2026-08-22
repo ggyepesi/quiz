@@ -22,6 +22,7 @@ public final class ManualCuration implements CorrectionSource {
     private final List<FieldDeclaration> fieldDeclarations = new ArrayList<>();
     private final List<Merge> merges = new ArrayList<>();
     private final List<IdentityLink> identityLinks = new ArrayList<>();
+    private final List<FieldSourceRecipe> sourceRecipes = new ArrayList<>();
 
     public ManualCuration(File file) {
         this.file = file;
@@ -43,6 +44,7 @@ public final class ManualCuration implements CorrectionSource {
         fieldDeclarations.clear();
         merges.clear();
         identityLinks.clear();
+        sourceRecipes.clear();
         if (file != null && file.isFile()) {
             try {
                 Doc doc = MAPPER.readValue(file, Doc.class);
@@ -75,6 +77,19 @@ public final class ManualCuration implements CorrectionSource {
                                 e.recordUrl, e.canonicalName, e.origin, e.evidence));
                     }
                 }
+                if (doc.sourceRecipes != null) {
+                    for (SourceRecipeEntry e : doc.sourceRecipes) {
+                        try {
+                            sourceRecipes.add(new FieldSourceRecipe(
+                                    e.type, e.field, e.provider, e.parameters));
+                        } catch (RuntimeException invalidRecipe) {
+                            // One hand-edited/foreign recipe must not hide the valid
+                            // corrections, identities and recipes beside it.
+                            System.err.println("Ignoring invalid source recipe in " + file
+                                    + ": " + invalidRecipe.getMessage());
+                        }
+                    }
+                }
             } catch (IOException unreadable) {
                 // Missing is handled by the isFile guard. A present but unreadable
                 // sidecar must not fail silently and masquerade as "no curation".
@@ -102,6 +117,9 @@ public final class ManualCuration implements CorrectionSource {
         }
         for (IdentityLink link : identityLinks) {
             doc.identityLinks.add(new IdentityEntry(link));
+        }
+        for (FieldSourceRecipe recipe : sourceRecipes) {
+            doc.sourceRecipes.add(new SourceRecipeEntry(recipe));
         }
         MAPPER.writerWithDefaultPrettyPrinter().writeValue(file, doc);
     }
@@ -213,6 +231,30 @@ public final class ManualCuration implements CorrectionSource {
         return List.copyOf(fieldDeclarations);
     }
 
+    public void putSourceRecipe(FieldSourceRecipe recipe) {
+        if (recipe == null) return;
+        removeSourceRecipe(recipe.type(), recipe.field(), recipe.provider());
+        sourceRecipes.add(recipe);
+    }
+
+    public void removeSourceRecipe(String type, String field, String provider) {
+        sourceRecipes.removeIf(recipe -> java.util.Objects.equals(recipe.type(), type)
+                && java.util.Objects.equals(recipe.field(), field)
+                && java.util.Objects.equals(recipe.provider(), provider));
+    }
+
+    public FieldSourceRecipe sourceRecipe(String type, String field, String provider) {
+        return sourceRecipes.stream()
+                .filter(recipe -> java.util.Objects.equals(recipe.type(), type)
+                        && java.util.Objects.equals(recipe.field(), field)
+                        && java.util.Objects.equals(recipe.provider(), provider))
+                .findFirst().orElse(null);
+    }
+
+    public List<FieldSourceRecipe> sourceRecipes() {
+        return List.copyOf(sourceRecipes);
+    }
+
     /** Record the approved identity for one source, replacing an earlier choice. */
     public void putIdentityLink(IdentityLink link) {
         removeIdentityLink(link.type(), link.targetId(), link.sourceKind());
@@ -245,6 +287,7 @@ public final class ManualCuration implements CorrectionSource {
         public List<FieldEntry> fieldDefinitions = new ArrayList<>();
         public List<MergeEntry> merges = new ArrayList<>();
         public List<IdentityEntry> identityLinks = new ArrayList<>();
+        public List<SourceRecipeEntry> sourceRecipes = new ArrayList<>();
     }
 
     static final class Entry {
@@ -342,6 +385,22 @@ public final class ManualCuration implements CorrectionSource {
             this.canonicalName = link.canonicalName();
             this.origin = link.origin();
             this.evidence = link.evidence();
+        }
+    }
+
+    static final class SourceRecipeEntry {
+        public String type;
+        public String field;
+        public String provider;
+        public java.util.Map<String, String> parameters = new java.util.LinkedHashMap<>();
+
+        SourceRecipeEntry() { }
+
+        SourceRecipeEntry(FieldSourceRecipe recipe) {
+            type = recipe.type();
+            field = recipe.field();
+            provider = recipe.provider();
+            parameters = recipe.parameters();
         }
     }
 }

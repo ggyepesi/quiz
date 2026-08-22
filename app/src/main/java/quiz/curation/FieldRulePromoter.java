@@ -13,6 +13,14 @@ public interface FieldRulePromoter {
 
     PromotionPreview promote(Correction correction) throws Exception;
 
+    default PromotionPreview previewPromotion(FieldSourceRecipe recipe) {
+        return PromotionPreview.ineligible("This source recipe cannot be promoted.");
+    }
+
+    default PromotionPreview promote(FieldSourceRecipe recipe) throws Exception {
+        throw new IllegalArgumentException("This source recipe cannot be promoted.");
+    }
+
     /**
      * The source rule the backing model already declares for a field, or null when the
      * model has none (or there is no model). Curation uses it as the starting point

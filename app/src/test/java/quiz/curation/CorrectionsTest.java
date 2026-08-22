@@ -168,4 +168,52 @@ class CorrectionsTest {
         assertEquals("George Davis Snell", loaded.canonicalName());
         assertEquals("421", loaded.sourceId());
     }
+
+    @Test void fieldSourceRecipeRoundTripsAndReplacesItsOwnProvider(@TempDir Path dir)
+            throws Exception {
+        File file = dir.resolve("movies.curation.json").toFile();
+        ManualCuration curation = new ManualCuration(file);
+        curation.putSourceRecipe(FieldSourceRecipe.wikipediaCategory(
+                "Movies", "locations", "Films set in <value>",
+                wikidata.explore.model.CategoryCandidatePolicy.REVIEW));
+        curation.putSourceRecipe(FieldSourceRecipe.wikipediaCategory(
+                "Movies", "locations", "Films shot in <value>",
+                wikidata.explore.model.CategoryCandidatePolicy.EVIDENCE_ONLY));
+        curation.save();
+
+        ManualCuration loaded = new ManualCuration(file).load();
+        assertEquals(1, loaded.sourceRecipes().size());
+        FieldSourceRecipe reloaded = loaded.sourceRecipe(
+                "Movies", "locations", FieldSourceRecipe.WIKIPEDIA_CATEGORY);
+        assertEquals("Films shot in <value>", reloaded.parameter(FieldSourceRecipe.PATTERN));
+        assertEquals("Films shot in <value>", reloaded.categoryRule().pattern());
+        assertEquals(wikidata.explore.model.CategoryCandidatePolicy.EVIDENCE_ONLY,
+                reloaded.categoryRule().policy());
+    }
+
+    @Test void aRecipeWithAnUnreadablePolicyStaysReadableAsTheReviewedDefault() {
+        FieldSourceRecipe recipe = new FieldSourceRecipe(
+                "Movies", "locations", FieldSourceRecipe.WIKIPEDIA_CATEGORY,
+                java.util.Map.of(FieldSourceRecipe.PATTERN, "Films set in <value>",
+                        FieldSourceRecipe.POLICY, "NONSENSE"));
+
+        assertEquals(wikidata.explore.model.CategoryCandidatePolicy.REVIEW,
+                recipe.categoryRule().policy(),
+                "a hand-edited sidecar must still render; promotion is what refuses it");
+    }
+
+    @Test void removingARecipeSurvivesTheSaveBoundary(@TempDir Path dir) throws Exception {
+        File file = dir.resolve("movies.curation.json").toFile();
+        ManualCuration curation = new ManualCuration(file);
+        curation.putSourceRecipe(FieldSourceRecipe.wikipediaCategory(
+                "Movies", "locations", "Films set in <value>",
+                wikidata.explore.model.CategoryCandidatePolicy.REVIEW));
+        curation.save();
+
+        curation.removeSourceRecipe(
+                "Movies", "locations", FieldSourceRecipe.WIKIPEDIA_CATEGORY);
+        curation.save();
+
+        assertTrue(new ManualCuration(file).load().sourceRecipes().isEmpty());
+    }
 }

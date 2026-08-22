@@ -288,6 +288,7 @@ public class FieldSourcePanel extends JPanel {
 
     public void setQueryRunner(SwingQueryRunner queryRunner) {
         this.queryRunner = queryRunner;
+        if (queryRunner != null) queryRunner.registerRunButton(categoryButton);
         // Discovery + the pick dialog live in the shared DbpediaPropertyPicker (the same one
         // curate uses), so the two source-config flows can't drift apart.
         discoverDbpediaButton.addActionListener(e -> discoverDbpediaProperties());
@@ -328,9 +329,20 @@ public class FieldSourcePanel extends JPanel {
 
     private void configureCategoryRule() {
         if (field == null) return;
+        String typeQid = classTypeQid();
+        if (typeQid == null) return;
+        WikipediaCategoryPicker.findByType(this, queryRunner, typeQid, 8,
+                this::editCategoryRule);
+    }
+
+    /** Reached with an observed category, or with null when discovery found nothing and
+     *  when the reader dismissed it — the editor still opens on what is configured, so a
+     *  rule stays editable on a class whose sample happens to carry no categories. */
+    private void editCategoryRule(String observedCategory) {
+        if (field == null) return;
         WikipediaCategoryRule existing = field.wikipediaCategoryRule();
-        JTextField pattern = new JTextField(existing == null || existing.pattern().isBlank()
-                ? suggestedCategoryPattern(field.name()) : existing.pattern(), 28);
+        JTextField pattern = new JTextField(observedCategory != null ? observedCategory
+                : existing == null ? "" : existing.pattern(), 28);
         JComboBox<CategoryCandidatePolicy> policy =
                 new JComboBox<>(CategoryCandidatePolicy.values());
         policy.setSelectedItem(existing == null
@@ -338,6 +350,7 @@ public class FieldSourcePanel extends JPanel {
         JPanel form = new JPanel(new GridLayout(0, 1, 4, 4));
         form.add(new JLabel("Category title pattern (one <value> placeholder):"));
         form.add(pattern);
+        form.add(new JLabel("Replace the part naming the field value with <value>."));
         form.add(new JLabel("Result policy:"));
         form.add(policy);
         if (JOptionPane.showConfirmDialog(this, form, "Wikipedia category relation",
@@ -355,12 +368,6 @@ public class FieldSourcePanel extends JPanel {
         rule.policy((CategoryCandidatePolicy) policy.getSelectedItem());
         refreshCategoryLabel();
         afterChange.accept(null);
-    }
-
-    private static String suggestedCategoryPattern(String fieldName) {
-        String name = fieldName == null ? "" : fieldName.toLowerCase(java.util.Locale.ROOT);
-        return name.contains("location") || name.contains("setting")
-                ? "Films set in <value>" : "<value>";
     }
 
     private void refreshCategoryLabel() {

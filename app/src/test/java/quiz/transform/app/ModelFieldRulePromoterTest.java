@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 import quiz.curation.Correction;
 import quiz.curation.CorrectionPolicy;
 import quiz.curation.ManualCuration;
+import quiz.curation.FieldSourceRecipe;
 import quiz.curation.ValueSource;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedClassModel;
@@ -82,5 +83,37 @@ class ModelFieldRulePromoterTest {
 
         assertFalse(domain.previewPromotion(manual).eligible());
         assertTrue(domain.previewPromotion(manual).reason().contains("source"));
+    }
+
+    @Test void promotesCurationCategoryRecipeWithoutRemovingTheOverride() throws Exception {
+        File modelFile = temp.resolve("movies.model.json").toFile();
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movies");
+        movie.addField("locations", wikidata.explore.model.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        model.rootClass(movie);
+        new GeneratedProjectModelStore().save(model, modelFile);
+        WikidataDynamicObject instance = new WikidataDynamicObject("Q1", "Movie");
+        instance.type("Movies");
+        SnapshotDomain base = new SnapshotDomain(List.of(instance));
+        ManualCuration curation = new ManualCuration(temp.resolve("movies.curation.json").toFile());
+        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaCategory(
+                "Movies", "locations", "Films set in <value>",
+                wikidata.explore.model.CategoryCandidatePolicy.REVIEW);
+        curation.putSourceRecipe(recipe);
+        CuratableDomain domain = new CuratableDomain(
+                base, curation, base.memberRoots(), List.of(), modelFile);
+
+        assertTrue(domain.previewPromotion(recipe).eligible());
+        domain.promote(recipe);
+
+        var promoted = new GeneratedProjectModelStore().load(modelFile)
+                .findClass("Movies").fields().stream()
+                .filter(field -> "locations".equals(field.name()))
+                .findFirst().orElseThrow().wikipediaCategoryRule();
+        assertEquals("Films set in <value>", promoted.pattern());
+        assertEquals(1, curation.sourceRecipes().size(),
+                "promotion does not silently erase the curation override");
+        assertFalse(domain.previewPromotion(recipe).eligible());
     }
 }

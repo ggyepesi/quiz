@@ -5,16 +5,19 @@ package wikidata.explore.model;
  * The single {@code <value>} placeholder names the part resolved through the matching
  * Wikipedia article to a Wikidata entity. Category sources supplement the primary field
  * source; they never replace it.
+ *
+ * <p>English is not a setting. The article reader, the sitelink it follows and the
+ * evidence it records are all enwiki by construction, so a language field here would be
+ * a choice with no effect — a knob that lies. Models saved while one existed still load;
+ * the property is simply no longer read.
  */
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class WikipediaCategoryRule {
     private String pattern = "";
-    private String language = "en";
     private CategoryCandidatePolicy policy = CategoryCandidatePolicy.REVIEW;
 
     public String pattern() { return pattern == null ? "" : pattern; }
     public void pattern(String value) { pattern = value == null ? "" : value.trim(); }
-    public String language() { return language == null || language.isBlank() ? "en" : language; }
-    public void language(String value) { language = value == null || value.isBlank() ? "en" : value.trim(); }
     public CategoryCandidatePolicy policy() {
         return policy == null ? CategoryCandidatePolicy.REVIEW : policy;
     }
@@ -26,7 +29,7 @@ public class WikipediaCategoryRule {
     }
     public WikipediaCategoryRule copy() {
         WikipediaCategoryRule copy = new WikipediaCategoryRule();
-        copy.pattern(pattern()); copy.language(language()); copy.policy(policy());
+        copy.pattern(pattern()); copy.policy(policy());
         return copy;
     }
 }

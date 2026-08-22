@@ -161,6 +161,16 @@ final class CuratableDomain implements DomainModel, SchemaView, Curatable,
         return new ModelFieldRulePromoter(modelFile, this).promote(correction);
     }
 
+    @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
+            quiz.curation.FieldSourceRecipe recipe) {
+        return new ModelFieldRulePromoter(modelFile, this).preview(recipe);
+    }
+
+    @Override public quiz.curation.FieldRulePromoter.PromotionPreview promote(
+            quiz.curation.FieldSourceRecipe recipe) throws Exception {
+        return new ModelFieldRulePromoter(modelFile, this).promote(recipe);
+    }
+
     @Override public wikidata.explore.model.FieldSourceMapping declaredSource(
             String type, String field) {
         return new ModelFieldRulePromoter(modelFile, this).declaredSource(type, field);

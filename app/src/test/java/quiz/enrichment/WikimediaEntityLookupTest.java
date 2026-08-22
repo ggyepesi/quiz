@@ -5,8 +5,32 @@ import wikidata.explore.query.core.QueryContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikimediaEntityLookupTest {
+
+    @Test void readsSeveralEntitiesWithOneRequest() throws Exception {
+        java.util.concurrent.atomic.AtomicInteger requests =
+                new java.util.concurrent.atomic.AtomicInteger();
+        String json = """
+                {"entities": {
+                  "Q1": {"labels":{"en":{"value":"One"}}, "claims":{}},
+                  "Q2": {"labels":{"en":{"value":"Two"}}, "claims":{}}
+                }}
+                """;
+        WikimediaEntityLookup lookup = new WikimediaEntityLookup(uri -> {
+            requests.incrementAndGet();
+            assertTrue(uri.toString().contains("ids=Q1%7CQ2"));
+            return json;
+        });
+
+        var entities = lookup.byQids(java.util.List.of("Q1", "Q2"))
+                .execute(new QueryContext(null, null));
+
+        assertEquals(1, requests.get());
+        assertEquals("One", entities.get("Q1").label());
+        assertEquals("Two", entities.get("Q2").label());
+    }
 
     @Test
     void parsesNeutralTypedClaimsSitelinksAndQualifiers()

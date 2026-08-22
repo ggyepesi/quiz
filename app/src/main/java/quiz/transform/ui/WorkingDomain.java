@@ -102,6 +102,22 @@ public final class WorkingDomain implements DomainModel, SchemaView,
         return promoter.promote(correction);
     }
 
+    @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
+            quiz.curation.FieldSourceRecipe recipe) {
+        return base instanceof quiz.curation.FieldRulePromoter promoter
+                ? promoter.previewPromotion(recipe)
+                : quiz.curation.FieldRulePromoter.PromotionPreview.ineligible(
+                        "This dataset has no ModelBuilder model.");
+    }
+
+    @Override public quiz.curation.FieldRulePromoter.PromotionPreview promote(
+            quiz.curation.FieldSourceRecipe recipe) throws Exception {
+        if (!(base instanceof quiz.curation.FieldRulePromoter promoter)) {
+            throw new IllegalStateException("This dataset has no ModelBuilder model.");
+        }
+        return promoter.promote(recipe);
+    }
+
     /** Apply a merge to the REAL base pool — not the throwaway combined copy that
      *  {@link #instances()} returns — so the duplicate's removal takes effect live. */
     @Override public int applyMerge(quiz.curation.Merge merge) {

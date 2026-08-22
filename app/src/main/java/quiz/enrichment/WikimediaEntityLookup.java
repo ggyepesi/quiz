@@ -84,6 +84,58 @@ public final class WikimediaEntityLookup {
         };
     }
 
+    /**
+     * Read many entities in ONE {@code wbgetentities} call. Discovery over a sample used to
+     * issue one request per QID; the API takes 50 ids at a time, and a picker the reader is
+     * waiting on should not pay a round trip per seed. Ids past the API's limit are dropped
+     * — a sample is a sample. Missing entities are absent from the result rather than null.
+     */
+    public Query<Map<String, EntityRecord>> byQids(java.util.Collection<String> qids) {
+        List<String> clean = qids == null ? List.of() : qids.stream()
+                .filter(WikidataIds::isQid).distinct().limit(50).toList();
+        URI uri = api(clean);
+        return new Query<>() {
+            @Override public String purpose() { return "Read Wikidata entities"; }
+            @Override public String skeleton() {
+                return "wbgetentities labels, aliases, sitelinks and claims for many ids";
+            }
+            @Override public String queryType() { return "Wikidata API"; }
+            @Override public String description() { return "Wikidata entity lookup"; }
+            @Override public Map<String, String> parameters() {
+                return Map.of("ids", Integer.toString(clean.size()));
+            }
+
+            @Override public Map<String, EntityRecord> execute(QueryContext context)
+                    throws Exception {
+                if (clean.isEmpty()) return Map.of();
+                return context.step("Read Wikidata entities", "Wikidata API", skeleton(),
+                        parameters(), step -> {
+                            step.request(uri.toString());
+                            Map<String, EntityRecord> found = parseAll(clean,
+                                    MAPPER.readTree(fetcher.fetch(uri)));
+                            step.summary(found.size() + " of " + clean.size() + " entit"
+                                    + (clean.size() == 1 ? "y" : "ies"));
+                            return found;
+                        });
+            }
+
+            @Override public int rowCount(Map<String, EntityRecord> result) {
+                return result == null ? 0 : result.size();
+            }
+        };
+    }
+
+    static Map<String, EntityRecord> parseAll(List<String> qids, JsonNode root) {
+        Map<String, EntityRecord> out = new LinkedHashMap<>();
+        for (String qid : qids == null ? List.<String>of() : qids) {
+            JsonNode entity = root == null ? null : root.path("entities").path(qid);
+            if (entity == null || entity.isMissingNode()
+                    || entity.path("missing").asBoolean(false)) continue;
+            out.put(qid, parse(qid, root));
+        }
+        return out;
+    }
+
     /** Resolve an English Wikipedia article title to its Wikidata entity. */
     public Query<EntityRecord> byWikipediaTitle(String title) {
         String requested = title == null ? "" : title.trim();
@@ -274,8 +326,12 @@ public final class WikimediaEntityLookup {
     }
 
     private static URI api(String qid) {
+        return api(List.of(qid));
+    }
+
+    private static URI api(List<String> qids) {
         return URI.create("https://www.wikidata.org/w/api.php"
-                + "?action=wbgetentities&ids=" + qid
+                + "?action=wbgetentities&ids=" + String.join("%7C", qids)
                 + "&props=claims%7Csitelinks%7Clabels%7Cdescriptions%7Caliases"
                 + "&languages=en&format=json");
     }
