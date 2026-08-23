@@ -7,7 +7,6 @@ import objectview.ViewableAdapter;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +49,13 @@ public class LogNode extends ViewableAdapter {
     // Human-readable log lines emitted against this node (message()/append()) — NOT
     // requests. A LIST (one line per element) so a long body (e.g. the reify recipe
     // or the "DROPPED self-nomination …" run) renders as a collapsible collection.
-    private List<String> messages;
+    //
+    // Thread-safe for the same reason {@link #steps} is, and it is the same list: the
+    // worker thread appends while the EDT renders this node as a card, so a fail-fast
+    // iterator takes down the event dispatch mid-run. A generation that logs 324
+    // dropped self-nominations into one node is exactly when someone opens the log to
+    // watch. Empty renders identically to absent, so holding it eagerly costs nothing.
+    private final List<String> messages = new CopyOnWriteArrayList<>();
 
     // A runnable link derived from request + queryType: SPARQL opens the
     // Wikidata Query Service editor, API opens the HTTP request. Carried as
@@ -126,12 +131,9 @@ public class LogNode extends ViewableAdapter {
         if (blank(text)) {
             return;
         }
-        if (messages == null) {
-            messages = new ArrayList<>();
-        }
-        for (String line : text.split("\n")) {
-            messages.add(line);
-        }
+        // Added as one batch: two threads lazily creating the list used to be able to
+        // lose one of them entirely.
+        messages.addAll(List.of(text.split("\n")));
     }
 
     private static volatile RequestLinks links = RequestLinks.NONE;
