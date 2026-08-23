@@ -510,7 +510,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     : GenerationRun.Quality.partial(
                                             qualityWarnings,
                                             java.util.List.copyOf(unavailableQids)),
-                            finalization.coverage());
+                            finalization.coverage(),
+                            transformed.selfReferenceFindings());
                 });
     }
 

@@ -599,7 +599,8 @@ public class GenerationPipeline {
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, rs,
-                previous.loadedDeclarations(), previous.quality(), finalization.coverage());
+                previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
+                transformed.selfReferenceFindings());
     }
 
     /**

@@ -113,6 +113,7 @@ public final class StatementTransforms {
     public record Result(
             List<WikidataDynamicObject> reified,
             Set<WikidataDynamicObject> demoted,
+            List<TransformEngine.SelfRefFinding> selfReferenceFindings,
             Map<String, Set<List<String>>> companionSets,
             int projectedFields,
             int stampedReferents,
@@ -138,8 +139,9 @@ public final class StatementTransforms {
         // Reify appends the new records to the pool, so every stage below sees them —
         // which is the whole point: a restriction or an invert declared on a statement
         // class has to reach the records that class produces.
+        List<TransformEngine.SelfRefFinding> findings = new ArrayList<>();
         List<WikidataDynamicObject> reified =
-                ModelStatementReifications.reify(compiled, pool, log, demoted);
+                ModelStatementReifications.reify(compiled, pool, log, demoted, findings);
 
         // The replayable stages — per-field allowedQids (the query layer does not
         // enforce them), INVERT fields, and a DATE overlaid from a referent's date.
@@ -175,7 +177,7 @@ public final class StatementTransforms {
             }
         }
 
-        return new Result(reified, demoted, companionSets, projectedFields,
+        return new Result(reified, demoted, findings, companionSets, projectedFields,
                 stampedReferents, cleaned[0], cleaned[1]);
     }
 

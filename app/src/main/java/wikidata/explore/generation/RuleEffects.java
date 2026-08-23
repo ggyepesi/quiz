@@ -5,6 +5,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldExpectation;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.transform.FieldExpectations;
+import wikidata.explore.transform.TransformEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -119,16 +120,82 @@ public final class RuleEffects {
     }
 
     /**
+     * What the self-referential-phantom rule accounted for, from the decisions a reify
+     * recorded (#99).
+     *
+     * <p>Wikidata records a shared award on every recipient, so a work can carry a bare
+     * statement for an award that really belongs to a person. The rule drops such an
+     * atom only when a WITNESS exists — a real record, in the same category, that
+     * references this atom's subject through a reference role — because without one a
+     * self-nomination is legitimate: a film IS its own Best Picture nominee.
+     *
+     * <p>Each decision already carries the atom, the witness and the reason, and the
+     * reason is the interesting part: 324 lines of it went to the log on the last real
+     * generation and nowhere else, so the records they name could not be looked at. Two
+     * buckets, because dropping something and deciding not to are different answers and
+     * a reader checking this rule wants both.
+     */
+    public static List<Effect> fromSelfReference(
+            List<TransformEngine.SelfRefFinding> findings, Moment moment) {
+
+        List<Effect> effects = new ArrayList<>();
+        if (findings == null || findings.isEmpty()) {
+            return effects;
+        }
+        Moment when = moment == null ? Moment.RESULT : moment;
+        List<Viewable> dropped = new ArrayList<>();
+        List<Viewable> kept = new ArrayList<>();
+        for (TransformEngine.SelfRefFinding finding : findings) {
+            if (finding == null || finding.atom() == null) {
+                continue;
+            }
+            (finding.decision() == TransformEngine.SelfRefDecision.DROPPED
+                    ? dropped : kept).add(finding.atom());
+        }
+        if (!dropped.isEmpty()) {
+            effects.add(new Effect(
+                    "Self-referential records with a witness",
+                    dropped.size() + (when == Moment.PLAN ? " will be" : " were")
+                            + " dropped as denormalized copies — each has a real record "
+                            + "in the same category referencing its subject",
+                    Kind.CHANGED, dropped));
+        }
+        if (!kept.isEmpty()) {
+            effects.add(new Effect(
+                    "Self-referential records with no witness",
+                    kept.size() + (when == Moment.PLAN ? " are" : " were")
+                            + " kept — nothing else claims their award, so each may be a "
+                            + "genuine self-nomination rather than a copy",
+                    Kind.FLAGGED, kept));
+        }
+        effects.sort((a, b) -> Integer.compare(b.size(), a.size()));
+        return effects;
+    }
+
+    /** Every rule that can name what it accounts for, from what a run recorded. */
+    public static List<Effect> fromRun(
+            List<FieldExpectations.FieldCoverage> coverage,
+            List<TransformEngine.SelfRefFinding> findings) {
+
+        List<Effect> effects = new ArrayList<>(fromCoverage(coverage, Moment.RESULT));
+        effects.addAll(fromSelfReference(findings, Moment.RESULT));
+        effects.sort((a, b) -> Integer.compare(b.size(), a.size()));
+        return effects;
+    }
+
+    /**
      * What to say when no rule reported anything — which is NOT "the run was clean".
      *
-     * <p>Only field expectations can currently name the instances they account for. A
-     * remap also classifies kinds, restricts values, builds inverts, projects fields,
-     * canonicalizes names and composes owned parts, and none of them report here yet.
+     * <p>Field expectations and the self-reference rule can name the instances they
+     * account for. Kind classification, value restrictions, inverts, projections,
+     * canonicalization and owned composition cannot, and so report nothing here at all.
      * The wording lives with the code that knows what it does and does not cover, so a
      * caller cannot phrase its own silence as a clean bill of health — which is exactly
      * what "every declared rule holds" did.
      */
-    public static final String NOTHING_REPORTED = "No field-expectation gaps";
+    public static final String NOTHING_REPORTED =
+            "No expectation gaps or self-reference decisions. "
+                    + "Other rules do not report here yet.";
 
     /** The reportable effects as one sentence, or {@link #NOTHING_REPORTED} when there
      *  are none — so a caller never has to decide how to describe having found nothing. */

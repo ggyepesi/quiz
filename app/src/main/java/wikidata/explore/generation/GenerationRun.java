@@ -28,13 +28,29 @@ public record GenerationRun(
         RemapState remapState,
         List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
         Quality quality,
-        List<wikidata.explore.transform.FieldExpectations.FieldCoverage> fieldCoverage) {
+        List<wikidata.explore.transform.FieldExpectations.FieldCoverage> fieldCoverage,
+        List<wikidata.explore.transform.TransformEngine.SelfRefFinding> selfReferenceFindings) {
 
     public GenerationRun {
         loadedDeclarations = loadedDeclarations == null
                 ? List.of() : List.copyOf(loadedDeclarations);
         quality = quality == null ? Quality.completeQuality() : quality;
         fieldCoverage = fieldCoverage == null ? List.of() : List.copyOf(fieldCoverage);
+        selfReferenceFindings = selfReferenceFindings == null
+                ? List.of() : List.copyOf(selfReferenceFindings);
+    }
+
+    /** Compatibility: a run whose reify decisions were not retained. */
+    public GenerationRun(GeneratedProjectModel modelSnapshot, int depth, RuleNode plan,
+                         List<WikidataDynamicObject> dynamicObjects,
+                         GeneratedViewableRuntime runtime, List<Viewable> instances,
+                         RemapState remapState,
+                         List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
+                         Quality quality,
+                         List<wikidata.explore.transform.FieldExpectations.FieldCoverage>
+                                 fieldCoverage) {
+        this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
+                loadedDeclarations, quality, fieldCoverage, List.of());
     }
 
     /** Compatibility constructor for callers that have quality but no finalization report. */
@@ -45,7 +61,7 @@ public record GenerationRun(
                          List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
                          Quality quality) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
-                loadedDeclarations, quality, List.of());
+                loadedDeclarations, quality, List.of(), List.of());
     }
 
     /** Compatibility constructor for local/remap paths that produced a complete run. */
@@ -55,7 +71,8 @@ public record GenerationRun(
                          RemapState remapState,
                          List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances,
-                remapState, loadedDeclarations, Quality.completeQuality(), List.of());
+                remapState, loadedDeclarations, Quality.completeQuality(),
+                List.of(), List.of());
     }
 
     /** Back-compat: a run with no cached transform inputs (remap = display-only). */

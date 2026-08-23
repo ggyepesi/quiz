@@ -768,6 +768,25 @@ public final class ModelStatementReifications {
             GenerationLog log,
             Set<WikidataDynamicObject> demotedOut) {
 
+        return reify(project, pool, log, demotedOut, null);
+    }
+
+    /**
+     * As above, also collecting the per-atom self-reference decisions.
+     *
+     * <p>Each finding already carries WHY one record was dropped and WHICH record
+     * witnessed it. That is the sentence a reader wants — "this nomination was dropped
+     * because that one references its subject through a reference role on the same
+     * slot" — and it was written to the log and nowhere else, so the run could not show
+     * it beside the records it names.
+     */
+    public static List<WikidataDynamicObject> reify(
+            GeneratedProjectModel project,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log,
+            Set<WikidataDynamicObject> demotedOut,
+            List<TransformEngine.SelfRefFinding> findingsOut) {
+
         List<WikidataDynamicObject> created =
                 new ArrayList<>();
         TransformEngine engine = new TransformEngine();
@@ -792,6 +811,9 @@ public final class ModelStatementReifications {
         }
 
         logSelfReferenceFindings(log, findings);
+        if (findingsOut != null) {
+            findingsOut.addAll(findings);
+        }
 
         return created;
     }
@@ -1005,6 +1027,25 @@ public final class ModelStatementReifications {
             GenerationLog log,
             Set<WikidataDynamicObject> demotedOut) {
 
+        return reify(project, pool, log, demotedOut, null);
+    }
+
+    /**
+     * As above, also collecting the per-atom self-reference decisions.
+     *
+     * <p>Each finding already carries WHY one record was dropped and WHICH record
+     * witnessed it. That is the sentence a reader wants — "this nomination was dropped
+     * because that one references its subject through a reference role on the same
+     * slot" — and it was written to the log and nowhere else, so the run could not show
+     * it beside the records it names.
+     */
+    public static List<WikidataDynamicObject> reify(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log,
+            Set<WikidataDynamicObject> demotedOut,
+            List<TransformEngine.SelfRefFinding> findingsOut) {
+
         List<WikidataDynamicObject> created = new ArrayList<>();
         TransformEngine engine = new TransformEngine();
         List<TransformEngine.SelfRefFinding> findings = new ArrayList<>();
@@ -1026,6 +1067,9 @@ public final class ModelStatementReifications {
         }
 
         logSelfReferenceFindings(log, findings);
+        if (findingsOut != null) {
+            findingsOut.addAll(findings);
+        }
 
         return created;
     }

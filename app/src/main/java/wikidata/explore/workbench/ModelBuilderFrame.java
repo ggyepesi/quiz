@@ -767,27 +767,8 @@ public class ModelBuilderFrame extends JFrame {
                             @Override public process.swing.workflow.ProcessWorkflowResults<
                                     GenerationRun> results(
                                             process.ProcessOutcome<GenerationRun> outcome) {
-                                GenerationRun run = outcome.result();
-                                quiz.transform.DynamicViewable summary =
-                                        new quiz.transform.DynamicViewable(
-                                                "generation-summary", snapshot.name());
-                                summary.type("Generation result");
-                                summary.put("Objects", run.size());
-                                var apply = new process.swing.workflow.ProcessWorkflowResults.Card<>(
-                                        summary, () -> run, true);
-                                java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
-                                        GenerationRun>> instances = run.instances().stream()
-                                        .map(instance ->
-                                                new process.swing.workflow.ProcessWorkflowResults.Card<
-                                                        GenerationRun>(instance, () -> null, false))
-                                        .toList();
-                                return new process.swing.workflow.ProcessWorkflowResults<>(
-                                        "Generate domain — results", outcome.summary(),
-                                        "Accept", java.util.List.of(
-                                                new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                                        "Summary", java.util.List.of(apply)),
-                                                new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                                        "Instances", instances)));
+                                return runResults("Generate domain", "generation",
+                                        snapshot.name(), outcome.result(), outcome);
                             }
                             @Override public void apply(java.util.List<GenerationRun> decisions) {
                                 if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
@@ -978,6 +959,62 @@ public class ModelBuilderFrame extends JFrame {
         return summary;
     }
 
+    /**
+     * The results of any run that changes the pool, read the same way: a summary, one
+     * tab per rule that can name what it accounts for, and the whole pool last, labelled
+     * as the context it is rather than as the answer.
+     *
+     * <p>Shared because Generate had its own copy. Two operations presenting their
+     * outcome differently is how a reader learns to distrust both, and it is how the
+     * rule tabs would have reached Remap while the run that actually drops records —
+     * a generation — kept showing 47036 cards and a number.
+     */
+    private process.swing.workflow.ProcessWorkflowResults<GenerationRun> runResults(
+            String title, String phaseId, String domainName,
+            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome) {
+
+        java.util.List<wikidata.explore.generation.RuleEffects.Effect> effects =
+                wikidata.explore.generation.RuleEffects.fromRun(
+                        run.fieldCoverage(), run.selfReferenceFindings());
+
+        quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
+                phaseId + "-summary", domainName);
+        summary.type("Generation result");
+        // The pool size is context, not a result: for a Remap it barely moves, so
+        // leading with it says nothing about what the run did.
+        summary.put("What the rules account for",
+                wikidata.explore.generation.RuleEffects.describe(effects));
+        summary.put("Objects in the pool", run.size());
+
+        java.util.List<process.swing.workflow.ProcessWorkflowResults.Tab<GenerationRun>>
+                tabs = new java.util.ArrayList<>();
+        tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                "Summary", java.util.List.of(
+                        new process.swing.workflow.ProcessWorkflowResults.Card<>(
+                                summary, () -> run, true))));
+        for (wikidata.explore.generation.RuleEffects.Effect effect : effects) {
+            java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<GenerationRun>>
+                    cards = new java.util.ArrayList<>();
+            cards.add(new process.swing.workflow.ProcessWorkflowResults.Card<>(
+                    ruleEffectSummary(effect, phaseId + "-result"), () -> null, false));
+            cards.addAll(instanceCards(effect.instances()));
+            tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                    effect.title(), cards));
+        }
+        tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
+                "All objects (" + run.size() + ")", instanceCards(run.instances())));
+        return new process.swing.workflow.ProcessWorkflowResults<>(
+                title + " — results", outcome.summary(), "Accept", tabs);
+    }
+
+    private static java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
+            GenerationRun>> instanceCards(java.util.List<? extends objectview.Viewable> of) {
+        return of.stream()
+                .map(instance -> new process.swing.workflow.ProcessWorkflowResults.Card<
+                        GenerationRun>(instance, () -> null, false))
+                .toList();
+    }
+
     private void startGenerationOperation(
             String title, String description, String phaseId,
             work.Query<GenerationRun> query,
@@ -1033,53 +1070,8 @@ public class ModelBuilderFrame extends JFrame {
                     }
                     @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
                             results(process.ProcessOutcome<GenerationRun> outcome) {
-                        GenerationRun run = outcome.result();
-                        java.util.List<wikidata.explore.generation.RuleEffects.Effect>
-                                effects = wikidata.explore.generation.RuleEffects.fromCoverage(
-                                        run.fieldCoverage(),
-                                        wikidata.explore.generation.RuleEffects.Moment.RESULT);
-                        quiz.transform.DynamicViewable result = new quiz.transform.DynamicViewable(
-                                phaseId + "-summary", snapshot.name());
-                        result.type("Generation result");
-                        // The pool size is context, not a result: for a Remap it barely
-                        // moves, so leading with it says nothing about what the run did.
-                        result.put("What the rules account for",
-                                wikidata.explore.generation.RuleEffects.describe(effects));
-                        result.put("Objects in the pool", run.size());
-                        var accept = new process.swing.workflow.ProcessWorkflowResults.Card<>(
-                                result, () -> run, true);
-                        java.util.List<process.swing.workflow.ProcessWorkflowResults.Tab<
-                                GenerationRun>> tabs = new java.util.ArrayList<>();
-                        tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                "Summary", java.util.List.of(accept)));
-                        // One tab per rule, holding what it accounts for — the answer to
-                        // "what did this do", read off the configuration rather than
-                        // reconstructed from a diff.
-                        for (wikidata.explore.generation.RuleEffects.Effect effect : effects) {
-                            java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
-                                    GenerationRun>> cards = new java.util.ArrayList<>();
-                            cards.add(new process.swing.workflow.ProcessWorkflowResults.Card<>(
-                                    ruleEffectSummary(effect, phaseId + "-result"),
-                                    () -> null, false));
-                            cards.addAll(effect.instances().stream()
-                                    .map(instance -> new process.swing.workflow
-                                            .ProcessWorkflowResults.Card<GenerationRun>(
-                                                    instance, () -> null, false))
-                                    .toList());
-                            tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                    effect.title(), cards));
-                        }
-                        // Last, and named for what it is: the whole pool, not a result.
-                        tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                "All objects (" + run.size() + ")",
-                                run.instances().stream()
-                                        .map(instance ->
-                                                new process.swing.workflow
-                                                        .ProcessWorkflowResults.Card<
-                                                        GenerationRun>(instance, () -> null, false))
-                                        .toList()));
-                        return new process.swing.workflow.ProcessWorkflowResults<>(
-                                title + " — results", outcome.summary(), "Accept", tabs);
+                        return runResults(title, phaseId, snapshot.name(),
+                                outcome.result(), outcome);
                     }
                     @Override public void apply(java.util.List<GenerationRun> decisions) {
                         if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));

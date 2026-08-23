@@ -117,6 +117,79 @@ class RuleEffectsTest {
                         RuleEffects.of(model(FieldExpectation.EXPECTED), pool())));
     }
 
+    // ---- the self-referential phantom rule (#99) --------------------------------
+
+    private static WikidataDynamicObject atom(String id) {
+        WikidataDynamicObject o = new WikidataDynamicObject(id, id);
+        o.type("Nomination");
+        return o;
+    }
+
+    private static List<wikidata.explore.transform.TransformEngine.SelfRefFinding>
+            findings() {
+        return List.of(
+                new wikidata.explore.transform.TransformEngine.SelfRefFinding(
+                        wikidata.explore.transform.TransformEngine.SelfRefDecision.DROPPED,
+                        atom("whale"), atom("hongChau"), List.of("category"),
+                        "a real record references this subject through a REFERENCE role"),
+                new wikidata.explore.transform.TransformEngine.SelfRefFinding(
+                        wikidata.explore.transform.TransformEngine.SelfRefDecision.KEPT,
+                        atom("dianeWarren"), null, List.of("category"),
+                        "fully self-referential but no witness on the same slot"));
+    }
+
+    @Test void droppingAndDecidingNotToAreDifferentAnswersAndGetDifferentBuckets() {
+        // A reader checking this rule wants both: the copies it removed, and the
+        // records that looked identical but were kept because nothing witnessed them.
+        // A film IS its own Best Picture nominee; only a witness makes it a duplicate.
+        List<RuleEffects.Effect> effects = RuleEffects.fromSelfReference(
+                findings(), RuleEffects.Moment.RESULT);
+
+        assertEquals(2, effects.size());
+        assertEquals(RuleEffects.Kind.CHANGED, effects.get(0).kind());
+        assertEquals(RuleEffects.Kind.FLAGGED, effects.get(1).kind());
+        assertEquals(List.of("whale"), effects.get(0).instances().stream()
+                .map(objectview.Viewable::getIdentifier).toList());
+        assertEquals(List.of("dianeWarren"), effects.get(1).instances().stream()
+                .map(objectview.Viewable::getIdentifier).toList());
+    }
+
+    @Test void aKeptSelfReferenceIsNeverDescribedAsSomethingTheRunDid() {
+        RuleEffects.Effect kept = RuleEffects.fromSelfReference(
+                findings(), RuleEffects.Moment.RESULT).get(1);
+
+        assertEquals(RuleEffects.Kind.FLAGGED, kept.kind());
+        assertTrue(kept.detail().contains("kept"), kept.detail());
+        assertTrue(!kept.detail().contains("dropped"), kept.detail());
+    }
+
+    @Test void aRunThatReifiedNothingReportsNoSelfReferenceBuckets() {
+        // A loaded snapshot cannot replay the reify, so its run records no decisions —
+        // and silence about a rule that did not run must not read as a rule that held.
+        assertTrue(RuleEffects.fromSelfReference(List.of(), RuleEffects.Moment.RESULT)
+                .isEmpty());
+        assertTrue(RuleEffects.fromSelfReference(null, RuleEffects.Moment.RESULT).isEmpty());
+    }
+
+    @Test void aRunReportsEveryRuleThatCanNameWhatItAccountsFor() {
+        List<RuleEffects.Effect> effects = RuleEffects.fromRun(
+                FieldExpectations.inspect(model(FieldExpectation.EXPECTED), pool()),
+                findings());
+
+        assertEquals(3, effects.size(), "one expectation gap and two self-reference "
+                + "decisions, worst first: " + effects.stream()
+                .map(RuleEffects.Effect::title).toList());
+        assertTrue(effects.get(0).size() >= effects.get(1).size(), "worst first");
+    }
+
+    @Test void theSilenceNamesWhatItDidAndDidNotLookAt() {
+        assertTrue(RuleEffects.NOTHING_REPORTED.contains("self-reference"),
+                RuleEffects.NOTHING_REPORTED);
+        assertTrue(RuleEffects.NOTHING_REPORTED.contains("do not report here yet"),
+                "and says the rest of the run is not covered: "
+                        + RuleEffects.NOTHING_REPORTED);
+    }
+
     @Test void aRuleThatHoldsGetsNoBucket() {
         List<WikidataDynamicObject> complete = pool();
         complete.removeIf(o -> o.get("ceremony") == null);
