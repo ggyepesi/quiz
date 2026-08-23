@@ -179,6 +179,45 @@ public final class OwnedComponents {
         return site == null || site.isBlank() ? ownerName : ownerName + " — " + site;
     }
 
+    /**
+     * Renames every owned component from its owner as the owner NOW stands, and answers
+     * how many disagreed.
+     *
+     * <p>{@link #apply} already recomposes a component it reuses, for exactly this
+     * reason. But it runs in the semantic worklist, and an owner's label can still be
+     * resolved two phases later, in final label hydration — after which nothing composes
+     * again and the part keeps the QID it was named for. Ten Oscars parts carried names
+     * like {@code "Q312674 — Structured Name"} while their owner read "Giorgio Moroder"
+     * (#115).
+     *
+     * <p>This is the same derivation, not a second rule about what a part is called:
+     * whatever {@link #apply} would name it, applied once its inputs have stopped
+     * moving. Run it after canonicalization, which can move an owner's name too.
+     */
+    public static int recomposeNames(
+            GeneratedProjectModel project, Collection<WikidataDynamicObject> roots) {
+        if (project == null || roots == null) return 0;
+        int renamed = 0;
+        for (WikidataDynamicObject owner
+                : wikidata.explore.extract.WikidataObjectGraph.reachable(roots)) {
+            if (owner == null) continue;
+            for (GeneratedClassModel ownerClass : project.classes()) {
+                if (ownerClass == null
+                        || !isInstanceOf(owner, ownerClass.className(), project)) continue;
+                for (GeneratedFieldModel field : ownerClass.fields()) {
+                    if (!isSite(field, project)) continue;
+                    if (!(owner.get(field.name())
+                            instanceof WikidataDynamicObject component)) continue;
+                    String settled = partName(owner, field);
+                    if (settled.equals(component.getDisplayName())) continue;
+                    component.name(settled);
+                    renamed++;
+                }
+            }
+        }
+        return renamed;
+    }
+
     private static boolean isSite(
             GeneratedFieldModel field, GeneratedProjectModel project) {
         return OwnedClassSemantics.isOwnerQidField(field, project);

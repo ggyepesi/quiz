@@ -403,7 +403,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         }
                     }
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
-                            pool.size() + " final object(s)");
+                            pool.size() + " final object(s)"
+                                    + (finalization.ownedRenamed() == 0 ? ""
+                                            : ", " + finalization.ownedRenamed()
+                                                    + " owned part(s) renamed"));
                     phase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
                             pool.size() + " object(s)");
 

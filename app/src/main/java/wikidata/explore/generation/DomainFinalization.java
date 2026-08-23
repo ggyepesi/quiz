@@ -12,6 +12,7 @@ import java.util.List;
 /** Shared post-convergence stages for Generate, Enrich and Remap. */
 public final class DomainFinalization {
     public record Result(int dead, int disambiguation, int orphans, int requiredDropped,
+                         int ownedRenamed,
                          List<wikidata.explore.transform.FieldExpectations.FieldCoverage>
                                  coverage) {
         public Result {
@@ -20,7 +21,7 @@ public final class DomainFinalization {
 
         /** Back-compat: a result with no coverage report. */
         public Result(int dead, int disambiguation, int orphans, int requiredDropped) {
-            this(dead, disambiguation, orphans, requiredDropped, List.of());
+            this(dead, disambiguation, orphans, requiredDropped, 0, List.of());
         }
     }
 
@@ -44,7 +45,7 @@ public final class DomainFinalization {
             Collection<WikidataDynamicObject> vocabularyEvidence,
             WikidataApiClient api,
             GenerationLog log) throws Exception {
-        int[] counts = new int[4];
+        int[] counts = new int[5];
         // What EXPECTED found is the point of declaring it, so it leaves this stage as
         // a value rather than only a log line (#96).
         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> coverage =
@@ -53,6 +54,12 @@ public final class DomainFinalization {
                 stage("canonicalize", "Canonicalize final names",
                         () -> wikidata.explore.transform.Canonicalization.apply(
                                 compiled, pool, log)),
+                // After canonicalize, because that stage can move an owner's own name,
+                // and a part is named for its owner. Before the prunes, so anything
+                // dropped below is dropped under the name it will be reported by.
+                stage("owned-part-names", "Settle owner-derived component names",
+                        () -> counts[4] = wikidata.explore.transform.OwnedComponents
+                                .recomposeNames(model, pool)),
                 stage("dead-stubs", "Prune explicitly missing entities", () -> {
                     var dead = wikidata.explore.transform.DeadStubPrune.apply(pool, log);
                     counts[0] = dead.size();
@@ -88,7 +95,8 @@ public final class DomainFinalization {
                     }
                 }));
         for (GenerationStage stage : stages) stage.execute();
-        return new Result(counts[0], counts[1], counts[2], counts[3], coverage);
+        return new Result(counts[0], counts[1], counts[2], counts[3], counts[4],
+                coverage);
     }
 
     private static GenerationStage stage(String id, String title, Checked action) {

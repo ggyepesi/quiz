@@ -384,7 +384,8 @@ public class GenerationPipeline {
                 snapshot, compiled, pool, List.of(), null, log);
         int restricted = finalization.requiredDropped();
         steps.completed(GenerateDomainPipeline.FINALIZE,
-                restricted + " dropped (required-field)");
+                restricted + " dropped (required-field)"
+                        + ownedRenamed(finalization));
         if (log != null) {
             log.message("Remap (idempotent transforms only): "
                     + pool.size() + " objects re-materialized, "
@@ -525,7 +526,8 @@ public class GenerationPipeline {
                 snapshot, compiled, pool, List.of(), entityApi, log);
 
         steps.completed(GenerateDomainPipeline.FINALIZE,
-                finalization.requiredDropped() + " dropped (required-field)");
+                finalization.requiredDropped() + " dropped (required-field)"
+                        + ownedRenamed(finalization));
         sink.message("Enrich: " + convergence.ownedCreated() + " component(s) materialized, "
                 + loaded + " declared field value(s) loaded over "
                 + pool.size() + " objects, " + categories.memberships()
@@ -691,7 +693,8 @@ public class GenerationPipeline {
                 null, log);
         int restricted = finalization.requiredDropped();
         steps.completed(GenerateDomainPipeline.FINALIZE,
-                restricted + " dropped (required-field)");
+                restricted + " dropped (required-field)"
+                        + ownedRenamed(finalization));
 
         if (log != null) {
             log.message("Remap (retransform): " + pool.size()
@@ -746,4 +749,13 @@ public class GenerationPipeline {
             return null;
         }
     }
+
+    /** A part is named for its owner, and an owner's name can settle after the part was
+     *  made. Silent when nothing moved — a permanent "0" reads as a stage doing nothing,
+     *  and the number is only interesting when it is not zero. */
+    private static String ownedRenamed(DomainFinalization.Result finalization) {
+        int renamed = finalization.ownedRenamed();
+        return renamed == 0 ? "" : ", " + renamed + " owned part(s) renamed";
+    }
+
 }

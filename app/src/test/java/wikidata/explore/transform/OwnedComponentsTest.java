@@ -157,6 +157,40 @@ class OwnedComponentsTest {
     }
 
     /**
+     * #115. The reuse branch above only settles a repaired label because composition
+     * RAN AGAIN. It does not run again after final label hydration, which is two phases
+     * later — so on the Oscars domain ten parts kept names like
+     * {@code "Q312674 — Structured Name"} while their owner read "Giorgio Moroder".
+     * Settling the names is what closes that window, and it must not need a whole
+     * composition pass to do it.
+     */
+    @Test void aPartFollowsAnOwnerLabelResolvedAfterCompositionClosed() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q312674", "Q312674", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+        assertEquals("Q312674 — Structured Name", part.getDisplayName());
+
+        person.name("Giorgio Moroder");   // hydrated in a LATER phase
+
+        assertEquals(1, OwnedComponents.recomposeNames(project, List.of(person)));
+        assertEquals("Giorgio Moroder — Structured Name", part.getDisplayName());
+        assertSame(part, person.get("structuredName"), "settled, not replaced");
+    }
+
+    /** The count says how many disagreed, so a pass over settled names must report
+     *  none — otherwise the number measures how often it ran. */
+    @Test void settlingNamesThatAlreadyAgreeChangesNothing() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+
+        assertEquals(0, OwnedComponents.recomposeNames(project, List.of(person)));
+        assertEquals(0, OwnedComponents.recomposeNames(project, List.of(person)));
+    }
+
+    /**
      * A generation composes owned values more than once — kinds settle, new owners
      * appear, and composition runs again over a pool that already holds parts. Each
      * owner must still end with ONE part per site: the run that lost this produced two
