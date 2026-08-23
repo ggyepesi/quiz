@@ -32,9 +32,26 @@ public final class FieldExpectations {
 
     private FieldExpectations() {}
 
+    /**
+     * @param missingInstances the records that do not satisfy the expectation — the
+     *        answer to "which ones", which this pass already knows and used to discard,
+     *        leaving only a number nobody could act on
+     */
     public record FieldCoverage(
             String className, String fieldName, FieldExpectation level,
-            int total, int present) {
+            int total, int present, List<WikidataDynamicObject> missingInstances) {
+
+        public FieldCoverage {
+            missingInstances = List.copyOf(
+                    missingInstances == null ? List.of() : missingInstances);
+        }
+
+        /** Back-compat for a caller that only reports counts. */
+        public FieldCoverage(String className, String fieldName, FieldExpectation level,
+                             int total, int present) {
+            this(className, fieldName, level, total, present, List.of());
+        }
+
         public int missing() {
             return total - present;
         }
@@ -105,14 +122,64 @@ public final class FieldExpectations {
         return out;
     }
 
+    /**
+     * The coverage every declared expectation has over {@code pool}, changing nothing.
+     *
+     * <p>Separated from {@link #apply} so the same question can be asked BEFORE a run —
+     * a plan that says what a rule would account for, and a result that says what it
+     * did, are then the same computation and can be compared. Asking by running was the
+     * only option before, which is why a plan could not tell you what your config edit
+     * was about to do.
+     */
+    public static List<FieldCoverage> inspect(
+            GeneratedProjectModel project, Collection<WikidataDynamicObject> pool) {
+        if (project == null || pool == null) {
+            return List.of();
+        }
+        return coverage(rawExpectations(project), pool, null);
+    }
+
+    /** Compiled-model overload of {@link #inspect(GeneratedProjectModel, Collection)}. */
+    public static List<FieldCoverage> inspect(
+            CompiledProjectModel project, Collection<WikidataDynamicObject> pool) {
+        if (project == null || pool == null) {
+            return List.of();
+        }
+        return coverage(compiledExpectations(project), pool, null);
+    }
+
     private static Result apply(
             List<Expected> expectations,
             Collection<WikidataDynamicObject> pool,
             GenerationLog log) {
 
         List<WikidataDynamicObject> dropped = new ArrayList<>();
-        List<FieldCoverage> coverage = new ArrayList<>();
+        List<FieldCoverage> coverage = coverage(expectations, pool, log);
 
+        for (FieldCoverage field : coverage) {
+            if (field.level() == FieldExpectation.REQUIRED) {
+                dropped.addAll(field.missingInstances());
+            }
+        }
+
+        if (!dropped.isEmpty()) {
+            Set<WikidataDynamicObject> drop =
+                    Collections.newSetFromMap(new IdentityHashMap<>());
+            drop.addAll(dropped);
+            pool.removeIf(drop::contains);
+        }
+        return new Result(dropped, coverage);
+    }
+
+    /** The measurement, with no action taken — shared by {@link #inspect} and
+     *  {@link #apply} so a plan and a result can never disagree about what a rule
+     *  accounts for. */
+    private static List<FieldCoverage> coverage(
+            List<Expected> expectations,
+            Collection<WikidataDynamicObject> pool,
+            GenerationLog log) {
+
+        List<FieldCoverage> coverage = new ArrayList<>();
         for (Expected e : expectations) {
             int total = 0;
             int present = 0;
@@ -129,10 +196,7 @@ public final class FieldExpectations {
                 }
             }
             coverage.add(new FieldCoverage(
-                    e.className(), e.fieldName(), e.level(), total, present));
-            if (e.level() == FieldExpectation.REQUIRED) {
-                dropped.addAll(missing);
-            }
+                    e.className(), e.fieldName(), e.level(), total, present, missing));
             if (log != null) {
                 log.message("Expectation " + e.className() + "." + e.fieldName()
                         + " (" + e.level() + "): " + present + "/" + total
@@ -141,14 +205,7 @@ public final class FieldExpectations {
                                 : " (kept — see the present/missing facet)") + "\n");
             }
         }
-
-        if (!dropped.isEmpty()) {
-            Set<WikidataDynamicObject> drop =
-                    Collections.newSetFromMap(new IdentityHashMap<>());
-            drop.addAll(dropped);
-            pool.removeIf(drop::contains);
-        }
-        return new Result(dropped, coverage);
+        return coverage;
     }
 
     private static boolean isEmpty(Object v) {
