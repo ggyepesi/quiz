@@ -41,6 +41,17 @@ final class SourceDiscoveryPicker {
         return List.copyOf(result);
     }
 
+    /** Provider-neutral discovery values use the same cards as legacy table rows. */
+    static List<DiscoveredValueView> rows(
+            datasource.api.discovery.SourceDiscoveryResult discovered) {
+        if (discovered == null) return List.of();
+        return discovered.values().stream()
+                .filter(value -> value != null && !value.value().isBlank())
+                .map(value -> new DiscoveredValueView(
+                        value.value(), value.have(), value.examples()))
+                .toList();
+    }
+
     /** Infobox identity is structured: keep Template.parameter as the durable selection
      * key, but present the template title and parameter separately to the reader. The
      * key is split by the grammar's owner, so the card cannot describe a different key

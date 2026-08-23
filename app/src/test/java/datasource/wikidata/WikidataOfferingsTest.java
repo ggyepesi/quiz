@@ -1,0 +1,89 @@
+package datasource.wikidata;
+
+import datasource.api.BindingScope;
+import datasource.api.DatasourceOperation;
+import datasource.api.DatasourceProvider;
+import datasource.api.SourceValueKind;
+import org.junit.jupiter.api.Test;
+import wikidata.explore.model.FieldType;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * The second provider, and the one that tests whether the abstraction is a catalogue or
+ * only a plugin list.
+ *
+ * <p>Wikipedia contributes evidence ABOUT entities. Wikidata is what an entity IS here:
+ * it supplies the identifier a class is keyed by and the label its instances display. If
+ * those cannot be expressed as offerings with a binding scope, then "which source gives
+ * this class its identity" has nowhere to live and a class cannot declare its origin.
+ */
+class WikidataOfferingsTest {
+
+    private static final DatasourceProvider WIKIDATA = new WikidataDatasourceProvider();
+
+    private static DatasourceOperation offering(String id) {
+        return WIKIDATA.operation(id).orElseThrow();
+    }
+
+    @Test void identityAndLabelAreOfferingsLikeAnyOther() {
+        // The claim the whole design rests on. Before this, which source identified a
+        // class was implicit in the extraction layer and could not be stated at all.
+        assertEquals(BindingScope.CLASS_IDENTITY,
+                offering(WikidataDatasourceProvider.IDENTIFIER).scope());
+        assertEquals(BindingScope.CLASS_NAMES,
+                offering(WikidataDatasourceProvider.LABEL).scope());
+    }
+
+    @Test void aliasesAreAnOfferingAClassMayDecline() {
+        // Today they arrive as alternateNames on every generated class, hardcoded and
+        // @Minor, because there was nowhere to say yes or no. Here it is a choice.
+        DatasourceOperation aliases = offering(WikidataDatasourceProvider.ALIASES);
+
+        assertEquals(BindingScope.CLASS_NAMES, aliases.scope());
+        assertTrue(aliases.outputSchema().collection(),
+                "several values, which is why they became a list field");
+    }
+
+    @Test void anOfferingSaysWhatModelTypeItBecomes() {
+        // One vocabulary rather than a conversion written by hand at each place a
+        // discovered value turns into a field.
+        assertEquals(FieldType.ENTITY,
+                offering(WikidataDatasourceProvider.IDENTIFIER)
+                        .outputSchema().kind().fieldType());
+        assertEquals(FieldType.STRING,
+                offering(WikidataDatasourceProvider.DESCRIPTION)
+                        .outputSchema().kind().fieldType());
+    }
+
+    @Test void somethingThatIsNotAFieldValueSaysSo() {
+        // A retrieved document is evidence, not a field — a binding editor needs to know
+        // that before it offers the binding, not after someone tries it.
+        assertNull(SourceValueKind.DOCUMENT.fieldType());
+        assertTrue(!SourceValueKind.DOCUMENT.bindableToField());
+        assertTrue(SourceValueKind.LANGUAGE_TEXT.bindableToField());
+    }
+
+    @Test void theLabelCarriesItsLanguagePreferenceAsAParameter() {
+        // en,mul is not a default anyone should have to know: mul is Wikidata's
+        // multilingual label and is many entities' only Latin-script name.
+        assertEquals("en,mul", offering(WikidataDatasourceProvider.LABEL).parameters()
+                .stream().filter(p -> p.key().equals("languages"))
+                .findFirst().orElseThrow().defaultValue());
+    }
+
+    @Test void everyOfferingSaysWhereItMayBeBound() {
+        List<? extends DatasourceOperation> offerings = WIKIDATA.operations();
+
+        assertTrue(!offerings.isEmpty());
+        offerings.forEach(offering -> {
+            assertTrue(offering.scope() != null, offering.id() + " has no binding scope");
+            assertTrue(offering.outputSchema() != null,
+                    offering.id() + " advertises no output shape");
+        });
+    }
+}

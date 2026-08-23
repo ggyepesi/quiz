@@ -13,6 +13,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *  a category, an infobox property and (later) a QID answer the same three questions. */
 class SourceDiscoveryPickerTest {
 
+    @Test
+    void providerNeutralDiscoveryUsesTheSameCardsAsLegacyRows() {
+        var result = new datasource.api.discovery.SourceDiscoveryResult(List.of(
+                new datasource.api.discovery.DiscoveredSourceValue(
+                        "Films set in Sierra Leone", 2, "Blood Diamond, Amistad")), 3);
+
+        List<DiscoveredValueView> cards = SourceDiscoveryPicker.rows(result);
+
+        assertEquals(1, cards.size());
+        assertEquals("Films set in Sierra Leone", cards.getFirst().value());
+        assertEquals(2, cards.getFirst().have());
+        assertEquals("Blood Diamond, Amistad", cards.getFirst().examples());
+    }
+
     @Test void discoveryRowsBecomeSearchableViewableCards() {
         List<DiscoveredValueView> cards = SourceDiscoveryPicker.rows(List.of(
                 List.of("Films set in Sierra Leone", 2, "Blood Diamond, Amistad"),
