@@ -53,13 +53,46 @@ public final class RuleEffects {
     public enum Moment { PLAN, RESULT }
 
     /**
+     * Which step of the run produced an effect.
+     *
+     * <p>The pipeline is already the one component plan, execution and results share, and
+     * its phases are already the steps. Saying which step a bucket came from is what lets
+     * the result be read as the plan rather than as a list beside it — and it is what
+     * carries the account into the saved run artifact, where phase summaries survive and
+     * result tabs do not.
+     */
+    public enum RunPhase {
+        CONSTRUCT("Construct", GenerateDomainPipeline.CONSTRUCT),
+        SEMANTIC("Semantic", GenerateDomainPipeline.SEMANTIC),
+        FINALIZE("Finalize", GenerateDomainPipeline.FINALIZE);
+
+        private final String label;
+        private final String pipelinePhaseId;
+
+        RunPhase(String label, String pipelinePhaseId) {
+            this.label = label;
+            this.pipelinePhaseId = pipelinePhaseId;
+        }
+
+        public String label() { return label; }
+
+        /** The phase this belongs to in a pipeline that HAS one; an operation whose
+         *  pipeline is a single step simply has no phase with this id, and the caller
+         *  finds nothing to write to rather than inventing a step. */
+        public String pipelinePhaseId() { return pipelinePhaseId; }
+    }
+
+    /**
+     * @param phase     the step of the run that produced this
      * @param rule      the configuration this bucket stands for, in the reader's terms
      * @param detail    what the rule did or found, as one sentence
      * @param kind      whether these instances were changed or merely named
      * @param instances what the rule accounts for
      */
-    public record Effect(String rule, String detail, Kind kind, List<Viewable> instances) {
+    public record Effect(RunPhase phase, String rule, String detail, Kind kind,
+                         List<Viewable> instances) {
         public Effect {
+            phase = phase == null ? RunPhase.FINALIZE : phase;
             instances = List.copyOf(instances == null ? List.of() : instances);
         }
 
@@ -109,6 +142,7 @@ public final class RuleEffects {
                             ? " do not have it, and will be kept"
                             : " do not have it, and were kept";
             effects.add(new Effect(
+                    RunPhase.FINALIZE,
                     field.className() + "." + field.fieldName()
                             + " is " + (required ? "required" : "expected"),
                     field.present() + " of " + field.total() + " have it; "
@@ -116,7 +150,7 @@ public final class RuleEffects {
                     required ? Kind.CHANGED : Kind.FLAGGED,
                     List.copyOf(field.missingInstances())));
         }
-        effects.sort((a, b) -> Integer.compare(b.size(), a.size()));
+        effects.sort(BY_PHASE_THEN_SIZE);
         return effects;
     }
 
@@ -155,6 +189,7 @@ public final class RuleEffects {
         }
         if (!dropped.isEmpty()) {
             effects.add(new Effect(
+                    RunPhase.CONSTRUCT,
                     "Self-referential records with a witness",
                     dropped.size() + (when == Moment.PLAN ? " will be" : " were")
                             + " dropped as denormalized copies — each has a real record "
@@ -163,13 +198,14 @@ public final class RuleEffects {
         }
         if (!kept.isEmpty()) {
             effects.add(new Effect(
+                    RunPhase.CONSTRUCT,
                     "Self-referential records with no witness",
                     kept.size() + (when == Moment.PLAN ? " are" : " were")
                             + " kept — nothing else claims their award, so each may be a "
                             + "genuine self-nomination rather than a copy",
                     Kind.FLAGGED, kept));
         }
-        effects.sort((a, b) -> Integer.compare(b.size(), a.size()));
+        effects.sort(BY_PHASE_THEN_SIZE);
         return effects;
     }
 
@@ -193,6 +229,7 @@ public final class RuleEffects {
         List<Viewable> created = new ArrayList<>(audit.created());
         List<Effect> effects = new ArrayList<>();
         effects.add(new Effect(
+                RunPhase.SEMANTIC,
                 "Owned parts newly created",
                 created.size() + (when == Moment.PLAN ? " will be" : " were")
                         + " manufactured because no existing part was found for their "
@@ -219,6 +256,7 @@ public final class RuleEffects {
         List<Viewable> restamped = new ArrayList<>(audit.newlyClassified());
         List<Effect> effects = new ArrayList<>();
         effects.add(new Effect(
+                RunPhase.SEMANTIC,
                 "Entity kinds restamped",
                 restamped.size() + (when == Moment.PLAN ? " will be" : " were")
                         + " given a kind from stored evidence — on a pool already "
@@ -240,7 +278,7 @@ public final class RuleEffects {
         }
         effects.addAll(fromOwnedComposition(composition, Moment.RESULT));
         effects.addAll(fromKindClassification(kinds, Moment.RESULT));
-        effects.sort((a, b) -> Integer.compare(b.size(), a.size()));
+        effects.sort(BY_PHASE_THEN_SIZE);
         return effects;
     }
 
@@ -281,6 +319,23 @@ public final class RuleEffects {
     public static String describe(List<Effect> effects) {
         String summary = summary(effects);
         return summary.isEmpty() ? NOTHING_REPORTED : summary;
+    }
+
+    /** The run's own order first, so the result reads as the plan; biggest bucket
+     *  within a step, so a reader scanning one line sees the largest hole. */
+    private static final java.util.Comparator<Effect> BY_PHASE_THEN_SIZE =
+            java.util.Comparator.comparing((Effect e) -> e.phase().ordinal())
+                    .thenComparing(e -> -e.size());
+
+    /** The effects of one step, in order. */
+    public static List<Effect> inPhase(List<Effect> effects, RunPhase phase) {
+        List<Effect> out = new ArrayList<>();
+        for (Effect effect : effects == null ? List.<Effect>of() : effects) {
+            if (effect != null && effect.phase() == phase) {
+                out.add(effect);
+            }
+        }
+        return out;
     }
 
     /** One sentence for the reportable effects, or empty when it contains none. */

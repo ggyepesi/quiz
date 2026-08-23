@@ -768,7 +768,8 @@ public class ModelBuilderFrame extends JFrame {
                                     GenerationRun> results(
                                             process.ProcessOutcome<GenerationRun> outcome) {
                                 return runResults("Generate domain", "generation",
-                                        snapshot.name(), outcome.result(), outcome);
+                                        snapshot.name(), outcome.result(), outcome,
+                                        generationPipeline);
                             }
                             @Override public void apply(java.util.List<GenerationRun> decisions) {
                                 if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
@@ -983,7 +984,8 @@ public class ModelBuilderFrame extends JFrame {
      */
     private process.swing.workflow.ProcessWorkflowResults<GenerationRun> runResults(
             String title, String phaseId, String domainName,
-            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome) {
+            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome,
+            process.ProcessWorkflowPipeline pipeline) {
 
         java.util.List<wikidata.explore.generation.RuleEffects.Effect> effects =
                 wikidata.explore.generation.RuleEffects.fromRun(
@@ -1002,6 +1004,11 @@ public class ModelBuilderFrame extends JFrame {
         summary.put("Kind classification", run.kindClassificationAudit().description());
         summary.put("Objects in the pool", run.size());
 
+        // The pipeline is what plan, execution and results already share, so each step
+        // carries what it did. Result TABS die with the window; a phase summary is run
+        // state, saved with the artifact and reopened by the Run Inspector.
+        wikidata.explore.generation.RunPhaseSummaries.record(pipeline, effects);
+
         java.util.List<process.swing.workflow.ProcessWorkflowResults.Tab<GenerationRun>>
                 tabs = new java.util.ArrayList<>();
         tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
@@ -1015,7 +1022,7 @@ public class ModelBuilderFrame extends JFrame {
                     ruleEffectSummary(effect, phaseId + "-result"), () -> null, false));
             cards.addAll(instanceCards(effect.instances()));
             tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                    effect.title(), cards));
+                    effect.phase().label() + " · " + effect.title(), cards));
         }
         tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
                 "All objects (" + run.size() + ")", instanceCards(run.instances())));
@@ -1095,7 +1102,7 @@ public class ModelBuilderFrame extends JFrame {
                     @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
                             results(process.ProcessOutcome<GenerationRun> outcome) {
                         return runResults(title, phaseId, snapshot.name(),
-                                outcome.result(), outcome);
+                                outcome.result(), outcome, pipeline);
                     }
                     @Override public void apply(java.util.List<GenerationRun> decisions) {
                         if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
