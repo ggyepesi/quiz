@@ -1165,11 +1165,10 @@ public class ModelBuilderFrame extends JFrame {
                 reportNameCollisions(run);
                 // What the declared expectations found. Silent when they all held, so a
                 // clean run says nothing and a gap is the only thing that speaks up.
-                String coverage = wikidata.explore.generation.CoverageReport.message(
-                        run.fieldCoverage());
-                if (!coverage.isEmpty()) {
-                    logWindow.info(coverage);
-                }
+                // The results window is gone the moment it is accepted, taking every
+                // rule bucket with it. The run still HOLDS what it did — so say it here,
+                // where it stays readable and is saved with the run log.
+                logWindow.info(wikidata.explore.generation.RunAudits.report(run));
                 showInstancesWindow(); // pop the results window on a fresh run
             } else {
                 instancesPanel.clear();
@@ -1427,10 +1426,15 @@ public class ModelBuilderFrame extends JFrame {
                     + "the next Enrich loads it anyway.");
             return;
         }
+        // Forgetting a declaration changes what the NEXT enrich will fetch. It does
+        // not un-run the rules this run already ran, so their audits carry over —
+        // rebuilding without them would quietly report that nothing had been evaluated.
         replaceGenerationRun(new GenerationRun(
                 lastRun.modelSnapshot(), lastRun.depth(), lastRun.plan(),
                 lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
-                lastRun.remapState(), kept, lastRun.quality(), lastRun.fieldCoverage()));
+                lastRun.remapState(), kept, lastRun.quality(), lastRun.fieldCoverage(),
+                lastRun.selfReferenceAudit(), lastRun.ownedCompositionAudit(),
+                lastRun.kindClassificationAudit()));
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 
