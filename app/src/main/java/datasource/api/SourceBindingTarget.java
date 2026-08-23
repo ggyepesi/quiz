@@ -39,6 +39,16 @@ public record SourceBindingTarget(
                 SourceBindingSlot.CLASS_POPULATION);
     }
 
+    public static SourceBindingTarget classIdentity(String className) {
+        return new SourceBindingTarget(BindingScope.CLASS_IDENTITY, className, "",
+                SourceBindingSlot.CLASS_IDENTITY);
+    }
+
+    public static SourceBindingTarget classNames(
+            String className, SourceBindingSlot slot) {
+        return new SourceBindingTarget(BindingScope.CLASS_NAMES, className, "", slot);
+    }
+
     public static SourceBindingTarget fieldValue(
             String className, String fieldPath, SourceBindingSlot slot) {
         return new SourceBindingTarget(

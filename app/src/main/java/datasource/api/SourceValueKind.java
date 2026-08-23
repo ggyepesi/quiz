@@ -24,6 +24,9 @@ public enum SourceValueKind {
     QUANTITY(FieldType.NUMBER),
     MEDIA(FieldType.IMAGE),
     URL(FieldType.STRING),
+    /** The source preserves its native scalar/reference shape and the configured model
+     *  field decides the concrete type. */
+    MODEL_VALUE(FieldType.AUTO),
     /** A retrieved source document — evidence, not a field value. */
     DOCUMENT(null),
     UNKNOWN(null);

@@ -2,6 +2,7 @@ package wikidata.explore.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import datasource.api.SourceBinding;
 
 public class GeneratedFieldModel {
 
@@ -66,6 +67,11 @@ public class GeneratedFieldModel {
     @com.fasterxml.jackson.annotation.JsonInclude(
             com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     private WikipediaCategoryRule wikipediaCategoryRule;
+    /** Provider-neutral source configuration. Legacy mappings remain projections while
+     *  existing editors and compilers migrate; {@link FieldSourceBindings} owns sync. */
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+    private final List<SourceBinding> sourceBindings = new ArrayList<>();
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
 
     // For deserialization (GeneratedProjectModelStore).
@@ -229,6 +235,7 @@ public class GeneratedFieldModel {
         if (wikipediaCategoryRule != null) {
             c.wikipediaCategoryRule = wikipediaCategoryRule.copy();
         }
+        c.sourceBindings.addAll(sourceBindings);
 
         for (GeneratedFieldModel f : fields) {
             if (f != null) {
@@ -266,6 +273,8 @@ public class GeneratedFieldModel {
         if (wikipediaCategoryRule == null) wikipediaCategoryRule = new WikipediaCategoryRule();
         return wikipediaCategoryRule;
     }
+
+    public List<SourceBinding> sourceBindings() { return sourceBindings; }
 
     public List<GeneratedFieldModel> fields() { return fields; }
 

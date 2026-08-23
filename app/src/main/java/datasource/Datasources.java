@@ -3,6 +3,7 @@ package datasource;
 import datasource.api.DatasourceRegistry;
 import datasource.wikidata.WikidataDatasourceProvider;
 import datasource.wikipedia.WikipediaDatasourceProvider;
+import datasource.dbpedia.DbpediaDatasourceProvider;
 
 import java.util.List;
 
@@ -22,6 +23,7 @@ public final class Datasources {
      *  the composition root is the one place that decides what is in it. */
     public static DatasourceRegistry standard() {
         return new DatasourceRegistry(List.of(
+                new DbpediaDatasourceProvider(),
                 new WikipediaDatasourceProvider(),
                 new WikidataDatasourceProvider()));
     }

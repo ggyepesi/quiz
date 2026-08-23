@@ -99,6 +99,12 @@ public final class FieldSourceChoices {
         if (datasetOverride != null) return datasetOverride;
         FieldRulePromoter modelBacked = domain == null
                 ? null : domain.capability(FieldRulePromoter.class);
+        datasource.api.SourceBinding binding = modelBacked == null ? null
+                : modelBacked.declaredBinding(type, field,
+                        datasource.api.SourceBindingSlot.FALLBACK_FIELD_VALUE);
+        FieldSourceMapping typed = FieldSourceRecipeCodec.mapping(
+                binding == null ? null : new FieldSourceRecipe(binding));
+        if (typed != null) return typed;
         return modelBacked == null ? null : modelBacked.declaredFallbackSource(type, field);
     }
 

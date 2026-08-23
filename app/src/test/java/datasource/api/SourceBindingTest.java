@@ -34,7 +34,8 @@ class SourceBindingTest {
         SourceBinding category = new SourceBinding(
                 SourceBindingTarget.fieldValue("Movie", "locations",
                         SourceBindingSlot.CATEGORY_EVIDENCE),
-                new SourceRecipe("wikipedia", "category", Map.of()));
+                new SourceRecipe("wikipedia", "category", Map.of(
+                        "pattern", "Films set in <value>", "policy", "REVIEW")));
 
         assertEquals(BindingScope.FIELD_VALUE,
                 category.resolve(Datasources.standard()).scope());

@@ -86,10 +86,7 @@ final class ModelFieldRulePromoter {
         if (!preview.eligible()) throw new IllegalArgumentException(preview.reason());
         GeneratedFieldModel field = findField(
                 model.findClass(recipe.type()), recipe.field());
-        wikidata.explore.model.WikipediaCategoryRule promoted = recipe.categoryRule();
-        wikidata.explore.model.WikipediaCategoryRule rule = field.ensureWikipediaCategoryRule();
-        rule.pattern(promoted.pattern());
-        rule.policy(promoted.policy());
+        wikidata.explore.model.FieldSourceBindings.put(field, recipe.binding());
         saveModel(store, model);
         return preview;
     }
@@ -132,6 +129,17 @@ final class ModelFieldRulePromoter {
             FieldSourceMapping copy = new FieldSourceMapping();
             copy.copyFrom(declared.fallbackMapping());
             return copy;
+        } catch (Exception unreadable) { return null; }
+    }
+
+    datasource.api.SourceBinding declaredBinding(
+            String type, String field, datasource.api.SourceBindingSlot slot) {
+        if (modelFile == null || !modelFile.isFile() || type == null || field == null
+                || slot == null) return null;
+        try {
+            GeneratedProjectModel model = new GeneratedProjectModelStore().load(modelFile);
+            GeneratedFieldModel declared = findField(model.findClass(type), field);
+            return wikidata.explore.model.FieldSourceBindings.binding(declared, slot);
         } catch (Exception unreadable) { return null; }
     }
 

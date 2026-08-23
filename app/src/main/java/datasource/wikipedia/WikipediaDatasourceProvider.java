@@ -25,9 +25,12 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     public static final String ARTICLE = "article";
     /** The infobox on that article, as versioned parameters rather than prose. */
     public static final String INFOBOX = "infobox";
+    /** One configured parameter interpreted as a model field value. */
+    public static final String INFOBOX_PARAMETER = "infobox-parameter";
 
     private final List<DatasourceOperation> operations = List.of(
             new WikipediaCategoryDiscoveryOperation(),
+            new InfoboxParameter(),
             document(ARTICLE, "Article",
                     "Retrieve the article an entity corresponds to, with the digest that "
                             + "says which revision was read."),
@@ -35,6 +38,20 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                     "The template's parameters, which are what the page SAID rather than "
                             + "what a field holds — evidence, versioned by a digest that "
                             + "follows the parameters and not the surrounding prose."));
+
+    private record InfoboxParameter() implements DatasourceOperation {
+        @Override public String id() { return INFOBOX_PARAMETER; }
+        @Override public String displayName() { return "Infobox parameter"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public List<ParameterDescriptor> parameters() {
+            return List.of(new ParameterDescriptor("property", "Template.parameter",
+                    ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                    "The infobox template and parameter supplying this field."));
+        }
+        @Override public SourceValueSchema outputSchema() {
+            return new SourceValueSchema(SourceValueKind.MODEL_VALUE, true, "");
+        }
+    }
 
     @Override public String id() { return ID; }
     @Override public String displayName() { return "Wikipedia"; }

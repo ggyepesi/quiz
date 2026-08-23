@@ -61,6 +61,8 @@ public final class GeneratedProjectModelStore {
         }
 
         PopulationSourceBindings.synchronize(model);
+        ClassSourceBindings.synchronize(model);
+        FieldSourceBindings.synchronizeForSave(model);
 
         File parent = file.getParentFile();
         if (parent != null) {
@@ -89,6 +91,8 @@ public final class GeneratedProjectModelStore {
         }
 
         PopulationSourceBindings.synchronize(model);
+        ClassSourceBindings.synchronize(model);
+        FieldSourceBindings.synchronizeForSave(model);
 
         return mapper.writeValueAsString(model);
     }
@@ -101,6 +105,8 @@ public final class GeneratedProjectModelStore {
         GeneratedProjectModel model = mapper.treeToValue(tree, GeneratedProjectModel.class);
         OwnedClassSemantics.migrateLegacy(model);
         PopulationSourceBindings.synchronize(model);
+        ClassSourceBindings.synchronize(model);
+        FieldSourceBindings.migrateOnLoad(model);
         return model;
     }
 

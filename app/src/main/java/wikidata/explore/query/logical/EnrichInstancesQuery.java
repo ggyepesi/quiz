@@ -79,6 +79,13 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
 
     @Override
     public GenerationRun execute(QueryContext context) throws Exception {
+        int checkedBindings = wikidata.explore.model.FieldSourceBindings
+                .synchronizeAndResolve(
+                projectModel, datasource.Datasources.standard()).size();
+        // Checked, not used: the legacy field sources still drive the run. Saying
+        // "resolved" invited the reading that these bindings produced the data.
+        context.message(checkedBindings
+                + " field source binding(s) resolve against the installed datasources.");
         // A STEP, not a bare message: the log window renders the tree, so a run that only
         // emits text sits at "Running..." saying nothing while its batches come and go.
         // Recording under a step gives every request its own entry — including one still

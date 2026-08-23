@@ -50,6 +50,8 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     public static final String ALIASES = "aliases";
     /** The short gloss under a label. */
     public static final String DESCRIPTION = "description";
+    /** A statement property read as the configured value of one model field. */
+    public static final String PROPERTY_VALUE = "property-value";
     /** The article a Wikipedia operation needs to say anything about this entity. */
     public static final String SITELINK = "sitelink";
 
@@ -87,6 +89,12 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
             offering(DESCRIPTION, "Description", BindingScope.FIELD_VALUE,
                     new SourceValueSchema(SourceValueKind.LANGUAGE_TEXT, false, ""),
                     List.of(LANGUAGES)),
+            offering(PROPERTY_VALUE, "Statement property", BindingScope.FIELD_VALUE,
+                    new SourceValueSchema(SourceValueKind.MODEL_VALUE, true, ""),
+                    List.of(ParameterDescriptor.reference("property", "Property", true, "",
+                            "The Wikidata property supplying this field.",
+                            new SourceReferenceSchema(ID,
+                                    SourceReferenceSchema.Kind.PROPERTY, false)))),
             new StatementMembershipOffering(
                     BindingScope.CLASS_POPULATION,
                     SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),

@@ -8,6 +8,11 @@ import java.awt.Component;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import datasource.api.DatasourceOperation;
+import datasource.api.DatasourceRegistry;
+import datasource.api.SourceRecipe;
+import datasource.dbpedia.DbpediaDatasourceProvider;
+import datasource.wikipedia.WikipediaDatasourceProvider;
 
 /**
  * Choosing where else a field may be read from: which Wikipedia structure to sample, then the
@@ -37,10 +42,9 @@ public final class AdditionalSourcePicker {
     }
 
     /** What was chosen, in the shape a field source is written in. */
-    public record Choice(FieldSourceType sourceType, String property, String label) { }
+    public record Choice(FieldSourceType sourceType, String property, String label,
+                         SourceRecipe recipe) { }
 
-    private static final String NATIVE = "Native Wikipedia infobox";
-    private static final String DBPEDIA = "DBpedia projection";
     private static final String CLEAR = "Clear curation choice";
 
     private AdditionalSourcePicker() { }
@@ -54,27 +58,40 @@ public final class AdditionalSourcePicker {
      */
     public static void choose(Component parent, SwingQueryRunner runner, Seeds seeds,
             Consumer<Choice> chosen, Runnable clearing) {
+        choose(parent, runner, datasource.Datasources.standard(), seeds, chosen, clearing);
+    }
+
+    public static void choose(Component parent, SwingQueryRunner runner,
+            DatasourceRegistry registry, Seeds seeds,
+            Consumer<Choice> chosen, Runnable clearing) {
 
         Objects.requireNonNull(seeds, "Something has to be sampled");
+        Objects.requireNonNull(registry, "Datasource choices need a registry");
+        OperationChoice nativeInfobox = option(registry, WikipediaDatasourceProvider.ID,
+                WikipediaDatasourceProvider.INFOBOX_PARAMETER,
+                FieldSourceType.WIKIPEDIA_INFOBOX);
+        OperationChoice dbpediaProperty = option(registry, DbpediaDatasourceProvider.ID,
+                DbpediaDatasourceProvider.PROPERTY, FieldSourceType.DBPEDIA);
         Object[] options = clearing == null
-                ? new Object[]{NATIVE, DBPEDIA}
-                : new Object[]{NATIVE, DBPEDIA, CLEAR};
+                ? new Object[]{nativeInfobox, dbpediaProperty}
+                : new Object[]{nativeInfobox, dbpediaProperty, CLEAR};
         Object answer = JOptionPane.showInputDialog(parent,
                 "Which Wikipedia structure should be sampled?",
-                "Choose additional source", JOptionPane.PLAIN_MESSAGE, null, options, NATIVE);
+                "Choose additional source", JOptionPane.PLAIN_MESSAGE, null, options,
+                nativeInfobox);
 
         if (answer == null) return;
         if (CLEAR.equals(answer)) {
             clearing.run();
             return;
         }
-        if (NATIVE.equals(answer)) {
+        if (nativeInfobox.equals(answer)) {
             infobox(parent, runner, seeds, key -> accept(chosen,
-                    FieldSourceType.WIKIPEDIA_INFOBOX, key, "Native Wikipedia infobox parameter"));
+                    nativeInfobox, key, "Native Wikipedia infobox parameter"));
             return;
         }
         dbpedia(parent, runner, seeds, property -> accept(chosen,
-                FieldSourceType.DBPEDIA, property, "DBpedia infobox property"));
+                dbpediaProperty, property, "DBpedia infobox property"));
     }
 
     private static void infobox(Component parent, SwingQueryRunner runner, Seeds seeds,
@@ -99,9 +116,25 @@ public final class AdditionalSourcePicker {
     }
 
     /** A dismissed picker hands back nothing, and nothing is what the caller hears. */
-    private static void accept(Consumer<Choice> chosen, FieldSourceType sourceType,
+    private static void accept(Consumer<Choice> chosen, OperationChoice operation,
             String property, String label) {
         if (chosen == null || property == null || property.isBlank()) return;
-        chosen.accept(new Choice(sourceType, property, label));
+        chosen.accept(new Choice(operation.sourceType(), property, label,
+                new SourceRecipe(operation.providerId(),
+                        operation.operation().id(),
+                        java.util.Map.of("property", property, "label", label,
+                                "sourceType", operation.sourceType().name()))));
+    }
+
+    private static OperationChoice option(DatasourceRegistry registry, String provider,
+            String operation, FieldSourceType sourceType) {
+        DatasourceOperation resolved = registry.require(provider, operation,
+                DatasourceOperation.class);
+        return new OperationChoice(provider, resolved, sourceType);
+    }
+
+    private record OperationChoice(
+            String providerId, DatasourceOperation operation, FieldSourceType sourceType) {
+        @Override public String toString() { return operation.displayName(); }
     }
 }

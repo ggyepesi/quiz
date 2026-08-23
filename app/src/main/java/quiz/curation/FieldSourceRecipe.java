@@ -6,6 +6,7 @@ import datasource.api.SourceBindingSlot;
 import datasource.api.SourceRecipe;
 import datasource.wikipedia.WikipediaCategoryDiscoveryOperation;
 import datasource.wikipedia.WikipediaDatasourceProvider;
+import datasource.dbpedia.DbpediaDatasourceProvider;
 import wikidata.explore.model.CategoryCandidatePolicy;
 import wikidata.explore.model.WikipediaCategoryRule;
 
@@ -50,10 +51,6 @@ public final class FieldSourceRecipe {
     public static final String SOURCE_TYPE = "sourceType";
     public static final String PROPERTY = "property";
     public static final String LABEL = "label";
-
-    private static final String DBPEDIA = "dbpedia";
-    private static final String DBPEDIA_PROPERTY = "property";
-    private static final String INFOBOX_PARAMETER = "infobox-parameter";
 
     private final SourceBinding binding;
 
@@ -129,10 +126,11 @@ public final class FieldSourceRecipe {
         } else if (bindingSlot == SourceBindingSlot.FALLBACK_FIELD_VALUE) {
             String sourceType = clean(safe.get(SOURCE_TYPE));
             if ("DBPEDIA".equals(sourceType)) {
-                recipe = new SourceRecipe(DBPEDIA, DBPEDIA_PROPERTY, safe);
+                recipe = new SourceRecipe(DbpediaDatasourceProvider.ID,
+                        DbpediaDatasourceProvider.PROPERTY, safe);
             } else if ("WIKIPEDIA_INFOBOX".equals(sourceType)) {
                 recipe = new SourceRecipe(WikipediaDatasourceProvider.ID,
-                        INFOBOX_PARAMETER, safe);
+                        WikipediaDatasourceProvider.INFOBOX_PARAMETER, safe);
             } else {
                 // Unknown future sidecar values remain readable. Resolution is the
                 // boundary that reports an unavailable provider/operation.

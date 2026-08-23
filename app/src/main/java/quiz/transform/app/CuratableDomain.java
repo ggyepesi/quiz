@@ -196,4 +196,9 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
             String type, String field) {
         return new ModelFieldRulePromoter(modelFile, this).declaredFallbackSource(type, field);
     }
+
+    @Override public datasource.api.SourceBinding declaredBinding(
+            String type, String field, datasource.api.SourceBindingSlot slot) {
+        return new ModelFieldRulePromoter(modelFile, this).declaredBinding(type, field, slot);
+    }
 }

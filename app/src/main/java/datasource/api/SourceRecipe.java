@@ -44,7 +44,23 @@ public record SourceRecipe(
         if (registry == null) {
             throw new IllegalArgumentException("Datasource registry is required");
         }
-        return registry.require(providerId, operationId, DatasourceOperation.class);
+        DatasourceOperation operation = registry.require(
+                providerId, operationId, DatasourceOperation.class);
+        for (ParameterDescriptor parameter : operation.parameters()) {
+            String value = parameter(parameter.key());
+            if (value.isBlank()) value = parameter.defaultValue();
+            if (parameter.required() && value.isBlank()) {
+                throw new IllegalArgumentException("Datasource recipe " + providerId + "."
+                        + operationId + " requires parameter '" + parameter.key() + "'");
+            }
+            if (!value.isBlank() && parameter.kind() == ParameterDescriptor.Kind.CHOICE
+                    && !parameter.options().isEmpty()
+                    && !parameter.options().contains(value)) {
+                throw new IllegalArgumentException("Datasource recipe " + providerId + "."
+                        + operationId + " has unknown " + parameter.key() + ": " + value);
+            }
+        }
+        return operation;
     }
 
     /** Resolve and verify that this recipe is being attached at the right scope. */

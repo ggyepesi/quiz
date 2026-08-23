@@ -40,6 +40,13 @@ public interface FieldRulePromoter extends domain.DomainCapability {
         return null;
     }
 
+    /** Typed declaration used by both applications; legacy mapping reads above remain
+     *  projections until their editors and compiler have completed migration. */
+    default datasource.api.SourceBinding declaredBinding(
+            String type, String field, datasource.api.SourceBindingSlot slot) {
+        return null;
+    }
+
     record PromotionPreview(
             boolean eligible,
             String reason,

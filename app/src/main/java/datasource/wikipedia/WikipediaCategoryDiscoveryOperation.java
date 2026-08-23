@@ -23,6 +23,8 @@ public final class WikipediaCategoryDiscoveryOperation implements SourceDiscover
     public static final String ID = "category";
     public static final String TYPE_QID = "typeQid";
     public static final String SAMPLE_SIZE = "sampleSize";
+    public static final String PATTERN = "pattern";
+    public static final String POLICY = "policy";
 
     @Override public String id() { return ID; }
     @Override public String displayName() { return "Wikipedia categories"; }
@@ -34,7 +36,16 @@ public final class WikipediaCategoryDiscoveryOperation implements SourceDiscover
                         "Wikidata class used to select sample articles."),
                 new ParameterDescriptor(SAMPLE_SIZE, "Sample size",
                         ParameterDescriptor.Kind.INTEGER, false, "8", List.of(),
-                        "Number of source articles inspected."));
+                        "Number of source articles inspected."),
+                new ParameterDescriptor(PATTERN, "Category pattern",
+                        ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                        "Category title containing one <value> placeholder."),
+                new ParameterDescriptor(POLICY, "Candidate policy",
+                        ParameterDescriptor.Kind.CHOICE, false, "REVIEW",
+                        java.util.Arrays.stream(
+                                wikidata.explore.model.CategoryCandidatePolicy.values())
+                                .map(Enum::name).toList(),
+                        "How discovered category members enter review."));
     }
     @Override public SourceValueSchema outputSchema() {
         return SourceValueSchema.collection(SourceValueKind.TEXT);

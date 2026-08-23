@@ -335,6 +335,7 @@ public class FieldSourcePanel extends JPanel {
                     fallback.sourceType(choice.sourceType());
                     fallback.propertyPid(choice.property());
                     fallback.propertyLabel(choice.label());
+                    FieldSourceBindings.synchronizeForSave(projectModel);
                     refreshFallbackLabel();
                     afterChange.accept(null);
                 },
@@ -388,6 +389,7 @@ public class FieldSourcePanel extends JPanel {
         WikipediaCategoryRule rule = field.ensureWikipediaCategoryRule();
         rule.pattern(entered);
         rule.policy((CategoryCandidatePolicy) policy.getSelectedItem());
+        FieldSourceBindings.synchronizeForSave(projectModel);
         refreshCategoryLabel();
         afterChange.accept(null);
     }
@@ -633,7 +635,9 @@ public class FieldSourcePanel extends JPanel {
         fallbackButton.addActionListener(e -> chooseFallback());
         clearFallbackButton.addActionListener(e -> {
             if (field != null) field.fallbackMapping(null);
+            FieldSourceBindings.synchronizeForSave(projectModel);
             refreshFallbackLabel();
+            afterChange.accept(null);
         });
         fallbackRow.add(fallbackButton);
         fallbackRow.add(clearFallbackButton);
@@ -646,6 +650,7 @@ public class FieldSourcePanel extends JPanel {
         categoryButton.addActionListener(e -> configureCategoryRule());
         clearCategoryButton.addActionListener(e -> {
             if (field != null) field.wikipediaCategoryRule(null);
+            FieldSourceBindings.synchronizeForSave(projectModel);
             refreshCategoryLabel();
             afterChange.accept(null);
         });

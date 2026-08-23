@@ -9,12 +9,14 @@ import wikidata.explore.rule.RuleNode;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.ClassKind;
+import wikidata.explore.model.ClassSourceBindings;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.StatementClassSource;
+import datasource.api.SourceBindingSlot;
 import wikidata.explore.query.logical.ClassSearchQuery;
 import wikidata.explore.query.logical.DiscoverSubtypesQuery;
 import wikidata.explore.query.result.TableQueryResult;
@@ -126,6 +128,7 @@ public class ClassSourcePanel extends JPanel {
 
     /** States the regime rather than offering it: it is a consequence, not a choice. */
     private final javax.swing.JLabel canonicalKindLabel = new javax.swing.JLabel();
+    private final javax.swing.JLabel canonicalSourcesLabel = new javax.swing.JLabel();
     private final JComboBox<String> displayNameModeBox =
             new JComboBox<>(new String[]{DN_LABEL, DN_FIELD, DN_TEMPLATE});
     private final JComboBox<String> displayNameFieldBox = new JComboBox<>();
@@ -462,6 +465,9 @@ public class ClassSourcePanel extends JPanel {
                 + "fields, or the owner and the site that produced it — with a display "
                 + "name from a field or a template.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Identity:", canonicalKindLabel);
+        canonicalSourcesLabel.setToolTipText("Datasource operations supplying the source "
+                + "class's identity, display label and alternate names.");
+        GridBagUtils.labeledRow(form, c, y++, "Source bindings:", canonicalSourcesLabel);
 
         displayNameModeBox.setToolTipText("How to make the display name: the source "
                 + "label, a single field's value, or a template.");
@@ -1008,6 +1014,7 @@ public class ClassSourcePanel extends JPanel {
                     case STATEMENT -> KIND_DERIVED;
                     case OWNED -> "Owned (owner + production site)";
                 });
+        canonicalSourcesLabel.setText(describeClassSources());
 
         // Display policy is independent of identity: even a source-identified class
         // may deliberately compose a name from its configured fields.
@@ -1019,6 +1026,21 @@ public class ClassSourcePanel extends JPanel {
         keyFieldsField.setEnabled(keyed);
 
         canonicalHint.setText(canonicalWarning(clazz == null ? null : clazz.classKind(), mode));
+    }
+
+    private String describeClassSources() {
+        if (clazz == null || clazz.classKind() != ClassKind.SOURCE) return "—";
+        ClassSourceBindings.synchronize(clazz);
+        datasource.api.DatasourceRegistry registry = datasource.Datasources.standard();
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        for (SourceBindingSlot slot : java.util.List.of(SourceBindingSlot.CLASS_IDENTITY,
+                SourceBindingSlot.CLASS_LABEL, SourceBindingSlot.CLASS_ALIASES)) {
+            datasource.api.SourceBinding binding = ClassSourceBindings.binding(clazz, slot);
+            if (binding == null) continue;
+            datasource.api.DatasourceOperation operation = binding.resolve(registry);
+            labels.add(operation.displayName());
+        }
+        return labels.isEmpty() ? "—" : String.join(" · ", labels);
     }
 
     // A composed display name must resolve; only a source class has a source label.

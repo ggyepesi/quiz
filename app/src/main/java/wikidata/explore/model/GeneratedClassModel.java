@@ -2,6 +2,7 @@ package wikidata.explore.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import datasource.api.SourceRecipe;
+import datasource.api.SourceBinding;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -57,6 +58,10 @@ public class GeneratedClassModel {
      *  {@link #populationSource()} and {@link PopulationSourceBindings}. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private SourceRecipe populationSource;
+
+    /** Explicit population, identity and naming sources for this class. */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private final List<SourceBinding> sourceBindings = new ArrayList<>();
 
     private CanonicalSpec canonical = new CanonicalSpec();
 
@@ -212,6 +217,8 @@ public class GeneratedClassModel {
         return PopulationSourceBindings.effective(this);
     }
 
+    public List<SourceBinding> sourceBindings() { return sourceBindings; }
+
     /** Bind this class to an executable population recipe. The migration adapter
      *  writes the established mapping fields too, so the current compiler executes
      *  exactly what the catalogue recipe describes. */
@@ -327,6 +334,7 @@ public class GeneratedClassModel {
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.seedQids.addAll(seedQids);
         copy.populationSource = populationSource;
+        copy.sourceBindings.addAll(sourceBindings);
         copy.canonical = canonical().copy();   // never null — see canonical()
 
         for (GeneratedFieldModel field : fields) {
