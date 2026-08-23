@@ -40,6 +40,12 @@ class FindDataProcessTest {
         assertEquals(0, fallbackCalls.get());
         assertEquals("Wikidata",
                      outcome.result().proposal().fields().get(0).source().kind());
+        var wikidataYield = sourceYield(outcome.result(), "Wikidata");
+        assertEquals(1, wikidataYield.examined());
+        assertEquals(1, wikidataYield.usableChanges());
+        var dbpediaYield = sourceYield(outcome.result(), "DBpedia");
+        assertEquals(0, dbpediaYield.examined());
+        assertEquals(1, dbpediaYield.skipped());
     }
 
     @Test
@@ -61,6 +67,9 @@ class FindDataProcessTest {
         assertEquals(11L, outcome.result().proposal().fields().get(0).proposedValue());
         assertEquals("DBpedia",
                      outcome.result().proposal().fields().get(0).source().kind());
+        assertEquals(1, sourceYield(outcome.result(), "Wikidata").examined());
+        assertEquals(0, sourceYield(outcome.result(), "Wikidata").usableChanges());
+        assertEquals(1, sourceYield(outcome.result(), "DBpedia").usableChanges());
     }
 
     @Test
@@ -168,6 +177,11 @@ class FindDataProcessTest {
         assertEquals(1, outcome.result().results().size());
         assertEquals("one",
                      outcome.result().results().get(0).proposal().subject().targetId());
+        var failedYield = outcome.result().sourceYields().stream()
+                .filter(value -> "Bad".equals(value.source())).findFirst().orElseThrow();
+        assertEquals(1, failedYield.examined());
+        assertEquals(1, failedYield.failed(),
+                "a provider with no proposal must still survive in execution measurement");
     }
 
     @Test
@@ -217,6 +231,21 @@ class FindDataProcessTest {
                 outcome.result().results().get(0).proposal());
         assertEquals("hawaii", decision.subject().targetId());
         assertEquals(1440000L, decision.fields().get(0).candidate().proposedValue());
+        assertEquals(1, outcome.result().sourceYields().getFirst().examined());
+        assertEquals(1, outcome.result().sourceYields().getFirst().usableChanges());
+        // The summary says how much, not what: the per-source detail is a card the
+        // reader can open, and seven numbers per source made this line unreadable.
+        assertTrue(outcome.summary().contains("1 source(s) consulted, 1 usable candidate(s)"),
+                outcome.summary());
+        assertEquals(1, quiz.enrichment.ui.SourceYieldCards.of(
+                outcome.result().sourceYields()).size(),
+                "and the source that was asked has a card of its own");
+    }
+
+    private static datasource.enrichment.SourceYield sourceYield(
+            FindDataResult result, String source) {
+        return result.sourceYields().stream().filter(value -> source.equals(value.source()))
+                .findFirst().orElseThrow();
     }
 
     @Test

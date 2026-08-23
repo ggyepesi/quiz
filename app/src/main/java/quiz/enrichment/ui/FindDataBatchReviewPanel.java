@@ -35,18 +35,28 @@ public final class FindDataBatchReviewPanel {
     public static void showDialog(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone) {
-        show(owner, title, prompt, proposals, Dialog.ModalityType.APPLICATION_MODAL, onDone);
+        show(owner, title, prompt, proposals, List.of(),
+                Dialog.ModalityType.APPLICATION_MODAL, onDone);
     }
 
+    /**
+     * @param sourceReport what each configured source yielded, as cards. Rendered
+     *        alongside the proposals rather than in a separate window: "DBpedia was
+     *        asked and had nothing" is the answer to why a member shows no value, and
+     *        it belongs where the reader is already asking that.
+     */
     public static JDialog showModeless(
             Component owner, String title, String prompt,
-            List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone) {
-        return show(owner, title, prompt, proposals, Dialog.ModalityType.MODELESS, onDone);
+            List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
+            Consumer<BatchReviewDecision> onDone) {
+        return show(owner, title, prompt, proposals, sourceReport,
+                Dialog.ModalityType.MODELESS, onDone);
     }
 
     private static JDialog show(
             Component owner, String title, String prompt,
-            List<EnrichmentProposal> proposals, Dialog.ModalityType modality,
+            List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
+            Dialog.ModalityType modality,
             Consumer<BatchReviewDecision> onDone) {
         Map<String, EnrichmentDecision> applicable = new LinkedHashMap<>();
         List<EnrichmentDecision> safeDefaults = new ArrayList<>();
@@ -72,6 +82,10 @@ public final class FindDataBatchReviewPanel {
                 if (!overwrite) safeDefaults.add(decision);
             }
         }
+
+        // Last, so the proposals a reader came to act on stay at the top; present even
+        // when nothing was found, which is when the question they answer is asked.
+        cards.addAll(sourceReport == null ? List.<Viewable>of() : sourceReport);
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));

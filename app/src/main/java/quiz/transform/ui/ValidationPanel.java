@@ -1332,6 +1332,7 @@ public final class ValidationPanel extends JPanel {
                                 this,
                                 "Review found data" + (path.isBlank() ? "" : " — " + path),
                                 "Review the values found for these members.", proposals,
+                                quiz.enrichment.ui.SourceYieldCards.of(result.sourceYields()),
                                 reviewed -> reviewed.accepted().forEach(
                                         decision -> applyDecision(store, decision)));
                     }
@@ -1576,7 +1577,8 @@ public final class ValidationPanel extends JPanel {
                         quiz.enrichment.ui.FindDataBatchReviewPanel.showModeless(this,
                                 "Review Wikipedia evidence — " + path,
                                 "Review exact article mentions and configured category relations.",
-                                proposals, reviewed -> reviewed.accepted().forEach(
+                                proposals, quiz.enrichment.ui.SourceYieldCards.of(result.sourceYields()),
+                                reviewed -> reviewed.accepted().forEach(
                                         decision -> applyDecision(store, decision)));
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {

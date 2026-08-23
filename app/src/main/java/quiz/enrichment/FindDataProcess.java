@@ -23,6 +23,7 @@ public final class FindDataProcess implements Process<FindDataResult> {
     private final EnrichmentRoute route;
     private final boolean requestReview;
     private final ProcessPlan plan;
+    private volatile List<datasource.enrichment.SourceYield> terminalSourceYields = List.of();
 
     public FindDataProcess(
             EnrichmentRequest request,
@@ -64,6 +65,9 @@ public final class FindDataProcess implements Process<FindDataResult> {
         Throwable firstProblem = null;
         int completed = 0;
         int attempted = 0;
+        Map<String, YieldCounter> yields = new LinkedHashMap<>();
+        route.allProviders().forEach(provider ->
+                yields.computeIfAbsent(provider.name(), YieldCounter::new));
 
         // Primary sources retain the old combine-all behaviour: this is important for
         // image discovery, where Wikimedia and an originating record page may each add
@@ -71,8 +75,10 @@ public final class FindDataProcess implements Process<FindDataResult> {
         for (EnrichmentProvider provider : route.primary()) {
             if (context.cancellation().isCancelled()) break;
             attempted++;
+            long started = System.nanoTime();
             ProcessOutcome<EnrichmentProposal> outcome =
                     context.run(new QuerySubprocess<>(provider.discover(request)));
+            yields.get(provider.name()).record(outcome, started);
             if (outcome.usefulResult().isPresent()) {
                 EnrichmentProposal proposal = outcome.usefulResult().get();
                 identities.addAll(proposal.identities());
@@ -96,8 +102,10 @@ public final class FindDataProcess implements Process<FindDataResult> {
                 break;
             }
             attempted++;
+            long started = System.nanoTime();
             ProcessOutcome<EnrichmentProposal> outcome =
                     context.run(new QuerySubprocess<>(provider.discover(request)));
+            yields.get(provider.name()).record(outcome, started);
             if (outcome.usefulResult().isPresent()) {
                 EnrichmentProposal discovered = outcome.usefulResult().get();
                 identities.addAll(discovered.identities());
@@ -114,7 +122,12 @@ public final class FindDataProcess implements Process<FindDataResult> {
         }
 
         EnrichmentProposal proposal = proposal(identities, fields, media);
-        FindDataResult discovered = new FindDataResult(proposal, null);
+        route.allProviders().stream().skip(attempted)
+                .forEach(provider -> yields.get(provider.name()).skipped++);
+        List<datasource.enrichment.SourceYield> sourceYields = yields.values().stream()
+                .map(YieldCounter::snapshot).toList();
+        terminalSourceYields = sourceYields;
+        FindDataResult discovered = new FindDataResult(proposal, null, sourceYields);
 
         if (context.cancellation().isCancelled()) {
             return ProcessOutcome.cancelled(discovered,
@@ -133,6 +146,12 @@ public final class FindDataProcess implements Process<FindDataResult> {
         }
         return ProcessOutcome.succeeded(result,
                                         summary(proposal, routeState(attempted, "complete")));
+    }
+
+    /** Terminal execution diagnostics, available even when every provider failed and
+     * therefore no business result could be carried by the failed ProcessOutcome. */
+    public List<datasource.enrichment.SourceYield> sourceYields() {
+        return terminalSourceYields;
     }
 
     private static boolean hasCandidates(EnrichmentProposal proposal) {
@@ -195,5 +214,52 @@ public final class FindDataProcess implements Process<FindDataResult> {
         return new EnrichmentProposal(
                 proposal.subject(), new ArrayList<>(identities.values()),
                 proposal.fields(), new ArrayList<>(media.values()));
+    }
+
+    private static final class YieldCounter {
+        private final String source;
+        private int examined;
+        private int failed;
+        private int skipped;
+        private int candidates;
+        private final List<EnrichmentProposal.FieldCandidate> usableFields =
+                new ArrayList<>();
+        private final List<EnrichmentProposal.MediaCandidate> usableMedia =
+                new ArrayList<>();
+        private int corroborations;
+        private long elapsedMillis;
+
+        private YieldCounter(String source) { this.source = source; }
+
+        private void record(ProcessOutcome<EnrichmentProposal> outcome, long startedNanos) {
+            examined++;
+            elapsedMillis += Math.max(0L,
+                    java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(
+                            System.nanoTime() - startedNanos));
+            if (outcome.status() != ProcessStatus.SUCCEEDED
+                    && outcome.status() != ProcessStatus.PARTIAL) failed++;
+            outcome.usefulResult().ifPresent(proposal -> {
+                int corroborating = (int) proposal.corroborationCount();
+                corroborations += corroborating;
+                // Identities attribute a proposed value to a source record; they are not
+                // themselves field yield. Counting the scaffolding identity beside its
+                // one field made a provider that found one value report two candidates.
+                candidates += proposal.fields().size() + proposal.media().size();
+                proposal.fields().stream()
+                        .filter(EnrichmentProposal.FieldCandidate::compatible)
+                        .filter(candidate -> candidate.suggestedAction()
+                                != EnrichmentProposal.ReviewAction.IGNORE)
+                        .filter(candidate -> candidate.suggestedAction()
+                                != EnrichmentProposal.ReviewAction.CORROBORATE)
+                        .forEach(usableFields::add);
+                usableMedia.addAll(proposal.media());
+            });
+        }
+
+        private datasource.enrichment.SourceYield snapshot() {
+            return new datasource.enrichment.SourceYield(source, examined, failed,
+                    skipped, candidates, usableFields, usableMedia, corroborations,
+                    elapsedMillis);
+        }
     }
 }

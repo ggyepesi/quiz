@@ -50,12 +50,14 @@ public final class FindDataBatchProcess implements Process<FindDataBatchResult> 
             throws Exception {
         List<FindDataResult> results = new ArrayList<>();
         List<EnrichmentProposal> reviewable = new ArrayList<>();
+        List<datasource.enrichment.SourceYield> sourceYields = new ArrayList<>();
         Throwable firstProblem = null;
         int incomplete = 0;
 
         for (FindDataProcess member : members) {
             if (context.cancellation().isCancelled()) break;
             ProcessOutcome<FindDataResult> outcome = context.run(member);
+            sourceYields.addAll(member.sourceYields());
             if (outcome.usefulResult().isPresent()) {
                 FindDataResult memberResult = outcome.usefulResult().get();
                 results.add(memberResult);
@@ -72,10 +74,11 @@ public final class FindDataBatchProcess implements Process<FindDataBatchResult> 
 
         // Execution ends with immutable raw proposals. The workflow host owns the
         // Results and Apply phases; a Process must never pause to construct Swing UI.
-        FindDataBatchResult result = new FindDataBatchResult(results, skipped);
+        FindDataBatchResult result = new FindDataBatchResult(results, skipped, sourceYields);
         String summary = reviewable.size() + " result(s) ready for review, "
                 + results.size() + "/" + members.size() + " member(s) completed"
-                + (skipped == 0 ? "" : ", " + skipped + " skipped");
+                + (skipped == 0 ? "" : ", " + skipped + " skipped")
+                + sourcesConsulted(result.sourceYields());
         if (context.cancellation().isCancelled()) {
             return ProcessOutcome.cancelled(result, summary);
         }
@@ -86,5 +89,20 @@ public final class FindDataBatchProcess implements Process<FindDataBatchResult> 
             return ProcessOutcome.partial(result, firstProblem, summary);
         }
         return ProcessOutcome.succeeded(result, summary);
+    }
+
+    /**
+     * How many sources answered, and nothing more. The per-source breakdown is carried
+     * on the result and reported as buckets a reader can open; seven numbers per source
+     * appended here made the summary line unreadable and still could not be inspected.
+     */
+    private static String sourcesConsulted(
+            List<datasource.enrichment.SourceYield> yields) {
+        if (yields == null || yields.isEmpty()) return "";
+        long asked = yields.stream().filter(yield -> yield.examined() > 0).count();
+        if (asked == 0) return "";
+        int usable = yields.stream()
+                .mapToInt(datasource.enrichment.SourceYield::usableChanges).sum();
+        return "; " + asked + " source(s) consulted, " + usable + " usable candidate(s)";
     }
 }
