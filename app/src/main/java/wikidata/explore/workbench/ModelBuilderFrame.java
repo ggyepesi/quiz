@@ -1248,50 +1248,37 @@ public class ModelBuilderFrame extends JFrame {
         if (byClass.isEmpty()) {
             return;
         }
+        var ambiguity = wikidata.explore.generation.NameCollisions.Meaning.ENTITY_AMBIGUITY;
+        var statement = wikidata.explore.generation.NameCollisions.Meaning.STATEMENT_REPETITION;
+        var owned = wikidata.explore.generation.NameCollisions.Meaning.OWNED_REPETITION;
+        java.util.List<wikidata.explore.generation.NameCollisions.ClassCollisions>
+                entityClasses = wikidata.explore.generation.NameCollisions.classes(
+                        byClass, ambiguity);
         java.util.List<wikidata.explore.generation.NameCollisions.Collision> collisions =
-                wikidata.explore.generation.NameCollisions.flatten(byClass);
-        int instances = wikidata.explore.generation.NameCollisions.instanceCount(byClass);
+                wikidata.explore.generation.NameCollisions.flatten(entityClasses);
 
         // Structured, collapsible entry — one row per colliding name (name ×count),
         // biggest first — instead of one blob listing every QID (which buried the
         // rest of the log). The QIDs themselves are inspectable, clickable, via the
         // "Name collisions" button; the row detail keeps them collapsed.
-        // One row per class, then that class's worst labels. Partitioned because the
-        // counts are of different orders: a class whose display-name rule does not
-        // distinguish its instances contributes thousands and buries every other class
-        // in a flat list, though it is the more interesting of the two findings.
-        java.util.List<wikidata.explore.query.swing.WorkflowLogWindow.Row> rows =
-                new java.util.ArrayList<>();
-        int perClass = 8;
-        for (var clazz : byClass) {
-            rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
-                    clazz.className(),
-                    clazz.size() + " label(s) shared by more than one instance"
-                            + " — most shared by " + clazz.worst(), ""));
-            int shown = 0;
-            for (var collision : clazz.collisions()) {
-                if (shown++ >= perClass) {
-                    rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
-                            "    … and " + (clazz.size() - perClass) + " more in "
-                                    + clazz.className(),
-                            "open \"Name collisions\" to see all", ""));
-                    break;
-                }
-                rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
-                        "    " + collision.name(),
-                        collision.size() + " instances", ""));
-            }
-        }
-        // Information, not a warning: what to do about two instances sharing a label is
-        // a modelling decision with several right answers, and none of them is this
-        // window's to prefer.
-        logWindow.structuredEntry(
-                collisions.size() + " shared display label(s) across "
-                        + byClass.size() + " class(es) — " + instances
-                        + " instances involved",
-                "Instances of a declared class that display the same label; open "
-                        + "\"Name collisions (" + collisions.size() + ")\" to inspect.",
-                rows);
+        // One row per class, then that class's worst labels, under one entry per
+        // MEANING. Three entries rather than one because the counts are of different
+        // orders and answer different questions: on Oscars, 2499 Nominations repeat a
+        // nominee's name and 145 entities are genuinely ambiguous, and in a single list
+        // the first buries the second. Each is still reported — a derived label that
+        // repeats says something about the rule that derived it.
+        reportSharedLabels(entityClasses,
+                "ambiguous entity name(s)", "distinct datasource entities",
+                "entities", true);
+        reportSharedLabels(wikidata.explore.generation.NameCollisions.classes(byClass, statement),
+                "repeated statement label(s)",
+                "statement records repeating a label their display-name rule takes "
+                        + "from a participant",
+                "statement records", false);
+        reportSharedLabels(wikidata.explore.generation.NameCollisions.classes(byClass, owned),
+                "repeated owned-part label(s)",
+                "owned parts whose display name is inherited from their owner",
+                "owned parts", false);
 
         // Map each generated instance by its QID, so a colliding entry links to
         // the actual entity used in the instances (click through), falling back
@@ -1316,6 +1303,43 @@ public class ModelBuilderFrame extends JFrame {
         }
         lastCollisions = cards;
         updateNameCollisionsButton();
+    }
+
+    private void reportSharedLabels(
+            java.util.List<wikidata.explore.generation.NameCollisions.ClassCollisions> classes,
+            String summaryNoun, String explanation, String instanceNoun,
+            boolean inspectableAsCollision) {
+        if (classes == null || classes.isEmpty()) return;
+        int labels = wikidata.explore.generation.NameCollisions.flatten(classes).size();
+        int instances = wikidata.explore.generation.NameCollisions.instanceCount(classes);
+        java.util.List<wikidata.explore.query.swing.WorkflowLogWindow.Row> rows =
+                new java.util.ArrayList<>();
+        int perClass = 8;
+        for (var clazz : classes) {
+            rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
+                    clazz.className(), clazz.size() + " shared label(s) — most repeated "
+                            + clazz.worst() + " times", ""));
+            int shown = 0;
+            for (var shared : clazz.collisions()) {
+                if (shown++ >= perClass) {
+                    rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
+                            "    … and " + (clazz.size() - perClass) + " more in "
+                                    + clazz.className(),
+                            inspectableAsCollision
+                                    ? "open \"Name collisions\" to see all" : "", ""));
+                    break;
+                }
+                rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
+                        "    " + shared.name(),
+                        shared.size() + " " + instanceNoun, ""));
+            }
+        }
+        logWindow.structuredEntry(
+                labels + " " + summaryNoun + " across " + classes.size()
+                        + " class(es) — " + instances + " instances involved",
+                explanation + (inspectableAsCollision
+                        ? "; open \"Name collisions (" + labels + ")\" to inspect." : "."),
+                rows);
     }
 
     private void updateNameCollisionsButton() {

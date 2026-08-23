@@ -1,5 +1,6 @@
 package wikidata.explore.generation;
 
+import wikidata.explore.model.ClassKind;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
 
@@ -10,15 +11,17 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * Instances of a declared class that share a display label.
+ * Instances of a declared class that share a display label, classified by what that
+ * sharing means for the class's identity regime.
  *
  * <p>Different meaning different identifiers — a QID, or the assembled id a statement
  * class carries. That is the whole of it: information about the domain, with no further
- * automatic use. It is not a warning and it recommends nothing, because what to do about
- * two things called the same is a modelling decision with several right answers.
+ * automatic use. For source entities the label is the datasource's own, so a repetition
+ * is genuine name ambiguity. For statement records and owned parts the label is DERIVED,
+ * so a repetition describes the rule that derived it rather than the identity of what
+ * carries it — a different question, reported separately rather than not at all.
  *
  * <p>It reports INSTANCES, so it asks what the configuration declares. A value reached
  * through a field is not an instance however it arrived: the given name behind
@@ -37,6 +40,20 @@ import java.util.Set;
  */
 public final class NameCollisions {
 
+    /** What sharing a display label means for the class's identity regime. */
+    public enum Meaning {
+        /** Distinct datasource entities have the same label: genuine ambiguity. */
+        ENTITY_AMBIGUITY,
+        /** Statement records repeating a label their display-name rule takes from a
+         *  participant. Arithmetic where that rule names ONE field — a nominee nominated
+         *  54 times yields 54 identical labels — but the same bucket holds a multi-field
+         *  rule that failed to distinguish, which is a modelling fault. Which rule ran is
+         *  the difference, and this does not ask. */
+        STATEMENT_REPETITION,
+        /** Owner-derived parts repeat labels inherited from their owners. */
+        OWNED_REPETITION
+    }
+
     /** One label and the distinct instances carrying it, in the order the run produced
      *  them. Identified by identifier — a QID, or a statement class's assembled id. */
     public record Collision(String name, List<String> ids) {
@@ -51,9 +68,13 @@ public final class NameCollisions {
     }
 
     /** One class's collisions, biggest first. */
-    public record ClassCollisions(String className, List<Collision> collisions) {
+    public record ClassCollisions(
+            String className, Meaning meaning, List<Collision> collisions) {
         public ClassCollisions {
             className = className == null ? "" : className;
+            // Defaulting would file a derived-label repetition under genuine ambiguity,
+            // which is the confusion this type exists to prevent.
+            meaning = java.util.Objects.requireNonNull(meaning, "meaning");
             collisions = List.copyOf(collisions);
         }
 
@@ -74,19 +95,24 @@ public final class NameCollisions {
     public static List<ClassCollisions> detect(
             Collection<WikidataDynamicObject> objects, GeneratedProjectModel model) {
 
-        Set<String> declared = new LinkedHashSet<>();
+        Map<String, Meaning> declared = new LinkedHashMap<>();
         if (model != null) {
-            model.classes().forEach(clazz -> declared.add(clazz.className()));
-            if (model.rootClass() != null) declared.add(model.rootClass().className());
+            model.classes().forEach(clazz -> declared.put(
+                    clazz.className(), meaning(clazz.classKind())));
+            if (model.rootClass() != null) declared.put(
+                    model.rootClass().className(), meaning(model.rootClass().classKind()));
         }
         return detect(objects, declared);
     }
 
-    /** As above, told directly which class names the configuration declares. */
-    public static List<ClassCollisions> detect(
-            Collection<WikidataDynamicObject> objects, Set<String> declaredClasses) {
+    // Deliberately no overload taking bare class NAMES: what a shared label means comes
+    // from the class's identity regime, so a caller holding only names cannot be told the
+    // answer and would have to be given a default — and every default is wrong for two of
+    // the three kinds.
+    private static List<ClassCollisions> detect(
+            Collection<WikidataDynamicObject> objects, Map<String, Meaning> declaredClasses) {
 
-        Set<String> declared = declaredClasses == null ? Set.of() : declaredClasses;
+        Map<String, Meaning> declared = declaredClasses == null ? Map.of() : declaredClasses;
         Map<String, Map<String, LinkedHashSet<String>>> byClass = new LinkedHashMap<>();
 
         for (WikidataDynamicObject object : objects == null ? List.<WikidataDynamicObject>of()
@@ -96,7 +122,7 @@ public final class NameCollisions {
             // carrier's Java class name and would report every value as an instance.
             if (!object.hasTypeStamp()) continue;
             String className = object.typeName();
-            if (!declared.contains(className)) continue;
+            if (!declared.containsKey(className)) continue;
             String name = object.getDisplayName();
             String id = object.getIdentifier();
             if (name == null || name.isBlank() || id == null || id.isBlank()) continue;
@@ -113,7 +139,8 @@ public final class NameCollisions {
             });
             collisions.sort(Comparator.comparingInt(Collision::size).reversed());
             if (!collisions.isEmpty()) {
-                out.add(new ClassCollisions(className, List.copyOf(collisions)));
+                out.add(new ClassCollisions(
+                        className, declared.get(className), List.copyOf(collisions)));
             }
         });
         out.sort(Comparator.comparingInt(ClassCollisions::size).reversed());
@@ -131,10 +158,25 @@ public final class NameCollisions {
         return List.copyOf(all);
     }
 
+    /** Classes carrying the requested meaning, preserving report order. */
+    public static List<ClassCollisions> classes(
+            List<ClassCollisions> byClass, Meaning meaning) {
+        return byClass == null ? List.of() : byClass.stream()
+                .filter(c -> c.meaning() == meaning).toList();
+    }
+
     /** How many instances are involved altogether. */
     public static int instanceCount(List<ClassCollisions> byClass) {
         return byClass == null ? 0 : byClass.stream()
                 .flatMap(c -> c.collisions().stream())
                 .mapToInt(Collision::size).sum();
+    }
+
+    private static Meaning meaning(ClassKind kind) {
+        return switch (kind) {
+            case SOURCE -> Meaning.ENTITY_AMBIGUITY;
+            case STATEMENT -> Meaning.STATEMENT_REPETITION;
+            case OWNED -> Meaning.OWNED_REPETITION;
+        };
     }
 }

@@ -2,11 +2,14 @@ package wikidata.explore.generation;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.ClassKind;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.StatementClassSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,7 +27,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class NameCollisionsTest {
 
-    private static final Set<String> DECLARED = Set.of("Planet", "Nomination", "Name");
+    /** The three declared classes these tests use, one per identity regime — because
+     *  what a shared label means is decided by the kind, so a fixture naming only class
+     *  names could not say. */
+    private static final GeneratedProjectModel DECLARED = declared();
 
     @Test void twoInstancesUnderOneLabelAreACollision() {
         List<NameCollisions.ClassCollisions> byClass = NameCollisions.detect(List.of(
@@ -62,7 +68,7 @@ class NameCollisionsTest {
     @Test void aStatementInstanceIsIdentifiedByItsAssembledId() {
         // A Nomination is an instance of a declared class; its id is a statement id
         // rather than a QID, and it is still a different instance. Fifty-four of them
-        // reading "Jack Oakie" is a true statement about that class's display-name rule.
+        // reading "Meryl Streep" is a true statement about that class's display-name rule.
         List<NameCollisions.ClassCollisions> byClass = NameCollisions.detect(List.of(
                 instance("Q42$3f9a1c", "Meryl Streep", "Nomination"),
                 instance("Q42$77b2de", "Meryl Streep", "Nomination"),
@@ -70,11 +76,17 @@ class NameCollisionsTest {
 
         assertEquals(3, byClass.getFirst().collisions().getFirst().size());
         assertEquals("Nomination", byClass.getFirst().className());
+        assertEquals(NameCollisions.Meaning.STATEMENT_REPETITION,
+                byClass.getFirst().meaning());
+        assertTrue(NameCollisions.classes(
+                byClass, NameCollisions.Meaning.ENTITY_AMBIGUITY).isEmpty());
     }
 
     @Test void classesArePartitionedSoTheLargestCountDoesNotBuryTheOthers() {
         // A class whose labels do not distinguish its instances contributes thousands.
-        // In one list it drowns every other class, though both are worth reading.
+        // In one list it drowns every other class, though both are worth reading — and
+        // they are read separately, because a Nomination repeating its nominee's name
+        // and two planets called Mercury are not the same finding.
         List<WikidataDynamicObject> pool = new ArrayList<>(List.of(
                 instance("Q1", "Little Women", "Planet"),
                 instance("Q2", "Little Women", "Planet")));
@@ -92,6 +104,9 @@ class NameCollisionsTest {
         assertEquals(2, byClass.getFirst().size());
         assertEquals(6, byClass.getFirst().worst(), "and how bad it gets within it");
         assertEquals(1, byClass.get(1).size());
+        assertEquals(NameCollisions.Meaning.STATEMENT_REPETITION,
+                byClass.getFirst().meaning());
+        assertEquals(NameCollisions.Meaning.ENTITY_AMBIGUITY, byClass.get(1).meaning());
     }
 
     @Test void aPartIsAnInstanceLikeAnyOther() {
@@ -104,6 +119,8 @@ class NameCollisionsTest {
 
         assertEquals("Name", byClass.getFirst().className());
         assertEquals(2, byClass.getFirst().collisions().getFirst().size());
+        assertEquals(NameCollisions.Meaning.OWNED_REPETITION,
+                byClass.getFirst().meaning());
     }
 
     @Test void theBiggestCollisionInAClassComesFirst() {
@@ -138,7 +155,8 @@ class NameCollisionsTest {
         assertEquals(List.of(), NameCollisions.detect(null, DECLARED));
         assertEquals(List.of(), NameCollisions.detect(List.of(), DECLARED));
         assertEquals(List.of(), NameCollisions.detect(
-                List.of(instance("Q1", "Mercury", "Planet")), (Set<String>) null));
+                List.of(instance("Q1", "Mercury", "Planet")),
+                (GeneratedProjectModel) null));
         assertEquals(0, NameCollisions.instanceCount(null));
         assertEquals(List.of(), NameCollisions.flatten(null));
     }
@@ -160,5 +178,26 @@ class NameCollisionsTest {
         o.typeKey("Name@Person.structuredName");
         o.part(true);
         return o;
+    }
+
+    private static GeneratedProjectModel declared() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(clazz("Planet", ClassKind.SOURCE));
+        model.addClass(clazz("Nomination", ClassKind.STATEMENT));
+        model.addClass(clazz("Name", ClassKind.OWNED));
+        return model;
+    }
+
+    /** A STATEMENT class is one that reifies statements, so it is made that way rather
+     *  than stamped — classKind() derives it, and a test that set it directly would pass
+     *  while production disagreed. */
+    private static GeneratedClassModel clazz(String className, ClassKind kind) {
+        GeneratedClassModel clazz = new GeneratedClassModel(className);
+        if (kind == ClassKind.STATEMENT) {
+            clazz.statementSource(new StatementClassSource("P1411"));
+        } else {
+            clazz.classKind(kind);
+        }
+        return clazz;
     }
 }
