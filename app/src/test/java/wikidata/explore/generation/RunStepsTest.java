@@ -118,6 +118,34 @@ class RunStepsTest {
                 "and the steps still to come say so");
     }
 
+    @Test void sharedRecipesIncludePreparationAndMaterializationBoundaries() {
+        List<String> remap = GenerateDomainPipeline.configuredRemap(List.of(), true)
+                .snapshot().stream().map(state -> state.phase().id()).toList();
+        List<String> enrich = GenerateDomainPipeline.configuredEnrich(List.of())
+                .snapshot().stream().map(state -> state.phase().id()).toList();
+
+        assertEquals(GenerateDomainPipeline.PLAN, remap.getFirst());
+        assertEquals(GenerateDomainPipeline.MATERIALIZE, remap.getLast());
+        assertEquals(GenerateDomainPipeline.PLAN, enrich.getFirst());
+        assertEquals(GenerateDomainPipeline.MATERIALIZE, enrich.getLast());
+    }
+
+    @Test void effectsFollowTheSelectedOperationsOrder() {
+        RuleEffects.Effect construct = new RuleEffects.Effect(
+                RuleEffects.RunPhase.CONSTRUCT, "construct", "", RuleEffects.Kind.CHANGED,
+                List.of());
+        RuleEffects.Effect semantic = new RuleEffects.Effect(
+                RuleEffects.RunPhase.SEMANTIC, "semantic", "", RuleEffects.Kind.CHANGED,
+                List.of());
+
+        List<RuleEffects.Effect> enrichOrder = RuleEffects.inPipelineOrder(
+                List.of(construct, semantic),
+                GenerateDomainPipeline.configuredEnrich(List.of()));
+
+        assertEquals(List.of("semantic", "construct"),
+                enrichOrder.stream().map(RuleEffects.Effect::rule).toList());
+    }
+
     @Test void everyRuleBucketHasAStepToAttachToInBothOperations() {
         // What makes a bucket's phase mean the same thing in either operation.
         ProcessWorkflowPipeline remap = threeStep();

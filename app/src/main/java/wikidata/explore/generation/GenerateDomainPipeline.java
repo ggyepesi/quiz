@@ -68,6 +68,52 @@ public final class GenerateDomainPipeline {
                         List.of(model.classes().size() + " configured classes"))));
     }
 
+    /** The local replay recipe, built beside Generate so phase identity, wording and
+     * order are execution architecture rather than Swing configuration. */
+    public static ProcessWorkflowPipeline configuredRemap(
+            List<String> details, boolean retransform) {
+        return new ProcessWorkflowPipeline(List.of(
+                phase(PLAN, "Prepare remap",
+                        "Freeze and compile the model, then stage a copy of the saved graph.",
+                        details),
+                phase(CONSTRUCT, "Construct",
+                        retransform
+                                ? "Reify statements and replay the transform sequence on "
+                                        + "the cached pre-reification pool."
+                                : "Replay the transforms safe for an already-reified pool.",
+                        List.of()),
+                phase(SEMANTIC, "Semantic",
+                        "Settle entity kinds and compose owned parts.", List.of()),
+                phase(FINALIZE, "Finalize",
+                        "Canonicalize names, prune, check expectations and build vocabularies.",
+                        List.of()),
+                phase(MATERIALIZE, "Materialize instances",
+                        "Map the final shared graph into viewable instances.", List.of())));
+    }
+
+    /** The additive network recipe over an existing population. */
+    public static ProcessWorkflowPipeline configuredEnrich(List<String> details) {
+        return new ProcessWorkflowPipeline(List.of(
+                phase(PLAN, "Prepare enrich",
+                        "Freeze and compile the model, then stage a copy of the saved graph.",
+                        details),
+                phase(SEMANTIC, "Semantic",
+                        "Load declared properties, settle kinds and compose owned parts.",
+                        List.of()),
+                phase(EXTERNAL_EVIDENCE, "External evidence",
+                        "Acquire Wikipedia category memberships and native infobox values.",
+                        List.of()),
+                phase(CONSTRUCT, "Construct",
+                        "Replay the transforms safe for an already-reified pool.", List.of()),
+                phase(LABELS, "Labels",
+                        "Resolve names still displayed as bare QIDs.", List.of()),
+                phase(FINALIZE, "Finalize",
+                        "Canonicalize names, prune, check expectations and build vocabularies.",
+                        List.of()),
+                phase(MATERIALIZE, "Materialize instances",
+                        "Map the final shared graph into viewable instances.", List.of())));
+    }
+
     private static ProcessWorkflowPipeline.Phase phase(
             String id, String title, String description, List<String> details) {
         return phase(id, title, description, details, new PhaseExplanation(

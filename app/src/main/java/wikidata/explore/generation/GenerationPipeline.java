@@ -334,8 +334,8 @@ public class GenerationPipeline {
             RunSteps steps) throws Exception {
 
         steps = steps == null ? RunSteps.SILENT : steps;
-        steps.started(GenerateDomainPipeline.CONSTRUCT,
-                "Compile the model and replay local transforms");
+        steps.started(GenerateDomainPipeline.PLAN,
+                "Compile the model and stage the saved graph");
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
@@ -355,6 +355,10 @@ public class GenerationPipeline {
         // never mutate the previous run that remains visible until Apply succeeds.
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(previous.dynamicObjects());
+        steps.completed(GenerateDomainPipeline.PLAN,
+                pool.size() + " object(s) staged");
+        steps.started(GenerateDomainPipeline.CONSTRUCT,
+                "Replay local transforms");
         List<WikidataDynamicObject> projectedRecords = new ArrayList<>();
         int filled = wikidata.explore.transform.StatementTransforms.applyIdempotent(
                 snapshot, pool, log, projectedRecords);
@@ -390,7 +394,11 @@ public class GenerationPipeline {
                     + scope.limitation() + "\n");
         }
 
+        steps.started(GenerateDomainPipeline.MATERIALIZE,
+                "Map the final graph into instances");
         List<Viewable> instances = materialize(runtime, pool);
+        steps.completed(GenerateDomainPipeline.MATERIALIZE,
+                instances.size() + " instance(s) materialized");
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan,
@@ -445,6 +453,9 @@ public class GenerationPipeline {
             RunSteps steps) throws Exception {
         steps = steps == null ? RunSteps.SILENT : steps;
 
+        steps.started(GenerateDomainPipeline.PLAN,
+                "Compile the model and stage the saved graph");
+
         // Say what is happening BEFORE each slow phase, not after: compiling the
         // runtime and copying tens of thousands of objects take real time and used to
         // pass in silence, so the run looked hung until the first fetch batch.
@@ -461,6 +472,8 @@ public class GenerationPipeline {
                 + "apply to...\n");
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(previous.dynamicObjects());
+        steps.completed(GenerateDomainPipeline.PLAN,
+                pool.size() + " object(s) staged");
         sink.message("Enrich: fetching declared properties"
                 + reportPendingLoads(snapshot) + "...\n");
 
@@ -501,8 +514,11 @@ public class GenerationPipeline {
                 projectedRecords.size() + " projected field value(s) changed");
         steps.started(GenerateDomainPipeline.LABELS,
                 "Resolve the names of anything still showing as a bare QID");
-        FinalLabelHydration.apply(pool, entityApi, log, quality);
-        steps.completed(GenerateDomainPipeline.LABELS, "labels resolved");
+        FinalLabelHydration.Result labels =
+                FinalLabelHydration.apply(pool, entityApi, log, quality);
+        steps.completed(GenerateDomainPipeline.LABELS,
+                labels.resolved() + " resolved, " + labels.missing() + " missing, "
+                        + labels.unavailableQids().size() + " unavailable");
         steps.started(GenerateDomainPipeline.FINALIZE,
                 "Canonicalize, prune, check expectations and build vocabularies");
         DomainFinalization.Result finalization = DomainFinalization.apply(
@@ -517,7 +533,11 @@ public class GenerationPipeline {
                 + " native infobox value(s) acquired (no re-extraction). "
                 + "Re-materializing...\n");
 
+        steps.started(GenerateDomainPipeline.MATERIALIZE,
+                "Map the final graph into instances");
         List<Viewable> instances = materialize(runtime, pool);
+        steps.completed(GenerateDomainPipeline.MATERIALIZE,
+                instances.size() + " instance(s) materialized");
 
         // The cached enriched pool is a SEPARATE deep copy taken at generation time, so
         // it does not hold what was just fetched — and it is the PRE-reify pool, so it
@@ -629,6 +649,10 @@ public class GenerationPipeline {
 
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(rs.enrichedPool());
+        steps.completed(GenerateDomainPipeline.PLAN,
+                pool.size() + " pre-reification object(s) staged");
+        steps.started(GenerateDomainPipeline.CONSTRUCT,
+                "Reify statements and replay local transforms");
 
         // Reify from the compiled model — parity-proven with the editable one.
         wikidata.explore.compiled.CompiledProjectModel compiledSnapshot =
@@ -677,7 +701,11 @@ public class GenerationPipeline {
                     + restricted + " dropped (required-field).\n");
         }
 
+        steps.started(GenerateDomainPipeline.MATERIALIZE,
+                "Map the final graph into instances");
         List<Viewable> instances = materialize(runtime, pool);
+        steps.completed(GenerateDomainPipeline.MATERIALIZE,
+                instances.size() + " instance(s) materialized");
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, rs,

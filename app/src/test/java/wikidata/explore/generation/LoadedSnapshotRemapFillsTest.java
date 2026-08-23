@@ -103,13 +103,8 @@ class LoadedSnapshotRemapFillsTest {
         GeneratedProjectModel model = modelWithYearProjection();
         GenerationRun previous = new GenerationRun(
                 model, 1, null, loadedPool(), null, List.of());
-        process.ProcessWorkflowPipeline pipeline = new process.ProcessWorkflowPipeline(List.of(
-                new process.ProcessWorkflowPipeline.Phase(
-                        GenerateDomainPipeline.CONSTRUCT, "Construct", "", List.of()),
-                new process.ProcessWorkflowPipeline.Phase(
-                        GenerateDomainPipeline.SEMANTIC, "Semantic", "", List.of()),
-                new process.ProcessWorkflowPipeline.Phase(
-                        GenerateDomainPipeline.FINALIZE, "Finalize", "", List.of())));
+        process.ProcessWorkflowPipeline pipeline =
+                GenerateDomainPipeline.configuredRemap(List.of(), false);
 
         new GenerationPipeline().remap(
                 previous, model, null, RunSteps.of(pipeline));

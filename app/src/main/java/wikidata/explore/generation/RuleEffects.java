@@ -366,6 +366,24 @@ public final class RuleEffects {
         return out;
     }
 
+    /** Orders effects as the selected operation ran its phases. Generate, Remap and
+     * Enrich share phase identities but not necessarily phase order. */
+    public static List<Effect> inPipelineOrder(
+            List<Effect> effects, process.ProcessWorkflowPipeline pipeline) {
+        List<Effect> ordered = new ArrayList<>(effects == null ? List.of() : effects);
+        if (pipeline == null) return ordered;
+        java.util.Map<String, Integer> order = new java.util.HashMap<>();
+        int index = 0;
+        for (process.ProcessWorkflowPipeline.PhaseState state : pipeline.snapshot()) {
+            order.put(state.phase().id(), index++);
+        }
+        ordered.sort(java.util.Comparator
+                .comparingInt((Effect effect) -> order.getOrDefault(
+                        effect.phase().pipelinePhaseId(), Integer.MAX_VALUE))
+                .thenComparing((Effect effect) -> -effect.size()));
+        return ordered;
+    }
+
     /** One sentence for the reportable effects, or empty when it contains none. */
     public static String summary(List<Effect> effects) {
         if (effects == null || effects.isEmpty()) {

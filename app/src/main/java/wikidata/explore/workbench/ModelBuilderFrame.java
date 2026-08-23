@@ -768,7 +768,8 @@ public class ModelBuilderFrame extends JFrame {
                                     GenerationRun> results(
                                             process.ProcessOutcome<GenerationRun> outcome) {
                                 return runResults("Generate domain", "generation",
-                                        snapshot.name(), outcome.result(), outcome);
+                                        snapshot.name(), outcome.result(), outcome,
+                                        generationPipeline);
                             }
                             @Override public void apply(java.util.List<GenerationRun> decisions) {
                                 if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
@@ -801,7 +802,8 @@ public class ModelBuilderFrame extends JFrame {
                             new wikidata.explore.generation.GenerationExecutionSettings();
                     wikidata.explore.generation.RemapScope replayableScope =
                             wikidata.explore.generation.RemapScope.of(lastRun);
-                    var pipeline = remapPipeline(
+                    var pipeline = wikidata.explore.generation.GenerateDomainPipeline
+                            .configuredRemap(
                             java.util.List.of(lastRun.dynamicObjects().size()
                                     + " existing objects", snapshot.classes().size()
                                     + " configured classes"),
@@ -841,7 +843,8 @@ public class ModelBuilderFrame extends JFrame {
                     GeneratedProjectModel snapshot = projectModel.copy();
                     var operationSettings =
                             new wikidata.explore.generation.GenerationExecutionSettings();
-                    var pipeline = enrichPipeline(enrichmentDetails(snapshot, lastRun));
+                    var pipeline = wikidata.explore.generation.GenerateDomainPipeline
+                            .configuredEnrich(enrichmentDetails(snapshot, lastRun));
                     startGenerationOperation(
                             "Enrich domain",
                             "Add newly declared values to the existing population without rediscovery.",
@@ -924,89 +927,6 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.edit(projectModel.rootClass());
     }
 
-    private static process.ProcessWorkflowPipeline operationPipeline(
-            String id, String title, String description, java.util.List<String> details) {
-        return new process.ProcessWorkflowPipeline(java.util.List.of(
-                new process.ProcessWorkflowPipeline.Phase(
-                        id, title, description, details)));
-    }
-
-    /**
-     * A remap's plan, as the steps it actually runs.
-     *
-     * <p>It ran as one opaque box called "Remap locally", so the plan could not say what
-     * the operation was about to do and the result had nowhere to hang what each part of
-     * the work accounted for. The steps are the same ones a generation reports, because
-     * it is the same transform sequence — which is what lets a rule bucket name its step
-     * and have that mean the same thing in either operation.
-     */
-    /**
-     * An enrich's plan, as the steps it actually runs.
-     *
-     * <p>A longer sequence than a remap's, and the difference is the point: it fetches.
-     * Loading newly declared properties and acquiring Wikipedia evidence are the two
-     * steps that take minutes and go to the network, and a plan that called the whole
-     * thing "Enrich existing graph" could not say which of them was running.
-     */
-    private static process.ProcessWorkflowPipeline enrichPipeline(
-            java.util.List<String> details) {
-        return new process.ProcessWorkflowPipeline(java.util.List.of(
-                new process.ProcessWorkflowPipeline.Phase(
-                        wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
-                        "Semantic",
-                        "Load newly declared properties over the entities already in "
-                                + "the pool, settle kinds and compose owned parts.",
-                        details),
-                new process.ProcessWorkflowPipeline.Phase(
-                        wikidata.explore.generation.GenerateDomainPipeline
-                                .EXTERNAL_EVIDENCE,
-                        "External evidence",
-                        "Acquire Wikipedia category memberships and native infobox "
-                                + "values for the same entities.",
-                        java.util.List.of()),
-                new process.ProcessWorkflowPipeline.Phase(
-                        wikidata.explore.generation.GenerateDomainPipeline.CONSTRUCT,
-                        "Construct",
-                        "Replay the transforms an already-reified pool can re-run.",
-                        java.util.List.of()),
-                new process.ProcessWorkflowPipeline.Phase(
-                        wikidata.explore.generation.GenerateDomainPipeline.LABELS,
-                        "Labels",
-                        "Resolve the names of anything still showing as a bare QID.",
-                        java.util.List.of()),
-                new process.ProcessWorkflowPipeline.Phase(
-                        wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
-                        "Finalize",
-                        "Canonicalize names, prune, check field expectations and build "
-                                + "descriptive vocabularies.",
-                        java.util.List.of())));
-    }
-
-    private static process.ProcessWorkflowPipeline remapPipeline(
-            java.util.List<String> details, boolean retransform) {
-        return new process.ProcessWorkflowPipeline(java.util.List.of(
-                new process.ProcessWorkflowPipeline.Phase(
-                        wikidata.explore.generation.GenerateDomainPipeline.CONSTRUCT,
-                        "Construct",
-                        retransform
-                                ? "Reify statements and re-run the transform sequence "
-                                        + "on the cached pre-reification pool."
-                                : "Re-run the transforms that can be replayed on an "
-                                        + "already-reified pool.",
-                        details),
-                new process.ProcessWorkflowPipeline.Phase(
-                        wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
-                        "Semantic",
-                        "Settle entity kinds and compose owned parts.",
-                        java.util.List.of()),
-                new process.ProcessWorkflowPipeline.Phase(
-                        wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
-                        "Finalize",
-                        "Canonicalize names, prune, check field expectations and build "
-                                + "descriptive vocabularies.",
-                        java.util.List.of())));
-    }
-
     private static java.util.List<String> enrichmentDetails(
             GeneratedProjectModel snapshot, GenerationRun previous) {
         java.util.List<String> details = new java.util.ArrayList<>();
@@ -1061,13 +981,15 @@ public class ModelBuilderFrame extends JFrame {
      */
     private process.swing.workflow.ProcessWorkflowResults<GenerationRun> runResults(
             String title, String phaseId, String domainName,
-            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome) {
+            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome,
+            process.ProcessWorkflowPipeline pipeline) {
 
         java.util.List<wikidata.explore.generation.RuleEffects.Effect> effects =
+                wikidata.explore.generation.RuleEffects.inPipelineOrder(
                 wikidata.explore.generation.RuleEffects.fromRun(
                         run.fieldCoverage(), run.selfReferenceAudit(),
                         run.ownedCompositionAudit(), run.kindClassificationAudit(),
-                        run.projectionAudit());
+                        run.projectionAudit()), pipeline);
 
         quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
                 phaseId + "-summary", domainName);
@@ -1175,7 +1097,7 @@ public class ModelBuilderFrame extends JFrame {
                     @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
                             results(process.ProcessOutcome<GenerationRun> outcome) {
                         return runResults(title, phaseId, snapshot.name(),
-                                outcome.result(), outcome);
+                                outcome.result(), outcome, pipeline);
                     }
                     @Override public void apply(java.util.List<GenerationRun> decisions) {
                         if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
