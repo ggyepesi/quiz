@@ -3,6 +3,8 @@ package wikidata.explore.model;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 
@@ -94,9 +96,28 @@ public final class GeneratedProjectModelStore {
     public GeneratedProjectModel load(
             File file) throws IOException {
 
-        GeneratedProjectModel model = mapper.readValue(file, GeneratedProjectModel.class);
+        JsonNode tree = mapper.readTree(file);
+        migrateRemovedCanonicalKind(tree);
+        GeneratedProjectModel model = mapper.treeToValue(tree, GeneratedProjectModel.class);
         OwnedClassSemantics.migrateLegacy(model);
         PopulationSourceBindings.synchronize(model);
         return model;
+    }
+
+    /**
+     * One-way file migration for the discriminator removed from CanonicalSpec.
+     * Class construction is authoritative now, so the old value carries no state
+     * forward; removing it before binding lets old user-saved models load without
+     * retaining a dead compatibility property on the Java model.
+     */
+    private static void migrateRemovedCanonicalKind(JsonNode node) {
+        if (node == null) return;
+        if (node instanceof ObjectNode object) {
+            JsonNode canonical = object.get("canonical");
+            if (canonical instanceof ObjectNode canonicalObject) {
+                canonicalObject.remove("kind");
+            }
+        }
+        node.forEach(GeneratedProjectModelStore::migrateRemovedCanonicalKind);
     }
 }

@@ -162,7 +162,7 @@ public class GeneratedViewableMapper {
 
         applyFields(cr, target, source, false);
 
-        // Canonicalization: a DERIVED class's displayName comes from its spec (a
+        // Canonicalization: a composed displayName comes from its spec (a
         // field or template), not the loaded label — so reified atoms show e.g. the
         // nominee, never the poisoned/loaded name. Only an EXPLICIT spec applies,
         // so legacy models are unchanged until reconfigured. Reads the mapped target
@@ -249,8 +249,8 @@ public class GeneratedViewableMapper {
 
     /** The displayName to force onto a materialized object from its class's
      *  {@link CanonicalSpec}, or null to leave the default (the loaded label). Only
-     *  an EXPLICIT spec on a DERIVED class with a FIELD/TEMPLATE displayName
-     *  overrides; entity classes are untouched. */
+     *  an explicit FIELD/TEMPLATE displayName overrides; identity kind is
+     *  independent from display policy. */
     static String canonicalDisplayNameOverride(
             GeneratedClassModel model,
             Canonicalizer.FieldReader reader,

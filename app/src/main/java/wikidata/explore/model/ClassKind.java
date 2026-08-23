@@ -35,4 +35,14 @@ public enum ClassKind {
     public boolean identityFromSource() {
         return this == SOURCE;
     }
+
+    /** Whether {@link CanonicalSpec#keyFields()} define instance identity. */
+    public boolean usesCanonicalKey() {
+        return this == STATEMENT;
+    }
+
+    /** Whether identity is supplied structurally by owner + production site. */
+    public boolean identityFromOwner() {
+        return this == OWNED;
+    }
 }

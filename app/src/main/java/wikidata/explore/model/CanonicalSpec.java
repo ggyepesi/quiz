@@ -26,8 +26,8 @@ public class CanonicalSpec {
     }
 
 
-    // Identity for DERIVED classes: the natural-key fields (the grain), in order.
-    // Empty => surrogate. Ignored for WIKIDATA_ENTITY (identity is the qid).
+    // Identity for STATEMENT classes: the natural-key fields (the grain), in order.
+    // Empty => surrogate. SOURCE and OWNED obtain identity elsewhere.
     private final List<String> keyFields = new ArrayList<>();
 
     private DisplayNameMode displayNameMode = DisplayNameMode.LABEL;
@@ -43,7 +43,7 @@ public class CanonicalSpec {
 
 
 
-    /** The natural-key fields for a DERIVED class (mutable). */
+    /** The natural-key fields for a STATEMENT class (mutable). */
     public List<String> keyFields() { return keyFields; }
 
     /**

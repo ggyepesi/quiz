@@ -26,6 +26,22 @@ class IdentityRegimeFollowsClassKindTest {
                 "a part is identified by its owner and the site that produced it — "
                         + "borrowing the owner's QID is how its fields load, not what "
                         + "makes it itself");
+        assertTrue(ClassKind.STATEMENT.usesCanonicalKey());
+        assertFalse(ClassKind.OWNED.usesCanonicalKey());
+        assertTrue(ClassKind.OWNED.identityFromOwner());
+    }
+
+    @Test void ownedClassesAreNotAskedForStatementKeysByValidation() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel owned = new GeneratedClassModel("Name");
+        owned.classKind(ClassKind.OWNED);
+        owned.canonical().displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
+                .displayNameTemplate("name");
+        project.addClass(owned);
+
+        String report = GeneratedProjectModelValidator.validate(project).format();
+
+        assertFalse(report.contains("canonical key"), report);
     }
 
     @Test void assigningAStatementSourceIsWhatChangesTheRegime() {

@@ -103,6 +103,16 @@ class CanonicalizerTest {
     }
 
     @Test
+    void ownedIdentifierKeepsTheCompositionIdentityRatherThanUsingFieldKeys() {
+        CanonicalSpec spec = new CanonicalSpec();
+        spec.keyFields().add("familyName");
+
+        assertEquals("Name@Person.birthName|Q42", Canonicalizer.identifier(
+                ClassKind.OWNED, spec, reader(Map.of("familyName", "Adams")),
+                "Q42", "Name@Person.birthName|Q42"));
+    }
+
+    @Test
     void dataFieldsNamedNameOrQidAreReservedAndRenamed() {
         GeneratedClassModel c = new GeneratedClassModel("Person");
 

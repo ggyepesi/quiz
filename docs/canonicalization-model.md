@@ -15,17 +15,22 @@ loaded field named `name` competed with the identity and poisoned sort/search
 
 ## 2. Class kinds
 
-Each class declares a kind:
+`ClassKind` states how a class is constructed and therefore where its identity
+comes from:
 
-- **WIKIDATA_ENTITY** — backed by a Wikidata item (has a `qid`).
-- **DERIVED** — reified/composed (e.g. `Nomination`); no single `qid`.
+- **SOURCE** — populated from a datasource and identified by that source's id.
+- **STATEMENT** — reified from statements and identified by its declared natural
+  key (or a surrogate when no key is configured).
+- **OWNED** — produced at a field site and identified structurally by owner +
+  production site. A borrowed source id is only an acquisition address.
 
 ## 3. Identity + displayName rules
 
 | Kind | Identity | displayName |
 |------|----------|-------------|
-| WIKIDATA_ENTITY | `qid` | Wikidata `label` (+ language, default `en`) |
-| DERIVED | **natural key** = ordered key fields (default: the reification **grain**); `getIdentifier()` = canonical join/hash of those values | **Field** (single-valued) or **Template** over fields |
+| SOURCE | datasource id | Source **Label**, a **Field**, or a **Template** |
+| STATEMENT | **natural key** = ordered key fields (default: the reification **grain**) | Label fallback, **Field**, or **Template** |
+| OWNED | owner identity + production site | Label fallback, **Field**, or **Template** |
 
 - **Field-mode displayName and identity key fields require `SINGLE` cardinality.**
   A single reference resolves via the referent's displayName. Combining
@@ -39,16 +44,17 @@ reject.
 
 ## 5. Model representation (engine)
 
-- `CanonicalSpec` on `GeneratedClassModel`:
-  `{ kind, keyFields[], displayNameMode = LABEL|FIELD|TEMPLATE,
+- `ClassKind` on `GeneratedClassModel` is the sole identity discriminator.
+- `CanonicalSpec` contains the policies used by that regime:
+  `{ keyFields[], displayNameMode = LABEL|FIELD|TEMPLATE,
      displayNameField, displayNameTemplate, labelLanguage }`.
 - `getIdentifier()`/`getDisplayName()` on the materialized object are computed
   from `CanonicalSpec`.
 - Remove `ensureNameField()` and the implicit `name` field; drop the
   `"name".equalsIgnoreCase` `isNameField()` heuristic (identity becomes explicit).
-- **Back-compat:** a model with no `CanonicalSpec` (old file) **infers** one on
-  load — reified class → DERIVED (grain key, primary field displayName); else
-  WIKIDATA_ENTITY (qid + label). Nothing else in the file is disturbed.
+- **Back-compat:** load removes the retired `CanonicalSpec.kind` from old files;
+  construction determines the regime. Missing canonical specs are repaired to
+  defaults, and statement defaults are materialized by the statement editor.
 
 ## 6. Sort / search / config
 
@@ -60,10 +66,12 @@ reject.
 
 ## 7. UI (kind-aware "Identity & label" section per class)
 
-- WIKIDATA_ENTITY → `qid` + `label`(+language), auto.
-- DERIVED → identity key fields (prefilled from grain, editable) · displayName
-  `Field ▾ | Template …`; the `Field` dropdown offers only `SINGLE`-cardinality
-  fields.
+- SOURCE → source id; displayName may remain the source label or be configured as
+  Field/Template.
+- STATEMENT → identity key fields (prefilled from grain, editable).
+- OWNED → owner + production site; it does not expose canonical-key editing.
+- DisplayName is independent of identity for all three kinds; Field dropdowns
+  offer only `SINGLE`-cardinality fields.
 - A class cannot be saved without a resolvable, non-empty displayName.
 
 ## 8. Migration — assisted, in-place, preserving

@@ -1,6 +1,9 @@
 package wikidata.explore.model;
 
 import org.junit.jupiter.api.Test;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -67,5 +70,34 @@ class CanonicalSpecTest {
         assertEquals(ClassKind.STATEMENT, loaded.classKind(),
                 "the regime survives the round trip because the class kind does");
         assertEquals(java.util.List.of("nominee"), loaded.canonical().keyFields());
+    }
+
+    @Test void retiredCanonicalKindIsMigratedBeforeJacksonBinding() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass().canonical().displayNameMode(
+                CanonicalSpec.DisplayNameMode.TEMPLATE).displayNameTemplate("{title}");
+        java.io.File file = java.io.File.createTempFile("old-canonical-kind", ".json");
+        file.deleteOnExit();
+        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
+        store.save(project, file);
+
+        ObjectMapper plain = new ObjectMapper();
+        JsonNode tree = plain.readTree(file);
+        addRetiredKind(tree);
+        plain.writerWithDefaultPrettyPrinter().writeValue(file, tree);
+
+        GeneratedProjectModel loaded = store.load(file);
+
+        assertEquals(ClassKind.SOURCE, loaded.rootClass().classKind());
+        assertEquals(CanonicalSpec.DisplayNameMode.TEMPLATE,
+                loaded.rootClass().canonical().displayNameMode());
+    }
+
+    private static void addRetiredKind(JsonNode node) {
+        if (node instanceof ObjectNode object
+                && object.get("canonical") instanceof ObjectNode canonical) {
+            canonical.put("kind", "WIKIDATA_ENTITY");
+        }
+        node.forEach(CanonicalSpecTest::addRetiredKind);
     }
 }

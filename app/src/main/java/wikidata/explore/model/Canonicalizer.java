@@ -46,8 +46,17 @@ public final class Canonicalizer {
      */
     public static String identifier(ClassKind kind, CanonicalSpec spec,
                                     FieldReader reader, String qid, String fallback) {
-        if (spec == null || kind == null || kind.identityFromSource()) {
+        if (kind == null || kind.identityFromSource()) {
             return firstNonBlank(qid, fallback);
+        }
+        // An owned part's identifier is established by composition from owner +
+        // production site. This field-only evaluator cannot reconstruct it and must
+        // never replace it with an incidental key over the part's values.
+        if (kind.identityFromOwner()) {
+            return safe(fallback);
+        }
+        if (spec == null) {
+            return safe(fallback);
         }
         if (spec.keyFields().isEmpty()) {
             return safe(fallback);

@@ -3,6 +3,7 @@ package wikidata.explore.compiled;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.ProjectModelCompiler.ModelCompilationException;
 import wikidata.explore.model.CanonicalSpec;
+import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
@@ -31,6 +32,25 @@ class ProjectModelCompilerTest {
 
     private static List<String> names(List<CompiledField> fields) {
         return fields.stream().map(CompiledField::name).toList();
+    }
+
+    @Test
+    void compiledClassesCarryTheirAuthoritativeConstructionKind() {
+        GeneratedProjectModel p = project("kinds");
+        GeneratedClassModel statement = new GeneratedClassModel("Statement");
+        statement.statementSource(new StatementClassSource("Root", "P1411"));
+        p.addClass(statement);
+        GeneratedClassModel owned = new GeneratedClassModel("Part");
+        owned.classKind(ClassKind.OWNED);
+        p.addClass(owned);
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(p);
+
+        assertEquals(ClassKind.SOURCE, compiled.rootClass().classKind());
+        assertEquals(ClassKind.STATEMENT,
+                compiled.findClass("Statement").orElseThrow().classKind());
+        assertEquals(ClassKind.OWNED,
+                compiled.findClass("Part").orElseThrow().classKind());
     }
 
     @Test

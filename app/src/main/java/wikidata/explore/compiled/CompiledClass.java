@@ -1,5 +1,7 @@
 package wikidata.explore.compiled;
 
+import wikidata.explore.model.ClassKind;
+
 import java.util.*;
 
 /**
@@ -14,6 +16,7 @@ public final class CompiledClass {
     private final String discriminatorPid;
     private final String discriminatorQid;
     private final int generationDepth;
+    private final ClassKind classKind;
 
     /*
      * For an ordinary class this is its membership definition. For a statement
@@ -38,6 +41,7 @@ public final class CompiledClass {
             String discriminatorPid,
             String discriminatorQid,
             int generationDepth,
+            ClassKind classKind,
             CompiledFieldSource sourceMapping,
             List<String> seedQids,
             CompiledCanonical canonical,
@@ -52,6 +56,7 @@ public final class CompiledClass {
         this.discriminatorPid = clean(discriminatorPid);
         this.discriminatorQid = clean(discriminatorQid);
         this.generationDepth = Math.max(0, generationDepth);
+        this.classKind = classKind == null ? ClassKind.SOURCE : classKind;
         this.sourceMapping = sourceMapping == null
                 ? CompiledFieldSource.from(null)
                 : sourceMapping;
@@ -85,6 +90,8 @@ public final class CompiledClass {
         return discriminatorQid.matches("(?i)Q\\d+");
     }
     public int generationDepth() { return generationDepth; }
+    public ClassKind classKind() { return classKind; }
+    public boolean identityFromSource() { return classKind.identityFromSource(); }
     public CompiledFieldSource sourceMapping() { return sourceMapping; }
 
     /**

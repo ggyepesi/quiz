@@ -84,6 +84,7 @@ public final class ProjectModelCompiler {
                         : "",
                 clazz.discriminatorQid(),
                 clazz.generationDepth(),
+                clazz.classKind(),
                 CompiledFieldSource.from(
                         clazz.effectiveInstanceMapping(project)),
                 clazz.seedQids(),

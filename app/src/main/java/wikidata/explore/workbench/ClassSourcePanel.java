@@ -8,6 +8,7 @@ import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.CanonicalSpec;
+import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldType;
@@ -462,8 +463,8 @@ public class ClassSourcePanel extends JPanel {
                 + "name from a field or a template.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Identity:", canonicalKindLabel);
 
-        displayNameModeBox.setToolTipText("How to make the display name of a "
-                + "derived class: a single field's value, or a template.");
+        displayNameModeBox.setToolTipText("How to make the display name: the source "
+                + "label, a single field's value, or a template.");
         GridBagUtils.labeledRow(form, c, y++, "Display name:", displayNameModeBox);
 
         displayNameFieldBox.setToolTipText("Single-valued field to show as the "
@@ -998,7 +999,9 @@ public class ClassSourcePanel extends JPanel {
     }
 
     private void updateCanonicalEnablement() {
-        boolean derived = clazz != null && !clazz.classKind().identityFromSource();
+        boolean hasClass = clazz != null;
+        boolean keyed = hasClass
+                && CanonicalEditorPolicy.editsCanonicalKey(clazz.classKind());
         canonicalKindLabel.setText(clazz == null ? ""
                 : switch (clazz.classKind()) {
                     case SOURCE -> KIND_ENTITY;
@@ -1006,23 +1009,21 @@ public class ClassSourcePanel extends JPanel {
                     case OWNED -> "Owned (owner + production site)";
                 });
 
-        // An entity's display name is always its Wikidata label.
-        displayNameModeBox.setEnabled(derived);
-        if (!derived) {
-            displayNameModeBox.setSelectedItem(DN_LABEL);
-        }
+        // Display policy is independent of identity: even a source-identified class
+        // may deliberately compose a name from its configured fields.
+        displayNameModeBox.setEnabled(hasClass);
 
         String mode = (String) displayNameModeBox.getSelectedItem();
-        displayNameFieldBox.setEnabled(derived && DN_FIELD.equals(mode));
-        displayNameTemplateField.setEnabled(derived && DN_TEMPLATE.equals(mode));
-        keyFieldsField.setEnabled(derived);
+        displayNameFieldBox.setEnabled(hasClass && DN_FIELD.equals(mode));
+        displayNameTemplateField.setEnabled(hasClass && DN_TEMPLATE.equals(mode));
+        keyFieldsField.setEnabled(keyed);
 
-        canonicalHint.setText(canonicalWarning(derived, mode));
+        canonicalHint.setText(canonicalWarning(clazz == null ? null : clazz.classKind(), mode));
     }
 
-    // A derived class must resolve a non-empty display name.
-    private String canonicalWarning(boolean derived, String mode) {
-        if (!derived) {
+    // A composed display name must resolve; only a source class has a source label.
+    private String canonicalWarning(ClassKind kind, String mode) {
+        if (kind == null) {
             return " ";
         }
         if (DN_FIELD.equals(mode) && displayNameFieldBox.getItemCount() == 0) {
@@ -1031,8 +1032,8 @@ public class ClassSourcePanel extends JPanel {
         if (DN_TEMPLATE.equals(mode) && displayNameTemplateField.getText().isBlank()) {
             return "Template is empty — the display name won't resolve.";
         }
-        if (DN_LABEL.equals(mode)) {
-            return "A derived class has no Wikidata label — pick Field or Template.";
+        if (DN_LABEL.equals(mode) && !CanonicalEditorPolicy.hasSourceLabel(kind)) {
+            return "This class has no source label — pick Field or Template.";
         }
         return " ";
     }
@@ -1043,34 +1044,22 @@ public class ClassSourcePanel extends JPanel {
         }
         // How a class is BUILT decides its identity regime, so the editor no longer
         // offers it as a separate choice that could disagree with the class's kind.
-        boolean derived = !clazz.classKind().identityFromSource();
         String mode = (String) displayNameModeBox.getSelectedItem();
 
-        CanonicalSpec spec = new CanonicalSpec();
-
-        if (!derived) {
-            spec.displayNameMode(CanonicalSpec.DisplayNameMode.LABEL)
-                    .labelLanguage(langField.getText());
-        } else if (DN_TEMPLATE.equals(mode)) {
-            spec.displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
-                    .displayNameTemplate(displayNameTemplateField.getText());
-        } else if (DN_FIELD.equals(mode)) {
-            Object f = displayNameFieldBox.getSelectedItem();
-            spec.displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
-                    .displayNameField(f == null ? "" : f.toString());
-        } else {
-            spec.displayNameMode(CanonicalSpec.DisplayNameMode.LABEL);
-        }
-
-        for (String tok : keyFieldsField.getText().trim().split("[,;\\s]+")) {
-            if (!tok.isBlank() && !spec.keyFields().contains(tok.trim())) {
-                spec.keyFields().add(tok.trim());
-            }
-        }
+        Object selectedField = displayNameFieldBox.getSelectedItem();
+        CanonicalSpec.DisplayNameMode displayMode = DN_TEMPLATE.equals(mode)
+                ? CanonicalSpec.DisplayNameMode.TEMPLATE
+                : DN_FIELD.equals(mode) ? CanonicalSpec.DisplayNameMode.FIELD
+                : CanonicalSpec.DisplayNameMode.LABEL;
+        CanonicalSpec spec = CanonicalEditorPolicy.spec(
+                clazz.classKind(), displayMode,
+                selectedField == null ? "" : selectedField.toString(),
+                displayNameTemplateField.getText(), langField.getText(),
+                keyFieldsField.getText());
 
         clazz.canonical(spec);
 
-        String warning = canonicalWarning(derived, mode);
+        String warning = canonicalWarning(clazz.classKind(), mode);
         if (warning != null && !warning.isBlank()) {
             log.accept("Identity & label: " + warning + "\n");
         }

@@ -19,8 +19,8 @@ import java.util.Collection;
  * rather than the reify "{forWork} — {category}" heuristic. Runs on the pool
  * before it's materialized/serialized, so web + desktop, typed + raw, all agree.
  *
- * <p>Only an EXPLICIT spec on a DERIVED class with a FIELD/TEMPLATE displayName
- * changes anything; entities (label) and legacy spec-less classes are untouched.
+ * <p>Only an explicit FIELD/TEMPLATE displayName changes anything; identity kind
+ * is independent, so a source-identified class may compose its display name too.
  * See docs/canonicalization-model.md.
  */
 public final class Canonicalization {
@@ -66,7 +66,7 @@ public final class Canonicalization {
     }
 
     /**
-     * Compiled-model overload — reads the same explicit DERIVED-with-FIELD/TEMPLATE
+     * Compiled-model overload — reads the same explicit FIELD/TEMPLATE
      * spec off the compiled class and applies the identical displayName rule.
      */
     public static void apply(CompiledProjectModel project,
