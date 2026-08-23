@@ -372,7 +372,9 @@ public class GenerationPipeline {
         return new GenerationRun(
                 snapshot, previous.depth(), plan,
                 pool, runtime, instances, rs,
-                previous.loadedDeclarations(), previous.quality(), finalization.coverage());
+                previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
+                GenerationRun.SelfReferenceAudit.notRun(),
+                GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()));
     }
 
     /**
@@ -468,7 +470,12 @@ public class GenerationPipeline {
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, null,
                 List.copyOf(convergence.completedDeclarations().values()), finalQuality,
-                finalization.coverage());
+                finalization.coverage(),
+                // Enrich converges semantics, which composes owned parts; it never
+                // reifies, so the self-reference rule genuinely did not run.
+                GenerationRun.SelfReferenceAudit.notRun(),
+                GenerationRun.OwnedCompositionAudit.ran(
+                        convergence.ownedComponentsCreated()));
     }
 
     /**
@@ -600,7 +607,8 @@ public class GenerationPipeline {
         return new GenerationRun(
                 snapshot, previous.depth(), plan, pool, runtime, instances, rs,
                 previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
-                transformed.selfReferenceFindings());
+                GenerationRun.SelfReferenceAudit.ran(transformed.selfReferenceFindings()),
+                GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()));
     }
 
     /**

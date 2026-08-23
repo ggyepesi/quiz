@@ -29,15 +29,71 @@ public record GenerationRun(
         List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
         Quality quality,
         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> fieldCoverage,
-        List<wikidata.explore.transform.TransformEngine.SelfRefFinding> selfReferenceFindings) {
+        SelfReferenceAudit selfReferenceAudit,
+        OwnedCompositionAudit ownedCompositionAudit) {
 
     public GenerationRun {
         loadedDeclarations = loadedDeclarations == null
                 ? List.of() : List.copyOf(loadedDeclarations);
         quality = quality == null ? Quality.completeQuality() : quality;
         fieldCoverage = fieldCoverage == null ? List.of() : List.copyOf(fieldCoverage);
-        selfReferenceFindings = selfReferenceFindings == null
-                ? List.of() : List.copyOf(selfReferenceFindings);
+        selfReferenceAudit = selfReferenceAudit == null
+                ? SelfReferenceAudit.notRun() : selfReferenceAudit;
+        ownedCompositionAudit = ownedCompositionAudit == null
+                ? OwnedCompositionAudit.notRun() : ownedCompositionAudit;
+    }
+
+    /**
+     * Whether owned composition ran, and what it MANUFACTURED — not what it holds.
+     *
+     * <p>The distinction is the point. Composition is meant to find the parts it made
+     * last time and reuse them, so a pass that keeps creating is one that cannot
+     * recognise its own work. A Remap that added 6863 duplicate Names on every press
+     * reported nothing unusual, because the only number anyone saw was how many parts
+     * existed rather than how many had just been invented.
+     */
+    public record OwnedCompositionAudit(
+            boolean executed, List<WikidataDynamicObject> created) {
+        public OwnedCompositionAudit {
+            created = created == null ? List.of() : List.copyOf(created);
+            if (!executed && !created.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "A rule that did not run cannot have created anything");
+            }
+        }
+
+        public static OwnedCompositionAudit ran(List<WikidataDynamicObject> created) {
+            return new OwnedCompositionAudit(true, created);
+        }
+
+        public static OwnedCompositionAudit notRun() {
+            return new OwnedCompositionAudit(false, List.of());
+        }
+
+        public String description() {
+            if (!executed) {
+                return "Not run in this operation";
+            }
+            return created.isEmpty()
+                    ? "Ran; every owned part already existed and was reused"
+                    : "Ran; " + created.size() + " part(s) newly created";
+        }
+    }
+
+    /** Compatibility for a transform sequence that ran and retained its findings. */
+    public GenerationRun(GeneratedProjectModel modelSnapshot, int depth, RuleNode plan,
+                         List<WikidataDynamicObject> dynamicObjects,
+                         GeneratedViewableRuntime runtime, List<Viewable> instances,
+                         RemapState remapState,
+                         List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
+                         Quality quality,
+                         List<wikidata.explore.transform.FieldExpectations.FieldCoverage>
+                                 fieldCoverage,
+                         List<wikidata.explore.transform.TransformEngine.SelfRefFinding>
+                                 selfReferenceFindings) {
+        this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
+                loadedDeclarations, quality, fieldCoverage,
+                SelfReferenceAudit.ran(selfReferenceFindings), OwnedCompositionAudit.notRun());
     }
 
     /** Compatibility: a run whose reify decisions were not retained. */
@@ -50,7 +106,8 @@ public record GenerationRun(
                          List<wikidata.explore.transform.FieldExpectations.FieldCoverage>
                                  fieldCoverage) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
-                loadedDeclarations, quality, fieldCoverage, List.of());
+                loadedDeclarations, quality, fieldCoverage, SelfReferenceAudit.notRun(),
+                OwnedCompositionAudit.notRun());
     }
 
     /** Compatibility constructor for callers that have quality but no finalization report. */
@@ -61,7 +118,8 @@ public record GenerationRun(
                          List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
                          Quality quality) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
-                loadedDeclarations, quality, List.of(), List.of());
+                loadedDeclarations, quality, List.of(), SelfReferenceAudit.notRun(),
+                OwnedCompositionAudit.notRun());
     }
 
     /** Compatibility constructor for local/remap paths that produced a complete run. */
@@ -72,7 +130,38 @@ public record GenerationRun(
                          List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances,
                 remapState, loadedDeclarations, Quality.completeQuality(),
-                List.of(), List.of());
+                List.of(), SelfReferenceAudit.notRun(), OwnedCompositionAudit.notRun());
+    }
+
+    /** Whether the self-reference rule was evaluated, distinct from finding nothing. */
+    public record SelfReferenceAudit(
+            boolean executed,
+            List<wikidata.explore.transform.TransformEngine.SelfRefFinding> findings) {
+        public SelfReferenceAudit {
+            findings = findings == null ? List.of() : List.copyOf(findings);
+            if (!executed && !findings.isEmpty()) {
+                throw new IllegalArgumentException("A rule that did not run cannot have findings");
+            }
+        }
+        public static SelfReferenceAudit ran(
+                List<wikidata.explore.transform.TransformEngine.SelfRefFinding> findings) {
+            return new SelfReferenceAudit(true, findings);
+        }
+        public static SelfReferenceAudit notRun() {
+            return new SelfReferenceAudit(false, List.of());
+        }
+        public String description() {
+            if (!executed) return "Not run in this operation";
+            return findings.isEmpty()
+                    ? "Ran; no self-reference decisions"
+                    : "Ran; " + findings.size() + " decision(s) recorded";
+        }
+    }
+
+    /** Back-compatible convenience for consumers interested only in decisions. */
+    public List<wikidata.explore.transform.TransformEngine.SelfRefFinding>
+            selfReferenceFindings() {
+        return selfReferenceAudit.findings();
     }
 
     /** Back-compat: a run with no cached transform inputs (remap = display-only). */

@@ -2,6 +2,8 @@ package wikidata.explore.generation;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.codegen.GeneratedViewableRuntime;
+import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.transform.TransformEngine;
 
 import java.io.IOException;
 import java.net.URL;
@@ -12,6 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Which compiled runtime is finished with when one run replaces another.
@@ -83,6 +87,39 @@ class GenerationRunsTest {
         GenerationRuns.handOver(run(shared), run(shared));
 
         org.junit.jupiter.api.Assertions.assertEquals(0, closes.get());
+    }
+
+    @Test void aDisplayOnlyRunSaysTheSelfReferenceRuleDidNotRun() {
+        GenerationRun run = run(runtime("display-only"));
+
+        assertFalse(run.selfReferenceAudit().executed());
+        assertTrue(run.selfReferenceFindings().isEmpty());
+        assertTrue(run.selfReferenceAudit().description().contains("Not run"));
+    }
+
+    @Test void anExecutedRuleWithNoDecisionsIsNotConfusedWithNotRunning() {
+        GenerationRun run = new GenerationRun(null, 0, null, List.of(), runtime("full"),
+                List.of(), null, List.of(), GenerationRun.Quality.completeQuality(),
+                List.of(), List.of());
+
+        assertTrue(run.selfReferenceAudit().executed());
+        assertTrue(run.selfReferenceAudit().description().contains("no self-reference"));
+    }
+
+    @Test void aTransformDecisionSurvivesOnTheRunAsACompleteAuditRecord() {
+        WikidataDynamicObject atom = new WikidataDynamicObject("atom", "Atom");
+        WikidataDynamicObject witness = new WikidataDynamicObject("witness", "Witness");
+        TransformEngine.SelfRefFinding finding = new TransformEngine.SelfRefFinding(
+                TransformEngine.SelfRefDecision.DROPPED, atom, witness,
+                List.of("category", "ceremony"), "witnessed duplicate");
+
+        GenerationRun run = new GenerationRun(null, 0, null, List.of(), runtime("full"),
+                List.of(), null, List.of(), GenerationRun.Quality.completeQuality(),
+                List.of(), List.of(finding));
+
+        assertTrue(run.selfReferenceAudit().executed());
+        assertSame(finding, run.selfReferenceAudit().findings().getFirst());
+        assertSame(witness, run.selfReferenceFindings().getFirst().witness());
     }
 
     private static GeneratedViewableRuntime runtime(String name) {

@@ -975,7 +975,8 @@ public class ModelBuilderFrame extends JFrame {
 
         java.util.List<wikidata.explore.generation.RuleEffects.Effect> effects =
                 wikidata.explore.generation.RuleEffects.fromRun(
-                        run.fieldCoverage(), run.selfReferenceFindings());
+                        run.fieldCoverage(), run.selfReferenceAudit(),
+                        run.ownedCompositionAudit());
 
         quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
                 phaseId + "-summary", domainName);
@@ -984,6 +985,8 @@ public class ModelBuilderFrame extends JFrame {
         // leading with it says nothing about what the run did.
         summary.put("What the rules account for",
                 wikidata.explore.generation.RuleEffects.describe(effects));
+        summary.put("Self-reference audit", run.selfReferenceAudit().description());
+        summary.put("Owned composition", run.ownedCompositionAudit().description());
         summary.put("Objects in the pool", run.size());
 
         java.util.List<process.swing.workflow.ProcessWorkflowResults.Tab<GenerationRun>>
@@ -1029,6 +1032,16 @@ public class ModelBuilderFrame extends JFrame {
         summary.type("Domain operation");
         summary.put("Existing objects", lastRun == null ? 0 : lastRun.size());
         summary.put("Classes", snapshot.classes().size());
+        if ("remap".equals(phaseId)) {
+            wikidata.explore.generation.RemapScope scope =
+                    wikidata.explore.generation.RemapScope.of(lastRun);
+            summary.put("Self-reference rule", scope.retransform()
+                    ? "Will run during reification; its deterministic keep/drop "
+                            + "decisions will be shown in the results"
+                    : "Will not run because this snapshot has no cached pre-reify state");
+        } else if ("enrich".equals(phaseId)) {
+            summary.put("Self-reference rule", "Will not run during Enrich");
+        }
         process.swing.workflow.ProcessWorkflowAction<GenerationRun, GenerationRun> action =
                 new process.swing.workflow.ProcessWorkflowAction<>() {
                     @Override public String id() { return phaseId; }

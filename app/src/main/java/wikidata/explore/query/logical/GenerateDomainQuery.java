@@ -511,7 +511,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                             qualityWarnings,
                                             java.util.List.copyOf(unavailableQids)),
                             finalization.coverage(),
-                            transformed.selfReferenceFindings());
+                            GenerationRun.SelfReferenceAudit.ran(
+                                    transformed.selfReferenceFindings()),
+                            GenerationRun.OwnedCompositionAudit.ran(
+                                    convergence.ownedComponentsCreated()));
                 });
     }
 

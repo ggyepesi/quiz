@@ -10,6 +10,7 @@ import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.transform.FieldExpectations;
+import quiz.transform.DynamicViewable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -148,10 +149,17 @@ class RuleEffectsTest {
         assertEquals(2, effects.size());
         assertEquals(RuleEffects.Kind.CHANGED, effects.get(0).kind());
         assertEquals(RuleEffects.Kind.FLAGGED, effects.get(1).kind());
-        assertEquals(List.of("whale"), effects.get(0).instances().stream()
-                .map(objectview.Viewable::getIdentifier).toList());
-        assertEquals(List.of("dianeWarren"), effects.get(1).instances().stream()
-                .map(objectview.Viewable::getIdentifier).toList());
+        DynamicViewable dropped = (DynamicViewable) effects.get(0).instances().getFirst();
+        DynamicViewable kept = (DynamicViewable) effects.get(1).instances().getFirst();
+        assertEquals("whale",
+                ((WikidataDynamicObject) dropped.get("Atom")).getIdentifier());
+        assertEquals("hongChau",
+                ((WikidataDynamicObject) dropped.get("Witness")).getIdentifier());
+        assertEquals(List.of("category"), dropped.get("Matching fields"));
+        assertTrue(dropped.get("Reason").toString().contains("REFERENCE role"));
+        assertEquals("dianeWarren",
+                ((WikidataDynamicObject) kept.get("Atom")).getIdentifier());
+        assertEquals(null, kept.get("Witness"));
     }
 
     @Test void aKeptSelfReferenceIsNeverDescribedAsSomethingTheRunDid() {
@@ -174,16 +182,58 @@ class RuleEffectsTest {
     @Test void aRunReportsEveryRuleThatCanNameWhatItAccountsFor() {
         List<RuleEffects.Effect> effects = RuleEffects.fromRun(
                 FieldExpectations.inspect(model(FieldExpectation.EXPECTED), pool()),
-                findings());
+                GenerationRun.SelfReferenceAudit.ran(findings()),
+                GenerationRun.OwnedCompositionAudit.ran(List.of(atom("newPart"))));
 
-        assertEquals(3, effects.size(), "one expectation gap and two self-reference "
-                + "decisions, worst first: " + effects.stream()
+        assertEquals(4, effects.size(), "one expectation gap, two self-reference "
+                + "decisions and one owned part, worst first: " + effects.stream()
                 .map(RuleEffects.Effect::title).toList());
         assertTrue(effects.get(0).size() >= effects.get(1).size(), "worst first");
     }
 
+    // ---- owned composition (#112) -----------------------------------------------
+
+    @Test void composingNothingNewIsTheNormalOutcomeAndGetsNoBucket() {
+        // A part is keyed by owner and site, so a settled domain should reuse every one
+        // it made last time. Silence here means the rule recognised its own work.
+        assertTrue(RuleEffects.fromOwnedComposition(
+                GenerationRun.OwnedCompositionAudit.ran(List.of()),
+                RuleEffects.Moment.RESULT).isEmpty());
+    }
+
+    @Test void partsManufacturedAgainAreTheReportableEvent() {
+        // The signal nobody had: a Remap that added 6863 duplicate Names every press
+        // while every visible number stayed plausible.
+        RuleEffects.Effect effect = RuleEffects.fromOwnedComposition(
+                GenerationRun.OwnedCompositionAudit.ran(
+                        List.of(atom("name1"), atom("name2"))),
+                RuleEffects.Moment.RESULT).getFirst();
+
+        assertEquals(RuleEffects.Kind.CHANGED, effect.kind());
+        assertEquals(2, effect.size());
+        assertTrue(effect.detail().contains("normally none"), effect.detail());
+    }
+
+    @Test void compositionThatDidNotRunIsNotCompositionThatCreatedNothing() {
+        assertTrue(RuleEffects.fromOwnedComposition(
+                GenerationRun.OwnedCompositionAudit.notRun(),
+                RuleEffects.Moment.RESULT).isEmpty());
+        assertEquals("Not run in this operation",
+                GenerationRun.OwnedCompositionAudit.notRun().description());
+        assertEquals("Ran; every owned part already existed and was reused",
+                GenerationRun.OwnedCompositionAudit.ran(List.of()).description());
+    }
+
+    @Test void aRuleThatDidNotRunCannotHaveAccountedForAnything() {
+        // The invariant that keeps "did not run" from being forged into "found nothing".
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new GenerationRun.OwnedCompositionAudit(false, List.of(atom("x"))));
+    }
+
     @Test void theSilenceNamesWhatItDidAndDidNotLookAt() {
         assertTrue(RuleEffects.NOTHING_REPORTED.contains("self-reference"),
+                RuleEffects.NOTHING_REPORTED);
+        assertTrue(RuleEffects.NOTHING_REPORTED.contains("owned"),
                 RuleEffects.NOTHING_REPORTED);
         assertTrue(RuleEffects.NOTHING_REPORTED.contains("do not report here yet"),
                 "and says the rest of the run is not covered: "

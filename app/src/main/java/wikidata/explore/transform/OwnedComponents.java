@@ -25,7 +25,28 @@ public final class OwnedComponents {
 
     private OwnedComponents() {}
 
-    public record Result(int created, List<WikidataDynamicObject> components) {
+    /**
+     * @param components      every component this owner set has, made or reused — what
+     *                        {@link #addTo} folds into the pool
+     * @param createdComponents only the ones this pass MANUFACTURED. The distinction is
+     *                        the interesting one: composition is meant to find the parts
+     *                        it made last time and reuse them, so a pass that keeps
+     *                        creating is a pass that cannot recognise its own work —
+     *                        which is precisely how a Remap came to add 6863 duplicate
+     *                        Names on every press while reporting nothing unusual.
+     */
+    public record Result(int created, List<WikidataDynamicObject> components,
+                         List<WikidataDynamicObject> createdComponents) {
+
+        public Result {
+            createdComponents = List.copyOf(
+                    createdComponents == null ? List.of() : createdComponents);
+        }
+
+        /** Back-compat for a caller that only counts. */
+        public Result(int created, List<WikidataDynamicObject> components) {
+            this(created, components, List.of());
+        }
         /** Adds each component not already present as the same object. Remap pools can
          * already contain a component reached through an owner; identity is the right
          * boundary because equality is not the persistence identity contract. */
@@ -45,7 +66,7 @@ public final class OwnedComponents {
             Collection<WikidataDynamicObject> roots,
             Collection<WikidataDynamicObject> evidenceRoots,
             GenerationLog log) {
-        if (project == null || roots == null) return new Result(0, List.of());
+        if (project == null || roots == null) return new Result(0, List.of(), List.of());
 
         Map<String, WikidataDynamicObject> evidence = new LinkedHashMap<>();
         if (evidenceRoots != null) {
@@ -62,6 +83,7 @@ public final class OwnedComponents {
             if (value != null) current.put(key(value.typeKey(), value.getIdentifier()), value);
         }
         List<WikidataDynamicObject> made = new ArrayList<>();
+        List<WikidataDynamicObject> manufactured = new ArrayList<>();
         java.util.Set<WikidataDynamicObject> reported =
                 Collections.newSetFromMap(new IdentityHashMap<>());
         int created = 0;
@@ -112,6 +134,7 @@ public final class OwnedComponents {
                             component.typeKey(typeKey);
                             current.put(identity, component);
                             created++;
+                            manufactured.add(component);
                             materialized.add(component);
                         } else {
                             // A reused component was named from the owner's label as it
@@ -139,7 +162,7 @@ public final class OwnedComponents {
         if (log != null && created > 0) {
             log.message("Owned components: materialized " + created + " object(s).\n");
         }
-        return new Result(created, List.copyOf(made));
+        return new Result(created, List.copyOf(made), List.copyOf(manufactured));
     }
 
     /** "Elia Kazan — birth name": whose view, and which view. Readable wherever the

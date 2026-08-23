@@ -6,6 +6,7 @@ import wikidata.explore.model.FieldExpectation;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.transform.FieldExpectations;
 import wikidata.explore.transform.TransformEngine;
+import quiz.transform.DynamicViewable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -150,7 +151,7 @@ public final class RuleEffects {
                 continue;
             }
             (finding.decision() == TransformEngine.SelfRefDecision.DROPPED
-                    ? dropped : kept).add(finding.atom());
+                    ? dropped : kept).add(selfReferenceDecision(finding));
         }
         if (!dropped.isEmpty()) {
             effects.add(new Effect(
@@ -172,30 +173,80 @@ public final class RuleEffects {
         return effects;
     }
 
+    /**
+     * What owned composition manufactured, as instances (#112).
+     *
+     * <p>A part is produced per owning instance and identified by ⟨production site, owner
+     * id⟩, so composition is meant to find the parts it made last time and reuse them:
+     * on a settled domain it should create nothing. A bucket appears only when it did
+     * create, because that is the reportable event — and it is the one nobody saw when a
+     * Remap manufactured 6863 duplicate Names on every press while every visible number
+     * stayed plausible.
+     */
+    public static List<Effect> fromOwnedComposition(
+            GenerationRun.OwnedCompositionAudit audit, Moment moment) {
+
+        if (audit == null || !audit.executed() || audit.created().isEmpty()) {
+            return new ArrayList<>();
+        }
+        Moment when = moment == null ? Moment.RESULT : moment;
+        List<Viewable> created = new ArrayList<>(audit.created());
+        List<Effect> effects = new ArrayList<>();
+        effects.add(new Effect(
+                "Owned parts newly created",
+                created.size() + (when == Moment.PLAN ? " will be" : " were")
+                        + " manufactured because no existing part was found for their "
+                        + "owner and site — on a settled domain this is normally none",
+                Kind.CHANGED, created));
+        return effects;
+    }
+
     /** Every rule that can name what it accounts for, from what a run recorded. */
     public static List<Effect> fromRun(
             List<FieldExpectations.FieldCoverage> coverage,
-            List<TransformEngine.SelfRefFinding> findings) {
+            GenerationRun.SelfReferenceAudit audit,
+            GenerationRun.OwnedCompositionAudit composition) {
 
         List<Effect> effects = new ArrayList<>(fromCoverage(coverage, Moment.RESULT));
-        effects.addAll(fromSelfReference(findings, Moment.RESULT));
+        if (audit != null && audit.executed()) {
+            effects.addAll(fromSelfReference(audit.findings(), Moment.RESULT));
+        }
+        effects.addAll(fromOwnedComposition(composition, Moment.RESULT));
         effects.sort((a, b) -> Integer.compare(b.size(), a.size()));
         return effects;
+    }
+
+    /** One inspectable decision, rather than an atom detached from why it was kept or
+     * dropped. Atom and witness remain references, so both can be opened as cards. */
+    private static Viewable selfReferenceDecision(TransformEngine.SelfRefFinding finding) {
+        String atomId = finding.atom().getIdentifier();
+        DynamicViewable decision = new DynamicViewable(
+                "self-reference-" + finding.decision() + "-" + atomId,
+                (finding.decision() == TransformEngine.SelfRefDecision.DROPPED
+                        ? "Dropped " : "Kept ") + finding.atom().getDisplayName());
+        decision.type("Self-reference decision");
+        decision.put("Decision", finding.decision().toString());
+        decision.put("Atom", finding.atom());
+        decision.put("Witness", finding.witness());
+        decision.put("Matching fields", finding.identityFields());
+        decision.put("Reason", finding.reason());
+        return decision;
     }
 
     /**
      * What to say when no rule reported anything — which is NOT "the run was clean".
      *
-     * <p>Field expectations and the self-reference rule can name the instances they
-     * account for. Kind classification, value restrictions, inverts, projections,
-     * canonicalization and owned composition cannot, and so report nothing here at all.
+     * <p>Field expectations, the self-reference rule and owned composition can name the
+     * instances they account for. Kind classification, value restrictions, inverts,
+     * projections and canonicalization cannot, and so report nothing here at all.
      * The wording lives with the code that knows what it does and does not cover, so a
      * caller cannot phrase its own silence as a clean bill of health — which is exactly
      * what "every declared rule holds" did.
      */
     public static final String NOTHING_REPORTED =
-            "No expectation gaps or self-reference decisions. "
-                    + "Other rules do not report here yet.";
+            "No field-expectation gaps, self-reference decisions or newly created owned "
+                    + "parts. Each rule's audit status is reported separately; other "
+                    + "rules do not report here yet.";
 
     /** The reportable effects as one sentence, or {@link #NOTHING_REPORTED} when there
      *  are none — so a caller never has to decide how to describe having found nothing. */

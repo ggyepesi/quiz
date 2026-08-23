@@ -39,6 +39,7 @@ public final class SemanticConvergence {
 
     public record Result(
             int iterations, int loadedFields, int classifiedKinds, int ownedCreated,
+            List<WikidataDynamicObject> ownedComponentsCreated,
             Map<String, LoadedDeclaration> completedDeclarations,
             List<LoadedDeclaration> unresolvedLoads,
             Set<String> unresolvedKindQids) { }
@@ -58,6 +59,7 @@ public final class SemanticConvergence {
         Map<String, LoadedDeclaration> failed = new LinkedHashMap<>();
         Set<String> unresolvedKinds = new LinkedHashSet<>();
         int loaded = 0, classified = 0, owned = 0;
+        List<WikidataDynamicObject> ownedCreated = new ArrayList<>();
         int iteration;
         int productiveIterations = 0;
         ReferentFieldLoad.AcquisitionManifest acquisition =
@@ -123,6 +125,7 @@ public final class SemanticConvergence {
             made.addTo(pool);
             int componentStamps = ReferentClassStamp.apply(model, made.components());
             owned += made.created();
+            ownedCreated.addAll(made.createdComponents());
 
             sink.message("Semantic convergence iteration " + iteration + ": "
                     + stamped + " role stamp(s), " + fields.loaded() + " field value(s), "
@@ -150,7 +153,8 @@ public final class SemanticConvergence {
                     + MAX_ITERATIONS + " iteration safety limit.\n");
             productiveIterations = MAX_ITERATIONS;
         }
-        return new Result(productiveIterations, loaded, classified, owned, Map.copyOf(completed),
+        return new Result(productiveIterations, loaded, classified, owned,
+                List.copyOf(ownedCreated), Map.copyOf(completed),
                 List.copyOf(failed.values()), Set.copyOf(unresolvedKinds));
     }
 
