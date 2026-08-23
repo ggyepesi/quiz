@@ -333,6 +333,9 @@ public class GenerationPipeline {
             GenerationLog log,
             RunSteps steps) throws Exception {
 
+        steps = steps == null ? RunSteps.SILENT : steps;
+        steps.started(GenerateDomainPipeline.CONSTRUCT,
+                "Compile the model and replay local transforms");
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
@@ -357,6 +360,8 @@ public class GenerationPipeline {
                 snapshot, pool, log, projectedRecords);
         steps.completed(GenerateDomainPipeline.CONSTRUCT,
                 filled + " projected field value(s) changed");
+        steps.started(GenerateDomainPipeline.SEMANTIC,
+                "Settle entity kinds and compose owned parts");
         wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
                 wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
                         snapshot, pool, previous.dynamicObjects(), log);
@@ -365,11 +370,17 @@ public class GenerationPipeline {
                         snapshot, pool, previous.dynamicObjects(), log);
         owned.addTo(pool);
         wikidata.explore.transform.ReferentClassStamp.apply(snapshot, owned.components());
+        steps.completed(GenerateDomainPipeline.SEMANTIC,
+                kinds.classified() + " kind(s), " + owned.created() + " owned part(s)");
+        steps.started(GenerateDomainPipeline.FINALIZE,
+                "Finalize and validate the transformed graph");
         wikidata.explore.compiled.CompiledProjectModel compiled =
                 wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         DomainFinalization.Result finalization = DomainFinalization.apply(
                 snapshot, compiled, pool, List.of(), null, log);
         int restricted = finalization.requiredDropped();
+        steps.completed(GenerateDomainPipeline.FINALIZE,
+                restricted + " dropped (required-field)");
         if (log != null) {
             log.message("Remap (idempotent transforms only): "
                     + pool.size() + " objects re-materialized, "
@@ -421,6 +432,18 @@ public class GenerationPipeline {
             wikidata.api.WikidataApiClient entityApi,
             GenerationLog log,
             work.CancellationToken cancellation) throws Exception {
+        return enrich(previous, snapshot, entityApi, log, cancellation, RunSteps.SILENT);
+    }
+
+    /** As above, reporting each step it finishes. */
+    public GenerationRun enrich(
+            GenerationRun previous,
+            GeneratedProjectModel snapshot,
+            wikidata.api.WikidataApiClient entityApi,
+            GenerationLog log,
+            work.CancellationToken cancellation,
+            RunSteps steps) throws Exception {
+        steps = steps == null ? RunSteps.SILENT : steps;
 
         // Say what is happening BEFORE each slow phase, not after: compiling the
         // runtime and copying tens of thousands of objects take real time and used to
@@ -442,9 +465,17 @@ public class GenerationPipeline {
                 + reportPendingLoads(snapshot) + "...\n");
 
         GenerationQualityTracker quality = new GenerationQualityTracker();
+        steps.started(GenerateDomainPipeline.SEMANTIC,
+                "Load newly declared properties, settle kinds and compose owned parts");
         SemanticConvergence.Result convergence = SemanticConvergence.apply(
                 snapshot, pool, entityApi, log, previous.loadedDeclarations(), quality);
         int loaded = convergence.loadedFields();
+        steps.completed(GenerateDomainPipeline.SEMANTIC,
+                convergence.loadedFields() + " field value(s), "
+                        + convergence.classifiedKinds() + " kind(s), "
+                        + convergence.ownedCreated() + " owned part(s)");
+        steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                "Acquire Wikipedia category memberships and native infobox values");
         WikipediaCategoryAcquisition.Result categories =
                 WikipediaCategoryAcquisition.apply(snapshot, pool, sink,
                         cancellation == null ? new work.CancellationToken() : cancellation,
@@ -458,13 +489,27 @@ public class GenerationPipeline {
         // and vocabularies describe the final classes/fields rather than iteration one.
         wikidata.explore.compiled.CompiledProjectModel compiled =
                 wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
+        steps.completed(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                categories.memberships() + " category membership(s), "
+                        + infoboxes.values() + " infobox value(s)");
+        steps.started(GenerateDomainPipeline.CONSTRUCT,
+                "Replay the transforms that an already-reified pool can re-run");
         List<WikidataDynamicObject> projectedRecords = new ArrayList<>();
         wikidata.explore.transform.StatementTransforms.applyIdempotent(
                 compiled, pool, log, projectedRecords);
+        steps.completed(GenerateDomainPipeline.CONSTRUCT,
+                projectedRecords.size() + " projected field value(s) changed");
+        steps.started(GenerateDomainPipeline.LABELS,
+                "Resolve the names of anything still showing as a bare QID");
         FinalLabelHydration.apply(pool, entityApi, log, quality);
+        steps.completed(GenerateDomainPipeline.LABELS, "labels resolved");
+        steps.started(GenerateDomainPipeline.FINALIZE,
+                "Canonicalize, prune, check expectations and build vocabularies");
         DomainFinalization.Result finalization = DomainFinalization.apply(
                 snapshot, compiled, pool, List.of(), entityApi, log);
 
+        steps.completed(GenerateDomainPipeline.FINALIZE,
+                finalization.requiredDropped() + " dropped (required-field)");
         sink.message("Enrich: " + convergence.ownedCreated() + " component(s) materialized, "
                 + loaded + " declared field value(s) loaded over "
                 + pool.size() + " objects, " + categories.memberships()
@@ -600,6 +645,8 @@ public class GenerationPipeline {
                 reified.size() + " statement record(s), " + filled
                         + " projected field value(s) changed");
 
+        steps.started(GenerateDomainPipeline.SEMANTIC,
+                "Settle entity kinds and compose owned parts");
         wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
                 wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
                         snapshot, pool, previous.dynamicObjects(), log);
@@ -613,6 +660,8 @@ public class GenerationPipeline {
                 snapshot, owned.components());
         steps.completed(GenerateDomainPipeline.SEMANTIC,
                 kinds.classified() + " kind(s), " + owned.created() + " owned part(s)");
+        steps.started(GenerateDomainPipeline.FINALIZE,
+                "Finalize and validate the transformed graph");
         DomainFinalization.Result finalization = DomainFinalization.apply(
                 snapshot, compiledSnapshot, pool, reified, previous.dynamicObjects(),
                 null, log);

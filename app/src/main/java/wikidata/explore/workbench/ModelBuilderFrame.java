@@ -841,15 +841,14 @@ public class ModelBuilderFrame extends JFrame {
                     GeneratedProjectModel snapshot = projectModel.copy();
                     var operationSettings =
                             new wikidata.explore.generation.GenerationExecutionSettings();
-                    var pipeline = operationPipeline(
-                            "enrich", "Enrich existing graph",
-                            "Load missing declared properties, converge semantics and finalize a staged copy.",
-                            enrichmentDetails(snapshot, lastRun));
+                    var pipeline = enrichPipeline(enrichmentDetails(snapshot, lastRun));
                     startGenerationOperation(
                             "Enrich domain",
                             "Add newly declared values to the existing population without rediscovery.",
                             "enrich", new EnrichInstancesQuery(
-                                    lastRun, snapshot, operationSettings), pipeline,
+                                    lastRun, snapshot, operationSettings,
+                                    wikidata.explore.generation.RunSteps.of(pipeline)),
+                            pipeline,
                             snapshot, operationSettings, true,
                             scope -> scope.put("Self-reference rule",
                                     "Will not run — Enrich adds values without "
@@ -941,6 +940,48 @@ public class ModelBuilderFrame extends JFrame {
      * it is the same transform sequence — which is what lets a rule bucket name its step
      * and have that mean the same thing in either operation.
      */
+    /**
+     * An enrich's plan, as the steps it actually runs.
+     *
+     * <p>A longer sequence than a remap's, and the difference is the point: it fetches.
+     * Loading newly declared properties and acquiring Wikipedia evidence are the two
+     * steps that take minutes and go to the network, and a plan that called the whole
+     * thing "Enrich existing graph" could not say which of them was running.
+     */
+    private static process.ProcessWorkflowPipeline enrichPipeline(
+            java.util.List<String> details) {
+        return new process.ProcessWorkflowPipeline(java.util.List.of(
+                new process.ProcessWorkflowPipeline.Phase(
+                        wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
+                        "Semantic",
+                        "Load newly declared properties over the entities already in "
+                                + "the pool, settle kinds and compose owned parts.",
+                        details),
+                new process.ProcessWorkflowPipeline.Phase(
+                        wikidata.explore.generation.GenerateDomainPipeline
+                                .EXTERNAL_EVIDENCE,
+                        "External evidence",
+                        "Acquire Wikipedia category memberships and native infobox "
+                                + "values for the same entities.",
+                        java.util.List.of()),
+                new process.ProcessWorkflowPipeline.Phase(
+                        wikidata.explore.generation.GenerateDomainPipeline.CONSTRUCT,
+                        "Construct",
+                        "Replay the transforms an already-reified pool can re-run.",
+                        java.util.List.of()),
+                new process.ProcessWorkflowPipeline.Phase(
+                        wikidata.explore.generation.GenerateDomainPipeline.LABELS,
+                        "Labels",
+                        "Resolve the names of anything still showing as a bare QID.",
+                        java.util.List.of()),
+                new process.ProcessWorkflowPipeline.Phase(
+                        wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
+                        "Finalize",
+                        "Canonicalize names, prune, check field expectations and build "
+                                + "descriptive vocabularies.",
+                        java.util.List.of())));
+    }
+
     private static process.ProcessWorkflowPipeline remapPipeline(
             java.util.List<String> details, boolean retransform) {
         return new process.ProcessWorkflowPipeline(java.util.List.of(

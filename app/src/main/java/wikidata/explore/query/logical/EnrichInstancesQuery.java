@@ -26,10 +26,11 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
     private final GeneratedProjectModel projectModel;
     private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
 
+    private final wikidata.explore.generation.RunSteps steps;
+
     public EnrichInstancesQuery(
             GenerationRun previousRun,
             GeneratedProjectModel projectModel) {
-
         this(previousRun, projectModel,
                 new wikidata.explore.generation.GenerationExecutionSettings());
     }
@@ -37,9 +38,20 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
     public EnrichInstancesQuery(
             GenerationRun previousRun, GeneratedProjectModel projectModel,
             wikidata.explore.generation.GenerationExecutionSettings executionSettings) {
+        this(previousRun, projectModel, executionSettings,
+                wikidata.explore.generation.RunSteps.SILENT);
+    }
+
+    /** Reporting each step it finishes, so the plan's steps are the run's steps. */
+    public EnrichInstancesQuery(
+            GenerationRun previousRun, GeneratedProjectModel projectModel,
+            wikidata.explore.generation.GenerationExecutionSettings executionSettings,
+            wikidata.explore.generation.RunSteps steps) {
         this.previousRun = previousRun;
         this.projectModel = projectModel;
         this.executionSettings = executionSettings;
+        this.steps = steps == null
+                ? wikidata.explore.generation.RunSteps.SILENT : steps;
     }
 
     @Override
@@ -92,7 +104,7 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                     // cannot answer "working, or blocked?".
                     return new GenerationPipeline().enrich(
                             previousRun, projectModel, entityApi,
-                            genLog, context.cancellation());
+                            genLog, context.cancellation(), steps);
                 });
     }
 

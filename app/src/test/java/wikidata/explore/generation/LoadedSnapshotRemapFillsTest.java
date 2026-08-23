@@ -16,6 +16,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * #93, the reported symptom: after an app restart, loading a saved dataset and hitting
@@ -96,5 +97,29 @@ class LoadedSnapshotRemapFillsTest {
         assertEquals(1, first);
         assertEquals(0, second, "already filled, so nothing changes");
         assertEquals(3, poolSize, "and no object is duplicated");
+    }
+
+    @Test void loadedSnapshotRemapCompletesEveryStepItActuallyRuns() throws Exception {
+        GeneratedProjectModel model = modelWithYearProjection();
+        GenerationRun previous = new GenerationRun(
+                model, 1, null, loadedPool(), null, List.of());
+        process.ProcessWorkflowPipeline pipeline = new process.ProcessWorkflowPipeline(List.of(
+                new process.ProcessWorkflowPipeline.Phase(
+                        GenerateDomainPipeline.CONSTRUCT, "Construct", "", List.of()),
+                new process.ProcessWorkflowPipeline.Phase(
+                        GenerateDomainPipeline.SEMANTIC, "Semantic", "", List.of()),
+                new process.ProcessWorkflowPipeline.Phase(
+                        GenerateDomainPipeline.FINALIZE, "Finalize", "", List.of())));
+
+        new GenerationPipeline().remap(
+                previous, model, null, RunSteps.of(pipeline));
+
+        assertTrue(pipeline.snapshot().stream().allMatch(
+                        state -> state.status()
+                                == process.ProcessWorkflowPipeline.Status.COMPLETED),
+                pipeline.snapshot().toString());
+        assertTrue(pipeline.snapshot().stream().allMatch(
+                        state -> state.startedAtNanos() > 0),
+                "every completed phase must have been started before its work");
     }
 }

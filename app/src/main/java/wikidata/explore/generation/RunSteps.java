@@ -14,11 +14,17 @@ import process.ProcessWorkflowPipeline;
  * driven headlessly and from tests, where there is no pipeline to report to and silence
  * is the right behaviour rather than a null check at every call.
  */
-@FunctionalInterface
 public interface RunSteps {
 
     /** Nothing is listening — the default for every caller that does not report. */
-    RunSteps SILENT = (id, summary) -> { };
+    RunSteps SILENT = new RunSteps() {
+        @Override public void started(String id, String summary) { }
+        @Override public void completed(String id, String summary) { }
+    };
+
+    /** A step is about to do its work. This is what drives live highlighting and starts
+     * the elapsed-time clock before, rather than after, the expensive block. */
+    void started(String phaseId, String summary);
 
     /**
      * One step finished, with what it produced.
@@ -35,12 +41,18 @@ public interface RunSteps {
         if (pipeline == null) {
             return SILENT;
         }
-        return (phaseId, summary) -> {
-            boolean declared = pipeline.snapshot().stream()
-                    .anyMatch(state -> state.phase().id().equals(phaseId));
-            if (declared) {
-                pipeline.start(phaseId, summary);
-                pipeline.complete(phaseId, summary);
+        return new RunSteps() {
+            private boolean declared(String phaseId) {
+                return pipeline.snapshot().stream()
+                        .anyMatch(state -> state.phase().id().equals(phaseId));
+            }
+
+            @Override public void started(String phaseId, String summary) {
+                if (declared(phaseId)) pipeline.start(phaseId, summary);
+            }
+
+            @Override public void completed(String phaseId, String summary) {
+                if (declared(phaseId)) pipeline.complete(phaseId, summary);
             }
         };
     }
