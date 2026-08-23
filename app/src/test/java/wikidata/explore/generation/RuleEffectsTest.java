@@ -184,7 +184,8 @@ class RuleEffectsTest {
                 FieldExpectations.inspect(model(FieldExpectation.EXPECTED), pool()),
                 GenerationRun.SelfReferenceAudit.ran(findings()),
                 GenerationRun.OwnedCompositionAudit.ran(List.of(atom("newPart"))),
-                GenerationRun.KindClassificationAudit.ran(List.of(atom("restamped"))));
+                GenerationRun.KindClassificationAudit.ran(List.of(atom("restamped"))),
+                GenerationRun.ProjectionAudit.notRun());
 
         assertEquals(5, effects.size(), "one expectation gap, two self-reference "
                 + "decisions, one owned part and one restamped kind, worst first: " + effects.stream()
@@ -263,12 +264,45 @@ class RuleEffectsTest {
                 () -> new GenerationRun.KindClassificationAudit(false, List.of(atom("x"))));
     }
 
+    // ---- projections --------------------------------------------------------------
+
+    @Test void aSettledPoolProjectsNothingAndGetsNoBucket() {
+        // A projection is overwrite-only, so a second pass fills nothing. Silence means
+        // every projected field already held its value.
+        assertTrue(RuleEffects.fromProjections(
+                GenerationRun.ProjectionAudit.ran(List.of()),
+                RuleEffects.Moment.RESULT).isEmpty());
+        assertEquals("Ran; every projected field already held its value",
+                GenerationRun.ProjectionAudit.ran(List.of()).description());
+    }
+
+    @Test void filledFieldsNameTheRecordsThatGainedAValue() {
+        RuleEffects.Effect effect = RuleEffects.fromProjections(
+                GenerationRun.ProjectionAudit.ran(List.of(atom("n1"), atom("n2"))),
+                RuleEffects.Moment.RESULT).getFirst();
+
+        assertEquals(RuleEffects.Kind.CHANGED, effect.kind());
+        assertEquals(2, effect.size());
+        assertEquals(RuleEffects.RunPhase.CONSTRUCT, effect.phase(),
+                "the transform sequence runs projections while constructing records");
+        assertTrue(effect.detail().contains("through a reference"), effect.detail());
+    }
+
+    @Test void projectionThatDidNotRunIsNotProjectionThatFilledNothing() {
+        assertEquals("Not run in this operation",
+                GenerationRun.ProjectionAudit.notRun().description());
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new GenerationRun.ProjectionAudit(false, List.of(atom("x"))));
+    }
+
     @Test void theSilenceNamesWhatItDidAndDidNotLookAt() {
         assertTrue(RuleEffects.NOTHING_REPORTED.contains("self-reference"),
                 RuleEffects.NOTHING_REPORTED);
         assertTrue(RuleEffects.NOTHING_REPORTED.contains("owned"),
                 RuleEffects.NOTHING_REPORTED);
         assertTrue(RuleEffects.NOTHING_REPORTED.contains("kinds"),
+                RuleEffects.NOTHING_REPORTED);
+        assertTrue(RuleEffects.NOTHING_REPORTED.contains("projected"),
                 RuleEffects.NOTHING_REPORTED);
         assertTrue(RuleEffects.NOTHING_REPORTED.contains("do not report here yet"),
                 "and says the rest of the run is not covered: "

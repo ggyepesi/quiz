@@ -29,10 +29,12 @@ public final class RunAudits {
         lines.add("  Rules that named instances: "
                 + RuleEffects.describe(RuleEffects.fromRun(
                         run.fieldCoverage(), run.selfReferenceAudit(),
-                        run.ownedCompositionAudit(), run.kindClassificationAudit())));
+                        run.ownedCompositionAudit(), run.kindClassificationAudit(),
+                        run.projectionAudit())));
         lines.add("  Self-reference: " + run.selfReferenceAudit().description());
         lines.add("  Owned composition: " + run.ownedCompositionAudit().description());
         lines.add("  Kind classification: " + run.kindClassificationAudit().description());
+        lines.add("  Projections: " + run.projectionAudit().description());
         String coverage = CoverageReport.message(run.fieldCoverage());
         if (!coverage.isEmpty()) {
             lines.add("  " + coverage);

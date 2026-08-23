@@ -516,7 +516,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             GenerationRun.OwnedCompositionAudit.ran(
                                     convergence.ownedComponentsCreated()),
                             GenerationRun.KindClassificationAudit.ran(
-                                    convergence.newlyClassifiedKinds()));
+                                    convergence.newlyClassifiedKinds()),
+                            GenerationRun.ProjectionAudit.ran(
+                                    transformed.projectedInstances()));
                 });
     }
 

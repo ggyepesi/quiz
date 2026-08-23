@@ -175,6 +175,21 @@ public class TransformEngine {
     public int applyProjection(Collection<WikidataDynamicObject> pool,
                                String targetType, String viaField,
                                String sourcePath, String outField) {
+        return applyProjection(pool, targetType, viaField, sourcePath, outField, null);
+    }
+
+    /**
+     * As above, also collecting the records whose field it filled.
+     *
+     * <p>A projection overlays a value read through a reference, so "which records just
+     * got a year" is a question with an answer — and the count alone could never give
+     * it. Being overwrite-only, it also fills nothing on a second pass, which makes a
+     * non-empty list the reportable event rather than the normal state.
+     */
+    public int applyProjection(Collection<WikidataDynamicObject> pool,
+                               String targetType, String viaField,
+                               String sourcePath, String outField,
+                               List<WikidataDynamicObject> filledOut) {
         if (pool == null || targetType == null || viaField == null
                 || sourcePath == null || sourcePath.isBlank() || outField == null) {
             return 0;
@@ -201,6 +216,9 @@ public class TransformEngine {
                 if (!java.util.Objects.equals(coerced, o.get(outField))) {
                     o.put(outField, coerced);
                     changed++;
+                    if (filledOut != null) {
+                        filledOut.add(o);
+                    }
                 }
             }
         }

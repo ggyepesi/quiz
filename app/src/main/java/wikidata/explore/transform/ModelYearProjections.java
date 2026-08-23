@@ -40,27 +40,51 @@ public final class ModelYearProjections {
     public static int apply(GeneratedProjectModel project,
                             Collection<WikidataDynamicObject> pool,
                             GenerationLog log) {
-        return apply(derive(project), pool, log);
+        return apply(derive(project), pool, log, null);
+    }
+
+    /** As above, also collecting the records whose field was filled. A projection is
+     *  overwrite-only, so on a settled pool this stays empty — which is what makes a
+     *  non-empty answer the reportable event rather than the normal state. */
+    public static int apply(GeneratedProjectModel project,
+                            Collection<WikidataDynamicObject> pool,
+                            GenerationLog log,
+                            List<WikidataDynamicObject> filledOut) {
+        return apply(derive(project), pool, log, filledOut);
     }
 
     /** Compiled-model overload — same projection application, compiled derivation. */
     public static int apply(CompiledProjectModel project,
                             Collection<WikidataDynamicObject> pool,
                             GenerationLog log) {
-        return apply(derive(project), pool, log);
+        return apply(derive(project), pool, log, null);
+    }
+
+    /** Compiled-model overload of {@link #apply(GeneratedProjectModel, Collection,
+     *  GenerationLog, List)}. */
+    public static int apply(CompiledProjectModel project,
+                            Collection<WikidataDynamicObject> pool,
+                            GenerationLog log,
+                            List<WikidataDynamicObject> filledOut) {
+        return apply(derive(project), pool, log, filledOut);
     }
 
     private static int apply(List<YearProjection> projections,
                              Collection<WikidataDynamicObject> pool,
-                             GenerationLog log) {
+                             GenerationLog log,
+                             List<WikidataDynamicObject> filledOut) {
         if (projections.isEmpty()) {
             return 0;
         }
         TransformEngine engine = new TransformEngine();
         int total = 0;
         for (YearProjection p : projections) {
+            List<WikidataDynamicObject> filled = new ArrayList<>();
             int changed = engine.applyProjection(
-                    pool, p.className(), p.via(), p.source(), p.field());
+                    pool, p.className(), p.via(), p.source(), p.field(), filled);
+            if (filledOut != null) {
+                filledOut.addAll(filled);
+            }
             total += changed;
             if (log != null) {
                 log.message("Projected " + p.className() + "." + p.field()

@@ -265,12 +265,40 @@ public final class RuleEffects {
         return effects;
     }
 
+    /**
+     * Which records a projection filled.
+     *
+     * <p>Overwrite-only, so a settled pool yields none and a bucket means something
+     * actually gained a value it did not have. It belongs to Construct because that is
+     * where the transform sequence runs it, over the reified records and the entities
+     * they reference.
+     */
+    public static List<Effect> fromProjections(
+            GenerationRun.ProjectionAudit audit, Moment moment) {
+
+        if (audit == null || !audit.executed() || audit.filled().isEmpty()) {
+            return new ArrayList<>();
+        }
+        Moment when = moment == null ? Moment.RESULT : moment;
+        List<Viewable> filled = new ArrayList<>(audit.filled());
+        List<Effect> effects = new ArrayList<>();
+        effects.add(new Effect(
+                RunPhase.CONSTRUCT,
+                "Fields filled by projection",
+                filled.size() + (when == Moment.PLAN ? " will gain" : " gained")
+                        + " a value read through a reference — a projection overwrites "
+                        + "only, so a settled pool fills none",
+                Kind.CHANGED, filled));
+        return effects;
+    }
+
     /** Every rule that can name what it accounts for, from what a run recorded. */
     public static List<Effect> fromRun(
             List<FieldExpectations.FieldCoverage> coverage,
             GenerationRun.SelfReferenceAudit audit,
             GenerationRun.OwnedCompositionAudit composition,
-            GenerationRun.KindClassificationAudit kinds) {
+            GenerationRun.KindClassificationAudit kinds,
+            GenerationRun.ProjectionAudit projections) {
 
         List<Effect> effects = new ArrayList<>(fromCoverage(coverage, Moment.RESULT));
         if (audit != null && audit.executed()) {
@@ -278,6 +306,7 @@ public final class RuleEffects {
         }
         effects.addAll(fromOwnedComposition(composition, Moment.RESULT));
         effects.addAll(fromKindClassification(kinds, Moment.RESULT));
+        effects.addAll(fromProjections(projections, Moment.RESULT));
         effects.sort(BY_PHASE_THEN_SIZE);
         return effects;
     }
@@ -302,17 +331,17 @@ public final class RuleEffects {
     /**
      * What to say when no rule reported anything — which is NOT "the run was clean".
      *
-     * <p>Field expectations, the self-reference rule, owned composition and kind
-     * classification can name the instances they account for. Value restrictions,
-     * inverts, projections and canonicalization cannot, and report nothing here at all.
+     * <p>Field expectations, the self-reference rule, owned composition, kind
+     * classification and projections can name the instances they account for. Value
+     * restrictions, inverts and canonicalization cannot, and report nothing here.
      * The wording lives with the code that knows what it does and does not cover, so a
      * caller cannot phrase its own silence as a clean bill of health — which is exactly
      * what "every declared rule holds" did.
      */
     public static final String NOTHING_REPORTED =
             "No field-expectation gaps, self-reference decisions, newly created owned "
-                    + "parts or restamped kinds. Each rule's audit status is reported "
-                    + "separately; other rules do not report here yet.";
+                    + "parts, restamped kinds or projected fields. Each rule's audit "
+                    + "status is reported separately; other rules do not report here yet.";
 
     /** The reportable effects as one sentence, or {@link #NOTHING_REPORTED} when there
      *  are none — so a caller never has to decide how to describe having found nothing. */

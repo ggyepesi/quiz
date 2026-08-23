@@ -990,7 +990,8 @@ public class ModelBuilderFrame extends JFrame {
         java.util.List<wikidata.explore.generation.RuleEffects.Effect> effects =
                 wikidata.explore.generation.RuleEffects.fromRun(
                         run.fieldCoverage(), run.selfReferenceAudit(),
-                        run.ownedCompositionAudit(), run.kindClassificationAudit());
+                        run.ownedCompositionAudit(), run.kindClassificationAudit(),
+                        run.projectionAudit());
 
         quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
                 phaseId + "-summary", domainName);
@@ -1002,6 +1003,7 @@ public class ModelBuilderFrame extends JFrame {
         summary.put("Self-reference audit", run.selfReferenceAudit().description());
         summary.put("Owned composition", run.ownedCompositionAudit().description());
         summary.put("Kind classification", run.kindClassificationAudit().description());
+        summary.put("Projections", run.projectionAudit().description());
         summary.put("Objects in the pool", run.size());
 
         // The pipeline is what plan, execution and results already share, so each step
@@ -1441,7 +1443,7 @@ public class ModelBuilderFrame extends JFrame {
                 lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
                 lastRun.remapState(), kept, lastRun.quality(), lastRun.fieldCoverage(),
                 lastRun.selfReferenceAudit(), lastRun.ownedCompositionAudit(),
-                lastRun.kindClassificationAudit()));
+                lastRun.kindClassificationAudit(), lastRun.projectionAudit()));
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 

@@ -343,8 +343,9 @@ public class GenerationPipeline {
         // never mutate the previous run that remains visible until Apply succeeds.
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(previous.dynamicObjects());
+        List<WikidataDynamicObject> projectedRecords = new ArrayList<>();
         int filled = wikidata.explore.transform.StatementTransforms.applyIdempotent(
-                snapshot, pool, log);
+                snapshot, pool, log, projectedRecords);
         wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
                 wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
                         snapshot, pool, previous.dynamicObjects(), log);
@@ -375,7 +376,8 @@ public class GenerationPipeline {
                 previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
                 GenerationRun.SelfReferenceAudit.notRun(),
                 GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()),
-                GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()));
+                GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()),
+                GenerationRun.ProjectionAudit.ran(projectedRecords));
     }
 
     /**
@@ -445,8 +447,9 @@ public class GenerationPipeline {
         // and vocabularies describe the final classes/fields rather than iteration one.
         wikidata.explore.compiled.CompiledProjectModel compiled =
                 wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
+        List<WikidataDynamicObject> projectedRecords = new ArrayList<>();
         wikidata.explore.transform.StatementTransforms.applyIdempotent(
-                compiled, pool, log);
+                compiled, pool, log, projectedRecords);
         FinalLabelHydration.apply(pool, entityApi, log, quality);
         DomainFinalization.Result finalization = DomainFinalization.apply(
                 snapshot, compiled, pool, List.of(), entityApi, log);
@@ -478,7 +481,8 @@ public class GenerationPipeline {
                 GenerationRun.OwnedCompositionAudit.ran(
                         convergence.ownedComponentsCreated()),
                 GenerationRun.KindClassificationAudit.ran(
-                        convergence.newlyClassifiedKinds()));
+                        convergence.newlyClassifiedKinds()),
+                GenerationRun.ProjectionAudit.ran(projectedRecords));
     }
 
     /**
@@ -612,7 +616,8 @@ public class GenerationPipeline {
                 previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
                 GenerationRun.SelfReferenceAudit.ran(transformed.selfReferenceFindings()),
                 GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()),
-                GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()));
+                GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()),
+                GenerationRun.ProjectionAudit.ran(transformed.projectedInstances()));
     }
 
     /**

@@ -40,13 +40,13 @@ public final class StatementTransforms {
     @FunctionalInterface
     private interface CompiledRun {
         int run(CompiledProjectModel model, List<WikidataDynamicObject> pool,
-                GenerationLog log);
+                GenerationLog log, List<WikidataDynamicObject> filledOut);
     }
 
     @FunctionalInterface
     private interface ModelRun {
         int run(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
-                GenerationLog log);
+                GenerationLog log, List<WikidataDynamicObject> filledOut);
     }
 
     /**
@@ -66,11 +66,17 @@ public final class StatementTransforms {
     public enum Stage {
         REIFY("reify", null, null),
         FIELD_VALUE_RESTRICTIONS("field-value restrictions",
-                (model, pool, log) -> { FieldValueRestrictions.apply(model, pool); return 0; },
-                (model, pool, log) -> { FieldValueRestrictions.apply(model, pool); return 0; }),
+                (model, pool, log, filled) -> {
+                    FieldValueRestrictions.apply(model, pool); return 0; },
+                (model, pool, log, filled) -> {
+                    FieldValueRestrictions.apply(model, pool); return 0; }),
         INVERTS("inverts",
-                (model, pool, log) -> { ModelInverts.apply(model, pool, log); return 0; },
-                (model, pool, log) -> { ModelInverts.apply(model, pool, log); return 0; }),
+                (model, pool, log, filled) -> {
+                    ModelInverts.apply(model, pool, log); return 0; },
+                (model, pool, log, filled) -> {
+                    ModelInverts.apply(model, pool, log); return 0; }),
+        // The only stage that can say WHICH records it touched, so the only one given
+        // somewhere to put them. The rest ignore the collector rather than pretend.
         YEAR_PROJECTIONS("year projections",
                 ModelYearProjections::apply,
                 ModelYearProjections::apply),
@@ -114,6 +120,7 @@ public final class StatementTransforms {
             List<WikidataDynamicObject> reified,
             Set<WikidataDynamicObject> demoted,
             List<TransformEngine.SelfRefFinding> selfReferenceFindings,
+            List<WikidataDynamicObject> projectedInstances,
             Map<String, Set<List<String>>> companionSets,
             int projectedFields,
             int stampedReferents,
@@ -146,7 +153,8 @@ public final class StatementTransforms {
         // The replayable stages — per-field allowedQids (the query layer does not
         // enforce them), INVERT fields, and a DATE overlaid from a referent's date.
         // Run from the same list a Remap consults, over the reified records too.
-        int projectedFields = applyIdempotent(compiled, pool, log);
+        List<WikidataDynamicObject> projected = new ArrayList<>();
+        int projectedFields = applyIdempotent(compiled, pool, log, projected);
 
         // Companion-match booleans (Nomination.won). The sets are the one input that
         // costs a request; Remap replays the ones Generate cached.
@@ -177,7 +185,7 @@ public final class StatementTransforms {
             }
         }
 
-        return new Result(reified, demoted, findings, companionSets, projectedFields,
+        return new Result(reified, demoted, findings, projected, companionSets, projectedFields,
                 stampedReferents, cleaned[0], cleaned[1]);
     }
 
@@ -202,10 +210,20 @@ public final class StatementTransforms {
             List<WikidataDynamicObject> pool,
             GenerationLog log) {
 
+        return applyIdempotent(compiled, pool, log, null);
+    }
+
+    /** As above, collecting the records a projection filled. */
+    public static int applyIdempotent(
+            CompiledProjectModel compiled,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log,
+            List<WikidataDynamicObject> projectedOut) {
+
         int filled = 0;
         for (Stage stage : Stage.values()) {
             if (stage.snapshotReplayable()) {
-                filled += stage.compiled.run(compiled, pool, log);
+                filled += stage.compiled.run(compiled, pool, log, projectedOut);
             }
         }
         return filled;
@@ -217,10 +235,20 @@ public final class StatementTransforms {
             List<WikidataDynamicObject> pool,
             GenerationLog log) {
 
+        return applyIdempotent(project, pool, log, null);
+    }
+
+    /** As above, collecting the records a projection filled. */
+    public static int applyIdempotent(
+            GeneratedProjectModel project,
+            List<WikidataDynamicObject> pool,
+            GenerationLog log,
+            List<WikidataDynamicObject> projectedOut) {
+
         int filled = 0;
         for (Stage stage : Stage.values()) {
             if (stage.snapshotReplayable()) {
-                filled += stage.editable.run(project, pool, log);
+                filled += stage.editable.run(project, pool, log, projectedOut);
             }
         }
         return filled;

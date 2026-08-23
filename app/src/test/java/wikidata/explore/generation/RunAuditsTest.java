@@ -25,10 +25,17 @@ class RunAuditsTest {
     private static GenerationRun run(GenerationRun.SelfReferenceAudit selfReference,
                                      GenerationRun.OwnedCompositionAudit owned,
                                      GenerationRun.KindClassificationAudit kinds) {
+        return run(selfReference, owned, kinds, GenerationRun.ProjectionAudit.notRun());
+    }
+
+    private static GenerationRun run(GenerationRun.SelfReferenceAudit selfReference,
+                                     GenerationRun.OwnedCompositionAudit owned,
+                                     GenerationRun.KindClassificationAudit kinds,
+                                     GenerationRun.ProjectionAudit projections) {
         return new GenerationRun(new GeneratedProjectModel(), 1, null,
                 List.of(obj("n1")), null, List.of(), null, List.of(),
                 GenerationRun.Quality.completeQuality(), List.of(),
-                selfReference, owned, kinds);
+                selfReference, owned, kinds, projections);
     }
 
     @Test void aCleanRunStillSaysWhatEachRuleDid() {
@@ -75,14 +82,16 @@ class RunAuditsTest {
         GenerationRun original = run(
                 GenerationRun.SelfReferenceAudit.ran(List.of()),
                 GenerationRun.OwnedCompositionAudit.ran(List.of(obj("part"))),
-                GenerationRun.KindClassificationAudit.ran(List.of(obj("kind"))));
+                GenerationRun.KindClassificationAudit.ran(List.of(obj("kind"))),
+                GenerationRun.ProjectionAudit.notRun());
 
         GenerationRun rebuilt = new GenerationRun(
                 original.modelSnapshot(), original.depth(), original.plan(),
                 original.dynamicObjects(), original.runtime(), original.instances(),
                 original.remapState(), List.of(), original.quality(),
                 original.fieldCoverage(), original.selfReferenceAudit(),
-                original.ownedCompositionAudit(), original.kindClassificationAudit());
+                original.ownedCompositionAudit(), original.kindClassificationAudit(),
+                original.projectionAudit());
 
         assertEquals(RunAudits.report(original), RunAudits.report(rebuilt));
     }

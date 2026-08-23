@@ -31,7 +31,8 @@ public record GenerationRun(
         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> fieldCoverage,
         SelfReferenceAudit selfReferenceAudit,
         OwnedCompositionAudit ownedCompositionAudit,
-        KindClassificationAudit kindClassificationAudit) {
+        KindClassificationAudit kindClassificationAudit,
+        ProjectionAudit projectionAudit) {
 
     public GenerationRun {
         loadedDeclarations = loadedDeclarations == null
@@ -44,6 +45,44 @@ public record GenerationRun(
                 ? OwnedCompositionAudit.notRun() : ownedCompositionAudit;
         kindClassificationAudit = kindClassificationAudit == null
                 ? KindClassificationAudit.notRun() : kindClassificationAudit;
+        projectionAudit = projectionAudit == null
+                ? ProjectionAudit.notRun() : projectionAudit;
+    }
+
+    /**
+     * Whether field projections ran, and WHICH records they filled.
+     *
+     * <p>A projection overlays a value read through a reference — a nomination's year
+     * from its ceremony's date. It is overwrite-only, so on a settled pool it fills
+     * nothing and a non-empty answer is the event: these are the records that just
+     * gained a value they did not have, which is the question a count could never
+     * answer and the one a Remap exists to change.
+     */
+    public record ProjectionAudit(boolean executed, List<WikidataDynamicObject> filled) {
+        public ProjectionAudit {
+            filled = filled == null ? List.of() : List.copyOf(filled);
+            if (!executed && !filled.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "A rule that did not run cannot have filled anything");
+            }
+        }
+
+        public static ProjectionAudit ran(List<WikidataDynamicObject> filled) {
+            return new ProjectionAudit(true, filled);
+        }
+
+        public static ProjectionAudit notRun() {
+            return new ProjectionAudit(false, List.of());
+        }
+
+        public String description() {
+            if (!executed) {
+                return "Not run in this operation";
+            }
+            return filled.isEmpty()
+                    ? "Ran; every projected field already held its value"
+                    : "Ran; " + filled.size() + " field value(s) filled";
+        }
     }
 
     /**
@@ -136,7 +175,7 @@ public record GenerationRun(
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
                 loadedDeclarations, quality, fieldCoverage,
                 SelfReferenceAudit.ran(selfReferenceFindings), OwnedCompositionAudit.notRun(),
-                KindClassificationAudit.notRun());
+                KindClassificationAudit.notRun(), ProjectionAudit.notRun());
     }
 
     /** Compatibility: a run whose reify decisions were not retained. */
@@ -151,7 +190,7 @@ public record GenerationRun(
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
                 loadedDeclarations, quality, fieldCoverage, SelfReferenceAudit.notRun(),
                 OwnedCompositionAudit.notRun(),
-                KindClassificationAudit.notRun());
+                KindClassificationAudit.notRun(), ProjectionAudit.notRun());
     }
 
     /** Compatibility constructor for callers that have quality but no finalization report. */
@@ -164,7 +203,7 @@ public record GenerationRun(
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
                 loadedDeclarations, quality, List.of(), SelfReferenceAudit.notRun(),
                 OwnedCompositionAudit.notRun(),
-                KindClassificationAudit.notRun());
+                KindClassificationAudit.notRun(), ProjectionAudit.notRun());
     }
 
     /** Compatibility constructor for local/remap paths that produced a complete run. */
@@ -176,7 +215,7 @@ public record GenerationRun(
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances,
                 remapState, loadedDeclarations, Quality.completeQuality(),
                 List.of(), SelfReferenceAudit.notRun(), OwnedCompositionAudit.notRun(),
-                KindClassificationAudit.notRun());
+                KindClassificationAudit.notRun(), ProjectionAudit.notRun());
     }
 
     /** Whether the self-reference rule was evaluated, distinct from finding nothing. */

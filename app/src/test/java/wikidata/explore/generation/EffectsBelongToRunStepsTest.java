@@ -38,7 +38,8 @@ class EffectsBelongToRunStepsTest {
                                         .SelfRefDecision.DROPPED,
                                 obj("whale"), obj("witness"), List.of("category"), "why"))),
                 GenerationRun.OwnedCompositionAudit.ran(List.of(obj("part"))),
-                GenerationRun.KindClassificationAudit.ran(List.of(obj("kind"))));
+                GenerationRun.KindClassificationAudit.ran(List.of(obj("kind"))),
+                GenerationRun.ProjectionAudit.notRun());
     }
 
     @Test void eachRuleNamesTheStepThatRanIt() {
