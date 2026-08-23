@@ -518,7 +518,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             GenerationRun.KindClassificationAudit.ran(
                                     convergence.newlyClassifiedKinds()),
                             GenerationRun.ProjectionAudit.ran(
-                                    transformed.projectedInstances()));
+                                    transformed.projectionChangedInstances()));
                 });
     }
 

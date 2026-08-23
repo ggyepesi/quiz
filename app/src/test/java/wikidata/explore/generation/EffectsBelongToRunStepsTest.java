@@ -81,6 +81,23 @@ class EffectsBelongToRunStepsTest {
                 "and what its rules accounted for is added: " + summary);
     }
 
+    @Test void addingTheAccountPreservesAPartialVerdictAndIsIdempotent() {
+        ProcessWorkflowPipeline pipeline = new ProcessWorkflowPipeline(List.of(
+                new ProcessWorkflowPipeline.Phase(GenerateDomainPipeline.CONSTRUCT,
+                        "Construct", "", List.of())));
+        pipeline.start(GenerateDomainPipeline.CONSTRUCT, "");
+        pipeline.partial(GenerateDomainPipeline.CONSTRUCT, "one unavailable source");
+
+        RunPhaseSummaries.record(pipeline, everyRule());
+        String once = pipeline.snapshot().getFirst().summary();
+        RunPhaseSummaries.record(pipeline, everyRule());
+
+        assertEquals(ProcessWorkflowPipeline.Status.PARTIAL,
+                pipeline.snapshot().getFirst().status());
+        assertEquals(once, pipeline.snapshot().getFirst().summary(),
+                "opening results twice must not duplicate durable annotations");
+    }
+
     @Test void anOperationWhoseStepDoesNotExistIsNotGivenOne() {
         // Remap and Enrich run as a single step. Inventing a phase so the text has
         // somewhere to go would put a stage in the plan that never ran.
@@ -93,5 +110,20 @@ class EffectsBelongToRunStepsTest {
 
         assertEquals(1, single.snapshot().size());
         assertEquals("40173 objects", single.snapshot().getFirst().summary());
+    }
+
+    @Test void aSingleStepOperationKeepsAllEffectsOnTheStepItActuallyRan() {
+        ProcessWorkflowPipeline remap = new ProcessWorkflowPipeline(List.of(
+                new ProcessWorkflowPipeline.Phase("remap", "Remap locally", "", List.of())));
+        remap.start("remap", "");
+        remap.complete("remap", "40173 objects");
+
+        RunPhaseSummaries.recordOperation(remap, "remap", everyRule());
+
+        String summary = remap.snapshot().getFirst().summary();
+        assertTrue(summary.startsWith("40173 objects"), summary);
+        assertTrue(summary.contains("Self-referential"), summary);
+        assertTrue(summary.contains("Owned parts"), summary);
+        assertTrue(summary.contains("expected"), summary);
     }
 }

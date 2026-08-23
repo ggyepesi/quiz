@@ -43,14 +43,14 @@ public final class ModelYearProjections {
         return apply(derive(project), pool, log, null);
     }
 
-    /** As above, also collecting the records whose field was filled. A projection is
+    /** As above, also collecting the records whose field was changed. A projection is
      *  overwrite-only, so on a settled pool this stays empty — which is what makes a
      *  non-empty answer the reportable event rather than the normal state. */
     public static int apply(GeneratedProjectModel project,
                             Collection<WikidataDynamicObject> pool,
                             GenerationLog log,
-                            List<WikidataDynamicObject> filledOut) {
-        return apply(derive(project), pool, log, filledOut);
+                            List<WikidataDynamicObject> changedOut) {
+        return apply(derive(project), pool, log, changedOut);
     }
 
     /** Compiled-model overload — same projection application, compiled derivation. */
@@ -65,14 +65,14 @@ public final class ModelYearProjections {
     public static int apply(CompiledProjectModel project,
                             Collection<WikidataDynamicObject> pool,
                             GenerationLog log,
-                            List<WikidataDynamicObject> filledOut) {
-        return apply(derive(project), pool, log, filledOut);
+                            List<WikidataDynamicObject> changedOut) {
+        return apply(derive(project), pool, log, changedOut);
     }
 
     private static int apply(List<YearProjection> projections,
                              Collection<WikidataDynamicObject> pool,
                              GenerationLog log,
-                             List<WikidataDynamicObject> filledOut) {
+                             List<WikidataDynamicObject> changedOut) {
         if (projections.isEmpty()) {
             return 0;
         }
@@ -82,8 +82,8 @@ public final class ModelYearProjections {
             List<WikidataDynamicObject> filled = new ArrayList<>();
             int changed = engine.applyProjection(
                     pool, p.className(), p.via(), p.source(), p.field(), filled);
-            if (filledOut != null) {
-                filledOut.addAll(filled);
+            if (changedOut != null) {
+                changedOut.addAll(filled);
             }
             total += changed;
             if (log != null) {

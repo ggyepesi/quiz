@@ -768,8 +768,7 @@ public class ModelBuilderFrame extends JFrame {
                                     GenerationRun> results(
                                             process.ProcessOutcome<GenerationRun> outcome) {
                                 return runResults("Generate domain", "generation",
-                                        snapshot.name(), outcome.result(), outcome,
-                                        generationPipeline);
+                                        snapshot.name(), outcome.result(), outcome);
                             }
                             @Override public void apply(java.util.List<GenerationRun> decisions) {
                                 if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
@@ -800,19 +799,22 @@ public class ModelBuilderFrame extends JFrame {
                     GeneratedProjectModel snapshot = projectModel.copy();
                     var operationSettings =
                             new wikidata.explore.generation.GenerationExecutionSettings();
-                    var pipeline = operationPipeline(
-                            "remap", "Remap locally",
-                            "Recompile the model and re-transform a staged copy; no network fetch.",
+                    wikidata.explore.generation.RemapScope replayableScope =
+                            wikidata.explore.generation.RemapScope.of(lastRun);
+                    var pipeline = remapPipeline(
                             java.util.List.of(lastRun.dynamicObjects().size()
                                     + " existing objects", snapshot.classes().size()
-                                    + " configured classes"));
+                                    + " configured classes"),
+                            replayableScope.retransform());
                     // The remap knows what it can replay; it says so rather than
                     // leaving the host to guess from the operation's name.
                     wikidata.explore.generation.RemapScope replayable =
                             wikidata.explore.generation.RemapScope.of(lastRun);
                     startGenerationOperation(
                             "Remap domain", "Preview local model changes without downloading data.",
-                            "remap", new RemapInstancesQuery(lastRun, snapshot), pipeline,
+                            "remap", new RemapInstancesQuery(lastRun, snapshot,
+                                    wikidata.explore.generation.RunSteps.of(pipeline)),
+                            pipeline,
                             snapshot, operationSettings, false,
                             scope -> scope.put("Self-reference rule", replayable.retransform()
                                     ? "Will run during reification; its keep/drop "
@@ -930,6 +932,40 @@ public class ModelBuilderFrame extends JFrame {
                         id, title, description, details)));
     }
 
+    /**
+     * A remap's plan, as the steps it actually runs.
+     *
+     * <p>It ran as one opaque box called "Remap locally", so the plan could not say what
+     * the operation was about to do and the result had nowhere to hang what each part of
+     * the work accounted for. The steps are the same ones a generation reports, because
+     * it is the same transform sequence — which is what lets a rule bucket name its step
+     * and have that mean the same thing in either operation.
+     */
+    private static process.ProcessWorkflowPipeline remapPipeline(
+            java.util.List<String> details, boolean retransform) {
+        return new process.ProcessWorkflowPipeline(java.util.List.of(
+                new process.ProcessWorkflowPipeline.Phase(
+                        wikidata.explore.generation.GenerateDomainPipeline.CONSTRUCT,
+                        "Construct",
+                        retransform
+                                ? "Reify statements and re-run the transform sequence "
+                                        + "on the cached pre-reification pool."
+                                : "Re-run the transforms that can be replayed on an "
+                                        + "already-reified pool.",
+                        details),
+                new process.ProcessWorkflowPipeline.Phase(
+                        wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
+                        "Semantic",
+                        "Settle entity kinds and compose owned parts.",
+                        java.util.List.of()),
+                new process.ProcessWorkflowPipeline.Phase(
+                        wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
+                        "Finalize",
+                        "Canonicalize names, prune, check field expectations and build "
+                                + "descriptive vocabularies.",
+                        java.util.List.of())));
+    }
+
     private static java.util.List<String> enrichmentDetails(
             GeneratedProjectModel snapshot, GenerationRun previous) {
         java.util.List<String> details = new java.util.ArrayList<>();
@@ -984,8 +1020,7 @@ public class ModelBuilderFrame extends JFrame {
      */
     private process.swing.workflow.ProcessWorkflowResults<GenerationRun> runResults(
             String title, String phaseId, String domainName,
-            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome,
-            process.ProcessWorkflowPipeline pipeline) {
+            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome) {
 
         java.util.List<wikidata.explore.generation.RuleEffects.Effect> effects =
                 wikidata.explore.generation.RuleEffects.fromRun(
@@ -1005,11 +1040,6 @@ public class ModelBuilderFrame extends JFrame {
         summary.put("Kind classification", run.kindClassificationAudit().description());
         summary.put("Projections", run.projectionAudit().description());
         summary.put("Objects in the pool", run.size());
-
-        // The pipeline is what plan, execution and results already share, so each step
-        // carries what it did. Result TABS die with the window; a phase summary is run
-        // state, saved with the artifact and reopened by the Run Inspector.
-        wikidata.explore.generation.RunPhaseSummaries.record(pipeline, effects);
 
         java.util.List<process.swing.workflow.ProcessWorkflowResults.Tab<GenerationRun>>
                 tabs = new java.util.ArrayList<>();
@@ -1104,7 +1134,7 @@ public class ModelBuilderFrame extends JFrame {
                     @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
                             results(process.ProcessOutcome<GenerationRun> outcome) {
                         return runResults(title, phaseId, snapshot.name(),
-                                outcome.result(), outcome, pipeline);
+                                outcome.result(), outcome);
                     }
                     @Override public void apply(java.util.List<GenerationRun> decisions) {
                         if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));

@@ -113,6 +113,21 @@ public final class ProcessWorkflowPipeline {
         changed();
     }
 
+    /** Adds durable context without changing the phase verdict or elapsed time.
+     * Repeating the same annotation is a no-op, so rebuilding a result view cannot
+     * duplicate run-state text. */
+    public synchronized void appendSummary(String id, String annotation) {
+        String addition = clean(annotation);
+        if (addition.isBlank()) return;
+        PhaseState state = require(id);
+        String current = clean(state.summary());
+        if (current.equals(addition) || current.endsWith(" — " + addition)) return;
+        String combined = current.isBlank() ? addition : current + " — " + addition;
+        states.put(id, new PhaseState(state.phase(), state.status(), combined,
+                state.startedAtNanos(), state.elapsedMillis()));
+        changed();
+    }
+
     public synchronized void complete(String id, String summary) {
         update(id, Status.COMPLETED, summary);
         if (id.equals(activeId)) activeId = null;

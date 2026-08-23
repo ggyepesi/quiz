@@ -40,13 +40,13 @@ public final class StatementTransforms {
     @FunctionalInterface
     private interface CompiledRun {
         int run(CompiledProjectModel model, List<WikidataDynamicObject> pool,
-                GenerationLog log, List<WikidataDynamicObject> filledOut);
+                GenerationLog log, List<WikidataDynamicObject> changedOut);
     }
 
     @FunctionalInterface
     private interface ModelRun {
         int run(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
-                GenerationLog log, List<WikidataDynamicObject> filledOut);
+                GenerationLog log, List<WikidataDynamicObject> changedOut);
     }
 
     /**
@@ -120,7 +120,7 @@ public final class StatementTransforms {
             List<WikidataDynamicObject> reified,
             Set<WikidataDynamicObject> demoted,
             List<TransformEngine.SelfRefFinding> selfReferenceFindings,
-            List<WikidataDynamicObject> projectedInstances,
+            List<WikidataDynamicObject> projectionChangedInstances,
             Map<String, Set<List<String>>> companionSets,
             int projectedFields,
             int stampedReferents,
@@ -218,12 +218,12 @@ public final class StatementTransforms {
             CompiledProjectModel compiled,
             List<WikidataDynamicObject> pool,
             GenerationLog log,
-            List<WikidataDynamicObject> projectedOut) {
+            List<WikidataDynamicObject> projectionChangedOut) {
 
         int filled = 0;
         for (Stage stage : Stage.values()) {
             if (stage.snapshotReplayable()) {
-                filled += stage.compiled.run(compiled, pool, log, projectedOut);
+                filled += stage.compiled.run(compiled, pool, log, projectionChangedOut);
             }
         }
         return filled;
@@ -243,12 +243,12 @@ public final class StatementTransforms {
             GeneratedProjectModel project,
             List<WikidataDynamicObject> pool,
             GenerationLog log,
-            List<WikidataDynamicObject> projectedOut) {
+            List<WikidataDynamicObject> projectionChangedOut) {
 
         int filled = 0;
         for (Stage stage : Stage.values()) {
             if (stage.snapshotReplayable()) {
-                filled += stage.editable.run(project, pool, log, projectedOut);
+                filled += stage.editable.run(project, pool, log, projectionChangedOut);
             }
         }
         return filled;

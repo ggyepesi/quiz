@@ -56,6 +56,15 @@ public final class GenerateDomainProcess implements Process<GenerationRun> {
         ProcessOutcome<GenerationRun> outcome =
                 context.run(new QuerySubprocess<>(new GenerateDomainQuery(
                         project, pipeline, settings)));
-        return RunCompleteness.decide(outcome, settings.requireComplete());
+        outcome = RunCompleteness.decide(outcome, settings.requireComplete());
+        if (outcome.result() != null) {
+            RunPhaseSummaries.record(pipeline, RuleEffects.fromRun(
+                    outcome.result().fieldCoverage(),
+                    outcome.result().selfReferenceAudit(),
+                    outcome.result().ownedCompositionAudit(),
+                    outcome.result().kindClassificationAudit(),
+                    outcome.result().projectionAudit()));
+        }
+        return outcome;
     }
 }

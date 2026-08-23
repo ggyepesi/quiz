@@ -20,13 +20,24 @@ public class RemapInstancesQuery
 
     private final GenerationRun previousRun;
     private final GeneratedProjectModel projectModel;
+    private final wikidata.explore.generation.RunSteps steps;
 
     public RemapInstancesQuery(
             GenerationRun previousRun,
             GeneratedProjectModel projectModel) {
+        this(previousRun, projectModel, wikidata.explore.generation.RunSteps.SILENT);
+    }
+
+    /** Reporting each step it finishes, so the plan's steps are the run's steps. */
+    public RemapInstancesQuery(
+            GenerationRun previousRun,
+            GeneratedProjectModel projectModel,
+            wikidata.explore.generation.RunSteps steps) {
 
         this.previousRun = previousRun;
         this.projectModel = projectModel;
+        this.steps = steps == null
+                ? wikidata.explore.generation.RunSteps.SILENT : steps;
     }
 
     @Override
@@ -70,7 +81,7 @@ public class RemapInstancesQuery
 
         return new GenerationPipeline().remap(
                 previousRun, projectModel,
-                wikidata.explore.extract.GenerationLog.of(context::message));
+                wikidata.explore.extract.GenerationLog.of(context::message), steps);
     }
 
     @Override

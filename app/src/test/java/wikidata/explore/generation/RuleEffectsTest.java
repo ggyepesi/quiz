@@ -267,16 +267,15 @@ class RuleEffectsTest {
     // ---- projections --------------------------------------------------------------
 
     @Test void aSettledPoolProjectsNothingAndGetsNoBucket() {
-        // A projection is overwrite-only, so a second pass fills nothing. Silence means
-        // every projected field already held its value.
+        // A projection is overwrite-only, so a settled second pass changes nothing.
         assertTrue(RuleEffects.fromProjections(
                 GenerationRun.ProjectionAudit.ran(List.of()),
                 RuleEffects.Moment.RESULT).isEmpty());
-        assertEquals("Ran; every projected field already held its value",
+        assertEquals("Ran; no projected field value changed",
                 GenerationRun.ProjectionAudit.ran(List.of()).description());
     }
 
-    @Test void filledFieldsNameTheRecordsThatGainedAValue() {
+    @Test void changedFieldsNameTheRecordsThatWereChanged() {
         RuleEffects.Effect effect = RuleEffects.fromProjections(
                 GenerationRun.ProjectionAudit.ran(List.of(atom("n1"), atom("n2"))),
                 RuleEffects.Moment.RESULT).getFirst();
@@ -286,6 +285,15 @@ class RuleEffectsTest {
         assertEquals(RuleEffects.RunPhase.CONSTRUCT, effect.phase(),
                 "the transform sequence runs projections while constructing records");
         assertTrue(effect.detail().contains("through a reference"), effect.detail());
+    }
+
+    @Test void severalProjectedFieldsStillNameARecordOnce() {
+        WikidataDynamicObject record = atom("n1");
+        GenerationRun.ProjectionAudit audit = GenerationRun.ProjectionAudit.ran(
+                List.of(record, record));
+
+        assertEquals(1, audit.changed().size());
+        assertTrue(audit.description().contains("1 record"), audit.description());
     }
 
     @Test void projectionThatDidNotRunIsNotProjectionThatFilledNothing() {

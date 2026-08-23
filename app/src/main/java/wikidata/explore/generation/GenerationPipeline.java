@@ -323,6 +323,15 @@ public class GenerationPipeline {
             GenerationRun previous,
             GeneratedProjectModel snapshot,
             GenerationLog log) throws Exception {
+        return remap(previous, snapshot, log, RunSteps.SILENT);
+    }
+
+    /** As above, reporting each step it finishes. */
+    public GenerationRun remap(
+            GenerationRun previous,
+            GeneratedProjectModel snapshot,
+            GenerationLog log,
+            RunSteps steps) throws Exception {
 
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
@@ -330,7 +339,7 @@ public class GenerationPipeline {
         GenerationRun.RemapState rs = previous.remapState();
         RemapScope scope = RemapScope.of(previous);
         if (scope.retransform()) {
-            return retransform(previous, snapshot, plan, runtime, rs, log);
+            return retransform(previous, snapshot, plan, runtime, rs, log, steps);
         }
 
         // No cached enriched pool (e.g. a snapshot loaded after an app restart, or a
@@ -346,6 +355,8 @@ public class GenerationPipeline {
         List<WikidataDynamicObject> projectedRecords = new ArrayList<>();
         int filled = wikidata.explore.transform.StatementTransforms.applyIdempotent(
                 snapshot, pool, log, projectedRecords);
+        steps.completed(GenerateDomainPipeline.CONSTRUCT,
+                filled + " projected field value(s) changed");
         wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
                 wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
                         snapshot, pool, previous.dynamicObjects(), log);
@@ -568,7 +579,8 @@ public class GenerationPipeline {
     private GenerationRun retransform(
             GenerationRun previous, GeneratedProjectModel snapshot,
             RuleNode plan, GeneratedViewableRuntime runtime,
-            GenerationRun.RemapState rs, GenerationLog log) throws Exception {
+            GenerationRun.RemapState rs, GenerationLog log,
+            RunSteps steps) throws Exception {
 
         List<WikidataDynamicObject> pool =
                 wikidata.explore.transform.PoolCopy.deepCopy(rs.enrichedPool());
@@ -584,6 +596,9 @@ public class GenerationPipeline {
                         records -> rs.companionSets(), log);
         List<WikidataDynamicObject> reified = transformed.reified();
         int filled = transformed.projectedFields();
+        steps.completed(GenerateDomainPipeline.CONSTRUCT,
+                reified.size() + " statement record(s), " + filled
+                        + " projected field value(s) changed");
 
         wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
                 wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
@@ -596,10 +611,14 @@ public class GenerationPipeline {
         owned.addTo(pool);
         wikidata.explore.transform.ReferentClassStamp.apply(
                 snapshot, owned.components());
+        steps.completed(GenerateDomainPipeline.SEMANTIC,
+                kinds.classified() + " kind(s), " + owned.created() + " owned part(s)");
         DomainFinalization.Result finalization = DomainFinalization.apply(
                 snapshot, compiledSnapshot, pool, reified, previous.dynamicObjects(),
                 null, log);
         int restricted = finalization.requiredDropped();
+        steps.completed(GenerateDomainPipeline.FINALIZE,
+                restricted + " dropped (required-field)");
 
         if (log != null) {
             log.message("Remap (retransform): " + pool.size()
@@ -617,7 +636,8 @@ public class GenerationPipeline {
                 GenerationRun.SelfReferenceAudit.ran(transformed.selfReferenceFindings()),
                 GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()),
                 GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()),
-                GenerationRun.ProjectionAudit.ran(transformed.projectedInstances()));
+                GenerationRun.ProjectionAudit.ran(
+                        transformed.projectionChangedInstances()));
     }
 
     /**

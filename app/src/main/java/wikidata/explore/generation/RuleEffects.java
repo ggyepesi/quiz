@@ -266,29 +266,28 @@ public final class RuleEffects {
     }
 
     /**
-     * Which records a projection filled.
+     * Which records a projection changed.
      *
-     * <p>Overwrite-only, so a settled pool yields none and a bucket means something
-     * actually gained a value it did not have. It belongs to Construct because that is
-     * where the transform sequence runs it, over the reified records and the entities
-     * they reference.
+     * <p>Overwrite-only, so a settled pool yields none. A changed value may have been
+     * absent or stale; both are real changes and neither is inferred from the other.
      */
     public static List<Effect> fromProjections(
             GenerationRun.ProjectionAudit audit, Moment moment) {
 
-        if (audit == null || !audit.executed() || audit.filled().isEmpty()) {
+        if (audit == null || !audit.executed() || audit.changed().isEmpty()) {
             return new ArrayList<>();
         }
         Moment when = moment == null ? Moment.RESULT : moment;
-        List<Viewable> filled = new ArrayList<>(audit.filled());
+        List<Viewable> changed = new ArrayList<>(audit.changed());
         List<Effect> effects = new ArrayList<>();
         effects.add(new Effect(
                 RunPhase.CONSTRUCT,
-                "Fields filled by projection",
-                filled.size() + (when == Moment.PLAN ? " will gain" : " gained")
-                        + " a value read through a reference — a projection overwrites "
-                        + "only, so a settled pool fills none",
-                Kind.CHANGED, filled));
+                "Fields changed by projection",
+                changed.size() + " record(s) "
+                        + (when == Moment.PLAN ? "will have" : "had")
+                        + " a field changed from a value read through a reference — this may "
+                        + "fill an absent value or replace a stale one",
+                Kind.CHANGED, changed));
         return effects;
     }
 

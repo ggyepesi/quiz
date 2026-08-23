@@ -65,15 +65,39 @@ public final class GenerationOperationProcess implements Process<GenerationRun> 
     }
 
     @Override public ProcessOutcome<GenerationRun> execute(ProcessContext context) {
-        pipeline.start(phaseId, query.purpose());
+        // An operation whose plan is its own single step drives that step from here.
+        // One whose plan names the steps it really runs has already had them reported
+        // by the work itself, and forcing a step that the plan does not declare would
+        // fail on a node that does not exist.
+        boolean ownStep = pipeline.snapshot().stream()
+                .anyMatch(state -> state.phase().id().equals(phaseId));
+        if (ownStep) {
+            pipeline.start(phaseId, query.purpose());
+        }
         ProcessOutcome<GenerationRun> outcome = context.run(new QuerySubprocess<>(query));
         outcome = RunCompleteness.decide(outcome, settings.requireComplete());
-        if (outcome.status() == ProcessStatus.SUCCEEDED) {
+        if (ownStep && outcome.status() == ProcessStatus.SUCCEEDED) {
             pipeline.complete(phaseId, outcome.summary());
-        } else if (outcome.status() == ProcessStatus.PARTIAL) {
+        } else if (ownStep && outcome.status() == ProcessStatus.PARTIAL) {
             pipeline.partial(phaseId, outcome.summary());
         } else {
             pipeline.finish(outcome.status(), outcome.summary());
+        }
+        if (outcome.result() != null && !ownStep) {
+            // The plan names the real steps, so each one carries what it accounted for.
+            RunPhaseSummaries.record(pipeline, RuleEffects.fromRun(
+                    outcome.result().fieldCoverage(),
+                    outcome.result().selfReferenceAudit(),
+                    outcome.result().ownedCompositionAudit(),
+                    outcome.result().kindClassificationAudit(),
+                    outcome.result().projectionAudit()));
+        } else if (outcome.result() != null) {
+            RunPhaseSummaries.recordOperation(pipeline, phaseId, RuleEffects.fromRun(
+                    outcome.result().fieldCoverage(),
+                    outcome.result().selfReferenceAudit(),
+                    outcome.result().ownedCompositionAudit(),
+                    outcome.result().kindClassificationAudit(),
+                    outcome.result().projectionAudit()));
         }
         return outcome;
     }

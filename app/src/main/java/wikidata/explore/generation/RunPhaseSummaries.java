@@ -1,9 +1,5 @@
 package wikidata.explore.generation;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 /** What each step of a run accounted for, written onto that step. */
 public final class RunPhaseSummaries {
 
@@ -36,10 +32,19 @@ public final class RunPhaseSummaries {
             if (mine.isEmpty() || !existing.containsKey(phase.pipelinePhaseId())) {
                 continue;
             }
-            String was = existing.get(phase.pipelinePhaseId());
             String now = RuleEffects.summary(mine);
-            pipeline.complete(phase.pipelinePhaseId(),
-                    was.isBlank() ? now : was + " — " + now);
+            pipeline.appendSummary(phase.pipelinePhaseId(), now);
         }
+    }
+
+    /** A single-step operation still keeps the whole account on the step it actually
+     * ran. Logical effect phases remain available to result tabs without inventing
+     * execution nodes that Remap or Enrich do not have yet. */
+    public static void recordOperation(
+            process.ProcessWorkflowPipeline pipeline, String operationPhaseId,
+            java.util.List<RuleEffects.Effect> effects) {
+        if (pipeline == null || operationPhaseId == null || effects == null
+                || effects.isEmpty()) return;
+        pipeline.appendSummary(operationPhaseId, RuleEffects.summary(effects));
     }
 }

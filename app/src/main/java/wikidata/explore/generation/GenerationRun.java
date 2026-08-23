@@ -50,25 +50,24 @@ public record GenerationRun(
     }
 
     /**
-     * Whether field projections ran, and WHICH records they filled.
+     * Whether field projections ran, and WHICH records they changed.
      *
      * <p>A projection overlays a value read through a reference — a nomination's year
      * from its ceremony's date. It is overwrite-only, so on a settled pool it fills
-     * nothing and a non-empty answer is the event: these are the records that just
-     * gained a value they did not have, which is the question a count could never
-     * answer and the one a Remap exists to change.
+     * nothing and a non-empty answer is the event. A changed value may previously have
+     * been absent or stale; this audit deliberately makes no stronger claim.
      */
-    public record ProjectionAudit(boolean executed, List<WikidataDynamicObject> filled) {
+    public record ProjectionAudit(boolean executed, List<WikidataDynamicObject> changed) {
         public ProjectionAudit {
-            filled = filled == null ? List.of() : List.copyOf(filled);
-            if (!executed && !filled.isEmpty()) {
+            changed = distinctByIdentity(changed);
+            if (!executed && !changed.isEmpty()) {
                 throw new IllegalArgumentException(
-                        "A rule that did not run cannot have filled anything");
+                        "A rule that did not run cannot have changed anything");
             }
         }
 
-        public static ProjectionAudit ran(List<WikidataDynamicObject> filled) {
-            return new ProjectionAudit(true, filled);
+        public static ProjectionAudit ran(List<WikidataDynamicObject> changed) {
+            return new ProjectionAudit(true, changed);
         }
 
         public static ProjectionAudit notRun() {
@@ -79,9 +78,19 @@ public record GenerationRun(
             if (!executed) {
                 return "Not run in this operation";
             }
-            return filled.isEmpty()
-                    ? "Ran; every projected field already held its value"
-                    : "Ran; " + filled.size() + " field value(s) filled";
+            return changed.isEmpty()
+                    ? "Ran; no projected field value changed"
+                    : "Ran; " + changed.size()
+                            + " record(s) had a projected field value changed";
+        }
+
+        private static List<WikidataDynamicObject> distinctByIdentity(
+                List<WikidataDynamicObject> values) {
+            if (values == null || values.isEmpty()) return List.of();
+            java.util.Set<WikidataDynamicObject> seen =
+                    java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+            return values.stream().filter(java.util.Objects::nonNull)
+                    .filter(seen::add).toList();
         }
     }
 
