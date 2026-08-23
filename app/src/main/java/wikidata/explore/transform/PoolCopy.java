@@ -64,13 +64,10 @@ public final class PoolCopy {
         if (c != null) {
             return c;
         }
-        c = new WikidataDynamicObject(o.getIdentifier(), o.getDisplayName());
-        c.type(o.typeName());
-        c.typeKey(o.typeKey());
-        c.valueObject(o.isValueObject());
-        if (o.categoryMembershipsAnswered()) {
-            c.categoryMemberships(o.categoryMemberships());
-        }
+        // What makes an object itself is the object's own question. Enumerating it here
+        // copied what this file knew about on the day it was written, and quietly lost
+        // every piece of state added afterwards.
+        c = o.copyWithoutFields();
         clones.put(o, c);
         work.add(o);   // its fields still need copying
         return c;

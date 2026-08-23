@@ -420,6 +420,44 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         return fieldOrigins == null ? null : fieldOrigins.get(fieldName);
     }
 
+    /**
+     * A copy of everything that makes this object ITSELF — identity, class stamps,
+     * whether it is a part, aliases and acquired evidence — carrying NO field values.
+     *
+     * <p>It lives here because it is a question only this class can answer. A copier
+     * enumerating the state from outside copies what it knows about on the day it was
+     * written, and every field added afterwards is silently dropped. That is what
+     * happened: {@code part} was not carried, so a deep copy of a loaded snapshot
+     * presented its owned components as ordinary entities, the kind classifier restamped
+     * them and overwrote the production site their type key names, and owned composition
+     * — unable to find a part it had already made — manufactured a second one for the
+     * same owner on every Remap.
+     *
+     * <p>The caller supplies the field values, which is the one thing this does not
+     * copy: a graph copier has to rewire references to their own clones as it goes.
+     */
+    public WikidataDynamicObject copyWithoutFields() {
+        WikidataDynamicObject copy = new WikidataDynamicObject(identifier, name);
+        copy.type = type;
+        copy.typeKey = typeKey;
+        copy.directClasses.addAll(directClasses);
+        copy.valueObject = valueObject;
+        copy.part = part;
+        copy.referenceLabel = referenceLabel;
+        copy.aliases = new ArrayList<>(aliases);
+        copy.categoryMemberships = new ArrayList<>(categoryMemberships);
+        copy.categoryMembershipsAnswered = categoryMembershipsAnswered;
+        copy.infoboxParameters = infoboxParameters;
+        copy.infoboxAnswered = infoboxAnswered;
+        copy.wikidataEntityMissing = wikidataEntityMissing;
+        copy.dynamicFieldSchema = dynamicFieldSchema;
+        copy.fieldStatuses = fieldStatuses == null
+                ? null : new LinkedHashMap<>(fieldStatuses);
+        copy.fieldOrigins = fieldOrigins == null
+                ? null : new LinkedHashMap<>(fieldOrigins);
+        return copy;
+    }
+
     public Map<String, FieldOrigin> fieldOrigins() {
         return fieldOrigins == null ? Map.of() : fieldOrigins;
     }
