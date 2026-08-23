@@ -155,7 +155,6 @@ public final class ProjectModelCompiler {
         }
 
         return new CompiledCanonical(
-                canonical.kind(),
                 resolvedKeys,
                 canonical.displayNameMode(),
                 resolvedDisplayField,

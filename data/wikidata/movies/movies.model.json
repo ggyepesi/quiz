@@ -238,7 +238,6 @@
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
-      "kind" : "WIKIDATA_ENTITY",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
@@ -484,7 +483,6 @@
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
-      "kind" : "WIKIDATA_ENTITY",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",

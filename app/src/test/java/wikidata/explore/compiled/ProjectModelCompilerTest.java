@@ -95,7 +95,6 @@ class ProjectModelCompilerTest {
 
         assertTrue(cn.statementClass());
         assertEquals("OscarNominations", cn.statementSource().sourceClassName());
-        assertEquals(CanonicalSpec.Kind.DERIVED, cn.canonical().kind());
         assertTrue(cn.canonical().keyFields().contains("category"));
         assertFalse(cn.canonical().keyFields().contains("won"),
                 "a COMPANION_MATCH field must not enter the compiled key");

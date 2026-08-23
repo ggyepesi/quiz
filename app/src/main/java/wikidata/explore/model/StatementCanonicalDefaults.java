@@ -132,7 +132,6 @@ public final class StatementCanonicalDefaults {
         // only as an explicit class-creation operation, never as a getter fallback.
         // Incremental field editing uses the two narrower methods above so changing
         // a default key cannot overwrite an independently customized display rule.
-        owner.canonical().kind(CanonicalSpec.Kind.DERIVED);
         replaceKeyWithSuggestion(owner);
         replaceDisplayWithSuggestion(owner);
     }

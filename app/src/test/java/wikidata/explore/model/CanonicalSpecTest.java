@@ -3,28 +3,34 @@ package wikidata.explore.model;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class CanonicalSpecTest {
 
-    @Test void freshClassHasExplicitEntityIdentity() {
-        CanonicalSpec spec = new GeneratedClassModel("Person").canonical();
-        assertEquals(CanonicalSpec.Kind.WIKIDATA_ENTITY, spec.kind());
+    @Test void aFreshClassTakesItsIdentityAndNameFromItsSource() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        CanonicalSpec spec = person.canonical();
+
+        assertTrue(person.classKind().identityFromSource(),
+                "how a class is built decides the regime; nothing else states it");
         assertEquals(CanonicalSpec.DisplayNameMode.LABEL, spec.displayNameMode());
         assertEquals("en", spec.labelLanguage());
     }
 
-    @Test void statementSourceMakesTheExplicitIdentityDerived() {
+    @Test void aStatementSourceMakesTheClassDeriveItsIdentity() {
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
         nomination.statementSource(new StatementClassSource(
                 "OscarNominations", "P1411"));
-        assertEquals(CanonicalSpec.Kind.DERIVED, nomination.canonical().kind());
+
+        assertEquals(ClassKind.STATEMENT, nomination.classKind());
+        assertTrue(!nomination.classKind().identityFromSource(),
+                "a reified record is not identified by a source's id");
     }
 
     @Test void copyDeepCopiesCanonical() {
         GeneratedClassModel model = new GeneratedClassModel("Nomination");
         model.canonical(new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
                 .displayNameField("nominee"));
         model.canonical().keyFields().add("nominee");
@@ -58,7 +64,8 @@ class CanonicalSpecTest {
 
         GeneratedClassModel loaded = store.load(file).findClass("Nomination");
         assertNotNull(loaded);
-        assertEquals(CanonicalSpec.Kind.DERIVED, loaded.canonical().kind());
+        assertEquals(ClassKind.STATEMENT, loaded.classKind(),
+                "the regime survives the round trip because the class kind does");
         assertEquals(java.util.List.of("nominee"), loaded.canonical().keyFields());
     }
 }

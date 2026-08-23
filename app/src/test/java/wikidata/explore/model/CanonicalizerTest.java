@@ -28,7 +28,6 @@ class CanonicalizerTest {
     @Test
     void labelModeKeepsTheFallbackLabel() {
         CanonicalSpec spec = new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.WIKIDATA_ENTITY)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.LABEL);
 
         assertEquals("Al Pacino",
@@ -38,7 +37,6 @@ class CanonicalizerTest {
     @Test
     void fieldModeUsesAReferenceDisplayName() {
         CanonicalSpec spec = new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
                 .displayNameField("nominee");
 
@@ -51,7 +49,6 @@ class CanonicalizerTest {
     @Test
     void fieldModeFallsBackWhenFieldIsBlank() {
         CanonicalSpec spec = new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
                 .displayNameField("nominee");
 
@@ -62,7 +59,6 @@ class CanonicalizerTest {
     @Test
     void templateModeInterpolatesFields() {
         CanonicalSpec spec = new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
                 .displayNameTemplate("{nominee} · {category} {year}");
 
@@ -76,15 +72,15 @@ class CanonicalizerTest {
     }
 
     @Test
-    void entityIdentifierIsTheQid() {
-        CanonicalSpec spec = new CanonicalSpec().kind(CanonicalSpec.Kind.WIKIDATA_ENTITY);
-        assertEquals("Q42",
-                Canonicalizer.identifier(spec, reader(Map.of()), "Q42", "fb"));
+    void aSourceIdentifiedClassKeepsTheSourcesId() {
+        CanonicalSpec spec = new CanonicalSpec();
+        assertEquals("Q42", Canonicalizer.identifier(
+                ClassKind.SOURCE, spec, reader(Map.of()), "Q42", "fb"));
     }
 
     @Test
     void derivedIdentifierJoinsKeyFields() {
-        CanonicalSpec spec = new CanonicalSpec().kind(CanonicalSpec.Kind.DERIVED);
+        CanonicalSpec spec = new CanonicalSpec();
         spec.keyFields().add("nominee");
         spec.keyFields().add("category");
         spec.keyFields().add("year");
@@ -94,16 +90,16 @@ class CanonicalizerTest {
         fields.put("category", new Ref("Q2", "Best Actor"));
         fields.put("year", "1979");
 
-        assertEquals("Q1|Q2|1979",
-                Canonicalizer.identifier(spec, reader(fields), "GUID", "fb"));
+        assertEquals("Q1|Q2|1979", Canonicalizer.identifier(
+                ClassKind.STATEMENT, spec, reader(fields), "GUID", "fb"));
     }
 
     @Test
     void derivedIdentifierFallsBackWhenNoKeyResolves() {
-        CanonicalSpec spec = new CanonicalSpec().kind(CanonicalSpec.Kind.DERIVED);
+        CanonicalSpec spec = new CanonicalSpec();
         spec.keyFields().add("missing");
-        assertEquals("GUID",
-                Canonicalizer.identifier(spec, reader(new HashMap<>()), "x", "GUID"));
+        assertEquals("GUID", Canonicalizer.identifier(
+                ClassKind.STATEMENT, spec, reader(new HashMap<>()), "x", "GUID"));
     }
 
     @Test

@@ -11,6 +11,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
@@ -42,8 +43,8 @@ class CanonicalSpecNeverNullTest {
 
         assertNotNull(ceremony.canonical(),
                 "a class must always offer a canonical spec");
-        assertEquals(CanonicalSpec.Kind.WIKIDATA_ENTITY, ceremony.canonical().kind(),
-                "the default is identity by qid — what an unspecified class means");
+        assertTrue(ceremony.classKind().identityFromSource(),
+                "an unspecified class is identified by its source's id");
         assertNotNull(ceremony.copy().canonical(),
                 "copying must not reintroduce the null");
 

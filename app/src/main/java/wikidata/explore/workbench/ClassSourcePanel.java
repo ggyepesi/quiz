@@ -117,14 +117,14 @@ public class ClassSourcePanel extends JPanel {
             new JTextField("en", 4);
 
     // --- Identity & label (canonicalization) ---
-    private static final String KIND_ENTITY = "Wikidata entity (qid + label)";
+    private static final String KIND_ENTITY = "Source entity (id + label)";
     private static final String KIND_DERIVED = "Derived (key + field/template)";
     private static final String DN_LABEL = "Label";
     private static final String DN_FIELD = "Field";
     private static final String DN_TEMPLATE = "Template";
 
-    private final JComboBox<String> canonicalKindBox =
-            new JComboBox<>(new String[]{KIND_ENTITY, KIND_DERIVED});
+    /** States the regime rather than offering it: it is a consequence, not a choice. */
+    private final javax.swing.JLabel canonicalKindLabel = new javax.swing.JLabel();
     private final JComboBox<String> displayNameModeBox =
             new JComboBox<>(new String[]{DN_LABEL, DN_FIELD, DN_TEMPLATE});
     private final JComboBox<String> displayNameFieldBox = new JComboBox<>();
@@ -452,11 +452,15 @@ public class ClassSourcePanel extends JPanel {
         canonHeader.setFont(canonHeader.getFont().deriveFont(Font.BOLD, 13f));
         GridBagUtils.wideRow(form, y++, canonHeader);
 
-        canonicalKindBox.setToolTipText("<html><b>Wikidata entity</b>: identity = "
-                + "qid, display name = the Wikidata label.<br><b>Derived</b>: for "
-                + "reified/composed classes (e.g. Nomination) — identity = the key "
-                + "fields (grain), display name = a single field or a template.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Kind:", canonicalKindBox);
+        // No "Kind:" control. Which identity regime a class is in follows from how it
+        // is built, so offering it separately only created a second answer that could
+        // disagree with the first. The label below states the regime instead.
+        canonicalKindLabel.setToolTipText("<html>Identity follows the class's "
+                + "construction.<br><b>Source</b>: the datasource's id, and its label as "
+                + "the display name.<br><b>Statement</b> and <b>Owned</b>: a key over "
+                + "fields, or the owner and the site that produced it — with a display "
+                + "name from a field or a template.</html>");
+        GridBagUtils.labeledRow(form, c, y++, "Identity:", canonicalKindLabel);
 
         displayNameModeBox.setToolTipText("How to make the display name of a "
                 + "derived class: a single field's value, or a template.");
@@ -477,7 +481,6 @@ public class ClassSourcePanel extends JPanel {
         canonicalHint.setForeground(new Color(0xB00020));
         GridBagUtils.wideRow(form, y++, canonicalHint);
 
-        canonicalKindBox.addActionListener(e -> updateCanonicalEnablement());
         displayNameModeBox.addActionListener(e -> updateCanonicalEnablement());
 
         GridBagUtils.wideRow(form, y++, summaryLabel);
@@ -944,7 +947,6 @@ public class ClassSourcePanel extends JPanel {
         // with the newly assigned statement source.
         if (!wasStatementClass && clazz.reifiesStatements()) {
             CanonicalSpec canonical = clazz.canonical();
-            canonical.kind(CanonicalSpec.Kind.DERIVED);
             if (canonical.keyFields().isEmpty()) {
                 wikidata.explore.model.StatementCanonicalDefaults
                         .replaceKeyWithSuggestion(clazz);
@@ -969,7 +971,6 @@ public class ClassSourcePanel extends JPanel {
                 ? new CanonicalSpec()
                 : clazz.canonical();
 
-        canonicalKindBox.setSelectedItem(spec.isDerived() ? KIND_DERIVED : KIND_ENTITY);
         displayNameModeBox.setSelectedItem(switch (spec.displayNameMode()) {
             case FIELD -> DN_FIELD;
             case TEMPLATE -> DN_TEMPLATE;
@@ -997,7 +998,13 @@ public class ClassSourcePanel extends JPanel {
     }
 
     private void updateCanonicalEnablement() {
-        boolean derived = KIND_DERIVED.equals(canonicalKindBox.getSelectedItem());
+        boolean derived = clazz != null && !clazz.classKind().identityFromSource();
+        canonicalKindLabel.setText(clazz == null ? ""
+                : switch (clazz.classKind()) {
+                    case SOURCE -> KIND_ENTITY;
+                    case STATEMENT -> KIND_DERIVED;
+                    case OWNED -> "Owned (owner + production site)";
+                });
 
         // An entity's display name is always its Wikidata label.
         displayNameModeBox.setEnabled(derived);
@@ -1034,12 +1041,12 @@ public class ClassSourcePanel extends JPanel {
         if (clazz == null) {
             return;
         }
-        boolean derived = KIND_DERIVED.equals(canonicalKindBox.getSelectedItem());
+        // How a class is BUILT decides its identity regime, so the editor no longer
+        // offers it as a separate choice that could disagree with the class's kind.
+        boolean derived = !clazz.classKind().identityFromSource();
         String mode = (String) displayNameModeBox.getSelectedItem();
 
-        CanonicalSpec spec = new CanonicalSpec()
-                .kind(derived ? CanonicalSpec.Kind.DERIVED
-                        : CanonicalSpec.Kind.WIKIDATA_ENTITY);
+        CanonicalSpec spec = new CanonicalSpec();
 
         if (!derived) {
             spec.displayNameMode(CanonicalSpec.DisplayNameMode.LABEL)

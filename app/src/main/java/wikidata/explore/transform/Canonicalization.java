@@ -47,8 +47,10 @@ public final class Canonicalization {
             withModel++;
             withSpec++;
             CanonicalSpec spec = model.canonical();
-            if (!spec.isDerived()
-                    || spec.displayNameMode() == CanonicalSpec.DisplayNameMode.LABEL) {
+            // Whether a display name is COMPOSED is the display mode's question, and
+            // only that. Asking the identity regime as well meant a source-identified
+            // class configured with a template never had it applied.
+            if (spec.displayNameMode() == CanonicalSpec.DisplayNameMode.LABEL) {
                 continue;
             }
             derived++;
@@ -87,8 +89,7 @@ public final class Canonicalization {
             withModel++;
             CompiledCanonical canonical = model.canonical();
             withSpec++;
-            if (!canonical.derivedIdentity()
-                    || canonical.displayNameMode()
+            if (canonical.displayNameMode()
                     == CanonicalSpec.DisplayNameMode.LABEL) {
                 continue;
             }

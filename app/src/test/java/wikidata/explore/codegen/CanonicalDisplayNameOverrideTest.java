@@ -35,7 +35,6 @@ class CanonicalDisplayNameOverrideTest {
     void explicitDerivedFieldSpecOverridesWithReferenceLabel() {
         GeneratedClassModel model = new GeneratedClassModel("Nomination");
         model.canonical(new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
                 .displayNameField("nominee"));
 
@@ -60,7 +59,6 @@ class CanonicalDisplayNameOverrideTest {
     void entityLabelSpecDoesNotOverride() {
         GeneratedClassModel model = new GeneratedClassModel("Person");
         model.canonical(new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.WIKIDATA_ENTITY)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.LABEL));
 
         assertNull(GeneratedViewableMapper.canonicalDisplayNameOverride(
@@ -71,7 +69,6 @@ class CanonicalDisplayNameOverrideTest {
     void blankResolutionLeavesDefault() {
         GeneratedClassModel model = new GeneratedClassModel("Nomination");
         model.canonical(new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
                 .displayNameField("missing"));
 

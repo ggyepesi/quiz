@@ -70,7 +70,6 @@ class CanonicalListMarkerTest {
         GeneratedFieldModel year =
                 nomination.addField("year", FieldType.DATE, FieldCardinality.SINGLE);
         year.mapping().qualifierPid("P585");
-        nomination.canonical().kind(CanonicalSpec.Kind.DERIVED);
         nomination.canonical().primaryListField("year");
         project.addClass(nomination);
 
@@ -82,7 +81,6 @@ class CanonicalListMarkerTest {
 
     @Test void theDeclarationSurvivesTheRoundTripThroughTheCompiledModel() {
         CanonicalSpec spec = new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .primaryListField("nominees");
 
         assertEquals("nominees",

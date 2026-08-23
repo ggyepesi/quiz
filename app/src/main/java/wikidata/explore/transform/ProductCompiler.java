@@ -168,9 +168,11 @@ public final class ProductCompiler {
         if (c.reifiesStatements() && names.add("source")) {
             fields.add(ProductField.structural("source"));
         }
+        // One question, asked once. It used to read the canonical spec and then
+        // correct the answer for owned classes, because a part borrows its owner's QID
+        // and so looked like an entity to anything reading the id alone.
         return new ProductClass(c.className(), c.displayClassName(),
-                c.baseClassName(), c.canonical().isEntity()
-                        && !wikidata.explore.model.OwnedClassSemantics.isOwnedClass(c), fields);
+                c.baseClassName(), c.classKind().identityFromSource(), fields);
     }
 
     private static ProductField compileField(GeneratedProjectModel model,

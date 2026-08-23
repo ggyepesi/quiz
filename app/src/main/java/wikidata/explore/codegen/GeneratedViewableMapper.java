@@ -260,8 +260,7 @@ public class GeneratedViewableMapper {
             return null;
         }
         CanonicalSpec spec = model.canonical();
-        if (!spec.isDerived()
-                || spec.displayNameMode() == CanonicalSpec.DisplayNameMode.LABEL) {
+        if (spec.displayNameMode() == CanonicalSpec.DisplayNameMode.LABEL) {
             return null;
         }
         String dn = Canonicalizer.displayName(spec, reader, fallbackLabel);

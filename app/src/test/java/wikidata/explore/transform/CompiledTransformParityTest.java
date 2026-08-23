@@ -159,7 +159,6 @@ class CompiledTransformParityTest {
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         CanonicalSpec spec = new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
                 .displayNameField("nominee");
         spec.keyFields().add("nominee");

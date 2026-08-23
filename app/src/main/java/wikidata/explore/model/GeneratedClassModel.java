@@ -173,14 +173,11 @@ public class GeneratedClassModel {
 
     public void statementSource(StatementClassSource value) {
         statementSource = value == null ? null : value.copy();
-        if (statementSource != null) {
-            // The source changes the identity CATEGORY, but it cannot choose the
-            // natural-key fields here: callers commonly assign the source before
-            // adding/mapping the statement value and qualifiers. Editors invoke
-            // StatementCanonicalDefaults after those field semantics are known,
-            // and persist the resulting list in canonical.keyFields.
-            canonical.kind(CanonicalSpec.Kind.DERIVED);
-        }
+        // Assigning a statement source makes this a STATEMENT class, and the
+        // identity regime follows from that rather than being set alongside it. The
+        // natural-key FIELDS still cannot be chosen here: callers commonly assign the
+        // source before adding the statement value and qualifiers, so editors invoke
+        // StatementCanonicalDefaults once those semantics are known.
     }
 
     /**

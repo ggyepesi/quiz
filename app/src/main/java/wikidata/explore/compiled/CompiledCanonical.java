@@ -11,7 +11,6 @@ import java.util.List;
  * effective fields by {@link ProjectModelCompiler}.</p>
  */
 public record CompiledCanonical(
-        CanonicalSpec.Kind kind,
         List<String> keyFields,
         CanonicalSpec.DisplayNameMode displayNameMode,
         String displayNameField,
@@ -20,7 +19,6 @@ public record CompiledCanonical(
         String primaryListField) {
 
     public CompiledCanonical {
-        kind = kind == null ? CanonicalSpec.Kind.WIKIDATA_ENTITY : kind;
         keyFields = keyFields == null ? List.of() : List.copyOf(keyFields);
         displayNameMode = displayNameMode == null
                 ? CanonicalSpec.DisplayNameMode.LABEL
@@ -35,27 +33,20 @@ public record CompiledCanonical(
     }
 
     /** Back-compat: no declared canonical list marker (the inference decides). */
-    public CompiledCanonical(CanonicalSpec.Kind kind, List<String> keyFields,
+    public CompiledCanonical(List<String> keyFields,
                              CanonicalSpec.DisplayNameMode displayNameMode,
                              String displayNameField, String displayNameTemplate,
                              String labelLanguage) {
-        this(kind, keyFields, displayNameMode, displayNameField,
+        this(keyFields, displayNameMode, displayNameField,
                 displayNameTemplate, labelLanguage, "");
     }
 
-    public boolean entityIdentity() {
-        return kind == CanonicalSpec.Kind.WIKIDATA_ENTITY;
-    }
 
-    public boolean derivedIdentity() {
-        return kind == CanonicalSpec.Kind.DERIVED;
-    }
 
     /** Rebuilds an editable {@link CanonicalSpec} (for reuse with
      *  {@code Canonicalizer}, which is spec-typed). */
     public CanonicalSpec toSpec() {
         CanonicalSpec spec = new CanonicalSpec()
-                .kind(kind)
                 .displayNameMode(displayNameMode)
                 .displayNameField(displayNameField)
                 .displayNameTemplate(displayNameTemplate)
@@ -68,7 +59,6 @@ public record CompiledCanonical(
     public static CompiledCanonical from(CanonicalSpec spec) {
         CanonicalSpec source = spec == null ? new CanonicalSpec() : spec;
         return new CompiledCanonical(
-                source.kind(),
                 source.keyFields(),
                 source.displayNameMode(),
                 source.displayNameField(),

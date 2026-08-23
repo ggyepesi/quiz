@@ -488,7 +488,7 @@ public final class GeneratedProjectModelValidator {
 
         Set<String> fieldNames = fieldNames(clazz);
 
-        if (canonical.isDerived()) {
+        if (!clazz.classKind().identityFromSource()) {
             if (canonical.keyFields().isEmpty()) {
                 problems.add(Problem.warning(
                         clazz.className(),

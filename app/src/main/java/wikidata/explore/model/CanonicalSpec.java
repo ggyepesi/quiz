@@ -8,17 +8,13 @@ import java.util.List;
  * its human {@code displayName}. These are rules ON the class, not stored
  * {@code name}/{@code qid} data fields — see docs/canonicalization-model.md.
  *
- * <ul>
- *   <li>{@link Kind#WIKIDATA_ENTITY}: identity = the entity's {@code qid};
- *       displayName = the Wikidata label (in {@link #labelLanguage()}).</li>
- *   <li>{@link Kind#DERIVED}: identity = the natural key ({@link #keyFields()},
- *       the reification grain); displayName = a single-valued {@link #displayNameField()}
- *       or a {@link #displayNameTemplate()} over fields.</li>
- * </ul>
+ * <p>It no longer says which identity REGIME a class is in. That follows from how the
+ * class is built, which {@link ClassKind} already states — so this holds the rules that
+ * regime needs: the natural key for a class that derives one, and how a display name is
+ * composed for any class that does not simply take the source's label.
  */
 public class CanonicalSpec {
 
-    public enum Kind { WIKIDATA_ENTITY, DERIVED }
 
     public enum DisplayNameMode {
         /** Wikidata label (entities only). */
@@ -29,7 +25,6 @@ public class CanonicalSpec {
         TEMPLATE
     }
 
-    private Kind kind = Kind.WIKIDATA_ENTITY;
 
     // Identity for DERIVED classes: the natural-key fields (the grain), in order.
     // Empty => surrogate. Ignored for WIKIDATA_ENTITY (identity is the qid).
@@ -46,15 +41,7 @@ public class CanonicalSpec {
 
     public CanonicalSpec() {}
 
-    public Kind kind() { return kind; }
 
-    public CanonicalSpec kind(Kind kind) {
-        this.kind = kind == null ? Kind.WIKIDATA_ENTITY : kind;
-        return this;
-    }
-
-    public boolean isEntity() { return kind == Kind.WIKIDATA_ENTITY; }
-    public boolean isDerived() { return kind == Kind.DERIVED; }
 
     /** The natural-key fields for a DERIVED class (mutable). */
     public List<String> keyFields() { return keyFields; }
@@ -111,7 +98,6 @@ public class CanonicalSpec {
 
     public CanonicalSpec copy() {
         CanonicalSpec c = new CanonicalSpec();
-        c.kind = kind;
         c.keyFields.addAll(keyFields);
         c.displayNameMode = displayNameMode;
         c.displayNameField = displayNameField;

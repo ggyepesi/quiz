@@ -37,13 +37,16 @@ public final class Canonicalizer {
     }
 
     /**
-     * The identifier per the spec: a {@code WIKIDATA_ENTITY} keeps its {@code qid};
-     * a {@code DERIVED} class joins its natural-key fields (the grain). Falls back
-     * to {@code fallback} when nothing resolves.
+     * The identifier for a class of {@code kind}: one whose identity comes from its
+     * source keeps its {@code qid}; one that derives it joins its natural-key fields
+     * (the grain). Falls back to {@code fallback} when nothing resolves.
+     *
+     * <p>The regime is the caller's to state, because it follows from how the class is
+     * built rather than from anything in the spec.
      */
-    public static String identifier(CanonicalSpec spec, FieldReader reader,
-                                    String qid, String fallback) {
-        if (spec == null || spec.isEntity()) {
+    public static String identifier(ClassKind kind, CanonicalSpec spec,
+                                    FieldReader reader, String qid, String fallback) {
+        if (spec == null || kind == null || kind.identityFromSource()) {
             return firstNonBlank(qid, fallback);
         }
         if (spec.keyFields().isEmpty()) {

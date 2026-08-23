@@ -311,7 +311,6 @@ public class StatementSourcePanel extends JPanel {
         canonical.primaryListField(
                 INFER_PRIMARY_LIST.equals(primaryList) ? "" : primaryList);
 
-        canonical.kind(CanonicalSpec.Kind.DERIVED);
         canonical.keyFields().clear();
 
         for (Map.Entry<String, JCheckBox> entry

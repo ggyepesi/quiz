@@ -18,7 +18,6 @@ class CanonicalizationTest {
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
         nomination.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nomination.canonical(new CanonicalSpec()
-                .kind(CanonicalSpec.Kind.DERIVED)
                 .displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
                 .displayNameField("nominee"));
         project.addClass(nomination);
