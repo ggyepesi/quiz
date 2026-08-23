@@ -41,6 +41,21 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     /** The article a Wikipedia operation needs to say anything about this entity. */
     public static final String SITELINK = "sitelink";
 
+    /**
+     * Membership by a statement: the instances whose {@code property} points at one of
+     * {@code values}.
+     *
+     * <p>One offering rather than four, because it is one query. The model's membership
+     * patterns — a type (P31), a type with its subclasses, a single-target relation, a
+     * multi-target one — are configurations of this, differing in which property is
+     * named and whether the subclass closure applies. Splitting them here would make the
+     * catalogue describe the editor's vocabulary instead of the source's.
+     */
+    public static final String STATEMENT_MEMBERSHIP = "statement-membership";
+
+    /** Membership by an explicit list of ids, for a population no statement selects. */
+    public static final String SEED_LIST = "seed-list";
+
     private static final ParameterDescriptor LANGUAGES = new ParameterDescriptor(
             "languages", "Languages", ParameterDescriptor.Kind.TEXT, false, "en,mul",
             List.of(),
@@ -60,6 +75,28 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
             offering(DESCRIPTION, "Description", BindingScope.FIELD_VALUE,
                     new SourceValueSchema(SourceValueKind.LANGUAGE_TEXT, false, ""),
                     List.of(LANGUAGES)),
+            offering(STATEMENT_MEMBERSHIP, "Members by statement",
+                    BindingScope.CLASS_POPULATION,
+                    SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE),
+                    List.of(
+                            new ParameterDescriptor("property", "Property",
+                                    ParameterDescriptor.Kind.TEXT, true, "P31", List.of(),
+                                    "The statement that makes an entity a member. P31 "
+                                            + "for a type; any property for a relation."),
+                            new ParameterDescriptor("values", "Values",
+                                    ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                                    "The QIDs the property must point at. Several means "
+                                            + "membership by any of them."),
+                            new ParameterDescriptor("includeSubclasses",
+                                    "Include subclasses", ParameterDescriptor.Kind.BOOLEAN,
+                                    false, "false", List.of(),
+                                    "Follow P279 down from each value. Meaningful for a "
+                                            + "type; not for a relation."))),
+            offering(SEED_LIST, "Members by explicit list", BindingScope.CLASS_POPULATION,
+                    SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE),
+                    List.of(new ParameterDescriptor("ids", "Ids",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "The QIDs that are members, named one by one."))),
             offering(SITELINK, "Wikipedia article", BindingScope.SOURCE_CORRESPONDENCE,
                     new SourceValueSchema(SourceValueKind.URL, false, ""),
                     List.of(new ParameterDescriptor(
