@@ -1,6 +1,9 @@
 package quiz.curation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import datasource.api.SourceBinding;
+import datasource.api.SourceBindingTarget;
+import datasource.api.SourceBindingSlot;
 
 import java.io.File;
 import java.io.IOException;
@@ -233,26 +236,47 @@ public final class ManualCuration implements CorrectionSource {
 
     public void putSourceRecipe(FieldSourceRecipe recipe) {
         if (recipe == null) return;
-        removeSourceRecipe(recipe.type(), recipe.field(), recipe.provider());
+        removeSourceBinding(recipe.binding().target());
         sourceRecipes.add(recipe);
     }
 
+    /** Attach or replace a source through the shared datasource contract. */
+    public void putSourceBinding(SourceBinding binding) {
+        if (binding != null) putSourceRecipe(new FieldSourceRecipe(binding));
+    }
+
     public void removeSourceRecipe(String type, String field, String provider) {
-        sourceRecipes.removeIf(recipe -> java.util.Objects.equals(recipe.type(), type)
-                && java.util.Objects.equals(recipe.field(), field)
-                && java.util.Objects.equals(recipe.provider(), provider));
+        removeSourceBinding(SourceBindingTarget.fieldValue(
+                type, field, SourceBindingSlot.require(provider)));
+    }
+
+    public void removeSourceBinding(SourceBindingTarget target) {
+        if (target != null) {
+            sourceRecipes.removeIf(recipe -> recipe.binding().target().equals(target));
+        }
     }
 
     public FieldSourceRecipe sourceRecipe(String type, String field, String provider) {
+        SourceBinding binding = sourceBinding(
+                SourceBindingTarget.fieldValue(
+                        type, field, SourceBindingSlot.require(provider)));
+        return binding == null ? null : new FieldSourceRecipe(binding);
+    }
+
+    public SourceBinding sourceBinding(SourceBindingTarget target) {
+        if (target == null) return null;
         return sourceRecipes.stream()
-                .filter(recipe -> java.util.Objects.equals(recipe.type(), type)
-                        && java.util.Objects.equals(recipe.field(), field)
-                        && java.util.Objects.equals(recipe.provider(), provider))
+                .map(FieldSourceRecipe::binding)
+                .filter(binding -> binding.target().equals(target))
                 .findFirst().orElse(null);
     }
 
     public List<FieldSourceRecipe> sourceRecipes() {
         return List.copyOf(sourceRecipes);
+    }
+
+    public List<SourceBinding> sourceBindings() {
+        return sourceRecipes.stream().map(FieldSourceRecipe::binding).toList();
     }
 
     /** Record the approved identity for one source, replacing an earlier choice. */

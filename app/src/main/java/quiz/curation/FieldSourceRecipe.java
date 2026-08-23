@@ -1,10 +1,16 @@
 package quiz.curation;
 
+import datasource.api.SourceBinding;
+import datasource.api.SourceBindingTarget;
+import datasource.api.SourceBindingSlot;
+import datasource.api.SourceRecipe;
+import datasource.wikipedia.WikipediaCategoryDiscoveryOperation;
+import datasource.wikipedia.WikipediaDatasourceProvider;
 import wikidata.explore.model.CategoryCandidatePolicy;
 import wikidata.explore.model.WikipediaCategoryRule;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Durable, provider-neutral field source configuration owned by Transform curation.
@@ -22,39 +28,46 @@ import java.util.Map;
  *       under {@link #SOURCE_TYPE}.</li>
  * </ul>
  *
- * <p>{@code datasource.api.SourceRecipe} is the same idea said properly — provider,
- * operation, parameters — with the attachment site belonging to whatever binds it rather
- * than to the recipe. This record should eventually become one, bound at field-value
- * scope. Getting there means an adapter that separates those three meanings; renaming
- * {@code provider} to {@code providerId} would only make a wrong field look right.
+ * <p>This is the compatibility facade for the original curation-sidecar shape. New code
+ * uses {@link SourceBinding}; the facade can disappear after the sidecar has a versioned
+ * migration from {@code type/field/provider/parameters} to target + recipe. Until then it
+ * keeps old files readable and writable without letting their overloaded {@code provider}
+ * field leak into the shared datasource contract.
  *
  * <p>The one-slot rule below is likewise a property of the ATTACHMENT, not of the
  * recipe: at most one such recipe per ⟨type, field⟩. Carried across as a magic value
  * that happens to be unique, it invites the very bug it was written to record.
  */
-public record FieldSourceRecipe(
-        String type, String field, String provider, Map<String, String> parameters) {
+public final class FieldSourceRecipe {
 
-    public static final String WIKIPEDIA_CATEGORY = "wikipedia-category";
+    public static final String WIKIPEDIA_CATEGORY = SourceBindingSlot.CATEGORY_EVIDENCE.id();
     /** Where else this field may be read from — ONE slot per field, because the choices
      * offered for it are alternatives. Keying it per provider meant picking DBpedia left
      * an earlier native-infobox recipe behind, and a reload heard the abandoned one. */
-    public static final String ADDITIONAL_SOURCE = "additional-source";
+    public static final String ADDITIONAL_SOURCE = SourceBindingSlot.FALLBACK_FIELD_VALUE.id();
     public static final String PATTERN = "pattern";
     public static final String POLICY = "policy";
     public static final String SOURCE_TYPE = "sourceType";
     public static final String PROPERTY = "property";
     public static final String LABEL = "label";
 
-    public FieldSourceRecipe {
-        type = clean(type);
-        field = clean(field);
-        provider = clean(provider);
-        parameters = parameters == null ? Map.of()
-                : Map.copyOf(new LinkedHashMap<>(parameters));
-        if (type.isBlank() || field.isBlank() || provider.isBlank()) {
-            throw new IllegalArgumentException("A source recipe needs type, field and provider");
+    private static final String DBPEDIA = "dbpedia";
+    private static final String DBPEDIA_PROPERTY = "property";
+    private static final String INFOBOX_PARAMETER = "infobox-parameter";
+
+    private final SourceBinding binding;
+
+    public FieldSourceRecipe(
+            String type, String field, String provider, Map<String, String> parameters) {
+        this.binding = legacyBinding(type, field, provider, parameters);
+    }
+
+    public FieldSourceRecipe(SourceBinding binding) {
+        if (binding == null || binding.target().scope()
+                != datasource.api.BindingScope.FIELD_VALUE) {
+            throw new IllegalArgumentException("A field source recipe needs a field binding");
         }
+        this.binding = binding;
     }
 
     public static FieldSourceRecipe wikipediaCategory(
@@ -75,8 +88,16 @@ public record FieldSourceRecipe(
     }
 
     public String parameter(String name) {
-        return parameters.getOrDefault(name, "");
+        return binding.recipe().parameter(name);
     }
+
+    public String type() { return binding.target().className(); }
+    public String field() { return binding.target().fieldPath(); }
+    /** Compatibility name for the replaceable slot, not a datasource provider. */
+    public String provider() { return binding.target().slot().id(); }
+    public Map<String, String> parameters() { return binding.recipe().parameters(); }
+    public SourceRecipe recipe() { return binding.recipe(); }
+    public SourceBinding binding() { return binding; }
 
     /**
      * The rule this recipe means, derived HERE and only here. Curation renders the
@@ -96,6 +117,41 @@ public record FieldSourceRecipe(
         }
         return rule;
     }
+
+    private static SourceBinding legacyBinding(
+            String type, String field, String slot, Map<String, String> parameters) {
+        SourceBindingSlot bindingSlot = SourceBindingSlot.require(slot);
+        Map<String, String> safe = parameters == null ? Map.of() : parameters;
+        SourceRecipe recipe;
+        if (bindingSlot == SourceBindingSlot.CATEGORY_EVIDENCE) {
+            recipe = new SourceRecipe(WikipediaDatasourceProvider.ID,
+                    WikipediaCategoryDiscoveryOperation.ID, safe);
+        } else if (bindingSlot == SourceBindingSlot.FALLBACK_FIELD_VALUE) {
+            String sourceType = clean(safe.get(SOURCE_TYPE));
+            if ("DBPEDIA".equals(sourceType)) {
+                recipe = new SourceRecipe(DBPEDIA, DBPEDIA_PROPERTY, safe);
+            } else if ("WIKIPEDIA_INFOBOX".equals(sourceType)) {
+                recipe = new SourceRecipe(WikipediaDatasourceProvider.ID,
+                        INFOBOX_PARAMETER, safe);
+            } else {
+                // Unknown future sidecar values remain readable. Resolution is the
+                // boundary that reports an unavailable provider/operation.
+                recipe = new SourceRecipe("legacy-field-source",
+                        sourceType.isBlank() ? "unknown" : sourceType.toLowerCase(), safe);
+            }
+        } else throw new IllegalArgumentException(
+                "Not a field source binding slot: " + bindingSlot.id());
+        return new SourceBinding(
+                SourceBindingTarget.fieldValue(type, field, bindingSlot), recipe);
+    }
+
+    @Override public boolean equals(Object other) {
+        return other instanceof FieldSourceRecipe that && binding.equals(that.binding);
+    }
+
+    @Override public int hashCode() { return Objects.hash(binding); }
+
+    @Override public String toString() { return binding.toString(); }
 
     private static String clean(String value) {
         return value == null ? "" : value.trim();

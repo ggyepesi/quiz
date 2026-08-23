@@ -1,5 +1,7 @@
 package quiz.curation;
 
+import datasource.api.SourceBindingTarget;
+import datasource.api.SourceBindingSlot;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
@@ -7,6 +9,7 @@ import wikidata.explore.model.FieldSourceType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FieldSourceRecipeCodecTest {
 
@@ -48,6 +51,28 @@ class FieldSourceRecipeCodecTest {
         assertEquals(FieldSourceType.DBPEDIA, FieldSourceRecipeCodec.mapping(
                 curation.sourceRecipe("Movie", "locations",
                         FieldSourceRecipe.ADDITIONAL_SOURCE)).sourceType());
+    }
+
+    @Test void legacyRecipesExposeAProviderNeutralBinding() {
+        FieldSourceRecipe category = FieldSourceRecipe.wikipediaCategory(
+                "Movie", "locations", "Films set in <value>", null);
+        FieldSourceRecipe infobox = FieldSourceRecipe.additionalSource(
+                "Movie", "locations", FieldSourceType.WIKIPEDIA_INFOBOX.name(),
+                "Infobox film.country", "Country");
+        FieldSourceRecipe dbpedia = FieldSourceRecipe.additionalSource(
+                "Movie", "locations", FieldSourceType.DBPEDIA.name(), "country", "Country");
+
+        assertEquals("wikipedia", category.recipe().providerId());
+        assertEquals("category", category.recipe().operationId());
+        assertEquals(SourceBindingTarget.fieldValue(
+                "Movie", "locations", SourceBindingSlot.CATEGORY_EVIDENCE),
+                category.binding().target());
+        assertTrue(infobox.binding().sameTarget(dbpedia.binding()),
+                "alternative providers occupy one fallback slot");
+        assertEquals("wikipedia", infobox.recipe().providerId());
+        assertEquals("infobox-parameter", infobox.recipe().operationId());
+        assertEquals("dbpedia", dbpedia.recipe().providerId());
+        assertEquals("property", dbpedia.recipe().operationId());
     }
 
     @Test void aSourceThatIsNotReadAfterExtractionIsNotADatasetOverride() {
