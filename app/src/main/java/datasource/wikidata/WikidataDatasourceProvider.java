@@ -6,17 +6,29 @@ import datasource.api.DatasourceProvider;
 import datasource.api.ParameterDescriptor;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
+import datasource.api.SourceReferenceSchema;
+import datasource.api.acquisition.SourceAcquisitionOperation;
+import datasource.api.acquisition.SourceAcquisitionRequest;
+import datasource.EntityRef;
+import work.Query;
+import work.QueryContext;
+import wikidata.WikidataBinding;
+import wikidata.WikidataIds;
+import wikidata.explore.query.core.Datasource;
+import wikidata.explore.query.core.WikidataAccess;
+import wikidata.explore.query.template.rule.RuleNodeQueryBuilder;
+import wikidata.explore.rule.RuleNode;
+import wikidata.explore.model.RuleDirection;
 
 import java.util.List;
 
 /**
  * What Wikidata offers a class, as operations.
  *
- * <p>The second provider, and the one that tests the abstraction: Wikipedia contributes
- * evidence ABOUT entities, while Wikidata is what an entity IS here — it supplies the
- * identifier a class is keyed by and the label its instances display. If those cannot be
- * expressed as operations with a binding scope, then "which source gives this class its
- * identity" has no home and the catalogue is only a plugin list.
+ * <p>The second provider, and the one that tests the abstraction: Wikidata can be a
+ * class's identity authority, supplying the identifier it is keyed by and the label its
+ * instances display. It is not privileged by the contract; a Wikipedia-authoritative
+ * class may instead choose that provider's durable page reference and title.
  *
  * <p>They can. Each is an offering with a scope saying where it may be bound and a
  * schema saying what it yields, so a class declaring its origin is choosing among these
@@ -75,28 +87,32 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
             offering(DESCRIPTION, "Description", BindingScope.FIELD_VALUE,
                     new SourceValueSchema(SourceValueKind.LANGUAGE_TEXT, false, ""),
                     List.of(LANGUAGES)),
-            offering(STATEMENT_MEMBERSHIP, "Members by statement",
+            new StatementMembershipOffering(
                     BindingScope.CLASS_POPULATION,
-                    SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE),
+                    SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),
                     List.of(
-                            new ParameterDescriptor("property", "Property",
-                                    ParameterDescriptor.Kind.TEXT, true, "P31", List.of(),
+                            ParameterDescriptor.reference("property", "Property", true,
+                                    "P31",
                                     "The statement that makes an entity a member. P31 "
-                                            + "for a type; any property for a relation."),
-                            new ParameterDescriptor("values", "Values",
-                                    ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                                            + "for a type; any property for a relation.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.PROPERTY, false)),
+                            ParameterDescriptor.reference("values", "Values", true, "",
                                     "The QIDs the property must point at. Several means "
-                                            + "membership by any of them."),
+                                            + "membership by any of them.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.ENTITY, true)),
                             new ParameterDescriptor("includeSubclasses",
                                     "Include subclasses", ParameterDescriptor.Kind.BOOLEAN,
                                     false, "false", List.of(),
                                     "Follow P279 down from each value. Meaningful for a "
                                             + "type; not for a relation."))),
-            offering(SEED_LIST, "Members by explicit list", BindingScope.CLASS_POPULATION,
-                    SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE),
-                    List.of(new ParameterDescriptor("ids", "Ids",
-                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
-                            "The QIDs that are members, named one by one."))),
+            new SeedListOffering(BindingScope.CLASS_POPULATION,
+                    SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),
+                    List.of(ParameterDescriptor.reference("ids", "Ids", true, "",
+                            "The QIDs that are members, named one by one.",
+                            new SourceReferenceSchema(ID,
+                                    SourceReferenceSchema.Kind.ENTITY, true)))),
             offering(SITELINK, "Wikipedia article", BindingScope.SOURCE_CORRESPONDENCE,
                     new SourceValueSchema(SourceValueKind.URL, false, ""),
                     List.of(new ParameterDescriptor(
@@ -126,5 +142,124 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
         EntityOffering {
             parameters = List.copyOf(parameters == null ? List.of() : parameters);
         }
+    }
+
+    private record StatementMembershipOffering(
+            BindingScope scope, SourceValueSchema outputSchema,
+            List<ParameterDescriptor> parameters)
+            implements SourceAcquisitionOperation<List<EntityRef>> {
+
+        StatementMembershipOffering {
+            parameters = List.copyOf(parameters);
+        }
+
+        @Override public String id() { return STATEMENT_MEMBERSHIP; }
+        @Override public String displayName() { return "Members by statement"; }
+
+        @Override public Query<List<EntityRef>> acquire(SourceAcquisitionRequest request) {
+            SourceAcquisitionRequest safe = request == null
+                    ? new SourceAcquisitionRequest(List.of(), java.util.Map.of()) : request;
+            String property = safe.parameter("property").trim().toUpperCase();
+            List<String> values = qids(safe.parameter("values"));
+            boolean subclasses = Boolean.parseBoolean(safe.parameter("includeSubclasses"));
+            if (!WikidataIds.isPid(property)) {
+                throw new IllegalArgumentException("Invalid Wikidata property: " + property);
+            }
+            if (values.isEmpty()) {
+                throw new IllegalArgumentException("At least one Wikidata value QID is required");
+            }
+            if (subclasses && !"P31".equals(property)) {
+                throw new IllegalArgumentException(
+                        "Subclass expansion is only valid for P31 membership");
+            }
+            String sparql = membershipSparql(property, values, subclasses);
+            return new Query<>() {
+                @Override public String purpose() { return "Acquire Wikidata class members"; }
+                @Override public String skeleton() { return "?value wdt:property target"; }
+                @Override public String queryType() { return "SPARQL"; }
+                @Override public java.util.Map<String, String> parameters() {
+                    return java.util.Map.of("property", property,
+                            "values", String.join(",", values),
+                            "includeSubclasses", Boolean.toString(subclasses));
+                }
+                @Override public List<EntityRef> execute(QueryContext context) throws Exception {
+                    java.util.LinkedHashSet<EntityRef> result = new java.util.LinkedHashSet<>();
+                    for (WikidataBinding row : WikidataAccess.sparql(
+                            context, Datasource.WIKIDATA).query(sparql)) {
+                        String qid = row.qid("value");
+                        if (WikidataIds.isQid(qid)) result.add(EntityRef.wikidata(qid));
+                    }
+                    return List.copyOf(result);
+                }
+                @Override public int rowCount(List<EntityRef> result) {
+                    return result == null ? 0 : result.size();
+                }
+                @Override public String summary(List<EntityRef> result) {
+                    return rowCount(result) + " Wikidata member(s)";
+                }
+            };
+        }
+    }
+
+    private record SeedListOffering(
+            BindingScope scope, SourceValueSchema outputSchema,
+            List<ParameterDescriptor> parameters)
+            implements SourceAcquisitionOperation<List<EntityRef>> {
+
+        SeedListOffering { parameters = List.copyOf(parameters); }
+        @Override public String id() { return SEED_LIST; }
+        @Override public String displayName() { return "Members by explicit list"; }
+
+        @Override public Query<List<EntityRef>> acquire(SourceAcquisitionRequest request) {
+            SourceAcquisitionRequest safe = request == null
+                    ? new SourceAcquisitionRequest(List.of(), java.util.Map.of()) : request;
+            java.util.LinkedHashSet<String> ids = new java.util.LinkedHashSet<>(
+                    qids(safe.parameter("ids")));
+            safe.subjects().stream()
+                    .filter(ref -> ID.equalsIgnoreCase(ref.namespace()))
+                    .map(EntityRef::id).filter(WikidataIds::isQid).forEach(ids::add);
+            if (ids.isEmpty()) {
+                throw new IllegalArgumentException("At least one Wikidata QID is required");
+            }
+            List<EntityRef> result = ids.stream().map(EntityRef::wikidata).toList();
+            return new Query<>() {
+                @Override public String purpose() { return "Use explicit Wikidata members"; }
+                @Override public String skeleton() { return "configured QID list"; }
+                @Override public java.util.Map<String, String> parameters() {
+                    return java.util.Map.of("ids", String.join(",", ids));
+                }
+                @Override public List<EntityRef> execute(QueryContext context) { return result; }
+                @Override public int rowCount(List<EntityRef> value) {
+                    return value == null ? 0 : value.size();
+                }
+            };
+        }
+    }
+
+    private static List<String> qids(String text) {
+        if (text == null || text.isBlank()) return List.of();
+        java.util.LinkedHashSet<String> result = new java.util.LinkedHashSet<>();
+        for (String token : text.split("[,\\s|]+")) {
+            String qid = token.trim().toUpperCase();
+            if (qid.isBlank()) continue;
+            if (!WikidataIds.isQid(qid)) {
+                throw new IllegalArgumentException("Invalid Wikidata entity QID: " + token);
+            }
+            result.add(qid);
+        }
+        return List.copyOf(result);
+    }
+
+    private static String membershipSparql(
+            String property, List<String> values, boolean subclasses) {
+        if (!subclasses) {
+            RuleNode node = new RuleNode("Datasource membership", "value");
+            node.sourceQid(values.getFirst());
+            values.stream().skip(1).forEach(node::addAdditionalSourceQid);
+            node.propertyPid(property);
+            node.direction(RuleDirection.ITEM_TO_ROOT);
+            return RuleNodeQueryBuilder.membershipBackboneQueryNoLabel(node);
+        }
+        return RuleNodeQueryBuilder.subclassMembershipBackboneQuery(property, values);
     }
 }

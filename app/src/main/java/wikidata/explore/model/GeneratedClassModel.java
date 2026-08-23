@@ -1,6 +1,7 @@
 package wikidata.explore.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import datasource.api.SourceOfferingBinding;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,6 +51,12 @@ public class GeneratedClassModel {
 
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
     private final List<String> seedQids = new ArrayList<>();
+
+    /** Persisted provider/operation view of this class's population configuration.
+     *  During migration Wikidata mappings remain the editable truth; see
+     *  {@link #populationSource()} and {@link PopulationSourceBindings}. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private SourceOfferingBinding populationSource;
 
     private CanonicalSpec canonical = new CanonicalSpec();
 
@@ -113,6 +120,7 @@ public class GeneratedClassModel {
     /** Clears query/seed/reification state that would independently populate a class. */
     public void clearIndependentPopulation() {
         statementSource(null);
+        populationSource = null;
         seedQids.clear();
         instanceMapping.sourceQid("");
         instanceMapping.sourceLabel("");
@@ -200,6 +208,26 @@ public class GeneratedClassModel {
 
     public List<String> seedQids() {
         return seedQids;
+    }
+
+    /** The datasource offering which produces this class's population. */
+    public SourceOfferingBinding populationSource() {
+        return PopulationSourceBindings.effective(this);
+    }
+
+    /** Bind this class to an executable population offering. The migration adapter
+     *  writes the established mapping fields too, so the current compiler executes
+     *  exactly what the catalogue binding describes. */
+    public void populationSource(SourceOfferingBinding value) {
+        PopulationSourceBindings.assign(this, value);
+    }
+
+    SourceOfferingBinding declaredPopulationSource() {
+        return populationSource;
+    }
+
+    void declaredPopulationSource(SourceOfferingBinding value) {
+        populationSource = value;
     }
 
     public List<GeneratedFieldModel> fields() {
@@ -301,6 +329,7 @@ public class GeneratedClassModel {
                         : statementSource.copy();
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.seedQids.addAll(seedQids);
+        copy.populationSource = populationSource;
         copy.canonical = canonical().copy();   // never null — see canonical()
 
         for (GeneratedFieldModel field : fields) {

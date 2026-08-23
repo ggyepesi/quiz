@@ -69,7 +69,6 @@ class DatasourceRegistryTest {
                         != datasource.Datasources.standard(),
                 "each caller is composed for, not served from a global");
         assertEquals(2, datasource.Datasources.standard().providers().size(),
-                "Wikipedia contributes evidence about entities; Wikidata is what an "
-                        + "entity is here");
+                "the application composes both shipped providers");
     }
 }

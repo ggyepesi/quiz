@@ -58,6 +58,8 @@ public final class GeneratedProjectModelStore {
                             + validation.format());
         }
 
+        PopulationSourceBindings.synchronize(model);
+
         File parent = file.getParentFile();
         if (parent != null) {
             parent.mkdirs();
@@ -84,6 +86,8 @@ public final class GeneratedProjectModelStore {
                             + validation.format());
         }
 
+        PopulationSourceBindings.synchronize(model);
+
         return mapper.writeValueAsString(model);
     }
 
@@ -92,6 +96,7 @@ public final class GeneratedProjectModelStore {
 
         GeneratedProjectModel model = mapper.readValue(file, GeneratedProjectModel.class);
         OwnedClassSemantics.migrateLegacy(model);
+        PopulationSourceBindings.synchronize(model);
         return model;
     }
 }

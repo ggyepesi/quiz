@@ -7,6 +7,13 @@ import datasource.api.BindingScope;
 import datasource.api.ParameterDescriptor;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
+import datasource.api.SourceReferenceSchema;
+import datasource.api.acquisition.SourceAcquisitionOperation;
+import datasource.api.acquisition.SourceAcquisitionRequest;
+import datasource.EntityRef;
+import datasource.evidence.SourceDocument;
+import work.Query;
+import work.QueryContext;
 
 import java.util.List;
 
@@ -51,18 +58,88 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
      * not a field value, and {@link SourceValueKind#DOCUMENT} says so.
      */
     private record DocumentEvidence(String id, String displayName, String help)
-            implements DatasourceOperation {
+            implements SourceAcquisitionOperation<List<SourceDocument>> {
 
         @Override public BindingScope scope() { return BindingScope.DOCUMENT_EVIDENCE; }
 
         @Override public List<ParameterDescriptor> parameters() {
             return List.of(new ParameterDescriptor("wiki", "Wiki",
-                    ParameterDescriptor.Kind.TEXT, false, "enwiki", List.of(),
-                    "Which Wikipedia the document is read from."));
+                            ParameterDescriptor.Kind.TEXT, false, "enwiki", List.of(),
+                            "Which Wikipedia the document is read from."));
+        }
+
+        @Override public List<SourceReferenceSchema> inputReferences() {
+            return List.of(new SourceReferenceSchema(
+                    ID, SourceReferenceSchema.Kind.RECORD, true));
         }
 
         @Override public SourceValueSchema outputSchema() {
             return new SourceValueSchema(SourceValueKind.DOCUMENT, false, "");
+        }
+
+        @Override public Query<List<SourceDocument>> acquire(
+                SourceAcquisitionRequest request) {
+            SourceAcquisitionRequest safe = request == null
+                    ? new SourceAcquisitionRequest(List.of(), java.util.Map.of()) : request;
+            String wiki = safe.parameter("wiki").trim();
+            if (wiki.isBlank()) wiki = "enwiki";
+            if (!"enwiki".equalsIgnoreCase(wiki)) {
+                throw new IllegalArgumentException(
+                        "Wikipedia acquisition currently supports enwiki, not " + wiki);
+            }
+            List<String> titles = safe.subjects().stream()
+                    .filter(ref -> ID.equalsIgnoreCase(ref.namespace()))
+                    .map(EntityRef::id).map(String::trim).filter(title -> !title.isBlank())
+                    .distinct().toList();
+            if (titles.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "At least one Wikipedia page reference is required");
+            }
+            String operation = id;
+            String selectedWiki = wiki;
+            return new Query<>() {
+                @Override public String purpose() {
+                    return ARTICLE.equals(operation)
+                            ? "Acquire Wikipedia articles" : "Acquire Wikipedia infoboxes";
+                }
+                @Override public String skeleton() {
+                    return ARTICLE.equals(operation)
+                            ? "page -> versioned article document"
+                            : "page -> versioned infobox document";
+                }
+                @Override public String queryType() { return "Wikipedia API"; }
+                @Override public java.util.Map<String, String> parameters() {
+                    return java.util.Map.of("wiki", selectedWiki,
+                            "pages", Integer.toString(titles.size()));
+                }
+                @Override public List<SourceDocument> execute(QueryContext context)
+                        throws Exception {
+                    java.util.ArrayList<SourceDocument> documents = new java.util.ArrayList<>();
+                    wikipedia.WikipediaArticleClient articleClient = ARTICLE.equals(operation)
+                            ? new wikipedia.WikipediaArticleClient() : null;
+                    wikipedia.WikipediaInfoboxClient infoboxClient = ARTICLE.equals(operation)
+                            ? null : new wikipedia.WikipediaInfoboxClient();
+                    for (String title : titles) {
+                        context.cancellation().throwIfCancelled();
+                        if (ARTICLE.equals(operation)) {
+                            wikipedia.WikipediaArticleClient.Article article =
+                                    articleClient.byTitle(title).execute(context);
+                            if (article != null) documents.add(article.document());
+                        } else {
+                            datasource.evidence.InfoboxParameters infobox =
+                                    infoboxClient.byTitle(title).execute(context);
+                            if (infobox != null) documents.add(infobox.document());
+                        }
+                    }
+                    return List.copyOf(documents);
+                }
+                @Override public int rowCount(List<SourceDocument> result) {
+                    return result == null ? 0 : result.size();
+                }
+                @Override public String summary(List<SourceDocument> result) {
+                    return rowCount(result) + " versioned Wikipedia document(s)";
+                }
+            };
         }
     }
 }

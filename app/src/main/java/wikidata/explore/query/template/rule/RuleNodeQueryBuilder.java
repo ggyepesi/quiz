@@ -51,6 +51,38 @@ public final class RuleNodeQueryBuilder {
     }
 
     /**
+     * Membership whose configured P31 values are roots of a subclass closure.
+     *
+     * <p>This cannot be expressed by an ordinary {@link RuleNode}: its source QIDs
+     * are explicit alternatives in the membership relation, whereas this query first
+     * expands each root through {@code P279*} and then applies P31. Keep that one
+     * exceptional graph shape here, beside the other membership queries, so PID/QID
+     * validation, prefixes and query-shape rules do not drift into datasource callers.
+     * It deliberately remains label-free for the same reason as the flat backbone.
+     */
+    public static String subclassMembershipBackboneQuery(
+            String propertyPid, List<String> rootQids) {
+        String pid = RuleNode.cleanPid(propertyPid);
+        if (!WikidataIds.isPid(pid)) {
+            throw new IllegalArgumentException("Invalid membership PID: " + propertyPid);
+        }
+        List<String> roots = rootQids == null ? List.of() : rootQids.stream()
+                .map(RuleNode::cleanQid).filter(WikidataIds::isQid).distinct().toList();
+        if (roots.isEmpty()) {
+            throw new IllegalArgumentException("At least one subclass root QID is required");
+        }
+        WikidataQueryBuilder q = new WikidataQueryBuilder();
+        q.distinct(true).select("value");
+        q.rawWhere("hint:Query hint:optimizer \"None\" .");
+        q.valuesQids("root", roots);
+        // P279* is intentionally raw: WikidataQueryBuilder owns triple assembly,
+        // but does not otherwise model transitive property paths.
+        q.rawWhere("?target wdt:P279* ?root .");
+        q.rawWhere("?value wdt:" + pid + " ?target .");
+        return q.build();
+    }
+
+    /**
      * The flat membership backbone: {@code SELECT ?value [?root]} with a VALUES-first
      * join order and no label / no wrapper. The {@code hint:Query hint:optimizer
      * "None"} is essential — the membership predicate (e.g. P1411 "nominated for") is

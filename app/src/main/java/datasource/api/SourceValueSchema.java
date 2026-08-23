@@ -14,4 +14,9 @@ public record SourceValueSchema(
     public static SourceValueSchema collection(SourceValueKind kind) {
         return new SourceValueSchema(kind, true, "");
     }
+
+    public static SourceValueSchema collection(
+            SourceValueKind kind, String referenceNamespace) {
+        return new SourceValueSchema(kind, true, referenceNamespace);
+    }
 }

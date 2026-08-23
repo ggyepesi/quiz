@@ -17,10 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The second provider, and the one that tests whether the abstraction is a catalogue or
  * only a plugin list.
  *
- * <p>Wikipedia contributes evidence ABOUT entities. Wikidata is what an entity IS here:
- * it supplies the identifier a class is keyed by and the label its instances display. If
- * those cannot be expressed as offerings with a binding scope, then "which source gives
- * this class its identity" has nowhere to live and a class cannot declare its origin.
+ * <p>Wikidata may be chosen as a class's identity authority: it supplies the identifier
+ * that class is keyed by and the label its instances display. The provider contract does
+ * not make that choice globally; it only makes the offering available to a class.
  */
 class WikidataOfferingsTest {
 

@@ -73,6 +73,12 @@ Format per rule: **Trigger** (when it applies) · **Rule** (what to do) ·
   misses Alpha Antliae (= *variable star*). `P279*` is **over-broad** (Q8928 → 284,
   incl. Chinese/former/gamma-ray) AND **times out** over big classes (stars).
 - **Hook:** `additionalSourceQids` (root), `EdgeMembershipMode.NONE` (edge).
+- **Explicit exception:** the datasource catalogue may offer an opt-in subclass
+  closure. `RuleNode` cannot express it because its source QIDs are explicit
+  alternatives, not roots to expand. That query therefore has its own
+  `RuleNodeQueryBuilder.subclassMembershipBackboneQuery` entry point; callers do
+  not assemble the `P279*` graph path or IRIs themselves. It remains label-free
+  and should not replace the preferred explicit multi-QID model above.
 
 ## R8 — Per-parent vs one batched query
 - **Trigger:** loading a child edge across many parents.
