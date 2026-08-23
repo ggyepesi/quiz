@@ -19,25 +19,10 @@ import java.util.Map;
  * excludes a type. What counts as a collision is the whole content of this class, and it was
  * private to a Swing frame — so the one rule that keeps the report usable had never been run.
  *
- * <p>Two rules keep it usable, and both exclude things that cannot BE an answer.
- *
- * <p>Only REAL entities count. A reified statement atom is keyed {@code Q123-UUID} or
- * {@code Q123__Q456} and is named on purpose by a field it carries — a Nomination shows
- * its nominee — so a person with forty nominations would otherwise be reported as a
- * forty-way collision with themselves, every run, drowning the real ones.
- *
- * <p>And only MEMBERS are served. Membership is the type stamp, so an entity carrying a
- * QID and no stamp is a referent: reachable through a field, never offered as an answer.
- * The Oscars pool holds thousands of them, because {@code Person.structuredName} pulls in
- * the P735/P734 name entities behind it — and Wikidata keeps a separate item per name per
- * language, so "Lee" the family name and "Lee" the given name are different QIDs sharing
- * a label and collide by construction, for ever. They were 297 of 556 reported collisions
- * on the Oscars domain: permanent noise nobody can act on, in a warning whose whole value
- * is that it is worth reading.
- *
- * <p>Referents are still counted, separately. One sharing a name with a served entity can
- * still be confusing where the referent is rendered — so the question is which of the two
- * numbers a reader is looking at, not whether to hide one.
+ * <p>That rule: only REAL entities count. A reified statement atom is keyed
+ * {@code Q123-UUID} or {@code Q123__Q456} and is named on purpose by a field it carries — a
+ * Nomination shows its nominee — so a person with forty nominations would otherwise be
+ * reported as a forty-way collision with themselves, every run, drowning the real ones.
  */
 public final class NameCollisions {
 
@@ -55,22 +40,8 @@ public final class NameCollisions {
 
     private NameCollisions() { }
 
-    /** Collisions among the entities a run SERVES — the ones that can be an answer, and
-     *  the number a reader should act on. */
-    public static List<Collision> detect(Collection<WikidataDynamicObject> objects) {
-        return detect(objects, true);
-    }
-
-    /** Collisions among the referents a run merely REFERENCES: never offered as an
-     *  answer, but still rendered wherever a field shows one. */
-    public static List<Collision> detectReferenced(
-            Collection<WikidataDynamicObject> objects) {
-        return detect(objects, false);
-    }
-
     /** Biggest collision first, so a report truncated to N rows keeps the worst of them. */
-    private static List<Collision> detect(
-            Collection<WikidataDynamicObject> objects, boolean served) {
+    public static List<Collision> detect(Collection<WikidataDynamicObject> objects) {
         Map<String, LinkedHashSet<String>> byName = new LinkedHashMap<>();
         for (WikidataDynamicObject object : objects == null ? List.<WikidataDynamicObject>of()
                 : objects) {
@@ -80,9 +51,6 @@ public final class NameCollisions {
             if (name == null || name.isBlank() || qid == null || qid.isBlank()) continue;
             // A pure Q-id and nothing else: see the class note on reified statement atoms.
             if (!WikidataIds.isQid(qid)) continue;
-            // Membership IS the type stamp — never typeName(), which falls back to the
-            // carrier's Java class name and would call every referent a member.
-            if (object.hasTypeStamp() != served) continue;
             byName.computeIfAbsent(name, ignored -> new LinkedHashSet<>()).add(qid);
         }
         List<Collision> collisions = new ArrayList<>();

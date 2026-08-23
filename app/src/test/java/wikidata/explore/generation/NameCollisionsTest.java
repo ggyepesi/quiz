@@ -55,38 +55,6 @@ class NameCollisionsTest {
     }
 
     /** A report truncated to N rows has to keep the worst of them. */
-    /** Reachable through a field, never offered as an answer. */
-    private static WikidataDynamicObject referent(String qid, String name) {
-        return new WikidataDynamicObject(qid, name);
-    }
-
-    @Test void aReferentSharingANameIsNotAnAmbiguousAnswer() {
-        // Person.structuredName pulls in the P735/P734 name entities, and Wikidata keeps
-        // one item per name per language — so "Lee" the family name and "Lee" the given
-        // name are different QIDs sharing a label. They collide by construction and
-        // always will; on the Oscars domain they were 297 of 556 reported collisions.
-        List<WikidataDynamicObject> pool = List.of(
-                referent("Q2061957", "Lee"), referent("Q12794688", "Lee"),
-                referent("Q11983535", "Lee"));
-
-        assertTrue(NameCollisions.detect(pool).isEmpty(),
-                "a warning whose whole value is being worth reading cannot be mostly "
-                        + "names nobody can act on");
-        assertEquals(1, NameCollisions.detectReferenced(pool).size(),
-                "but they are still counted, because a referent is rendered wherever a "
-                        + "field shows one");
-    }
-
-    @Test void aServedEntityAndAReferentSharingANameSplitBetweenTheTwoCounts() {
-        List<WikidataDynamicObject> pool = List.of(
-                object("Q1", "Lee"), referent("Q2", "Lee"));
-
-        assertTrue(NameCollisions.detect(pool).isEmpty(),
-                "one served entity is not ambiguous with something that is never offered");
-        assertTrue(NameCollisions.detectReferenced(pool).isEmpty(),
-                "and one referent is not ambiguous with something never in that list");
-    }
-
     @Test void theBiggestCollisionComesFirst() {
         List<WikidataDynamicObject> pool = new ArrayList<>(List.of(
                 object("Q1", "Pair"), object("Q2", "Pair")));
@@ -120,11 +88,7 @@ class NameCollisionsTest {
         assertEquals(0, NameCollisions.entityCount(null));
     }
 
-    /** A SERVED entity: membership is the type stamp, and only members can be an
-     *  answer. An unstamped object is a referent — see {@link #referent}. */
     private static WikidataDynamicObject object(String qid, String name) {
-        WikidataDynamicObject o = new WikidataDynamicObject(qid, name);
-        o.type("Thing");
-        return o;
+        return new WikidataDynamicObject(qid, name);
     }
 }

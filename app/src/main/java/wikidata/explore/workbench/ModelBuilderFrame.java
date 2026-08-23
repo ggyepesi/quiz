@@ -1271,20 +1271,9 @@ public class ModelBuilderFrame extends JFrame {
                     "… and " + (collisions.size() - cap) + " more name(s)",
                     "open \"Name collisions\" to see all", ""));
         }
-        // Referents are counted apart from members. An entity with no type stamp is
-        // never offered as an answer, and the Oscars pool holds thousands of them —
-        // the P735/P734 name entities behind Person.structuredName, where Wikidata
-        // keeps one item per name per language, so "Lee" the family name and "Lee" the
-        // given name collide by construction and always will. Reported together they
-        // were most of the warning, and the part of it nobody could act on.
-        int referenced = wikidata.explore.generation.NameCollisions
-                .detectReferenced(run.dynamicObjects()).size();
         logWindow.structuredEntry(
-                "⚠ " + collisions.size() + " name collision(s) among served entities — "
-                        + instances + " instances share a name"
-                        + (referenced == 0 ? ""
-                                : " (plus " + referenced + " among referenced entities, "
-                                        + "which are never answers)"),
+                "⚠ " + collisions.size() + " name collision(s) — "
+                        + instances + " instances share a name",
                 "Ambiguous quiz answers — disambiguate or Exclude types; open "
                         + "\"Name collisions (" + collisions.size() + ")\" to inspect.",
                 rows);
