@@ -1,7 +1,7 @@
 package wikidata.explore.generation;
 
-import wikidata.WikidataIds;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,60 +10,131 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * Distinct entities that a generated run gave the same display name.
+ * Instances of a declared class that share a display label.
  *
- * <p>They matter because a quiz answer is a name: two entities called "Mercury" make a
- * question with two right answers, so a run reports them and the reader disambiguates or
- * excludes a type. What counts as a collision is the whole content of this class, and it was
- * private to a Swing frame — so the one rule that keeps the report usable had never been run.
+ * <p>Different meaning different identifiers — a QID, or the assembled id a statement
+ * class carries. That is the whole of it: information about the domain, with no further
+ * automatic use. It is not a warning and it recommends nothing, because what to do about
+ * two things called the same is a modelling decision with several right answers.
  *
- * <p>That rule: only REAL entities count. A reified statement atom is keyed
- * {@code Q123-UUID} or {@code Q123__Q456} and is named on purpose by a field it carries — a
- * Nomination shows its nominee — so a person with forty nominations would otherwise be
- * reported as a forty-way collision with themselves, every run, drowning the real ones.
+ * <p>It reports INSTANCES, so it asks what the configuration declares. A value reached
+ * through a field is not an instance however it arrived: the given name behind
+ * {@code Name.givenName} is a Wikidata item with a label, but in this domain it is the
+ * value of a field, and two equal values are no more a collision than two languages with
+ * five million speakers. Whether such values should become a class, a vocabulary, or stay
+ * as plain fields is a decision for the transform workbench; reporting them here would
+ * quietly argue for the first.
+ *
+ * <p>Results are partitioned BY CLASS, because the counts are of different orders and one
+ * list buries the others. On the Oscars domain a Nomination's display label names its
+ * nominee and nothing else, so 2499 groups of Nominations are mutually indistinguishable
+ * — the largest of them 54 records reading "Jack Oakie". Collapsed into one list that
+ * drowns the 124 works sharing a title; kept as its own row it is the more interesting
+ * of the two, and it is really a fact about that class's display-name rule.
  */
 public final class NameCollisions {
 
-    /** One name and the distinct entities holding it, in the order the run produced them. */
-    public record Collision(String name, List<String> qids) {
+    /** One label and the distinct instances carrying it, in the order the run produced
+     *  them. Identified by identifier — a QID, or a statement class's assembled id. */
+    public record Collision(String name, List<String> ids) {
         public Collision {
             name = name == null ? "" : name;
-            qids = List.copyOf(qids);
+            ids = List.copyOf(ids);
         }
 
         public int size() {
-            return qids.size();
+            return ids.size();
+        }
+    }
+
+    /** One class's collisions, biggest first. */
+    public record ClassCollisions(String className, List<Collision> collisions) {
+        public ClassCollisions {
+            className = className == null ? "" : className;
+            collisions = List.copyOf(collisions);
+        }
+
+        /** How many labels this class has that more than one of its instances carries. */
+        public int size() {
+            return collisions.size();
+        }
+
+        /** The most-shared label's instance count — how bad it gets in this class. */
+        public int worst() {
+            return collisions.stream().mapToInt(Collision::size).max().orElse(0);
         }
     }
 
     private NameCollisions() { }
 
-    /** Biggest collision first, so a report truncated to N rows keeps the worst of them. */
-    public static List<Collision> detect(Collection<WikidataDynamicObject> objects) {
-        Map<String, LinkedHashSet<String>> byName = new LinkedHashMap<>();
+    /** Per class, biggest collision first; classes with the most collisions first. */
+    public static List<ClassCollisions> detect(
+            Collection<WikidataDynamicObject> objects, GeneratedProjectModel model) {
+
+        Set<String> declared = new LinkedHashSet<>();
+        if (model != null) {
+            model.classes().forEach(clazz -> declared.add(clazz.className()));
+            if (model.rootClass() != null) declared.add(model.rootClass().className());
+        }
+        return detect(objects, declared);
+    }
+
+    /** As above, told directly which class names the configuration declares. */
+    public static List<ClassCollisions> detect(
+            Collection<WikidataDynamicObject> objects, Set<String> declaredClasses) {
+
+        Set<String> declared = declaredClasses == null ? Set.of() : declaredClasses;
+        Map<String, Map<String, LinkedHashSet<String>>> byClass = new LinkedHashMap<>();
+
         for (WikidataDynamicObject object : objects == null ? List.<WikidataDynamicObject>of()
                 : objects) {
             if (object == null) continue;
+            // Membership IS the type stamp — never typeName(), which falls back to the
+            // carrier's Java class name and would report every value as an instance.
+            if (!object.hasTypeStamp()) continue;
+            String className = object.typeName();
+            if (!declared.contains(className)) continue;
             String name = object.getDisplayName();
-            String qid = object.qid();
-            if (name == null || name.isBlank() || qid == null || qid.isBlank()) continue;
-            // A pure Q-id and nothing else: see the class note on reified statement atoms.
-            if (!WikidataIds.isQid(qid)) continue;
-            byName.computeIfAbsent(name, ignored -> new LinkedHashSet<>()).add(qid);
+            String id = object.getIdentifier();
+            if (name == null || name.isBlank() || id == null || id.isBlank()) continue;
+            byClass.computeIfAbsent(className, ignored -> new LinkedHashMap<>())
+                    .computeIfAbsent(name, ignored -> new LinkedHashSet<>())
+                    .add(id);
         }
-        List<Collision> collisions = new ArrayList<>();
-        byName.forEach((name, qids) -> {
-            if (qids.size() > 1) collisions.add(new Collision(name, List.copyOf(qids)));
+
+        List<ClassCollisions> out = new ArrayList<>();
+        byClass.forEach((className, byName) -> {
+            List<Collision> collisions = new ArrayList<>();
+            byName.forEach((name, ids) -> {
+                if (ids.size() > 1) collisions.add(new Collision(name, List.copyOf(ids)));
+            });
+            collisions.sort(Comparator.comparingInt(Collision::size).reversed());
+            if (!collisions.isEmpty()) {
+                out.add(new ClassCollisions(className, List.copyOf(collisions)));
+            }
         });
-        collisions.sort(Comparator.comparingInt(Collision::size).reversed());
-        return List.copyOf(collisions);
+        out.sort(Comparator.comparingInt(ClassCollisions::size).reversed());
+        return List.copyOf(out);
     }
 
-    /** How many entities are involved altogether — the count a reader is told about. */
-    public static int entityCount(List<Collision> collisions) {
-        return collisions == null ? 0
-                : collisions.stream().mapToInt(Collision::size).sum();
+    /** Every collision across every class, biggest first — for a caller that wants one
+     *  list rather than the partition. */
+    public static List<Collision> flatten(List<ClassCollisions> byClass) {
+        List<Collision> all = new ArrayList<>();
+        for (ClassCollisions c : byClass == null ? List.<ClassCollisions>of() : byClass) {
+            all.addAll(c.collisions());
+        }
+        all.sort(Comparator.comparingInt(Collision::size).reversed());
+        return List.copyOf(all);
+    }
+
+    /** How many instances are involved altogether. */
+    public static int instanceCount(List<ClassCollisions> byClass) {
+        return byClass == null ? 0 : byClass.stream()
+                .flatMap(c -> c.collisions().stream())
+                .mapToInt(Collision::size).sum();
     }
 }

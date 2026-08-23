@@ -1242,39 +1242,54 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         // What counts as a collision is NameCollisions'; this frame reports it.
-        java.util.List<wikidata.explore.generation.NameCollisions.Collision> collisions =
-                wikidata.explore.generation.NameCollisions.detect(run.dynamicObjects());
-        if (collisions.isEmpty()) {
+        java.util.List<wikidata.explore.generation.NameCollisions.ClassCollisions> byClass =
+                wikidata.explore.generation.NameCollisions.detect(
+                        run.dynamicObjects(), run.modelSnapshot());
+        if (byClass.isEmpty()) {
             return;
         }
-        int instances = wikidata.explore.generation.NameCollisions.entityCount(collisions);
+        java.util.List<wikidata.explore.generation.NameCollisions.Collision> collisions =
+                wikidata.explore.generation.NameCollisions.flatten(byClass);
+        int instances = wikidata.explore.generation.NameCollisions.instanceCount(byClass);
 
         // Structured, collapsible entry — one row per colliding name (name ×count),
         // biggest first — instead of one blob listing every QID (which buried the
         // rest of the log). The QIDs themselves are inspectable, clickable, via the
         // "Name collisions" button; the row detail keeps them collapsed.
-        int cap = 100;
+        // One row per class, then that class's worst labels. Partitioned because the
+        // counts are of different orders: a class whose display-name rule does not
+        // distinguish its instances contributes thousands and buries every other class
+        // in a flat list, though it is the more interesting of the two findings.
         java.util.List<wikidata.explore.query.swing.WorkflowLogWindow.Row> rows =
                 new java.util.ArrayList<>();
-        int shown = 0;
-        for (var collision : collisions) {
-            if (shown++ >= cap) {
-                break;
+        int perClass = 8;
+        for (var clazz : byClass) {
+            rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
+                    clazz.className(),
+                    clazz.size() + " label(s) shared by more than one instance"
+                            + " — most shared by " + clazz.worst(), ""));
+            int shown = 0;
+            for (var collision : clazz.collisions()) {
+                if (shown++ >= perClass) {
+                    rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
+                            "    … and " + (clazz.size() - perClass) + " more in "
+                                    + clazz.className(),
+                            "open \"Name collisions\" to see all", ""));
+                    break;
+                }
+                rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
+                        "    " + collision.name(),
+                        collision.size() + " instances", ""));
             }
-            // Name + count only; no QID dump (that swamped the row). The QIDs are
-            // clickable via the "Name collisions" button.
-            rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
-                    collision.name(), collision.size() + " entities share this name", ""));
         }
-        if (collisions.size() > cap) {
-            rows.add(new wikidata.explore.query.swing.WorkflowLogWindow.Row(
-                    "… and " + (collisions.size() - cap) + " more name(s)",
-                    "open \"Name collisions\" to see all", ""));
-        }
+        // Information, not a warning: what to do about two instances sharing a label is
+        // a modelling decision with several right answers, and none of them is this
+        // window's to prefer.
         logWindow.structuredEntry(
-                "⚠ " + collisions.size() + " name collision(s) — "
-                        + instances + " instances share a name",
-                "Ambiguous quiz answers — disambiguate or Exclude types; open "
+                collisions.size() + " shared display label(s) across "
+                        + byClass.size() + " class(es) — " + instances
+                        + " instances involved",
+                "Instances of a declared class that display the same label; open "
                         + "\"Name collisions (" + collisions.size() + ")\" to inspect.",
                 rows);
 
@@ -1293,7 +1308,7 @@ public class ModelBuilderFrame extends JFrame {
         java.util.List<NameCollision> cards = new java.util.ArrayList<>();
         for (var collision : collisions) {
             java.util.List<objectview.Viewable> entities = new java.util.ArrayList<>();
-            for (String qid : collision.qids()) {
+            for (String qid : collision.ids()) {
                 objectview.Viewable used = byQid.get(qid);
                 entities.add(used != null ? used : new quiz.source.WikidataSource(qid));
             }
