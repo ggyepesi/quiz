@@ -6,9 +6,32 @@ import wikidata.explore.model.WikipediaCategoryRule;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Durable, provider-neutral field source configuration owned by Transform curation.
+/**
+ * Durable, provider-neutral field source configuration owned by Transform curation.
  * Provider-specific editors interpret {@link #parameters}; the sidecar does not need a
- * new schema every time another evidence source is plugged in. */
+ * new schema every time another evidence source is plugged in.
+ *
+ * <p><b>{@code provider} does not hold a datasource, and must not be renamed as though
+ * it did.</b> It takes one of two values, and they are different kinds of thing:
+ *
+ * <ul>
+ *   <li>{@link #WIKIPEDIA_CATEGORY} collapses a provider AND an operation into one
+ *       token — {@code wikipedia} × {@code category}.</li>
+ *   <li>{@link #ADDITIONAL_SOURCE} is not a source at all but a SLOT, saying where on
+ *       the field this recipe attaches. The datasource for such a recipe is a parameter,
+ *       under {@link #SOURCE_TYPE}.</li>
+ * </ul>
+ *
+ * <p>{@code datasource.api.SourceRecipe} is the same idea said properly — provider,
+ * operation, parameters — with the attachment site belonging to whatever binds it rather
+ * than to the recipe. This record should eventually become one, bound at field-value
+ * scope. Getting there means an adapter that separates those three meanings; renaming
+ * {@code provider} to {@code providerId} would only make a wrong field look right.
+ *
+ * <p>The one-slot rule below is likewise a property of the ATTACHMENT, not of the
+ * recipe: at most one such recipe per ⟨type, field⟩. Carried across as a magic value
+ * that happens to be unique, it invites the very bug it was written to record.
+ */
 public record FieldSourceRecipe(
         String type, String field, String provider, Map<String, String> parameters) {
 

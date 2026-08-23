@@ -1,6 +1,6 @@
 package wikidata.explore.model;
 
-import datasource.api.SourceOfferingBinding;
+import datasource.api.SourceRecipe;
 import datasource.wikidata.WikidataDatasourceProvider;
 import org.junit.jupiter.api.Test;
 
@@ -8,13 +8,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PopulationSourceBindingTest {
 
-    @Test void statementMembershipIsExposedAsAnOfferingBinding() {
+    @Test void statementMembershipIsExposedAsASourceRecipe() {
         GeneratedClassModel clazz = new GeneratedClassModel("Film");
         clazz.instanceMapping().propertyPid("P31");
         clazz.instanceMapping().sourceQid("Q11424");
         clazz.instanceMapping().additionalTypeQids().add("Q202866");
 
-        SourceOfferingBinding binding = clazz.populationSource();
+        SourceRecipe binding = clazz.populationSource();
 
         assertEquals(WikidataDatasourceProvider.ID, binding.providerId());
         assertEquals(WikidataDatasourceProvider.STATEMENT_MEMBERSHIP,
@@ -24,12 +24,12 @@ class PopulationSourceBindingTest {
         assertEquals("false", binding.parameter("includeSubclasses"));
     }
 
-    @Test void seedPopulationIsExposedAsAnOfferingBinding() {
+    @Test void seedPopulationIsExposedAsASourceRecipe() {
         GeneratedClassModel clazz = new GeneratedClassModel("CuratedSet");
         clazz.seedQids().add("Q2");
         clazz.seedQids().add("Q1");
 
-        SourceOfferingBinding binding = clazz.populationSource();
+        SourceRecipe binding = clazz.populationSource();
 
         assertEquals(WikidataDatasourceProvider.SEED_LIST, binding.operationId());
         assertEquals("Q2,Q1", binding.parameter("ids"));
@@ -38,7 +38,7 @@ class PopulationSourceBindingTest {
     @Test void assigningAnOfferingUpdatesTheConfigurationGenerationAlreadyUses() {
         GeneratedClassModel clazz = new GeneratedClassModel("Film");
 
-        clazz.populationSource(new SourceOfferingBinding("wikidata",
+        clazz.populationSource(new SourceRecipe("wikidata",
                 "statement-membership", java.util.Map.of(
                         "property", "P31", "values", "Q11424,Q202866",
                         "includeSubclasses", "false")));

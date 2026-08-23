@@ -1,7 +1,7 @@
 package wikidata.explore.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import datasource.api.SourceOfferingBinding;
+import datasource.api.SourceRecipe;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -56,7 +56,7 @@ public class GeneratedClassModel {
      *  During migration Wikidata mappings remain the editable truth; see
      *  {@link #populationSource()} and {@link PopulationSourceBindings}. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private SourceOfferingBinding populationSource;
+    private SourceRecipe populationSource;
 
     private CanonicalSpec canonical = new CanonicalSpec();
 
@@ -208,22 +208,22 @@ public class GeneratedClassModel {
     }
 
     /** The datasource offering which produces this class's population. */
-    public SourceOfferingBinding populationSource() {
+    public SourceRecipe populationSource() {
         return PopulationSourceBindings.effective(this);
     }
 
-    /** Bind this class to an executable population offering. The migration adapter
+    /** Bind this class to an executable population recipe. The migration adapter
      *  writes the established mapping fields too, so the current compiler executes
-     *  exactly what the catalogue binding describes. */
-    public void populationSource(SourceOfferingBinding value) {
+     *  exactly what the catalogue recipe describes. */
+    public void populationSource(SourceRecipe value) {
         PopulationSourceBindings.assign(this, value);
     }
 
-    SourceOfferingBinding declaredPopulationSource() {
+    SourceRecipe declaredPopulationSource() {
         return populationSource;
     }
 
-    void declaredPopulationSource(SourceOfferingBinding value) {
+    void declaredPopulationSource(SourceRecipe value) {
         populationSource = value;
     }
 

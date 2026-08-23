@@ -1,6 +1,6 @@
 package wikidata.explore.model;
 
-import datasource.api.SourceOfferingBinding;
+import datasource.api.SourceRecipe;
 import datasource.wikidata.WikidataDatasourceProvider;
 import wikidata.WikidataIds;
 
@@ -22,12 +22,12 @@ final class PopulationSourceBindings {
 
     private PopulationSourceBindings() { }
 
-    static SourceOfferingBinding effective(GeneratedClassModel clazz) {
-        SourceOfferingBinding legacy = fromLegacy(clazz);
+    static SourceRecipe effective(GeneratedClassModel clazz) {
+        SourceRecipe legacy = fromLegacy(clazz);
         return legacy == null ? clazz.declaredPopulationSource() : legacy;
     }
 
-    static void assign(GeneratedClassModel clazz, SourceOfferingBinding binding) {
+    static void assign(GeneratedClassModel clazz, SourceRecipe binding) {
         if (clazz == null) return;
         if (binding == null) {
             clearMembership(clazz.instanceMapping());
@@ -84,7 +84,7 @@ final class PopulationSourceBindings {
         clazz.declaredPopulationSource(fromLegacy(clazz));
     }
 
-    static SourceOfferingBinding fromLegacy(GeneratedClassModel clazz) {
+    static SourceRecipe fromLegacy(GeneratedClassModel clazz) {
         if (clazz == null || clazz.ownedClass() || clazz.reifiesStatements()) return null;
         FieldSourceMapping mapping = clazz.instanceMapping();
         String pid = clean(mapping.propertyPid()).toUpperCase();
@@ -94,13 +94,13 @@ final class PopulationSourceBindings {
             parameters.put("property", pid);
             parameters.put("values", String.join(",", targets));
             parameters.put("includeSubclasses", "false");
-            return new SourceOfferingBinding(WikidataDatasourceProvider.ID,
+            return new SourceRecipe(WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.STATEMENT_MEMBERSHIP, parameters);
         }
         List<String> seeds = clazz.seedQids().stream().map(PopulationSourceBindings::clean)
                 .map(String::toUpperCase).filter(WikidataIds::isQid).distinct().toList();
         if (!seeds.isEmpty()) {
-            return new SourceOfferingBinding(WikidataDatasourceProvider.ID,
+            return new SourceRecipe(WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.SEED_LIST,
                     java.util.Map.of("ids", String.join(",", seeds)));
         }
@@ -111,8 +111,8 @@ final class PopulationSourceBindings {
         if (model == null) return;
         for (GeneratedClassModel clazz : model.classes()) {
             if (clazz == null) continue;
-            SourceOfferingBinding derived = fromLegacy(clazz);
-            SourceOfferingBinding declared = clazz.declaredPopulationSource();
+            SourceRecipe derived = fromLegacy(clazz);
+            SourceRecipe declared = clazz.declaredPopulationSource();
             if (derived != null) {
                 clazz.declaredPopulationSource(derived);
             } else if (declared != null
