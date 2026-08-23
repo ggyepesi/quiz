@@ -374,7 +374,8 @@ public class GenerationPipeline {
                 pool, runtime, instances, rs,
                 previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
                 GenerationRun.SelfReferenceAudit.notRun(),
-                GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()));
+                GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()),
+                GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()));
     }
 
     /**
@@ -475,7 +476,9 @@ public class GenerationPipeline {
                 // reifies, so the self-reference rule genuinely did not run.
                 GenerationRun.SelfReferenceAudit.notRun(),
                 GenerationRun.OwnedCompositionAudit.ran(
-                        convergence.ownedComponentsCreated()));
+                        convergence.ownedComponentsCreated()),
+                GenerationRun.KindClassificationAudit.ran(
+                        convergence.newlyClassifiedKinds()));
     }
 
     /**
@@ -608,7 +611,8 @@ public class GenerationPipeline {
                 snapshot, previous.depth(), plan, pool, runtime, instances, rs,
                 previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
                 GenerationRun.SelfReferenceAudit.ran(transformed.selfReferenceFindings()),
-                GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()));
+                GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()),
+                GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()));
     }
 
     /**

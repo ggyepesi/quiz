@@ -40,6 +40,7 @@ public final class SemanticConvergence {
     public record Result(
             int iterations, int loadedFields, int classifiedKinds, int ownedCreated,
             List<WikidataDynamicObject> ownedComponentsCreated,
+            List<WikidataDynamicObject> newlyClassifiedKinds,
             Map<String, LoadedDeclaration> completedDeclarations,
             List<LoadedDeclaration> unresolvedLoads,
             Set<String> unresolvedKindQids) { }
@@ -60,6 +61,7 @@ public final class SemanticConvergence {
         Set<String> unresolvedKinds = new LinkedHashSet<>();
         int loaded = 0, classified = 0, owned = 0;
         List<WikidataDynamicObject> ownedCreated = new ArrayList<>();
+        List<WikidataDynamicObject> kindsClassified = new ArrayList<>();
         int iteration;
         int productiveIterations = 0;
         ReferentFieldLoad.AcquisitionManifest acquisition =
@@ -108,6 +110,7 @@ public final class SemanticConvergence {
             ReferentKindClassifier.Result remote = ReferentKindClassifier.apply(
                     model, pool, api, sink, stored.withoutStoredEvidenceQids());
             classified += stored.classified() + remote.classified();
+            kindsClassified.addAll(stored.newlyClassified());
             Set<String> currentUnavailable = new LinkedHashSet<>(remote.unavailableQids());
             if (!unresolvedKinds.isEmpty() && quality != null) {
                 Set<String> repaired = new LinkedHashSet<>(unresolvedKinds);
@@ -154,7 +157,7 @@ public final class SemanticConvergence {
             productiveIterations = MAX_ITERATIONS;
         }
         return new Result(productiveIterations, loaded, classified, owned,
-                List.copyOf(ownedCreated), Map.copyOf(completed),
+                List.copyOf(ownedCreated), List.copyOf(kindsClassified), Map.copyOf(completed),
                 List.copyOf(failed.values()), Set.copyOf(unresolvedKinds));
     }
 

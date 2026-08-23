@@ -30,7 +30,8 @@ public record GenerationRun(
         Quality quality,
         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> fieldCoverage,
         SelfReferenceAudit selfReferenceAudit,
-        OwnedCompositionAudit ownedCompositionAudit) {
+        OwnedCompositionAudit ownedCompositionAudit,
+        KindClassificationAudit kindClassificationAudit) {
 
     public GenerationRun {
         loadedDeclarations = loadedDeclarations == null
@@ -41,6 +42,47 @@ public record GenerationRun(
                 ? SelfReferenceAudit.notRun() : selfReferenceAudit;
         ownedCompositionAudit = ownedCompositionAudit == null
                 ? OwnedCompositionAudit.notRun() : ownedCompositionAudit;
+        kindClassificationAudit = kindClassificationAudit == null
+                ? KindClassificationAudit.notRun() : kindClassificationAudit;
+    }
+
+    /**
+     * Whether entity kinds were classified, and WHICH entities were restamped.
+     *
+     * <p>A kind is settled from stored evidence, so a pool that has already been
+     * classified should yield none on the next pass. Every pass restamping the same
+     * thousands is a pass that cannot see its own previous work — which is exactly what
+     * a Remap reported, run after run, while the reason went unexamined because the
+     * number looked like the domain rather than like a fault.
+     */
+    public record KindClassificationAudit(
+            boolean executed, List<WikidataDynamicObject> newlyClassified) {
+        public KindClassificationAudit {
+            newlyClassified = newlyClassified == null
+                    ? List.of() : List.copyOf(newlyClassified);
+            if (!executed && !newlyClassified.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "A rule that did not run cannot have classified anything");
+            }
+        }
+
+        public static KindClassificationAudit ran(
+                List<WikidataDynamicObject> newlyClassified) {
+            return new KindClassificationAudit(true, newlyClassified);
+        }
+
+        public static KindClassificationAudit notRun() {
+            return new KindClassificationAudit(false, List.of());
+        }
+
+        public String description() {
+            if (!executed) {
+                return "Not run in this operation";
+            }
+            return newlyClassified.isEmpty()
+                    ? "Ran; every kind was already settled"
+                    : "Ran; " + newlyClassified.size() + " entity(ies) restamped";
+        }
     }
 
     /**
@@ -93,7 +135,8 @@ public record GenerationRun(
                                  selfReferenceFindings) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
                 loadedDeclarations, quality, fieldCoverage,
-                SelfReferenceAudit.ran(selfReferenceFindings), OwnedCompositionAudit.notRun());
+                SelfReferenceAudit.ran(selfReferenceFindings), OwnedCompositionAudit.notRun(),
+                KindClassificationAudit.notRun());
     }
 
     /** Compatibility: a run whose reify decisions were not retained. */
@@ -107,7 +150,8 @@ public record GenerationRun(
                                  fieldCoverage) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
                 loadedDeclarations, quality, fieldCoverage, SelfReferenceAudit.notRun(),
-                OwnedCompositionAudit.notRun());
+                OwnedCompositionAudit.notRun(),
+                KindClassificationAudit.notRun());
     }
 
     /** Compatibility constructor for callers that have quality but no finalization report. */
@@ -119,7 +163,8 @@ public record GenerationRun(
                          Quality quality) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
                 loadedDeclarations, quality, List.of(), SelfReferenceAudit.notRun(),
-                OwnedCompositionAudit.notRun());
+                OwnedCompositionAudit.notRun(),
+                KindClassificationAudit.notRun());
     }
 
     /** Compatibility constructor for local/remap paths that produced a complete run. */
@@ -130,7 +175,8 @@ public record GenerationRun(
                          List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations) {
         this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances,
                 remapState, loadedDeclarations, Quality.completeQuality(),
-                List.of(), SelfReferenceAudit.notRun(), OwnedCompositionAudit.notRun());
+                List.of(), SelfReferenceAudit.notRun(), OwnedCompositionAudit.notRun(),
+                KindClassificationAudit.notRun());
     }
 
     /** Whether the self-reference rule was evaluated, distinct from finding nothing. */

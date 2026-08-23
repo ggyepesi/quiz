@@ -201,17 +201,45 @@ public final class RuleEffects {
         return effects;
     }
 
+    /**
+     * Which entities the kind rules restamped.
+     *
+     * <p>A kind is settled from stored evidence, so a pool already classified should
+     * yield none on the next pass. A bucket appears only when something was restamped,
+     * because that is the event — and a run reporting the same thousands every time is
+     * not a busy domain, it is a pass that cannot see its own previous work.
+     */
+    public static List<Effect> fromKindClassification(
+            GenerationRun.KindClassificationAudit audit, Moment moment) {
+
+        if (audit == null || !audit.executed() || audit.newlyClassified().isEmpty()) {
+            return new ArrayList<>();
+        }
+        Moment when = moment == null ? Moment.RESULT : moment;
+        List<Viewable> restamped = new ArrayList<>(audit.newlyClassified());
+        List<Effect> effects = new ArrayList<>();
+        effects.add(new Effect(
+                "Entity kinds restamped",
+                restamped.size() + (when == Moment.PLAN ? " will be" : " were")
+                        + " given a kind from stored evidence — on a pool already "
+                        + "classified this is normally none",
+                Kind.CHANGED, restamped));
+        return effects;
+    }
+
     /** Every rule that can name what it accounts for, from what a run recorded. */
     public static List<Effect> fromRun(
             List<FieldExpectations.FieldCoverage> coverage,
             GenerationRun.SelfReferenceAudit audit,
-            GenerationRun.OwnedCompositionAudit composition) {
+            GenerationRun.OwnedCompositionAudit composition,
+            GenerationRun.KindClassificationAudit kinds) {
 
         List<Effect> effects = new ArrayList<>(fromCoverage(coverage, Moment.RESULT));
         if (audit != null && audit.executed()) {
             effects.addAll(fromSelfReference(audit.findings(), Moment.RESULT));
         }
         effects.addAll(fromOwnedComposition(composition, Moment.RESULT));
+        effects.addAll(fromKindClassification(kinds, Moment.RESULT));
         effects.sort((a, b) -> Integer.compare(b.size(), a.size()));
         return effects;
     }
@@ -236,17 +264,17 @@ public final class RuleEffects {
     /**
      * What to say when no rule reported anything — which is NOT "the run was clean".
      *
-     * <p>Field expectations, the self-reference rule and owned composition can name the
-     * instances they account for. Kind classification, value restrictions, inverts,
-     * projections and canonicalization cannot, and so report nothing here at all.
+     * <p>Field expectations, the self-reference rule, owned composition and kind
+     * classification can name the instances they account for. Value restrictions,
+     * inverts, projections and canonicalization cannot, and report nothing here at all.
      * The wording lives with the code that knows what it does and does not cover, so a
      * caller cannot phrase its own silence as a clean bill of health — which is exactly
      * what "every declared rule holds" did.
      */
     public static final String NOTHING_REPORTED =
-            "No field-expectation gaps, self-reference decisions or newly created owned "
-                    + "parts. Each rule's audit status is reported separately; other "
-                    + "rules do not report here yet.";
+            "No field-expectation gaps, self-reference decisions, newly created owned "
+                    + "parts or restamped kinds. Each rule's audit status is reported "
+                    + "separately; other rules do not report here yet.";
 
     /** The reportable effects as one sentence, or {@link #NOTHING_REPORTED} when there
      *  are none — so a caller never has to decide how to describe having found nothing. */

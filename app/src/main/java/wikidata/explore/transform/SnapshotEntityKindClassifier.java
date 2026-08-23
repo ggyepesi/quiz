@@ -23,16 +23,32 @@ import java.util.Set;
 public final class SnapshotEntityKindClassifier {
     private SnapshotEntityKindClassifier() { }
 
+    /**
+     * @param newlyClassified the objects this pass actually restamped — the answer to
+     *        "which ones", which the count alone could never give. A settled pool should
+     *        yield none: every pass reporting the same thousands is a pass that cannot
+     *        see its own previous work, and reading that as progress is how a copier
+     *        losing one flag went unnoticed for as long as it did.
+     */
     public record Result(
             int classified,
             int unknown,
             int withoutStoredEvidence,
-            Set<String> withoutStoredEvidenceQids) {
+            Set<String> withoutStoredEvidenceQids,
+            List<WikidataDynamicObject> newlyClassified) {
         public Result(int classified, int unknown, int withoutStoredEvidence) {
-            this(classified, unknown, withoutStoredEvidence, Set.of());
+            this(classified, unknown, withoutStoredEvidence, Set.of(), List.of());
+        }
+
+        public Result(int classified, int unknown, int withoutStoredEvidence,
+                      Set<String> withoutStoredEvidenceQids) {
+            this(classified, unknown, withoutStoredEvidence, withoutStoredEvidenceQids,
+                    List.of());
         }
 
         public Result {
+            newlyClassified = List.copyOf(
+                    newlyClassified == null ? List.of() : newlyClassified);
             withoutStoredEvidenceQids = withoutStoredEvidenceQids == null
                     ? Set.of() : Set.copyOf(withoutStoredEvidenceQids);
         }
@@ -81,6 +97,7 @@ public final class SnapshotEntityKindClassifier {
         }
 
         int classified = 0, unknown = 0, withoutEvidence = 0;
+        List<WikidataDynamicObject> newlyClassified = new ArrayList<>();
         Set<String> withoutEvidenceQids = new LinkedHashSet<>();
         for (WikidataDynamicObject candidate : candidates.values()) {
             Map<String, Set<String>> byPid = evidence.get(candidate.qid());
@@ -118,7 +135,13 @@ public final class SnapshotEntityKindClassifier {
                         copy.typeKey(carrier);
                     }
                 }
-                if (changed) classified++;
+                if (changed) {
+                    classified++;
+                    // The copies of this entity that the pass restamped. Every copy of
+                    // one qid is the same entity, so they go in together.
+                    newlyClassified.addAll(
+                            copiesByQid.getOrDefault(candidate.qid(), List.of()));
+                }
             } else {
                 unknown++;
                 if (!hasEvidence) {
@@ -134,7 +157,8 @@ public final class SnapshotEntityKindClassifier {
                     + candidatePlan.allRoleMembers()
                     + " role member(s) eligible from evidence producers.\n");
         }
-        return new Result(classified, unknown, withoutEvidence, withoutEvidenceQids);
+        return new Result(classified, unknown, withoutEvidence, withoutEvidenceQids,
+                List.copyOf(newlyClassified));
     }
 
     private static Map<String, List<Producer>> producers(GeneratedProjectModel model) {

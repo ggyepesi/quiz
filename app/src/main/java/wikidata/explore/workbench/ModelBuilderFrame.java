@@ -805,10 +805,19 @@ public class ModelBuilderFrame extends JFrame {
                             java.util.List.of(lastRun.dynamicObjects().size()
                                     + " existing objects", snapshot.classes().size()
                                     + " configured classes"));
+                    // The remap knows what it can replay; it says so rather than
+                    // leaving the host to guess from the operation's name.
+                    wikidata.explore.generation.RemapScope replayable =
+                            wikidata.explore.generation.RemapScope.of(lastRun);
                     startGenerationOperation(
                             "Remap domain", "Preview local model changes without downloading data.",
                             "remap", new RemapInstancesQuery(lastRun, snapshot), pipeline,
-                            snapshot, operationSettings, false);
+                            snapshot, operationSettings, false,
+                            scope -> scope.put("Self-reference rule", replayable.retransform()
+                                    ? "Will run during reification; its keep/drop "
+                                            + "decisions are shown in the results"
+                                    : "Will not run — this run has no pre-reification "
+                                            + "pool to replay from"));
             } catch (Exception ex) {
                 reportGenerationError(ex);
             }
@@ -838,7 +847,10 @@ public class ModelBuilderFrame extends JFrame {
                             "Add newly declared values to the existing population without rediscovery.",
                             "enrich", new EnrichInstancesQuery(
                                     lastRun, snapshot, operationSettings), pipeline,
-                            snapshot, operationSettings, true);
+                            snapshot, operationSettings, true,
+                            scope -> scope.put("Self-reference rule",
+                                    "Will not run — Enrich adds values without "
+                                            + "reifying statements"));
             } catch (Exception ex) {
                 reportGenerationError(ex);
             }
@@ -976,7 +988,7 @@ public class ModelBuilderFrame extends JFrame {
         java.util.List<wikidata.explore.generation.RuleEffects.Effect> effects =
                 wikidata.explore.generation.RuleEffects.fromRun(
                         run.fieldCoverage(), run.selfReferenceAudit(),
-                        run.ownedCompositionAudit());
+                        run.ownedCompositionAudit(), run.kindClassificationAudit());
 
         quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
                 phaseId + "-summary", domainName);
@@ -987,6 +999,7 @@ public class ModelBuilderFrame extends JFrame {
                 wikidata.explore.generation.RuleEffects.describe(effects));
         summary.put("Self-reference audit", run.selfReferenceAudit().description());
         summary.put("Owned composition", run.ownedCompositionAudit().description());
+        summary.put("Kind classification", run.kindClassificationAudit().description());
         summary.put("Objects in the pool", run.size());
 
         java.util.List<process.swing.workflow.ProcessWorkflowResults.Tab<GenerationRun>>
@@ -1024,7 +1037,8 @@ public class ModelBuilderFrame extends JFrame {
             process.ProcessWorkflowPipeline pipeline,
             GeneratedProjectModel snapshot,
             wikidata.explore.generation.GenerationExecutionSettings executionSettings,
-            boolean networked) {
+            boolean networked,
+            java.util.function.Consumer<quiz.transform.DynamicViewable> describeScope) {
         var operation = new wikidata.explore.generation.GenerationOperationProcess(
                 title, description, phaseId, query, pipeline, executionSettings, networked);
         quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
@@ -1032,15 +1046,12 @@ public class ModelBuilderFrame extends JFrame {
         summary.type("Domain operation");
         summary.put("Existing objects", lastRun == null ? 0 : lastRun.size());
         summary.put("Classes", snapshot.classes().size());
-        if ("remap".equals(phaseId)) {
-            wikidata.explore.generation.RemapScope scope =
-                    wikidata.explore.generation.RemapScope.of(lastRun);
-            summary.put("Self-reference rule", scope.retransform()
-                    ? "Will run during reification; its deterministic keep/drop "
-                            + "decisions will be shown in the results"
-                    : "Will not run because this snapshot has no cached pre-reify state");
-        } else if ("enrich".equals(phaseId)) {
-            summary.put("Self-reference rule", "Will not run during Enrich");
+        // Whether reification runs is a property of the operation, and the caller that
+        // builds the operation knows it. Deciding it here by matching the phase id
+        // against "remap" would infer behaviour from a name — the mistake the model
+        // itself is guarded against — and a rename would silently drop the warning.
+        if (describeScope != null) {
+            describeScope.accept(summary);
         }
         process.swing.workflow.ProcessWorkflowAction<GenerationRun, GenerationRun> action =
                 new process.swing.workflow.ProcessWorkflowAction<>() {

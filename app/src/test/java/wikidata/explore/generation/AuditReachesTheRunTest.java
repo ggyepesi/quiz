@@ -107,7 +107,7 @@ class AuditReachesTheRunTest {
         assertTrue(run.selfReferenceAudit().executed());
         List<RuleEffects.Effect> effects = RuleEffects.fromRun(
                 run.fieldCoverage(), run.selfReferenceAudit(),
-                run.ownedCompositionAudit());
+                run.ownedCompositionAudit(), run.kindClassificationAudit());
 
         assertFalse(effects.isEmpty(),
                 "a decision the transform recorded has to be reportable from the run");
@@ -125,7 +125,7 @@ class AuditReachesTheRunTest {
         assertEquals("Not run in this operation",
                 run.selfReferenceAudit().description());
         assertTrue(RuleEffects.fromRun(run.fieldCoverage(), run.selfReferenceAudit(),
-                run.ownedCompositionAudit()).isEmpty());
+                run.ownedCompositionAudit(), run.kindClassificationAudit()).isEmpty());
     }
 
     @Test void ownedCompositionReportsWhatItManufacturedNotWhatItHolds() {
