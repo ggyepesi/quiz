@@ -965,6 +965,19 @@ public class ModelBuilderFrame extends JFrame {
                 snapshot, lastRun.dynamicObjects());
     }
 
+    /** A rendered explanation of one rule bucket, before its instance cards. */
+    private static quiz.transform.DynamicViewable ruleEffectSummary(
+            wikidata.explore.generation.RuleEffects.Effect effect,
+            String phase) {
+        quiz.transform.DynamicViewable summary = new quiz.transform.DynamicViewable(
+                phase + "-rule-" + Integer.toHexString(effect.rule().hashCode()),
+                effect.rule());
+        summary.type("Rule effect");
+        summary.put("Action", effect.detail());
+        summary.put("Instances", effect.size());
+        return summary;
+    }
+
     private void startGenerationOperation(
             String title, String description, String phaseId,
             work.Query<GenerationRun> query,
@@ -1005,8 +1018,12 @@ public class ModelBuilderFrame extends JFrame {
                                 "Scope", java.util.List.of(summary)));
                         for (wikidata.explore.generation.RuleEffects.Effect effect
                                 : ruleEffects(snapshot)) {
+                            java.util.List<objectview.Viewable> contents =
+                                    new java.util.ArrayList<>();
+                            contents.add(ruleEffectSummary(effect, phaseId + "-plan"));
+                            contents.addAll(effect.instances());
                             tabs.add(new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                    effect.title(), effect.instances()));
+                                    effect.title(), contents));
                         }
                         return new process.swing.workflow.ProcessWorkflowPlan(
                                 title, description, tabs);
@@ -1018,18 +1035,16 @@ public class ModelBuilderFrame extends JFrame {
                             results(process.ProcessOutcome<GenerationRun> outcome) {
                         GenerationRun run = outcome.result();
                         java.util.List<wikidata.explore.generation.RuleEffects.Effect>
-                                effects = wikidata.explore.generation.RuleEffects.of(
-                                        run.modelSnapshot(), run.dynamicObjects());
+                                effects = wikidata.explore.generation.RuleEffects.fromCoverage(
+                                        run.fieldCoverage(),
+                                        wikidata.explore.generation.RuleEffects.Moment.RESULT);
                         quiz.transform.DynamicViewable result = new quiz.transform.DynamicViewable(
                                 phaseId + "-summary", snapshot.name());
                         result.type("Generation result");
                         // The pool size is context, not a result: for a Remap it barely
                         // moves, so leading with it says nothing about what the run did.
                         result.put("What the rules account for",
-                                wikidata.explore.generation.RuleEffects.summary(effects)
-                                        .isEmpty()
-                                        ? "every declared rule holds"
-                                        : wikidata.explore.generation.RuleEffects.summary(effects));
+                                wikidata.explore.generation.RuleEffects.describe(effects));
                         result.put("Objects in the pool", run.size());
                         var accept = new process.swing.workflow.ProcessWorkflowResults.Card<>(
                                 result, () -> run, true);
@@ -1041,12 +1056,18 @@ public class ModelBuilderFrame extends JFrame {
                         // "what did this do", read off the configuration rather than
                         // reconstructed from a diff.
                         for (wikidata.explore.generation.RuleEffects.Effect effect : effects) {
+                            java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
+                                    GenerationRun>> cards = new java.util.ArrayList<>();
+                            cards.add(new process.swing.workflow.ProcessWorkflowResults.Card<>(
+                                    ruleEffectSummary(effect, phaseId + "-result"),
+                                    () -> null, false));
+                            cards.addAll(effect.instances().stream()
+                                    .map(instance -> new process.swing.workflow
+                                            .ProcessWorkflowResults.Card<GenerationRun>(
+                                                    instance, () -> null, false))
+                                    .toList());
                             tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                    effect.title(), effect.instances().stream()
-                                            .map(instance -> new process.swing.workflow
-                                                    .ProcessWorkflowResults.Card<GenerationRun>(
-                                                            instance, () -> null, false))
-                                            .toList()));
+                                    effect.title(), cards));
                         }
                         // Last, and named for what it is: the whole pool, not a result.
                         tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(

@@ -47,6 +47,9 @@ public final class RuleEffects {
         CHANGED
     }
 
+    /** Whether wording describes a plan or the completed finalization report. */
+    public enum Moment { PLAN, RESULT }
+
     /**
      * @param rule      the configuration this bucket stands for, in the reader's terms
      * @param detail    what the rule did or found, as one sentence
@@ -71,36 +74,70 @@ public final class RuleEffects {
     /**
      * The rules that account for something in {@code pool}, worst first.
      *
-     * <p>Evaluating rather than applying is what lets the same call answer before a run
-     * and after it: the plan says what a rule would account for, the result says what it
-     * did, and the two being the same shape is what makes them comparable.
+     * <p>Evaluating rather than applying lets the plan say what a rule would account
+     * for. Results use the finalization coverage captured while the action happened;
+     * inspecting the post-state would lose records a REQUIRED rule already removed.
      */
     public static List<Effect> of(GeneratedProjectModel model,
                                   List<WikidataDynamicObject> pool) {
-        List<Effect> effects = new ArrayList<>();
         if (model == null || pool == null) {
-            return effects;
+            return List.of();
         }
-        for (FieldExpectations.FieldCoverage coverage
-                : FieldExpectations.inspect(model, pool)) {
-            if (coverage == null || coverage.missingInstances().isEmpty()) {
+        return fromCoverage(FieldExpectations.inspect(model, pool), Moment.PLAN);
+    }
+
+    /**
+     * Effects from the finalization measurement captured by a generation run.
+     * REQUIRED failures are no longer in the post-finalization pool, so this report—not
+     * re-inspection of that pool—is the only truthful result-side source.
+     */
+    public static List<Effect> fromCoverage(
+            List<FieldExpectations.FieldCoverage> coverage, Moment moment) {
+        List<Effect> effects = new ArrayList<>();
+        if (coverage == null) return effects;
+        Moment when = moment == null ? Moment.RESULT : moment;
+        for (FieldExpectations.FieldCoverage field : coverage) {
+            if (field == null || field.missingInstances().isEmpty()) {
                 continue;   // a rule that holds has nothing to show
             }
-            boolean required = coverage.level() == FieldExpectation.REQUIRED;
+            boolean required = field.level() == FieldExpectation.REQUIRED;
+            String action = required
+                    ? when == Moment.PLAN ? " will be dropped" : " were dropped"
+                    : when == Moment.PLAN
+                            ? " do not have it, and will be kept"
+                            : " do not have it, and were kept";
             effects.add(new Effect(
-                    coverage.className() + "." + coverage.fieldName()
+                    field.className() + "." + field.fieldName()
                             + " is " + (required ? "required" : "expected"),
-                    coverage.present() + " of " + coverage.total() + " have it; "
-                            + coverage.missing()
-                            + (required ? " will be dropped" : " do not, and are kept"),
+                    field.present() + " of " + field.total() + " have it; "
+                            + field.missing() + action,
                     required ? Kind.CHANGED : Kind.FLAGGED,
-                    List.copyOf(coverage.missingInstances())));
+                    List.copyOf(field.missingInstances())));
         }
         effects.sort((a, b) -> Integer.compare(b.size(), a.size()));
         return effects;
     }
 
-    /** One sentence for the whole set, or the empty string when every rule holds. */
+    /**
+     * What to say when no rule reported anything — which is NOT "the run was clean".
+     *
+     * <p>Only field expectations can currently name the instances they account for. A
+     * remap also classifies kinds, restricts values, builds inverts, projects fields,
+     * canonicalizes names and composes owned parts, and none of them report here yet.
+     * The wording lives with the code that knows what it does and does not cover, so a
+     * caller cannot phrase its own silence as a clean bill of health — which is exactly
+     * what "every declared rule holds" did.
+     */
+    public static final String NOTHING_REPORTED = "No field-expectation gaps";
+
+    /** The reportable effects as one sentence, or {@link #NOTHING_REPORTED} when there
+     *  are none — so a caller never has to decide how to describe having found nothing. */
+    public static String describe(List<Effect> effects) {
+        String summary = summary(effects);
+        return summary.isEmpty() ? NOTHING_REPORTED : summary;
+    }
+
+    /** One sentence for the reportable effects, or empty when it contains none. */
     public static String summary(List<Effect> effects) {
         if (effects == null || effects.isEmpty()) {
             return "";

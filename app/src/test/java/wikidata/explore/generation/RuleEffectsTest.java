@@ -9,6 +9,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.transform.FieldExpectations;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,7 +77,7 @@ class RuleEffectsTest {
                 RuleEffects.of(model(FieldExpectation.EXPECTED), pool()).get(0);
 
         assertEquals(RuleEffects.Kind.FLAGGED, effect.kind());
-        assertTrue(effect.detail().contains("are kept"), effect.detail());
+        assertTrue(effect.detail().contains("will be kept"), effect.detail());
     }
 
     @Test void requiredIsReportedAsAChangeBecauseItDeletes() {
@@ -95,6 +96,25 @@ class RuleEffectsTest {
         RuleEffects.of(model(FieldExpectation.REQUIRED), pool);
 
         assertEquals(4, pool.size(), "a plan must not apply the run it is describing");
+    }
+
+    @Test void findingNothingIsNotAClaimAboutTheWholeRun() {
+        // "every declared rule holds" read as a clean bill of health for a remap that
+        // also classified kinds, restricted values, built inverts, projected fields and
+        // composed owned parts — none of which report here. The wording belongs with the
+        // code that knows its own coverage, so a caller cannot overclaim on its behalf.
+        assertEquals(RuleEffects.NOTHING_REPORTED, RuleEffects.describe(List.of()));
+        assertEquals(RuleEffects.NOTHING_REPORTED, RuleEffects.describe(null));
+        assertTrue(!RuleEffects.NOTHING_REPORTED.toLowerCase().contains("every"),
+                "it must not read as a statement about rules it never looked at: "
+                        + RuleEffects.NOTHING_REPORTED);
+    }
+
+    @Test void aRuleThatReportsIsDescribedByWhatItFound() {
+        assertEquals(RuleEffects.summary(
+                        RuleEffects.of(model(FieldExpectation.EXPECTED), pool())),
+                RuleEffects.describe(
+                        RuleEffects.of(model(FieldExpectation.EXPECTED), pool())));
     }
 
     @Test void aRuleThatHoldsGetsNoBucket() {
@@ -117,5 +137,49 @@ class RuleEffectsTest {
         assertTrue(RuleEffects.of(model(FieldExpectation.NONE), pool()).isEmpty());
         assertTrue(RuleEffects.of(null, pool()).isEmpty());
         assertTrue(RuleEffects.of(model(FieldExpectation.EXPECTED), null).isEmpty());
+    }
+
+    @Test void completedRequiredCoverageStillNamesTheInstancesAlreadyDropped() {
+        // The real path, not a simulated one: apply() is what runs during finalization
+        // and what puts its coverage on the run, so it is apply()'s coverage that has to
+        // keep the instances it just deleted. A test that measured with inspect() and
+        // removed them by hand proves fromCoverage works and leaves the invariant the
+        // bug actually depended on unasserted — clear the lists inside apply() to save
+        // memory and every test would still pass while the result went silent again.
+        List<WikidataDynamicObject> pool = pool();
+
+        FieldExpectations.Result applied =
+                FieldExpectations.apply(model(FieldExpectation.REQUIRED), pool, null);
+
+        assertEquals(2, pool.size(), "apply really did remove them from the pool");
+        RuleEffects.Effect result = RuleEffects.fromCoverage(
+                applied.coverage(), RuleEffects.Moment.RESULT).getFirst();
+
+        assertEquals(List.of("n3", "n4"), result.instances().stream()
+                .map(objectview.Viewable::getIdentifier).toList(),
+                "and the result can still name them, which is the whole point of "
+                        + "reading recorded coverage instead of re-inspecting the pool");
+        assertTrue(result.detail().contains("were dropped"), result.detail());
+    }
+
+    @Test void reInspectingTheFinishedPoolIsWhatWentWrong() {
+        // Kept as the counter-example, because the failure is silent and plausible:
+        // asking the finished pool reports that the rule holds, precisely because it
+        // did not.
+        List<WikidataDynamicObject> pool = pool();
+        FieldExpectations.apply(model(FieldExpectation.REQUIRED), pool, null);
+
+        assertTrue(RuleEffects.of(model(FieldExpectation.REQUIRED), pool).isEmpty(),
+                "re-inspection finds nothing to report — a clean bill of health issued "
+                        + "for the removal of the evidence");
+    }
+
+    @Test void completedExpectedCoverageUsesResultTenseWithoutClaimingAChange() {
+        RuleEffects.Effect result = RuleEffects.fromCoverage(
+                FieldExpectations.inspect(model(FieldExpectation.EXPECTED), pool()),
+                RuleEffects.Moment.RESULT).getFirst();
+
+        assertEquals(RuleEffects.Kind.FLAGGED, result.kind());
+        assertTrue(result.detail().contains("were kept"), result.detail());
     }
 }
