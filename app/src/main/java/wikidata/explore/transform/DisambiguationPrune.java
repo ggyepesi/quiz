@@ -153,7 +153,8 @@ public final class DisambiguationPrune {
                     "Check " + needFetch.size()
                             + " modeled entity(ies) for Wikimedia internal types")) {
                 details = api.getEntities(
-                        new ArrayList<>(needFetch), List.of("P31"), group.batchSink());
+                        new ArrayList<>(needFetch), List.of("P31"), Set.of(),
+                        group.batchSink());
             } catch (Exception ex) {
                 if (Thread.currentThread().isInterrupted()) {
                     Thread.currentThread().interrupt();

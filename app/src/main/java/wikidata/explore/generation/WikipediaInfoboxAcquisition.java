@@ -71,7 +71,9 @@ public final class WikipediaInfoboxAcquisition {
             }
         }
         Map<String, wikidata.api.WikidataApiClient.ApiEntity> entities =
-                api.getEntities(List.copyOf(targets.keySet()), List.of(), log.batchSink());
+                api.getEntities(List.copyOf(targets.keySet()), List.of(),
+                        java.util.Set.of(wikidata.api.FactDemand.EntityMetadata.SITELINKS),
+                        log.batchSink());
         Map<String, String> titleToQid = new LinkedHashMap<>();
         entities.forEach((qid, entity) -> {
             if (entity != null && !entity.enwikiTitle().isBlank())

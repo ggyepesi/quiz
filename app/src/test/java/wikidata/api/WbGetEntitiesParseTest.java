@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -179,6 +180,14 @@ class WbGetEntitiesParseTest {
                   "sitelinks":{"enwiki":{"title":"Blood Diamond"}}}}}
                 """), List.of(), parsed);
         assertEquals("Blood Diamond", parsed.get("Q157058").enwikiTitle());
+    }
+
+    @Test void entityRequestProjectionOmitsUnneededMetadata() {
+        assertEquals("claims", WikidataApiClient.entityProps(true, Set.of()));
+        assertEquals("labels|claims", WikidataApiClient.entityProps(true,
+                Set.of(FactDemand.EntityMetadata.LABEL)));
+        assertEquals("sitelinks", WikidataApiClient.entityProps(false,
+                Set.of(FactDemand.EntityMetadata.SITELINKS)));
     }
 
     @Test

@@ -1013,7 +1013,10 @@ public class RuleTreeExtractor {
                         + "via wbgetentities: these properties full-scan in SPARQL)"
                         + (propagated.isBlank() ? "" : "; propagated: " + propagated))) {
             Map<String, WikidataApiClient.ApiEntity> details =
-                    api().getEntities(memberQids, new ArrayList<>(pids), g.batchSink());
+                    api().getEntities(memberQids, new ArrayList<>(pids),
+                            factDemands.stream().flatMap(d -> d.metadata().stream())
+                                    .collect(java.util.stream.Collectors.toSet()),
+                            g.batchSink());
             boolean retainAliases = factDemands.stream().anyMatch(demand ->
                     demand.metadata().contains(FactDemand.EntityMetadata.ALIASES));
             boolean retainLabel = factDemands.stream().anyMatch(demand ->

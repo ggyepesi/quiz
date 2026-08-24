@@ -312,10 +312,11 @@ public final class ReferentFieldLoad {
             if (objs == null || objs.isEmpty()) {
                 continue;
             }
+            boolean retainAliases = aliasClasses != null && aliasClasses.contains(e.getKey());
             EntityFieldBatch entityBatch = loadEntityFields(
                     e.getKey(), e.getValue(), objs, known, api, sink, deferLabels,
+                    retainAliases,
                     manifest == null ? Set.of() : manifest.propertiesFor(e.getKey()));
-            boolean retainAliases = aliasClasses != null && aliasClasses.contains(e.getKey());
             for (WikidataDynamicObject obj : objs) {
                 WikidataApiClient.ApiEntity metadata = entityBatch.entities().get(obj.qid());
                 // Aliases name the Wikidata ENTITY, not an owned projection that merely
@@ -456,7 +457,7 @@ public final class ReferentFieldLoad {
             List<WikidataDynamicObject> objs,
             Map<String, wikidata.explore.extract.LoadedDeclaration> known,
             WikidataApiClient api, GenerationLog log, boolean deferLabels,
-            Set<String> prospectivePids) {
+            boolean retainAliases, Set<String> prospectivePids) {
         Set<String> qids = new LinkedHashSet<>();
         Set<String> pids = new LinkedHashSet<>();
         for (GeneratedFieldModel field : fields) {
@@ -497,7 +498,8 @@ public final class ReferentFieldLoad {
             // data, and an entity that answered without the property genuinely lacks it.
             // Only the entities no batch reached are unresolved.
             WikidataApiClient.PartialEntities partial = api.getEntityClaimsPartial(
-                    new ArrayList<>(qids), new ArrayList<>(pids), group.batchSink());
+                    new ArrayList<>(qids), new ArrayList<>(pids),
+                    metadataProjection(!deferLabels, retainAliases), group.batchSink());
             details = partial.entities();
             unavailable = new LinkedHashSet<>(partial.unavailableQids());
             if (!unavailable.isEmpty()) {
@@ -529,11 +531,20 @@ public final class ReferentFieldLoad {
                 + " value label(s) for " + className)) {
             labels = valueQids.isEmpty() ? Map.of()
                     : api.getEntities(new ArrayList<>(valueQids), List.of(),
-                    group.batchSink());
+                    Set.of(FactDemand.EntityMetadata.LABEL), group.batchSink());
         } catch (Exception ex) {
             labels = Map.of();
         }
         return new EntityFieldBatch(details, labels, unavailable);
+    }
+
+    private static Set<FactDemand.EntityMetadata> metadataProjection(
+            boolean label, boolean aliases) {
+        java.util.EnumSet<FactDemand.EntityMetadata> metadata =
+                java.util.EnumSet.noneOf(FactDemand.EntityMetadata.class);
+        if (label) metadata.add(FactDemand.EntityMetadata.LABEL);
+        if (aliases) metadata.add(FactDemand.EntityMetadata.ALIASES);
+        return metadata;
     }
 
     /**

@@ -146,7 +146,9 @@ public final class WikipediaCategoryAcquisition {
             throws Exception {
         Map<String, String> out = new LinkedHashMap<>();
         Map<String, wikidata.api.WikidataApiClient.ApiEntity> entities =
-                api.getEntities(qids, List.of(), log.batchSink());
+                api.getEntities(qids, List.of(),
+                        java.util.Set.of(wikidata.api.FactDemand.EntityMetadata.SITELINKS),
+                        log.batchSink());
         entities.forEach((qid, entity) -> {
             if (entity != null && !entity.enwikiTitle().isBlank()) {
                 out.put(qid, entity.enwikiTitle());

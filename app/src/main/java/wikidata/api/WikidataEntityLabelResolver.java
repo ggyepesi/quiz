@@ -56,7 +56,8 @@ public final class WikidataEntityLabelResolver {
 
         if (execution == Execution.BOUNDED_PARALLEL) {
             WikidataApiClient.PartialEntities partial =
-                    api.getEntitiesBestEffort(clean, List.of(), log);
+                    api.getEntitiesBestEffort(clean, List.of(),
+                            Set.of(FactDemand.EntityMetadata.LABEL), log);
             return result(partial.entities(), partial.failedBatches(),
                     partial.unavailableQids());
         }
@@ -67,7 +68,8 @@ public final class WikidataEntityLabelResolver {
         for (int from = 0; from < clean.size(); from += BATCH_SIZE) {
             List<String> batch = clean.subList(from, Math.min(from + BATCH_SIZE, clean.size()));
             try {
-                entities.putAll(api.getEntities(batch, List.of(), log));
+                entities.putAll(api.getEntities(batch, List.of(),
+                        Set.of(FactDemand.EntityMetadata.LABEL), log));
             } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()
                         || e instanceof InterruptedException) {

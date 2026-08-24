@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,25 @@ import java.util.zip.GZIPInputStream;
  * 400 errors when passed raw.
  */
 public class WikidataApiClient {
+
+    /**
+     * What an entity request asks for beyond claims, for the call in progress.
+     *
+     * <p>Ambient rather than a parameter because {@link #getEntitiesBatchWithRetry} is
+     * a {@code protected} seam five test doubles override; giving it a projection
+     * argument would break every one. It is read on the CALLING thread and handed to
+     * the work units as a value, so a batch running on a pool thread carries the
+     * projection its caller chose — the thread-local never has to be visible where the
+     * request is actually made.
+     *
+     * <p>The default is LABEL alone, which is what the callers that do not state a
+     * projection need: QualifierLoader's two fetches, SelectionContentResolver and
+     * ValueVocabularyDiscovery all read {@code label()} and nothing else. It fails
+     * toward LESS data, so a new caller wanting aliases gets none and no error —
+     * state the projection rather than adding to this list.
+     */
+    private final ThreadLocal<Set<FactDemand.EntityMetadata>> entityProjection =
+            ThreadLocal.withInitial(() -> Set.of(FactDemand.EntityMetadata.LABEL));
 
     public static final String DEFAULT_USER_AGENT =
             "QuizProject/1.0 (ggyepesi@gmail.com)";
@@ -547,14 +567,21 @@ public class WikidataApiClient {
     public Map<String, ApiEntity> getEntities(
             List<String> qids, List<String> claimPids, BatchLog batchLog)
             throws Exception {
-
         Map<String, ApiEntity> out = new LinkedHashMap<>();
         if (qids == null) return out;
         List<String> pids = claimPids == null ? List.of() : claimPids;
-        List<WorkUnit<Map<String, ApiEntity>>> roots = entityUnits(qids, pids);
+        Set<FactDemand.EntityMetadata> projection = entityProjection.get();
+        List<WorkUnit<Map<String, ApiEntity>>> roots = entityUnits(qids, pids, projection);
         entityExecutor(batchLog).run(roots,
                 (descriptor, entities) -> out.putAll(entities));
         return out;
+    }
+
+    public Map<String, ApiEntity> getEntities(
+            List<String> qids, List<String> claimPids,
+            Collection<FactDemand.EntityMetadata> metadata, BatchLog batchLog)
+            throws Exception {
+        return withEntityProjection(metadata, () -> getEntities(qids, claimPids, batchLog));
     }
 
     /** What a best-effort resolve came back with, and how many adaptively narrowed
@@ -589,14 +616,22 @@ public class WikidataApiClient {
     public PartialEntities getEntitiesBestEffort(
             List<String> qids, List<String> claimPids, BatchLog batchLog)
             throws Exception {
-
         Map<String, ApiEntity> out = new LinkedHashMap<>();
         if (qids == null) return new PartialEntities(out, 0);
         List<String> pids = claimPids == null ? List.of() : claimPids;
+        Set<FactDemand.EntityMetadata> projection = entityProjection.get();
         List<WorkDescriptor> failed = entityExecutor(batchLog).runBestEffort(
-                entityUnits(qids, pids),
+                entityUnits(qids, pids, projection),
                 (descriptor, entities) -> out.putAll(entities));
         return new PartialEntities(out, failed.size(), unavailableQids(failed));
+    }
+
+    public PartialEntities getEntitiesBestEffort(
+            List<String> qids, List<String> claimPids,
+            Collection<FactDemand.EntityMetadata> metadata, BatchLog batchLog)
+            throws Exception {
+        return withEntityProjection(metadata,
+                () -> getEntitiesBestEffort(qids, claimPids, batchLog));
     }
 
     /** Partial CLAIM lookup for callers that preserve the previous state of every
@@ -609,21 +644,42 @@ public class WikidataApiClient {
         Map<String, ApiEntity> out = new LinkedHashMap<>();
         if (qids == null) return new PartialEntities(out, 0);
         List<String> pids = claimPids == null ? List.of() : claimPids;
-        List<WorkUnit<Map<String, ApiEntity>>> roots = entityUnits(qids, pids);
+        Set<FactDemand.EntityMetadata> projection = entityProjection.get();
+        List<WorkUnit<Map<String, ApiEntity>>> roots = entityUnits(qids, pids, projection);
         BatchExecutor<Map<String, ApiEntity>> executor = entityExecutor(batchLog);
         List<WorkDescriptor> failed = executor.runBestEffort(roots,
                 (descriptor, entities) -> out.putAll(entities));
         return new PartialEntities(out, failed.size(), unavailableQids(failed));
     }
 
+    public PartialEntities getEntityClaimsPartial(
+            List<String> qids, List<String> claimPids,
+            Collection<FactDemand.EntityMetadata> metadata, BatchLog batchLog)
+            throws Exception {
+        return withEntityProjection(metadata,
+                () -> getEntityClaimsPartial(qids, claimPids, batchLog));
+    }
+
+    private <T> T withEntityProjection(Collection<FactDemand.EntityMetadata> metadata,
+            java.util.concurrent.Callable<T> action) throws Exception {
+        Set<FactDemand.EntityMetadata> previous = entityProjection.get();
+        entityProjection.set(metadata == null ? Set.of() : Set.copyOf(metadata));
+        try {
+            return action.call();
+        } finally {
+            entityProjection.set(previous);
+        }
+    }
+
     private List<WorkUnit<Map<String, ApiEntity>>> entityUnits(
-            List<String> qids, List<String> pids) {
+            List<String> qids, List<String> pids,
+            Set<FactDemand.EntityMetadata> metadata) {
         List<String> clean = qids.stream()
                 .filter(q -> q != null && WikidataIds.isQid(q)).distinct().toList();
         List<WorkUnit<Map<String, ApiEntity>>> roots = new ArrayList<>();
         for (int i = 0; i < clean.size(); i += 50) {
             roots.add(entityUnit(List.copyOf(clean.subList(i,
-                    Math.min(i + 50, clean.size()))), pids));
+                    Math.min(i + 50, clean.size()))), pids, metadata));
         }
         return roots;
     }
@@ -722,7 +778,8 @@ public class WikidataApiClient {
     }
 
     private WorkUnit<Map<String, ApiEntity>> entityUnit(
-            List<String> qids, List<String> pids) {
+            List<String> qids, List<String> pids,
+            Set<FactDemand.EntityMetadata> metadata) {
         boolean withClaims = !pids.isEmpty();
         return new WorkUnit<>() {
             @Override public WorkDescriptor descriptor() {
@@ -732,17 +789,17 @@ public class WikidataApiClient {
                         "wbgetentities " + qids.size() + " entities",
                         Map.of("ids", ids, "claims", String.join(",", pids)));
             }
-            @Override public String request() { return entitiesUrl(qids, withClaims); }
+            @Override public String request() { return entitiesUrl(qids, withClaims, metadata); }
             @Override public Map<String, ApiEntity> execute() throws Exception {
                 Map<String, ApiEntity> result = new LinkedHashMap<>();
-                parseEntities(getEntitiesBatchWithRetry(qids, withClaims, pids), pids, result);
+                parseEntities(getEntitiesBatchWithRetry(qids, withClaims, pids, metadata), pids, result);
                 return result;
             }
             @Override public List<? extends WorkUnit<Map<String, ApiEntity>>> split() {
                 if (qids.size() < 2) return List.of();
                 int middle = qids.size() / 2;
-                return List.of(entityUnit(qids.subList(0, middle), pids),
-                        entityUnit(qids.subList(middle, qids.size()), pids));
+                return List.of(entityUnit(qids.subList(0, middle), pids, metadata),
+                        entityUnit(qids.subList(middle, qids.size()), pids, metadata));
             }
         };
     }
@@ -884,10 +941,11 @@ public class WikidataApiClient {
                         Map.of("ids", ids,
                                 "statements", String.join(",", statementPids)));
             }
-            @Override public String request() { return entitiesUrl(qids, true); }
+            @Override public String request() { return entitiesUrl(qids, true, Set.of()); }
             @Override public Map<String, Map<String, List<ApiStatement>>> execute()
                     throws Exception {
-                JsonNode root = getEntitiesBatchWithRetry(qids, true, statementPids);
+                JsonNode root = getEntitiesBatchWithRetry(qids, true, statementPids,
+                        Set.of());
                 Map<String, Map<String, List<ApiStatement>>> result = new LinkedHashMap<>();
                 for (String pid : statementPids) {
                     Map<String, List<ApiStatement>> byQid = new LinkedHashMap<>();
@@ -917,11 +975,11 @@ public class WikidataApiClient {
                         Map.of("ids", ids, "statement", statementPid,
                                 "qualifiers", String.join(",", qualifierPids)));
             }
-            @Override public String request() { return entitiesUrl(qids, true); }
+            @Override public String request() { return entitiesUrl(qids, true, Set.of()); }
             @Override public Map<String, List<ApiStatement>> execute() throws Exception {
                 Map<String, List<ApiStatement>> result = new LinkedHashMap<>();
                 parseStatements(getEntitiesBatchWithRetry(qids, true,
-                        List.of(statementPid)), statementPid,
+                        List.of(statementPid), Set.of()), statementPid,
                         qualifierPids, result);
                 return result;
             }
@@ -963,9 +1021,15 @@ public class WikidataApiClient {
 
     // The request as issued, with readable (decoded) pipes — for the query log.
     private static String entitiesUrl(List<String> qids, boolean withClaims) {
+        return entitiesUrl(qids, withClaims, FactDemand.allMetadata());
+    }
+
+    private static String entitiesUrl(List<String> qids, boolean withClaims,
+            Collection<FactDemand.EntityMetadata> metadata) {
         return WIKIDATA_API + "?action=wbgetentities&ids=" + String.join("|", qids)
-                + "&props=" + entityProps(withClaims)
-                + "&sitefilter=" + SITE_FILTER
+                + "&props=" + entityProps(withClaims, metadata)
+                + (metadata != null && metadata.contains(FactDemand.EntityMetadata.SITELINKS)
+                        ? "&sitefilter=" + SITE_FILTER : "")
                 + "&languages=en|mul&format=json";
     }
 
@@ -974,16 +1038,23 @@ public class WikidataApiClient {
                 + "&props=aliases&languages=en|mul&format=json";
     }
 
-    /**
-     * What every entity request asks for. Identity metadata — the label AND the
-     * aliases — always rides along: they are one small part of a response whose bulk is
-     * claims, and a consumer that received a document can then record "this entity's
-     * names are known" truthfully. Asked for separately, aliases cost a second pass over
-     * the same entities; left out while a load still recorded coverage, they were never
-     * fetched at all and nothing said so.
-     */
+    /** Compatibility projection. Plan-aware callers use the overload below so entity
+     * metadata is acquired by declared demand rather than riding every claims body. */
     static String entityProps(boolean withClaims) {
-        return withClaims ? "labels|claims|aliases|sitelinks" : "labels|aliases|sitelinks";
+        return entityProps(withClaims, FactDemand.allMetadata());
+    }
+
+    static String entityProps(boolean withClaims,
+            Collection<FactDemand.EntityMetadata> metadata) {
+        List<String> props = new ArrayList<>();
+        if (metadata != null && metadata.contains(FactDemand.EntityMetadata.LABEL))
+            props.add("labels");
+        if (withClaims) props.add("claims");
+        if (metadata != null && metadata.contains(FactDemand.EntityMetadata.ALIASES))
+            props.add("aliases");
+        if (metadata != null && metadata.contains(FactDemand.EntityMetadata.SITELINKS))
+            props.add("sitelinks");
+        return String.join("|", props);
     }
 
     /** Only the English article: an entity's full sitelink set is one line per language
@@ -1011,24 +1082,51 @@ public class WikidataApiClient {
      */
     protected JsonNode getEntitiesBatchWithRetry(
             List<String> qids, boolean withClaims, List<String> pids) throws Exception {
-        JsonNode cached = facts.response(qids, withClaims, pids, mapper);
+        return getEntitiesBatchWithRetryProjected(qids, withClaims, pids,
+                entityProjection.get());
+    }
+
+    protected JsonNode getEntitiesBatchWithRetry(
+            List<String> qids, boolean withClaims, List<String> pids,
+            Collection<FactDemand.EntityMetadata> metadata) throws Exception {
+        return withEntityProjection(metadata,
+                () -> getEntitiesBatchWithRetry(qids, withClaims, pids));
+    }
+
+    private JsonNode getEntitiesBatchWithRetryProjected(
+            List<String> qids, boolean withClaims, List<String> pids,
+            Collection<FactDemand.EntityMetadata> metadata) throws Exception {
+        Set<FactDemand.EntityMetadata> projection = metadata == null
+                ? Set.of() : Set.copyOf(metadata);
+        JsonNode cached = facts.response(qids, withClaims, pids, projection, mapper);
         if (cached != null) {
             facts.recordHits(qids == null ? 0 : qids.size(), pids);
             return cached;
         }
-        List<String> missing = facts.missing(qids, withClaims, pids);
+        List<String> missing = facts.missing(qids, withClaims, pids, projection);
         facts.recordHits((qids == null ? 0 : qids.size()) - missing.size(), pids);
         Exception last = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                JsonNode fetched = getEntitiesBatch(missing, withClaims);
+                Set<FactDemand.EntityMetadata> previousProjection = entityProjection.get();
+                JsonNode fetched;
+                entityProjection.set(projection);
+                try {
+                    // Keep the established two-argument override as the transport seam:
+                    // adaptive-batch tests and alternate transports override it. The
+                    // per-worker projection is read by the default implementation.
+                    fetched = getEntitiesBatch(missing, withClaims);
+                } finally {
+                    entityProjection.set(previousProjection);
+                }
                 // The answer is what was true when it was asked for: the entities this
                 // fetch carried, plus the ones the store already held. Assemble it
                 // BEFORE retaining anything, because retaining enforces the budget and
                 // may evict the very documents the cached half is made of — asking the
                 // store again afterwards would hand back whatever eviction had left.
-                JsonNode answer = facts.merged(fetched, qids, withClaims, pids, mapper);
-                facts.accept(fetched, withClaims, pids);
+                JsonNode answer = facts.merged(fetched, qids, withClaims, pids,
+                        projection, mapper);
+                facts.accept(fetched, withClaims, pids, projection);
                 return answer;
             } catch (Exception e) {
                 last = e;
@@ -1085,11 +1183,18 @@ public class WikidataApiClient {
 
     protected JsonNode getEntitiesBatch(
             List<String> qids, boolean withClaims) throws Exception {
+        return getEntitiesBatch(qids, withClaims, entityProjection.get());
+    }
+
+    protected JsonNode getEntitiesBatch(
+            List<String> qids, boolean withClaims,
+            Collection<FactDemand.EntityMetadata> metadata) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("action",    "wbgetentities");
         params.put("ids",       String.join("%7C", qids));
-        params.put("props",     encodePipes(entityProps(withClaims)));
-        params.put("sitefilter", SITE_FILTER);
+        params.put("props",     encodePipes(entityProps(withClaims, metadata)));
+        if (metadata != null && metadata.contains(FactDemand.EntityMetadata.SITELINKS))
+            params.put("sitefilter", SITE_FILTER);
         // en + mul (the language-agnostic label) so an item without an English label
         // still resolves to a name instead of staying a QID — matches the SPARQL
         // SERVICE "en,mul".

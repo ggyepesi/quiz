@@ -40,19 +40,20 @@ public final class WikidataFactStore {
      * coarse: dropping a P1411 slice must not make the first P136 request look like a
      * re-fetch, while dropping a whole claims body legitimately does. */
     private static final class EvictedCapabilities {
-        boolean entityMetadata;
+        final Set<FactDemand.EntityMetadata> metadata = new LinkedHashSet<>();
         boolean wholeClaims;
         final Set<String> claimPids = new LinkedHashSet<>();
 
         void add(Document document) {
-            entityMetadata = true;
+            metadata.addAll(document.metadata());
             if (!document.claims()) return;
             if (document.pids() == null) wholeClaims = true;
             else claimPids.addAll(document.pids());
         }
 
-        boolean answered(boolean requireClaims, Collection<String> pids) {
-            if (!entityMetadata) return false;
+        boolean answered(boolean requireClaims, Collection<String> pids,
+                Collection<FactDemand.EntityMetadata> requiredMetadata) {
+            if (requiredMetadata != null && !metadata.containsAll(requiredMetadata)) return false;
             if (!requireClaims) return true;
             if (wholeClaims) return true;
             return pids != null && claimPids.containsAll(pids);
@@ -102,7 +103,8 @@ public final class WikidataFactStore {
      * lookup therefore states the properties it needs.
      */
     private record Document(
-            JsonNode json, boolean claims, Set<String> pids, long estimatedBytes) { }
+            JsonNode json, boolean claims, Set<String> pids,
+            Set<FactDemand.EntityMetadata> metadata, long estimatedBytes) { }
 
     private final Map<String, Document> documents =
             new LinkedHashMap<>(256, 0.75f, true);
@@ -159,14 +161,20 @@ public final class WikidataFactStore {
 
     public synchronized List<String> missing(
             Collection<String> qids, boolean requireClaims, Collection<String> pids) {
+        return missing(qids, requireClaims, pids, Set.of());
+    }
+
+    public synchronized List<String> missing(
+            Collection<String> qids, boolean requireClaims, Collection<String> pids,
+            Collection<FactDemand.EntityMetadata> metadata) {
         List<String> out = new ArrayList<>();
         if (qids == null) return out;
         for (String qid : qids) {
             Document document = documents.get(qid);
-            if (!answers(document, requireClaims, pids)) {
+            if (!answers(document, requireClaims, pids, metadata)) {
                 out.add(qid);
                 EvictedCapabilities evicted = evictedCapabilities.get(qid);
-                if (evicted != null && evicted.answered(requireClaims, pids)) {
+                if (evicted != null && evicted.answered(requireClaims, pids, metadata)) {
                     evictedRefetches++;
                     if (pids != null) pids.forEach(pid ->
                             evictedRefetchesByProperty.merge(pid, 1L, Long::sum));
@@ -181,15 +189,28 @@ public final class WikidataFactStore {
      *  A slice that kept P31 knows nothing about P569, and saying so is the difference
      *  between a cache miss and a false "this entity has no date of birth". */
     private static boolean answers(
-            Document document, boolean requireClaims, Collection<String> pids) {
+            Document document, boolean requireClaims, Collection<String> pids,
+            Collection<FactDemand.EntityMetadata> metadata) {
         if (document == null) return false;
+        if (metadata != null && !document.metadata().containsAll(metadata)) return false;
         if (!requireClaims) return true;
         if (!document.claims()) return false;
         if (pids == null) return document.pids() == null;   // the whole body was wanted
         return document.pids() == null || document.pids().containsAll(pids);
     }
 
-    public synchronized void accept(JsonNode response, boolean claims) {
+    /**
+     * Banks a response ASSERTED to carry every metadata kind, for a caller holding a
+     * document it built rather than fetched.
+     *
+     * <p>Package-private, and that is the point: a fetch is projected now, so a
+     * response generally carries only what was asked for. Recording one as complete
+     * when it is not turns a cache miss into a confident wrong answer — the store
+     * would hand a labels-only document to a caller wanting aliases and it would read
+     * as "this entity has none", which is the failure {@link #answers} exists to make
+     * impossible. A fetch says what it asked for; only a fixture can promise the rest.
+     */
+    synchronized void accept(JsonNode response, boolean claims) {
         accept(response, claims, null);
     }
 
@@ -198,32 +219,54 @@ public final class WikidataFactStore {
      * A later question about another property finds the slice does not answer it and
      * fetches again — one request, against holding every property of every entity for
      * the whole run.
+     *
+     * <p>Package-private for the reason above: it asserts complete metadata.
      */
-    public synchronized void accept(
+    synchronized void accept(
             JsonNode response, boolean claims, Collection<String> pids) {
+        accept(response, claims, pids, FactDemand.allMetadata());
+    }
+
+    public synchronized void accept(
+            JsonNode response, boolean claims, Collection<String> pids,
+            Collection<FactDemand.EntityMetadata> requestedMetadata) {
         if (response == null) return;
         Set<String> retain = pids == null ? null : Set.copyOf(pids);
         response.path("entities").fields().forEachRemaining(entry -> {
             JsonNode copy = entry.getValue().deepCopy();
             fetched.incrementAndGet();
             Document previous = documents.get(entry.getKey());
-            if (previous != null && previous.claims() && !claims) return;
-            // A complete claims document already answers every sliced question. A
-            // concurrent or compatibility-path slice arriving later must not replace
-            // it with less information merely because that request finished last.
-            if (previous != null && previous.claims() && previous.pids() == null
-                    && claims && retain != null) return;
+            Set<FactDemand.EntityMetadata> keptMetadata = answeredMetadata(copy,
+                    requestedMetadata);
+            if (previous != null) {
+                keptMetadata.addAll(previous.metadata());
+                mergeMetadata(copy, previous.json(), previous.metadata());
+            }
             Set<String> kept = retain;
             if (claims && retain != null) {
                 // Merge with what this entity already had: two fetches for different
                 // declarations leave one document answering both.
                 kept = new LinkedHashSet<>(retain);
-                if (previous != null && previous.claims() && previous.pids() != null) {
-                    kept.addAll(previous.pids());
-                    mergeClaims(copy, previous.json(), previous.pids());
+                if (previous != null && previous.claims()) {
+                    if (previous.pids() == null) {
+                        mergeClaims(copy, previous.json(),
+                                fieldNames(previous.json().path("claims")));
+                        kept = null;
+                    } else {
+                        kept.addAll(previous.pids());
+                        mergeClaims(copy, previous.json(), previous.pids());
+                    }
                 }
-                sliceClaims(copy, kept);
-                kept = Set.copyOf(kept);
+                if (kept != null) {
+                    sliceClaims(copy, kept);
+                    kept = Set.copyOf(kept);
+                }
+            }
+            boolean keptClaims = claims || previous != null && previous.claims();
+            if (!claims && previous != null && previous.claims()) {
+                mergeClaims(copy, previous.json(), previous.pids() == null
+                        ? fieldNames(previous.json().path("claims")) : previous.pids());
+                kept = previous.pids();
             }
             long weight = estimate(copy);
             if (weight > maxEstimatedBytes) {
@@ -237,7 +280,8 @@ public final class WikidataFactStore {
                 recordBankedProperties(entry.getKey(), copy, kept);
             }
             if (previous != null) estimatedBytes -= previous.estimatedBytes();
-            documents.put(entry.getKey(), new Document(copy, claims, kept, weight));
+            documents.put(entry.getKey(), new Document(copy, keptClaims, kept,
+                    Set.copyOf(keptMetadata), weight));
             estimatedBytes += weight;
         });
         evictOldest();
@@ -251,12 +295,18 @@ public final class WikidataFactStore {
     public synchronized JsonNode response(
             Collection<String> qids, boolean requireClaims,
             Collection<String> pids, ObjectMapper mapper) {
+        return response(qids, requireClaims, pids, Set.of(), mapper);
+    }
+
+    public synchronized JsonNode response(
+            Collection<String> qids, boolean requireClaims, Collection<String> pids,
+            Collection<FactDemand.EntityMetadata> metadata, ObjectMapper mapper) {
         ObjectNode root = mapper.createObjectNode();
         ObjectNode entities = root.putObject("entities");
         if (qids == null) return root;
         for (String qid : qids) {
             Document document = documents.get(qid);
-            if (!answers(document, requireClaims, pids)) return null;
+            if (!answers(document, requireClaims, pids, metadata)) return null;
             entities.set(qid, document.json().deepCopy());
         }
         return root;
@@ -271,6 +321,14 @@ public final class WikidataFactStore {
     public synchronized JsonNode merged(
             JsonNode fetched, Collection<String> qids, boolean requireClaims,
             Collection<String> pids, ObjectMapper mapper) {
+        return merged(fetched, qids, requireClaims, pids,
+                Set.of(), mapper);
+    }
+
+    public synchronized JsonNode merged(
+            JsonNode fetched, Collection<String> qids, boolean requireClaims,
+            Collection<String> pids, Collection<FactDemand.EntityMetadata> metadata,
+            ObjectMapper mapper) {
         ObjectNode root = mapper.createObjectNode();
         ObjectNode entities = root.putObject("entities");
         JsonNode answered = fetched == null ? null : fetched.path("entities");
@@ -282,7 +340,7 @@ public final class WikidataFactStore {
             for (String qid : qids) {
                 if (entities.has(qid)) continue;
                 Document document = documents.get(qid);
-                if (answers(document, requireClaims, pids)) {
+                if (answers(document, requireClaims, pids, metadata)) {
                     entities.set(qid, document.json().deepCopy());
                 }
             }
@@ -290,8 +348,9 @@ public final class WikidataFactStore {
         return root;
     }
 
-    /** Drops every claim property outside the slice. Labels, id and the rest of the
-     *  entity document are untouched — they cost little and every consumer wants them. */
+    /** Drops every claim property outside the slice. Entity metadata is capability-
+     * tracked separately: a cached labels-only document cannot answer aliases or
+     * sitelinks merely because all three once rode every request. */
     private static void sliceClaims(JsonNode entity, Set<String> keep) {
         JsonNode claims = entity.path("claims");
         if (!claims.isObject()) return;
@@ -312,6 +371,38 @@ public final class WikidataFactStore {
                 ((ObjectNode) target).set(pid, source.get(pid).deepCopy());
             }
         }
+    }
+
+    private static void mergeMetadata(JsonNode into, JsonNode from,
+            Collection<FactDemand.EntityMetadata> metadata) {
+        if (!(into instanceof ObjectNode target) || from == null) return;
+        for (FactDemand.EntityMetadata item : metadata) {
+            String field = switch (item) {
+                case LABEL -> "labels";
+                case ALIASES -> "aliases";
+                case SITELINKS -> "sitelinks";
+            };
+            if (!target.has(field) && from.has(field)) target.set(field, from.get(field).deepCopy());
+        }
+    }
+
+    private static Set<FactDemand.EntityMetadata> answeredMetadata(JsonNode entity,
+            Collection<FactDemand.EntityMetadata> requested) {
+        LinkedHashSet<FactDemand.EntityMetadata> answered = new LinkedHashSet<>();
+        if (entity == null || requested == null) return answered;
+        if (requested.contains(FactDemand.EntityMetadata.LABEL) && entity.has("labels"))
+            answered.add(FactDemand.EntityMetadata.LABEL);
+        if (requested.contains(FactDemand.EntityMetadata.ALIASES) && entity.has("aliases"))
+            answered.add(FactDemand.EntityMetadata.ALIASES);
+        if (requested.contains(FactDemand.EntityMetadata.SITELINKS) && entity.has("sitelinks"))
+            answered.add(FactDemand.EntityMetadata.SITELINKS);
+        return answered;
+    }
+
+    private static Set<String> fieldNames(JsonNode node) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (node != null && node.isObject()) node.fieldNames().forEachRemaining(names::add);
+        return names;
     }
 
     public long cacheHits() { return hits.get(); }

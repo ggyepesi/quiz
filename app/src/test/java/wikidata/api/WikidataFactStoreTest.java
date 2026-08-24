@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -13,6 +14,32 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikidataFactStoreTest {
+    @Test void metadataCapabilityDistinguishesEmptyFromNeverRequested() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore store = new WikidataFactStore();
+        JsonNode labelsOnly = mapper.readTree("""
+                {"entities":{"Q1":{"id":"Q1","labels":{"en":{"value":"One"}},
+                "claims":{"P31":[]}}}}""");
+        store.accept(labelsOnly, true, List.of("P31"),
+                Set.of(FactDemand.EntityMetadata.LABEL));
+
+        assertTrue(store.missing(List.of("Q1"), true, List.of("P31"),
+                Set.of(FactDemand.EntityMetadata.LABEL)).isEmpty());
+        assertEquals(List.of("Q1"), store.missing(List.of("Q1"), true,
+                List.of("P31"), Set.of(FactDemand.EntityMetadata.ALIASES)),
+                "a labels response must not turn never-requested aliases into an empty answer");
+
+        JsonNode aliases = mapper.readTree("""
+                {"entities":{"Q1":{"id":"Q1","aliases":{}}}}""");
+        store.accept(aliases, false, List.of(),
+                Set.of(FactDemand.EntityMetadata.ALIASES));
+
+        assertTrue(store.missing(List.of("Q1"), true, List.of("P31"),
+                Set.of(FactDemand.EntityMetadata.LABEL,
+                        FactDemand.EntityMetadata.ALIASES)).isEmpty(),
+                "an empty-but-answered alias augmentation keeps the earlier label and claims");
+    }
+
     @Test void measurementIsBoundedAndReportsTruncation() {
         WikidataFactStore store = new WikidataFactStore(1_536);
         store.recordDemand("test", List.of("Q1", "Q2"), List.of("P31"));

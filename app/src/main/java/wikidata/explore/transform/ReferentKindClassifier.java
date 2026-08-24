@@ -34,6 +34,15 @@ public final class ReferentKindClassifier {
                                Collection<WikidataDynamicObject> pool,
                                WikidataApiClient api, GenerationLog log,
                                Set<String> candidateQids) {
+        return apply(model, pool, api, log, candidateQids,
+                FactDemand.allMetadata());
+    }
+
+    public static Result apply(GeneratedProjectModel model,
+                               Collection<WikidataDynamicObject> pool,
+                               WikidataApiClient api, GenerationLog log,
+                               Set<String> candidateQids,
+                               Collection<FactDemand.EntityMetadata> metadata) {
         if (model == null || pool == null || api == null) return new Result(0, 0, 0);
         List<EntityKindRule> rules = model.entityKindRules().stream()
                 .filter(EntityKindRule::isConfigured)
@@ -79,7 +88,7 @@ public final class ReferentKindClassifier {
                         + properties.size() + " planned property slice(s) ("
                         + String.join(", ", properties) + ")")) {
             partial = api.getEntityClaimsPartial(new ArrayList<>(candidates.keySet()),
-                    new ArrayList<>(properties), group.batchSink());
+                    new ArrayList<>(properties), metadata, group.batchSink());
         } catch (Exception failure) {
             if (Thread.currentThread().isInterrupted()) Thread.currentThread().interrupt();
             else if (log != null) log.message("Entity kind classification failed ("

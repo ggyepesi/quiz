@@ -124,7 +124,8 @@ public final class SemanticConvergence {
             SnapshotEntityKindClassifier.Result stored =
                     SnapshotEntityKindClassifier.apply(model, pool, pool, sink);
             ReferentKindClassifier.Result remote = ReferentKindClassifier.apply(
-                    model, pool, api, sink, stored.withoutStoredEvidenceQids());
+                    model, pool, api, sink, stored.withoutStoredEvidenceQids(),
+                    nameMetadata(sourcePlan));
             classified += stored.classified() + remote.classified();
             kindsClassified.addAll(stored.newlyClassified());
             Set<String> currentUnavailable = new LinkedHashSet<>(remote.unavailableQids());
@@ -175,6 +176,18 @@ public final class SemanticConvergence {
         return new Result(productiveIterations, loaded, classified, owned,
                 List.copyOf(ownedCreated), List.copyOf(kindsClassified), Map.copyOf(completed),
                 List.copyOf(failed.values()), Set.copyOf(unresolvedKinds));
+    }
+
+    private static Set<wikidata.api.FactDemand.EntityMetadata> nameMetadata(
+            datasource.api.SourceExecutionPlan sourcePlan) {
+        if (sourcePlan == null) return wikidata.api.FactDemand.allMetadata();
+        java.util.EnumSet<wikidata.api.FactDemand.EntityMetadata> metadata =
+                java.util.EnumSet.noneOf(wikidata.api.FactDemand.EntityMetadata.class);
+        if (!wikidata.explore.model.ClassNameSourcePlan.labels(sourcePlan).isEmpty())
+            metadata.add(wikidata.api.FactDemand.EntityMetadata.LABEL);
+        if (!wikidata.explore.model.ClassNameSourcePlan.aliases(sourcePlan).isEmpty())
+            metadata.add(wikidata.api.FactDemand.EntityMetadata.ALIASES);
+        return metadata;
     }
 
     private static LoadedDeclaration union(LoadedDeclaration left, LoadedDeclaration right) {

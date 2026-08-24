@@ -60,7 +60,7 @@ class BankedPropertyClosureTest {
                 if (!entities.isEmpty()) entities.append(',');
                 entities.append("\"").append(qid).append("\":{\"id\":\"").append(qid)
                         .append("\",\"labels\":{\"en\":{\"language\":\"en\",\"value\":\"")
-                        .append(qid).append("\"}},\"claims\":")
+                        .append(qid).append("\"}},\"aliases\":{},\"claims\":")
                         .append("""
                                 {"P31":[{"mainsnak":{"snaktype":"value","property":"P31",
                                   "datavalue":{"type":"wikibase-entityid",

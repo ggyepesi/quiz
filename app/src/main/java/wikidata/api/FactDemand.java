@@ -21,7 +21,11 @@ public record FactDemand(
         Set<EntityMetadata> metadata,
         String reason) {
 
-    public enum EntityMetadata { LABEL, ALIASES }
+    public enum EntityMetadata { LABEL, ALIASES, SITELINKS }
+
+    public static Set<EntityMetadata> allMetadata() {
+        return Collections.unmodifiableSet(java.util.EnumSet.allOf(EntityMetadata.class));
+    }
 
     public FactDemand {
         consumer = consumer == null || consumer.isBlank() ? "unspecified" : consumer;
