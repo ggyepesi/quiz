@@ -1,6 +1,7 @@
 package datasource.api;
 
 import java.util.Map;
+import java.util.List;
 
 /**
  * One binding interpreted by the operation that owns its grammar.
@@ -15,7 +16,8 @@ public record PreparedSourceOperation(
         Execution execution,
         String description,
         Map<String, String> details,
-        Object configuration) {
+        Object configuration,
+        List<SourceInputRequirement> inputRequirements) {
 
     public enum Execution { ACQUIRE, RETAIN }
 
@@ -25,6 +27,15 @@ public record PreparedSourceOperation(
         execution = execution == null ? Execution.RETAIN : execution;
         description = description == null ? "" : description;
         details = details == null ? Map.of() : Map.copyOf(details);
+        inputRequirements = inputRequirements == null ? List.of()
+                : List.copyOf(inputRequirements);
+    }
+
+    public PreparedSourceOperation(String familyId, String familyName,
+            Execution execution, String description, Map<String, String> details,
+            Object configuration) {
+        this(familyId, familyName, execution, description, details, configuration,
+                List.of());
     }
 
     public <T> T configuration(Class<T> type) {

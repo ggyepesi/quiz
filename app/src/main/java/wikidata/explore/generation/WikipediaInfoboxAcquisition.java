@@ -244,8 +244,9 @@ public final class WikipediaInfoboxAcquisition {
         List<Declaration> result = new ArrayList<>();
         if (model == null || sourcePlan == null) return result;
         for (SourceExecutionPlan.Step step : sourcePlan.steps(BindingScope.FIELD_VALUE)) {
-            String parameter =
-                    WikipediaDatasourceProvider.infoboxParameter(step.binding());
+            String parameter = step.prepared().configuration(String.class);
+            if (!WikipediaDatasourceProvider.FAMILY_INFOBOX_FIELD.equals(
+                    step.prepared().familyId())) continue;
             if (parameter == null) continue;
             GeneratedClassModel owner = model.findClass(step.target().className());
             GeneratedFieldModel field = declaredField(owner, step.target().fieldPath());

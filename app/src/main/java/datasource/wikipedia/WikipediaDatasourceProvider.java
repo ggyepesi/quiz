@@ -12,6 +12,7 @@ import datasource.api.SourceBinding;
 import datasource.api.SourceBindingSlot;
 import datasource.api.SourceRecipe;
 import datasource.api.PreparedSourceOperation;
+import datasource.api.SourceInputRequirement;
 import datasource.api.acquisition.SourceAcquisitionOperation;
 import datasource.api.acquisition.SourceAcquisitionRequest;
 import datasource.EntityRef;
@@ -77,8 +78,13 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                             "input", "Wikipedia pages linked from reachable entity IDs",
                             "operation", "Parse " + parameter + " from versioned infoboxes",
                             "output", "Fill values according to the configured source slot"),
-                    parameter);
+                    parameter, articleCorrespondence());
         }
+    }
+
+    private static List<SourceInputRequirement> articleCorrespondence() {
+        return List.of(new SourceInputRequirement(datasource.EntityRef.WIKIDATA,
+                SourceInputRequirement.Kind.ARTICLE_CORRESPONDENCE));
     }
 
     /**

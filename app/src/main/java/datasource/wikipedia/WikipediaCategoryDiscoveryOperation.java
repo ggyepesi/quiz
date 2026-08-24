@@ -7,6 +7,7 @@ import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
 import datasource.api.SourceBinding;
 import datasource.api.PreparedSourceOperation;
+import datasource.api.SourceInputRequirement;
 import datasource.api.discovery.DiscoveredSourceValue;
 import datasource.api.discovery.SourceDiscoveryOperation;
 import datasource.api.discovery.SourceDiscoveryRequest;
@@ -65,7 +66,9 @@ public final class WikipediaCategoryDiscoveryOperation implements SourceDiscover
                         + " ← category ‘" + rule.pattern() + "’ (" + rule.policy() + ")",
                 Map.of("input", "Versioned category memberships from linked Wikipedia pages",
                         "operation", "Match " + rule.pattern() + " using " + rule.policy(),
-                        "output", "Retain matched values with category provenance"), rule);
+                        "output", "Retain matched values with category provenance"), rule,
+                List.of(new SourceInputRequirement(EntityRef.WIKIDATA,
+                        SourceInputRequirement.Kind.ARTICLE_CORRESPONDENCE)));
     }
 
     @Override public Query<SourceDiscoveryResult> discover(SourceDiscoveryRequest request) {

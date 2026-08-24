@@ -66,6 +66,34 @@ class ClassNameSourcePlanTest {
                 "and no other, or every population pays for an article it never reads");
     }
 
+    @Test void aCategorySourceAlsoDemandsItsArticleCorrespondence() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        var location = movie.addField(
+                "location", FieldType.STRING, FieldCardinality.COLLECTION);
+        FieldSourceBindings.put(location, new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue("Movie", "location",
+                        datasource.api.SourceBindingSlot.CATEGORY_EVIDENCE),
+                new datasource.api.SourceRecipe("wikipedia", "category",
+                        java.util.Map.of("pattern", "Films set in <value>"))));
+        model.rootClass(movie);
+
+        var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
+        var demands = GenerationFactDemandPlan.compile(model, plan).all();
+
+        assertTrue(demands.stream().anyMatch(d -> d.targetClass().equals("Movie")
+                && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)));
+    }
+
+    @Test void aMissingPlanDoesNotPretendEveryClassUsesAnArticle() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Movie"));
+
+        assertFalse(GenerationFactDemandPlan.compile(model).all().stream().anyMatch(d ->
+                        d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)),
+                "legacy name defaults are not evidence of an article-backed source");
+    }
+
     @Test void anExplicitPlanMayDeclineAliasesWithoutDecliningTheLabel() {
         var label = new datasource.api.SourceBinding(
                 datasource.api.SourceBindingTarget.classNames(

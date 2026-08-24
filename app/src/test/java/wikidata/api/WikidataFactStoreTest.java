@@ -40,6 +40,21 @@ class WikidataFactStoreTest {
                 "an empty-but-answered alias augmentation keeps the earlier label and claims");
     }
 
+    @Test void aRetainedSitelinkAnswersTheLaterArticleLookup() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WikidataFactStore store = new WikidataFactStore();
+        JsonNode response = mapper.readTree("""
+                {"entities":{"Q1":{"id":"Q1","sitelinks":{
+                "enwiki":{"site":"enwiki","title":"One"}}}}}""");
+
+        store.accept(response, false, List.of(),
+                Set.of(FactDemand.EntityMetadata.SITELINKS));
+
+        assertTrue(store.missing(List.of("Q1"), false, List.of(),
+                Set.of(FactDemand.EntityMetadata.SITELINKS)).isEmpty(),
+                "the article acquisition must not fetch a retained sitelink again");
+    }
+
     @Test void measurementIsBoundedAndReportsTruncation() {
         WikidataFactStore store = new WikidataFactStore(1_536);
         store.recordDemand("test", List.of("Q1", "Q2"), List.of("P31"));

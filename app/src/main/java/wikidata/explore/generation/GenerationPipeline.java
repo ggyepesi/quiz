@@ -560,23 +560,14 @@ public class GenerationPipeline {
                         + convergence.ownedCreated() + " owned part(s)");
         steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                 "Acquire DBpedia fields, Wikipedia categories and native infobox values");
-        DBpediaFieldAcquisition.Result dbpedia =
-                enrichFromDBpedia(snapshot, pool, sink, sourcePlan, dbpediaClient);
-        WikipediaCategoryAcquisition.Result categories =
-                WikipediaCategoryAcquisition.apply(pool, sink,
-                        cancellation == null ? new work.CancellationToken() : cancellation,
-                        entityApi, sourcePlan);
-        WikipediaInfoboxAcquisition.Result infoboxes = WikipediaInfoboxAcquisition.apply(
-                snapshot, pool, sink,
-                cancellation == null ? new work.CancellationToken() : cancellation,
-                entityApi, sourcePlan);
+        ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
+                snapshot, pool, sourcePlan, dbpediaClient, entityApi, sink, cancellation,
+                ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL);
 
         // Finalization is deliberately after semantic convergence: names, expectations
         // and vocabularies describe the final classes/fields rather than iteration one.
         steps.completed(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
-                categories.memberships() + " category membership(s), "
-                        + infoboxes.values() + " infobox value(s), "
-                        + dbpedia.values() + " DBpedia value(s)");
+                external.summary());
         steps.started(GenerateDomainPipeline.CONSTRUCT,
                 "Replay the transforms that an already-reified pool can re-run");
         List<WikidataDynamicObject> projectedRecords = new ArrayList<>();
@@ -602,9 +593,8 @@ public class GenerationPipeline {
                         + ownedRenamed(finalization));
         sink.message("Enrich: " + convergence.ownedCreated() + " component(s) materialized, "
                 + loaded + " declared field value(s) loaded over "
-                + pool.size() + " objects, " + categories.memberships()
-                + " Wikipedia category membership(s) and " + infoboxes.values()
-                + " native infobox value(s) acquired (no re-extraction). "
+                + pool.size() + " objects, " + external.summary()
+                + " acquired (no re-extraction). "
                 + "Re-materializing...\n");
 
         steps.started(GenerateDomainPipeline.MATERIALIZE,
