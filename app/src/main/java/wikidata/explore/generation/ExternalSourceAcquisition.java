@@ -6,91 +6,69 @@ import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 
-/**
- * Executes the field-acquisition portion of a resolved datasource plan.
- *
- * <p>Generate and Enrich share this orchestration. Each family retains its established
- * batching, retry, cache and checkpoint boundary; this class decides which prepared
- * families run and produces one common result instead of making every query reproduce
- * the dispatch sequence.
- */
+/** Executes installed external field-acquisition families from a resolved source plan. */
 public final class ExternalSourceAcquisition {
     private ExternalSourceAcquisition() { }
 
     public enum FailurePolicy { STRICT, CONTINUE_OPTIONAL }
-    public enum Family { DBPEDIA, WIKIPEDIA_CATEGORIES, WIKIPEDIA_INFOBOX }
 
     public static Result apply(GeneratedProjectModel model,
             List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
             WikidataSparqlClient dbpedia, wikidata.api.WikidataApiClient wikidata,
             GenerationLog log, work.CancellationToken cancellation,
             FailurePolicy failurePolicy) throws Exception {
+        ExternalSourceFamilyRegistry registry = StandardExternalSourceFamilies.create();
+        Set<String> all = registry.families().stream().map(ExternalSourceFamily::id)
+                .collect(java.util.stream.Collectors.toSet());
         return apply(model, pool, plan, dbpedia, wikidata, log, cancellation,
-                failurePolicy, Set.of(Family.values()));
+                failurePolicy, registry, all);
     }
 
     public static Result apply(GeneratedProjectModel model,
             List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
             WikidataSparqlClient dbpedia, wikidata.api.WikidataApiClient wikidata,
             GenerationLog log, work.CancellationToken cancellation,
-            FailurePolicy failurePolicy, Set<Family> selectedFamilies) throws Exception {
+            FailurePolicy failurePolicy, Set<String> selectedFamilyIds) throws Exception {
+        return apply(model, pool, plan, dbpedia, wikidata, log, cancellation,
+                failurePolicy, StandardExternalSourceFamilies.create(), selectedFamilyIds);
+    }
+
+    public static Result apply(GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
+            WikidataSparqlClient dbpedia, wikidata.api.WikidataApiClient wikidata,
+            GenerationLog log, work.CancellationToken cancellation,
+            FailurePolicy failurePolicy, ExternalSourceFamilyRegistry registry,
+            Set<String> selectedFamilyIds) throws Exception {
+        if (registry == null) throw new IllegalArgumentException("Family registry is required");
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         work.CancellationToken token = cancellation == null
                 ? new work.CancellationToken() : cancellation;
-        Set<Family> selected = selectedFamilies == null ? Set.of() : Set.copyOf(selectedFamilies);
+        Set<String> selected = selectedFamilyIds == null
+                ? Set.of() : Set.copyOf(selectedFamilyIds);
+        selected.forEach(registry::require);
+        ExternalSourceFamily.Context context = new ExternalSourceFamily.Context(
+                model, pool == null ? List.of() : pool, plan, dbpedia, wikidata, sink, token);
+        List<ExternalSourceFamily.Outcome> outcomes = new ArrayList<>();
 
-        DBpediaFieldAcquisition.Result dbpediaResult = new DBpediaFieldAcquisition.Result(0, 0);
-        if (selected.contains(Family.DBPEDIA) && acquires(plan,
-                datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD)) {
-            if (dbpedia == null) {
-                sink.message("DBpedia acquisition skipped: no process-bound client.\n");
-            } else {
-                dbpediaResult = run("DBpedia", failurePolicy, sink,
-                        new DBpediaFieldAcquisition.Result(0, 0), () ->
-                                DBpediaFieldAcquisition.apply(
-                                        model, pool, plan, dbpedia, sink));
+        for (ExternalSourceFamily family : registry.families()) {
+            if (!selected.contains(family.id())) continue;
+            ExternalSourceFamily.Outcome empty = family.empty();
+            if (!family.configured(plan)) {
+                outcomes.add(empty);
+                continue;
             }
+            outcomes.add(run(family.displayName(), failurePolicy, sink, empty,
+                    () -> family.acquire(context)));
         }
-
-        WikipediaCategoryAcquisition.Result categories =
-                new WikipediaCategoryAcquisition.Result(0, 0, 0);
-        if (selected.contains(Family.WIKIPEDIA_CATEGORIES)
-                && acquires(plan, datasource.wikipedia
-                        .WikipediaCategoryDiscoveryOperation.FAMILY)) {
-            if (wikidata == null) {
-                sink.message("Wikipedia category acquisition skipped: no process-bound "
-                        + "Wikidata client.\n");
-            } else {
-                categories = run("Wikipedia category", failurePolicy, sink, categories, () ->
-                        WikipediaCategoryAcquisition.apply(
-                                pool, sink, token, wikidata, plan));
-            }
-        }
-
-        WikipediaInfoboxAcquisition.Result infoboxes =
-                new WikipediaInfoboxAcquisition.Result(0, 0, 0);
-        if (selected.contains(Family.WIKIPEDIA_INFOBOX)
-                && acquires(plan, datasource.wikipedia.WikipediaDatasourceProvider
-                        .FAMILY_INFOBOX_FIELD)) {
-            if (wikidata == null) {
-                sink.message("Wikipedia infobox acquisition skipped: no process-bound "
-                        + "Wikidata client.\n");
-            } else {
-                infoboxes = run("Wikipedia infobox", failurePolicy, sink, infoboxes, () ->
-                        WikipediaInfoboxAcquisition.apply(
-                                model, pool, sink, token, wikidata, plan));
-            }
-        }
-        return new Result(dbpediaResult, categories, infoboxes);
-    }
-
-    private static boolean acquires(SourceExecutionPlan plan, String familyId) {
-        return plan != null && plan.acquires(familyId);
+        return new Result(outcomes);
     }
 
     static <T> T run(String family, FailurePolicy policy, GenerationLog log,
@@ -107,18 +85,47 @@ public final class ExternalSourceAcquisition {
         }
     }
 
-    public record Result(
-            DBpediaFieldAcquisition.Result dbpedia,
-            WikipediaCategoryAcquisition.Result categories,
-            WikipediaInfoboxAcquisition.Result infoboxes) {
-        public int values() {
-            return dbpedia.values() + categories.memberships() + infoboxes.values();
+    public static final class Result {
+        private final List<ExternalSourceFamily.Outcome> outcomes;
+        private final Map<String, ExternalSourceFamily.Outcome> byFamily;
+
+        Result(List<ExternalSourceFamily.Outcome> outcomes) {
+            this.outcomes = List.copyOf(outcomes == null ? List.of() : outcomes);
+            LinkedHashMap<String, ExternalSourceFamily.Outcome> index = new LinkedHashMap<>();
+            for (ExternalSourceFamily.Outcome outcome : this.outcomes) {
+                if (index.putIfAbsent(outcome.familyId(), outcome) != null) {
+                    throw new IllegalArgumentException(
+                            "Duplicate external source outcome: " + outcome.familyId());
+                }
+            }
+            this.byFamily = Map.copyOf(index);
         }
 
+        public List<ExternalSourceFamily.Outcome> outcomes() { return outcomes; }
+        public ExternalSourceFamily.Outcome outcome(String familyId) {
+            return byFamily.get(familyId);
+        }
+        public int values() {
+            return outcomes.stream().mapToInt(ExternalSourceFamily.Outcome::values).sum();
+        }
         public String summary() {
-            return categories.memberships() + " category membership(s), "
-                    + infoboxes.values() + " infobox value(s), "
-                    + dbpedia.values() + " DBpedia value(s)";
+            return outcomes.stream()
+                    .sorted(java.util.Comparator.comparingInt(
+                            ExternalSourceFamily.Outcome::summaryOrder))
+                    .map(ExternalSourceFamily.Outcome::summary)
+                    .filter(value -> !value.isBlank())
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+
+        /** The non-empty family outcomes, ordered for one cumulative live update. */
+        public String acquiredSummary() {
+            return outcomes.stream()
+                    .filter(outcome -> outcome.values() > 0)
+                    .sorted(java.util.Comparator.comparingInt(
+                            ExternalSourceFamily.Outcome::summaryOrder))
+                    .map(ExternalSourceFamily.Outcome::summary)
+                    .filter(value -> !value.isBlank())
+                    .collect(java.util.stream.Collectors.joining(", "));
         }
     }
 }

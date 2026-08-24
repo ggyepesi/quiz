@@ -280,8 +280,10 @@ public class GenerationPipeline {
         ExternalSourceAcquisition.apply(snapshot, dynamicObjects, sourcePlan,
                 dbpedia, entityApi, log, cancellation,
                 ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
-                java.util.Set.of(ExternalSourceAcquisition.Family.DBPEDIA,
-                        ExternalSourceAcquisition.Family.WIKIPEDIA_INFOBOX));
+                java.util.Set.of(
+                        datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD,
+                        datasource.wikipedia.WikipediaDatasourceProvider
+                                .FAMILY_INFOBOX_FIELD));
 
         // NO owned components here. This is the single-class PREVIEW: it answers "who is
         // in this class, carrying what", and materializing a component per owner answers

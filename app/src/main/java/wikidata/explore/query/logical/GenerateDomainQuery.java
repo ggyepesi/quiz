@@ -294,10 +294,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     entityApi, genLog, context.cancellation(),
                                     wikidata.explore.generation.ExternalSourceAcquisition
                                             .FailurePolicy.STRICT);
-                    if (external.categories().memberships() > 0) {
+                    String acquiredExternal = external.acquiredSummary();
+                    if (!acquiredExternal.isBlank()) {
                         progress(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
-                                external.categories().memberships()
-                                        + " Wikipedia category membership(s) acquired");
+                                acquiredExternal + " acquired");
                     }
                     completePhase(
                             wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
