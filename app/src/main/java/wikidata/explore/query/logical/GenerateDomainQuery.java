@@ -131,7 +131,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     int classesRun = 0;
                     int childQueryFailures = 0;
                     FactDemandPlan factDemandPlan =
-                            wikidata.explore.generation.GenerationFactDemandPlan.compile(project);
+                            wikidata.explore.generation.GenerationFactDemandPlan.compile(
+                                    project, sourcePlan);
 
                     for (GeneratedClassModel cls : project.classes()) {
                         datasource.api.SourceExecutionPlan.Step population = sourcePlan.step(
@@ -273,7 +274,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.generation.SemanticConvergence.Result convergence =
                             wikidata.explore.generation.SemanticConvergence.apply(
                                     project, referentLoadRoots, entityApi, genLog,
-                                    java.util.List.of(), qualityTracker);
+                                    java.util.List.of(), qualityTracker, sourcePlan);
                     java.util.Map<String, wikidata.explore.extract.LoadedDeclaration>
                             completedReferentLoads = new java.util.LinkedHashMap<>(
                                     convergence.completedDeclarations());
@@ -311,7 +312,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             "Hydrating final reachable QIDs");
                     wikidata.explore.generation.FinalLabelHydration.Result labels =
                             wikidata.explore.generation.FinalLabelHydration.apply(
-                                    pool, entityApi, genLog, qualityTracker);
+                                    pool, entityApi, genLog, qualityTracker,
+                                    project, sourcePlan);
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.LABELS,
                             labels.resolved() + " label(s) resolved");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,

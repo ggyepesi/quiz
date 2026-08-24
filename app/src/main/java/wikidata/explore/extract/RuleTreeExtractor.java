@@ -979,7 +979,17 @@ public class RuleTreeExtractor {
         LinkedHashSet<String> pids = new LinkedHashSet<>(directPids);
         factDemands.stream().flatMap(d -> d.propertyPids().stream()).forEach(pids::add);
 
-        if (pids.isEmpty()) return;
+        // A class with nothing to fetch but a LABEL or ALIASES demand is asked anyway,
+        // and this deliberately costs a request the old condition avoided. Labels
+        // resolved HERE are in place before anything derives from them; left to final
+        // hydration they settle two phases later, after composition has already named
+        // an owned part from a QID — which is how ten Oscars parts came to be called
+        // "Q312674 — Structured Name" (#115). Correctness does not need it, since
+        // hydration still covers every class whose binding declares labels; the run
+        // reads better for it, and fewer derived names are built from a placeholder.
+        boolean retainsMetadata = factDemands.stream()
+                .anyMatch(demand -> !demand.metadata().isEmpty());
+        if (pids.isEmpty() && !retainsMetadata) return;
 
         if (!directPids.isEmpty()) {
             api().facts().recordDemand(
@@ -1004,7 +1014,12 @@ public class RuleTreeExtractor {
                         + (propagated.isBlank() ? "" : "; propagated: " + propagated))) {
             Map<String, WikidataApiClient.ApiEntity> details =
                     api().getEntities(memberQids, new ArrayList<>(pids), g.batchSink());
-            int filled = applyEntityClaims(members, outgoingFields, details);
+            boolean retainAliases = factDemands.stream().anyMatch(demand ->
+                    demand.metadata().contains(FactDemand.EntityMetadata.ALIASES));
+            boolean retainLabel = factDemands.stream().anyMatch(demand ->
+                    demand.metadata().contains(FactDemand.EntityMetadata.LABEL));
+            int filled = applyEntityClaims(
+                    members, outgoingFields, details, retainLabel, retainAliases);
             if (!outgoingFields.isEmpty()) {
                 g.message("Fetched field(s) [" + names + "] for " + filled + "/"
                                   + memberQids.size() + " members via wbgetentities.\n");
@@ -1028,13 +1043,22 @@ public class RuleTreeExtractor {
             List<WikidataDynamicObject> members,
             List<RuleIncludedField> outgoingFields,
             Map<String, WikidataApiClient.ApiEntity> details) {
+        return applyEntityClaims(members, outgoingFields, details, true, true);
+    }
+
+    private int applyEntityClaims(
+            List<WikidataDynamicObject> members,
+            List<RuleIncludedField> outgoingFields,
+            Map<String, WikidataApiClient.ApiEntity> details,
+            boolean retainLabel,
+            boolean retainAliases) {
 
         int filled = 0;
         for (WikidataDynamicObject member : members) {
             WikidataApiClient.ApiEntity e = details.get(member.qid());
             if (e == null) continue;
-            member.aliases(e.aliases());
-            if (isPlaceholderLabel(member) && !e.label().isBlank()) {
+            if (retainAliases) member.aliases(e.aliases());
+            if (retainLabel && isPlaceholderLabel(member) && !e.label().isBlank()) {
                 member.name(e.label());
             }
             boolean any = false;
@@ -1128,10 +1152,7 @@ public class RuleTreeExtractor {
                 o.wikidataEntityMissing(true);
             } else if (e != null && !e.label().isBlank()) {
                 o.name(e.label());
-                o.aliases(e.aliases());
                 filled++;
-            } else if (e != null) {
-                o.aliases(e.aliases());
             }
         }
         return filled;

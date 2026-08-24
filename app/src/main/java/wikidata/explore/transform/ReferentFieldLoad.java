@@ -237,6 +237,22 @@ public final class ReferentFieldLoad {
             Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
             boolean deferLabels,
             AcquisitionManifest manifest) {
+        java.util.Set<String> aliases = model == null ? java.util.Set.of()
+                : model.classes().stream().filter(java.util.Objects::nonNull)
+                .map(GeneratedClassModel::className)
+                .collect(java.util.stream.Collectors.toSet());
+        return load(model, pool, api, log, alreadyLoaded, deferLabels, manifest, aliases);
+    }
+
+    public static Result load(
+            GeneratedProjectModel model,
+            Collection<WikidataDynamicObject> pool,
+            WikidataApiClient api,
+            GenerationLog log,
+            Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
+            boolean deferLabels,
+            AcquisitionManifest manifest,
+            java.util.Set<String> aliasClasses) {
 
         if (model == null || pool == null || api == null) {
             return new Result(0, java.util.List.of());
@@ -299,52 +315,57 @@ public final class ReferentFieldLoad {
             EntityFieldBatch entityBatch = loadEntityFields(
                     e.getKey(), e.getValue(), objs, known, api, sink, deferLabels,
                     manifest == null ? Set.of() : manifest.propertiesFor(e.getKey()));
+            boolean retainAliases = aliasClasses != null && aliasClasses.contains(e.getKey());
             for (WikidataDynamicObject obj : objs) {
                 WikidataApiClient.ApiEntity metadata = entityBatch.entities().get(obj.qid());
                 // Aliases name the Wikidata ENTITY, not an owned projection that merely
                 // borrows its QID (Name@Person.structuredName).
-                if (!obj.isPart() && metadata != null) obj.aliases(metadata.aliases());
+                if (retainAliases && !obj.isPart() && metadata != null) {
+                    obj.aliases(metadata.aliases());
+                }
             }
             LiteralFieldBatch literalBatch = loadLiteralFields(
                     e.getKey(), e.getValue(), objs, known, api, sink);
             // A literal-only load parses statements, not ApiEntity metadata, so those
             // classes still need one identity pass. Where an entity request already ran,
             // its response answered this and the pass below asks for nothing.
-            String aliasesKey = wikidata.explore.extract.LoadedDeclaration.key(
-                    e.getKey(), ALIASES_FIELD, ALIASES_PROPERTY);
-            wikidata.explore.extract.LoadedDeclaration aliasesDone = known.get(aliasesKey);
-            Set<String> aliasesCovered = aliasesDone == null
-                    ? new LinkedHashSet<>()
-                    : new LinkedHashSet<>(aliasesDone.coveredQids());
-            // Coverage follows what the response ANSWERED, never what it was assumed
-            // to answer: an entity request carries aliases (WikidataApiClient
-            // .entityProps), and the entity says so itself, so a document fetched
-            // without them can never be banked as though it had them.
-            entityBatch.entities().forEach((qid, metadata) -> {
-                if (metadata.aliasesAnswered()) aliasesCovered.add(qid);
-            });
-            List<String> metadataQids = objs.stream()
-                    .filter(obj -> !obj.isPart() && !aliasesCovered.contains(obj.qid()))
-                    .map(WikidataDynamicObject::qid).distinct().toList();
-            if (!metadataQids.isEmpty()) {
-                try (GenerationLog.Group group = sink.group(
-                        "Load entity aliases on " + e.getKey() + " for "
-                                + metadataQids.size() + " entities")) {
-                    Map<String, List<String>> metadata =
-                            api.getAliases(metadataQids, group.batchSink());
-                    for (WikidataDynamicObject obj : objs) {
-                        List<String> aliases = metadata.get(obj.qid());
-                        if (!obj.isPart() && aliases != null) obj.aliases(aliases);
+            if (retainAliases) {
+                String aliasesKey = wikidata.explore.extract.LoadedDeclaration.key(
+                        e.getKey(), ALIASES_FIELD, ALIASES_PROPERTY);
+                wikidata.explore.extract.LoadedDeclaration aliasesDone = known.get(aliasesKey);
+                Set<String> aliasesCovered = aliasesDone == null
+                        ? new LinkedHashSet<>()
+                        : new LinkedHashSet<>(aliasesDone.coveredQids());
+                // Coverage follows what the response ANSWERED, never what it was assumed
+                // to answer: an entity request carries aliases (WikidataApiClient
+                // .entityProps), and the entity says so itself, so a document fetched
+                // without them can never be banked as though it had them.
+                entityBatch.entities().forEach((qid, metadata) -> {
+                    if (metadata.aliasesAnswered()) aliasesCovered.add(qid);
+                });
+                List<String> metadataQids = objs.stream()
+                        .filter(obj -> !obj.isPart() && !aliasesCovered.contains(obj.qid()))
+                        .map(WikidataDynamicObject::qid).distinct().toList();
+                if (!metadataQids.isEmpty()) {
+                    try (GenerationLog.Group group = sink.group(
+                            "Load entity aliases on " + e.getKey() + " for "
+                                    + metadataQids.size() + " entities")) {
+                        Map<String, List<String>> metadata =
+                                api.getAliases(metadataQids, group.batchSink());
+                        for (WikidataDynamicObject obj : objs) {
+                            List<String> aliases = metadata.get(obj.qid());
+                            if (!obj.isPart() && aliases != null) obj.aliases(aliases);
+                        }
+                        aliasesCovered.addAll(metadata.keySet());
+                    } catch (Exception ex) {
+                        sink.message("Entity aliases on " + e.getKey() + " unavailable ("
+                                + ex.getMessage() + ") — field values remain usable.\n");
                     }
-                    aliasesCovered.addAll(metadata.keySet());
-                } catch (Exception ex) {
-                    sink.message("Entity aliases on " + e.getKey() + " unavailable ("
-                            + ex.getMessage() + ") — field values remain usable.\n");
                 }
-            }
-            if (!aliasesCovered.isEmpty()) {
-                completed.add(new wikidata.explore.extract.LoadedDeclaration(
-                        e.getKey(), ALIASES_FIELD, ALIASES_PROPERTY, aliasesCovered));
+                if (!aliasesCovered.isEmpty()) {
+                    completed.add(new wikidata.explore.extract.LoadedDeclaration(
+                            e.getKey(), ALIASES_FIELD, ALIASES_PROPERTY, aliasesCovered));
+                }
             }
             for (GeneratedFieldModel f : e.getValue()) {
                 String pid = clean(f.mapping().propertyPid());

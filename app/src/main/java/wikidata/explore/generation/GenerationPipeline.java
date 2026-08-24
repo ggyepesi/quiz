@@ -551,7 +551,8 @@ public class GenerationPipeline {
         steps.started(GenerateDomainPipeline.SEMANTIC,
                 "Load newly declared properties, settle kinds and compose owned parts");
         SemanticConvergence.Result convergence = SemanticConvergence.apply(
-                snapshot, pool, entityApi, log, previous.loadedDeclarations(), quality);
+                snapshot, pool, entityApi, log, previous.loadedDeclarations(), quality,
+                sourcePlan);
         int loaded = convergence.loadedFields();
         steps.completed(GenerateDomainPipeline.SEMANTIC,
                 convergence.loadedFields() + " field value(s), "
@@ -586,7 +587,8 @@ public class GenerationPipeline {
         steps.started(GenerateDomainPipeline.LABELS,
                 "Resolve the names of anything still showing as a bare QID");
         FinalLabelHydration.Result labels =
-                FinalLabelHydration.apply(pool, entityApi, log, quality);
+                FinalLabelHydration.apply(
+                        pool, entityApi, log, quality, snapshot, sourcePlan);
         steps.completed(GenerateDomainPipeline.LABELS,
                 labels.resolved() + " resolved, " + labels.missing() + " missing, "
                         + labels.unavailableQids().size() + " unavailable");

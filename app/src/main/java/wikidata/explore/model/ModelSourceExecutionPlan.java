@@ -52,9 +52,9 @@ public final class ModelSourceExecutionPlan {
                 + " Wikipedia infobox, " + categoryFields(plan)
                 + " Wikipedia category and " + dbpediaFields(plan)
                 + " DBpedia field binding(s) drive acquisition across all configured"
-                + " classes;"
-                + " class names and remaining field sources still use the established"
-                + " acquisition passes.";
+                + " classes; " + wikidataNameClasses(plan)
+                + " Wikidata class-name declaration(s) drive label/alias retention;"
+                + " remaining field sources still use the established acquisition passes.";
     }
 
     /** Enrich re-reads a saved graph, so no population is discovered; external
@@ -65,8 +65,9 @@ public final class ModelSourceExecutionPlan {
                 + " Wikipedia category and " + dbpediaFields(plan)
                 + " DBpedia field binding(s) drive acquisition (including DBpedia"
                 + " endpoint requests);"
-                + " populations are not re-discovered, and class names and remaining"
-                + " field sources still use the established acquisition passes.";
+                + " populations are not re-discovered; " + wikidataNameClasses(plan)
+                + " Wikidata class-name declaration(s) drive label/alias retention;"
+                + " remaining field sources still use the established acquisition passes.";
     }
 
     /** Remap performs no source acquisition; it only validates that the persisted
@@ -98,5 +99,12 @@ public final class ModelSourceExecutionPlan {
                 .filter(step -> datasource.wikipedia.WikipediaDatasourceProvider
                         .categoryRule(step.binding()) != null)
                 .count();
+    }
+
+    private static long wikidataNameClasses(SourceExecutionPlan plan) {
+        java.util.LinkedHashSet<String> classes = new java.util.LinkedHashSet<>(
+                ClassNameSourcePlan.labels(plan));
+        classes.addAll(ClassNameSourcePlan.aliases(plan));
+        return classes.size();
     }
 }

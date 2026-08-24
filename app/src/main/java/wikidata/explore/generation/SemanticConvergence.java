@@ -54,6 +54,17 @@ public final class SemanticConvergence {
             GenerationLog log,
             Collection<LoadedDeclaration> alreadyLoaded,
             GenerationQualityTracker quality) {
+        return apply(model, pool, api, log, alreadyLoaded, quality, null);
+    }
+
+    public static Result apply(
+            GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool,
+            WikidataApiClient api,
+            GenerationLog log,
+            Collection<LoadedDeclaration> alreadyLoaded,
+            GenerationQualityTracker quality,
+            datasource.api.SourceExecutionPlan sourcePlan) {
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         Map<String, LoadedDeclaration> completed = new LinkedHashMap<>();
         if (alreadyLoaded != null) alreadyLoaded.forEach(d -> completed.put(d.key(), d));
@@ -87,7 +98,12 @@ public final class SemanticConvergence {
                     + retention.coveredPairs() + " pair(s) already loaded and not "
                     + "planned again.\n");
             ReferentFieldLoad.Result fields = ReferentFieldLoad.load(
-                    model, pool, api, sink, completed.values(), true, acquisition);
+                    model, pool, api, sink, completed.values(), true, acquisition,
+                    sourcePlan == null ? model.classes().stream()
+                            .filter(java.util.Objects::nonNull)
+                            .map(c -> c.className())
+                            .collect(java.util.stream.Collectors.toSet())
+                            : wikidata.explore.model.ClassNameSourcePlan.aliases(sourcePlan));
             loaded += fields.loaded();
             fields.completed().forEach(done -> {
                 completed.put(done.key(), done);

@@ -22,6 +22,12 @@ public final class GenerationFactDemandPlan {
     private GenerationFactDemandPlan() { }
 
     public static FactDemandPlan compile(GeneratedProjectModel model) {
+        return compile(model, null);
+    }
+
+    public static FactDemandPlan compile(
+            GeneratedProjectModel model,
+            datasource.api.SourceExecutionPlan sourcePlan) {
         if (model == null) return FactDemandPlan.empty();
         List<FactDemand> planned = new ArrayList<>();
         planned.addAll(DisambiguationPrune.factDemands(model));
@@ -33,16 +39,28 @@ public final class GenerationFactDemandPlan {
                     List.of(load.propertyPid()),
                     "load " + load.statementType() + " statements and qualifiers"));
         }
+        java.util.Set<String> labelClasses =
+                sourcePlan == null ? model.classes().stream()
+                        .filter(java.util.Objects::nonNull)
+                        .map(c -> c.className()).collect(java.util.stream.Collectors.toSet())
+                        : wikidata.explore.model.ClassNameSourcePlan.labels(sourcePlan);
+        java.util.Set<String> aliasClasses =
+                sourcePlan == null ? labelClasses
+                        : wikidata.explore.model.ClassNameSourcePlan.aliases(sourcePlan);
         for (var clazz : model.classes()) {
             if (clazz == null) continue;
-            planned.add(FactDemand.metadata(
-                    "final label hydration", clazz.className(),
-                    List.of(FactDemand.EntityMetadata.LABEL),
-                    "resolve placeholder QIDs after the graph closes"));
-            planned.add(FactDemand.metadata(
-                    "alias coverage", clazz.className(),
-                    List.of(FactDemand.EntityMetadata.ALIASES),
-                    "carry alternate names on any entity response"));
+            if (labelClasses.contains(clazz.className())) {
+                planned.add(FactDemand.metadata(
+                        "final label hydration", clazz.className(),
+                        List.of(FactDemand.EntityMetadata.LABEL),
+                        "resolve placeholder QIDs after the graph closes"));
+            }
+            if (aliasClasses.contains(clazz.className())) {
+                planned.add(FactDemand.metadata(
+                        "alias coverage", clazz.className(),
+                        List.of(FactDemand.EntityMetadata.ALIASES),
+                        "carry configured alternate names on entity responses"));
+            }
         }
         return new FactDemandPlan(planned);
     }

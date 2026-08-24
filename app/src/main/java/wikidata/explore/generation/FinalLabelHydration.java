@@ -22,9 +22,21 @@ public final class FinalLabelHydration {
     public static Result apply(Collection<WikidataDynamicObject> roots,
                                WikidataApiClient api, GenerationLog log,
                                GenerationQualityTracker quality) throws Exception {
+        return apply(roots, api, log, quality, null, null);
+    }
+
+    public static Result apply(Collection<WikidataDynamicObject> roots,
+                               WikidataApiClient api, GenerationLog log,
+                               GenerationQualityTracker quality,
+                               wikidata.explore.model.GeneratedProjectModel model,
+                               datasource.api.SourceExecutionPlan sourcePlan) throws Exception {
+        java.util.Set<String> labelClasses = sourcePlan == null ? java.util.Set.of()
+                : wikidata.explore.model.ClassNameSourcePlan.labels(sourcePlan);
         Map<String, List<WikidataDynamicObject>> placeholders = new LinkedHashMap<>();
         for (WikidataDynamicObject object : WikidataObjectGraph.reachable(roots)) {
             if (object == null || !WikidataIds.isQid(object.qid())) continue;
+            if (model != null && sourcePlan != null && modeledWithoutSourceLabel(
+                    object, model, labelClasses)) continue;
             String name = object.getDisplayName();
             if (name == null || name.isBlank() || name.equalsIgnoreCase(object.qid())) {
                 placeholders.computeIfAbsent(object.qid(), ignored -> new java.util.ArrayList<>())
@@ -54,5 +66,20 @@ public final class FinalLabelHydration {
                 + result.unavailableQids().size() + " unavailable.\n");
         return new Result(placeholders.size(), result.labels().size(),
                 result.missing().size(), result.unavailableQids());
+    }
+
+    /** Unmodelled references keep the safe QID-label fallback; a modelled class gets
+     *  Wikidata labels only when its class-name binding declares them. */
+    private static boolean modeledWithoutSourceLabel(
+            WikidataDynamicObject object,
+            wikidata.explore.model.GeneratedProjectModel model,
+            java.util.Set<String> labelClasses) {
+        boolean modeled = false;
+        for (String className : object.directClassNames()) {
+            if (model.findClass(className) == null) continue;
+            modeled = true;
+            if (labelClasses.contains(className)) return false;
+        }
+        return modeled;
     }
 }
