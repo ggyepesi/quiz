@@ -12,7 +12,9 @@ import wikidata.WikidataBatchFailureClassifier;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Lightweight client for the Wikidata / MediaWiki REST API.
@@ -61,6 +64,7 @@ public class WikidataApiClient {
     private final java.util.concurrent.atomic.AtomicLong aliasFailures = new java.util.concurrent.atomic.AtomicLong();
     private final java.util.concurrent.atomic.AtomicLong aliasEntities = new java.util.concurrent.atomic.AtomicLong();
     private final java.util.concurrent.atomic.AtomicLong aliasResponseBytes = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong aliasTransferredBytes = new java.util.concurrent.atomic.AtomicLong();
     private final java.util.concurrent.atomic.AtomicLong aliasValueBytes = new java.util.concurrent.atomic.AtomicLong();
     private final java.util.concurrent.atomic.AtomicLong aliasElapsedMillis = new java.util.concurrent.atomic.AtomicLong();
 
@@ -73,13 +77,15 @@ public class WikidataApiClient {
      * happened to carry. */
     public record AliasMetrics(long requests, long standaloneRequests,
                                long failures, long entities,
-                               long responseBytes, long valueBytes,
+                               long responseBytes, long transferredBytes,
+                               long valueBytes,
                                long elapsedMillis) { }
 
     public AliasMetrics aliasMetrics() {
         return new AliasMetrics(aliasRequests.get(), standaloneAliasRequests.get(),
                 aliasFailures.get(),
-                aliasEntities.get(), aliasResponseBytes.get(), aliasValueBytes.get(),
+                aliasEntities.get(), aliasResponseBytes.get(),
+                aliasTransferredBytes.get(), aliasValueBytes.get(),
                 aliasElapsedMillis.get());
     }
 
@@ -484,7 +490,40 @@ public class WikidataApiClient {
      *  coordinating thread in stable commit order. */
     @FunctionalInterface
     public interface BatchLog {
+        interface Running {
+            default void detail(String text) { }
+            void done(String summary);
+            void failed(String error);
+        }
+
         void logged(String title, String request, String summary);
+
+        default void message(String text) { }
+
+        /** One rendering rule for retry/adaptation detail followed by its outcome. */
+        static String withDetails(List<String> details, String terminal) {
+            return details == null || details.isEmpty() ? terminal
+                    : String.join("\n", details) + "\n" + terminal;
+        }
+
+        /**
+         * Opens the visible entry before the request is issued. The default preserves
+         * compatibility with simple completion-only consumers while live workflow logs
+         * can override it to keep a slow batch visibly RUNNING.
+         */
+        default Running started(String title, String request) {
+            return new Running() {
+                private final List<String> details = new ArrayList<>();
+                @Override public void detail(String text) { details.add(text); }
+                @Override public void done(String summary) {
+                    logged(title, request, BatchLog.withDetails(details, summary));
+                }
+                @Override public void failed(String error) {
+                    BatchLog.this.failed(title, request,
+                            BatchLog.withDetails(details, error));
+                }
+            };
+        }
 
         /**
          * A batch the server refused. Separate from {@link #logged} because a sink
@@ -899,21 +938,22 @@ public class WikidataApiClient {
 
     private static BatchProgress batchProgress(BatchLog batchLog) {
         if (batchLog == null) return BatchProgress.NOOP;
-        return (title, request) -> new BatchProgress.Running() {
-            private final long started = System.nanoTime();
-            private final List<String> details = new ArrayList<>();
-            @Override public void detail(String text) { details.add(text); }
-            @Override public void done(String summary) {
-                String prefix = details.isEmpty() ? ""
-                        : String.join("\n", details) + "\n";
-                batchLog.logged(title, request, prefix + summary
-                        + " (" + ms(started) + " ms)");
+        return new BatchProgress() {
+            @Override public Running started(String title, String request) {
+                BatchLog.Running running = batchLog.started(title, request);
+                return new Running() {
+                    private final long started = System.nanoTime();
+                    @Override public void detail(String text) { running.detail(text); }
+                    @Override public void done(String summary) {
+                        running.done(summary + " (" + ms(started) + " ms)");
+                    }
+                    @Override public void failed(String error) {
+                        running.failed(error + " (" + ms(started) + " ms)");
+                    }
+                };
             }
-            @Override public void failed(String error) {
-                String suffix = details.isEmpty() ? "" : "\n" + String.join("\n", details);
-                batchLog.failed(title, request, error + suffix
-                        + " (" + ms(started) + " ms)");
-            }
+
+            @Override public void message(String text) { batchLog.message(text); }
         };
     }
 
@@ -1348,6 +1388,7 @@ public class WikidataApiClient {
                 (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
         conn.setRequestProperty("User-Agent", userAgent);
         conn.setRequestProperty("Accept",     "application/json");
+        conn.setRequestProperty("Accept-Encoding", "gzip");
         conn.setConnectTimeout(10_000);
         conn.setReadTimeout(30_000);
 
@@ -1357,13 +1398,22 @@ public class WikidataApiClient {
             // connection/availability failure. Once this returns, a timeout while
             // consuming the stream is specifically a response-body timeout.
             responseStatus = conn.getResponseCode();
-            try (var stream = conn.getInputStream()) {
+            // Both are resources, and in this order: GZIPInputStream reads the gzip
+            // header in its constructor, so a truncated or mislabelled body throws
+            // THERE. Declared second, the counting stream — and with it the
+            // connection's — is still closed; built before the try, it leaked once per
+            // attempt, and a body that arrives truncated is retried.
+            try (CountingInputStream transferred =
+                         new CountingInputStream(conn.getInputStream());
+                 InputStream stream = decodedStream(
+                         transferred, conn.getHeaderField("Content-Encoding"))) {
                 JsonNode result = mapper.readTree(stream);
 
                 if (aliasesRequest) {
                     aliasElapsedMillis.addAndGet(
                             (System.nanoTime() - started) / 1_000_000);
                     aliasEntities.addAndGet(result.path("entities").size());
+                    aliasTransferredBytes.addAndGet(transferred.count());
                     try {
                         aliasResponseBytes.addAndGet(mapper.writeValueAsBytes(result).length);
                         long values = 0;
@@ -1405,6 +1455,36 @@ public class WikidataApiClient {
             throw transportFailure(e, responseStatus,
                     RetryAfter.millis(conn.getHeaderField("Retry-After"), -1), url);
         }
+    }
+
+    /** Decode only when the server says it encoded the representation. */
+    static InputStream decodedStream(InputStream input, String contentEncoding)
+            throws IOException {
+        if (contentEncoding != null
+                && contentEncoding.toLowerCase(java.util.Locale.ROOT).contains("gzip")) {
+            return new GZIPInputStream(input);
+        }
+        return input;
+    }
+
+    private static final class CountingInputStream extends FilterInputStream {
+        private long count;
+
+        private CountingInputStream(InputStream input) { super(input); }
+
+        @Override public int read() throws IOException {
+            int value = super.read();
+            if (value >= 0) count++;
+            return value;
+        }
+
+        @Override public int read(byte[] bytes, int offset, int length) throws IOException {
+            int read = super.read(bytes, offset, length);
+            if (read > 0) count += read;
+            return read;
+        }
+
+        long count() { return count; }
     }
 
     /**

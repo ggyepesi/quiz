@@ -115,6 +115,30 @@ class BatchExecutorTest {
         assertEquals(1, maxActiveCommits.get(), "commits remain serialized");
     }
 
+    @Test
+    void reportsConcurrencyAwareWallClockForTheWholeExecution() throws Exception {
+        List<String> messages = new ArrayList<>();
+        BatchProgress progress = new BatchProgress() {
+            @Override public Running started(String title, String request) {
+                return new Running() {
+                    @Override public void done(String summary) { }
+                    @Override public void failed(String error) { }
+                };
+            }
+            @Override public void message(String text) { messages.add(text); }
+        };
+        AtomicInteger runs = new AtomicInteger();
+        BatchExecutor<List<String>> executor = new BatchExecutor<>(
+                new BatchPolicy(1, 0, 0, false), progress, CLASSIFIER,
+                new CancellationToken(), BatchCheckpointStore.NONE, 3);
+
+        executor.run(List.of(new FakeUnit(List.of("a"), runs, ignored -> null)));
+
+        assertEquals(1, messages.size());
+        assertTrue(messages.get(0).startsWith("Batch execution wall time: "));
+        assertTrue(messages.get(0).contains("up to 3 concurrent unit(s)"));
+    }
+
     private static WorkUnit<String> concurrentUnit(String key, CyclicBarrier barrier) {
         return new WorkUnit<>() {
             @Override public WorkDescriptor descriptor() {

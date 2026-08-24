@@ -142,7 +142,7 @@ public final class SelectionContentResolver {
         }
         try {
             Map<String, WikidataApiClient.ApiEntity> details =
-                    api.getEntities(qids, List.of());
+                    api.getEntities(qids, List.of(), sink.batchSink());
             for (String qid : qids) {
                 WikidataApiClient.ApiEntity e = details.get(qid);
                 String label = e == null || e.label() == null || e.label().isBlank()

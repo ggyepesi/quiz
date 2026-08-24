@@ -87,7 +87,7 @@ public final class ValueVocabularyDiscovery {
 
         try {
             Map<String, WikidataApiClient.ApiEntity> labels =
-                    api.getEntities(valueQids, List.of());
+                    api.getEntities(valueQids, List.of(), sink.batchSink());
             for (String v : valueQids) {
                 WikidataApiClient.ApiEntity e = labels.get(v);
                 String label = e == null || e.label() == null || e.label().isBlank()

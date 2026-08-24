@@ -58,6 +58,22 @@ public interface GenerationLog {
     default wikidata.api.WikidataApiClient.BatchLog batchSink() {
         GenerationLog self = this;
         return new wikidata.api.WikidataApiClient.BatchLog() {
+            @Override public void message(String text) { self.message(text); }
+            @Override public Running started(String title, String request) {
+                GenerationLog.Running visible = self.subqueryStarted(title, request);
+                java.util.List<String> details = new java.util.ArrayList<>();
+                return new Running() {
+                    @Override public void detail(String text) { details.add(text); }
+                    @Override public void done(String summary) {
+                        visible.done(wikidata.api.WikidataApiClient.BatchLog
+                                .withDetails(details, summary));
+                    }
+                    @Override public void failed(String error) {
+                        visible.failed(wikidata.api.WikidataApiClient.BatchLog
+                                .withDetails(details, error));
+                    }
+                };
+            }
             @Override public void logged(String title, String request, String summary) {
                 self.subquery(title, request, summary);
             }

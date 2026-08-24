@@ -334,7 +334,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 + aliases.failures() + " failed, " + aliases.entities()
                                 + " entity answer(s), ~"
                                 + aliases.responseBytes() / 1024
-                                + " KB alias-bearing response JSON; aliases themselves ~"
+                                + " KB alias-bearing response JSON, ~"
+                                + aliases.transferredBytes() / 1024
+                                + " KB transferred on the wire; aliases themselves ~"
                                 + aliases.valueBytes() / 1024 + " KB; "
                                 + aliases.elapsedMillis()
                                 + " ms aggregate request time (concurrent, not wall clock).\n");

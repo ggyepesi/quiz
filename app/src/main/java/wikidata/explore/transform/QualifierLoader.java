@@ -93,6 +93,7 @@ public class QualifierLoader {
 
         String valueField = blankTo(cfg.valueField(), "value");
         String stmtType = blankTo(cfg.statementType(), cfg.statementField());
+        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
 
         // Allowed value set: explicit category QIDs, or the instances of the value
         // type (one SPARQL query), or null = accept every value.
@@ -141,8 +142,14 @@ public class QualifierLoader {
                     firstRequestPids.add(cfg.propertyPid());
                     factDemands.subjectDemands().forEach(d ->
                             firstRequestPids.addAll(d.propertyPids()));
-                    Map<String, WikidataApiClient.ApiEntity> details =
-                            api().getEntities(newQids, new ArrayList<>(firstRequestPids));
+                    Map<String, WikidataApiClient.ApiEntity> details;
+                    try (GenerationLog.Group acquisition = sink.group(
+                            "Acquire discovered " + cfg.entityType() + " subjects ("
+                                    + newQids.size() + " entities, "
+                                    + firstRequestPids.size() + " properties)")) {
+                        details = api().getEntities(newQids,
+                                new ArrayList<>(firstRequestPids), acquisition.batchSink());
+                    }
                     if (log != null && roleBinding.claimPairs() > 0) {
                         log.message("Statement-subject propagation: retained "
                                 + roleBinding.claimPairs() + " QID/property pair(s) for "
@@ -184,7 +191,6 @@ public class QualifierLoader {
             }
         }
 
-        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         Map<String, WikidataDynamicObject> refCache = new LinkedHashMap<>();
 
         try (GenerationLog.Group g = sink.group("Qualifier load " + cfg.entityType()

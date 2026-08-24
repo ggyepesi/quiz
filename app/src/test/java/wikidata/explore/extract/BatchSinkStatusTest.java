@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A refused batch records AS refused.
@@ -59,5 +60,37 @@ class BatchSinkStatusTest {
         plain.failed("wbgetentities 1/1", "url", "FAILED: HTTP 429");
 
         assertEquals(List.of("wbgetentities 1/1"), seen);
+    }
+
+    @Test void aBatchIsOpenedBeforeItCompletes() {
+        List<String> events = new ArrayList<>();
+        GenerationLog log = new GenerationLog() {
+            @Override public void message(String text) { }
+            @Override public void subquery(String title, String request, String summary) { }
+            @Override public Running subqueryStarted(String title, String request) {
+                events.add("started:" + title);
+                return new Running() {
+                    @Override public void done(String summary) { events.add("done:" + summary); }
+                    @Override public void failed(String error) { events.add("failed:" + error); }
+                };
+            }
+        };
+
+        WikidataApiClient.BatchLog.Running running =
+                log.batchSink().started("wbgetentities 50 entities", "url");
+        assertEquals(List.of("started:wbgetentities 50 entities"), events);
+
+        running.detail("Full retry after split");
+        running.done("ok (1200 ms)");
+        assertEquals(2, events.size());
+        assertTrue(events.get(1).contains("Full retry after split"));
+        assertTrue(events.get(1).contains("ok (1200 ms)"));
+    }
+
+    @Test void failureDetailsPrecedeTheTerminalOutcome() {
+        assertEquals("Attempt 1/2 failed\nUnavailable retry budget exhausted",
+                WikidataApiClient.BatchLog.withDetails(
+                        List.of("Attempt 1/2 failed"),
+                        "Unavailable retry budget exhausted"));
     }
 }

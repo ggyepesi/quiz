@@ -137,6 +137,7 @@ public final class BatchExecutor<R> {
             List<WorkDescriptor> toleratedFailures) throws Exception {
         Objects.requireNonNull(committer, "committer");
         cancellation.throwIfCancelled();
+        long executionStarted = System.nanoTime();
 
         Deque<Attempt<R>> pending = new ArrayDeque<>();
         Set<String> knownKeys = new LinkedHashSet<>();
@@ -205,6 +206,10 @@ public final class BatchExecutor<R> {
         } finally {
             workers.shutdownNow();
         }
+
+        progress.message("Batch execution wall time: "
+                + ((System.nanoTime() - executionStarted) / 1_000_000)
+                + " ms (up to " + parallelism + " concurrent unit(s)).\n");
 
         if (persistent) {
             checkpoints.finish(runKey);
