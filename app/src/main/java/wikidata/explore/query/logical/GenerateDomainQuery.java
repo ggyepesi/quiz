@@ -140,7 +140,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                         cls.className()));
                         if (!generatable(cls, population)) {
                             genLog.message("Skip class \"" + cls.className()
-                                    + "\" — no membership type or seed QIDs.\n");
+                                    + "\" — " + populationReason(population) + ".\n");
                             continue;
                         }
                         GeneratedProjectModel rooted = rootedAt(cls.className());
@@ -559,7 +559,14 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
         if (cls.reifiesStatements()) {
             return false;
         }
-        return population != null;
+        return population != null && population.prepared().configuration(
+                datasource.api.acquisition.PopulationSelection.class) != null;
+    }
+
+    private String populationReason(datasource.api.SourceExecutionPlan.Step population) {
+        if (population == null) return "no population source is configured";
+        String description = population.prepared().description();
+        return description.isBlank() ? "the population source is incomplete" : description;
     }
 
     private GeneratedProjectModel rootedAt(String className) {

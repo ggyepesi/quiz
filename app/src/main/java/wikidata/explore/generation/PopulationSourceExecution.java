@@ -2,7 +2,6 @@ package wikidata.explore.generation;
 
 import datasource.api.BindingScope;
 import datasource.api.SourceExecutionPlan;
-import datasource.api.acquisition.ClassPopulationOperation;
 import datasource.api.acquisition.PopulationSelection;
 import wikidata.WikidataIds;
 import wikidata.explore.model.RuleDirection;
@@ -17,12 +16,13 @@ public final class PopulationSourceExecution {
         if (step == null || step.target().scope() != BindingScope.CLASS_POPULATION) {
             throw new IllegalArgumentException("A class-population plan step is required");
         }
-        if (!(step.operation() instanceof ClassPopulationOperation population)) {
+        PopulationSelection selection = step.prepared().configuration(
+                PopulationSelection.class);
+        if (selection == null) {
             throw new IllegalArgumentException("Datasource operation "
                     + step.recipe().providerId() + "." + step.recipe().operationId()
                     + " cannot describe a class population to generation");
         }
-        PopulationSelection selection = population.selection(step.recipe());
         // The NAMESPACE, not the provider: this boundary can adapt any source whose
         // identifiers are Wikidata items, whoever fetched them.
         if (!datasource.EntityRef.WIKIDATA.equals(selection.namespace())) {

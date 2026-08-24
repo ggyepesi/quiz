@@ -37,10 +37,14 @@ class IncompleteRecipeTest {
                                 "dbpedia", "property", Map.of("property", "director")),
                         field("Movie", "location", SourceBindingSlot.CATEGORY_EVIDENCE,
                                 "wikipedia", "category",
-                                Map.of("pattern", "Films set in"))),
+                                Map.of("pattern", "Films set in")),
+                        new SourceBinding(SourceBindingTarget.classPopulation("Person"),
+                                new SourceRecipe("wikidata", "statement-membership",
+                                        Map.of("property", "not-a-pid",
+                                                "values", "not-a-qid")))),
                 Datasources.standard());
 
-        assertEquals(3, plan.steps().size(), "the plan compiles rather than refusing");
+        assertEquals(4, plan.steps().size(), "the plan compiles rather than refusing");
         for (SourceExecutionPlan.Step step : plan.steps()) {
             PreparedSourceOperation prepared = step.prepared();
             assertEquals(PreparedSourceOperation.Execution.RETAIN, prepared.execution(),
@@ -57,6 +61,7 @@ class IncompleteRecipeTest {
         assertFalse(plan.acquires("wikipedia-infobox-field"));
         assertFalse(plan.acquires("wikipedia-category-field"));
         assertFalse(plan.acquires("dbpedia-field"));
+        assertFalse(plan.acquires("wikidata"));
     }
 
     private static SourceBinding field(String owner, String path, SourceBindingSlot slot,

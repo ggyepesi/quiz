@@ -41,10 +41,6 @@ class EveryScopeHasAnOfferingTest {
                 assertTrue(!operation.outputSchema().kind().bindableToField(),
                         provider.id() + "." + operation.id()
                                 + " is evidence but advertises a field value");
-                assertTrue(operation instanceof
-                                datasource.api.acquisition.SourceAcquisitionOperation<?>,
-                        provider.id() + "." + operation.id()
-                                + " advertises evidence it cannot acquire");
                 assertTrue(!operation.inputReferences().isEmpty(),
                         provider.id() + "." + operation.id()
                                 + " says no source record it reads");
@@ -60,8 +56,8 @@ class EveryScopeHasAnOfferingTest {
         assertTrue(membership.outputSchema().collection(), "a population is many");
         assertEquals("wikidata", membership.outputSchema().referenceNamespace());
         assertTrue(membership instanceof
-                        datasource.api.acquisition.SourceAcquisitionOperation<?>,
-                "a population offering must be able to acquire its members");
+                        datasource.api.acquisition.ClassPopulationOperation,
+                "a population offering must prepare a logical selection");
         assertTrue(membership.parameters().stream().anyMatch(ParameterDescriptor::required),
                 "a membership rule that names no property selects everything");
     }

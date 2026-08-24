@@ -10,18 +10,8 @@ import datasource.api.SourceReferenceSchema;
 import datasource.api.SourceRecipe;
 import datasource.api.acquisition.ClassPopulationOperation;
 import datasource.api.acquisition.PopulationSelection;
-import datasource.api.acquisition.SourceAcquisitionOperation;
-import datasource.api.acquisition.SourceAcquisitionRequest;
 import datasource.EntityRef;
-import work.Query;
-import work.QueryContext;
-import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
-import wikidata.explore.query.template.rule.RuleNodeQueryBuilder;
-import wikidata.explore.rule.RuleNode;
-import wikidata.explore.model.RuleDirection;
 
 import java.util.List;
 
@@ -158,7 +148,7 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     private record StatementMembershipOffering(
             BindingScope scope, SourceValueSchema outputSchema,
             List<ParameterDescriptor> parameters)
-            implements SourceAcquisitionOperation<List<EntityRef>>, ClassPopulationOperation {
+            implements ClassPopulationOperation {
 
         StatementMembershipOffering {
             parameters = List.copyOf(parameters);
@@ -177,46 +167,12 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                     values.stream().map(EntityRef::wikidata).toList(), subclasses);
         }
 
-        @Override public Query<List<EntityRef>> acquire(SourceAcquisitionRequest request) {
-            SourceAcquisitionRequest safe = request == null
-                    ? new SourceAcquisitionRequest(List.of(), java.util.Map.of()) : request;
-            String property = safe.parameter("property").trim().toUpperCase();
-            List<String> values = qids(safe.parameter("values"));
-            boolean subclasses = Boolean.parseBoolean(safe.parameter("includeSubclasses"));
-            validateMembership(property, values, subclasses);
-            String sparql = membershipSparql(property, values, subclasses);
-            return new Query<>() {
-                @Override public String purpose() { return "Acquire Wikidata class members"; }
-                @Override public String skeleton() { return "?value wdt:property target"; }
-                @Override public String queryType() { return "SPARQL"; }
-                @Override public java.util.Map<String, String> parameters() {
-                    return java.util.Map.of("property", property,
-                            "values", String.join(",", values),
-                            "includeSubclasses", Boolean.toString(subclasses));
-                }
-                @Override public List<EntityRef> execute(QueryContext context) throws Exception {
-                    java.util.LinkedHashSet<EntityRef> result = new java.util.LinkedHashSet<>();
-                    for (WikidataBinding row : WikidataAccess.sparql(
-                            context, Datasource.WIKIDATA).query(sparql)) {
-                        String qid = row.qid("value");
-                        if (WikidataIds.isQid(qid)) result.add(EntityRef.wikidata(qid));
-                    }
-                    return List.copyOf(result);
-                }
-                @Override public int rowCount(List<EntityRef> result) {
-                    return result == null ? 0 : result.size();
-                }
-                @Override public String summary(List<EntityRef> result) {
-                    return rowCount(result) + " Wikidata member(s)";
-                }
-            };
-        }
     }
 
     private record SeedListOffering(
             BindingScope scope, SourceValueSchema outputSchema,
             List<ParameterDescriptor> parameters)
-            implements SourceAcquisitionOperation<List<EntityRef>>, ClassPopulationOperation {
+            implements ClassPopulationOperation {
 
         SeedListOffering { parameters = List.copyOf(parameters); }
         @Override public String id() { return SEED_LIST; }
@@ -229,30 +185,6 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                     .map(EntityRef::wikidata).toList());
         }
 
-        @Override public Query<List<EntityRef>> acquire(SourceAcquisitionRequest request) {
-            SourceAcquisitionRequest safe = request == null
-                    ? new SourceAcquisitionRequest(List.of(), java.util.Map.of()) : request;
-            java.util.LinkedHashSet<String> ids = new java.util.LinkedHashSet<>(
-                    qids(safe.parameter("ids")));
-            safe.subjects().stream()
-                    .filter(ref -> ID.equalsIgnoreCase(ref.namespace()))
-                    .map(EntityRef::id).filter(WikidataIds::isQid).forEach(ids::add);
-            if (ids.isEmpty()) {
-                throw new IllegalArgumentException("At least one Wikidata QID is required");
-            }
-            List<EntityRef> result = ids.stream().map(EntityRef::wikidata).toList();
-            return new Query<>() {
-                @Override public String purpose() { return "Use explicit Wikidata members"; }
-                @Override public String skeleton() { return "configured QID list"; }
-                @Override public java.util.Map<String, String> parameters() {
-                    return java.util.Map.of("ids", String.join(",", ids));
-                }
-                @Override public List<EntityRef> execute(QueryContext context) { return result; }
-                @Override public int rowCount(List<EntityRef> value) {
-                    return value == null ? 0 : value.size();
-                }
-            };
-        }
     }
 
     private static List<String> qids(String text) {
@@ -283,16 +215,4 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
         }
     }
 
-    private static String membershipSparql(
-            String property, List<String> values, boolean subclasses) {
-        if (!subclasses) {
-            RuleNode node = new RuleNode("Datasource membership", "value");
-            node.sourceQid(values.getFirst());
-            values.stream().skip(1).forEach(node::addAdditionalSourceQid);
-            node.propertyPid(property);
-            node.direction(RuleDirection.ITEM_TO_ROOT);
-            return RuleNodeQueryBuilder.membershipBackboneQueryNoLabel(node);
-        }
-        return RuleNodeQueryBuilder.subclassMembershipBackboneQuery(property, values);
-    }
 }

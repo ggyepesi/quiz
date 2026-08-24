@@ -265,6 +265,13 @@ public class GenerationPipeline {
         datasource.api.SourceExecutionPlan.Step population = sourcePlan == null ? null
                 : sourcePlan.step(datasource.api.SourceBindingTarget.classPopulation(
                         snapshot.rootClass().className()));
+        if (population != null && population.prepared().configuration(
+                datasource.api.acquisition.PopulationSelection.class) == null) {
+            if (log != null) log.message("Preview skipped: "
+                    + population.prepared().description() + ".\n");
+            GeneratedViewableRuntime runtime = buildRuntime(snapshot);
+            return new GenerationRun(snapshot, depth, plan, List.of(), runtime, List.of());
+        }
         if (population != null) PopulationSourceExecution.apply(plan, population);
 
         List<WikidataDynamicObject> dynamicObjects =

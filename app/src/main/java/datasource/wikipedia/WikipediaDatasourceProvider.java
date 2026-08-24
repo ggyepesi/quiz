@@ -13,12 +13,6 @@ import datasource.api.SourceBindingSlot;
 import datasource.api.SourceRecipe;
 import datasource.api.PreparedSourceOperation;
 import datasource.api.SourceInputRequirement;
-import datasource.api.acquisition.SourceAcquisitionOperation;
-import datasource.api.acquisition.SourceAcquisitionRequest;
-import datasource.EntityRef;
-import datasource.evidence.SourceDocument;
-import work.Query;
-import work.QueryContext;
 
 import java.util.List;
 
@@ -158,17 +152,19 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     /**
      * Evidence retrieved about an entity, not a value of one of its fields.
      *
-     * <p>It yields a document — what the source said, and when — which a configured
+     * <p>It describes a document — what the source said, and when — which a configured
      * recipe then interprets into field values. Keeping the two apart is what lets a
      * category mean whatever the field's declared rule says it means, rather than
      * whatever the reader of the acquisition code assumed.
      *
      * <p>Bound at a class, because retrieval is per entity and needs the correspondence
      * Wikidata's sitelink supplies. Nothing here can be bound to a field: a document is
-     * not a field value, and {@link SourceValueKind#DOCUMENT} says so.
+     * not a field value, and {@link SourceValueKind#DOCUMENT} says so. Until a document
+     * family is bound to the shared runner this remains a RETAIN declaration, rather
+     * than pretending a dead query method makes it executable.
      */
     private record DocumentEvidence(String id, String displayName, String help)
-            implements SourceAcquisitionOperation<List<SourceDocument>> {
+            implements DatasourceOperation {
 
         @Override public BindingScope scope() { return BindingScope.DOCUMENT_EVIDENCE; }
 
@@ -187,69 +183,5 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
             return new SourceValueSchema(SourceValueKind.DOCUMENT, false, "");
         }
 
-        @Override public Query<List<SourceDocument>> acquire(
-                SourceAcquisitionRequest request) {
-            SourceAcquisitionRequest safe = request == null
-                    ? new SourceAcquisitionRequest(List.of(), java.util.Map.of()) : request;
-            String wiki = safe.parameter("wiki").trim();
-            if (wiki.isBlank()) wiki = "enwiki";
-            if (!"enwiki".equalsIgnoreCase(wiki)) {
-                throw new IllegalArgumentException(
-                        "Wikipedia acquisition currently supports enwiki, not " + wiki);
-            }
-            List<String> titles = safe.subjects().stream()
-                    .filter(ref -> ID.equalsIgnoreCase(ref.namespace()))
-                    .map(EntityRef::id).map(String::trim).filter(title -> !title.isBlank())
-                    .distinct().toList();
-            if (titles.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "At least one Wikipedia page reference is required");
-            }
-            String operation = id;
-            String selectedWiki = wiki;
-            return new Query<>() {
-                @Override public String purpose() {
-                    return ARTICLE.equals(operation)
-                            ? "Acquire Wikipedia articles" : "Acquire Wikipedia infoboxes";
-                }
-                @Override public String skeleton() {
-                    return ARTICLE.equals(operation)
-                            ? "page -> versioned article document"
-                            : "page -> versioned infobox document";
-                }
-                @Override public String queryType() { return "Wikipedia API"; }
-                @Override public java.util.Map<String, String> parameters() {
-                    return java.util.Map.of("wiki", selectedWiki,
-                            "pages", Integer.toString(titles.size()));
-                }
-                @Override public List<SourceDocument> execute(QueryContext context)
-                        throws Exception {
-                    java.util.ArrayList<SourceDocument> documents = new java.util.ArrayList<>();
-                    wikipedia.WikipediaArticleClient articleClient = ARTICLE.equals(operation)
-                            ? new wikipedia.WikipediaArticleClient() : null;
-                    wikipedia.WikipediaInfoboxClient infoboxClient = ARTICLE.equals(operation)
-                            ? null : new wikipedia.WikipediaInfoboxClient();
-                    for (String title : titles) {
-                        context.cancellation().throwIfCancelled();
-                        if (ARTICLE.equals(operation)) {
-                            wikipedia.WikipediaArticleClient.Article article =
-                                    articleClient.byTitle(title).execute(context);
-                            if (article != null) documents.add(article.document());
-                        } else {
-                            datasource.evidence.InfoboxParameters infobox =
-                                    infoboxClient.byTitle(title).execute(context);
-                            if (infobox != null) documents.add(infobox.document());
-                        }
-                    }
-                    return List.copyOf(documents);
-                }
-                @Override public int rowCount(List<SourceDocument> result) {
-                    return result == null ? 0 : result.size();
-                }
-                @Override public String summary(List<SourceDocument> result) {
-                    return rowCount(result) + " versioned Wikipedia document(s)";
-                }
-            };
-        }
     }
 }
