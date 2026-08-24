@@ -49,19 +49,20 @@ public final class ModelSourceExecutionPlan {
         long populations = plan.steps(datasource.api.BindingScope.CLASS_POPULATION).size();
         return "Datasource plan: " + plan.summary() + ". " + populations
                 + " class population binding(s) drive discovery; " + infoboxFields(plan)
-                + " Wikipedia infobox and " + dbpediaFields(plan)
+                + " Wikipedia infobox, " + categoryFields(plan)
+                + " Wikipedia category and " + dbpediaFields(plan)
                 + " DBpedia field binding(s) drive acquisition across all configured"
                 + " classes;"
                 + " class names and remaining field sources still use the established"
                 + " acquisition passes.";
     }
 
-    /** Enrich re-reads a saved graph, so no population is discovered; the infobox
-     *  bindings are the part of the plan it does obey. Saying "not executed" here stopped
-     *  being true the moment they did. */
+    /** Enrich re-reads a saved graph, so no population is discovered; external
+     *  field/evidence bindings are the part of the plan it executes. */
     public static String enrichMessage(SourceExecutionPlan plan) {
         return "Datasource plan: " + plan.summary() + ". " + infoboxFields(plan)
-                + " Wikipedia infobox and " + dbpediaFields(plan)
+                + " Wikipedia infobox, " + categoryFields(plan)
+                + " Wikipedia category and " + dbpediaFields(plan)
                 + " DBpedia field binding(s) drive acquisition (including DBpedia"
                 + " endpoint requests);"
                 + " populations are not re-discovered, and class names and remaining"
@@ -89,6 +90,13 @@ public final class ModelSourceExecutionPlan {
         return plan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
                 .filter(step -> datasource.dbpedia.DbpediaDatasourceProvider
                         .property(step.binding()) != null)
+                .count();
+    }
+
+    private static long categoryFields(SourceExecutionPlan plan) {
+        return plan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
+                .filter(step -> datasource.wikipedia.WikipediaDatasourceProvider
+                        .categoryRule(step.binding()) != null)
                 .count();
     }
 }

@@ -15,9 +15,66 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikipediaCategoryAcquisitionTest {
+    @Test void categoryAcquisitionIsEnabledByTheResolvedBinding() {
+        var binding = new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "Movie", "location",
+                        datasource.api.SourceBindingSlot.CATEGORY_EVIDENCE),
+                new datasource.api.SourceRecipe(
+                        datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                        datasource.wikipedia.WikipediaCategoryDiscoveryOperation.ID,
+                        java.util.Map.of("pattern", "Films set in <value>")));
+        var plan = datasource.api.SourceExecutionPlan.compile(
+                List.of(binding), datasource.Datasources.standard());
+
+        assertTrue(WikipediaCategoryAcquisition.configured(plan));
+        assertEquals("REVIEW", datasource.wikipedia.WikipediaDatasourceProvider
+                .categoryRule(binding).policy());
+    }
+
+    /**
+     * A pattern still being typed matches nothing. It used to be admitted, and on the
+     * Enrich path — which acquires before it compiles — that bought a whole pool's
+     * sitelinks and category pages before the validator refused the model. Exactly one
+     * placeholder, which is what the validator requires, so the two agree rather than
+     * nearly agreeing.
+     */
+    @Test void aPatternWithoutExactlyOnePlaceholderNamesNoAcquisition() {
+        assertNull(rule("Films set in"), "no placeholder — nothing to substitute");
+        assertNull(rule("Films set in <value> in <value>"), "two — the validator refuses it");
+        assertEquals("Films set in <value>", rule("Films set in <value>").pattern());
+        assertFalse(WikipediaCategoryAcquisition.configured(planFor("Films set in")),
+                "and a run does not fetch for it");
+        assertTrue(WikipediaCategoryAcquisition.configured(planFor("Films set in <value>")));
+    }
+
+    private static datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule rule(
+            String pattern) {
+        return datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(
+                bindingFor(pattern));
+    }
+
+    private static datasource.api.SourceBinding bindingFor(String pattern) {
+        return new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "Movie", "location",
+                        datasource.api.SourceBindingSlot.CATEGORY_EVIDENCE),
+                new datasource.api.SourceRecipe(
+                        datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                        datasource.wikipedia.WikipediaCategoryDiscoveryOperation.ID,
+                        java.util.Map.of("pattern", pattern)));
+    }
+
+    private static datasource.api.SourceExecutionPlan planFor(String pattern) {
+        return datasource.api.SourceExecutionPlan.compile(
+                List.of(bindingFor(pattern)), datasource.Datasources.standard());
+    }
+
     @Test void batchesFiftyEntitiesAndFollowsCategoryContinuation() throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
@@ -55,8 +112,11 @@ class WikipediaCategoryAcquisitionTest {
             }
         }
 
-        var result = WikipediaCategoryAcquisition.apply(model, objects, GenerationLog.NOOP,
-                new work.CancellationToken(), new SitelinkClient(), uri -> {
+        datasource.api.SourceExecutionPlan sourcePlan =
+                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                        model, datasource.Datasources.standard());
+        var result = WikipediaCategoryAcquisition.apply(objects, GenerationLog.NOOP,
+                new work.CancellationToken(), new SitelinkClient(), sourcePlan, uri -> {
                     wikipediaCalls.incrementAndGet();
                     boolean continued = uri.getRawQuery().contains("clcontinue=");
                     String continuation = continued ? ""

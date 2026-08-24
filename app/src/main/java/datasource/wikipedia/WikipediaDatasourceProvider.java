@@ -79,6 +79,42 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         return parameter == null || parameter.isBlank() ? null : parameter;
     }
 
+    /** The category interpretation declared at this field target, if any. */
+    public record CategoryRule(String pattern, String policy) { }
+
+    /** Where a category title carries the field's value. A pattern without exactly one
+     *  is not a template, so it names no acquisition — the same thing the model
+     *  validator refuses, said here so a run finds out before it fetches. */
+    public static final String VALUE_PLACEHOLDER = "<value>";
+
+    public static CategoryRule categoryRule(SourceBinding binding) {
+        if (binding == null || binding.target() == null
+                || binding.target().scope() != BindingScope.FIELD_VALUE
+                || binding.target().slot() != SourceBindingSlot.CATEGORY_EVIDENCE) {
+            return null;
+        }
+        SourceRecipe recipe = binding.recipe();
+        if (recipe == null || !ID.equals(recipe.providerId())
+                || !WikipediaCategoryDiscoveryOperation.ID.equals(recipe.operationId())) {
+            return null;
+        }
+        String pattern = recipe.parameter(WikipediaCategoryDiscoveryOperation.PATTERN);
+        // A pattern still being typed matches nothing, and admitting it cost a whole
+        // pool's sitelinks and categories on the Enrich path, which acquires BEFORE it
+        // compiles — so the model was refused only after the fetching was done.
+        if (pattern == null
+                || pattern.split(java.util.regex.Pattern.quote(VALUE_PLACEHOLDER), -1)
+                        .length - 1 != 1) {
+            return null;
+        }
+        // The policy default is stated here as a STRING rather than reached for as
+        // CategoryCandidatePolicy.REVIEW: this package describes sources for any model
+        // and must not depend on one. The descriptor declares the same default.
+        String policy = recipe.parameter(WikipediaCategoryDiscoveryOperation.POLICY);
+        if (policy == null || policy.isBlank()) policy = "REVIEW";
+        return new CategoryRule(pattern, policy);
+    }
+
     @Override public String id() { return ID; }
     @Override public String displayName() { return "Wikipedia"; }
     @Override public List<? extends DatasourceOperation> operations() { return operations; }

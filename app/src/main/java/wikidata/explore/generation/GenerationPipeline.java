@@ -552,9 +552,9 @@ public class GenerationPipeline {
         DBpediaFieldAcquisition.Result dbpedia =
                 enrichFromDBpedia(snapshot, pool, sink, sourcePlan, dbpediaClient);
         WikipediaCategoryAcquisition.Result categories =
-                WikipediaCategoryAcquisition.apply(snapshot, pool, sink,
+                WikipediaCategoryAcquisition.apply(pool, sink,
                         cancellation == null ? new work.CancellationToken() : cancellation,
-                        entityApi);
+                        entityApi, sourcePlan);
         WikipediaInfoboxAcquisition.Result infoboxes = WikipediaInfoboxAcquisition.apply(
                 snapshot, pool, sink,
                 cancellation == null ? new work.CancellationToken() : cancellation,

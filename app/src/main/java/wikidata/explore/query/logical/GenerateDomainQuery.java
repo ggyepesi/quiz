@@ -292,7 +292,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     WikidataAccess.sparql(context, Datasource.DBPEDIA), genLog);
                     wikidata.explore.generation.WikipediaCategoryAcquisition.Result categories =
                             wikidata.explore.generation.WikipediaCategoryAcquisition.apply(
-                                    project, pool, genLog, context.cancellation(), entityApi);
+                                    pool, genLog, context.cancellation(), entityApi, sourcePlan);
                     wikidata.explore.generation.WikipediaInfoboxAcquisition.Result infoboxes =
                             wikidata.explore.generation.WikipediaInfoboxAcquisition.apply(
                                     project, pool, genLog, context.cancellation(), entityApi,

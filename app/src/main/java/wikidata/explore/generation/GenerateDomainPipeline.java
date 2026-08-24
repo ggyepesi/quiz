@@ -303,12 +303,22 @@ public final class GenerateDomainPipeline {
         return null;
     }
 
+    private static datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule
+            categoryRule(GeneratedFieldModel field) {
+        if (field == null) return null;
+        for (datasource.api.SourceBinding binding : field.sourceBindings()) {
+            var rule = datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(binding);
+            if (rule != null) return rule;
+        }
+        return null;
+    }
+
     private static List<String> categoryDetails(GeneratedProjectModel model) {
         List<String> out = new ArrayList<>();
         for (GeneratedClassModel owner : model.classes()) {
             for (GeneratedFieldModel field : owner.fields()) {
-                var rule = field.wikipediaCategoryRule();
-                if (rule != null && rule.configured()) {
+                var rule = categoryRule(field);
+                if (rule != null) {
                     out.add(owner.className() + "." + field.name() + " — \""
                             + rule.pattern() + "\" → " + rule.policy());
                 }
@@ -332,8 +342,8 @@ public final class GenerateDomainPipeline {
         List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
         for (GeneratedClassModel owner : model.classes()) {
             for (GeneratedFieldModel field : owner.fields()) {
-                var rule = field.wikipediaCategoryRule();
-                if (rule == null || !rule.configured()) continue;
+                var rule = categoryRule(field);
+                if (rule == null) continue;
                 var ref = PhaseExplanation.ModelReference.field(owner.className(), field.name());
                 refs.add(ref);
                 examples.add(new PhaseExplanation.PhaseExample(

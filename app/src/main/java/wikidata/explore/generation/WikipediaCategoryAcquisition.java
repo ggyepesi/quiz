@@ -5,10 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import datasource.evidence.CategoryMembership;
 import datasource.evidence.ContentDigest;
 import datasource.evidence.SourceDocument;
+import datasource.api.SourceExecutionPlan;
 import wikidata.WikidataIds;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.GeneratedProjectModel;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -28,17 +28,19 @@ public final class WikipediaCategoryAcquisition {
 
     private WikipediaCategoryAcquisition() {}
 
-    public static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
+    public static Result apply(List<WikidataDynamicObject> pool,
                                GenerationLog log, work.CancellationToken cancellation,
-                               wikidata.api.WikidataApiClient api) throws Exception {
-        return apply(model, pool, log, cancellation, api,
+                               wikidata.api.WikidataApiClient api,
+                               SourceExecutionPlan sourcePlan) throws Exception {
+        return apply(pool, log, cancellation, api, sourcePlan,
                 WikipediaCategoryAcquisition::fetchRemote);
     }
 
-    static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
+    static Result apply(List<WikidataDynamicObject> pool,
                         GenerationLog log, work.CancellationToken cancellation,
-                        wikidata.api.WikidataApiClient api, Fetcher fetcher) throws Exception {
-        if (!configured(model)) return new Result(0, 0, 0);
+                        wikidata.api.WikidataApiClient api,
+                        SourceExecutionPlan sourcePlan, Fetcher fetcher) throws Exception {
+        if (!configured(sourcePlan)) return new Result(0, 0, 0);
         java.util.Objects.requireNonNull(api, "Wikidata entity client is required");
         Map<String, WikidataDynamicObject> entities = new LinkedHashMap<>();
         for (WikidataDynamicObject value : pool) {
@@ -126,11 +128,11 @@ public final class WikipediaCategoryAcquisition {
         };
     }
 
-    public static boolean configured(GeneratedProjectModel model) {
-        return model != null && model.classes().stream().filter(java.util.Objects::nonNull)
-                .flatMap(c -> c.fields().stream()).filter(java.util.Objects::nonNull)
-                .anyMatch(f -> f.wikipediaCategoryRule() != null
-                        && f.wikipediaCategoryRule().configured());
+    public static boolean configured(SourceExecutionPlan sourcePlan) {
+        return sourcePlan != null
+                && sourcePlan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
+                .anyMatch(step -> datasource.wikipedia.WikipediaDatasourceProvider
+                        .categoryRule(step.binding()) != null);
     }
 
     /**
