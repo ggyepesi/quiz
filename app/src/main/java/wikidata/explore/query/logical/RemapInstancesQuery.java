@@ -71,13 +71,11 @@ public class RemapInstancesQuery
     public GenerationRun execute(QueryContext context)
             throws Exception {
 
-        int checkedBindings = wikidata.explore.model.FieldSourceBindings
-                .synchronizeAndResolve(
-                projectModel, datasource.Datasources.standard()).size();
-        // Checked, not used: the legacy field sources still drive the run. Saying
-        // "resolved" invited the reading that these bindings produced the data.
-        context.message(checkedBindings
-                + " field source binding(s) resolve against the installed datasources.");
+        // The plan is the single resolved inventory. Consumers still migrate one
+        // operation family at a time at their existing batching/cache boundary.
+        context.message(wikidata.explore.model.ModelSourceExecutionPlan.message(
+                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                        projectModel, datasource.Datasources.standard())));
 
         context.message("Reusing "
                                 + previousRun.dynamicObjects().size()

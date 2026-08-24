@@ -76,13 +76,11 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
 
     @Override
     public GenerationRun execute(QueryContext context) throws Exception {
-        int checkedBindings = wikidata.explore.model.FieldSourceBindings
-                .synchronizeAndResolve(
-                project, datasource.Datasources.standard()).size();
-        // Checked, not used: the legacy field sources still drive the run. Saying
-        // "resolved" invited the reading that these bindings produced the data.
-        context.message(checkedBindings
-                + " field source binding(s) resolve against the installed datasources.");
+        // The plan is the single resolved inventory. Consumers still migrate one
+        // operation family at a time at their existing batching/cache boundary.
+        context.message(wikidata.explore.model.ModelSourceExecutionPlan.message(
+                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                        project, datasource.Datasources.standard())));
         return context.step(
                 "Generate domain \"" + project.name() + "\"",
                 "Domain",   // container node, not a SPARQL query (no "Open in query service")

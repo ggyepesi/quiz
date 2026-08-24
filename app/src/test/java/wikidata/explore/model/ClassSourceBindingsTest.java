@@ -15,9 +15,9 @@ class ClassSourceBindingsTest {
         movie.instanceMapping().sourceQid("Q11424");
         model.rootClass(movie);
 
-        var resolved = ClassSourceBindings.synchronizeAndResolve(model, Datasources.standard());
+        var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
 
-        assertEquals(4, resolved.size());
+        assertEquals(4, plan.steps().size());
         assertTrue(movie.sourceBindings().stream().anyMatch(binding ->
                 binding.target().slot() == SourceBindingSlot.CLASS_POPULATION));
         assertTrue(movie.sourceBindings().stream().anyMatch(binding ->

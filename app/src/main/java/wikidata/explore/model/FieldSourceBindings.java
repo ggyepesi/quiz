@@ -62,12 +62,12 @@ public final class FieldSourceBindings {
      * that they name an installed provider, sit where they claim to sit, and produce
      * something a field can hold.
      */
-    public static List<DatasourceOperation> synchronizeAndResolve(
-            GeneratedProjectModel project, DatasourceRegistry registry) {
-        if (registry == null) throw new IllegalArgumentException("Datasource registry is required");
+    /** Banks pending edits and returns the FIELD bindings, in model order. Class
+     *  bindings are their own collector's to give; composing the two is the job of
+     *  whoever wants the whole model. */
+    static List<SourceBinding> synchronizeAndCollect(GeneratedProjectModel project) {
         synchronizeForSave(project);
-        List<DatasourceOperation> resolved = new ArrayList<>(
-                ClassSourceBindings.synchronizeAndResolve(project, registry));
+        List<SourceBinding> bindings = new ArrayList<>();
         visit(project, (owner, path, field) -> {
             for (SourceBinding binding : field.sourceBindings()) {
                 if (!owner.equals(binding.target().className())
@@ -77,17 +77,10 @@ public final class FieldSourceBindings {
                             + binding.target().fieldPath() + " is stored on "
                             + owner + "." + path);
                 }
-                DatasourceOperation operation = binding.resolve(registry);
-                if (!operation.outputSchema().kind().bindableToField()) {
-                    throw new IllegalArgumentException("Datasource operation "
-                            + binding.recipe().providerId() + "."
-                            + binding.recipe().operationId()
-                            + " does not produce a field value");
-                }
-                resolved.add(operation);
+                bindings.add(binding);
             }
         });
-        return List.copyOf(resolved);
+        return List.copyOf(bindings);
     }
 
     /** Replace one semantic slot and update the execution-compatible projection. */

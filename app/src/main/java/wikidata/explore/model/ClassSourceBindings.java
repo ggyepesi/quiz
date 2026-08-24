@@ -53,10 +53,10 @@ public final class ClassSourceBindings {
      * Bank each class's pending changes as bindings, then prove each one still names
      * something this application can perform. It writes, and the name says so.
      */
-    public static List<DatasourceOperation> synchronizeAndResolve(
-            GeneratedProjectModel project, DatasourceRegistry registry) {
+    /** Banks pending class edits and returns their bindings after storage validation. */
+    static List<SourceBinding> synchronizeAndCollect(GeneratedProjectModel project) {
         synchronize(project);
-        List<DatasourceOperation> result = new ArrayList<>();
+        List<SourceBinding> result = new ArrayList<>();
         if (project != null) for (GeneratedClassModel clazz : project.classes()) {
             SourceBinding identity = binding(clazz, SourceBindingSlot.CLASS_IDENTITY);
             SourceBinding display = binding(clazz, SourceBindingSlot.CLASS_LABEL);
@@ -71,7 +71,7 @@ public final class ClassSourceBindings {
                             + binding.target().className() + " is stored on "
                             + clazz.className());
                 }
-                result.add(binding.resolve(registry));
+                result.add(binding);
             }
         }
         return List.copyOf(result);
