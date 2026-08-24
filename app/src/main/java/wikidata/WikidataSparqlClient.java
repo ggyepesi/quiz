@@ -39,6 +39,7 @@ public class WikidataSparqlClient implements AutoCloseable {
     private long lastRequestStart = 0;
 
     private Consumer<String> log = s -> {};
+    private volatile Consumer<String> requestLog;
     private final AtomicLong querySeq = new AtomicLong();
 
     private final Set<CompletableFuture<?>> runningQueries =
@@ -79,6 +80,27 @@ public class WikidataSparqlClient implements AutoCloseable {
 
     public void log(Consumer<String> log) {
         this.log = log == null ? s -> {} : log;
+    }
+
+    /**
+     * Installs the log for requests STARTED while the returned scope is open, and
+     * restores the previous one when it closes.
+     *
+     * <p>What keeps a finished run's completion out of a later run's log is the CAPTURE
+     * in {@link #queryAsync}, not the lifetime of this registration: a request takes the
+     * sink before it goes asynchronous and carries it through every retry, so closing
+     * the scope cannot silence a request already in flight.
+     *
+     * <p>A field rather than a thread-local, because a query is very often issued from
+     * somewhere other than the thread that opened the scope — the edge loader runs one
+     * query per parent on a pool, and those are the requests most worth timing. Isolating
+     * concurrent runs on separate threads would be the only gain, and there are none;
+     * losing every pooled request was the cost.
+     */
+    public AutoCloseable requestLog(Consumer<String> sink) {
+        Consumer<String> previous = requestLog;
+        requestLog = sink;
+        return () -> requestLog = previous;
     }
 
     public void debugJson(boolean debugJson) {
@@ -127,14 +149,17 @@ public class WikidataSparqlClient implements AutoCloseable {
 
     public CompletableFuture<List<WikidataBinding>> queryAsync(String sparql) {
         System.out.println("SPARQL " + sparql);
-        return queryAsyncWithRetry(sparql, 3);
+        Consumer<String> capturedLog = requestLog;
+        if (capturedLog == null) capturedLog = log;
+        return queryAsyncWithRetry(sparql, 3, capturedLog);
     }
 
     private CompletableFuture<List<WikidataBinding>> queryAsyncWithRetry(
             String sparql,
-            int attemptsLeft) {
+            int attemptsLeft,
+            Consumer<String> capturedLog) {
 
-        return sendOnceAsync(sparql).handle((result, error) -> {
+        return sendOnceAsync(sparql, capturedLog).handle((result, error) -> {
             if (error == null) {
                 return CompletableFuture.completedFuture(result);
             }
@@ -153,15 +178,16 @@ public class WikidataSparqlClient implements AutoCloseable {
                 Thread.currentThread().interrupt();
             }
 
-            return queryAsyncWithRetry(sparql, attemptsLeft - 1);
+            return queryAsyncWithRetry(sparql, attemptsLeft - 1, capturedLog);
         }).thenCompose(f -> f);
     }
 
-    private CompletableFuture<List<WikidataBinding>> sendOnceAsync(String sparql) {
+    private CompletableFuture<List<WikidataBinding>> sendOnceAsync(
+            String sparql, Consumer<String> capturedLog) {
         long id = querySeq.incrementAndGet();
         long started = System.nanoTime();
 
-        log.accept("\n[SPARQL " + id + "] START\n"
+        capturedLog.accept("\n[SPARQL " + id + "] START\n"
                            + sparql
                            + "\n");
 
@@ -219,13 +245,13 @@ public class WikidataSparqlClient implements AutoCloseable {
 
             if (e == null) {
                 int rows = r == null ? -1 : r.size();
-                log.accept("[SPARQL " + id + "] OK rows="
+                capturedLog.accept("[SPARQL " + id + "] OK rows="
                                    + rows + " timeMs=" + ms + "\n");
             } else if (isCancellation(e)) {
-                log.accept("[SPARQL " + id + "] CANCELLED timeMs="
+                capturedLog.accept("[SPARQL " + id + "] CANCELLED timeMs="
                                    + ms + "\n");
             } else {
-                log.accept("[SPARQL " + id + "] ERROR "
+                capturedLog.accept("[SPARQL " + id + "] ERROR "
                                    + e.getClass().getSimpleName()
                                    + ": "
                                    + e.getMessage()

@@ -89,7 +89,8 @@ public class GenerateInstancesQuery
                             };
                     // Every endpoint this run can reach reports its requests, and their
                     // timings, into THIS run's log.
-                    WikidataAccess.logRequests(context, genLog::message);
+                    try (WikidataAccess.RequestLogs requestLogs =
+                            WikidataAccess.logRequests(context, genLog::message)) {
 
                     GenerationRun run =
                             pipeline.fullRun(
@@ -104,6 +105,7 @@ public class GenerateInstancesQuery
 
                     step.summary(run.size() + " objects");
                     return run;
+                    }
                 });
     }
 

@@ -49,24 +49,30 @@ class QueryContextDatasourceTest {
                     .with(Datasource.DBPEDIA, dbpedia).bind();
             List<String> lines = new ArrayList<>();
 
-            WikidataAccess.logRequests(context, lines::add);
-
-            assertNotNull(wikidata.sink, "the default endpoint reports");
-            assertNotNull(dbpedia.sink, "and so does every other one bound to the run");
-            wikidata.sink.accept("wdqs");
-            dbpedia.sink.accept("dbpedia");
-            assertEquals(List.of("wdqs", "dbpedia"), lines,
-                    "into the same run log, not whichever one an acquisition held");
+            try (WikidataAccess.RequestLogs ignored =
+                    WikidataAccess.logRequests(context, lines::add)) {
+                assertNotNull(wikidata.sink, "the default endpoint reports");
+                assertNotNull(dbpedia.sink, "and so does every other one bound to the run");
+                wikidata.sink.accept("request");
+                dbpedia.sink.accept("request");
+                assertEquals(List.of("[WIKIDATA] request", "[DBPEDIA] request"), lines,
+                        "endpoint identity remains visible when query ids overlap");
+            }
+            assertTrue(wikidata.closed && dbpedia.closed,
+                    "a finished run detaches both endpoint sinks");
         }
     }
 
     /** Records the sink it is given; {@code log} is how a run addresses a client. */
     private static final class RecordingClient extends WikidataSparqlClient {
         private java.util.function.Consumer<String> sink;
+        private boolean closed;
         private RecordingClient(String endpoint) { super("test", 1, endpoint); }
-        @Override public void log(java.util.function.Consumer<String> log) {
+        @Override public AutoCloseable requestLog(
+                java.util.function.Consumer<String> log) {
             this.sink = log;
-            super.log(log);
+            AutoCloseable scope = super.requestLog(log);
+            return () -> { scope.close(); closed = true; };
         }
     }
 

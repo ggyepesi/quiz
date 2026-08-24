@@ -105,9 +105,29 @@ public final class WikidataAccess implements CancellableWork {
      * reach — rather than each acquisition remembering to wire the client it happens to
      * hold, which is how DBpedia came to be the only endpoint ever wired at all.
      */
-    public static void logRequests(QueryContext context, java.util.function.Consumer<String> sink) {
-        of(context).sparqlClients.values().stream().distinct()
-                .forEach(client -> client.log(sink));
+    public static RequestLogs logRequests(
+            QueryContext context, java.util.function.Consumer<String> sink) {
+        java.util.function.Consumer<String> target = sink == null ? ignored -> {} : sink;
+        java.util.List<AutoCloseable> scopes = new java.util.ArrayList<>();
+        of(context).sparqlClients.forEach((datasource, client) -> scopes.add(
+                client.requestLog(line -> target.accept(
+                        "[" + datasource.name() + "] " + line))));
+        return new RequestLogs(scopes);
+    }
+
+    /** The per-run endpoint log registrations; closing restores the worker thread's
+     * previous registrations and releases references to the finished run. */
+    public static final class RequestLogs implements AutoCloseable {
+        private final java.util.List<AutoCloseable> scopes;
+        private RequestLogs(java.util.List<AutoCloseable> scopes) {
+            this.scopes = java.util.List.copyOf(scopes);
+        }
+        @Override public void close() {
+            for (int i = scopes.size() - 1; i >= 0; i--) {
+                try { scopes.get(i).close(); }
+                catch (Exception ignored) { }
+            }
+        }
     }
 
     public static WikidataApiClient api(QueryContext context) {

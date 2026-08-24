@@ -93,7 +93,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     GenerationLog genLog = StepGenerationLog.of(context, step);
                     // Every endpoint this run can reach reports its requests, and their
                     // timings, into THIS run's log.
-                    WikidataAccess.logRequests(context, genLog::message);
+                    try (WikidataAccess.RequestLogs requestLogs =
+                            WikidataAccess.logRequests(context, genLog::message)) {
                     genLog.message(executionSettings.resolvedDescription());
                     phase(wikidata.explore.generation.GenerateDomainPipeline.PLAN,
                             project.classes().size() + " configured classes");
@@ -545,6 +546,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     convergence.newlyClassifiedKinds()),
                             GenerationRun.ProjectionAudit.ran(
                                     transformed.projectionChangedInstances()));
+                    }
                 });
     }
 

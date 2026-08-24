@@ -85,13 +85,9 @@ public class RemapInstancesQuery
             context.message(limitation);
         }
 
-        wikidata.explore.extract.GenerationLog genLog =
-                wikidata.explore.extract.GenerationLog.of(context::message);
-        // Remap acquires nothing, but a transform can still reach an endpoint, and a
-        // request nobody timed is how a phase came to report 385 s it could not explain.
-        wikidata.explore.query.core.WikidataAccess.logRequests(context, genLog::message);
         return new GenerationPipeline().remap(
-                previousRun, projectModel, genLog, steps);
+                previousRun, projectModel,
+                wikidata.explore.extract.GenerationLog.of(context::message), steps);
     }
 
     @Override
