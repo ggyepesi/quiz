@@ -786,7 +786,10 @@ public class GenerationPipeline {
      *  and the number is only interesting when it is not zero. */
     private static String ownedRenamed(DomainFinalization.Result finalization) {
         int renamed = finalization.ownedRenamed();
-        return renamed == 0 ? "" : ", " + renamed + " owned part(s) renamed";
+        int ownerless = finalization.ownerlessParts();
+        return (renamed == 0 ? "" : ", " + renamed + " owned part(s) renamed")
+                + (ownerless == 0 ? ""
+                        : ", " + ownerless + " owned part(s) dropped as ownerless");
     }
 
 }

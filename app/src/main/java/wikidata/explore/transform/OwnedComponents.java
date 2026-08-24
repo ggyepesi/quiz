@@ -218,6 +218,64 @@ public final class OwnedComponents {
         return renamed;
     }
 
+    /**
+     * Parts in the pool whose owner is not in it (#117).
+     *
+     * <p>A part is a view OF its owner — "whose view this is, and which view" — so
+     * serving one whose owner is absent offers a card about somebody the dataset does
+     * not contain. Ten Oscars parts were in that state: entities reached as bare QID
+     * references, stamped Person by kind classification, given a part by composition,
+     * and then never served themselves. It is also why {@code Name} reported more
+     * colliding labels than {@code Person}.
+     *
+     * <p>Checked after the prunes rather than at composition, because composition is not
+     * the only way to get here: a prune that removes an owner orphans its part just as
+     * effectively, and one rule covering both beats two covering one each.
+     *
+     * <p>The site is derived from the MODEL, exactly as {@link #apply} derives it when
+     * composing — never by reading the type key apart, which would make the shape of a
+     * name load-bearing.
+     */
+    public static List<WikidataDynamicObject> orphanedParts(
+            GeneratedProjectModel project, Collection<WikidataDynamicObject> pool) {
+        if (project == null || pool == null) return List.of();
+        Map<String, String> ownerClassBySite = new LinkedHashMap<>();
+        for (GeneratedClassModel ownerClass : project.classes()) {
+            if (ownerClass == null) continue;
+            for (GeneratedFieldModel field : ownerClass.fields()) {
+                if (!isSite(field, project)) continue;
+                GeneratedClassModel target = project.findClass(field.entityClassName());
+                if (target == null) continue;
+                ownerClassBySite.put(
+                        target.className() + "@" + ownerClass.className() + "." + field.name(),
+                        ownerClass.className());
+            }
+        }
+        if (ownerClassBySite.isEmpty()) return List.of();
+
+        Map<String, List<WikidataDynamicObject>> candidates = new LinkedHashMap<>();
+        for (WikidataDynamicObject value : pool) {
+            if (value == null || value.isPart() || value.getIdentifier() == null) continue;
+            candidates.computeIfAbsent(value.getIdentifier(), id -> new ArrayList<>())
+                    .add(value);
+        }
+
+        List<WikidataDynamicObject> orphans = new ArrayList<>();
+        for (WikidataDynamicObject part : pool) {
+            if (part == null || !part.isPart()) continue;
+            // A site this model does not declare is not this rule's to judge.
+            String ownerClass = ownerClassBySite.get(part.typeKey());
+            if (ownerClass == null) continue;
+            boolean owned = candidates
+                    .getOrDefault(part.getIdentifier(), List.of()).stream()
+                    // The owner may be an instance of a SUBCLASS of the declaring class,
+                    // which is the class the site — and so the type key — names.
+                    .anyMatch(owner -> isInstanceOf(owner, ownerClass, project));
+            if (!owned) orphans.add(part);
+        }
+        return List.copyOf(orphans);
+    }
+
     private static boolean isSite(
             GeneratedFieldModel field, GeneratedProjectModel project) {
         return OwnedClassSemantics.isOwnerQidField(field, project);

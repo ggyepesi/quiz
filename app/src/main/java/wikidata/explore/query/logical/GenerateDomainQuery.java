@@ -416,7 +416,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             pool.size() + " final object(s)"
                                     + (finalization.ownedRenamed() == 0 ? ""
                                             : ", " + finalization.ownedRenamed()
-                                                    + " owned part(s) renamed"));
+                                                    + " owned part(s) renamed")
+                                    + (finalization.ownerlessParts() == 0 ? ""
+                                            : ", " + finalization.ownerlessParts()
+                                                    + " owned part(s) dropped as ownerless"));
                     phase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
                             pool.size() + " object(s)");
 

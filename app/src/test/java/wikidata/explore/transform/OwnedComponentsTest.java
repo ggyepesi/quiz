@@ -191,6 +191,62 @@ class OwnedComponentsTest {
     }
 
     /**
+     * #117. Ten Oscars parts were served whose owner was not: entities reached as bare
+     * QID references, stamped Person by kind classification, given a part by
+     * composition, and never served themselves. A part is a view OF its owner, so one
+     * without an owner is a card about somebody the dataset does not contain — and it is
+     * why Name reported more colliding labels than Person.
+     */
+    @Test void aPartWhoseOwnerIsNotServedIsFound() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+
+        assertEquals(List.of(), OwnedComponents.orphanedParts(
+                        project, List.of(person, part)),
+                "served beside its owner, which is the ordinary case");
+        assertEquals(List.of(part), OwnedComponents.orphanedParts(
+                        project, List.of(part)),
+                "the same part, with its owner absent from the pool");
+    }
+
+    /**
+     * Composition is not the only way in. A prune runs after it and can take an owner
+     * away, leaving a part that was perfectly well-formed when it was made — which is
+     * why the check belongs after the prunes rather than at composition.
+     */
+    @Test void aPartIsOrphanedByLosingItsOwnerAfterwards() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(
+                List.of(person, (WikidataDynamicObject) person.get("structuredName")));
+
+        assertEquals(0, OwnedComponents.orphanedParts(project, pool).size());
+        pool.remove(person);   // a prune, after composition was already correct
+
+        assertEquals(1, OwnedComponents.orphanedParts(project, pool).size());
+    }
+
+    /** An owner may be an instance of a SUBCLASS of the class the site names, and the
+     *  type key names the declaring class — so identity alone cannot answer it. */
+    @Test void aSubclassInstanceStillOwnsItsPart() {
+        GeneratedProjectModel project = project();
+        GeneratedClassModel employee = new GeneratedClassModel("Employee");
+        employee.baseClassName("Person");
+        project.addClass(employee);
+        WikidataDynamicObject owner = entity("Q42", "Douglas Adams", "Employee");
+        OwnedComponents.apply(project, List.of(owner), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) owner.get("structuredName");
+
+        assertEquals(List.of(),
+                OwnedComponents.orphanedParts(project, List.of(owner, part)));
+    }
+
+    /**
      * A generation composes owned values more than once — kinds settle, new owners
      * appear, and composition runs again over a pool that already holds parts. Each
      * owner must still end with ONE part per site: the run that lost this produced two

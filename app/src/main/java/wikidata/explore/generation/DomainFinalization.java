@@ -12,7 +12,7 @@ import java.util.List;
 /** Shared post-convergence stages for Generate, Enrich and Remap. */
 public final class DomainFinalization {
     public record Result(int dead, int disambiguation, int orphans, int requiredDropped,
-                         int ownedRenamed,
+                         int ownedRenamed, int ownerlessParts,
                          List<wikidata.explore.transform.FieldExpectations.FieldCoverage>
                                  coverage) {
         public Result {
@@ -21,7 +21,7 @@ public final class DomainFinalization {
 
         /** Back-compat: a result with no coverage report. */
         public Result(int dead, int disambiguation, int orphans, int requiredDropped) {
-            this(dead, disambiguation, orphans, requiredDropped, 0, List.of());
+            this(dead, disambiguation, orphans, requiredDropped, 0, 0, List.of());
         }
     }
 
@@ -45,7 +45,7 @@ public final class DomainFinalization {
             Collection<WikidataDynamicObject> vocabularyEvidence,
             WikidataApiClient api,
             GenerationLog log) throws Exception {
-        int[] counts = new int[5];
+        int[] counts = new int[6];
         // What EXPECTED found is the point of declaring it, so it leaves this stage as
         // a value rather than only a log line (#96).
         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> coverage =
@@ -83,6 +83,26 @@ public final class DomainFinalization {
                     counts[3] = expectations.dropped().size();
                     coverage.addAll(expectations.coverage());
                 }),
+                // AFTER every prune above, because each of them can remove an owner and
+                // leave its part behind — the same end state composition reaches by
+                // making a part for an entity that is never served. One rule, applied
+                // where nothing can still take an owner away.
+                stage("owned-part-owners", "Drop parts whose owner is not served", () -> {
+                    var ownerless = wikidata.explore.transform.OwnedComponents
+                            .orphanedParts(model, pool);
+                    counts[5] = ownerless.size();
+                    if (!ownerless.isEmpty()) {
+                        java.util.Set<wikidata.explore.extract.WikidataDynamicObject> drop =
+                                java.util.Collections.newSetFromMap(
+                                        new java.util.IdentityHashMap<>());
+                        drop.addAll(ownerless);
+                        pool.removeIf(drop::contains);
+                        if (log != null) {
+                            log.message("Dropped " + ownerless.size()
+                                    + " owned part(s) whose owner is not served.\n");
+                        }
+                    }
+                }),
                 stage("vocabularies", "Build descriptive vocabularies",
                         () -> wikidata.explore.transform.DescriptiveVocabularyBuild.apply(
                                 model, vocabularyEvidence == null ? pool
@@ -96,7 +116,7 @@ public final class DomainFinalization {
                 }));
         for (GenerationStage stage : stages) stage.execute();
         return new Result(counts[0], counts[1], counts[2], counts[3], counts[4],
-                coverage);
+                counts[5], coverage);
     }
 
     private static GenerationStage stage(String id, String title, Checked action) {
