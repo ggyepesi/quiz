@@ -128,13 +128,11 @@ public final class WikipediaCategoryAcquisition {
         };
     }
 
+    /** Delegates: the plan answers whether a family has acquiring work, and a category
+     *  recipe that names no pattern is already prepared as RETAIN. */
     public static boolean configured(SourceExecutionPlan sourcePlan) {
-        return sourcePlan != null && sourcePlan.steps(
-                datasource.api.BindingScope.FIELD_VALUE).stream().anyMatch(step ->
-                datasource.wikipedia.WikipediaCategoryDiscoveryOperation.FAMILY.equals(
-                        step.prepared().familyId())
-                        && step.prepared().execution()
-                        == datasource.api.PreparedSourceOperation.Execution.ACQUIRE);
+        return sourcePlan != null && sourcePlan.acquires(
+                datasource.wikipedia.WikipediaCategoryDiscoveryOperation.FAMILY);
     }
 
     /**

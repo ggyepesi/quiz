@@ -120,6 +120,21 @@ public final class SourceExecutionPlan {
         return steps.size() + " binding(s)" + (inventory.isBlank() ? "" : ": " + inventory);
     }
 
+    /**
+     * Whether this plan has work for a family — a step it prepared as ACQUIRE.
+     *
+     * <p>One question with one answer. Each family used to bring its own: hasBindings,
+     * configured, and a local scan, all computing "is there anything of mine to do"
+     * from the same steps by different routes. A family that prepares an incomplete
+     * recipe as RETAIN is already excluded, so this needs no per-family grammar.
+     */
+    public boolean acquires(String familyId) {
+        return steps.stream()
+                .filter(step -> step.prepared().familyId().equals(familyId))
+                .anyMatch(step -> step.prepared().execution()
+                        == PreparedSourceOperation.Execution.ACQUIRE);
+    }
+
     public long familyCount(String familyId) {
         return steps.stream().filter(step -> step.prepared().familyId().equals(familyId)).count();
     }

@@ -122,36 +122,6 @@ public class GenerationPipeline {
         return extractor.load(plan, depth, log);
     }
 
-    // Fills DBpedia-sourced root fields (Wikipedia infobox) after the Wikidata
-    // extraction, joined by owl:sameAs QID. No-op unless the root class has any
-    // DBpedia field; failures are logged, not fatal (the run still succeeds).
-
-
-    private DBpediaFieldAcquisition.Result enrichFromDBpedia(
-            GeneratedProjectModel snapshot,
-            List<WikidataDynamicObject> roots,
-            GenerationLog log,
-            datasource.api.SourceExecutionPlan sourcePlan,
-            WikidataSparqlClient dbpedia) {
-
-        if (!DBpediaFieldAcquisition.hasBindings(sourcePlan)) {
-            return new DBpediaFieldAcquisition.Result(0, 0);
-        }
-
-        if (dbpedia == null) {
-            log.message("DBpedia acquisition skipped: this compatibility caller did not "
-                    + "supply the process-bound DBpedia client.\n");
-            return new DBpediaFieldAcquisition.Result(0, 0);
-        }
-        try {
-            return DBpediaFieldAcquisition.apply(
-                    snapshot, roots, sourcePlan, dbpedia, log);
-        } catch (Exception e) {
-            log.message("DBpedia enrichment failed: " + e.getMessage() + "\n");
-            return new DBpediaFieldAcquisition.Result(0, 0);
-        }
-    }
-
     public GeneratedViewableRuntime buildRuntime(
             GeneratedProjectModel snapshot) throws Exception {
 
@@ -300,13 +270,11 @@ public class GenerationPipeline {
         List<WikidataDynamicObject> dynamicObjects =
                 extract(client, plan, depth, log);
 
-        enrichFromDBpedia(snapshot, dynamicObjects, log, sourcePlan, dbpedia);
-        if (entityApi != null) {
-            WikipediaInfoboxAcquisition.apply(snapshot, dynamicObjects,
-                    log == null ? GenerationLog.NOOP : log,
-                    cancellation == null ? new work.CancellationToken() : cancellation,
-                    entityApi, sourcePlan);
-        }
+        ExternalSourceAcquisition.apply(snapshot, dynamicObjects, sourcePlan,
+                dbpedia, entityApi, log, cancellation,
+                ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
+                java.util.Set.of(ExternalSourceAcquisition.Family.DBPEDIA,
+                        ExternalSourceAcquisition.Family.WIKIPEDIA_INFOBOX));
 
         // NO owned components here. This is the single-class PREVIEW: it answers "who is
         // in this class, carrying what", and materializing a component per owner answers

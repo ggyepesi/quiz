@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -51,6 +52,11 @@ class IncompleteRecipeTest {
         }
         assertEquals(0, plan.selfAcquiring(),
                 "so the headline does not promise work that will not happen");
+        // And the gate every family now shares agrees: RETAIN is what makes one
+        // general question equivalent to the bespoke ones it replaced.
+        assertFalse(plan.acquires("wikipedia-infobox-field"));
+        assertFalse(plan.acquires("wikipedia-category-field"));
+        assertFalse(plan.acquires("dbpedia-field"));
     }
 
     private static SourceBinding field(String owner, String path, SourceBindingSlot slot,

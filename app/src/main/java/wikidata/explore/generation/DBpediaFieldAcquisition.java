@@ -44,13 +44,6 @@ public final class DBpediaFieldAcquisition {
         return new Result(fields, values);
     }
 
-    /** Cheap probe used only to avoid opening a DBpedia client when no binding exists. */
-    public static boolean hasBindings(SourceExecutionPlan sourcePlan) {
-        return sourcePlan != null
-                && sourcePlan.familyCount(
-                        datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD) > 0;
-    }
-
     private static List<DBpediaEnrichment.FieldRequest> worklist(
             GeneratedClassModel owner, SourceExecutionPlan sourcePlan, GenerationLog log) {
         List<DBpediaEnrichment.FieldRequest> result = new ArrayList<>();
