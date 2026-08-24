@@ -290,8 +290,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     wikidata.explore.generation.ExternalSourceAcquisition.Result external =
                             wikidata.explore.generation.ExternalSourceAcquisition.apply(
                                     project, pool, sourcePlan,
-                                    WikidataAccess.sparql(context, Datasource.DBPEDIA),
-                                    entityApi, genLog, context.cancellation(),
+                                    wikidata.explore.generation.StandardExternalSourceFamilies
+                                            .services(WikidataAccess.sparql(
+                                                    context, Datasource.DBPEDIA), entityApi),
+                                    genLog, context.cancellation(),
                                     wikidata.explore.generation.ExternalSourceAcquisition
                                             .FailurePolicy.STRICT);
                     String acquiredExternal = external.acquiredSummary();

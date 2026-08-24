@@ -278,7 +278,7 @@ public class GenerationPipeline {
                 extract(client, plan, depth, log);
 
         ExternalSourceAcquisition.apply(snapshot, dynamicObjects, sourcePlan,
-                dbpedia, entityApi, log, cancellation,
+                StandardExternalSourceFamilies.services(dbpedia, entityApi), log, cancellation,
                 ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
                 java.util.Set.of(
                         datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD,
@@ -538,7 +538,9 @@ public class GenerationPipeline {
         steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                 "Acquire DBpedia fields, Wikipedia categories and native infobox values");
         ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
-                snapshot, pool, sourcePlan, dbpediaClient, entityApi, sink, cancellation,
+                snapshot, pool, sourcePlan,
+                StandardExternalSourceFamilies.services(dbpediaClient, entityApi),
+                sink, cancellation,
                 ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL);
 
         // Finalization is deliberately after semantic convergence: names, expectations

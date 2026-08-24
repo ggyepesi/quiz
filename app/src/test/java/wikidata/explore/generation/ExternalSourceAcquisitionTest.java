@@ -21,7 +21,8 @@ class ExternalSourceAcquisitionTest {
 
         ExternalSourceAcquisition.Result result = ExternalSourceAcquisition.apply(
                 new GeneratedProjectModel(), List.of(), plan,
-                null, null, GenerationLog.NOOP, new work.CancellationToken(),
+                datasource.api.SourceRuntimeServices.empty(), GenerationLog.NOOP,
+                new work.CancellationToken(),
                 ExternalSourceAcquisition.FailurePolicy.STRICT);
 
         assertEquals(0, result.values());
@@ -45,7 +46,8 @@ class ExternalSourceAcquisitionTest {
                 List.of(), Datasources.standard());
 
         ExternalSourceAcquisition.Result result = ExternalSourceAcquisition.apply(
-                new GeneratedProjectModel(), List.of(), plan, null, null,
+                new GeneratedProjectModel(), List.of(), plan,
+                datasource.api.SourceRuntimeServices.empty(),
                 GenerationLog.NOOP, new work.CancellationToken(),
                 ExternalSourceAcquisition.FailurePolicy.STRICT,
                 new ExternalSourceFamilyRegistry(List.of(custom)), Set.of(custom.id()));
@@ -55,7 +57,8 @@ class ExternalSourceAcquisitionTest {
         assertEquals("7 test value(s)", result.acquiredSummary());
         assertEquals(7, result.outcome("test-family").values());
         assertThrows(IllegalArgumentException.class, () -> ExternalSourceAcquisition.apply(
-                new GeneratedProjectModel(), List.of(), plan, null, null,
+                new GeneratedProjectModel(), List.of(), plan,
+                datasource.api.SourceRuntimeServices.empty(),
                 GenerationLog.NOOP, new work.CancellationToken(),
                 ExternalSourceAcquisition.FailurePolicy.STRICT,
                 new ExternalSourceFamilyRegistry(List.of(custom)), Set.of("typo")));

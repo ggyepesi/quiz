@@ -1,7 +1,7 @@
 package wikidata.explore.generation;
 
 import datasource.api.SourceExecutionPlan;
-import wikidata.WikidataSparqlClient;
+import datasource.api.SourceRuntimeServices;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -22,28 +22,28 @@ public final class ExternalSourceAcquisition {
 
     public static Result apply(GeneratedProjectModel model,
             List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
-            WikidataSparqlClient dbpedia, wikidata.api.WikidataApiClient wikidata,
+            SourceRuntimeServices services,
             GenerationLog log, work.CancellationToken cancellation,
             FailurePolicy failurePolicy) throws Exception {
         ExternalSourceFamilyRegistry registry = StandardExternalSourceFamilies.create();
         Set<String> all = registry.families().stream().map(ExternalSourceFamily::id)
                 .collect(java.util.stream.Collectors.toSet());
-        return apply(model, pool, plan, dbpedia, wikidata, log, cancellation,
+        return apply(model, pool, plan, services, log, cancellation,
                 failurePolicy, registry, all);
     }
 
     public static Result apply(GeneratedProjectModel model,
             List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
-            WikidataSparqlClient dbpedia, wikidata.api.WikidataApiClient wikidata,
+            SourceRuntimeServices services,
             GenerationLog log, work.CancellationToken cancellation,
             FailurePolicy failurePolicy, Set<String> selectedFamilyIds) throws Exception {
-        return apply(model, pool, plan, dbpedia, wikidata, log, cancellation,
+        return apply(model, pool, plan, services, log, cancellation,
                 failurePolicy, StandardExternalSourceFamilies.create(), selectedFamilyIds);
     }
 
     public static Result apply(GeneratedProjectModel model,
             List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
-            WikidataSparqlClient dbpedia, wikidata.api.WikidataApiClient wikidata,
+            SourceRuntimeServices services,
             GenerationLog log, work.CancellationToken cancellation,
             FailurePolicy failurePolicy, ExternalSourceFamilyRegistry registry,
             Set<String> selectedFamilyIds) throws Exception {
@@ -55,7 +55,8 @@ public final class ExternalSourceAcquisition {
                 ? Set.of() : Set.copyOf(selectedFamilyIds);
         selected.forEach(registry::require);
         ExternalSourceFamily.Context context = new ExternalSourceFamily.Context(
-                model, pool == null ? List.of() : pool, plan, dbpedia, wikidata, sink, token);
+                model, pool == null ? List.of() : pool, plan,
+                services == null ? SourceRuntimeServices.empty() : services, sink, token);
         List<ExternalSourceFamily.Outcome> outcomes = new ArrayList<>();
 
         for (ExternalSourceFamily family : registry.families()) {
