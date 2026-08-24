@@ -47,8 +47,16 @@ public final class GenerationFactDemandPlan {
         java.util.Set<String> aliasClasses =
                 sourcePlan == null ? labelClasses
                         : wikidata.explore.model.ClassNameSourcePlan.aliases(sourcePlan);
+        java.util.Set<String> articleClasses =
+                sourcePlan == null ? labelClasses : articleBackedClasses(sourcePlan);
         for (var clazz : model.classes()) {
             if (clazz == null) continue;
+            if (articleClasses.contains(clazz.className())) {
+                planned.add(FactDemand.metadata(
+                        "wikipedia article evidence", clazz.className(),
+                        List.of(FactDemand.EntityMetadata.SITELINKS),
+                        "name the article a category or infobox source is read from"));
+            }
             if (labelClasses.contains(clazz.className())) {
                 planned.add(FactDemand.metadata(
                         "final label hydration", clazz.className(),
@@ -63,5 +71,32 @@ public final class GenerationFactDemandPlan {
             }
         }
         return new FactDemandPlan(planned);
+    }
+
+    /**
+     * Classes a configured Wikipedia source reads through an ARTICLE, which a QID names
+     * by its sitelink.
+     *
+     * <p>Demanded so the first acquisition carries it. Left out, the fact store rightly
+     * refuses a document that has no sitelinks and the population is fetched a second
+     * time to add them — which is exactly what aliases did before they were demanded
+     * here, for 265 seconds over 11,154 subjects and 684 KB of actual payload.
+     *
+     * <p>Asked of the two predicates that already decide what those bindings mean,
+     * rather than by matching on provider and operation again here.
+     */
+    private static java.util.Set<String> articleBackedClasses(
+            datasource.api.SourceExecutionPlan plan) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        for (datasource.api.SourceExecutionPlan.Step step
+                : plan.steps(datasource.api.BindingScope.FIELD_VALUE)) {
+            if (datasource.wikipedia.WikipediaDatasourceProvider
+                        .categoryRule(step.binding()) != null
+                    || datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxParameter(step.binding()) != null) {
+                out.add(step.target().className());
+            }
+        }
+        return java.util.Set.copyOf(out);
     }
 }
