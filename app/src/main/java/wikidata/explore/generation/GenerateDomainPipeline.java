@@ -294,6 +294,15 @@ public final class GenerateDomainPipeline {
         return null;
     }
 
+    private static String dbpediaProperty(GeneratedFieldModel field) {
+        if (field == null) return null;
+        for (datasource.api.SourceBinding binding : field.sourceBindings()) {
+            String property = datasource.dbpedia.DbpediaDatasourceProvider.property(binding);
+            if (property != null) return property;
+        }
+        return null;
+    }
+
     private static List<String> categoryDetails(GeneratedProjectModel model) {
         List<String> out = new ArrayList<>();
         for (GeneratedClassModel owner : model.classes()) {
@@ -307,6 +316,11 @@ public final class GenerateDomainPipeline {
                 if (parameter != null) {
                     out.add(owner.className() + "." + field.name()
                             + " — native Infobox " + parameter);
+                }
+                String dbpedia = dbpediaProperty(field);
+                if (dbpedia != null) {
+                    out.add(owner.className() + "." + field.name()
+                            + " — DBpedia property " + dbpedia);
                 }
             }
         }
@@ -336,6 +350,24 @@ public final class GenerateDomainPipeline {
         }
         for (GeneratedClassModel owner : model.classes()) {
             for (GeneratedFieldModel field : owner.fields()) {
+                String property = dbpediaProperty(field);
+                if (property == null) continue;
+                var ref = PhaseExplanation.ModelReference.field(
+                        owner.className(), field.name());
+                refs.add(ref);
+                examples.add(new PhaseExplanation.PhaseExample(
+                        PhaseExplanation.ExampleKind.PLANNED,
+                        "Read DBpedia value for " + owner.className() + "." + field.name(),
+                        List.of("Reachable " + owner.className()
+                                + " QIDs joined through owl:sameAs"),
+                        List.of("Batch QIDs in groups of 100",
+                                "Read dbp:" + property),
+                        List.of("Merge values into the configured model field"),
+                        List.of(ref)));
+            }
+        }
+        for (GeneratedClassModel owner : model.classes()) {
+            for (GeneratedFieldModel field : owner.fields()) {
                 String parameter = infoboxParameter(field);
                 if (parameter == null) continue;
                 var ref = PhaseExplanation.ModelReference.field(owner.className(), field.name());
@@ -353,13 +385,17 @@ public final class GenerateDomainPipeline {
         }
         return new PhaseExplanation(
                 "Acquire source facts once at domain scale; interpretation remains explicit and auditable.",
-                List.of("Reachable entity QIDs", "Configured Wikipedia-category and Infobox recipes"),
-                List.of("Resolve English Wikipedia sitelinks in batches of 50",
+                List.of("Reachable entity QIDs",
+                        "Configured DBpedia, Wikipedia-category and Infobox recipes"),
+                List.of("Join DBpedia resources to entity QIDs through owl:sameAs",
+                        "Read configured DBpedia properties in batches of 100 QIDs",
+                        "Resolve English Wikipedia sitelinks in batches of 50",
                         "Fetch visible category memberships with continuation",
                         "Fetch native Infobox wikitext in retryable batches of 50",
                         "Retain page revision, evidence digest and retrieval time",
                         "Expose matched values to generation/review according to policy"),
-                List.of("Snapshot-backed category memberships",
+                List.of("DBpedia values merged into configured fields",
+                        "Snapshot-backed category memberships",
                         "Per-value provenance usable by Explore and TransformApp"),
                 refs, examples);
     }

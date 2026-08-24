@@ -73,7 +73,7 @@ public class RemapInstancesQuery
 
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
-        context.message(wikidata.explore.model.ModelSourceExecutionPlan.message(
+        context.message(wikidata.explore.model.ModelSourceExecutionPlan.remapMessage(
                 wikidata.explore.model.ModelSourceExecutionPlan.compile(
                         projectModel, datasource.Datasources.standard())));
 

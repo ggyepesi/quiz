@@ -49,7 +49,9 @@ public final class ModelSourceExecutionPlan {
         long populations = plan.steps(datasource.api.BindingScope.CLASS_POPULATION).size();
         return "Datasource plan: " + plan.summary() + ". " + populations
                 + " class population binding(s) drive discovery; " + infoboxFields(plan)
-                + " Wikipedia infobox field binding(s) drive native infobox acquisition;"
+                + " Wikipedia infobox and " + dbpediaFields(plan)
+                + " DBpedia field binding(s) drive acquisition across all configured"
+                + " classes;"
                 + " class names and remaining field sources still use the established"
                 + " acquisition passes.";
     }
@@ -59,9 +61,19 @@ public final class ModelSourceExecutionPlan {
      *  being true the moment they did. */
     public static String enrichMessage(SourceExecutionPlan plan) {
         return "Datasource plan: " + plan.summary() + ". " + infoboxFields(plan)
-                + " Wikipedia infobox field binding(s) drive native infobox acquisition;"
+                + " Wikipedia infobox and " + dbpediaFields(plan)
+                + " DBpedia field binding(s) drive acquisition (including DBpedia"
+                + " endpoint requests);"
                 + " populations are not re-discovered, and class names and remaining"
                 + " field sources still use the established acquisition passes.";
+    }
+
+    /** Remap performs no source acquisition; it only validates that the persisted
+     * recipes still resolve before transforming the saved graph. */
+    public static String remapMessage(SourceExecutionPlan plan) {
+        return "Datasource plan: " + plan.summary()
+                + ". Compiled and checked, not executed — Remap transforms the saved"
+                + " graph without acquiring class populations, names or field values.";
     }
 
     /** The same predicate acquisition uses, so a headline cannot count a binding the
@@ -70,6 +82,13 @@ public final class ModelSourceExecutionPlan {
         return plan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
                 .filter(step -> datasource.wikipedia.WikipediaDatasourceProvider
                         .infoboxParameter(step.binding()) != null)
+                .count();
+    }
+
+    private static long dbpediaFields(SourceExecutionPlan plan) {
+        return plan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
+                .filter(step -> datasource.dbpedia.DbpediaDatasourceProvider
+                        .property(step.binding()) != null)
                 .count();
     }
 }

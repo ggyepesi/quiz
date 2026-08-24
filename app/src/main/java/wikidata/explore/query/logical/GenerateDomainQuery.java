@@ -281,7 +281,11 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
                             convergence.iterations() + " semantic iteration(s)");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
-                            "Wikipedia category memberships and native infobox values");
+                            "DBpedia fields, Wikipedia categories and native infobox values");
+                    wikidata.explore.generation.DBpediaFieldAcquisition.Result dbpedia =
+                            wikidata.explore.generation.DBpediaFieldAcquisition.apply(
+                                    project, pool, sourcePlan,
+                                    WikidataAccess.sparql(context, Datasource.DBPEDIA), genLog);
                     wikidata.explore.generation.WikipediaCategoryAcquisition.Result categories =
                             wikidata.explore.generation.WikipediaCategoryAcquisition.apply(
                                     project, pool, genLog, context.cancellation(), entityApi);
@@ -297,7 +301,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     completePhase(
                             wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                             categories.memberships() + " category membership(s), "
-                                    + infoboxes.values() + " infobox value(s)");
+                                    + infoboxes.values() + " infobox value(s), "
+                                    + dbpedia.values() + " DBpedia value(s)");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.LABELS,
                             "Hydrating final reachable QIDs");
                     wikidata.explore.generation.FinalLabelHydration.Result labels =

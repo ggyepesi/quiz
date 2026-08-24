@@ -6,7 +6,6 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
-import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 
@@ -27,26 +26,19 @@ public class DBpediaEnrichment {
 
     private static final int BATCH = 100;
 
-    public void enrich(
+    public int enrich(
             List<WikidataDynamicObject> roots,
             GeneratedClassModel clazz,
             WikidataSparqlClient dbpedia,
-            Consumer<String> log) throws Exception {
+            Consumer<String> log,
+            List<FieldRequest> dbFields) throws Exception {
 
         if (roots == null || roots.isEmpty() || clazz == null) {
-            return;
+            return 0;
         }
 
-        List<GeneratedFieldModel> dbFields = new ArrayList<>();
-        for (GeneratedFieldModel f : clazz.fields()) {
-            if (f != null && !f.isNameField()
-                    && f.mapping().sourceType() == FieldSourceType.DBPEDIA
-                    && !f.mapping().propertyPid().isBlank()) {
-                dbFields.add(f);
-            }
-        }
-        if (dbFields.isEmpty()) {
-            return;
+        if (dbFields == null || dbFields.isEmpty()) {
+            return 0;
         }
 
         Map<String, WikidataDynamicObject> byQid = new HashMap<>();
@@ -56,15 +48,17 @@ public class DBpediaEnrichment {
             }
         }
         if (byQid.isEmpty()) {
-            return;
+            return 0;
         }
 
         List<String> qids = new ArrayList<>(byQid.keySet());
         log.accept("\nDBpedia enrichment: " + dbFields.size() + " field(s) for "
                 + qids.size() + " " + clazz.className() + "(s)\n");
 
-        for (GeneratedFieldModel f : dbFields) {
-            String prop = f.mapping().propertyPid().trim();
+        int total = 0;
+        for (FieldRequest declaration : dbFields) {
+            GeneratedFieldModel f = declaration.field();
+            String prop = declaration.property();
             int merged = 0;
 
             for (int i = 0; i < qids.size(); i += BATCH) {
@@ -80,6 +74,9 @@ public class DBpediaEnrichment {
                     if (obj == null) {
                         continue;
                     }
+                    if (declaration.fillOnlyMissing() && obj.get(f.name()) != null) {
+                        continue;
+                    }
                     String label = b.value("valLabel");
                     String val = label != null && !label.isBlank()
                             ? label : b.value("val");
@@ -92,6 +89,17 @@ public class DBpediaEnrichment {
 
             log.accept("  " + f.name() + " <- dbp:" + prop + ": "
                     + merged + " value(s)\n");
+            total += merged;
+        }
+        return total;
+    }
+
+    public record FieldRequest(
+            GeneratedFieldModel field, String property, boolean fillOnlyMissing) {
+        public FieldRequest {
+            if (field == null) throw new IllegalArgumentException("field is required");
+            property = property == null ? "" : property.trim();
+            if (property.isBlank()) throw new IllegalArgumentException("property is required");
         }
     }
 

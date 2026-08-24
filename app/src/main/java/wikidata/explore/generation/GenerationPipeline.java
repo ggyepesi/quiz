@@ -7,9 +7,7 @@ import wikidata.explore.codegen.GeneratedViewableRuntime;
 import wikidata.explore.codegen.GeneratedViewableMapper;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.RuleTreeExtractor;
-import wikidata.explore.extract.DBpediaEnrichment;
 import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -129,35 +127,25 @@ public class GenerationPipeline {
     // DBpedia field; failures are logged, not fatal (the run still succeeds).
 
 
-    private void enrichFromDBpedia(
+    private DBpediaFieldAcquisition.Result enrichFromDBpedia(
             GeneratedProjectModel snapshot,
             List<WikidataDynamicObject> roots,
-            GenerationLog log) {
+            GenerationLog log,
+            datasource.api.SourceExecutionPlan sourcePlan) {
 
-        GeneratedClassModel root = snapshot.rootClass();
-        if (root == null) {
-            return;
-        }
-        boolean hasDbpedia = false;
-        for (GeneratedFieldModel f : root.fields()) {
-            if (f != null
-                    && f.mapping().sourceType() == FieldSourceType.DBPEDIA
-                    && !f.mapping().propertyPid().isBlank()) {
-                hasDbpedia = true;
-                break;
-            }
-        }
-        if (!hasDbpedia) {
-            return;
+        if (!DBpediaFieldAcquisition.hasBindings(sourcePlan)) {
+            return new DBpediaFieldAcquisition.Result(0, 0);
         }
 
         try (WikidataSparqlClient dbpedia = new WikidataSparqlClient(
                 "quiz-modelbuilder (ggyepesi@gmail.com)", 2,
                 WikidataSparqlClient.DBPEDIA_ENDPOINT)) {
             dbpedia.log(log::message);
-            new DBpediaEnrichment().enrich(roots, root, dbpedia, log::message);
+            return DBpediaFieldAcquisition.apply(
+                    snapshot, roots, sourcePlan, dbpedia, log);
         } catch (Exception e) {
             log.message("DBpedia enrichment failed: " + e.getMessage() + "\n");
+            return new DBpediaFieldAcquisition.Result(0, 0);
         }
     }
 
@@ -290,7 +278,7 @@ public class GenerationPipeline {
         List<WikidataDynamicObject> dynamicObjects =
                 extract(client, plan, depth, log);
 
-        enrichFromDBpedia(snapshot, dynamicObjects, log);
+        enrichFromDBpedia(snapshot, dynamicObjects, log, sourcePlan);
         if (entityApi != null) {
             WikipediaInfoboxAcquisition.apply(snapshot, dynamicObjects,
                     log == null ? GenerationLog.NOOP : log,
@@ -529,7 +517,9 @@ public class GenerationPipeline {
                         + convergence.classifiedKinds() + " kind(s), "
                         + convergence.ownedCreated() + " owned part(s)");
         steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
-                "Acquire Wikipedia category memberships and native infobox values");
+                "Acquire DBpedia fields, Wikipedia categories and native infobox values");
+        DBpediaFieldAcquisition.Result dbpedia =
+                enrichFromDBpedia(snapshot, pool, sink, sourcePlan);
         WikipediaCategoryAcquisition.Result categories =
                 WikipediaCategoryAcquisition.apply(snapshot, pool, sink,
                         cancellation == null ? new work.CancellationToken() : cancellation,
@@ -545,7 +535,8 @@ public class GenerationPipeline {
                 wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         steps.completed(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                 categories.memberships() + " category membership(s), "
-                        + infoboxes.values() + " infobox value(s)");
+                        + infoboxes.values() + " infobox value(s), "
+                        + dbpedia.values() + " DBpedia value(s)");
         steps.started(GenerateDomainPipeline.CONSTRUCT,
                 "Replay the transforms that an already-reified pool can re-run");
         List<WikidataDynamicObject> projectedRecords = new ArrayList<>();
