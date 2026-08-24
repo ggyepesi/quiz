@@ -85,8 +85,15 @@ final class PopulationSourceBindings {
     }
 
     static SourceRecipe fromLegacy(GeneratedClassModel clazz) {
+        return fromLegacy(clazz, null);
+    }
+
+    /** Includes inherited membership; subclass discriminators remain separate rules. */
+    static SourceRecipe fromLegacy(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (clazz == null || clazz.ownedClass() || clazz.reifiesStatements()) return null;
-        FieldSourceMapping mapping = clazz.instanceMapping();
+        FieldSourceMapping mapping = project == null
+                ? clazz.instanceMapping() : clazz.effectiveInstanceMapping(project);
         String pid = clean(mapping.propertyPid()).toUpperCase();
         List<String> targets = targets(mapping);
         if (WikidataIds.isPid(pid) && !targets.isEmpty()) {

@@ -9,7 +9,6 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataObjectRegistry;
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.GenerationRun;
-import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.core.Datasource;
@@ -78,9 +77,11 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
     public GenerationRun execute(QueryContext context) throws Exception {
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
-        context.message(wikidata.explore.model.ModelSourceExecutionPlan.message(
+        datasource.api.SourceExecutionPlan sourcePlan =
                 wikidata.explore.model.ModelSourceExecutionPlan.compile(
-                        project, datasource.Datasources.standard())));
+                        project, datasource.Datasources.standard());
+        context.message(wikidata.explore.model.ModelSourceExecutionPlan.generationMessage(
+                sourcePlan));
         return context.step(
                 "Generate domain \"" + project.name() + "\"",
                 "Domain",   // container node, not a SPARQL query (no "Open in query service")
@@ -129,13 +130,18 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             wikidata.explore.generation.GenerationFactDemandPlan.compile(project);
 
                     for (GeneratedClassModel cls : project.classes()) {
-                        if (!generatable(cls)) {
+                        datasource.api.SourceExecutionPlan.Step population = sourcePlan.step(
+                                datasource.api.SourceBindingTarget.classPopulation(
+                                        cls.className()));
+                        if (!generatable(cls, population)) {
                             genLog.message("Skip class \"" + cls.className()
                                     + "\" — no membership type or seed QIDs.\n");
                             continue;
                         }
                         GeneratedProjectModel rooted = rootedAt(cls.className());
                         RuleNode plan = pipeline.plan(rooted);
+                        wikidata.explore.generation.PopulationSourceExecution.apply(
+                                plan, population);
                         genLog.message("=== Class \"" + cls.className()
                                 + "\" (depth " + cls.generationDepth() + ") ===\n");
 
@@ -533,16 +539,15 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
     // A running sub-query node under {@code step}, finished via the handle.
     // Generatable = has something to query: a membership type, extra types, or
     // an explicit seed-QID set. (A bare reference-only class is skipped.)
-    private boolean generatable(GeneratedClassModel cls) {
+    private boolean generatable(
+            GeneratedClassModel cls,
+            datasource.api.SourceExecutionPlan.Step population) {
         // STATEMENT-reification classes aren't fetched by a normal root query —
         // they're produced by ModelStatementReifications (qualifier-load + reify).
         if (cls.reifiesStatements()) {
             return false;
         }
-        FieldSourceMapping m = cls.effectiveInstanceMapping(project);
-        return (m != null && !m.sourceQid().isBlank())
-                || !cls.seedQids().isEmpty()
-                || (m != null && !m.additionalTypeQids().isEmpty());
+        return population != null;
     }
 
     private GeneratedProjectModel rootedAt(String className) {

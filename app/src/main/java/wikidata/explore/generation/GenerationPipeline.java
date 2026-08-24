@@ -264,7 +264,28 @@ public class GenerationPipeline {
             wikidata.api.WikidataApiClient entityApi,
             work.CancellationToken cancellation) throws Exception {
 
+        datasource.api.SourceExecutionPlan sourcePlan =
+                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                        snapshot, datasource.Datasources.standard());
+        return fullRun(snapshot, depth, client, log, entityApi, cancellation, sourcePlan);
+    }
+
+    /** Single-class generation consuming the same resolved datasource plan as the
+     * whole-domain operation. */
+    public GenerationRun fullRun(
+            GeneratedProjectModel snapshot,
+            int depth,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            work.CancellationToken cancellation,
+            datasource.api.SourceExecutionPlan sourcePlan) throws Exception {
+
         RuleNode plan = plan(snapshot);
+        datasource.api.SourceExecutionPlan.Step population = sourcePlan == null ? null
+                : sourcePlan.step(datasource.api.SourceBindingTarget.classPopulation(
+                        snapshot.rootClass().className()));
+        if (population != null) PopulationSourceExecution.apply(plan, population);
 
         List<WikidataDynamicObject> dynamicObjects =
                 extract(client, plan, depth, log);

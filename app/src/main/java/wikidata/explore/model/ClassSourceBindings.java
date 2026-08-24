@@ -1,7 +1,5 @@
 package wikidata.explore.model;
 
-import datasource.api.DatasourceOperation;
-import datasource.api.DatasourceRegistry;
 import datasource.api.SourceBinding;
 import datasource.api.SourceBindingSlot;
 import datasource.api.SourceBindingTarget;
@@ -19,14 +17,27 @@ public final class ClassSourceBindings {
     public static void synchronize(GeneratedProjectModel project) {
         if (project == null) return;
         for (GeneratedClassModel clazz : project.classes()) {
-            synchronize(clazz);
+            synchronize(clazz, project);
         }
     }
 
     public static void synchronize(GeneratedClassModel clazz) {
+        synchronize(clazz, null);
+    }
+
+    private static void synchronize(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (clazz == null) return;
-        replace(clazz, SourceBindingSlot.CLASS_POPULATION,
-                population(clazz.className(), clazz.populationSource()));
+        // Only a project can say what a class's population is, because membership can be
+        // inherited and a class alone cannot see its base. The project-less form serves
+        // an editor that needs the identity/label/alias defaults and never reads this
+        // slot; deriving it from the class's own mapping there would CLEAR an inherited
+        // population, which is what describing a subclass used to do.
+        if (project != null) {
+            replace(clazz, SourceBindingSlot.CLASS_POPULATION, population(
+                    clazz.className(),
+                    PopulationSourceBindings.fromLegacy(clazz, project)));
+        }
         if (clazz.classKind() == ClassKind.SOURCE) {
             putDefault(clazz, new SourceBinding(
                     SourceBindingTarget.classIdentity(clazz.className()),
@@ -49,10 +60,6 @@ public final class ClassSourceBindings {
         }
     }
 
-    /**
-     * Bank each class's pending changes as bindings, then prove each one still names
-     * something this application can perform. It writes, and the name says so.
-     */
     /** Banks pending class edits and returns their bindings after storage validation. */
     static List<SourceBinding> synchronizeAndCollect(GeneratedProjectModel project) {
         synchronize(project);

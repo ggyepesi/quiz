@@ -7,6 +7,9 @@ import datasource.api.ParameterDescriptor;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
 import datasource.api.SourceReferenceSchema;
+import datasource.api.SourceRecipe;
+import datasource.api.acquisition.ClassPopulationOperation;
+import datasource.api.acquisition.PopulationSelection;
 import datasource.api.acquisition.SourceAcquisitionOperation;
 import datasource.api.acquisition.SourceAcquisitionRequest;
 import datasource.EntityRef;
@@ -155,7 +158,7 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     private record StatementMembershipOffering(
             BindingScope scope, SourceValueSchema outputSchema,
             List<ParameterDescriptor> parameters)
-            implements SourceAcquisitionOperation<List<EntityRef>> {
+            implements SourceAcquisitionOperation<List<EntityRef>>, ClassPopulationOperation {
 
         StatementMembershipOffering {
             parameters = List.copyOf(parameters);
@@ -164,22 +167,23 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
         @Override public String id() { return STATEMENT_MEMBERSHIP; }
         @Override public String displayName() { return "Members by statement"; }
 
+        @Override public PopulationSelection selection(SourceRecipe recipe) {
+            SourceRecipe safe = java.util.Objects.requireNonNull(recipe, "recipe");
+            String property = safe.parameter("property").trim().toUpperCase();
+            List<String> values = qids(safe.parameter("values"));
+            boolean subclasses = Boolean.parseBoolean(safe.parameter("includeSubclasses"));
+            validateMembership(property, values, subclasses);
+            return PopulationSelection.relation(EntityRef.WIKIDATA, property,
+                    values.stream().map(EntityRef::wikidata).toList(), subclasses);
+        }
+
         @Override public Query<List<EntityRef>> acquire(SourceAcquisitionRequest request) {
             SourceAcquisitionRequest safe = request == null
                     ? new SourceAcquisitionRequest(List.of(), java.util.Map.of()) : request;
             String property = safe.parameter("property").trim().toUpperCase();
             List<String> values = qids(safe.parameter("values"));
             boolean subclasses = Boolean.parseBoolean(safe.parameter("includeSubclasses"));
-            if (!WikidataIds.isPid(property)) {
-                throw new IllegalArgumentException("Invalid Wikidata property: " + property);
-            }
-            if (values.isEmpty()) {
-                throw new IllegalArgumentException("At least one Wikidata value QID is required");
-            }
-            if (subclasses && !"P31".equals(property)) {
-                throw new IllegalArgumentException(
-                        "Subclass expansion is only valid for P31 membership");
-            }
+            validateMembership(property, values, subclasses);
             String sparql = membershipSparql(property, values, subclasses);
             return new Query<>() {
                 @Override public String purpose() { return "Acquire Wikidata class members"; }
@@ -212,11 +216,18 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     private record SeedListOffering(
             BindingScope scope, SourceValueSchema outputSchema,
             List<ParameterDescriptor> parameters)
-            implements SourceAcquisitionOperation<List<EntityRef>> {
+            implements SourceAcquisitionOperation<List<EntityRef>>, ClassPopulationOperation {
 
         SeedListOffering { parameters = List.copyOf(parameters); }
         @Override public String id() { return SEED_LIST; }
         @Override public String displayName() { return "Members by explicit list"; }
+
+        @Override public PopulationSelection selection(SourceRecipe recipe) {
+            SourceRecipe safe = java.util.Objects.requireNonNull(recipe, "recipe");
+            return PopulationSelection.explicit(EntityRef.WIKIDATA,
+                    qids(safe.parameter("ids")).stream()
+                    .map(EntityRef::wikidata).toList());
+        }
 
         @Override public Query<List<EntityRef>> acquire(SourceAcquisitionRequest request) {
             SourceAcquisitionRequest safe = request == null
@@ -256,6 +267,20 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
             result.add(qid);
         }
         return List.copyOf(result);
+    }
+
+    private static void validateMembership(
+            String property, List<String> values, boolean subclasses) {
+        if (!WikidataIds.isPid(property)) {
+            throw new IllegalArgumentException("Invalid Wikidata property: " + property);
+        }
+        if (values == null || values.isEmpty()) {
+            throw new IllegalArgumentException("At least one Wikidata value QID is required");
+        }
+        if (subclasses && !"P31".equals(property)) {
+            throw new IllegalArgumentException(
+                    "Subclass expansion is only valid for P31 membership");
+        }
     }
 
     private static String membershipSparql(

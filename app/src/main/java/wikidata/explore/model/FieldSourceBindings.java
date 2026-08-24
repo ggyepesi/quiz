@@ -4,8 +4,6 @@ import datasource.api.SourceBinding;
 import datasource.api.SourceBindingSlot;
 import datasource.api.SourceBindingTarget;
 import datasource.api.SourceRecipe;
-import datasource.api.DatasourceOperation;
-import datasource.api.DatasourceRegistry;
 import datasource.dbpedia.DbpediaDatasourceProvider;
 import datasource.wikidata.WikidataDatasourceProvider;
 import datasource.wikipedia.WikipediaCategoryDiscoveryOperation;
@@ -48,20 +46,6 @@ public final class FieldSourceBindings {
         visit(project, FieldSourceBindings::synchronize);
     }
 
-    /**
-     * Bank every editor's pending changes as bindings, then prove that each one still
-     * names something this application can perform — before an operation starts work.
-     *
-     * <p>It writes: the synchronization is what lets a model edited through the old
-     * field controls be checked as bindings at all, and doing it here is what makes the
-     * check cover an edit made a moment ago. The name says so, because a caller reading
-     * "resolve" would not expect its model to come back changed.
-     *
-     * <p>Nothing executes from the returned operations yet. The legacy field sources
-     * still drive every run; this proves the bindings beside them are not nonsense —
-     * that they name an installed provider, sit where they claim to sit, and produce
-     * something a field can hold.
-     */
     /** Banks pending edits and returns the FIELD bindings, in model order. Class
      *  bindings are their own collector's to give; composing the two is the job of
      *  whoever wants the whole model. */

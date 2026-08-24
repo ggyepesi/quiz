@@ -4,10 +4,14 @@ import datasource.api.BindingScope;
 import datasource.api.DatasourceOperation;
 import datasource.api.DatasourceProvider;
 import datasource.api.SourceValueKind;
+import datasource.api.SourceRecipe;
+import datasource.api.acquisition.ClassPopulationOperation;
+import datasource.api.acquisition.PopulationSelection;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldType;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -84,5 +88,25 @@ class WikidataOfferingsTest {
             assertTrue(offering.outputSchema() != null,
                     offering.id() + " advertises no output shape");
         });
+    }
+
+    @Test void populationOfferingsExposeTheLogicalSelectionGenerationConsumes() {
+        ClassPopulationOperation membership = (ClassPopulationOperation)
+                offering(WikidataDatasourceProvider.STATEMENT_MEMBERSHIP);
+        PopulationSelection relation = membership.selection(new SourceRecipe(
+                "wikidata", "statement-membership",
+                Map.of("property", "P31", "values", "Q11424,Q202866")));
+        ClassPopulationOperation seeds = (ClassPopulationOperation)
+                offering(WikidataDatasourceProvider.SEED_LIST);
+        PopulationSelection explicit = seeds.selection(new SourceRecipe(
+                "wikidata", "seed-list", Map.of("ids", "Q42,Q1")));
+
+        assertEquals(PopulationSelection.Kind.RELATION, relation.kind());
+        assertEquals("P31", relation.relationId());
+        assertEquals(List.of("Q11424", "Q202866"), relation.values().stream()
+                .map(datasource.EntityRef::id).toList());
+        assertEquals(PopulationSelection.Kind.EXPLICIT, explicit.kind());
+        assertEquals(List.of("Q42", "Q1"), explicit.values().stream()
+                .map(datasource.EntityRef::id).toList());
     }
 }

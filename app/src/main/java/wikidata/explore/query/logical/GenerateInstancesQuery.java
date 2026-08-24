@@ -50,6 +50,12 @@ public class GenerateInstancesQuery
     public GenerationRun execute(QueryContext context)
             throws Exception {
 
+        datasource.api.SourceExecutionPlan sourcePlan =
+                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                        projectModel, datasource.Datasources.standard());
+        context.message(wikidata.explore.model.ModelSourceExecutionPlan.generationMessage(
+                sourcePlan));
+
         Map<String, String> stepParams = new LinkedHashMap<>();
         stepParams.put("qid", projectModel.rootClass()
                                           .instanceMapping()
@@ -89,7 +95,8 @@ public class GenerateInstancesQuery
                                     WikidataAccess.sparql(context, Datasource.WIKIDATA),
                                     genLog,
                                     WikidataAccess.api(context),
-                                    context.cancellation());
+                                    context.cancellation(),
+                                    sourcePlan);
 
                     step.summary(run.size() + " objects");
                     return run;

@@ -42,4 +42,13 @@ public final class ModelSourceExecutionPlan {
                 + ". Compiled and checked, not executed — the configured field sources"
                 + " still drive this run.";
     }
+
+    /** Generate consumes population steps; later source families still ride their
+     * established acquisition passes until their own migration milestone. */
+    public static String generationMessage(SourceExecutionPlan plan) {
+        long populations = plan.steps(datasource.api.BindingScope.CLASS_POPULATION).size();
+        return "Datasource plan: " + plan.summary() + ". " + populations
+                + " class population binding(s) drive discovery; class names and field"
+                + " values still use the established acquisition passes.";
+    }
 }
