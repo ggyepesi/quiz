@@ -67,6 +67,27 @@ class WikidataSparqlRequestLogTest {
         assertTrue(after.stream().anyMatch(line -> line.contains("SELECT ?outside")));
     }
 
+    /**
+     * The wait between attempts is time the run spends and nothing else accounted for
+     * it. A 429 whose Retry-After is a minute read as a phase that stalled for a minute
+     * with every request it made already explained — 211 seconds of Construct against
+     * 88 seconds of queries, and the difference invisible.
+     */
+    @Test void theWaitBeforeARetryIsReported() throws Exception {
+        List<String> lines = Collections.synchronizedList(new ArrayList<>());
+        try (WikidataSparqlClient client = unreachable()) {
+            try (AutoCloseable scope = client.requestLog(lines::add)) {
+                try { client.query("SELECT ?retried"); } catch (Exception ignored) { }
+            }
+        }
+
+        List<String> retries = lines.stream()
+                .filter(line -> line.contains("RETRY in")).toList();
+        assertTrue(!retries.isEmpty(), "a retried request says what it waited: " + lines);
+        assertTrue(retries.getFirst().matches("(?s).*RETRY in \\d+ ms after .*"),
+                retries.getFirst());
+    }
+
     private static WikidataSparqlClient unreachable() {
         return new WikidataSparqlClient("test", 1, "https://example.invalid/sparql");
     }

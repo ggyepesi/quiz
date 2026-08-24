@@ -171,9 +171,15 @@ public class WikidataSparqlClient implements AutoCloseable {
                 return failed;
             }
 
+            long backoff = backoffMillis(error, attemptsLeft);
+            // Reported, because it is time the run spends and nothing else accounts for
+            // it: a 429 whose Retry-After is a minute reads as a phase that stalled for
+            // a minute with every request it made already explained.
+            capturedLog.accept("[SPARQL] RETRY in " + backoff + " ms after "
+                    + concise(error) + "\n");
             try {
                 // Honor a 429's Retry-After; otherwise linear backoff.
-                Thread.sleep(backoffMillis(error, attemptsLeft));
+                Thread.sleep(backoff);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -322,6 +328,18 @@ public class WikidataSparqlClient implements AutoCloseable {
      * non-retryable — there the 60s wall was actually hit, so a verbatim re-issue
      * burns another 60s for the same result.
      */
+    /** The failure in one line: a retry entry marks the wait, it does not reprint a
+     *  stack. */
+    private static String concise(Throwable error) {
+        Throwable cause = error.getCause() == null ? error : error.getCause();
+        String message = cause.getMessage();
+        String text = message == null || message.isBlank()
+                ? cause.getClass().getSimpleName()
+                : cause.getClass().getSimpleName() + ": " + message;
+        String oneLine = text.replaceAll("\\s+", " ").trim();
+        return oneLine.length() <= 160 ? oneLine : oneLine.substring(0, 157) + "\u2026";
+    }
+
     static boolean shouldRetry(Throwable error, int attemptsLeft) {
         if (attemptsLeft <= 1
                 || isCancellation(error)

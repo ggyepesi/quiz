@@ -63,6 +63,30 @@ class QueryContextDatasourceTest {
         }
     }
 
+    /**
+     * A client's messages open and close with blank lines — START prints the query
+     * beneath itself — and prefixing the block put the endpoint's name alone above the
+     * event and left an orphan below it. The label went missing from the one line it
+     * exists to identify, and only two interleaved endpoints would have shown it.
+     */
+    @Test void theEndpointNamesTheLineThatCarriesTheEvent() {
+        try (RecordingClient wikidata = new RecordingClient(Datasource.WIKIDATA.endpoint())) {
+            QueryContext context = WikidataAccess.of(wikidata, null).bind();
+            List<String> lines = new ArrayList<>();
+
+            try (WikidataAccess.RequestLogs ignored =
+                    WikidataAccess.logRequests(context, lines::add)) {
+                wikidata.sink.accept("\n[SPARQL 4] START\nSELECT ?s WHERE { }\n");
+                wikidata.sink.accept("[SPARQL 4] OK rows=2 timeMs=7\n");
+            }
+
+            assertTrue(lines.getFirst().startsWith("[WIKIDATA] [SPARQL 4] START"),
+                    "the label belongs on the event, not above it: " + lines.getFirst());
+            assertEquals(2, lines.size(), "and no orphan per message: " + lines);
+            assertTrue(lines.get(1).startsWith("[WIKIDATA] [SPARQL 4] OK"));
+        }
+    }
+
     /** Records the sink it is given; {@code log} is how a run addresses a client. */
     private static final class RecordingClient extends WikidataSparqlClient {
         private java.util.function.Consumer<String> sink;

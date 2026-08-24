@@ -110,9 +110,26 @@ public final class WikidataAccess implements CancellableWork {
         java.util.function.Consumer<String> target = sink == null ? ignored -> {} : sink;
         java.util.List<AutoCloseable> scopes = new java.util.ArrayList<>();
         of(context).sparqlClients.forEach((datasource, client) -> scopes.add(
-                client.requestLog(line -> target.accept(
-                        "[" + datasource.name() + "] " + line))));
+                client.requestLog(message ->
+                        target.accept(labelled(datasource, message)))));
         return new RequestLogs(scopes);
+    }
+
+    /**
+     * Puts the endpoint's name on the line that carries the event.
+     *
+     * <p>A client's messages open and close with blank lines — START prints the query
+     * beneath itself — so prefixing the BLOCK put "[WIKIDATA]" alone above
+     * "[SPARQL 4] START" and left an orphan below every message. The label went
+     * missing from exactly the line it exists to identify, which is only noticed once
+     * two endpoints interleave, which is when it matters.
+     */
+    private static String labelled(Datasource datasource, String message) {
+        String body = message == null ? "" : message.strip();
+        if (body.isEmpty()) return "";
+        // No trailing newline: the log splits a message into lines itself, and one
+        // added here became a blank line under every event.
+        return "[" + datasource.name() + "] " + body;
     }
 
     /** The per-run endpoint log registrations; closing restores the worker thread's
