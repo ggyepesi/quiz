@@ -107,6 +107,11 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     .facts(executionSettings.newFactStore())
                                     .entityConcurrency(executionSettings.concurrency())
                                     .cancellation(context.cancellation());
+                    // This client is created for the run rather than bound in
+                    // WikidataAccess, so logRequests(...) cannot discover it. Without
+                    // this explicit attachment the HTTP/2 version/header/body metrics
+                    // are printed nowhere and the saved log can only show batch time.
+                    entityApi.log(genLog::message);
 
                     // ONE runtime for the whole domain — every class compiled
                     // together in one package/loader, so typed cross-references

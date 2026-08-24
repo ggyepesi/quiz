@@ -20,12 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * A read timeout means the batch was too heavy, and the answer to too heavy is to ask
  * for less.
  *
- * <p>It was reaching the user as FATAL instead, refusing the whole run:
- * {@code wbgetentities} runs over {@code HttpURLConnection}, whose read timeout fires
- * once the HEADERS have arrived and the body has not. The connection therefore still
- * answered {@code 200}, the failure was wrapped as an HTTP outcome carrying that status,
- * and a classifier with no rule for 200 called it fatal — for a request the executor
- * already knew how to split in half.
+ * <p>It once reached the user as FATAL because a timeout after successful headers was
+ * wrapped as an HTTP 200 outcome. The shared transport now preserves the same boundary:
+ * before headers is availability; after headers is a response-body timeout and asks the
+ * executor to split the batch.
  */
 class ReadTimeoutSplitsTest {
     private static final ObjectMapper JSON = new ObjectMapper();

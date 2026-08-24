@@ -29,9 +29,9 @@ public final class WikidataBatchFailureClassifier implements FailureClassifier {
             if (t instanceof batch.ResponseInterruptedException) {
                 return FailureDecision.of(BatchFailure.TRANSIENT);
             }
-            // Either shape of "it did not arrive in time": the JDK HTTP client's own
-            // timeout, and the socket read timeout HttpURLConnection raises when the
-            // BODY runs out of time (which is how the action API times out).
+            // Either shape of "the response BODY did not arrive in time": the JDK
+            // client's timeout and the transport-neutral boundary recorded after
+            // headers. Connection/header timeouts remain IO/UNAVAILABLE instead.
             if (t instanceof HttpTimeoutException
                     || t instanceof batch.ResponseTimeoutException) {
                 return FailureDecision.of(BatchFailure.TOO_HEAVY);

@@ -12,11 +12,11 @@ import wikidata.WikidataBatchFailureClassifier;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.FilterInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URLEncoder;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.zip.GZIPInputStream;
 
 /**
  * Lightweight client for the Wikidata / MediaWiki REST API.
@@ -34,7 +33,7 @@ import java.util.zip.GZIPInputStream;
  *   - Category membership  (stars of constellation, films by director, ...)
  *   - Entity property lookup by known QID or Wikipedia article title
  *
- * All HTTP calls use URLConnection with an explicit User-Agent header.
+ * All HTTP calls share an HTTP/2 transport with an explicit User-Agent header.
  * Titles are individually URL-encoded before joining with %7C (encoded pipe)
  * to handle Unicode characters (U+2212 minus, en-dash, +, etc.) that cause
  * 400 errors when passed raw.
@@ -60,6 +59,21 @@ public class WikidataApiClient {
     private final ThreadLocal<Set<FactDemand.EntityMetadata>> entityProjection =
             ThreadLocal.withInitial(() -> Set.of(FactDemand.EntityMetadata.LABEL));
 
+    /**
+     * The whole exchange, not one read.
+     *
+     * <p>HttpURLConnection's read timeout restarted on every read, so a body that kept
+     * arriving never tripped 30 seconds however long it took in total. A request
+     * timeout does not restart, and the same number would therefore have been a
+     * tighter limit wearing the old value: the slowest batch of the 2026-08-25 01:21
+     * run took 35.5 seconds — 1362 requests averaging 2.5 seconds against 0.8 the same
+     * afternoon — and would now be abandoned after headers, classified TOO_HEAVY and
+     * split, when nothing about it was heavy and the endpoint was merely slow.
+     *
+     * <p>Sixty clears that tail. A batch this does stop is one worth splitting.
+     */
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(60);
+
     public static final String DEFAULT_USER_AGENT =
             "QuizProject/1.0 (ggyepesi@gmail.com)";
 
@@ -70,6 +84,7 @@ public class WikidataApiClient {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final String userAgent;
+    private final datasource.http.SharedHttpTransport transport;
     private work.CancellationToken cancellation = new work.CancellationToken();
     private WikidataFactStore facts = new WikidataFactStore();
     private int entityConcurrency = 6;
@@ -131,8 +146,15 @@ public class WikidataApiClient {
     }
 
     public WikidataApiClient(String userAgent) {
+        this(userAgent, datasource.http.SharedHttpTransport.standard());
+    }
+
+    public WikidataApiClient(String userAgent,
+            datasource.http.SharedHttpTransport transport) {
         this.userAgent = userAgent == null
                 ? "WikidataApiClient/1.0" : userAgent;
+        this.transport = transport == null
+                ? datasource.http.SharedHttpTransport.standard() : transport;
     }
 
     public void log(java.util.function.Consumer<String> log) {
@@ -1489,56 +1511,48 @@ public class WikidataApiClient {
 
         log.accept("\n[API " + id + "] GET " + url + "\n");
 
-        java.net.HttpURLConnection conn =
-                (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
-        conn.setRequestProperty("User-Agent", userAgent);
-        conn.setRequestProperty("Accept",     "application/json");
-        conn.setRequestProperty("Accept-Encoding", "gzip");
-        conn.setConnectTimeout(10_000);
-        conn.setReadTimeout(30_000);
-
         int responseStatus = -1;
+        long retryAfterMillis = -1;
         try {
-            // Establish the response boundary explicitly. A timeout here is a
-            // connection/availability failure. Once this returns, a timeout while
-            // consuming the stream is specifically a response-body timeout.
-            responseStatus = conn.getResponseCode();
-            // Both are resources, and in this order: GZIPInputStream reads the gzip
-            // header in its constructor, so a truncated or mislabelled body throws
-            // THERE. Declared second, the counting stream — and with it the
-            // connection's — is still closed; built before the try, it leaked once per
-            // attempt, and a body that arrives truncated is retried.
-            try (CountingInputStream transferred =
-                         new CountingInputStream(conn.getInputStream());
-                 InputStream stream = decodedStream(
-                         transferred, conn.getHeaderField("Content-Encoding"))) {
-                JsonNode result = mapper.readTree(stream);
-
-                if (aliasesRequest) {
-                    aliasElapsedMillis.addAndGet(
-                            (System.nanoTime() - started) / 1_000_000);
-                    aliasEntities.addAndGet(result.path("entities").size());
-                    aliasTransferredBytes.addAndGet(transferred.count());
-                    try {
-                        aliasResponseBytes.addAndGet(mapper.writeValueAsBytes(result).length);
-                        long values = 0;
-                        for (var entities = result.path("entities").elements();
-                                entities.hasNext(); ) {
-                            values += mapper.writeValueAsBytes(
-                                    entities.next().path("aliases")).length;
-                        }
-                        aliasValueBytes.addAndGet(values);
-                    } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
-                        // Measurement must never turn a valid response into a failure.
-                    }
-                }
-
-                log.accept("[API " + id + "] OK timeMs="
-                                   + (System.nanoTime() - started) / 1_000_000
-                                   + "\n");
-
-                return result;
+            datasource.http.SharedHttpTransport.Response response = transport.get(
+                    URI.create(url), Map.of(
+                            "User-Agent", userAgent,
+                            "Accept", "application/json",
+                            "Accept-Encoding", "gzip"),
+                    REQUEST_TIMEOUT);
+            responseStatus = response.status();
+            retryAfterMillis = RetryAfter.millis(response.header("Retry-After"), -1);
+            if (responseStatus < 200 || responseStatus >= 300) {
+                throw new IOException("HTTP " + responseStatus);
             }
+            JsonNode result = mapper.readTree(response.body());
+
+            if (aliasesRequest) {
+                aliasElapsedMillis.addAndGet(response.totalMillis());
+                aliasEntities.addAndGet(result.path("entities").size());
+                aliasTransferredBytes.addAndGet(response.transferredBytes());
+                try {
+                    aliasResponseBytes.addAndGet(mapper.writeValueAsBytes(result).length);
+                    long values = 0;
+                    for (var entities = result.path("entities").elements();
+                            entities.hasNext(); ) {
+                        values += mapper.writeValueAsBytes(
+                                entities.next().path("aliases")).length;
+                    }
+                    aliasValueBytes.addAndGet(values);
+                } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
+                    // Measurement must never turn a valid response into a failure.
+                }
+            }
+
+            log.accept("[API " + id + "] OK headersMs=" + response.headersMillis()
+                    + " timeMs=" + response.totalMillis()
+                    + " bytes=" + response.transferredBytes()
+                    + " http=" + response.version()
+                    + headerMetric(" age=", response.header("Age"))
+                    + headerMetric(" cache=", response.header("X-Cache")) + "\n");
+
+            return result;
         } catch (IOException e) {
             if (aliasesRequest) {
                 // A claims batch that timed out is a claims failure, reported by the
@@ -1557,39 +1571,16 @@ public class WikidataApiClient {
                                + (System.nanoTime() - started) / 1_000_000
                                + "\n");
 
-            throw transportFailure(e, responseStatus,
-                    RetryAfter.millis(conn.getHeaderField("Retry-After"), -1), url);
+            if (e instanceof datasource.http.SharedHttpTransport.ExchangeIOException exchange) {
+                responseStatus = exchange.status();
+                retryAfterMillis = RetryAfter.millis(exchange.header("Retry-After"), -1);
+            }
+            throw transportFailure(e, responseStatus, retryAfterMillis, url);
         }
     }
 
-    /** Decode only when the server says it encoded the representation. */
-    static InputStream decodedStream(InputStream input, String contentEncoding)
-            throws IOException {
-        if (contentEncoding != null
-                && contentEncoding.toLowerCase(java.util.Locale.ROOT).contains("gzip")) {
-            return new GZIPInputStream(input);
-        }
-        return input;
-    }
-
-    private static final class CountingInputStream extends FilterInputStream {
-        private long count;
-
-        private CountingInputStream(InputStream input) { super(input); }
-
-        @Override public int read() throws IOException {
-            int value = super.read();
-            if (value >= 0) count++;
-            return value;
-        }
-
-        @Override public int read(byte[] bytes, int offset, int length) throws IOException {
-            int read = super.read(bytes, offset, length);
-            if (read > 0) count += read;
-            return read;
-        }
-
-        long count() { return count; }
+    private static String headerMetric(String prefix, String value) {
+        return value == null || value.isBlank() ? "" : prefix + value.replace('\n', ' ');
     }
 
     /**

@@ -108,6 +108,9 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                                     .facts(executionSettings.newFactStore())
                                     .entityConcurrency(executionSettings.concurrency())
                                     .cancellation(context.cancellation());
+                    // The run owns this action-API client, so it is not among the
+                    // process-bound SPARQL clients logRequests(...) can attach.
+                    entityApi.log(genLog::message);
 
                     // Also teed to stdout: a fetch over thousands of entities is
                     // I/O-bound — near-zero CPU for minutes — so the process itself
