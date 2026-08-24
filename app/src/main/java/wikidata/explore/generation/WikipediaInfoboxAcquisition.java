@@ -3,6 +3,9 @@ package wikidata.explore.generation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import datasource.evidence.InfoboxParameters;
+import datasource.api.BindingScope;
+import datasource.api.SourceExecutionPlan;
+import datasource.wikipedia.WikipediaDatasourceProvider;
 import wikidata.WikidataIds;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -32,10 +35,31 @@ public final class WikipediaInfoboxAcquisition {
                 WikipediaInfoboxAcquisition::fetchRemote);
     }
 
+    /**
+     * Plan-driven entry point. The resolved binding, rather than the legacy mapping
+     * projected from it, decides which fields consume Wikipedia infobox parameters.
+     * The old overload remains for callers outside a model execution workflow.
+     */
+    public static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
+            GenerationLog log, work.CancellationToken cancellation,
+            wikidata.api.WikidataApiClient api, SourceExecutionPlan sourcePlan)
+            throws Exception {
+        return apply(model, pool, log, cancellation, api,
+                WikipediaInfoboxAcquisition::fetchRemote, sourcePlan);
+    }
+
     static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
             GenerationLog log, work.CancellationToken cancellation,
             wikidata.api.WikidataApiClient api, Fetcher fetcher) throws Exception {
-        List<Declaration> declarations = declarations(model);
+        return apply(model, pool, log, cancellation, api, fetcher, null);
+    }
+
+    static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
+            GenerationLog log, work.CancellationToken cancellation,
+            wikidata.api.WikidataApiClient api, Fetcher fetcher,
+            SourceExecutionPlan sourcePlan) throws Exception {
+        List<Declaration> declarations = sourcePlan == null
+                ? declarations(model) : declarations(model, sourcePlan);
         if (declarations.isEmpty()) return new Result(0, 0, 0);
         Map<String, List<WikidataDynamicObject>> targets = new LinkedHashMap<>();
         for (WikidataDynamicObject object : pool) {
@@ -110,7 +134,7 @@ public final class WikipediaInfoboxAcquisition {
             if (!applies(model, object, declaration)
                     || object.get(declaration.field().name()) != null) continue;
             String value = acquired.valueOf(
-                    InfoboxParameters.Key.parse(source(declaration.field()).propertyPid()));
+                    InfoboxParameters.Key.parse(declaration.parameter()));
             if (value != null && !value.isBlank()) {
                 object.put(declaration.field().name(), value);
                 filled.add(declaration.owner().className() + "." + declaration.field().name());
@@ -206,15 +230,55 @@ public final class WikipediaInfoboxAcquisition {
             for (GeneratedFieldModel field : owner.effectiveFields(model)) {
                 if (field != null && source(field) != null
                         && InfoboxParameters.Key.parse(source(field).propertyPid()) != null) {
-                    result.add(new Declaration(owner, field));
+                    result.add(new Declaration(owner, field, source(field).propertyPid()));
                 }
             }
         }
         return result;
     }
 
-    /** Which of a field's mappings names an infobox parameter — asked HERE so the
-     *  pipeline, its explanation and this acquisition cannot answer it differently. */
+    private static List<Declaration> declarations(
+            GeneratedProjectModel model, SourceExecutionPlan sourcePlan) {
+        List<Declaration> result = new ArrayList<>();
+        if (model == null || sourcePlan == null) return result;
+        for (SourceExecutionPlan.Step step : sourcePlan.steps(BindingScope.FIELD_VALUE)) {
+            String parameter =
+                    WikipediaDatasourceProvider.infoboxParameter(step.binding());
+            if (parameter == null) continue;
+            GeneratedClassModel owner = model.findClass(step.target().className());
+            GeneratedFieldModel field = declaredField(owner, step.target().fieldPath());
+            if (owner == null || field == null) {
+                throw new IllegalArgumentException("Datasource plan targets unknown field "
+                        + step.target().className() + "." + step.target().fieldPath());
+            }
+            if (InfoboxParameters.Key.parse(parameter) == null) {
+                throw new IllegalArgumentException("Invalid Wikipedia infobox parameter for "
+                        + step.target().className() + "." + step.target().fieldPath()
+                        + ": " + parameter);
+            }
+            result.add(new Declaration(owner, field, parameter));
+        }
+        return List.copyOf(result);
+    }
+
+    private static GeneratedFieldModel declaredField(
+            GeneratedClassModel owner, String path) {
+        if (owner == null || path == null || path.isBlank()) return null;
+        List<GeneratedFieldModel> fields = owner.fields();
+        GeneratedFieldModel found = null;
+        for (String segment : path.split("\\.")) {
+            found = fields.stream().filter(field -> field != null
+                    && segment.equals(field.name())).findFirst().orElse(null);
+            if (found == null) return null;
+            fields = found.fields();
+        }
+        return found;
+    }
+
+    /** Which of a field's mappings names an infobox parameter, for the pre-binding
+     *  path only. A model execution workflow asks
+     *  {@link WikipediaDatasourceProvider#infoboxParameter} of the BINDING instead —
+     *  that is the one answer the message, the explanation and this acquisition share. */
     public static wikidata.explore.model.FieldSourceMapping source(
             GeneratedFieldModel field) {
         if (field == null) return null;
@@ -243,6 +307,7 @@ public final class WikipediaInfoboxAcquisition {
     private static String encode(String text) {
         return URLEncoder.encode(text, StandardCharsets.UTF_8).replace("+", "%20");
     }
-    private record Declaration(GeneratedClassModel owner, GeneratedFieldModel field) { }
+    private record Declaration(
+            GeneratedClassModel owner, GeneratedFieldModel field, String parameter) { }
     public record Result(int pages, int values, int batches) { }
 }

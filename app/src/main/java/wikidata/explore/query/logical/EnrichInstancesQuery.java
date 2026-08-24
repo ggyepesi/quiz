@@ -81,9 +81,11 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
     public GenerationRun execute(QueryContext context) throws Exception {
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
-        context.message(wikidata.explore.model.ModelSourceExecutionPlan.message(
+        datasource.api.SourceExecutionPlan sourcePlan =
                 wikidata.explore.model.ModelSourceExecutionPlan.compile(
-                        projectModel, datasource.Datasources.standard())));
+                        projectModel, datasource.Datasources.standard());
+        context.message(wikidata.explore.model.ModelSourceExecutionPlan.enrichMessage(
+                sourcePlan));
         // A STEP, not a bare message: the log window renders the tree, so a run that only
         // emits text sits at "Running..." saying nothing while its batches come and go.
         // Recording under a step gives every request its own entry — including one still
@@ -109,7 +111,7 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                     // cannot answer "working, or blocked?".
                     return new GenerationPipeline().enrich(
                             previousRun, projectModel, entityApi,
-                            genLog, context.cancellation(), steps);
+                            genLog, context.cancellation(), steps, sourcePlan);
                 });
     }
 

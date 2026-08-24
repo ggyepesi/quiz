@@ -27,6 +27,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class WikipediaInfoboxAcquisitionTest {
 
+    @Test void resolvedBindingDrivesAcquisitionWithoutReadingTheLegacyMapping()
+            throws Exception {
+        GeneratedProjectModel model = model();
+        var field = model.rootClass().fields().getFirst();
+        field.mapping().sourceType(FieldSourceType.SPARQL);
+        field.mapping().propertyPid("");
+        var binding = new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue("Movie", "country",
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikipedia", "infobox-parameter",
+                        java.util.Map.of("property", "Infobox film.country")));
+        var sourcePlan = datasource.api.SourceExecutionPlan.compile(
+                List.of(binding), datasource.Datasources.standard());
+        List<WikidataDynamicObject> objects = films(1);
+
+        var result = WikipediaInfoboxAcquisition.apply(model, objects,
+                GenerationLog.NOOP, new work.CancellationToken(), new SitelinkClient(),
+                uri -> response("Film 1", 7,
+                        "{{Infobox film\n| country = Sierra Leone\n}}"), sourcePlan);
+
+        assertEquals(1, result.values());
+        assertEquals("Sierra Leone", objects.getFirst().get("country"));
+    }
+
     @Test void theAcquiredValueKeepsTheRevisionAndDigestOfItsArticle() throws Exception {
         GeneratedProjectModel model = model();
         List<WikidataDynamicObject> objects = films(1);

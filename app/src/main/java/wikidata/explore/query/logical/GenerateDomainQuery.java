@@ -287,7 +287,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     project, pool, genLog, context.cancellation(), entityApi);
                     wikidata.explore.generation.WikipediaInfoboxAcquisition.Result infoboxes =
                             wikidata.explore.generation.WikipediaInfoboxAcquisition.apply(
-                                    project, pool, genLog, context.cancellation(), entityApi);
+                                    project, pool, genLog, context.cancellation(), entityApi,
+                                    sourcePlan);
                     if (categories.memberships() > 0) {
                         progress(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                                 categories.memberships()

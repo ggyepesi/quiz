@@ -48,7 +48,28 @@ public final class ModelSourceExecutionPlan {
     public static String generationMessage(SourceExecutionPlan plan) {
         long populations = plan.steps(datasource.api.BindingScope.CLASS_POPULATION).size();
         return "Datasource plan: " + plan.summary() + ". " + populations
-                + " class population binding(s) drive discovery; class names and field"
-                + " values still use the established acquisition passes.";
+                + " class population binding(s) drive discovery; " + infoboxFields(plan)
+                + " Wikipedia infobox field binding(s) drive native infobox acquisition;"
+                + " class names and remaining field sources still use the established"
+                + " acquisition passes.";
+    }
+
+    /** Enrich re-reads a saved graph, so no population is discovered; the infobox
+     *  bindings are the part of the plan it does obey. Saying "not executed" here stopped
+     *  being true the moment they did. */
+    public static String enrichMessage(SourceExecutionPlan plan) {
+        return "Datasource plan: " + plan.summary() + ". " + infoboxFields(plan)
+                + " Wikipedia infobox field binding(s) drive native infobox acquisition;"
+                + " populations are not re-discovered, and class names and remaining"
+                + " field sources still use the established acquisition passes.";
+    }
+
+    /** The same predicate acquisition uses, so a headline cannot count a binding the
+     *  run will then not perform. */
+    private static long infoboxFields(SourceExecutionPlan plan) {
+        return plan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
+                .filter(step -> datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxParameter(step.binding()) != null)
+                .count();
     }
 }

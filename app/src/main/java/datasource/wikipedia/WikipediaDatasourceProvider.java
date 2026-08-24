@@ -8,6 +8,9 @@ import datasource.api.ParameterDescriptor;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
 import datasource.api.SourceReferenceSchema;
+import datasource.api.SourceBinding;
+import datasource.api.SourceBindingSlot;
+import datasource.api.SourceRecipe;
 import datasource.api.acquisition.SourceAcquisitionOperation;
 import datasource.api.acquisition.SourceAcquisitionRequest;
 import datasource.EntityRef;
@@ -51,6 +54,29 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         @Override public SourceValueSchema outputSchema() {
             return new SourceValueSchema(SourceValueKind.MODEL_VALUE, true, "");
         }
+    }
+
+    /**
+     * The infobox parameter this binding makes a field take, or null if it makes it
+     * take none.
+     *
+     * <p>ONE predicate, because three things ask the same question: the plan message
+     * counts these bindings, the phase explanation describes them before the run, and
+     * acquisition performs them. Derived separately, a run can disagree with its own
+     * description — and the description is what the reader trusts, because it arrives
+     * first.
+     */
+    public static String infoboxParameter(SourceBinding binding) {
+        if (binding == null || binding.target() == null) return null;
+        if (binding.target().scope() != BindingScope.FIELD_VALUE) return null;
+        SourceBindingSlot slot = binding.target().slot();
+        if (slot != SourceBindingSlot.PRIMARY_FIELD_VALUE
+                && slot != SourceBindingSlot.FALLBACK_FIELD_VALUE) return null;
+        SourceRecipe recipe = binding.recipe();
+        if (recipe == null || !ID.equals(recipe.providerId())
+                || !INFOBOX_PARAMETER.equals(recipe.operationId())) return null;
+        String parameter = recipe.parameter("property");
+        return parameter == null || parameter.isBlank() ? null : parameter;
     }
 
     @Override public String id() { return ID; }

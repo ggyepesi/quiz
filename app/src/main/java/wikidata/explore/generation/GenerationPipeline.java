@@ -295,7 +295,7 @@ public class GenerationPipeline {
             WikipediaInfoboxAcquisition.apply(snapshot, dynamicObjects,
                     log == null ? GenerationLog.NOOP : log,
                     cancellation == null ? new work.CancellationToken() : cancellation,
-                    entityApi);
+                    entityApi, sourcePlan);
         }
 
         // NO owned components here. This is the single-class PREVIEW: it answers "who is
@@ -473,6 +473,22 @@ public class GenerationPipeline {
             GenerationLog log,
             work.CancellationToken cancellation,
             RunSteps steps) throws Exception {
+        return enrich(previous, snapshot, entityApi, log, cancellation, steps, null);
+    }
+
+    /**
+     * As above, consuming a plan its caller already compiled and ANNOUNCED. Compiling a
+     * second one here would make the plan the run obeys a different object from the one
+     * the reader was shown — and compiling writes, so it would also be a second writer.
+     */
+    public GenerationRun enrich(
+            GenerationRun previous,
+            GeneratedProjectModel snapshot,
+            wikidata.api.WikidataApiClient entityApi,
+            GenerationLog log,
+            work.CancellationToken cancellation,
+            RunSteps steps,
+            datasource.api.SourceExecutionPlan announcedPlan) throws Exception {
         steps = steps == null ? RunSteps.SILENT : steps;
 
         steps.started(GenerateDomainPipeline.PLAN,
@@ -483,6 +499,9 @@ public class GenerationPipeline {
         // pass in silence, so the run looked hung until the first fetch batch.
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         sink.message("Enrich: compiling the model's classes...\n");
+        datasource.api.SourceExecutionPlan sourcePlan = announcedPlan != null ? announcedPlan
+                : wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                        snapshot, datasource.Datasources.standard());
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
@@ -518,7 +537,7 @@ public class GenerationPipeline {
         WikipediaInfoboxAcquisition.Result infoboxes = WikipediaInfoboxAcquisition.apply(
                 snapshot, pool, sink,
                 cancellation == null ? new work.CancellationToken() : cancellation,
-                entityApi);
+                entityApi, sourcePlan);
 
         // Finalization is deliberately after semantic convergence: names, expectations
         // and vocabularies describe the final classes/fields rather than iteration one.

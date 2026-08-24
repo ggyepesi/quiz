@@ -279,6 +279,21 @@ public final class GenerateDomainPipeline {
         return out.stream().distinct().toList();
     }
 
+    /**
+     * What the run will actually read for this field, taken from its BINDING — the same
+     * durable configuration acquisition resolves. Read here rather than compiled into a
+     * plan because describing a model must not change it, and a plan compile writes.
+     */
+    private static String infoboxParameter(GeneratedFieldModel field) {
+        if (field == null) return null;
+        for (datasource.api.SourceBinding binding : field.sourceBindings()) {
+            String parameter = datasource.wikipedia.WikipediaDatasourceProvider
+                    .infoboxParameter(binding);
+            if (parameter != null) return parameter;
+        }
+        return null;
+    }
+
     private static List<String> categoryDetails(GeneratedProjectModel model) {
         List<String> out = new ArrayList<>();
         for (GeneratedClassModel owner : model.classes()) {
@@ -288,10 +303,10 @@ public final class GenerateDomainPipeline {
                     out.add(owner.className() + "." + field.name() + " — \""
                             + rule.pattern() + "\" → " + rule.policy());
                 }
-                var source = WikipediaInfoboxAcquisition.source(field);
-                if (source != null) {
+                String parameter = infoboxParameter(field);
+                if (parameter != null) {
                     out.add(owner.className() + "." + field.name()
-                            + " — native Infobox " + source.propertyPid());
+                            + " — native Infobox " + parameter);
                 }
             }
         }
@@ -321,8 +336,8 @@ public final class GenerateDomainPipeline {
         }
         for (GeneratedClassModel owner : model.classes()) {
             for (GeneratedFieldModel field : owner.fields()) {
-                var source = WikipediaInfoboxAcquisition.source(field);
-                if (source == null) continue;
+                String parameter = infoboxParameter(field);
+                if (parameter == null) continue;
                 var ref = PhaseExplanation.ModelReference.field(owner.className(), field.name());
                 refs.add(ref);
                 examples.add(new PhaseExplanation.PhaseExample(
@@ -331,7 +346,7 @@ public final class GenerateDomainPipeline {
                         List.of("Wikipedia pages linked from reachable " + owner.className()
                                 + " QIDs"),
                         List.of("Batch article revisions in groups of 50",
-                                "Parse " + source.propertyPid() + " without flattening nested markup"),
+                                "Parse " + parameter + " without flattening nested markup"),
                         List.of("Fill only members whose primary source left the field empty",
                                 "Expose the parsed value to final materialization"), List.of(ref)));
             }

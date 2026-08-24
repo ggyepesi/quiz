@@ -17,6 +17,34 @@ import wikidata.api.FactDemandPlan;
 
 class GenerateDomainPipelineTest {
 
+    /**
+     * The plan tab is read BEFORE the run, so it is what the reader trusts. It must name
+     * what acquisition will actually do — which is now decided by the BINDING, not by the
+     * legacy mapping the binding was projected from. Blanking the mapping is the whole
+     * test: if the explanation still found "Infobox film.country" through it, the two
+     * could drift the moment they stopped agreeing.
+     */
+    @Test void thePlanTabNamesTheInfoboxParameterTheBindingCarries() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        var country = movie.addField("country", FieldType.STRING, FieldCardinality.SINGLE);
+        country.mapping().sourceType(wikidata.explore.model.FieldSourceType.SPARQL);
+        country.mapping().propertyPid("");
+        country.sourceBindings().add(new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue("Movie", "country",
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikipedia", "infobox-parameter",
+                        java.util.Map.of("property", "Infobox film.country"))));
+        model.rootClass(movie);
+
+        String evidence = details(
+                GenerateDomainPipeline.configured(model),
+                GenerateDomainPipeline.EXTERNAL_EVIDENCE);
+
+        assertTrue(evidence.contains("Movie.country — native Infobox Infobox film.country"),
+                evidence);
+    }
+
     @Test void statementAcquisitionShowsItsSourcePropertyQualifiersAndConstruction() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
