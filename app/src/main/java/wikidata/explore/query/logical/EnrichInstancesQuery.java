@@ -98,6 +98,8 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                 step -> {
                     GenerationLog genLog =
                             StepGenerationLog.of(context, step, "enrich");
+                    wikidata.explore.query.core.WikidataAccess.logRequests(
+                            context, genLog::message);
                     genLog.message(executionSettings.resolvedDescription());
                     wikidata.api.WikidataApiClient entityApi =
                             new wikidata.api.WikidataApiClient(
@@ -111,7 +113,10 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                     // cannot answer "working, or blocked?".
                     return new GenerationPipeline().enrich(
                             previousRun, projectModel, entityApi,
-                            genLog, context.cancellation(), steps, sourcePlan);
+                            genLog, context.cancellation(), steps, sourcePlan,
+                            wikidata.explore.query.core.WikidataAccess.sparql(
+                                    context,
+                                    wikidata.explore.query.core.Datasource.DBPEDIA));
                 });
     }
 

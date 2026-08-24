@@ -90,6 +90,26 @@ public final class WikidataAccess implements CancellableWork {
         return of(context).sparql(datasource);
     }
 
+    /**
+     * Routes every bound endpoint's own request log — {@code START}, and {@code OK} /
+     * {@code CANCELLED} / {@code ERROR} carrying {@code timeMs} — into {@code sink}.
+     *
+     * <p>Each client has always written these; the sink defaulted to a discarded
+     * consumer and nothing ever replaced it, so a run that spent 385 s in one phase
+     * could not say which query spent it (#116). The data was never missing, only
+     * unaddressed.
+     *
+     * <p>Unlike the link rules, this cannot be installed when the source is bound: a
+     * sink is per-RUN, and the context carrying a recorder is made later and elsewhere.
+     * So a run says where its requests should report, once, for every endpoint it can
+     * reach — rather than each acquisition remembering to wire the client it happens to
+     * hold, which is how DBpedia came to be the only endpoint ever wired at all.
+     */
+    public static void logRequests(QueryContext context, java.util.function.Consumer<String> sink) {
+        of(context).sparqlClients.values().stream().distinct()
+                .forEach(client -> client.log(sink));
+    }
+
     public static WikidataApiClient api(QueryContext context) {
         return of(context).api();
     }

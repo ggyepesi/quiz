@@ -87,6 +87,9 @@ public class GenerateInstancesQuery
                                     step.subquery(title, request, summary);
                                 }
                             };
+                    // Every endpoint this run can reach reports its requests, and their
+                    // timings, into THIS run's log.
+                    WikidataAccess.logRequests(context, genLog::message);
 
                     GenerationRun run =
                             pipeline.fullRun(
@@ -96,7 +99,8 @@ public class GenerateInstancesQuery
                                     genLog,
                                     WikidataAccess.api(context),
                                     context.cancellation(),
-                                    sourcePlan);
+                                    sourcePlan,
+                                    WikidataAccess.sparql(context, Datasource.DBPEDIA));
 
                     step.summary(run.size() + " objects");
                     return run;

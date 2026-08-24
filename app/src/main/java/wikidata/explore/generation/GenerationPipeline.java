@@ -131,16 +131,19 @@ public class GenerationPipeline {
             GeneratedProjectModel snapshot,
             List<WikidataDynamicObject> roots,
             GenerationLog log,
-            datasource.api.SourceExecutionPlan sourcePlan) {
+            datasource.api.SourceExecutionPlan sourcePlan,
+            WikidataSparqlClient dbpedia) {
 
         if (!DBpediaFieldAcquisition.hasBindings(sourcePlan)) {
             return new DBpediaFieldAcquisition.Result(0, 0);
         }
 
-        try (WikidataSparqlClient dbpedia = new WikidataSparqlClient(
-                "quiz-modelbuilder (ggyepesi@gmail.com)", 2,
-                WikidataSparqlClient.DBPEDIA_ENDPOINT)) {
-            dbpedia.log(log::message);
+        if (dbpedia == null) {
+            log.message("DBpedia acquisition skipped: this compatibility caller did not "
+                    + "supply the process-bound DBpedia client.\n");
+            return new DBpediaFieldAcquisition.Result(0, 0);
+        }
+        try {
             return DBpediaFieldAcquisition.apply(
                     snapshot, roots, sourcePlan, dbpedia, log);
         } catch (Exception e) {
@@ -268,6 +271,20 @@ public class GenerationPipeline {
             wikidata.api.WikidataApiClient entityApi,
             work.CancellationToken cancellation,
             datasource.api.SourceExecutionPlan sourcePlan) throws Exception {
+        return fullRun(snapshot, depth, client, log, entityApi, cancellation,
+                sourcePlan, null);
+    }
+
+    /** Interactive entry point with both endpoint clients supplied by QueryContext. */
+    public GenerationRun fullRun(
+            GeneratedProjectModel snapshot,
+            int depth,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            work.CancellationToken cancellation,
+            datasource.api.SourceExecutionPlan sourcePlan,
+            WikidataSparqlClient dbpedia) throws Exception {
 
         RuleNode plan = plan(snapshot);
         datasource.api.SourceExecutionPlan.Step population = sourcePlan == null ? null
@@ -278,7 +295,7 @@ public class GenerationPipeline {
         List<WikidataDynamicObject> dynamicObjects =
                 extract(client, plan, depth, log);
 
-        enrichFromDBpedia(snapshot, dynamicObjects, log, sourcePlan);
+        enrichFromDBpedia(snapshot, dynamicObjects, log, sourcePlan, dbpedia);
         if (entityApi != null) {
             WikipediaInfoboxAcquisition.apply(snapshot, dynamicObjects,
                     log == null ? GenerationLog.NOOP : log,
@@ -477,6 +494,20 @@ public class GenerationPipeline {
             work.CancellationToken cancellation,
             RunSteps steps,
             datasource.api.SourceExecutionPlan announcedPlan) throws Exception {
+        return enrich(previous, snapshot, entityApi, log, cancellation, steps,
+                announcedPlan, null);
+    }
+
+    /** Interactive entry point consuming the plan and endpoint client its caller announced. */
+    public GenerationRun enrich(
+            GenerationRun previous,
+            GeneratedProjectModel snapshot,
+            wikidata.api.WikidataApiClient entityApi,
+            GenerationLog log,
+            work.CancellationToken cancellation,
+            RunSteps steps,
+            datasource.api.SourceExecutionPlan announcedPlan,
+            WikidataSparqlClient dbpediaClient) throws Exception {
         steps = steps == null ? RunSteps.SILENT : steps;
 
         steps.started(GenerateDomainPipeline.PLAN,
@@ -519,7 +550,7 @@ public class GenerationPipeline {
         steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                 "Acquire DBpedia fields, Wikipedia categories and native infobox values");
         DBpediaFieldAcquisition.Result dbpedia =
-                enrichFromDBpedia(snapshot, pool, sink, sourcePlan);
+                enrichFromDBpedia(snapshot, pool, sink, sourcePlan, dbpediaClient);
         WikipediaCategoryAcquisition.Result categories =
                 WikipediaCategoryAcquisition.apply(snapshot, pool, sink,
                         cancellation == null ? new work.CancellationToken() : cancellation,

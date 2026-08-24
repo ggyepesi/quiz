@@ -4,6 +4,11 @@ import org.junit.jupiter.api.Test;
 import wikidata.WikidataSparqlClient;
 import work.QueryContext;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,6 +30,44 @@ class QueryContextDatasourceTest {
         QueryContext noBinding = WikidataAccess.of(null, null).bind();
         assertThrows(IllegalStateException.class,
                 () -> WikidataAccess.sparql(noBinding, Datasource.WIKIDATA));
+    }
+
+    /**
+     * #116. Each client writes its own {@code START} / {@code OK … timeMs=} lines, and
+     * the sink defaulted to a discarded consumer that nothing ever replaced — so a run
+     * reporting 385 s in one phase could not name the query that spent it. A run says
+     * once where requests report, and EVERY endpoint it can reach obeys: wiring only
+     * the client an acquisition happens to hold is how DBpedia became the sole endpoint
+     * ever logged, and then stopped being logged when that acquisition took its client
+     * from the context instead of building one.
+     */
+    @Test
+    void everyBoundEndpointReportsItsRequestsIntoTheRunsLog() {
+        try (RecordingClient wikidata = new RecordingClient(Datasource.WIKIDATA.endpoint());
+             RecordingClient dbpedia = new RecordingClient(Datasource.DBPEDIA.endpoint())) {
+            QueryContext context = WikidataAccess.of(wikidata, null)
+                    .with(Datasource.DBPEDIA, dbpedia).bind();
+            List<String> lines = new ArrayList<>();
+
+            WikidataAccess.logRequests(context, lines::add);
+
+            assertNotNull(wikidata.sink, "the default endpoint reports");
+            assertNotNull(dbpedia.sink, "and so does every other one bound to the run");
+            wikidata.sink.accept("wdqs");
+            dbpedia.sink.accept("dbpedia");
+            assertEquals(List.of("wdqs", "dbpedia"), lines,
+                    "into the same run log, not whichever one an acquisition held");
+        }
+    }
+
+    /** Records the sink it is given; {@code log} is how a run addresses a client. */
+    private static final class RecordingClient extends WikidataSparqlClient {
+        private java.util.function.Consumer<String> sink;
+        private RecordingClient(String endpoint) { super("test", 1, endpoint); }
+        @Override public void log(java.util.function.Consumer<String> log) {
+            this.sink = log;
+            super.log(log);
+        }
     }
 
     /** A context that reaches no source at all is a legitimate context — it is what a

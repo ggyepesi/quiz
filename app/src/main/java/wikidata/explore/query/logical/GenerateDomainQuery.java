@@ -91,6 +91,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // One structured log for every long run (see Enrich): each
                     // request becomes its own entry, an in-flight one included.
                     GenerationLog genLog = StepGenerationLog.of(context, step);
+                    // Every endpoint this run can reach reports its requests, and their
+                    // timings, into THIS run's log.
+                    WikidataAccess.logRequests(context, genLog::message);
                     genLog.message(executionSettings.resolvedDescription());
                     phase(wikidata.explore.generation.GenerateDomainPipeline.PLAN,
                             project.classes().size() + " configured classes");
