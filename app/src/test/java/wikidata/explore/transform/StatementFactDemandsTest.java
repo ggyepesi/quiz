@@ -3,6 +3,7 @@ package wikidata.explore.transform;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.ProjectModelCompiler;
 import wikidata.api.FactDemandPlan;
+import wikidata.api.FactDemand;
 import wikidata.explore.generation.GenerationFactDemandPlan;
 import wikidata.explore.generation.GenerateDomainPipeline;
 import wikidata.explore.model.GeneratedProjectModelStore;
@@ -30,6 +31,10 @@ class StatementFactDemandsTest {
         assertTrue(subjectPids.containsAll(Set.of(
                 "P31", "P136", "P569", "P734", "P735",
                 "P1477", "P1559", "P742")), subjectPids.toString());
+        Set<FactDemand.EntityMetadata> subjectMetadata = new LinkedHashSet<>();
+        routes.subjectDemands().forEach(d -> subjectMetadata.addAll(d.metadata()));
+        assertTrue(subjectMetadata.contains(FactDemand.EntityMetadata.ALIASES),
+                subjectMetadata.toString());
 
         Set<String> forWork = new LinkedHashSet<>();
         routes.forField("forWork").forEach(d -> forWork.addAll(d.propertyPids()));

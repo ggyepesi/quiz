@@ -47,9 +47,8 @@ public final class DBpediaFieldAcquisition {
     /** Cheap probe used only to avoid opening a DBpedia client when no binding exists. */
     public static boolean hasBindings(SourceExecutionPlan sourcePlan) {
         return sourcePlan != null
-                && sourcePlan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
-                .anyMatch(step -> datasource.dbpedia.DbpediaDatasourceProvider
-                        .property(step.binding()) != null);
+                && sourcePlan.familyCount(
+                        datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD) > 0;
     }
 
     private static List<DBpediaEnrichment.FieldRequest> worklist(
@@ -58,9 +57,9 @@ public final class DBpediaFieldAcquisition {
         for (SourceExecutionPlan.Step step :
                 sourcePlan.steps(datasource.api.BindingScope.FIELD_VALUE)) {
             if (!owner.className().equals(step.target().className())) continue;
-            String property = datasource.dbpedia.DbpediaDatasourceProvider
-                    .property(step.binding());
-            if (property == null) continue;
+            var spec = step.prepared().configuration(
+                    datasource.dbpedia.DbpediaDatasourceProvider.PropertySpec.class);
+            if (spec == null) continue;
             String path = step.target().fieldPath();
             if (path.contains(".")) {
                 log.message("DBpedia field skipped: " + owner.className() + "." + path
@@ -79,9 +78,8 @@ public final class DBpediaFieldAcquisition {
                         + " — name fields are supplied by class-name bindings.\n");
                 continue;
             }
-            result.add(new DBpediaEnrichment.FieldRequest(field, property,
-                    step.target().slot()
-                            == datasource.api.SourceBindingSlot.FALLBACK_FIELD_VALUE));
+            result.add(new DBpediaEnrichment.FieldRequest(field, spec.property(),
+                    spec.fillOnlyMissing()));
         }
         return List.copyOf(result);
     }

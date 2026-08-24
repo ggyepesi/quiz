@@ -63,6 +63,11 @@ public final class ClassSourceBindings {
     /** Banks pending class edits and returns their bindings after storage validation. */
     static List<SourceBinding> synchronizeAndCollect(GeneratedProjectModel project) {
         synchronize(project);
+        return collect(project);
+    }
+
+    /** Reads and validates already-banked bindings without changing the model. */
+    static List<SourceBinding> collect(GeneratedProjectModel project) {
         List<SourceBinding> result = new ArrayList<>();
         if (project != null) for (GeneratedClassModel clazz : project.classes()) {
             SourceBinding identity = binding(clazz, SourceBindingSlot.CLASS_IDENTITY);

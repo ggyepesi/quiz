@@ -9,6 +9,8 @@ import wikidata.api.FactDemand;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Collection;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,11 +26,19 @@ class PopulationSubjectLoaderTest {
 
     private static final class RecordingApi extends FakeWikidataApiClient {
         List<String> requestedPids = List.of();
+        Set<FactDemand.EntityMetadata> requestedMetadata = Set.of();
 
         @Override public Map<String, ApiEntity> getEntities(
                 List<String> qids, List<String> pids, BatchLog log) {
             if (pids != null && !pids.isEmpty()) requestedPids = List.copyOf(pids);
             return super.getEntities(qids, pids, log);
+        }
+
+        @Override public Map<String, ApiEntity> getEntities(
+                List<String> qids, List<String> pids,
+                Collection<FactDemand.EntityMetadata> metadata, BatchLog log) {
+            requestedMetadata = metadata == null ? Set.of() : Set.copyOf(metadata);
+            return getEntities(qids, pids, log);
         }
     }
 
@@ -80,13 +90,18 @@ class PopulationSubjectLoaderTest {
                 .statement("Q105883400", "P1411", "Q105883400$s",
                         "Q102427", Map.of());
         StatementFactDemands demands = new StatementFactDemands(
-                List.of(FactDemand.of("semantic convergence", "Nominee",
-                        List.of("P31", "P569", "P734"), "future role fields")),
+                List.of(new FactDemand("semantic convergence", "Nominee",
+                        Set.of("P31", "P569", "P734"),
+                        Set.of(FactDemand.EntityMetadata.ALIASES),
+                        "future role fields")),
                 Map.of());
 
         new QualifierLoader().api(api).factDemands(demands)
                 .enrich(new ArrayList<>(), cfg(true, List.of("Q102427")), sparql, null);
 
-        assertEquals(List.of("P1411", "P31", "P569", "P734"), api.requestedPids);
+        assertEquals(Set.of("P1411", "P31", "P569", "P734"),
+                Set.copyOf(api.requestedPids));
+        assertEquals(Set.of(FactDemand.EntityMetadata.LABEL,
+                FactDemand.EntityMetadata.ALIASES), api.requestedMetadata);
     }
 }

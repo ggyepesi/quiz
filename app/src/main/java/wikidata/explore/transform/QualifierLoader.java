@@ -115,10 +115,11 @@ public class QualifierLoader {
                             pool, cfg.propertyPid(), allowedValues,
                             cfg.entityType(), cfg.valueDomainLabel(), client, log);
 
-            // SPARQL discovery yields QIDs only. The very next consumer needs this
-            // statement property, while labels and aliases ride every entity response,
-            // so fetch all three once rather than labels now and the same documents
-            // again in the qualifier stage below.
+            // SPARQL discovery yields QIDs only. Acquire the statement property, the
+            // prospective role closure, and exactly the entity metadata those later
+            // roles declare. Leaving metadata out here makes the fact store correctly
+            // refuse the claims-only document later and downloads the same population
+            // again merely to add aliases.
             List<String> newQids = new ArrayList<>();
             for (WikidataDynamicObject s : discovered) {
                 if (s != null && s.qid() != null && WikidataIds.isQid(s.qid())) {
@@ -142,18 +143,26 @@ public class QualifierLoader {
                     firstRequestPids.add(cfg.propertyPid());
                     factDemands.subjectDemands().forEach(d ->
                             firstRequestPids.addAll(d.propertyPids()));
+                    java.util.EnumSet<FactDemand.EntityMetadata> firstRequestMetadata =
+                            java.util.EnumSet.of(FactDemand.EntityMetadata.LABEL);
+                    factDemands.subjectDemands().forEach(d ->
+                            firstRequestMetadata.addAll(d.metadata()));
                     Map<String, WikidataApiClient.ApiEntity> details;
                     try (GenerationLog.Group acquisition = sink.group(
                             "Acquire discovered " + cfg.entityType() + " subjects ("
                                     + newQids.size() + " entities, "
                                     + firstRequestPids.size() + " properties)")) {
                         details = api().getEntities(newQids,
-                                new ArrayList<>(firstRequestPids), acquisition.batchSink());
+                                new ArrayList<>(firstRequestPids), firstRequestMetadata,
+                                acquisition.batchSink());
                     }
-                    if (log != null && roleBinding.claimPairs() > 0) {
+                    if (log != null && (roleBinding.claimPairs() > 0
+                            || roleBinding.metadataPairs() > 0)) {
                         log.message("Statement-subject propagation: retained "
                                 + roleBinding.claimPairs() + " QID/property pair(s) for "
-                                + roleBinding.consumers() + " downstream role consumer(s).\n");
+                                + roleBinding.consumers() + " downstream role consumer(s); "
+                                + roleBinding.metadataPairs()
+                                + " QID/metadata pair(s).\n");
                     }
                     for (WikidataDynamicObject s : discovered) {
                         WikidataApiClient.ApiEntity e = details.get(s.qid());

@@ -78,7 +78,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
         datasource.api.SourceExecutionPlan sourcePlan =
-                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
                         project, datasource.Datasources.standard());
         context.message(wikidata.explore.model.ModelSourceExecutionPlan.generationMessage(
                 sourcePlan));

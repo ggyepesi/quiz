@@ -5,6 +5,8 @@ import datasource.api.BindingScope;
 import datasource.api.ParameterDescriptor;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
+import datasource.api.SourceBinding;
+import datasource.api.PreparedSourceOperation;
 import datasource.api.discovery.DiscoveredSourceValue;
 import datasource.api.discovery.SourceDiscoveryOperation;
 import datasource.api.discovery.SourceDiscoveryRequest;
@@ -21,6 +23,7 @@ import java.util.Map;
 /** Observed category discovery, adapted over the existing acquisition query. */
 public final class WikipediaCategoryDiscoveryOperation implements SourceDiscoveryOperation {
     public static final String ID = "category";
+    public static final String FAMILY = "wikipedia-category-field";
     public static final String TYPE_QID = "typeQid";
     public static final String SAMPLE_SIZE = "sampleSize";
     public static final String PATTERN = "pattern";
@@ -49,6 +52,20 @@ public final class WikipediaCategoryDiscoveryOperation implements SourceDiscover
     }
     @Override public SourceValueSchema outputSchema() {
         return SourceValueSchema.collection(SourceValueKind.TEXT);
+    }
+
+    @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+        var rule = WikipediaDatasourceProvider.categoryRule(binding);
+        if (rule == null) return new PreparedSourceOperation(FAMILY,
+                "Wikipedia category field", PreparedSourceOperation.Execution.RETAIN,
+                "Incomplete Wikipedia category recipe", Map.of(), null);
+        return new PreparedSourceOperation(FAMILY, "Wikipedia category field",
+                PreparedSourceOperation.Execution.ACQUIRE,
+                binding.target().className() + "." + binding.target().fieldPath()
+                        + " ← category ‘" + rule.pattern() + "’ (" + rule.policy() + ")",
+                Map.of("input", "Versioned category memberships from linked Wikipedia pages",
+                        "operation", "Match " + rule.pattern() + " using " + rule.policy(),
+                        "output", "Retain matched values with category provenance"), rule);
     }
 
     @Override public Query<SourceDiscoveryResult> discover(SourceDiscoveryRequest request) {

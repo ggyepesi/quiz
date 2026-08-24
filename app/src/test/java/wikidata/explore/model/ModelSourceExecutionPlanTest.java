@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModelSourceExecutionPlanTest {
 
@@ -28,5 +29,18 @@ class ModelSourceExecutionPlanTest {
         assertEquals(1, plan.steps(BindingScope.FIELD_VALUE).size());
         assertNotNull(plan.step(datasource.api.SourceBindingTarget.fieldValue(
                 "Movie", "country", SourceBindingSlot.PRIMARY_FIELD_VALUE)));
+    }
+
+    @Test void compilingStoredBindingsDoesNotProjectLegacyConfiguration() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        movie.instanceMapping().propertyPid("P31");
+        movie.instanceMapping().sourceQid("Q11424");
+        model.rootClass(movie);
+
+        var plan = ModelSourceExecutionPlan.compileStored(model, Datasources.standard());
+
+        assertTrue(plan.steps().isEmpty());
+        assertTrue(movie.sourceBindings().isEmpty());
     }
 }

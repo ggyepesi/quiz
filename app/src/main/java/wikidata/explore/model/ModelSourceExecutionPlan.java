@@ -15,7 +15,7 @@ public final class ModelSourceExecutionPlan {
      * Banks edits still made through legacy controls, verifies where every binding is
      * stored, then resolves the complete model through the supplied datasource registry.
      */
-    public static SourceExecutionPlan compile(
+    public static SourceExecutionPlan synchronizeAndCompile(
             GeneratedProjectModel project, DatasourceRegistry registry) {
         // Banked in this order because the field collector flushes pending editor
         // state first, and a binding edited a moment ago must be in the plan. Listed
@@ -25,6 +25,21 @@ public final class ModelSourceExecutionPlan {
                 new ArrayList<>(ClassSourceBindings.synchronizeAndCollect(project));
         bindings.addAll(fields);
         return SourceExecutionPlan.compile(bindings, registry);
+    }
+
+    /** Resolves bindings that have already been banked, without changing the model. */
+    public static SourceExecutionPlan compileStored(
+            GeneratedProjectModel project, DatasourceRegistry registry) {
+        List<SourceBinding> bindings = new ArrayList<>(ClassSourceBindings.collect(project));
+        bindings.addAll(FieldSourceBindings.collect(project));
+        return SourceExecutionPlan.compile(bindings, registry);
+    }
+
+    /** Compatibility boundary for callers not yet explicit about banking edits. */
+    @Deprecated(forRemoval = false)
+    public static SourceExecutionPlan compile(
+            GeneratedProjectModel project, DatasourceRegistry registry) {
+        return synchronizeAndCompile(project, registry);
     }
 
     /**
@@ -39,8 +54,8 @@ public final class ModelSourceExecutionPlan {
      */
     public static String message(SourceExecutionPlan plan) {
         return "Datasource plan: " + plan.summary()
-                + ". Compiled and checked, not executed — the configured field sources"
-                + " still drive this run.";
+                + ". Compiled and checked; execution remains at each prepared family’s"
+                + " batching and cache boundary.";
     }
 
     /** Generate consumes population steps; later source families still ride their
@@ -48,10 +63,8 @@ public final class ModelSourceExecutionPlan {
     public static String generationMessage(SourceExecutionPlan plan) {
         long populations = plan.steps(datasource.api.BindingScope.CLASS_POPULATION).size();
         return "Datasource plan: " + plan.summary() + ". " + populations
-                + " class population binding(s) drive discovery; " + infoboxFields(plan)
-                + " Wikipedia infobox, " + categoryFields(plan)
-                + " Wikipedia category and " + dbpediaFields(plan)
-                + " DBpedia field binding(s) drive acquisition across all configured"
+                + " class population binding(s) drive discovery; " + acquiringFields(plan)
+                + " drive field acquisition across all configured"
                 + " classes; " + wikidataNameClasses(plan)
                 + " Wikidata class-name declaration(s) drive label/alias retention;"
                 + " remaining field sources still use the established acquisition passes.";
@@ -60,11 +73,8 @@ public final class ModelSourceExecutionPlan {
     /** Enrich re-reads a saved graph, so no population is discovered; external
      *  field/evidence bindings are the part of the plan it executes. */
     public static String enrichMessage(SourceExecutionPlan plan) {
-        return "Datasource plan: " + plan.summary() + ". " + infoboxFields(plan)
-                + " Wikipedia infobox, " + categoryFields(plan)
-                + " Wikipedia category and " + dbpediaFields(plan)
-                + " DBpedia field binding(s) drive acquisition (including DBpedia"
-                + " endpoint requests);"
+        return "Datasource plan: " + plan.summary() + ". " + acquiringFields(plan)
+                + " drive field acquisition;"
                 + " populations are not re-discovered; " + wikidataNameClasses(plan)
                 + " Wikidata class-name declaration(s) drive label/alias retention;"
                 + " remaining field sources still use the established acquisition passes.";
@@ -78,27 +88,17 @@ public final class ModelSourceExecutionPlan {
                 + " graph without acquiring class populations, names or field values.";
     }
 
-    /** The same predicate acquisition uses, so a headline cannot count a binding the
-     *  run will then not perform. */
-    private static long infoboxFields(SourceExecutionPlan plan) {
-        return plan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
-                .filter(step -> datasource.wikipedia.WikipediaDatasourceProvider
-                        .infoboxParameter(step.binding()) != null)
-                .count();
-    }
-
-    private static long dbpediaFields(SourceExecutionPlan plan) {
-        return plan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
-                .filter(step -> datasource.dbpedia.DbpediaDatasourceProvider
-                        .property(step.binding()) != null)
-                .count();
-    }
-
-    private static long categoryFields(SourceExecutionPlan plan) {
-        return plan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
-                .filter(step -> datasource.wikipedia.WikipediaDatasourceProvider
-                        .categoryRule(step.binding()) != null)
-                .count();
+    private static String acquiringFields(SourceExecutionPlan plan) {
+        java.util.Map<String, Long> families = plan.steps(datasource.api.BindingScope.FIELD_VALUE)
+                .stream().filter(step -> step.prepared().execution()
+                        == datasource.api.PreparedSourceOperation.Execution.ACQUIRE)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        step -> step.prepared().familyName(), java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.counting()));
+        if (families.isEmpty()) return "0 field acquisition binding(s)";
+        return families.entrySet().stream().map(entry -> entry.getValue() + " "
+                        + entry.getKey() + " binding(s)")
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private static long wikidataNameClasses(SourceExecutionPlan plan) {

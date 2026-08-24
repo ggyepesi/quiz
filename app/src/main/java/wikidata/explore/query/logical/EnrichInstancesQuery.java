@@ -82,7 +82,7 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
         datasource.api.SourceExecutionPlan sourcePlan =
-                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
                         projectModel, datasource.Datasources.standard());
         context.message(wikidata.explore.model.ModelSourceExecutionPlan.enrichMessage(
                 sourcePlan));

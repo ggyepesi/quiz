@@ -256,7 +256,7 @@ public class GenerationPipeline {
             work.CancellationToken cancellation) throws Exception {
 
         datasource.api.SourceExecutionPlan sourcePlan =
-                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
                         snapshot, datasource.Datasources.standard());
         return fullRun(snapshot, depth, client, log, entityApi, cancellation, sourcePlan);
     }
@@ -524,7 +524,7 @@ public class GenerationPipeline {
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         sink.message("Enrich: compiling the model's classes...\n");
         datasource.api.SourceExecutionPlan sourcePlan = announcedPlan != null ? announcedPlan
-                : wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                : wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
                         snapshot, datasource.Datasources.standard());
         // Compile the domain before ANY acquisition. Source-plan validation alone is
         // not enough: a broken class/field model must fail while this is still a plan,

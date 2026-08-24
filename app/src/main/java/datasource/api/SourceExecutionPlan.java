@@ -1,7 +1,5 @@
 package datasource.api;
 
-import datasource.api.acquisition.SourceAcquisitionOperation;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -32,11 +30,16 @@ public final class SourceExecutionPlan {
     public record Step(
             SourceBinding binding,
             DatasourceOperation operation,
-            Mode mode) {
+            Mode mode,
+            PreparedSourceOperation prepared) {
+        public Step(SourceBinding binding, DatasourceOperation operation, Mode mode) {
+            this(binding, operation, mode, operation.prepare(binding));
+        }
         public Step {
             if (binding == null) throw new IllegalArgumentException("binding is required");
             if (operation == null) throw new IllegalArgumentException("operation is required");
             if (mode == null) throw new IllegalArgumentException("mode is required");
+            if (prepared == null) throw new IllegalArgumentException("prepared operation is required");
         }
 
         public SourceBindingTarget target() { return binding.target(); }
@@ -80,9 +83,10 @@ public final class SourceExecutionPlan {
                         + binding.recipe().operationId()
                         + " does not produce a field value");
             }
-            Mode mode = operation instanceof SourceAcquisitionOperation<?>
+            PreparedSourceOperation prepared = operation.prepare(binding);
+            Mode mode = prepared.execution() == PreparedSourceOperation.Execution.ACQUIRE
                     ? Mode.ACQUISITION : Mode.DECLARATION;
-            steps.add(new Step(binding, operation, mode));
+            steps.add(new Step(binding, operation, mode, prepared));
         }
         return new SourceExecutionPlan(steps);
     }
@@ -107,8 +111,16 @@ public final class SourceExecutionPlan {
     public long declarations() { return steps.size() - selfAcquiring(); }
 
     public String summary() {
-        return steps.size() + " binding(s): " + selfAcquiring()
-                + " able to acquire on their own, " + declarations()
-                + " declaring data an existing pass retains";
+        Map<String, Long> families = steps.stream().collect(java.util.stream.Collectors
+                .groupingBy(step -> step.prepared().familyName(), LinkedHashMap::new,
+                        java.util.stream.Collectors.counting()));
+        String inventory = families.entrySet().stream()
+                .map(e -> e.getValue() + " " + e.getKey())
+                .collect(java.util.stream.Collectors.joining(", "));
+        return steps.size() + " binding(s)" + (inventory.isBlank() ? "" : ": " + inventory);
+    }
+
+    public long familyCount(String familyId) {
+        return steps.stream().filter(step -> step.prepared().familyId().equals(familyId)).count();
     }
 }

@@ -51,6 +51,11 @@ public final class FieldSourceBindings {
      *  whoever wants the whole model. */
     static List<SourceBinding> synchronizeAndCollect(GeneratedProjectModel project) {
         synchronizeForSave(project);
+        return collect(project);
+    }
+
+    /** Reads and validates already-banked bindings without changing the model. */
+    static List<SourceBinding> collect(GeneratedProjectModel project) {
         List<SourceBinding> bindings = new ArrayList<>();
         visit(project, (owner, path, field) -> {
             for (SourceBinding binding : field.sourceBindings()) {

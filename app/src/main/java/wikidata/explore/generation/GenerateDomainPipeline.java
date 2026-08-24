@@ -145,9 +145,10 @@ public final class GenerateDomainPipeline {
                         + String.join(", ", demand.propertyPids()) + " for "
                         + demand.consumer());
             }
-        }
-        if (!model.classes().isEmpty()) {
-            out.add("Entity metadata — labels and aliases ride every planned entity request");
+            if (!demand.metadata().isEmpty()) {
+                out.add(demand.targetClass() + " — retain " + demand.metadata()
+                        + " for " + demand.consumer());
+            }
         }
         return none(out, "No directly extracted root classes");
     }
@@ -279,59 +280,30 @@ public final class GenerateDomainPipeline {
         return out.stream().distinct().toList();
     }
 
-    /**
-     * What the run will actually read for this field, taken from its BINDING — the same
-     * durable configuration acquisition resolves. Read here rather than compiled into a
-     * plan because describing a model must not change it, and a plan compile writes.
-     */
-    private static String infoboxParameter(GeneratedFieldModel field) {
-        if (field == null) return null;
+    /** Interpret field recipes through their owning providers without mutating the model. */
+    private static List<datasource.api.PreparedSourceOperation> acquiringSources(
+            GeneratedFieldModel field) {
+        if (field == null) return List.of();
+        var registry = datasource.Datasources.standard();
+        List<datasource.api.PreparedSourceOperation> result = new ArrayList<>();
         for (datasource.api.SourceBinding binding : field.sourceBindings()) {
-            String parameter = datasource.wikipedia.WikipediaDatasourceProvider
-                    .infoboxParameter(binding);
-            if (parameter != null) return parameter;
+            var operation = registry.require(binding.recipe().providerId(),
+                    binding.recipe().operationId(), datasource.api.DatasourceOperation.class);
+            var prepared = operation.prepare(binding);
+            if (prepared.execution() == datasource.api.PreparedSourceOperation.Execution.ACQUIRE) {
+                result.add(prepared);
+            }
         }
-        return null;
-    }
-
-    private static String dbpediaProperty(GeneratedFieldModel field) {
-        if (field == null) return null;
-        for (datasource.api.SourceBinding binding : field.sourceBindings()) {
-            String property = datasource.dbpedia.DbpediaDatasourceProvider.property(binding);
-            if (property != null) return property;
-        }
-        return null;
-    }
-
-    private static datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule
-            categoryRule(GeneratedFieldModel field) {
-        if (field == null) return null;
-        for (datasource.api.SourceBinding binding : field.sourceBindings()) {
-            var rule = datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(binding);
-            if (rule != null) return rule;
-        }
-        return null;
+        return List.copyOf(result);
     }
 
     private static List<String> categoryDetails(GeneratedProjectModel model) {
         List<String> out = new ArrayList<>();
         for (GeneratedClassModel owner : model.classes()) {
             for (GeneratedFieldModel field : owner.fields()) {
-                var rule = categoryRule(field);
-                if (rule != null) {
-                    out.add(owner.className() + "." + field.name() + " — \""
-                            + rule.pattern() + "\" → " + rule.policy());
-                }
-                String parameter = infoboxParameter(field);
-                if (parameter != null) {
-                    out.add(owner.className() + "." + field.name()
-                            + " — native Infobox " + parameter);
-                }
-                String dbpedia = dbpediaProperty(field);
-                if (dbpedia != null) {
-                    out.add(owner.className() + "." + field.name()
-                            + " — DBpedia property " + dbpedia);
-                }
+                acquiringSources(field).stream()
+                        .map(datasource.api.PreparedSourceOperation::description)
+                        .filter(description -> !description.isBlank()).forEach(out::add);
             }
         }
         return none(out, "No external category recipes");
@@ -342,55 +314,16 @@ public final class GenerateDomainPipeline {
         List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
         for (GeneratedClassModel owner : model.classes()) {
             for (GeneratedFieldModel field : owner.fields()) {
-                var rule = categoryRule(field);
-                if (rule == null) continue;
-                var ref = PhaseExplanation.ModelReference.field(owner.className(), field.name());
-                refs.add(ref);
-                examples.add(new PhaseExplanation.PhaseExample(
-                        PhaseExplanation.ExampleKind.PLANNED,
-                        "Interpret categories for " + owner.className() + "." + field.name(),
-                        List.of("Wikipedia pages linked from reachable " + owner.className()
-                                + " QIDs"),
-                        List.of("Category pattern " + rule.pattern(),
-                                "Policy " + rule.policy()),
-                        List.of("Versioned category memberships retained on each source entity",
-                                "Matched values remain traceable to category + recipe"),
-                        List.of(ref)));
-            }
-        }
-        for (GeneratedClassModel owner : model.classes()) {
-            for (GeneratedFieldModel field : owner.fields()) {
-                String property = dbpediaProperty(field);
-                if (property == null) continue;
-                var ref = PhaseExplanation.ModelReference.field(
-                        owner.className(), field.name());
-                refs.add(ref);
-                examples.add(new PhaseExplanation.PhaseExample(
-                        PhaseExplanation.ExampleKind.PLANNED,
-                        "Read DBpedia value for " + owner.className() + "." + field.name(),
-                        List.of("Reachable " + owner.className()
-                                + " QIDs joined through owl:sameAs"),
-                        List.of("Batch QIDs in groups of 100",
-                                "Read dbp:" + property),
-                        List.of("Merge values into the configured model field"),
-                        List.of(ref)));
-            }
-        }
-        for (GeneratedClassModel owner : model.classes()) {
-            for (GeneratedFieldModel field : owner.fields()) {
-                String parameter = infoboxParameter(field);
-                if (parameter == null) continue;
-                var ref = PhaseExplanation.ModelReference.field(owner.className(), field.name());
-                refs.add(ref);
-                examples.add(new PhaseExplanation.PhaseExample(
-                        PhaseExplanation.ExampleKind.PLANNED,
-                        "Read native Infobox value for " + owner.className() + "." + field.name(),
-                        List.of("Wikipedia pages linked from reachable " + owner.className()
-                                + " QIDs"),
-                        List.of("Batch article revisions in groups of 50",
-                                "Parse " + parameter + " without flattening nested markup"),
-                        List.of("Fill only members whose primary source left the field empty",
-                                "Expose the parsed value to final materialization"), List.of(ref)));
+                for (var prepared : acquiringSources(field)) {
+                    var ref = PhaseExplanation.ModelReference.field(
+                            owner.className(), field.name());
+                    refs.add(ref);
+                    examples.add(new PhaseExplanation.PhaseExample(
+                            PhaseExplanation.ExampleKind.PLANNED,
+                            prepared.description(),
+                            detail(prepared, "input"), detail(prepared, "operation"),
+                            detail(prepared, "output"), List.of(ref)));
+                }
             }
         }
         return new PhaseExplanation(
@@ -408,6 +341,12 @@ public final class GenerateDomainPipeline {
                         "Snapshot-backed category memberships",
                         "Per-value provenance usable by Explore and TransformApp"),
                 refs, examples);
+    }
+
+    private static List<String> detail(
+            datasource.api.PreparedSourceOperation prepared, String key) {
+        String value = prepared.details().getOrDefault(key, "");
+        return value.isBlank() ? List.of() : List.of(value);
     }
 
     private static PhaseExplanation semanticExplanation(GeneratedProjectModel model) {
@@ -535,7 +474,7 @@ public final class GenerateDomainPipeline {
                 List.of("Execute root discovery",
                         "Bind prospective downstream fact needs to the discovered QIDs",
                         "Acquire configured root fields and retained downstream facts together",
-                        "Carry labels and aliases on those same entity responses",
+                        "Carry only declared label, alias and sitelink demands on those responses",
                         "Discover subjects required by statement classes"),
                 List.of("Root entity QIDs", "Statement subject populations",
                         "Retained facts for later pipeline consumers"),

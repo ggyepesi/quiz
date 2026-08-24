@@ -56,4 +56,22 @@ class SourceExecutionPlanTest {
         assertThrows(IllegalArgumentException.class,
                 () -> SourceExecutionPlan.compile(List.of(invalid), Datasources.standard()));
     }
+
+    @Test void providerPreparesDbpediaConfigurationOnceForEveryConsumer() {
+        SourceBinding binding = new SourceBinding(
+                SourceBindingTarget.fieldValue(
+                        "Movie", "country", SourceBindingSlot.FALLBACK_FIELD_VALUE),
+                new SourceRecipe("dbpedia", "property", Map.of("property", "country")));
+
+        SourceExecutionPlan.Step step = SourceExecutionPlan.compile(
+                List.of(binding), Datasources.standard()).steps().getFirst();
+
+        var spec = step.prepared().configuration(
+                datasource.dbpedia.DbpediaDatasourceProvider.PropertySpec.class);
+        assertNotNull(spec);
+        assertEquals("country", spec.property());
+        assertTrue(spec.fillOnlyMissing());
+        assertEquals(PreparedSourceOperation.Execution.ACQUIRE,
+                step.prepared().execution());
+    }
 }

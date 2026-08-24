@@ -51,7 +51,7 @@ public class GenerateInstancesQuery
             throws Exception {
 
         datasource.api.SourceExecutionPlan sourcePlan =
-                wikidata.explore.model.ModelSourceExecutionPlan.compile(
+                wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
                         projectModel, datasource.Datasources.standard());
         context.message(wikidata.explore.model.ModelSourceExecutionPlan.generationMessage(
                 sourcePlan));

@@ -11,6 +11,7 @@ import datasource.api.SourceReferenceSchema;
 import datasource.api.SourceBinding;
 import datasource.api.SourceBindingSlot;
 import datasource.api.SourceRecipe;
+import datasource.api.PreparedSourceOperation;
 import datasource.api.acquisition.SourceAcquisitionOperation;
 import datasource.api.acquisition.SourceAcquisitionRequest;
 import datasource.EntityRef;
@@ -30,6 +31,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     public static final String INFOBOX = "infobox";
     /** One configured parameter interpreted as a model field value. */
     public static final String INFOBOX_PARAMETER = "infobox-parameter";
+    public static final String FAMILY_INFOBOX_FIELD = "wikipedia-infobox-field";
 
     private final List<DatasourceOperation> operations = List.of(
             new WikipediaCategoryDiscoveryOperation(),
@@ -53,6 +55,29 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         }
         @Override public SourceValueSchema outputSchema() {
             return new SourceValueSchema(SourceValueKind.MODEL_VALUE, true, "");
+        }
+        @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            String parameter = infoboxParameter(binding);
+            // A recipe still being filled in is DESCRIBED, not thrown. Every operation
+            // compiles a plan, so throwing here takes Generate, Enrich and Remap down
+            // at their first line with a stack trace instead of a run that says which
+            // field is unfinished and carries on without it.
+            if (parameter == null) return new PreparedSourceOperation(
+                    FAMILY_INFOBOX_FIELD, "Wikipedia infobox field",
+                    PreparedSourceOperation.Execution.RETAIN,
+                    "Incomplete Wikipedia infobox recipe at "
+                            + binding.target().className() + "."
+                            + binding.target().fieldPath(),
+                    java.util.Map.of(), null);
+            return new PreparedSourceOperation(FAMILY_INFOBOX_FIELD,
+                    "Wikipedia infobox field", PreparedSourceOperation.Execution.ACQUIRE,
+                    binding.target().className() + "." + binding.target().fieldPath()
+                            + " — native Infobox " + parameter,
+                    java.util.Map.of(
+                            "input", "Wikipedia pages linked from reachable entity IDs",
+                            "operation", "Parse " + parameter + " from versioned infoboxes",
+                            "output", "Fill values according to the configured source slot"),
+                    parameter);
         }
     }
 
