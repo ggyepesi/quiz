@@ -286,6 +286,11 @@ public class GenerationPipeline {
             datasource.api.SourceExecutionPlan sourcePlan,
             WikidataSparqlClient dbpedia) throws Exception {
 
+        // Before ANY acquisition, for the reason Enrich compiles first — except that
+        // here the model was never checked at all, so an invalid one did not merely
+        // waste the fetching: it went on to build a runtime and materialize instances
+        // from a model nothing had refused, and the run looked like it worked.
+        wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         RuleNode plan = plan(snapshot);
         datasource.api.SourceExecutionPlan.Step population = sourcePlan == null ? null
                 : sourcePlan.step(datasource.api.SourceBindingTarget.classPopulation(
@@ -521,6 +526,11 @@ public class GenerationPipeline {
         datasource.api.SourceExecutionPlan sourcePlan = announcedPlan != null ? announcedPlan
                 : wikidata.explore.model.ModelSourceExecutionPlan.compile(
                         snapshot, datasource.Datasources.standard());
+        // Compile the domain before ANY acquisition. Source-plan validation alone is
+        // not enough: a broken class/field model must fail while this is still a plan,
+        // not after semantic and external providers have spent minutes fetching data.
+        wikidata.explore.compiled.CompiledProjectModel compiled =
+                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
@@ -562,8 +572,6 @@ public class GenerationPipeline {
 
         // Finalization is deliberately after semantic convergence: names, expectations
         // and vocabularies describe the final classes/fields rather than iteration one.
-        wikidata.explore.compiled.CompiledProjectModel compiled =
-                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         steps.completed(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                 categories.memberships() + " category membership(s), "
                         + infoboxes.values() + " infobox value(s), "

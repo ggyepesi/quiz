@@ -18,6 +18,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -27,6 +28,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * already holds; the only thing it needs from the network is wbgetentities.
  */
 class EnrichRunTest {
+
+    @Test void anInvalidModelFailsBeforeAnyAcquisition() {
+        GeneratedProjectModel invalid = project();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new wikidata.explore.model.StatementClassSource(
+                "DoesNotExist", "P1411"));
+        invalid.addClass(nomination);
+        WikidataDynamicObject person = new WikidataDynamicObject("Q42", "Douglas Adams");
+        person.type("Person");
+        GenerationRun previous = new GenerationRun(
+                invalid, 1, null, new ArrayList<>(List.of(person)), null, List.of());
+        List<List<String>> asked = new ArrayList<>();
+
+        assertThrows(wikidata.explore.compiled.ProjectModelCompiler
+                        .ModelCompilationException.class,
+                () -> new GenerationPipeline().enrich(
+                        previous, invalid, recording(asked), null));
+
+        assertTrue(asked.isEmpty(),
+                "model validation must precede semantic or external acquisition: " + asked);
+    }
 
     @Test void loadsADeclaredComponentFieldOverTheExistingPool() throws Exception {
         GeneratedProjectModel project = project();
