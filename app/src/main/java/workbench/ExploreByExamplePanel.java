@@ -71,6 +71,10 @@ public class ExploreByExamplePanel extends JPanel {
     // history stack — following a relation's member makes it the next explored
     // entity, so the user walks the Wikidata graph live.
     private final JLabel currentLabel = new JLabel(" ");
+    // The current subject must travel with the relation results. currentLabel lives
+    // on the Entity tab, so it disappeared precisely when the UI switched to Relations.
+    // This second view keeps the QID visible (and clickable) above the relation set.
+    private final JEditorPane relationSubject = WikidataLinks.pane("");
     private final JButton backButton = new JButton("◀ Back");
     private final java.util.Deque<String[]> history = new java.util.ArrayDeque<>();
     // Set when following a member (vs exploring a fresh candidate from search).
@@ -340,10 +344,11 @@ public class ExploreByExamplePanel extends JPanel {
         entityPanel = top;
 
         // Relations tab: Back navigation, the relation cards (own scroll), actions + hint.
-        JPanel navRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        JPanel navRow = new JPanel(new BorderLayout(8, 2));
         backButton.setEnabled(false);
         backButton.setToolTipText("Back to the previously explored entity");
-        navRow.add(backButton);
+        navRow.add(backButton, BorderLayout.WEST);
+        navRow.add(relationSubject, BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout(4, 2));
         bottom.add(navRow, BorderLayout.NORTH);
@@ -408,6 +413,7 @@ public class ExploreByExamplePanel extends JPanel {
         candidates.setRows(List.of());
         exploredQid = "";
         exploredLabel = "";
+        WikidataLinks.setHtml(relationSubject, "");
         updateButtons();
         if (queryRunner == null) {
             status.setText("A query connection is required to verify " + qid + ".");
@@ -507,6 +513,7 @@ public class ExploreByExamplePanel extends JPanel {
             exploredQid = "";
             exploredLabel = "";
             currentLabel.setText(" ");
+            WikidataLinks.setHtml(relationSubject, "");
             candidates.setRows(rows);
             status.setText(rows.size() + " candidate(s) — pick one, then Explore.");
             updateButtons();
@@ -539,6 +546,7 @@ public class ExploreByExamplePanel extends JPanel {
         pendingLabel = label == null || label.isBlank() ? qid : label;
         qidField.setText(qid);
         currentLabel.setText("Ready to explore: " + pendingLabel + " (" + qid + ")");
+        WikidataLinks.setHtml(relationSubject, "");
         showRelations(List.of());
         backButton.setEnabled(false);
         status.setText("Click Explore to load properties of " + pendingLabel + ".");
@@ -583,6 +591,8 @@ public class ExploreByExamplePanel extends JPanel {
         exploredQid = qid;
         exploredLabel = label == null || label.isBlank() ? qid : label;
         currentLabel.setText("Relations of: " + exploredLabel + " (" + qid + ")");
+        WikidataLinks.setHtml(relationSubject,
+                WikidataLinks.html("Relations of: " + exploredLabel + " (" + qid + ")"));
         backButton.setEnabled(!history.isEmpty());
         status.setText("Exploring relations of " + exploredLabel + "…");
         showRelations(List.of());
