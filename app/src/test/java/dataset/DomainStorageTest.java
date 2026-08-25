@@ -139,6 +139,18 @@ class DomainStorageTest {
         assertEquals(List.of("Greek Myth"), storage.modelBackedNames());
     }
 
+    @Test void aSavedDraftModelIsOfferedBeforeItHasASnapshotOrRegistryEntry(
+            @TempDir Path root) throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        File history = storage.modelFile("History");
+        write(history, "{\"name\":\"History\"}");
+
+        assertEquals(List.of("History"), storage.modelBackedNames());
+        assertEquals(history, storage.modelFileOf("History"));
+        assertNull(storage.find("History"),
+                "an editor draft must not masquerade as a servable dataset triple");
+    }
+
     @Test void aMissingRegistryMeansNothingIsRegisteredRatherThanAFailure(@TempDir Path root) {
         DomainStorage storage = DomainStorage.in(root.toFile());
 

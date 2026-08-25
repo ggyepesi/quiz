@@ -1,5 +1,6 @@
 package dataset;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import quiz.DatasetRegistry;
 
 import java.io.File;
@@ -25,6 +26,7 @@ import java.util.Objects;
  */
 public final class DomainStorage {
 
+    private static final ObjectMapper JSON = new ObjectMapper();
     private final File root;
 
     private DomainStorage(File root) {
@@ -75,16 +77,26 @@ public final class DomainStorage {
     }
 
     /**
-     * The domains ModelBuilder can offer to open: MODEL-backed ones only. A dataset saved
-     * from a TransformApp working set has no model and no rule tree, so listing it offered a
-     * switch that lands on a file which does not exist.
+     * The domains ModelBuilder can offer to open: every saved MODEL, whether or not it has
+     * generated a snapshot yet. The dataset registry intentionally contains only complete
+     * model/rule-tree/snapshot triples suitable for serving; using it as the editor's sole
+     * catalogue made a newly configured domain disappear on restart until its first
+     * generation. Model files are therefore the draft catalogue, while registry entries
+     * retain their authored display names and order.
+     *
+     * <p>A dataset saved from a TransformApp working set has no model file, so it remains
+     * excluded.
      */
     public List<String> modelBackedNames() {
-        List<String> names = new ArrayList<>(new LinkedHashSet<>(registry().datasets().stream()
+        LinkedHashSet<String> names = new LinkedHashSet<>(registry().datasets().stream()
                 .filter(d -> d.isModelBacked())
                 .map(DatasetRegistry.Dataset::name)
                 .filter(n -> n != null && !n.isBlank())
-                .toList()));
+                .toList());
+        for (File model : modelFilesOnDisk()) {
+            String name = modelName(model);
+            if (!name.isBlank()) names.add(name);
+        }
         return List.copyOf(names);
     }
 
@@ -101,8 +113,40 @@ public final class DomainStorage {
     /** The model file the registry recorded, or the one the layout says it would be. */
     public File modelFileOf(String name) {
         DatasetRegistry.Dataset dataset = find(name);
-        return dataset != null && !dataset.modelPath().isBlank()
-                ? new File(dataset.modelPath()) : modelFile(name);
+        if (dataset != null && !dataset.modelPath().isBlank()) {
+            return new File(dataset.modelPath());
+        }
+        // A draft has no registry entry. Locate it by the name stored in the model
+        // rather than assuming the display name and folder key have never diverged.
+        for (File candidate : modelFilesOnDisk()) {
+            if (name != null && name.equals(modelName(candidate))) return candidate;
+        }
+        return modelFile(name);
+    }
+
+    private List<File> modelFilesOnDisk() {
+        File[] directories = root.listFiles(File::isDirectory);
+        if (directories == null) return List.of();
+        java.util.Arrays.sort(directories, java.util.Comparator.comparing(File::getName));
+        List<File> models = new ArrayList<>();
+        for (File directory : directories) {
+            File[] files = directory.listFiles((dir, fileName) ->
+                    fileName.endsWith(".model.json"));
+            if (files == null) continue;
+            java.util.Arrays.sort(files, java.util.Comparator.comparing(File::getName));
+            for (File file : files) if (file.isFile()) models.add(file);
+        }
+        return models;
+    }
+
+    private static String modelName(File model) {
+        if (model == null || !model.isFile()) return "";
+        try {
+            return JSON.readTree(model).path("name").asText("").trim();
+        } catch (Exception unreadable) {
+            // Do not offer a switch to a model that cannot even identify itself.
+            return "";
+        }
     }
 
     /** Something to open after a domain is deleted, or null when nothing is registered. */
