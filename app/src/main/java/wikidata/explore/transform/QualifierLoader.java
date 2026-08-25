@@ -329,20 +329,47 @@ public class QualifierLoader {
                     }
                 }
                 case YEAR -> {
-                    Integer year = parseYear(vals.get(0));
-                    if (year != null) {
-                        // A date, not a bare number — FlexibleDate keeps that
-                        // distinction through save/sort/display.
-                        stmt.put(q.fieldName(), new aux.FlexibleDate(year));
+                    for (String value : vals) {
+                        Integer year = parseYear(value);
+                        if (year != null) {
+                            putQualifier(stmt, q, new aux.FlexibleDate(year));
+                            if (!q.multi()) break;
+                        }
+                    }
+                }
+                case DATE -> {
+                    // The literal is read whole rather than mined for a year, so the
+                    // precision it states survives — and so does its calendar, which
+                    // the API attached to the value and only this parser reads back.
+                    for (String value : vals) {
+                        aux.FlexibleDate date =
+                                aux.FlexibleDate.fromWikidataLiteral(value);
+                        if (date != null) {
+                            putQualifier(stmt, q, date);
+                            if (!q.multi()) break;
+                        }
                     }
                 }
                 case STRING -> {
-                    String v = vals.get(0);
-                    if (v != null && !v.isBlank()) {
-                        stmt.put(q.fieldName(), v);
+                    for (String value : vals) {
+                        if (value != null && !value.isBlank()) {
+                            putQualifier(stmt, q, value);
+                            if (!q.multi()) break;
+                        }
                     }
                 }
             }
+        }
+    }
+
+    private static void putQualifier(
+            WikidataDynamicObject statement,
+            QualifierLoadConfig.Qualifier qualifier,
+            Object value) {
+        if (qualifier.multi()) {
+            statement.merge(qualifier.fieldName(), value);
+        } else {
+            statement.put(qualifier.fieldName(), value);
         }
     }
 

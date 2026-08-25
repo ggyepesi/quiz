@@ -15,6 +15,7 @@ public record CompiledFieldSource(
         String propertyPid,
         String propertyLabel,
         String qualifierPid,
+        QualifierDateMode qualifierDateMode,
         String subjectField,
         String matchValueField,
         String matchRoleField,
@@ -40,6 +41,8 @@ public record CompiledFieldSource(
         propertyPid = clean(propertyPid);
         propertyLabel = clean(propertyLabel);
         qualifierPid = clean(qualifierPid);
+        qualifierDateMode = qualifierDateMode == null
+                ? QualifierDateMode.YEAR : qualifierDateMode;
         subjectField = clean(subjectField);
         matchValueField = clean(matchValueField);
         matchRoleField = clean(matchRoleField);
@@ -76,6 +79,7 @@ public record CompiledFieldSource(
                 source.propertyPid(),
                 source.propertyLabel(),
                 source.qualifierPid(),
+                source.qualifierDateMode(),
                 source.subjectField(),
                 source.matchValueField(),
                 source.matchRoleField(),

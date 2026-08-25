@@ -24,6 +24,9 @@ public class FieldSourceMapping {
     // claim. Blank = not a qualifier field.
     private String qualifierPid = "";
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private QualifierDateMode qualifierDateMode;
+
     // COMPANION_MATCH only: which of THIS record's fields form the match key. The
     // outcome is true iff a companion statement (subject propertyPid [ps=value,
     // qualifierPid=role]) exists with the same (subject, value, role). The companion
@@ -114,6 +117,16 @@ public class FieldSourceMapping {
 
     public boolean isQualifier() {
         return qualifierPid.matches("(?i)P\\d+");
+    }
+
+    /** Null on disk means YEAR so existing models retain their old projection. */
+    public QualifierDateMode qualifierDateMode() {
+        return qualifierDateMode == null ? QualifierDateMode.YEAR : qualifierDateMode;
+    }
+
+    public void qualifierDateMode(QualifierDateMode value) {
+        qualifierDateMode = value == null || value == QualifierDateMode.YEAR
+                ? null : value;
     }
 
     public String subjectField() {
@@ -278,6 +291,7 @@ public class FieldSourceMapping {
         propertyPid = other.propertyPid;
         propertyLabel = other.propertyLabel;
         qualifierPid = other.qualifierPid;
+        qualifierDateMode = other.qualifierDateMode;
 
         subjectField = other.subjectField;
         matchValueField = other.matchValueField;

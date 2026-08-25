@@ -87,7 +87,11 @@ class QualifierLoadConfigsTest {
         assertEquals(QualifierLoadConfig.Kind.ENTITY,
                 wikidata.explore.query.logical.DiscoverQualifiersQuery
                         .kindFor("http://wikiba.se/ontology#WikibaseItem"));
-        assertEquals(QualifierLoadConfig.Kind.YEAR,
+        // A time qualifier is discovered as a DATE, not reduced to a year: a reign
+        // beginning on 25 December 1000 states a day, and in the Julian calendar.
+        // FlexibleDate keeps whatever precision the value states, so DATE loses
+        // nothing a source gave; YEAR remains available as a deliberate reduction.
+        assertEquals(QualifierLoadConfig.Kind.DATE,
                 wikidata.explore.query.logical.DiscoverQualifiersQuery
                         .kindFor("http://wikiba.se/ontology#Time"));
         assertEquals(QualifierLoadConfig.Kind.STRING,

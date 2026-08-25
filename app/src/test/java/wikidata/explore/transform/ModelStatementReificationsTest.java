@@ -8,6 +8,7 @@ import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.StatementCanonicalDefaults;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.QualifierDateMode;
 import wikidata.explore.compiled.ProjectModelCompiler;
 
 import java.util.List;
@@ -66,12 +67,35 @@ class ModelStatementReificationsTest {
         // the explicitly configured ENTITY qualifier becomes a subject-fallback role
         assertTrue(reify.roles().stream().anyMatch(
                 r -> r.field().equals("nominee") && r.fallbackToSource()));
-        // Identity = value + entity qualifiers; the DATE qualifier (year) is an
-        // attribute, not part of the key.
-        assertTrue(reify.dedupBy().containsAll(List.of("category", "nominee")),
+        // Identity = value + scalar entity/date qualifiers. The explicit model
+        // still projects this legacy field to YEAR, but time remains part of the
+        // statement grain.
+        assertTrue(reify.dedupBy().containsAll(List.of("category", "nominee", "year")),
                 reify.dedupBy().toString());
-        assertTrue(!reify.dedupBy().contains("year"),
-                "year (DATE) must not be in the dedup key: " + reify.dedupBy());
+    }
+
+    @Test void explicitDateProjectionSurvivesEditableAndCompiledDerivation() {
+        GeneratedClassModel source = new GeneratedClassModel("People");
+        GeneratedClassModel statement = new GeneratedClassModel("Reign");
+        statement.statementSource(new StatementClassSource("People", "P39"));
+        statement.instanceMapping().propertyPid("P39");
+        statement.fields().add(field("position", FieldType.ENTITY, "P39", ""));
+        GeneratedFieldModel start = field("start", FieldType.DATE, "", "P580");
+        start.mapping().qualifierDateMode(QualifierDateMode.DATE);
+        statement.fields().add(start);
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(source);
+        project.addClass(statement);
+
+        assertTrue(ModelStatementReifications.derive(project).get(0).load()
+                .qualifiers().stream().anyMatch(q -> q.fieldName().equals("start")
+                        && q.kind() == QualifierLoadConfig.Kind.DATE));
+
+        var compiled = ProjectModelCompiler.compile(project);
+        assertTrue(ModelStatementReifications.derive(compiled).get(0).load()
+                .qualifiers().stream().anyMatch(q -> q.fieldName().equals("start")
+                        && q.kind() == QualifierLoadConfig.Kind.DATE));
     }
 
     @Test void derivedCompanionMatchFieldIsNotAReifyQualifier() {

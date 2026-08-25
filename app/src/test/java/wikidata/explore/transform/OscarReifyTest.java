@@ -124,7 +124,10 @@ class OscarReifyTest {
         assertTrue(desc.contains("subject-fallback fields: edition, nominee"), desc);
         assertTrue(desc.contains("canonical key: category + edition + nominee"), desc);
         assertTrue(desc.contains("edition←P805"), desc);
-        assertTrue(desc.contains("year←P585(date)"), desc);
+        // "(year)", not "(date)": this qualifier IS the year-only projection, and the
+        // description used to call every time qualifier a date — the label agreeing
+        // with the wrong model. A DATE-mode qualifier now reads "(date)".
+        assertTrue(desc.contains("year←P585(year)"), desc);
     }
 
     @Test void subjectDefaultOffLeavesAnAbsentReferenceEmpty() {

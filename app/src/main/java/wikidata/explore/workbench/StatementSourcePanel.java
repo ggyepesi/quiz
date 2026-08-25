@@ -437,9 +437,11 @@ public class StatementSourcePanel extends JPanel {
             if (qualifier.multi()) {
                 qualifiers.append(" (list)");
             }
-            if (qualifier.kind()
-                    == QualifierLoadConfig.Kind.YEAR) {
+            if (qualifier.kind() == QualifierLoadConfig.Kind.DATE) {
                 qualifiers.append(" (date)");
+            } else if (qualifier.kind() == QualifierLoadConfig.Kind.YEAR) {
+                // Distinguished, because the difference is what the load keeps.
+                qualifiers.append(" (year)");
             }
 
             qualifiers.append('\n');

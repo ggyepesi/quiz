@@ -356,6 +356,13 @@ public class GeneratedClassModel {
                         reservedSafeFieldName(name),
                         type,
                         cardinality);
+        if (type == FieldType.DATE) {
+            // A field created now has no legacy projection to preserve, so it keeps
+            // what the source states. YEAR is the answer to a different question —
+            // what a model written before qualifier dates existed meant — and that
+            // one is answered by the absence of this value on disk, not here.
+            field.mapping().qualifierDateMode(QualifierDateMode.DATE);
+        }
         fields.add(field);
         return field;
     }

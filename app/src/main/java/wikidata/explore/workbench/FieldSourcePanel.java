@@ -111,6 +111,8 @@ public class FieldSourcePanel extends JPanel {
     // For a field of a statement-reification class: the qualifier PID this field
     // draws from (e.g. P585 → year). Blank = a direct/value field.
     private final JTextField qualifierPidField = new JTextField(6);
+    private final JComboBox<QualifierDateMode> qualifierDateModeBox =
+            new JComboBox<>(QualifierDateMode.values());
     private final JLabel propertyLabel = new JLabel("(not selected)");
 
     // COMPANION_MATCH: which of THIS record's fields form the match key — the
@@ -491,6 +493,7 @@ public class FieldSourcePanel extends JPanel {
 
         propertyPidField.setText(m.propertyPid());
         qualifierPidField.setText(m.qualifierPid());
+        qualifierDateModeBox.setSelectedItem(m.qualifierDateMode());
         missingQualifierBox.setSelectedItem(
                 policyLabel(m.missingQualifierPolicy()));
         roleKindBox.setSelectedItem(m.roleKind());
@@ -663,6 +666,10 @@ public class FieldSourcePanel extends JPanel {
                                                  + "(e.g. P585 → year, P1686 → for work, P2453 → nominee). "
                                                  + "Blank = a direct/value field.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Qualifier of:", qualifierPidField);
+        qualifierDateModeBox.setToolTipText("YEAR keeps the legacy year-only "
+                + "projection; DATE retains Wikidata's stated precision and calendar.");
+        GridBagUtils.labeledRow(
+                form, c, y++, "Qualifier time:", qualifierDateModeBox);
 
         missingQualifierBox.setToolTipText("<html>Reify (#92): what this ENTITY "
                                                    + "qualifier gets when it is <b>absent</b> on a statement.<br>"
@@ -885,6 +892,8 @@ public class FieldSourcePanel extends JPanel {
         m.propertyPid(propertyPidField.getText());
         m.qualifierPid(
                 RuleNode.cleanPid(qualifierPidField.getText()));
+        m.qualifierDateMode(
+                (QualifierDateMode) qualifierDateModeBox.getSelectedItem());
         Object pk = productionBox.getSelectedItem();
         boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
         if (ownedComponent) {
@@ -893,6 +902,7 @@ public class FieldSourcePanel extends JPanel {
             m.propertyPid("");
             m.propertyLabel("");
             m.qualifierPid("");
+            m.qualifierDateMode(QualifierDateMode.YEAR);
         }
         boolean dateProjection = field.type() == FieldType.DATE
                 && pk == FieldProductionKind.AUTO;
@@ -1238,6 +1248,11 @@ public class FieldSourcePanel extends JPanel {
         // A qualifier source is meaningful only on a StatementClass. The field
         // remains visible so the class/field relationship is explicit.
         qualifierPidField.setEnabled(statementClass);
+        boolean dateQualifier = statementClass
+                && validQualifier
+                && typeBox.getSelectedItem() == FieldType.DATE
+                && runtimeField;
+        qualifierDateModeBox.setEnabled(dateQualifier);
 
         boolean policyEnabled =
                 statementClass
@@ -1462,6 +1477,9 @@ public class FieldSourcePanel extends JPanel {
         refreshObjectTypeBox("");
         propertyPidField.setText("");
         qualifierPidField.setText("");
+        // A blank form is a field about to be created, and a new field keeps what
+        // the source states; an existing field's own value replaces this on load.
+        qualifierDateModeBox.setSelectedItem(QualifierDateMode.DATE);
         missingQualifierBox.setSelectedItem(POL_AUTO);
         roleKindBox.setSelectedItem(wikidata.explore.model.RoleKind.REFERENCE);
         propertyLabel.setText("(not selected)");

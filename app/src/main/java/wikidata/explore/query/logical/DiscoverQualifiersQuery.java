@@ -130,7 +130,11 @@ public class DiscoverQualifiersQuery implements Query<TableQueryResult> {
             return QualifierLoadConfig.Kind.ENTITY;
         }
         if (propertyTypeUri.endsWith("Time")) {
-            return QualifierLoadConfig.Kind.YEAR;
+            // DATE, not YEAR: a time qualifier is a time, and FlexibleDate keeps
+            // exactly the precision the value states — so DATE is faithful where
+            // YEAR forces a year even onto a value that named a day. Reducing a
+            // date to its year stays available, but as a deliberate choice.
+            return QualifierLoadConfig.Kind.DATE;
         }
         return QualifierLoadConfig.Kind.STRING;
     }

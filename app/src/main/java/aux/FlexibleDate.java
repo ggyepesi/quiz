@@ -45,6 +45,8 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
      *  {@link #parse} reads back. Gregorian appends nothing, so every date
      *  written before calendars existed round-trips unchanged. */
     private static final String JULIAN_MARK = " (Julian)";
+    private static final java.util.regex.Pattern WIKIDATA_PRECISION_MARK =
+            java.util.regex.Pattern.compile("\\s*\\[precision=(\\d+)]$");
 
     /** The suffix a raw time literal carries so its calendar survives a String-only
      *  channel — empty for Gregorian, so ordinary literals are untouched. Written by
@@ -52,6 +54,16 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
      *  {@link #fromWikidataLiteral(String)}. */
     public static String calendarMark(String calendarModelUri) {
         return Calendar.ofModel(calendarModelUri) == Calendar.JULIAN ? JULIAN_MARK : "";
+    }
+
+    /**
+     * Suffix for the precision stored beside a Wikibase time value. The raw time
+     * alone is ambiguous: a genuine day on 1 January has the same numbers as a
+     * year-precision value padded by WDQS. Kept in the String-only API channel
+     * and consumed by {@link #fromWikidataLiteral(String)}.
+     */
+    public static String precisionMark(int wikidataPrecision) {
+        return wikidataPrecision < 0 ? "" : " [precision=" + wikidataPrecision + "]";
     }
 
     // month/day are 0 when the precision doesn't reach them; year may be
@@ -202,6 +214,16 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
             return null;
         }
         s = s.trim();
+        Integer explicitPrecision = null;
+        java.util.regex.Matcher precision = WIKIDATA_PRECISION_MARK.matcher(s);
+        if (precision.find()) {
+            try {
+                explicitPrecision = Integer.parseInt(precision.group(1));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+            s = s.substring(0, precision.start()).trim();
+        }
         // A literal may carry the calendar marker: the API hands the calendar model
         // alongside the time, and the string is the only channel it travels in.
         Calendar cal = Calendar.GREGORIAN;
@@ -211,12 +233,12 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
         }
         // The calendar is applied at one exit, so a branch added to the precision
         // reading below cannot quietly drop it.
-        FlexibleDate d = readLiteral(s);
+        FlexibleDate d = readLiteral(s, explicitPrecision);
         return d == null ? null : d.inCalendar(cal);
     }
 
     // The precision reading proper: numbers only, no calendar.
-    private static FlexibleDate readLiteral(String s) {
+    private static FlexibleDate readLiteral(String s, Integer explicitPrecision) {
         java.util.regex.Matcher m = WD_TIME.matcher(s);
         if (!m.find()) {
             return null;
@@ -228,6 +250,24 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
             }
             int mm = Integer.parseInt(m.group(3));
             int dd = Integer.parseInt(m.group(4));
+            if (explicitPrecision != null) {
+                // Wikibase: 9=year, 10=month, 11=day. FlexibleDate deliberately
+                // has these three useful display precisions; coarser values remain
+                // year-shaped rather than inventing a month or day.
+                if (explicitPrecision <= 9) {
+                    return new FlexibleDate(y);
+                }
+                if (explicitPrecision == 10) {
+                    return mm == 0 ? new FlexibleDate(y) : new FlexibleDate(y, mm);
+                }
+                if (mm == 0) {
+                    return new FlexibleDate(y);
+                }
+                if (dd == 0) {
+                    return new FlexibleDate(y, mm);
+                }
+                return new FlexibleDate(y, mm, dd);
+            }
             if (mm == 0) {
                 return new FlexibleDate(y);
             }

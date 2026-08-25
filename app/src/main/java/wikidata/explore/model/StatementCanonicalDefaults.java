@@ -17,8 +17,7 @@ import java.util.List;
  * silently acquiring a different meaning.</p>
  *
  * <p>The proposed statement grain is the statement value plus scalar entity
- * qualifiers. Dates describe an event but do not reliably distinguish the
- * denormalized copies from which it is assembled; collection qualifiers denote
+ * qualifiers and scalar date qualifiers. Collection qualifiers denote
  * zero-or-more participants rather than one stable key component; and derived
  * fields such as {@code COMPANION_MATCH} do not exist when reification performs
  * its identity-based deduplication.</p>
@@ -57,11 +56,15 @@ public final class StatementCanonicalDefaults {
             }
         }
 
-        // Only scalar ENTITY qualifiers extend the default grain. The shared
+        // Scalar ENTITY and DATE qualifiers extend the default grain. A time is
+        // part of distinguishing repeated statements, regardless of whether the
+        // field deliberately projects it to YEAR or retains its full precision.
+        // The shared
         // StatementFieldSemantics predicate excludes post-reification producers.
         for (GeneratedFieldModel field : owner.fields()) {
             if (StatementFieldSemantics.isQualifierField(owner, field)
-                    && field.type() == FieldType.ENTITY
+                    && (field.type() == FieldType.ENTITY
+                            || field.type() == FieldType.DATE)
                     && field.cardinality() != FieldCardinality.COLLECTION) {
                 result.add(field.name());
             }

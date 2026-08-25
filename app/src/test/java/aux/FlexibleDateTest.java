@@ -144,6 +144,30 @@ class FlexibleDateTest {
     }
 
     @Test
+    void explicitWikidataPrecisionDistinguishesPaddingFromARealFirstDay() {
+        String firstJanuary = "+1959-01-01T00:00:00Z";
+        assertEquals(FlexibleDate.Precision.DAY,
+                FlexibleDate.fromWikidataLiteral(
+                        firstJanuary + FlexibleDate.precisionMark(11)).precision());
+        assertEquals("1959-01-01", FlexibleDate.fromWikidataLiteral(
+                firstJanuary + FlexibleDate.precisionMark(11)).format());
+        assertEquals(FlexibleDate.Precision.YEAR,
+                FlexibleDate.fromWikidataLiteral(
+                        firstJanuary + FlexibleDate.precisionMark(9)).precision());
+    }
+
+    @Test
+    void precisionAndCalendarSurviveTheSameStringChannel() {
+        String literal = "+1500-03-01T00:00:00Z"
+                + FlexibleDate.calendarMark("http://www.wikidata.org/entity/Q1985786")
+                + FlexibleDate.precisionMark(11);
+        FlexibleDate date = FlexibleDate.fromWikidataLiteral(literal);
+        assertEquals(FlexibleDate.Precision.DAY, date.precision());
+        assertEquals(FlexibleDate.Calendar.JULIAN, date.calendar());
+        assertEquals("1500-03-01 (Julian)", date.format());
+    }
+
+    @Test
     void sameNumbersInDifferentCalendarsAreDifferentDays() {
         FlexibleDate g = FlexibleDate.parse("1500-03-01");
         FlexibleDate j = g.inCalendar(FlexibleDate.Calendar.JULIAN);

@@ -90,8 +90,13 @@ public record QualifierLoadConfig(
     public enum Kind {
         /** Resolve the qualifier to a labelled entity (e.g. P1686 for-work). */
         ENTITY,
-        /** A time qualifier reduced to its 4-digit year (e.g. P585). */
+        /** A time qualifier reduced to its 4-digit year (e.g. P585) — enough for a
+         *  ceremony, and wrong for anything a day belongs to. */
         YEAR,
+        /** A time qualifier kept whole: the precision the value states, and the
+         *  calendar it states it in. A reign beginning on 25 December 1000 is a day
+         *  in the Julian calendar, and {@link YEAR} would keep neither fact. */
+        DATE,
         /** A raw literal qualifier kept as a string. */
         STRING
     }

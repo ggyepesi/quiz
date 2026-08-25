@@ -16,6 +16,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MissingQualifierPolicy;
+import wikidata.explore.model.QualifierDateMode;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.StatementFieldSemantics;
 
@@ -154,7 +155,8 @@ public final class ModelStatementReifications {
                 continue;
             }
 
-            QualifierLoadConfig.Kind kind = kindFor(field.type());
+            QualifierLoadConfig.Kind kind = kindFor(
+                    field.type(), field.mapping().qualifierDateMode());
             boolean multi = field.cardinality() != null
                     && field.cardinality().isCollection();
 
@@ -298,7 +300,8 @@ public final class ModelStatementReifications {
                 continue;
             }
 
-            QualifierLoadConfig.Kind kind = kindFor(field.type());
+            QualifierLoadConfig.Kind kind = kindFor(
+                    field.type(), field.source().qualifierDateMode());
             boolean multi = field.collection();
 
             qualifiers.add(new QualifierLoadConfig.Qualifier(
@@ -686,9 +689,10 @@ public final class ModelStatementReifications {
             if (qualifier.multi()) {
                 qualifierText.append("(list)");
             }
-            if (qualifier.kind()
-                    == QualifierLoadConfig.Kind.YEAR) {
+            if (qualifier.kind() == QualifierLoadConfig.Kind.DATE) {
                 qualifierText.append("(date)");
+            } else if (qualifier.kind() == QualifierLoadConfig.Kind.YEAR) {
+                qualifierText.append("(year)");
             }
         }
 
@@ -1115,13 +1119,16 @@ public final class ModelStatementReifications {
     }
 
     private static QualifierLoadConfig.Kind kindFor(
-            FieldType type) {
+            FieldType type,
+            QualifierDateMode dateMode) {
 
         if (type == FieldType.ENTITY) {
             return QualifierLoadConfig.Kind.ENTITY;
         }
         if (type == FieldType.DATE) {
-            return QualifierLoadConfig.Kind.YEAR;
+            return dateMode == QualifierDateMode.DATE
+                    ? QualifierLoadConfig.Kind.DATE
+                    : QualifierLoadConfig.Kind.YEAR;
         }
         return QualifierLoadConfig.Kind.STRING;
     }

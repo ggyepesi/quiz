@@ -76,7 +76,10 @@ public final class QualifierLoadConfigs {
             if (d.kind() == QualifierLoadConfig.Kind.ENTITY) {
                 roles.add(new ReifyConstruct.Role(f, f, true));
                 dedup.add(f);
-            } else if (d.kind() == QualifierLoadConfig.Kind.YEAR) {
+            } else if (d.kind() == QualifierLoadConfig.Kind.YEAR
+                    || d.kind() == QualifierLoadConfig.Kind.DATE) {
+                // When a statement happened is part of telling it from another one,
+                // whether it is kept whole or reduced to its year.
                 dedup.add(f);
             }
         }

@@ -55,7 +55,7 @@ class StatementFieldSemanticsTest {
     }
 
     @Test
-    void statementDefaultKeyIsValuePlusScalarEntityQualifiers() {
+    void statementDefaultKeyIsValuePlusScalarEntityAndDateQualifiers() {
         GeneratedClassModel nom = reifyingClass();
         GeneratedFieldModel category =
                 nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
@@ -71,7 +71,7 @@ class StatementFieldSemanticsTest {
         won.mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
 
         assertEquals(
-                java.util.List.of("category", "nominee"),
+                java.util.List.of("category", "nominee", "year"),
                 StatementCanonicalDefaults.suggest(nom));
     }
 
