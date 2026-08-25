@@ -1436,7 +1436,13 @@ public class WikidataApiClient {
 
     /** A snak's raw value by datatype: entity → {@code Qxxx}, time → the ISO time
      *  string, monolingualtext → text, quantity → the (unsigned) amount, string →
-     *  the string. Null when the snak has no value (novalue/somevalue). */
+     *  the string. Null when the snak has no value (novalue/somevalue).
+     *
+     *  <p>This is the single reader of a Wikibase datavalue — a time's calendar is
+     *  only stated here, so anything that parses one of these strings must be able
+     *  to get it from the string alone. A non-Gregorian time therefore carries
+     *  {@link aux.FlexibleDate#calendarMark}, which
+     *  {@link aux.FlexibleDate#fromWikidataLiteral(String)} reads back. */
     private static String snakValue(JsonNode datavalue) {
         if (datavalue.isMissingNode()) return null;
         JsonNode val = datavalue.path("value");
@@ -1448,7 +1454,12 @@ public class WikidataApiClient {
                 }
                 yield id.isBlank() ? null : id;
             }
-            case "time"            -> val.path("time").asText(null);
+            case "time" -> {
+                String t = val.path("time").asText(null);
+                yield t == null ? null
+                        : t + aux.FlexibleDate.calendarMark(
+                                val.path("calendarmodel").asText(null));
+            }
             case "monolingualtext" -> val.path("text").asText(null);
             case "quantity" -> {
                 String a = val.path("amount").asText("");
@@ -1646,26 +1657,10 @@ public class WikidataApiClient {
         }
         if (best == null) best = claimsArray.get(0);
 
-        JsonNode datavalue = best.path("mainsnak").path("datavalue");
-        if (datavalue.isMissingNode()) return null;
-
-        String type  = datavalue.path("type").asText();
-        JsonNode val = datavalue.path("value");
-
-        return switch (type) {
-            case "quantity" -> {
-                // Strip leading + from Wikidata quantity format (+0.13 → 0.13)
-                String amount = val.path("amount").asText();
-                yield amount.startsWith("+")
-                        ? amount.substring(1) : amount;
-            }
-            case "string"            -> val.asText();
-            case "monolingualtext"   -> val.path("text").asText();
-            case "wikibase-entityid" ->
-                    "Q" + val.path("numeric-id").asText();
-            case "time"              -> val.path("time").asText();
-            default -> val.isTextual() ? val.asText() : null;
-        };
+        // One reader for a datavalue, whatever asked for it: this used to repeat the
+        // switch, and its copy built an entity id as "Q" + numeric-id — wrong for
+        // every non-item entity (P-, L-, F-, S-), and blind to a time's calendar.
+        return snakValue(best.path("mainsnak").path("datavalue"));
     }
 
     // ------------------------------------------------------------------

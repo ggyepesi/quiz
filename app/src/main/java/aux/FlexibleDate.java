@@ -22,17 +22,51 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
 
     public enum Precision { YEAR, MONTH, DAY }
 
+    /** The calendar a date's numbers are expressed in. Wikidata states this per
+     *  time value; dates before the 1582 reform are commonly Julian, and the same
+     *  numbers mean a different day in each calendar. Carried, never silently
+     *  converted — the source said which one it meant. */
+    public enum Calendar {
+        GREGORIAN, JULIAN;
+
+        /** Wikidata's proleptic calendar-model items. Unknown/absent → Gregorian,
+         *  which is both the overwhelming majority and Wikidata's own default. */
+        public static Calendar ofModel(String calendarModelUri) {
+            if (calendarModelUri == null) {
+                return GREGORIAN;
+            }
+            String q = calendarModelUri.substring(
+                    calendarModelUri.lastIndexOf('/') + 1).trim();
+            return "Q1985786".equals(q) ? JULIAN : GREGORIAN;
+        }
+    }
+
+    /** The marker {@link #format} appends for a non-default calendar, and
+     *  {@link #parse} reads back. Gregorian appends nothing, so every date
+     *  written before calendars existed round-trips unchanged. */
+    private static final String JULIAN_MARK = " (Julian)";
+
+    /** The suffix a raw time literal carries so its calendar survives a String-only
+     *  channel — empty for Gregorian, so ordinary literals are untouched. Written by
+     *  whoever holds the value node's {@code calendarmodel}; read back by
+     *  {@link #fromWikidataLiteral(String)}. */
+    public static String calendarMark(String calendarModelUri) {
+        return Calendar.ofModel(calendarModelUri) == Calendar.JULIAN ? JULIAN_MARK : "";
+    }
+
     // month/day are 0 when the precision doesn't reach them; year may be
     // negative (BC).
     private final int year;
     private final int month;
     private final int day;
+    private final Calendar calendar;
 
     // Constructor: year only
     public FlexibleDate(int year) {
         this.year = year;
         this.month = 0;
         this.day = 0;
+        this.calendar = Calendar.GREGORIAN;
     }
 
     // Constructor: year + month
@@ -41,6 +75,7 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
         this.year = year;
         this.month = month;
         this.day = 0;
+        this.calendar = Calendar.GREGORIAN;
     }
 
     // Constructor: year + month (String)
@@ -54,11 +89,32 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
         this.year = year;
         this.month = month;
         this.day = day;
+        this.calendar = Calendar.GREGORIAN;
     }
 
     // Constructor: year + month (String) + day
     public FlexibleDate(int year, String monthStr, int day) {
         this(year, parseMonth(monthStr), day);
+    }
+
+    // Copy with a different calendar. Private so the public constructors keep one
+    // shape; a calendar is applied to an already-valid date, never validated against.
+    private FlexibleDate(FlexibleDate from, Calendar calendar) {
+        this.year = from.year;
+        this.month = from.month;
+        this.day = from.day;
+        this.calendar = calendar == null ? Calendar.GREGORIAN : calendar;
+    }
+
+    /** This date read in {@code calendar}. Returns {@code this} when unchanged. */
+    public FlexibleDate inCalendar(Calendar calendar) {
+        Calendar c = calendar == null ? Calendar.GREGORIAN : calendar;
+        return c == this.calendar ? this : new FlexibleDate(this, c);
+    }
+
+    /** The calendar this date's numbers are expressed in; never null. */
+    public Calendar calendar() {
+        return calendar;
     }
 
     /**
@@ -73,9 +129,17 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
         }
         s = s.trim();
 
+        // The calendar marker is part of the written form, so it comes off before
+        // anything reads the numbers — and goes back on whichever branch returns.
+        Calendar cal = Calendar.GREGORIAN;
+        if (s.endsWith(JULIAN_MARK)) {
+            cal = Calendar.JULIAN;
+            s = s.substring(0, s.length() - JULIAN_MARK.length()).trim();
+        }
+
         FlexibleDate wd = fromWikidataLiteral(s);
         if (wd != null) {
-            return wd;
+            return wd.inCalendar(cal);
         }
 
         boolean bc = false;
@@ -97,12 +161,13 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
             }
             if (m.group(3) != null) {
                 return new FlexibleDate(y,
-                        Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)));
+                        Integer.parseInt(m.group(2)),
+                        Integer.parseInt(m.group(3))).inCalendar(cal);
             }
             if (m.group(2) != null) {
-                return new FlexibleDate(y, Integer.parseInt(m.group(2)));
+                return new FlexibleDate(y, Integer.parseInt(m.group(2))).inCalendar(cal);
             }
-            return new FlexibleDate(y);
+            return new FlexibleDate(y).inCalendar(cal);
         } catch (RuntimeException invalid) {
             return null;   // e.g. month 13 — not a date after all
         }
@@ -118,14 +183,41 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
             java.util.regex.Pattern.compile("^([+-]?)0*(\\d+)-(\\d{2})-(\\d{2})T");
 
     /**
+     * Converts a raw Wikidata time literal, reading the calendar from the value's
+     * {@code calendarmodel}. Null when {@code s} isn't a time literal.
+     */
+    public static FlexibleDate fromWikidataLiteral(String s, String calendarModelUri) {
+        FlexibleDate d = fromWikidataLiteral(s);
+        return d == null ? null : d.inCalendar(Calendar.ofModel(calendarModelUri));
+    }
+
+    /**
      * Converts a raw Wikidata time literal; null when {@code s} isn't one —
-     * safe to probe arbitrary values with.
+     * safe to probe arbitrary values with. The calendar is unstated here, so the
+     * date reads as Gregorian; use {@link #fromWikidataLiteral(String, String)}
+     * wherever the value node's calendar model is in hand.
      */
     public static FlexibleDate fromWikidataLiteral(String s) {
         if (s == null) {
             return null;
         }
-        java.util.regex.Matcher m = WD_TIME.matcher(s.trim());
+        s = s.trim();
+        // A literal may carry the calendar marker: the API hands the calendar model
+        // alongside the time, and the string is the only channel it travels in.
+        Calendar cal = Calendar.GREGORIAN;
+        if (s.endsWith(JULIAN_MARK)) {
+            cal = Calendar.JULIAN;
+            s = s.substring(0, s.length() - JULIAN_MARK.length()).trim();
+        }
+        // The calendar is applied at one exit, so a branch added to the precision
+        // reading below cannot quietly drop it.
+        FlexibleDate d = readLiteral(s);
+        return d == null ? null : d.inCalendar(cal);
+    }
+
+    // The precision reading proper: numbers only, no calendar.
+    private static FlexibleDate readLiteral(String s) {
+        java.util.regex.Matcher m = WD_TIME.matcher(s);
         if (!m.find()) {
             return null;
         }
@@ -193,7 +285,7 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
     //     (e.g. monthDay on a year-only date), so callers skip it rather than group
     //     on a spurious 0.
     private static final Set<String> VIEWS =
-            Set.of("year", "month", "day", "monthDay");
+            Set.of("year", "month", "day", "monthDay", "calendar");
 
     @Override
     public Object view(String name) {
@@ -202,6 +294,7 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
             case "month" -> precision().compareTo(Precision.MONTH) >= 0 ? month : null;
             case "day" -> precision() == Precision.DAY ? day : null;
             case "monthDay" -> monthDay();
+            case "calendar" -> calendar.name();
             default -> null;
         };
     }
@@ -227,6 +320,9 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
         if (year < 0) {
             sb.append(" BC");
         }
+        if (calendar == Calendar.JULIAN) {
+            sb.append(JULIAN_MARK);
+        }
         return sb.toString();
     }
 
@@ -242,18 +338,24 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
         if (c != 0) return c;
         c = Integer.compare(month, other.month);
         if (c != 0) return c;
-        return Integer.compare(day, other.day);
+        c = Integer.compare(day, other.day);
+        if (c != 0) return c;
+        // Same numbers in different calendars are different days. Nothing here
+        // converts between them, so they order by calendar rather than compare
+        // equal — keeping compareTo consistent with equals.
+        return calendar.compareTo(other.calendar);
     }
 
     @Override
     public boolean equals(Object o) {
         return o instanceof FlexibleDate d
-                && year == d.year && month == d.month && day == d.day;
+                && year == d.year && month == d.month && day == d.day
+                && calendar == d.calendar;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(year, month, day);
+        return Objects.hash(year, month, day, calendar);
     }
 
     // Helper: parse month from string

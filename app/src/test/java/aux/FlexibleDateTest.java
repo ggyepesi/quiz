@@ -86,4 +86,69 @@ class FlexibleDateTest {
         assertEquals("2026-04", new FlexibleDate(2026, "Apr").format());
         assertEquals("2026-04-22", new FlexibleDate(2026, "April", 22).format());
     }
+
+    // --- Calendar (0c) -------------------------------------------------
+    // Wikidata states a calendar per time value. The same numbers mean a
+    // different day in each, so the calendar has to survive every channel a
+    // date travels in — including the String-only ones.
+
+    @Test
+    void readsTheCalendarModelOffAWikidataTimeValue() {
+        assertEquals(FlexibleDate.Calendar.JULIAN,
+                FlexibleDate.fromWikidataLiteral("+1500-03-01T00:00:00Z",
+                        "http://www.wikidata.org/entity/Q1985786").calendar(),
+                "Q1985786 is the proleptic Julian calendar");
+        assertEquals(FlexibleDate.Calendar.GREGORIAN,
+                FlexibleDate.fromWikidataLiteral("+1959-04-06T00:00:00Z",
+                        "http://www.wikidata.org/entity/Q1985727").calendar());
+        assertEquals(FlexibleDate.Calendar.GREGORIAN,
+                FlexibleDate.fromWikidataLiteral("+1959-04-06T00:00:00Z", null)
+                        .calendar(),
+                "an unstated calendar model reads as Gregorian, Wikidata's default");
+    }
+
+    @Test
+    void aJulianDateSurvivesFormatAndParse() {
+        // Not day 1 — the padding convention reads that as month precision.
+        FlexibleDate julian = FlexibleDate.fromWikidataLiteral(
+                "+1500-03-15T00:00:00Z", "http://www.wikidata.org/entity/Q1985786");
+        FlexibleDate back = FlexibleDate.parse(julian.format());
+        assertEquals(julian, back, "format/parse is the persistence contract");
+        assertEquals(FlexibleDate.Calendar.JULIAN, back.calendar());
+        assertEquals(1500, back.getYear());
+        assertEquals(3, back.getMonth());
+        assertEquals(15, back.getDay());
+    }
+
+    @Test
+    void aGregorianDateWritesExactlyWhatItAlwaysDid() {
+        // Nothing to migrate: every date written before calendars existed reads
+        // back unchanged, and writes back byte-identical.
+        assertEquals("1959-04-06", FlexibleDate.parse("1959-04-06").format());
+        assertEquals("500 BC", FlexibleDate.parse("500 BC").format());
+        assertEquals("2015", FlexibleDate.fromWikidataLiteral(
+                "+2015-00-00T00:00:00Z").format());
+    }
+
+    @Test
+    void theCalendarSurvivesAStringOnlyChannel() {
+        // ApiStatement carries values as Strings, so a raw literal has to be able
+        // to state its own calendar — this is how the API path keeps it.
+        String literal = "+1500-03-15T00:00:00Z"
+                + FlexibleDate.calendarMark("http://www.wikidata.org/entity/Q1985786");
+        assertEquals(FlexibleDate.Calendar.JULIAN,
+                FlexibleDate.fromWikidataLiteral(literal).calendar());
+        assertEquals("", FlexibleDate.calendarMark(
+                "http://www.wikidata.org/entity/Q1985727"),
+                "Gregorian marks nothing, so ordinary literals are untouched");
+    }
+
+    @Test
+    void sameNumbersInDifferentCalendarsAreDifferentDays() {
+        FlexibleDate g = FlexibleDate.parse("1500-03-01");
+        FlexibleDate j = g.inCalendar(FlexibleDate.Calendar.JULIAN);
+        assertNotEquals(g, j);
+        assertNotEquals(0, g.compareTo(j), "compareTo stays consistent with equals");
+        assertEquals("JULIAN", j.view("calendar"));
+    }
 }
