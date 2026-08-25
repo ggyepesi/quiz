@@ -1,6 +1,7 @@
 package wikidata.explore.workbench;
 
 import objectview.view.ViewableListPanel;
+import objectview.view.SearchControlsTabs;
 import wikidata.WikidataIds;
 import wikidata.explore.query.logical.CategoryBrowseQuery;
 import wikidata.explore.query.swing.SwingQueryRunner;
@@ -80,6 +81,12 @@ public class CategorySeedPanel extends JPanel {
         configurePageView(subcategories);
         configurePageView(articles);
 
+        SearchControlsTabs searchControls =
+                new SearchControlsTabs("Search / sort / view", false);
+        searchControls.addTab("Parents", parents);
+        searchControls.addTab("Subcategories", subcategories);
+        searchControls.addTab("Articles", articles);
+
         JPanel config = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         config.add(new JLabel("Category:")); config.add(categoryField);
         config.add(new JLabel("Limit:")); config.add(limitSpinner);
@@ -118,7 +125,10 @@ public class CategorySeedPanel extends JPanel {
         browser.setDividerLocation(300);
         browser.setOneTouchExpandable(true);
 
-        add(top, BorderLayout.NORTH);
+        JPanel heading = new JPanel(new BorderLayout(4, 4));
+        heading.add(top, BorderLayout.NORTH);
+        heading.add(searchControls, BorderLayout.CENTER);
+        add(heading, BorderLayout.NORTH);
         add(browser, BorderLayout.CENTER);
         SwingUtilities.invokeLater(() -> {
             if (browser.getHeight() > 0) browser.setDividerLocation(0.42);
