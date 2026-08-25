@@ -178,4 +178,47 @@ class DomainStorageTest {
         Files.createDirectories(file.getParentFile().toPath());
         Files.writeString(file.toPath(), content);
     }
+
+    @Test void twoModelsClaimingOneNameAreNotResolvedByPickingOne(@TempDir Path root)
+            throws Exception {
+        // A stale copy left beside its successor. Choosing the first by folder order
+        // would open one and then save over it, making an arbitrary pick authoritative.
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        File stale = new File(new File(root.toFile(), "elements"), "elements.model.json");
+        File current = storage.modelFile("Periodic Table");
+        write(stale, "{\"name\":\"Periodic Table\"}");
+        write(current, "{\"name\":\"Periodic Table\"}");
+
+        assertEquals(current, storage.modelFileOf("Periodic Table"),
+                "the model where the layout says it belongs is what the name means");
+        assertEquals(List.of("Periodic Table"), storage.modelBackedNames(),
+                "one name, however many files claim it");
+        assertEquals(2, storage.modelFilesClaiming("Periodic Table").size());
+    }
+
+    @Test void aNameNoConventionalModelClaimsResolvesToNothingThatExists(
+            @TempDir Path root) throws Exception {
+        // Neither claimant sits where the layout says. Rather than edit whichever
+        // sorted first, name a path that is not there and let the caller report it.
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        write(new File(new File(root.toFile(), "aaa"), "aaa.model.json"),
+                "{\"name\":\"Rulers\"}");
+        write(new File(new File(root.toFile(), "bbb"), "bbb.model.json"),
+                "{\"name\":\"Rulers\"}");
+
+        File resolved = storage.modelFileOf("Rulers");
+        assertEquals(storage.modelFile("Rulers"), resolved);
+        assertFalse(resolved.isFile(), "a missing file is a better answer than the wrong one");
+    }
+
+    @Test void oneClaimantIsStillFoundWhereverItLives(@TempDir Path root)
+            throws Exception {
+        // The ordinary draft case must not regress: a lone model is located by the
+        // name inside it, even when its folder key differs.
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        File odd = new File(new File(root.toFile(), "hu-rulers"), "hu-rulers.model.json");
+        write(odd, "{\"name\":\"Hungarian Rulers\"}");
+
+        assertEquals(odd, storage.modelFileOf("Hungarian Rulers"));
+    }
 }

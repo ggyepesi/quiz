@@ -118,10 +118,34 @@ public final class DomainStorage {
         }
         // A draft has no registry entry. Locate it by the name stored in the model
         // rather than assuming the display name and folder key have never diverged.
+        List<File> claiming = new ArrayList<>();
         for (File candidate : modelFilesOnDisk()) {
-            if (name != null && name.equals(modelName(candidate))) return candidate;
+            if (name != null && name.equals(modelName(candidate))) claiming.add(candidate);
         }
-        return modelFile(name);
+        if (claiming.size() == 1) {
+            return claiming.get(0);
+        }
+        // Several models claim one name — a stale copy left beside its successor is
+        // the usual reason. Taking whichever sorted first would open one of them and
+        // then SAVE over it, silently making the arbitrary choice authoritative. The
+        // model living where the layout says it should is the one this name means;
+        // failing that, name nothing that exists, so the caller reports a missing
+        // file instead of editing the wrong domain.
+        File conventional = modelFile(name);
+        for (File candidate : claiming) {
+            if (candidate.equals(conventional)) return candidate;
+        }
+        return conventional;
+    }
+
+    /** The model files claiming {@code name}, when more than one does — so a caller
+     *  can say WHICH files collide rather than only that a name is unresolvable. */
+    public List<File> modelFilesClaiming(String name) {
+        List<File> claiming = new ArrayList<>();
+        for (File candidate : modelFilesOnDisk()) {
+            if (name != null && name.equals(modelName(candidate))) claiming.add(candidate);
+        }
+        return List.copyOf(claiming);
     }
 
     private List<File> modelFilesOnDisk() {
