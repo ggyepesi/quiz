@@ -768,7 +768,7 @@ public final class ReferentFieldLoad {
                 if (raw == null || raw.isBlank()) {
                     continue;
                 }
-                Object v = date ? aux.FlexibleDate.fromWikidataLiteral(raw) : raw;
+                Object v = date ? wikidata.CalendarModelCodec.readTime(raw) : raw;
                 if (v != null) {
                     values.add(v);
                 }

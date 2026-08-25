@@ -1441,8 +1441,8 @@ public class WikidataApiClient {
      *  <p>This is the single reader of a Wikibase datavalue — a time's calendar is
      *  only stated here, so anything that parses one of these strings must be able
      *  to get it from the string alone. A time therefore carries both its calendar
-     *  and {@link aux.FlexibleDate#precisionMark precision}, which
-     *  {@link aux.FlexibleDate#fromWikidataLiteral(String)} reads back. */
+     *  and {@link wikidata.CalendarModelCodec#precisionMark precision}, which
+     *  {@link wikidata.CalendarModelCodec#readTime(String)} reads back. */
     private static String snakValue(JsonNode datavalue) {
         if (datavalue.isMissingNode()) return null;
         JsonNode val = datavalue.path("value");
@@ -1457,9 +1457,9 @@ public class WikidataApiClient {
             case "time" -> {
                 String t = val.path("time").asText(null);
                 yield t == null ? null
-                        : t + aux.FlexibleDate.calendarMark(
+                        : t + wikidata.CalendarModelCodec.calendarMark(
                                 val.path("calendarmodel").asText(null))
-                            + aux.FlexibleDate.precisionMark(
+                            + wikidata.CalendarModelCodec.precisionMark(
                                 val.path("precision").asInt(-1));
             }
             case "monolingualtext" -> val.path("text").asText(null);

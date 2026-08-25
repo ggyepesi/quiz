@@ -9,7 +9,11 @@ public class RuleIncludedField {
     public enum FieldKind {
         AUTO,
         MEDIA,
-        ENTITY
+        ENTITY,
+        /** A time-valued field. The truthy leg drops the calendar and the precision
+         *  a value states, so a date is read from the statement's value node
+         *  instead — which is a different query, and this is how it is told apart. */
+        DATE
     }
 
     private String fieldName;

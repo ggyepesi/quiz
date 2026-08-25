@@ -68,6 +68,44 @@ public final class RuleIncludedFieldSparql {
         }
     }
 
+
+    /**
+     * The statement value node for a time-valued field, packed into ONE bound string.
+     *
+     * <p>{@code wdt:} yields the bare timestamp, dropping the calendar the value was
+     * stated in and the precision it was stated at — neither recoverable from the
+     * numbers, since Wikidata records 1047 as Gregorian and 1576 as Julian, and pads
+     * a year to {@code -01-01} exactly as a real 1 January is written.
+     *
+     * <p>The three are concatenated rather than bound separately because an
+     * aggregating caller's {@code SAMPLE} picks each variable independently, which on
+     * a field with several statements would pair one statement's time with another's
+     * calendar. One packed string can only be taken whole. The form is the one
+     * {@link wikidata.CalendarModelCodec} builds for the API too, so both loading
+     * paths share one wire form and one translator.
+     *
+     * @param bindTo the variable the packed value is bound to — the field's own
+     *               variable on the direct path, its {@code _s} source on the
+     *               aggregating one.
+     */
+    public static String datePattern(String pid, String var, String bindTo) {
+        return "?value p:" + pid + "/psv:" + pid + " ?" + var + "_n .\n"
+             + "?" + var + "_n wikibase:timeValue ?" + var + "_t ;"
+             + " wikibase:timePrecision ?" + var + "_p ;"
+             + " wikibase:timeCalendarModel ?" + var + "_c .\n"
+             + "BIND(CONCAT(STR(?" + var + "_t), "
+             + wikidata.CalendarModelCodec.calendarMarkExpression(var + "_c") + ", "
+             + "\" [precision=\", STR(?" + var + "_p), \"]\") AS ?" + bindTo + ")\n";
+    }
+
+    /** Whether this field's value has to be read from the statement's value node. */
+    public static boolean readsValueNode(RuleIncludedField field) {
+        return field != null
+                && field.kind() == RuleIncludedField.FieldKind.DATE
+                && field.propertyPid() != null
+                && !field.propertyPid().isBlank();
+    }
+
     public static void appendWherePatterns(
             StringBuilder sb,
             List<RuleIncludedField> fields) {
@@ -121,8 +159,14 @@ public final class RuleIncludedFieldSparql {
             String var = variableName(field, index);
             boolean label = withLabels && !field.isMediaField();
             // ROOT_TO_ITEM: ?value wdt:P ?var ; ITEM_TO_ROOT: ?var wdt:P ?value.
-            String triple = field.direction()
-                    .triplePattern("?value", "?" + var, field.propertyPid());
+            // A date is always outgoing (the compiler forces it), and is read from
+            // the statement's value node so its calendar and precision survive.
+            String triple = readsValueNode(field)
+                    ? datePattern(
+                            wikidata.explore.rule.RuleNode.cleanPid(field.propertyPid()),
+                            var, var)
+                    : field.direction()
+                            .triplePattern("?value", "?" + var, field.propertyPid());
             // Constrain the value to the referenced class's type, if requested.
             String typeConstraint = field.hasMembership()
                     ? "?" + var + " wdt:" + field.membershipPid()

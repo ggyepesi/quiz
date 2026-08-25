@@ -916,13 +916,29 @@ public final class RuleNodeQueryBuilder {
                 String var = RuleIncludedFieldSparql.variableName(f, index);
                 boolean isSort = sortField != null && sortField.equals(f.fieldName());
                 String agg = isSort ? (sortDesc ? "MAX" : "MIN") : "SAMPLE";
+                // A value filter binding this var (R13) keeps the truthy leg it
+                // binds, so the date leg only applies when the field emits its own.
+                boolean dated = RuleIncludedFieldSparql.readsValueNode(f)
+                        && !sharedVars.containsKey(f.fieldName());
                 q.selectRaw("(" + agg + "(?" + var + "_s) AS ?" + var + ")");
-                if (isSort) sortVar = var;
+                if (isSort) {
+                    // Order by the time itself, never by the packed string: packed,
+                    // a BC year sorts by its digits and lands the wrong way round.
+                    if (dated) {
+                        q.selectRaw("(" + agg + "(?" + var + "_t) AS ?" + var + "Sort)");
+                        sortVar = var + "Sort";
+                    } else {
+                        sortVar = var;
+                    }
+                }
                 // When the value filter binds this var (?<var>_s), don't emit the
                 // field's own binding too.
                 if (!sharedVars.containsKey(f.fieldName())) {
-                    String triple = "  ?value wdt:" + RuleNode.cleanPid(f.propertyPid())
-                            + " ?" + var + "_s .\n";
+                    String triple = dated
+                            ? RuleIncludedFieldSparql.datePattern(
+                                    RuleNode.cleanPid(f.propertyPid()), var, var + "_s")
+                            : "  ?value wdt:" + RuleNode.cleanPid(f.propertyPid())
+                                    + " ?" + var + "_s .\n";
                     includedPatterns.append(
                             f.optional() ? "  OPTIONAL {\n  " + triple + "  }\n" : triple);
                 }
@@ -930,7 +946,7 @@ public final class RuleNodeQueryBuilder {
             index++;
         }
 
-        q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
+q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
         appendMembershipFilter(q, node);
         appendSitelinkRequirement(q, node);
         appendAllowedQids(q, node);
@@ -1388,4 +1404,6 @@ public final class RuleNodeQueryBuilder {
                 sb, node.includedFields(), withLabels, skipFields);
         if (!sb.isEmpty()) q.rawWhere(sb.toString());
     }
+
+
 }

@@ -285,6 +285,12 @@ public final class RuleTreeCompiler {
             return RuleIncludedField.FieldKind.MEDIA;
         }
 
+        // Before the collection test: a date is a date whether one or many, and the
+        // value node is what carries its calendar either way.
+        if (field.type() == FieldType.DATE) {
+            return RuleIncludedField.FieldKind.DATE;
+        }
+
         if (field.type() == FieldType.ENTITY || field.collection()) {
             return RuleIncludedField.FieldKind.ENTITY;
         }
@@ -508,6 +514,9 @@ public final class RuleTreeCompiler {
     private static RuleIncludedField.FieldKind fieldKindFor(CompiledField field) {
         if (field.type() == FieldType.IMAGE) {
             return RuleIncludedField.FieldKind.MEDIA;
+        }
+        if (field.type() == FieldType.DATE) {
+            return RuleIncludedField.FieldKind.DATE;
         }
         if (field.type() == FieldType.ENTITY || field.collection()) {
             return RuleIncludedField.FieldKind.ENTITY;

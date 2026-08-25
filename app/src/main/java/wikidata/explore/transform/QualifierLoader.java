@@ -343,7 +343,7 @@ public class QualifierLoader {
                     // the API attached to the value and only this parser reads back.
                     for (String value : vals) {
                         aux.FlexibleDate date =
-                                aux.FlexibleDate.fromWikidataLiteral(value);
+                                wikidata.CalendarModelCodec.readTime(value);
                         if (date != null) {
                             putQualifier(stmt, q, date);
                             if (!q.multi()) break;

@@ -161,6 +161,7 @@ public final class RuleTreeExplainer {
         String base = switch (f.kind()) {
             case MEDIA  -> "image";
             case ENTITY -> "reference";
+            case DATE   -> "date";
             case AUTO   -> "value";
         };
         String type = f.collection() ? "list of " + base + "s" : base;

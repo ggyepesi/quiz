@@ -22,49 +22,18 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
 
     public enum Precision { YEAR, MONTH, DAY }
 
-    /** The calendar a date's numbers are expressed in. Wikidata states this per
-     *  time value; dates before the 1582 reform are commonly Julian, and the same
-     *  numbers mean a different day in each calendar. Carried, never silently
-     *  converted — the source said which one it meant. */
+    /** The calendar a date's numbers are expressed in. Sources that state one say
+     *  so in their own vocabulary; translating that into these two values is the
+     *  source adapter's job, not this type's. Dates before the 1582 reform are
+     *  commonly Julian, and the same numbers mean a different day in each. */
     public enum Calendar {
-        GREGORIAN, JULIAN;
-
-        /** Wikidata's proleptic calendar-model items. Unknown/absent → Gregorian,
-         *  which is both the overwhelming majority and Wikidata's own default. */
-        public static Calendar ofModel(String calendarModelUri) {
-            if (calendarModelUri == null) {
-                return GREGORIAN;
-            }
-            String q = calendarModelUri.substring(
-                    calendarModelUri.lastIndexOf('/') + 1).trim();
-            return "Q1985786".equals(q) ? JULIAN : GREGORIAN;
-        }
+        GREGORIAN, JULIAN
     }
 
     /** The marker {@link #format} appends for a non-default calendar, and
      *  {@link #parse} reads back. Gregorian appends nothing, so every date
      *  written before calendars existed round-trips unchanged. */
     private static final String JULIAN_MARK = " (Julian)";
-    private static final java.util.regex.Pattern WIKIDATA_PRECISION_MARK =
-            java.util.regex.Pattern.compile("\\s*\\[precision=(\\d+)]$");
-
-    /** The suffix a raw time literal carries so its calendar survives a String-only
-     *  channel — empty for Gregorian, so ordinary literals are untouched. Written by
-     *  whoever holds the value node's {@code calendarmodel}; read back by
-     *  {@link #fromWikidataLiteral(String)}. */
-    public static String calendarMark(String calendarModelUri) {
-        return Calendar.ofModel(calendarModelUri) == Calendar.JULIAN ? JULIAN_MARK : "";
-    }
-
-    /**
-     * Suffix for the precision stored beside a Wikibase time value. The raw time
-     * alone is ambiguous: a genuine day on 1 January has the same numbers as a
-     * year-precision value padded by WDQS. Kept in the String-only API channel
-     * and consumed by {@link #fromWikidataLiteral(String)}.
-     */
-    public static String precisionMark(int wikidataPrecision) {
-        return wikidataPrecision < 0 ? "" : " [precision=" + wikidataPrecision + "]";
-    }
 
     // month/day are 0 when the precision doesn't reach them; year may be
     // negative (BC).
@@ -195,37 +164,27 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
             java.util.regex.Pattern.compile("^([+-]?)0*(\\d+)-(\\d{2})-(\\d{2})T");
 
     /**
-     * Converts a raw Wikidata time literal, reading the calendar from the value's
-     * {@code calendarmodel}. Null when {@code s} isn't a time literal.
-     */
-    public static FlexibleDate fromWikidataLiteral(String s, String calendarModelUri) {
-        FlexibleDate d = fromWikidataLiteral(s);
-        return d == null ? null : d.inCalendar(Calendar.ofModel(calendarModelUri));
-    }
-
-    /**
      * Converts a raw Wikidata time literal; null when {@code s} isn't one —
      * safe to probe arbitrary values with. The calendar is unstated here, so the
      * date reads as Gregorian; use {@link #fromWikidataLiteral(String, String)}
      * wherever the value node's calendar model is in hand.
      */
     public static FlexibleDate fromWikidataLiteral(String s) {
+        return fromWikidataLiteral(s, null);
+    }
+
+    /**
+     * As {@link #fromWikidataLiteral(String)}, for a source that states the precision
+     * its value was recorded at. Stated precision wins over the padding convention,
+     * which cannot tell a year padded to {@code -01-01} from a real 1 January.
+     */
+    public static FlexibleDate fromWikidataLiteral(String s, Precision stated) {
         if (s == null) {
             return null;
         }
         s = s.trim();
-        Integer explicitPrecision = null;
-        java.util.regex.Matcher precision = WIKIDATA_PRECISION_MARK.matcher(s);
-        if (precision.find()) {
-            try {
-                explicitPrecision = Integer.parseInt(precision.group(1));
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
-            s = s.substring(0, precision.start()).trim();
-        }
-        // A literal may carry the calendar marker: the API hands the calendar model
-        // alongside the time, and the string is the only channel it travels in.
+        // Only this type's own written form is read here. A source's calendar
+        // vocabulary is decoded by that source's adapter before it gets this far.
         Calendar cal = Calendar.GREGORIAN;
         if (s.endsWith(JULIAN_MARK)) {
             cal = Calendar.JULIAN;
@@ -233,12 +192,12 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
         }
         // The calendar is applied at one exit, so a branch added to the precision
         // reading below cannot quietly drop it.
-        FlexibleDate d = readLiteral(s, explicitPrecision);
+        FlexibleDate d = readLiteral(s, stated);
         return d == null ? null : d.inCalendar(cal);
     }
 
     // The precision reading proper: numbers only, no calendar.
-    private static FlexibleDate readLiteral(String s, Integer explicitPrecision) {
+    private static FlexibleDate readLiteral(String s, Precision stated) {
         java.util.regex.Matcher m = WD_TIME.matcher(s);
         if (!m.find()) {
             return null;
@@ -250,14 +209,11 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
             }
             int mm = Integer.parseInt(m.group(3));
             int dd = Integer.parseInt(m.group(4));
-            if (explicitPrecision != null) {
-                // Wikibase: 9=year, 10=month, 11=day. FlexibleDate deliberately
-                // has these three useful display precisions; coarser values remain
-                // year-shaped rather than inventing a month or day.
-                if (explicitPrecision <= 9) {
+            if (stated != null) {
+                if (stated == Precision.YEAR) {
                     return new FlexibleDate(y);
                 }
-                if (explicitPrecision == 10) {
+                if (stated == Precision.MONTH) {
                     return mm == 0 ? new FlexibleDate(y) : new FlexibleDate(y, mm);
                 }
                 if (mm == 0) {

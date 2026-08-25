@@ -21,7 +21,7 @@ class QualifierDateKindTest {
 
     // Stephen I of Hungary, crowned 25 December 1000 — Julian, as Wikidata states it.
     private static final String CROWNED =
-            "+1000-12-25T00:00:00Z" + aux.FlexibleDate.calendarMark(
+            "+1000-12-25T00:00:00Z" + wikidata.CalendarModelCodec.calendarMark(
                     "http://www.wikidata.org/entity/Q1985786");
 
     private static WikidataDynamicObject person(String qid, String name) {
@@ -104,7 +104,7 @@ class QualifierDateKindTest {
     @Test void aMultiDateQualifierKeepsEveryUsableValue() {
         WikidataDynamicObject stephen = person("Q170206", "Stephen I");
         WikidataDynamicObject position = person("Q6412254", "King");
-        String later = "+1001-01-01T00:00:00Z" + aux.FlexibleDate.precisionMark(11);
+        String later = "+1001-01-01T00:00:00Z" + wikidata.CalendarModelCodec.precisionMark(11);
         StubApi api = new StubApi(Map.of("Q170206", List.of(
                 new WikidataApiClient.ApiStatement("Q170206$r", "Q6412254",
                         Map.of("P580", List.of(CROWNED, later))))));

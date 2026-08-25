@@ -92,26 +92,12 @@ class FlexibleDateTest {
     // different day in each, so the calendar has to survive every channel a
     // date travels in — including the String-only ones.
 
-    @Test
-    void readsTheCalendarModelOffAWikidataTimeValue() {
-        assertEquals(FlexibleDate.Calendar.JULIAN,
-                FlexibleDate.fromWikidataLiteral("+1500-03-01T00:00:00Z",
-                        "http://www.wikidata.org/entity/Q1985786").calendar(),
-                "Q1985786 is the proleptic Julian calendar");
-        assertEquals(FlexibleDate.Calendar.GREGORIAN,
-                FlexibleDate.fromWikidataLiteral("+1959-04-06T00:00:00Z",
-                        "http://www.wikidata.org/entity/Q1985727").calendar());
-        assertEquals(FlexibleDate.Calendar.GREGORIAN,
-                FlexibleDate.fromWikidataLiteral("+1959-04-06T00:00:00Z", null)
-                        .calendar(),
-                "an unstated calendar model reads as Gregorian, Wikidata's default");
-    }
 
     @Test
     void aJulianDateSurvivesFormatAndParse() {
         // Not day 1 — the padding convention reads that as month precision.
-        FlexibleDate julian = FlexibleDate.fromWikidataLiteral(
-                "+1500-03-15T00:00:00Z", "http://www.wikidata.org/entity/Q1985786");
+        FlexibleDate julian = FlexibleDate.fromWikidataLiteral("+1500-03-15T00:00:00Z")
+                .inCalendar(FlexibleDate.Calendar.JULIAN);
         FlexibleDate back = FlexibleDate.parse(julian.format());
         assertEquals(julian, back, "format/parse is the persistence contract");
         assertEquals(FlexibleDate.Calendar.JULIAN, back.calendar());
@@ -130,42 +116,8 @@ class FlexibleDateTest {
                 "+2015-00-00T00:00:00Z").format());
     }
 
-    @Test
-    void theCalendarSurvivesAStringOnlyChannel() {
-        // ApiStatement carries values as Strings, so a raw literal has to be able
-        // to state its own calendar — this is how the API path keeps it.
-        String literal = "+1500-03-15T00:00:00Z"
-                + FlexibleDate.calendarMark("http://www.wikidata.org/entity/Q1985786");
-        assertEquals(FlexibleDate.Calendar.JULIAN,
-                FlexibleDate.fromWikidataLiteral(literal).calendar());
-        assertEquals("", FlexibleDate.calendarMark(
-                "http://www.wikidata.org/entity/Q1985727"),
-                "Gregorian marks nothing, so ordinary literals are untouched");
-    }
 
-    @Test
-    void explicitWikidataPrecisionDistinguishesPaddingFromARealFirstDay() {
-        String firstJanuary = "+1959-01-01T00:00:00Z";
-        assertEquals(FlexibleDate.Precision.DAY,
-                FlexibleDate.fromWikidataLiteral(
-                        firstJanuary + FlexibleDate.precisionMark(11)).precision());
-        assertEquals("1959-01-01", FlexibleDate.fromWikidataLiteral(
-                firstJanuary + FlexibleDate.precisionMark(11)).format());
-        assertEquals(FlexibleDate.Precision.YEAR,
-                FlexibleDate.fromWikidataLiteral(
-                        firstJanuary + FlexibleDate.precisionMark(9)).precision());
-    }
 
-    @Test
-    void precisionAndCalendarSurviveTheSameStringChannel() {
-        String literal = "+1500-03-01T00:00:00Z"
-                + FlexibleDate.calendarMark("http://www.wikidata.org/entity/Q1985786")
-                + FlexibleDate.precisionMark(11);
-        FlexibleDate date = FlexibleDate.fromWikidataLiteral(literal);
-        assertEquals(FlexibleDate.Precision.DAY, date.precision());
-        assertEquals(FlexibleDate.Calendar.JULIAN, date.calendar());
-        assertEquals("1500-03-01 (Julian)", date.format());
-    }
 
     @Test
     void sameNumbersInDifferentCalendarsAreDifferentDays() {
@@ -175,4 +127,5 @@ class FlexibleDateTest {
         assertNotEquals(0, g.compareTo(j), "compareTo stays consistent with equals");
         assertEquals("JULIAN", j.view("calendar"));
     }
+
 }

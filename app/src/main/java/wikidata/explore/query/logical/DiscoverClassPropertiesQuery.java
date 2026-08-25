@@ -269,7 +269,7 @@ public class DiscoverClassPropertiesQuery
         if (!qid.isBlank()) {
             return qid;
         }
-        aux.FlexibleDate date = aux.FlexibleDate.fromWikidataLiteral(raw);
+        aux.FlexibleDate date = wikidata.CalendarModelCodec.readTime(raw);
         if (date != null) {
             return date.format();
         }
