@@ -776,7 +776,9 @@ public class ModelBuilderFrame extends JFrame {
                             }
                         };
                 logWindow.registerPipeline(
-                        "Generate domain — " + snapshot.name(), generationPipeline);
+                        "Generate domain — " + snapshot.name(), generationPipeline,
+                        snapshot.name(),
+                        storage.snapshotFile(snapshot.name()).getParentFile().toPath());
                 process.swing.workflow.SwingProcessWorkflow.start(
                         this, processRunner, action, this::openPipelineReference);
             } catch (Exception ex) {
@@ -1103,7 +1105,9 @@ public class ModelBuilderFrame extends JFrame {
                         if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
                     }
                 };
-        logWindow.registerPipeline(title + " — " + snapshot.name(), pipeline);
+        logWindow.registerPipeline(title + " — " + snapshot.name(), pipeline,
+                snapshot.name(),
+                storage.snapshotFile(snapshot.name()).getParentFile().toPath());
         process.swing.workflow.SwingProcessWorkflow.start(
                 this, processRunner, action, this::openPipelineReference);
     }

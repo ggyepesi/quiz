@@ -14,6 +14,7 @@ import process.SavedRunArtifact;
 
 import javax.swing.*;
 import java.awt.*;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -172,9 +173,22 @@ public class WorkflowLogWindow implements LogListener {
     /** Associates a live executable pipeline with the log history saved afterwards. */
     public synchronized void registerPipeline(
             String title, process.ProcessWorkflowPipeline pipeline) {
+        registerPipeline(title, pipeline, null, null);
+    }
+
+    /** Associates the run with the domain it belongs to and the directory containing
+     *  its eventual snapshot. The domain is stated, not recovered from {@code title}:
+     *  a title is a display string, and a domain whose own name contains the separator
+     *  cannot be split back out of one. */
+    public synchronized void registerPipeline(
+            String title, process.ProcessWorkflowPipeline pipeline,
+            String domain, Path snapshotDirectory) {
         if (pipeline == null) return;
         pipelines.add(new RegisteredPipeline(
-                title == null || title.isBlank() ? "Pipeline" : title, pipeline));
+                title == null || title.isBlank() ? "Pipeline" : title, pipeline,
+                domain == null ? "" : domain.trim(),
+                snapshotDirectory == null ? null
+                        : snapshotDirectory.toAbsolutePath().normalize()));
     }
 
     private void saveLog(Component parent) {
@@ -182,9 +196,12 @@ public class WorkflowLogWindow implements LogListener {
             JOptionPane.showMessageDialog(parent, "The log is empty — nothing to save.");
             return;
         }
-        JFileChooser chooser = new JFileChooser();
+        RegisteredPipeline destination = destination();
+        Path directory = preferredDirectory(destination);
+        JFileChooser chooser = new JFileChooser(directory.toFile());
         chooser.setDialogTitle("Save query log");
-        chooser.setSelectedFile(new java.io.File("query-log.txt"));
+        chooser.setSelectedFile(suggestedLogPath(
+                directory, destination == null ? "" : destination.domain()).toFile());
         if (chooser.showSaveDialog(parent) != JFileChooser.APPROVE_OPTION) {
             return;
         }
@@ -207,8 +224,60 @@ public class WorkflowLogWindow implements LogListener {
         }
     }
 
-    private record RegisteredPipeline(
-            String title, process.ProcessWorkflowPipeline pipeline) {}
+    /** The run the save dialog follows: the most recently registered one that says
+     *  where it belongs. Name and folder are read from the SAME run — taken from
+     *  different ones, a log could be named after one domain inside another's folder. */
+    synchronized RegisteredPipeline destination() {
+        for (int i = pipelines.size() - 1; i >= 0; i--) {
+            RegisteredPipeline candidate = pipelines.get(i);
+            if (!candidate.domain().isBlank()) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private static Path preferredDirectory(RegisteredPipeline destination) {
+        Path directory = destination == null ? null : destination.snapshotDirectory();
+        return directory != null && java.nio.file.Files.isDirectory(directory)
+                ? directory
+                : Path.of(aux.Constants.dataDirectory).toAbsolutePath().normalize();
+    }
+
+    static Path suggestedLogPath(Path directory, String domain) {
+        Path folder = directory == null ? Path.of(".") : directory;
+        String slug = filenamePart(domain);
+        java.util.regex.Pattern occupied = java.util.regex.Pattern.compile(
+                java.util.regex.Pattern.quote("query-log-" + slug + "-")
+                        + "(\\d+)(?:\\.txt|\\.run\\.json)",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        int highest = 0;
+        if (java.nio.file.Files.isDirectory(folder)) {
+            try (var files = java.nio.file.Files.list(folder)) {
+                highest = files.map(path -> path.getFileName().toString())
+                        .map(occupied::matcher)
+                        .filter(java.util.regex.Matcher::matches)
+                        .mapToInt(matcher -> {
+                            try { return Integer.parseInt(matcher.group(1)); }
+                            catch (NumberFormatException ignored) { return 0; }
+                        }).max().orElse(0);
+            } catch (java.io.IOException ignored) {
+                // A suggestion must never prevent the save dialog from opening.
+            }
+        }
+        return folder.resolve("query-log-" + slug + "-" + (highest + 1) + ".txt");
+    }
+
+    private static String filenamePart(String value) {
+        String slug = value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^\\p{L}\\p{N}]+", "-")
+                .replaceAll("^-+|-+$", "");
+        return slug.isBlank() ? "domain" : slug;
+    }
+
+    record RegisteredPipeline(
+            String title, process.ProcessWorkflowPipeline pipeline,
+            String domain, Path snapshotDirectory) {}
 
     public void info(String text) {
         if (text == null || text.isBlank()) {
