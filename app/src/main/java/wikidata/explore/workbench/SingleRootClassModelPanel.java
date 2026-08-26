@@ -19,6 +19,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
     private final JButton renameClassButton = new JButton("Rename class");
     private final JButton addClassButton = new JButton("Add class");
+    private final JButton importClassButton = new JButton("Copy class…");
     private final JButton addFieldButton = new JButton("Add field");
     private final JButton removeButton = new JButton("Remove");
 
@@ -54,8 +55,17 @@ public class SingleRootClassModelPanel extends JPanel {
     public void setEditingEnabled(boolean enabled) {
         renameClassButton.setEnabled(enabled);
         addClassButton.setEnabled(enabled);
+        importClassButton.setEnabled(enabled);
         addFieldButton.setEnabled(enabled);
         removeButton.setEnabled(enabled);
+    }
+
+    public void onImportClass(Runnable action) {
+        for (java.awt.event.ActionListener listener
+                : importClassButton.getActionListeners()) {
+            importClassButton.removeActionListener(listener);
+        }
+        if (action != null) importClassButton.addActionListener(e -> action.run());
     }
 
     public Object selectedUserObject() {
@@ -178,6 +188,7 @@ public class SingleRootClassModelPanel extends JPanel {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         buttons.add(renameClassButton);
         buttons.add(addClassButton);
+        buttons.add(importClassButton);
         buttons.add(addFieldButton);
         buttons.add(removeButton);
 

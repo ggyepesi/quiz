@@ -280,6 +280,42 @@ public class GeneratedProjectModel {
         }
     }
 
+    /** Replace a same-named class in place, or append it when absent. */
+    public void replaceClass(GeneratedClassModel replacement) {
+        if (replacement == null) return;
+        GeneratedClassModel existing = findClass(replacement.className());
+        if (existing == null) {
+            addClass(replacement);
+            return;
+        }
+        int index = classes.indexOf(existing);
+        classes.set(index, replacement);
+        if (rootClass == existing) rootClass = replacement;
+    }
+
+    public void replaceSelection(Selection replacement) {
+        if (replacement == null) return;
+        Selection existing = findSelection(replacement.name());
+        if (existing == null) {
+            addSelection(replacement);
+            return;
+        }
+        selections.set(selections.indexOf(existing), replacement);
+    }
+
+    public void replaceEntityKindRule(EntityKindRule replacement) {
+        if (replacement == null) return;
+        for (int i = 0; i < entityKindRules.size(); i++) {
+            EntityKindRule existing = entityKindRules.get(i);
+            if (existing.className().equals(replacement.className())
+                    && existing.propertyPid().equals(replacement.propertyPid())) {
+                entityKindRules.set(i, replacement);
+                return;
+            }
+        }
+        entityKindRules.add(replacement);
+    }
+
     public GeneratedClassModel findClass(String name) {
         if (name == null || name.isBlank()) {
             return null;

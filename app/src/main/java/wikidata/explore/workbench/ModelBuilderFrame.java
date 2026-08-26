@@ -641,6 +641,7 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> modelChanged());
+        classModelPanel.onImportClass(this::importClassConfiguration);
 
         sourceWorkbench.afterApplyField(f -> {
             modelChanged();
@@ -1481,6 +1482,120 @@ public class ModelBuilderFrame extends JFrame {
                 lastRun.selfReferenceAudit(), lastRun.ownedCompositionAudit(),
                 lastRun.kindClassificationAudit(), lastRun.projectionAudit()));
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
+    }
+
+    private void importClassConfiguration() {
+        try {
+            sourceWorkbench.applyEdits();
+            java.util.List<String> domains = storage.modelBackedNames().stream()
+                    .filter(name -> !dataset.DomainStorage.key(name).equals(
+                            dataset.DomainStorage.key(projectModel.name())))
+                    .toList();
+            if (domains.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "No other saved model is available.",
+                        "Copy class", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            String domain = (String) JOptionPane.showInputDialog(
+                    this, "Copy from domain:", "Copy class configuration",
+                    JOptionPane.PLAIN_MESSAGE, null, domains.toArray(), domains.getFirst());
+            if (domain == null) return;
+
+            File sourceFile = storage.modelFileOf(domain);
+            GeneratedProjectModel source = new GeneratedProjectModelStore().load(sourceFile);
+            java.util.List<String> classNames = source.classes().stream()
+                    .map(GeneratedClassModel::className).toList();
+            String className = (String) JOptionPane.showInputDialog(
+                    this, "Class:", "Copy from " + domain,
+                    JOptionPane.PLAIN_MESSAGE, null, classNames.toArray(),
+                    classNames.getFirst());
+            if (className == null) return;
+
+            ClassImportPlan plan = ClassImportPlan.of(source, projectModel, className);
+            DefaultListModel<String> dependencyModel = new DefaultListModel<>();
+            plan.dependencyClassNames().forEach(dependencyModel::addElement);
+            JList<String> dependencies = new JList<>(dependencyModel);
+            dependencies.setVisibleRowCount(Math.min(8,
+                    Math.max(2, dependencyModel.getSize())));
+            dependencies.setSelectionMode(
+                    ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+            if (!dependencyModel.isEmpty()) {
+                dependencies.setSelectionInterval(0, dependencyModel.size() - 1);
+            }
+
+            JComboBox<ClassImportPlan.ConflictPolicy> conflictPolicy =
+                    new JComboBox<>(ClassImportPlan.ConflictPolicy.values());
+            conflictPolicy.setRenderer(new DefaultListCellRenderer() {
+                @Override public Component getListCellRendererComponent(
+                        JList<?> list, Object value, int index,
+                        boolean selected, boolean focus) {
+                    super.getListCellRendererComponent(
+                            list, value, index, selected, focus);
+                    setText(value == ClassImportPlan.ConflictPolicy.REPLACE
+                            ? "Replace conflicting target declarations"
+                            : "Keep and reuse target declarations");
+                    return this;
+                }
+            });
+
+            JTextArea preview = new JTextArea(8, 52);
+            preview.setEditable(false);
+            preview.setLineWrap(true);
+            preview.setWrapStyleWord(true);
+            preview.setText("Copy " + className + " from " + domain + " into "
+                    + projectModel.name() + ".\n\n"
+                    + "Class configuration: identity, display name, inheritance, "
+                    + "fields and source bindings.\n"
+                    + "Supporting declarations: " + plan.selections().size()
+                    + " selection(s), " + plan.kindRules().size()
+                    + " entity-kind rule(s).\n"
+                    + "Conflicts: " + (plan.conflicts().isEmpty()
+                            ? "none" : String.join(", ", plan.conflicts()))
+                    + ".\n\nGenerated instances, observed vocabulary values, counts "
+                    + "and curation are not copied.");
+
+            JPanel choices = new JPanel();
+            choices.setLayout(new BoxLayout(choices, BoxLayout.Y_AXIS));
+            choices.add(new JScrollPane(preview));
+            if (!dependencyModel.isEmpty()) {
+                choices.add(Box.createVerticalStrut(8));
+                choices.add(new JLabel("Dependent classes (selected = copy):"));
+                choices.add(new JScrollPane(dependencies));
+            }
+            if (!plan.conflicts().isEmpty()) {
+                choices.add(Box.createVerticalStrut(8));
+                choices.add(new JLabel("If a name already exists:"));
+                choices.add(conflictPolicy);
+            }
+
+            int accepted = JOptionPane.showConfirmDialog(this, choices,
+                    "Copy class configuration", JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE);
+            if (accepted != JOptionPane.OK_OPTION) return;
+
+            java.util.LinkedHashSet<String> selected =
+                    new java.util.LinkedHashSet<>(dependencies.getSelectedValuesList());
+            selected.add(className);
+            ClassImportPlan.ConflictPolicy policy =
+                    (ClassImportPlan.ConflictPolicy) conflictPolicy.getSelectedItem();
+            java.util.List<GeneratedClassModel> imported = plan.apply(selected, policy);
+            modelChanged();
+            GeneratedClassModel copied = projectModel.findClass(className);
+            if (copied != null) classModelPanel.selectClass(copied);
+            sourceWorkbench.edit(copied);
+            JOptionPane.showMessageDialog(this,
+                    imported.isEmpty()
+                            ? "The selected target declarations were reused."
+                            : "Copied " + imported.size() + " class configuration(s): "
+                                    + imported.stream().map(GeneratedClassModel::className)
+                                            .collect(java.util.stream.Collectors.joining(", ")),
+                    "Copy class", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception failure) {
+            JOptionPane.showMessageDialog(this,
+                    failure.getMessage() == null ? failure.toString() : failure.getMessage(),
+                    "Could not copy class", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void modelChanged() {
