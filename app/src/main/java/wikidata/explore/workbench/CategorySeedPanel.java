@@ -245,7 +245,7 @@ public class CategorySeedPanel extends JPanel {
     }
 
     private static void configurePageView(ViewableListPanel panel) {
-        panel.hiddenFields(java.util.Set.of("title"));
+        panel.hiddenFields(java.util.Set.of("pageTitle"));
         panel.valueLinker(wikidata.ui.WikidataLinks.valueLinker());
         // This browser has three compact instance surfaces; give their cards the
         // space initially and let the reader expand controls only where needed.
