@@ -1,0 +1,3 @@
+# History — per-class counts, one row per save
+# counts every saved entity by class membership (ids include statement ids); classes overlap, so columns may exceed total
+2026-08-26T18:20:34	total=167	Name=56	Person=56	OfficeHolding=54	Position=1
