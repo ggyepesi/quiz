@@ -21,6 +21,7 @@ import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.StatementFieldSemantics;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -137,13 +138,12 @@ public final class ModelStatementReifications {
         String valueField = findValueField(
                 statementClass, statementPid);
 
-        List<String> valueQids = sourceClassModel == null
-                ? new ArrayList<>()
-                : valueQids(
-                        statementClass,
-                        sourceClassModel,
-                        statementPid,
-                        valueField);
+        List<String> valueQids = valueQids(
+                statementClass,
+                sourceClassModel,
+                project,
+                statementPid,
+                valueField);
 
         List<QualifierLoadConfig.Qualifier> qualifiers =
                 new ArrayList<>();
@@ -287,9 +287,9 @@ public final class ModelStatementReifications {
         if (valueField.isBlank()) {
             valueField = findValueField(statementClass, statementPid);
         }
-        List<String> valueQids = sourceClassModel == null
-                ? new ArrayList<>()
-                : valueQids(statementClass, sourceClassModel, statementPid, valueField);
+        List<String> valueQids = valueQids(
+                statementClass, sourceClassModel, project,
+                statementPid, valueField);
 
         List<QualifierLoadConfig.Qualifier> qualifiers = new ArrayList<>();
         List<String> listQualifiers = new ArrayList<>();
@@ -397,6 +397,7 @@ public final class ModelStatementReifications {
     private static List<String> valueQids(
             CompiledClass statementClass,
             CompiledClass sourceClass,
+            CompiledProjectModel project,
             String statementPid,
             String valueField) {
 
@@ -418,9 +419,14 @@ public final class ModelStatementReifications {
                     values.add(cleanQid);
                 }
             }
+            if (values.isEmpty() && project != null
+                    && valueModel.type() == FieldType.ENTITY) {
+                project.findClass(valueModel.entityClassName())
+                        .ifPresent(target -> addQids(values, target.seedQids()));
+            }
         }
 
-        if (values.isEmpty()
+        if (values.isEmpty() && sourceClass != null
                 && statementPid.equals(
                 clean(sourceClass.sourceMapping().propertyPid()))) {
 
@@ -528,6 +534,7 @@ public final class ModelStatementReifications {
     private static List<String> valueQids(
             GeneratedClassModel statementClass,
             GeneratedClassModel sourceClass,
+            GeneratedProjectModel project,
             String statementPid,
             String valueField) {
 
@@ -546,6 +553,14 @@ public final class ModelStatementReifications {
                     values.add(cleanQid);
                 }
             }
+            if (values.isEmpty() && project != null
+                    && valueModel.type() == FieldType.ENTITY) {
+                GeneratedClassModel target =
+                        project.findClass(valueModel.entityClassName());
+                if (target != null) {
+                    addQids(values, target.seedQids());
+                }
+            }
         }
 
         // If the value field has no explicit QID set, inherit the SOURCE
@@ -555,7 +570,7 @@ public final class ModelStatementReifications {
         // This keeps the qualifier-load filter aligned with the root query.
         // Falling back only to a broad P31 type can miss exceptional values,
         // such as Oscar categories that are not typed Q19020.
-        if (values.isEmpty()
+        if (values.isEmpty() && sourceClass != null
                 && statementPid.equals(
                 clean(sourceClass.instanceMapping().propertyPid()))) {
 
@@ -575,6 +590,19 @@ public final class ModelStatementReifications {
         }
 
         return new ArrayList<>(values);
+    }
+
+    private static void addQids(
+            Set<String> target, Collection<String> candidates) {
+        if (target == null || candidates == null) {
+            return;
+        }
+        for (String candidate : candidates) {
+            String qid = clean(candidate);
+            if (WikidataIds.isQid(qid)) {
+                target.add(qid);
+            }
+        }
     }
 
     /**

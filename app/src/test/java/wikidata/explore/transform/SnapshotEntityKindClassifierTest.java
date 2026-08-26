@@ -58,6 +58,23 @@ class SnapshotEntityKindClassifierTest {
         assertTrue(target.directClassNames().contains("Nominee"));
     }
 
+    @Test void aSettledKindIsNotReportedAsMissingEvidence() {
+        GeneratedProjectModel model = model();
+        WikidataDynamicObject target = entity("Q2", "Person");
+        WikidataDynamicObject nomination = entity("N2", "Nomination");
+        nomination.put("nominee", target);
+
+        SnapshotEntityKindClassifier.Result result =
+                SnapshotEntityKindClassifier.apply(model,
+                        List.of(nomination, target), List.of(target), null);
+
+        assertEquals(0, result.classified());
+        assertEquals(0, result.unknown());
+        assertEquals(0, result.withoutStoredEvidence());
+        assertTrue(result.withoutStoredEvidenceQids().isEmpty(),
+                "a settled kind must not trigger remote reclassification");
+    }
+
     @Test void evidenceProducerScopesKindCandidatesToItsRole() {
         GeneratedProjectModel model = model();
         GeneratedFieldModel forWork = model.rootClass().addField(

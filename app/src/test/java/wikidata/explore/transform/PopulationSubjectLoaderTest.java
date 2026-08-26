@@ -66,6 +66,9 @@ class PopulationSubjectLoaderTest {
                 "the population subject was discovered, stamped, and pooled");
         assertEquals("The Whale", subject.getDisplayName(),
                 "its label was resolved, not left as a bare QID");
+        assertEquals("https://www.wikidata.org/wiki/Q105883400",
+                subject.get("wikidata"),
+                "direct discovery keeps the same source link as ordinary entities");
         assertFalse(created.isEmpty(),
                 "its statement was loaded, ready to reify");
     }

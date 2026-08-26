@@ -8,12 +8,14 @@ import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.GeneratedProjectModelValidator;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.VocabularySelection;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -67,5 +69,36 @@ class SourceClasslessReifyTest {
         assertTrue(r.load().discoverSubjects());
         assertEquals("__subject_Nomination", r.reify().sourceType());
         assertEquals(List.of("Q102427", "Q106301"), r.load().valueQids());
+    }
+
+    @Test void valueEntityClassOwnsTheDirectDiscoveryDomain() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.seedQids().add("Q6412254");
+        project.addClass(position);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        holding.instanceMapping().propertyPid("P39");
+        var value = holding.addField(
+                "position", FieldType.ENTITY, FieldCardinality.SINGLE);
+        value.entityClassName("Position");
+        value.mapping().propertyPid("P39");
+        project.addClass(holding);
+
+        assertFalse(GeneratedProjectModelValidator.validate(project).format()
+                        .contains("needs a bounded value domain"),
+                "the seeded value class bounds direct subject discovery");
+
+        var editable = ModelStatementReifications.deriveOne(holding, project);
+        assertNotNull(editable);
+        assertEquals(List.of("Q6412254"), editable.load().valueQids());
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+        var compiledHolding = compiled.findClass("OfficeHolding").orElseThrow();
+        var compiledResult =
+                ModelStatementReifications.deriveOne(compiledHolding, compiled);
+        assertNotNull(compiledResult);
+        assertEquals(List.of("Q6412254"), compiledResult.load().valueQids());
     }
 }

@@ -73,6 +73,11 @@ public final class PopulationSubjectLoader {
                 WikidataDynamicObject o = known.get(qid);
                 if (o == null) {
                     o = new WikidataDynamicObject(qid, qid);
+                    // A directly discovered subject is still a Wikidata entity. The
+                    // ordinary class loader seeds this source link while constructing
+                    // its objects; omitting it here made the same Person lose the
+                    // Wikidata affordance solely because P39 discovered it.
+                    o.put("wikidata", o.wikidataUrl());
                     known.put(qid, o);
                     created.add(o);
                 }

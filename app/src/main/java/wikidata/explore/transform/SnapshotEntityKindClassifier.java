@@ -100,6 +100,19 @@ public final class SnapshotEntityKindClassifier {
         List<WikidataDynamicObject> newlyClassified = new ArrayList<>();
         Set<String> withoutEvidenceQids = new LinkedHashSet<>();
         for (WikidataDynamicObject candidate : candidates.values()) {
+            List<WikidataDynamicObject> copies =
+                    copiesByQid.getOrDefault(candidate.qid(), List.of());
+            boolean hasUnsettledKind = rules.stream()
+                    .filter(rule -> candidatePlan.eligible(
+                            candidate.qid(), rule.propertyPid()))
+                    .anyMatch(rule -> copies.stream().noneMatch(copy ->
+                            copy.directClassNames().contains(rule.className())));
+            // A settled kind is not an evidence miss. Asking the remote classifier
+            // to prove it again can rewrite a production-site typeKey on every pass,
+            // making an otherwise fixed graph look productive forever.
+            if (!hasUnsettledKind) {
+                continue;
+            }
             Map<String, Set<String>> byPid = evidence.get(candidate.qid());
             boolean hasEvidence = false;
             boolean matched = false;
@@ -110,8 +123,7 @@ public final class SnapshotEntityKindClassifier {
                 if (values == null || values.isEmpty()) continue;
                 hasEvidence = true;
                 if (values.stream().anyMatch(rule.evidenceQids()::contains)) {
-                    for (WikidataDynamicObject copy :
-                            copiesByQid.getOrDefault(candidate.qid(), List.of())) {
+                    for (WikidataDynamicObject copy : copies) {
                         if (!copy.directClassNames().contains(rule.className())) {
                             copy.assignClass(rule.className());
                             changed = true;
@@ -121,8 +133,7 @@ public final class SnapshotEntityKindClassifier {
                 }
             }
             if (matched) {
-                for (WikidataDynamicObject copy :
-                        copiesByQid.getOrDefault(candidate.qid(), List.of())) {
+                for (WikidataDynamicObject copy : copies) {
                     for (String legacyRole : RoleSelections.legacyRoleClassNames(model)) {
                         if (copy.directClassNames().contains(legacyRole)) changed = true;
                         copy.removeClass(legacyRole);
@@ -140,7 +151,7 @@ public final class SnapshotEntityKindClassifier {
                     // The copies of this entity that the pass restamped. Every copy of
                     // one qid is the same entity, so they go in together.
                     newlyClassified.addAll(
-                            copiesByQid.getOrDefault(candidate.qid(), List.of()));
+                            copies);
                 }
             } else {
                 unknown++;

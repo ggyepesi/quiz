@@ -341,9 +341,29 @@ public final class GeneratedProjectModelValidator {
     // A source-class-less reify must bound the subjects it discovers: a P31
     // value-type filter, or a referenced VOCABULARY Selection supplying the values.
     private static boolean hasBoundedValueDomain(
-            GeneratedClassModel clazz, StatementClassSource source) {
-        return clean(clazz.instanceMapping().sourceQid()).matches("(?i)Q\\d+")
-                || source.hasValueSelection();
+            GeneratedProjectModel project,
+            GeneratedClassModel clazz,
+            StatementClassSource source) {
+        if (clean(clazz.instanceMapping().sourceQid()).matches("(?i)Q\\d+")
+                || source.hasValueSelection()) {
+            return true;
+        }
+        String valueField = StatementFieldSemantics.statementValueFieldName(clazz);
+        GeneratedFieldModel field = clazz.fields().stream()
+                .filter(f -> valueField.equals(f.name()))
+                .findFirst().orElse(null);
+        if (field == null) {
+            return false;
+        }
+        if (field.mapping().allowedQids().stream()
+                .map(GeneratedProjectModelValidator::clean)
+                .anyMatch(q -> q.matches("(?i)Q\\d+"))) {
+            return true;
+        }
+        GeneratedClassModel target = project.findClass(field.entityClassName());
+        return target != null && target.seedQids().stream()
+                .map(GeneratedProjectModelValidator::clean)
+                .anyMatch(q -> q.matches("(?i)Q\\d+"));
     }
 
     private static void validateStatementClass(
@@ -366,12 +386,13 @@ public final class GeneratedProjectModelValidator {
         // bounded value domain — a value-type filter, an explicit value set, or a
         // referenced VOCABULARY — else the membership scan is unbounded.
         if (clean(source.sourceClassName()).isBlank()) {
-            if (!hasBoundedValueDomain(clazz, source)) {
+            if (!hasBoundedValueDomain(project, clazz, source)) {
                 problems.add(Problem.error(
                         clazz.className(),
                         "A statement class with no source class discovers its "
                                 + "subjects and needs a bounded value domain "
-                                + "(value type, value set, or a VOCABULARY)."));
+                                + "(value type, value set, seeded value class, "
+                                + "or a VOCABULARY)."));
             }
             return;
         }
