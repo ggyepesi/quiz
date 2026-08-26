@@ -110,6 +110,18 @@ public class RuleTreeExtractor {
     // Per-parent child queries that fail (timeout / error) are caught so one
     // parent doesn't abort the run — but they're COUNTED so a partial extraction
     // is surfaced loudly, not silent (a swallowed failure = missing children).
+    // Field name -> the calendar models seen on it that this build cannot translate.
+    // Written from the parallel child-query workers, so it is concurrent by the same
+    // rule any worker-written collection is.
+    private final java.util.Map<String, java.util.Set<String>> untranslatedCalendars =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Fields that carried a calendar model this build does not know, and which
+     *  models they were. Empty when every date was translated. */
+    public java.util.Map<String, java.util.Set<String>> untranslatedCalendars() {
+        return java.util.Map.copyOf(untranslatedCalendars);
+    }
+
     private final java.util.concurrent.atomic.AtomicInteger childQueryFailures =
             new java.util.concurrent.atomic.AtomicInteger();
 
@@ -337,6 +349,21 @@ public class RuleTreeExtractor {
                                      childDepth, progress);
         } else if (childDepth == 0 && !rootNode.edges().isEmpty()) {
             progress.message("Child depth is 0; child edges were not loaded.\n");
+        }
+
+        if (!untranslatedCalendars.isEmpty()) {
+            StringBuilder note = new StringBuilder(
+                    "WARNING: calendar model(s) not translated during \""
+                            + rootNode.name() + "\" extraction — those values are kept "
+                            + "as text rather than dated, which is the honest answer "
+                            + "when the calendar they state is unknown:\n");
+            untranslatedCalendars.entrySet().stream()
+                    .sorted(java.util.Map.Entry.comparingByKey())
+                    .forEach(e -> note.append("    ").append(e.getKey()).append(" ← ")
+                            .append(String.join(", ",
+                                    new java.util.TreeSet<>(e.getValue())))
+                            .append('\n'));
+            progress.message(note.toString());
         }
 
         if (childQueryFailures.get() > 0) {
@@ -1535,16 +1562,34 @@ public class RuleTreeExtractor {
         if (qid != null)
             return registry.getOrCreate(
                     qid, StringUtils.firstNonBlank(label, qid));
-        // A time literal ([+-]YYYY-MM-DDThh:mm:ssZ) becomes a typed date, at the
-        // precision the literal's conventional padding implies — not a raw string.
-        aux.FlexibleDate date = wikidata.CalendarModelCodec.readTime(raw);
+        // A time literal ([+-]YYYY-MM-DDThh:mm:ssZ) becomes a typed date, carrying
+        // the calendar and precision its value node stated.
+        aux.FlexibleDate date = dateOrReport(field, raw);
         if (date == null) {
-            date = wikidata.CalendarModelCodec.readTime(label);
+            date = dateOrReport(field, label);
         }
         if (date != null) {
             return date;
         }
         return StringUtils.firstNonBlank(label, raw);
+    }
+
+    /**
+     * A date, or nothing when this value carries a calendar model the codec cannot
+     * translate. An unknown calendar is recorded against the field and the run
+     * carries on: the value is kept as its raw text rather than typed, so nothing is
+     * lost and nothing is dated wrongly. One unusual value must not end an
+     * extraction that has already cost tens of minutes — and reading it as Gregorian
+     * would misdate precisely the value that was unusual enough to say otherwise.
+     */
+    private aux.FlexibleDate dateOrReport(RuleIncludedField field, String value) {
+        String name = field == null || field.fieldName() == null
+                ? "(unnamed field)" : field.fieldName();
+        return wikidata.CalendarModelCodec.readTimeReporting(value, model ->
+                untranslatedCalendars
+                        .computeIfAbsent(name,
+                                k -> java.util.concurrent.ConcurrentHashMap.newKeySet())
+                        .add(model));
     }
 
     private static String entityQid(String value) {

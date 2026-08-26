@@ -73,6 +73,9 @@ public class QualifierLoader {
             GenerationLog log) {
 
         List<WikidataDynamicObject> created = new ArrayList<>();
+        // Calendar models this build cannot translate, per qualifier field, for
+        // this load only — never process-wide state that outlives the run.
+        Map<String, java.util.Set<String>> untranslated = new java.util.TreeMap<>();
         if (pool == null || cfg == null || !cfg.valid()) {
             return created;
         }
@@ -239,10 +242,21 @@ public class QualifierLoader {
                             s.id(), valueRef.getDisplayName());
                     stmt.type(stmtType);
                     stmt.put(valueField, valueRef);
-                    applyQualifiers(stmt, s, cfg, poolByQid, refCache);
+                    applyQualifiers(stmt, s, cfg, poolByQid, refCache,
+                            untranslated);
                     entity.merge(cfg.statementField(), stmt);
                     created.add(stmt);
                 }
+            }
+
+            if (!untranslated.isEmpty()) {
+                untranslated.forEach((field, models) -> g.message(
+                        "WARNING: " + field + " kept " + models.size()
+                                + " value(s) untyped — calendar model(s) "
+                                + String.join(", ", models)
+                                + " cannot be translated, and reading them as "
+                                + "Gregorian would misdate exactly the values "
+                                + "unusual enough to state one.\n"));
             }
 
             bindFieldPopulations(created, cfg, api().facts(), sink);
@@ -300,7 +314,8 @@ public class QualifierLoader {
             WikidataDynamicObject stmt, WikidataApiClient.ApiStatement s,
             QualifierLoadConfig cfg,
             Map<String, WikidataDynamicObject> poolByQid,
-            Map<String, WikidataDynamicObject> refCache) {
+            Map<String, WikidataDynamicObject> refCache,
+            Map<String, java.util.Set<String>> untranslated) {
 
         if (cfg.qualifiers() == null) {
             return;
@@ -342,8 +357,14 @@ public class QualifierLoader {
                     // precision it states survives — and so does its calendar, which
                     // the API attached to the value and only this parser reads back.
                     for (String value : vals) {
+                        // An untranslatable calendar drops THAT value, not the
+                        // statement: the rest of the reified record is still true.
                         aux.FlexibleDate date =
-                                wikidata.CalendarModelCodec.readTime(value);
+                                wikidata.CalendarModelCodec.readTimeReporting(
+                                        value, model -> untranslated
+                                                .computeIfAbsent(q.fieldName(),
+                                                        k -> new java.util.TreeSet<>())
+                                                .add(model));
                         if (date != null) {
                             putQualifier(stmt, q, date);
                             if (!q.multi()) break;

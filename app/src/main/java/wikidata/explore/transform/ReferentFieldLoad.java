@@ -753,6 +753,8 @@ public final class ReferentFieldLoad {
         boolean collection = field.cardinality() != null
                 && field.cardinality().isCollection();
         boolean date = field.type() == FieldType.DATE;
+        // Calendar models this build cannot translate, for THIS field and this load.
+        java.util.Set<String> untranslatedCalendars = new java.util.TreeSet<>();
         int loaded = 0;
         for (WikidataDynamicObject o : objs) {
             if (o.get(field.name()) != null) {
@@ -768,7 +770,11 @@ public final class ReferentFieldLoad {
                 if (raw == null || raw.isBlank()) {
                     continue;
                 }
-                Object v = date ? wikidata.CalendarModelCodec.readTime(raw) : raw;
+                // An untranslatable calendar drops that value rather than the load.
+                Object v = date
+                        ? wikidata.CalendarModelCodec.readTimeReporting(raw,
+                                model -> untranslatedCalendars.add(model))
+                        : raw;
                 if (v != null) {
                     values.add(v);
                 }
@@ -781,6 +787,13 @@ public final class ReferentFieldLoad {
         }
         log.message("Referent field load " + className + "." + field.name()
                 + " (" + pid + ") -> " + loaded + " value(s)\n");
+        if (!untranslatedCalendars.isEmpty() && log != null) {
+            log.message("WARNING: " + className + "." + field.name()
+                    + " kept value(s) untyped — calendar model(s) "
+                    + String.join(", ", untranslatedCalendars)
+                    + " cannot be translated, and reading them as Gregorian would "
+                    + "misdate exactly the values unusual enough to state one.\n");
+        }
         return new LoadOutcome(loaded, unreached);
     }
 

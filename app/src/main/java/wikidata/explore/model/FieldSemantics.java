@@ -31,11 +31,14 @@ public final class FieldSemantics {
         RuleDirection effectiveConfigured = configured == null
                 ? RuleDirection.ITEM_TO_ROOT : configured;
 
-        boolean scalarLiteral = effectiveCardinality != FieldCardinality.COLLECTION
-                && (effectiveType == FieldType.STRING
-                || effectiveType == FieldType.NUMBER
-                || effectiveType == FieldType.DATE);
+        // DATE always names a Wikibase time value and therefore always points out
+        // of the entity, including a collection of dates. Preserve the established
+        // collection behavior for other literal-looking field types.
+        boolean literal = effectiveType == FieldType.DATE
+                || (effectiveCardinality != FieldCardinality.COLLECTION
+                    && (effectiveType == FieldType.STRING
+                        || effectiveType == FieldType.NUMBER));
 
-        return scalarLiteral ? RuleDirection.ROOT_TO_ITEM : effectiveConfigured;
+        return literal ? RuleDirection.ROOT_TO_ITEM : effectiveConfigured;
     }
 }

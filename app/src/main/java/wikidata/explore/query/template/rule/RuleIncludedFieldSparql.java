@@ -89,13 +89,20 @@ public final class RuleIncludedFieldSparql {
      *               aggregating one.
      */
     public static String datePattern(String pid, String var, String bindTo) {
-        return "?value p:" + pid + "/psv:" + pid + " ?" + var + "_n .\n"
+        return "?value p:" + pid + " ?" + var + "_statement .\n"
+             + "?" + var + "_statement a wikibase:BestRank ;"
+             + " psv:" + pid + " ?" + var + "_n .\n"
              + "?" + var + "_n wikibase:timeValue ?" + var + "_t ;"
              + " wikibase:timePrecision ?" + var + "_p ;"
              + " wikibase:timeCalendarModel ?" + var + "_c .\n"
              + "BIND(CONCAT(STR(?" + var + "_t), "
              + wikidata.CalendarModelCodec.calendarMarkExpression(var + "_c") + ", "
              + "\" [precision=\", STR(?" + var + "_p), \"]\") AS ?" + bindTo + ")\n";
+    }
+
+    /** Typed time expression recovered from the packed field value itself. */
+    public static String packedTimeExpression(String packedVar) {
+        return "xsd:dateTime(STRBEFORE(?" + packedVar + ", \"|\"))";
     }
 
     /** Whether this field's value has to be read from the statement's value node. */

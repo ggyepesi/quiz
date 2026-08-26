@@ -901,7 +901,7 @@ public final class RuleNodeQueryBuilder {
         // ranking; other fields stay SAMPLEd.
         String sortField = node.hasSort() ? node.sortFieldName() : null;
         boolean sortDesc = node.sortDescending();
-        String sortVar = null;
+        String sortExpression = null;
 
         // Dedup (R13): a value filter on the same property as an included field
         // binds that field's SAMPLE-source var (?<var>_s) instead of a second
@@ -916,19 +916,18 @@ public final class RuleNodeQueryBuilder {
                 String var = RuleIncludedFieldSparql.variableName(f, index);
                 boolean isSort = sortField != null && sortField.equals(f.fieldName());
                 String agg = isSort ? (sortDesc ? "MAX" : "MIN") : "SAMPLE";
-                // A value filter binding this var (R13) keeps the truthy leg it
-                // binds, so the date leg only applies when the field emits its own.
-                boolean dated = RuleIncludedFieldSparql.readsValueNode(f)
-                        && !sharedVars.containsKey(f.fieldName());
+                // DATE fields never share the filter's truthy binding: that leg
+                // cannot carry their calendar or precision.
+                boolean dated = RuleIncludedFieldSparql.readsValueNode(f);
                 q.selectRaw("(" + agg + "(?" + var + "_s) AS ?" + var + ")");
                 if (isSort) {
-                    // Order by the time itself, never by the packed string: packed,
-                    // a BC year sorts by its digits and lands the wrong way round.
+                    // Recover the typed time from THE packed value selected above.
+                    // A separately aggregated time can come from another statement.
                     if (dated) {
-                        q.selectRaw("(" + agg + "(?" + var + "_t) AS ?" + var + "Sort)");
-                        sortVar = var + "Sort";
+                        sortExpression = RuleIncludedFieldSparql
+                                .packedTimeExpression(var);
                     } else {
-                        sortVar = var;
+                        sortExpression = "?" + var;
                     }
                 }
                 // When the value filter binds this var (?<var>_s), don't emit the
@@ -946,7 +945,7 @@ public final class RuleNodeQueryBuilder {
             index++;
         }
 
-q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
+        q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
         appendMembershipFilter(q, node);
         appendSitelinkRequirement(q, node);
         appendAllowedQids(q, node);
@@ -967,8 +966,8 @@ q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
         }
 
         q.groupBy("value");
-        if (sortVar != null) {
-            q.orderByRaw((sortDesc ? "DESC(?" : "ASC(?") + sortVar + ")");
+        if (sortExpression != null) {
+            q.orderByRaw((sortDesc ? "DESC(" : "ASC(") + sortExpression + ")");
         }
         if (limit > 0) {
             q.limit(limit);
@@ -1207,6 +1206,7 @@ q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
         int i = 0;
         for (RuleIncludedField f : node.includedFields()) {
             if (f != null && (skipFields == null || !skipFields.contains(f))
+                    && !RuleIncludedFieldSparql.readsValueNode(f)
                     && f.fieldName() != null && filtered.contains(f.fieldName()))
                 map.put(f.fieldName(),
                         RuleIncludedFieldSparql.variableName(f, i) + varSuffix);
@@ -1299,10 +1299,14 @@ q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
                 index++;
                 continue;
             }
-            String var = RuleIncludedFieldSparql.variableName(field, index) + "_s";
+            String baseVar = RuleIncludedFieldSparql.variableName(field, index);
+            String var = baseVar + "_s";
             boolean label = withLabels && !field.isMediaField();
-            String triple = field.direction()
-                    .triplePattern("?value", "?" + var, field.propertyPid());
+            String triple = RuleIncludedFieldSparql.readsValueNode(field)
+                    ? RuleIncludedFieldSparql.datePattern(
+                            RuleNode.cleanPid(field.propertyPid()), baseVar, var)
+                    : field.direction()
+                            .triplePattern("?value", "?" + var, field.propertyPid());
             StringBuilder sb = new StringBuilder();
             sb.append("  OPTIONAL {\n    ").append(triple).append("\n");
             if (field.hasMembership()) {

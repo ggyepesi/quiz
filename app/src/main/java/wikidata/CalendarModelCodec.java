@@ -39,9 +39,20 @@ public final class CalendarModelCodec {
             return calendar != null;
         }
 
-        /** The calendar to read a value in, defaulting only where nothing was said. */
-        public FlexibleDate.Calendar orGregorian() {
-            return calendar == null ? FlexibleDate.Calendar.GREGORIAN : calendar;
+    }
+
+    /** An explicit source calendar which this adapter cannot translate safely. */
+    public static final class UnknownCalendarModelException
+            extends IllegalArgumentException {
+        private final String sourceModel;
+
+        public UnknownCalendarModelException(String sourceModel) {
+            super("Unrecognised Wikidata calendar model: " + sourceModel);
+            this.sourceModel = sourceModel == null ? "" : sourceModel;
+        }
+
+        public String sourceModel() {
+            return sourceModel;
         }
     }
 
@@ -111,17 +122,48 @@ public final class CalendarModelCodec {
             s = s.substring(0, precision.start()).trim();
         }
 
-        Decoded model = new Decoded(FlexibleDate.Calendar.GREGORIAN, "");
+        String sourceModel = "";
         int separator = s.lastIndexOf(CALENDAR_SEPARATOR);
         if (separator >= 0) {
-            model = decode(s.substring(separator + 1));
+            sourceModel = s.substring(separator + 1);
             s = s.substring(0, separator).trim();
-            if (!model.recognised() && unrecognised != null) {
+        }
+        // This codec is deliberately safe to probe on arbitrary field values.
+        // A plain string containing '|' is not an unknown calendar-bearing date.
+        FlexibleDate date = FlexibleDate.fromWikidataLiteral(s, stated);
+        if (date == null) {
+            return null;
+        }
+        Decoded model = decode(sourceModel);
+        if (!model.recognised()) {
+            if (unrecognised != null) {
                 unrecognised.accept(model.sourceModel());
             }
+            throw new UnknownCalendarModelException(model.sourceModel());
         }
-        FlexibleDate date = FlexibleDate.fromWikidataLiteral(s, stated);
-        return date == null ? null : date.inCalendar(model.orGregorian());
+        return date.inCalendar(model.calendar());
+    }
+
+    /**
+     * For a boundary that must carry on: the date, or null with the untranslated
+     * model handed to {@code report}.
+     *
+     * <p>{@link #readTime(String)} throws, because a caller with nowhere to put the
+     * failure must not quietly mis-date a value. A caller that CAN say which field
+     * was affected, and keep going, says so by passing a reporter — one long
+     * extraction should not end because one entity states a calendar nobody has
+     * taught this codec yet.
+     */
+    public static FlexibleDate readTimeReporting(
+            String wireValue, java.util.function.Consumer<String> report) {
+        try {
+            return readTime(wireValue);
+        } catch (UnknownCalendarModelException untranslated) {
+            if (report != null) {
+                report.accept(untranslated.sourceModel());
+            }
+            return null;
+        }
     }
 
     private static final java.util.regex.Pattern PRECISION_MARK =

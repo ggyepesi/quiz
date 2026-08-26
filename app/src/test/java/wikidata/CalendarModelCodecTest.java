@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * The adapter between Wikidata's calendar vocabulary and a date that knows only
@@ -79,15 +80,21 @@ class CalendarModelCodecTest {
 
     @Test void readingReportsAnUnknownModelRatherThanSwallowingIt() {
         List<String> reported = new ArrayList<>();
-        FlexibleDate date = CalendarModelCodec.readTime(
-                "+1500-03-01T00:00:00Z"
-                        + CalendarModelCodec.calendarMark(
-                                "http://www.wikidata.org/entity/Q4242424"),
-                reported::add);
+        CalendarModelCodec.UnknownCalendarModelException failure = assertThrows(
+                CalendarModelCodec.UnknownCalendarModelException.class,
+                () -> CalendarModelCodec.readTime(
+                        "+1500-03-01T00:00:00Z"
+                                + CalendarModelCodec.calendarMark(
+                                        "http://www.wikidata.org/entity/Q4242424"),
+                        reported::add));
 
         assertEquals(List.of("http://www.wikidata.org/entity/Q4242424"), reported);
-        assertEquals(FlexibleDate.Calendar.GREGORIAN, date.calendar(),
-                "the value still reads, but the caller was told which model it was");
+        assertEquals("http://www.wikidata.org/entity/Q4242424",
+                failure.sourceModel());
+    }
+
+    @Test void anOrdinaryStringContainingTheWireSeparatorIsNotACalendarError() {
+        assertNull(CalendarModelCodec.readTime("history | biography"));
     }
 
     @Test void bothLoadingPathsBuildTheSameWireForm() {
@@ -98,5 +105,40 @@ class CalendarModelCodecTest {
         assertTrue(CalendarModelCodec.calendarMark(JULIAN).startsWith(
                 CalendarModelCodec.calendarMarkExpression("x").substring(1, 2)),
                 "the same separator on both sides");
+    }
+
+    // --- the two contracts, and why there are two --------------------------
+
+    @Test void aBoundaryThatCanReportCarriesOnInsteadOfThrowing() {
+        List<String> reported = new ArrayList<>();
+        FlexibleDate date = CalendarModelCodec.readTimeReporting(
+                "+1500-03-01T00:00:00Z"
+                        + CalendarModelCodec.calendarMark(
+                                "http://www.wikidata.org/entity/Q4242424"),
+                reported::add);
+
+        assertNull(date, "no date, rather than one dated in the wrong calendar");
+        assertEquals(List.of("http://www.wikidata.org/entity/Q4242424"), reported,
+                "the caller is told which model it could not translate");
+    }
+
+    @Test void reportingStillRefusesToGuessTheCalendar() {
+        // The point of reporting is NOT to soften the rule: an untranslatable
+        // calendar yields no date either way. One long extraction just should not
+        // end because one entity states a calendar nobody taught this codec.
+        assertNull(CalendarModelCodec.readTimeReporting(
+                "+1500-03-01T00:00:00Z|http://www.wikidata.org/entity/Q4242424",
+                model -> { }));
+    }
+
+    @Test void aTranslatableDateIsUnaffectedByHavingAReporter() {
+        FlexibleDate date = CalendarModelCodec.readTimeReporting(
+                "+1500-03-01T00:00:00Z" + CalendarModelCodec.calendarMark(JULIAN)
+                        + CalendarModelCodec.precisionMark(11),
+                model -> org.junit.jupiter.api.Assertions.fail(
+                        "nothing to report: " + model));
+
+        assertEquals(FlexibleDate.Calendar.JULIAN, date.calendar());
+        assertEquals(FlexibleDate.Precision.DAY, date.precision());
     }
 }

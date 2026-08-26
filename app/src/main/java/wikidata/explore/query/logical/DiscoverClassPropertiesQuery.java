@@ -269,7 +269,11 @@ public class DiscoverClassPropertiesQuery
         if (!qid.isBlank()) {
             return qid;
         }
-        aux.FlexibleDate date = wikidata.CalendarModelCodec.readTime(raw);
+        // A display formatter has nowhere to report to, and a probe must not throw:
+        // a value whose calendar cannot be translated is simply not a date here, and
+        // falls through to its raw text below.
+        aux.FlexibleDate date =
+                wikidata.CalendarModelCodec.readTimeReporting(raw, model -> { });
         if (date != null) {
             return date.format();
         }

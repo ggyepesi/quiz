@@ -52,10 +52,13 @@ class DateValueNodeQueryTest {
     @Test void aDateFieldAsksTheValueNodeForItsCalendarAndPrecision() {
         String sparql = query(false);
 
-        assertTrue(sparql.contains("p:P569/psv:P569"), sparql);
+        assertTrue(sparql.contains("p:P569"), sparql);
+        assertTrue(sparql.contains("psv:P569"), sparql);
         assertTrue(sparql.contains("wikibase:timeValue"), sparql);
         assertTrue(sparql.contains("wikibase:timeCalendarModel"), sparql);
         assertTrue(sparql.contains("wikibase:timePrecision"), sparql);
+        assertTrue(sparql.contains("a wikibase:BestRank"),
+                "the value-node leg must preserve wdt: best-rank semantics: " + sparql);
         assertFalse(sparql.contains("wdt:P569"),
                 "the truthy leg cannot carry either fact, so it is not used: " + sparql);
     }
@@ -66,6 +69,33 @@ class DateValueNodeQueryTest {
 
         assertTrue(sparql.contains("wdt:P53"), sparql);
         assertFalse(sparql.contains("psv:P53"), sparql);
+    }
+
+    @Test void groupedScalarDatesAlsoUseTheValueNode() {
+        GeneratedProjectModel p = rulers(false);
+        GeneratedFieldModel relatives = p.rootClass().addField(
+                "relatives", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        relatives.mapping().propertyPid("P1038");
+        RuleNode node = RuleTreeCompiler.compileClass(p.rootClass(), p);
+
+        String sparql = RuleNodeQueryBuilder.fieldOptimizedValuesQuery(node);
+
+        assertTrue(sparql.contains("psv:P569"), sparql);
+        assertFalse(sparql.contains("wdt:P569"), sparql);
+        assertTrue(sparql.contains("AS ?born_0_s"), sparql);
+    }
+
+    @Test void aCollectionDateIsStillAnOutgoingLiteral() {
+        GeneratedClassModel events = new GeneratedClassModel("Event");
+        GeneratedFieldModel dates = events.addField(
+                "dates", FieldType.DATE, FieldCardinality.COLLECTION);
+        dates.mapping().propertyPid("P585");
+        dates.mapping().direction(wikidata.explore.model.RuleDirection.ITEM_TO_ROOT);
+
+        RuleIncludedField compiled = RuleTreeCompiler.compileField(dates);
+
+        assertTrue(compiled.direction()
+                == wikidata.explore.model.RuleDirection.ROOT_TO_ITEM);
     }
 
     @Test void timeCalendarAndPrecisionArriveAsOneSampledValue() {
@@ -98,9 +128,11 @@ class DateValueNodeQueryTest {
 
         // The value is the packed string; the ordering is the time it contains.
         assertTrue(sparql.contains("(MIN(?born_0_s) AS ?born_0)"), sparql);
-        assertTrue(sparql.contains("(MIN(?born_0_t) AS ?born_0Sort)"), sparql);
-        assertTrue(sparql.contains("ORDER BY") && sparql.contains("?born_0Sort"),
-                "ordering never reads the packed form: " + sparql);
+        assertFalse(sparql.contains("MIN(?born_0_t)"),
+                "a separately aggregated time can belong to another statement: " + sparql);
+        assertTrue(sparql.contains(
+                        "ASC(xsd:dateTime(STRBEFORE(?born_0, \"|\")))"),
+                "ordering recovers the time from the selected packed value: " + sparql);
         // A non-date field keeps plain SAMPLE over its truthy value.
         assertTrue(sparql.contains("SAMPLE(?house_1_s)"), sparql);
     }
