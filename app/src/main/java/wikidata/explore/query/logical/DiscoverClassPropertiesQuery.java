@@ -115,24 +115,68 @@ public class DiscoverClassPropertiesQuery
                                 + incomingSparql
                                 + "\n");
 
-        CompletableFuture<List<DiscoveredProperty>> outgoing =
-                WikidataAccess.sparql(context, Datasource.WIKIDATA)
-                       .queryAsync(outgoingSparql)
-                       .thenApply(rows ->
-                                          parseBindings(rows, qids.size(), "outgoing"));
+        return context.step(
+                "Profile outgoing and incoming properties",
+                "2 parallel SPARQL requests",
+                "sampled entities -> outgoing + incoming property profile",
+                Map.of("sampleQids", String.valueOf(qids.size()),
+                        "resultLimit", String.valueOf(RESULT_LIMIT)),
+                step -> {
+                    work.LogNode outgoingLog = step.beginSubquery(
+                            "Profile outgoing properties", outgoingSparql);
+                    work.LogNode incomingLog = step.beginSubquery(
+                            "Profile incoming properties", incomingSparql);
 
-        CompletableFuture<List<DiscoveredProperty>> incoming =
-                WikidataAccess.sparql(context, Datasource.WIKIDATA)
-                       .queryAsync(incomingSparql)
-                       .thenApply(rows ->
-                                          parseBindings(rows, qids.size(), "incoming"));
+                    CompletableFuture<List<DiscoveredProperty>> outgoing =
+                            WikidataAccess.sparql(context, Datasource.WIKIDATA)
+                                    .queryAsync(outgoingSparql)
+                                    .thenApply(rows -> parseBindings(
+                                            rows, qids.size(), "outgoing"));
+                    outgoing.whenComplete((rows, failure) -> {
+                        if (failure == null) {
+                            step.completeSubquery(outgoingLog,
+                                    (rows == null ? 0 : rows.size()) + " properties");
+                        } else {
+                            step.failSubquery(outgoingLog, failureMessage(failure));
+                        }
+                    });
 
-        return outgoing.thenCombine(incoming, (out, in) -> {
-            List<DiscoveredProperty> merged = new ArrayList<>();
-            merged.addAll(out);
-            merged.addAll(in);
-            return merged;
-        }).get();
+                    CompletableFuture<List<DiscoveredProperty>> incoming =
+                            WikidataAccess.sparql(context, Datasource.WIKIDATA)
+                                    .queryAsync(incomingSparql)
+                                    .thenApply(rows -> parseBindings(
+                                            rows, qids.size(), "incoming"));
+                    incoming.whenComplete((rows, failure) -> {
+                        if (failure == null) {
+                            step.completeSubquery(incomingLog,
+                                    (rows == null ? 0 : rows.size()) + " properties");
+                        } else {
+                            step.failSubquery(incomingLog, failureMessage(failure));
+                        }
+                    });
+
+                    List<DiscoveredProperty> merged =
+                            outgoing.thenCombine(incoming, (out, in) -> {
+                                List<DiscoveredProperty> values = new ArrayList<>();
+                                values.addAll(out);
+                                values.addAll(in);
+                                return values;
+                            }).get();
+                    step.summary(merged.size() + " properties");
+                    return merged;
+                });
+    }
+
+    private static String failureMessage(Throwable failure) {
+        Throwable useful = failure;
+        while (useful.getCause() != null
+                && (useful instanceof java.util.concurrent.CompletionException
+                        || useful instanceof java.util.concurrent.ExecutionException)) {
+            useful = useful.getCause();
+        }
+        String message = useful.getMessage();
+        return useful.getClass().getSimpleName()
+                + (message == null || message.isBlank() ? "" : ": " + message);
     }
 
     @Override

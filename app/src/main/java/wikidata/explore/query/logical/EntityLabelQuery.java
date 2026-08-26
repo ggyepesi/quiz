@@ -41,13 +41,21 @@ public class EntityLabelQuery implements Query<String> {
 
     @Override
     public String execute(QueryContext context) throws Exception {
-        String sparql = SparqlQueries.entityLabel(qid, "en");
+        return context.step(
+                purpose(), queryType(), skeleton(), parameters(),
+                step -> {
+                    String sparql = SparqlQueries.entityLabel(qid, "en");
+                    step.request(sparql);
 
-        for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
-            return b.value("label");
-        }
-
-        return null;
+                    for (WikidataBinding b : WikidataAccess
+                            .sparql(context, Datasource.WIKIDATA).query(sparql)) {
+                        String label = b.value("label");
+                        step.summary(label == null ? "no label" : label);
+                        return label;
+                    }
+                    step.summary("no label");
+                    return null;
+                });
     }
 
     @Override

@@ -105,7 +105,7 @@ public class PropertyDiscoveryPanel extends JPanel {
                 runButton,
                 this::acceptDiscovery,
                 this::buildDiscoveryQuery,
-                ex -> statusLabel.setText("Error: " + ex.getMessage()));
+                this::showDiscoveryError);
 
         queryRunner.wireButton(
                 byTargetButton,
@@ -287,13 +287,44 @@ public class PropertyDiscoveryPanel extends JPanel {
         }
 
         properties.clear();
-        showResults();
+        showDiscoveryProgress();
         statusLabel.setText("Discovering properties...");
 
         return new DiscoverClassPropertiesQuery(
                 node,
                 useCustom ? customQid : "",
                 n);
+    }
+
+    private void showDiscoveryProgress() {
+        selectProperty(null);
+        JPanel progress = new JPanel(new BorderLayout(8, 8));
+        progress.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        JProgressBar bar = new JProgressBar();
+        bar.setIndeterminate(true);
+        JLabel explanation = new JLabel(
+                "<html><b>Discovering properties…</b><br>Sampling instances, then "
+                        + "profiling outgoing and incoming properties in parallel.<br>"
+                        + "Results appear when both profiles have completed; Query Log "
+                        + "shows which profile is still running.</html>");
+        progress.add(explanation, BorderLayout.NORTH);
+        progress.add(bar, BorderLayout.CENTER);
+        resultHolder.removeAll();
+        resultHolder.add(progress, BorderLayout.NORTH);
+        resultHolder.revalidate();
+        resultHolder.repaint();
+    }
+
+    private void showDiscoveryError(Exception failure) {
+        String message = failure == null || failure.getMessage() == null
+                || failure.getMessage().isBlank()
+                ? "Discovery failed." : failure.getMessage();
+        statusLabel.setText("Error: " + message);
+        resultHolder.removeAll();
+        resultHolder.add(new JLabel("   Discovery failed: " + message),
+                BorderLayout.NORTH);
+        resultHolder.revalidate();
+        resultHolder.repaint();
     }
 
     /** Rebuilds the results as one searchable view of Viewables, laid out as a TABLE:

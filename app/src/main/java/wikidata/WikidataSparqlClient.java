@@ -19,6 +19,8 @@ import java.util.function.Consumer;
 public class WikidataSparqlClient implements AutoCloseable {
     public static final String WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
     public static final String DBPEDIA_ENDPOINT  = "https://dbpedia.org/sparql";
+    private static final long REQUEST_TIMEOUT_SECONDS = 60;
+    private static final long COMPLETION_WATCHDOG_SECONDS = 65;
 
     private final String endpoint;
 
@@ -222,7 +224,7 @@ public class WikidataSparqlClient implements AutoCloseable {
                                    "Accept",
                                    "application/sparql-results+json")
                            .header("User-Agent", userAgent)
-                           .timeout(Duration.ofSeconds(60))
+                           .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
                            .GET()
                            .build();
 
@@ -241,7 +243,13 @@ public class WikidataSparqlClient implements AutoCloseable {
                         }
 
                         return parseJson(res.body());
-                    });
+                    })
+                    // HttpRequest.timeout is the primary boundary. This slightly
+                    // wider future boundary is the backstop for an exchange whose
+                    // transport timeout fires but whose completion chain is never
+                    // completed — otherwise a workflow can remain RUNNING forever
+                    // with no request left to explain it.
+                    .orTimeout(COMPLETION_WATCHDOG_SECONDS, TimeUnit.SECONDS);
 
         runningQueries.add(future);
 
@@ -281,7 +289,8 @@ public class WikidataSparqlClient implements AutoCloseable {
 
     private static boolean isTimeout(Throwable t) {
         while (t != null) {
-            if (t instanceof java.net.http.HttpTimeoutException) {
+            if (t instanceof java.net.http.HttpTimeoutException
+                    || t instanceof java.util.concurrent.TimeoutException) {
                 return true;
             }
             t = t.getCause();
@@ -306,8 +315,9 @@ public class WikidataSparqlClient implements AutoCloseable {
     }
 
     /**
-     * Retry transient failures only: a server timeout would just time out again,
-     * a cancellation is intentional, and an HTTP status the server won't recover
+     * Retry transient failures only: a timeout gets one second chance because an
+     * identical query can return quickly after the first attempt warmed WDQS, a
+     * cancellation is intentional, and an HTTP status the server won't recover
      * from (a 4xx other than 429) is a client error not worth repeating. A 429 or
      * 5xx, or a bare network error, is retried until attempts run out.
      */
@@ -324,9 +334,10 @@ public class WikidataSparqlClient implements AutoCloseable {
      * price for telling the two apart. Narrowing such a query is the caller's job,
      * not the transport's: a smaller query is a different query.
      *
-     * <p>A client-side {@link java.net.http.HttpTimeoutException} stays
-     * non-retryable — there the 60s wall was actually hit, so a verbatim re-issue
-     * burns another 60s for the same result.
+     * <p>A client-side {@link java.net.http.HttpTimeoutException} gets exactly one
+     * retry. Observed in Explore: a cold discovery query crossed the 60s wall and
+     * the identical manual rerun returned in seconds. A second timeout is final,
+     * so an intrinsically expensive query cannot consume the full three attempts.
      */
     /** The failure in one line: a retry entry marks the wait, it does not reprint a
      *  stack. */
@@ -341,10 +352,14 @@ public class WikidataSparqlClient implements AutoCloseable {
     }
 
     static boolean shouldRetry(Throwable error, int attemptsLeft) {
-        if (attemptsLeft <= 1
-                || isCancellation(error)
-                || isTimeout(error)) {
+        if (attemptsLeft <= 1 || isCancellation(error)) {
             return false;
+        }
+        // queryAsync starts with three attempts. Retrying a timeout only from that
+        // initial state gives it one second chance; another timeout arrives with
+        // two attempts left and stops here.
+        if (isTimeout(error)) {
+            return attemptsLeft == 3;
         }
         if (isTruncated(error)) {
             return true;

@@ -42,9 +42,11 @@ class WikidataSparqlClientRetryTest {
     }
 
     @Test
-    void transientNetworkErrorsAreRetriedTimeoutsAndCancellationAreNot() {
+    void transientNetworkErrorsAndAnInitialTimeoutAreRetried() {
         assertTrue(WikidataSparqlClient.shouldRetry(new IOException("reset"), 3));
-        assertFalse(WikidataSparqlClient.shouldRetry(new HttpTimeoutException("t"), 3));
+        assertTrue(WikidataSparqlClient.shouldRetry(new HttpTimeoutException("t"), 3));
+        assertTrue(WikidataSparqlClient.shouldRetry(
+                new java.util.concurrent.TimeoutException("completion watchdog"), 3));
         assertFalse(WikidataSparqlClient.shouldRetry(new CancellationException(), 3));
     }
 
@@ -73,11 +75,16 @@ class WikidataSparqlClientRetryTest {
     }
 
     @Test
-    void aClientSideTimeoutIsStillNotRetried() {
-        // Here the 60s wall was actually hit, so a verbatim re-issue burns another
-        // 60s for the same result — unlike a truncation, which returns in seconds.
-        assertFalse(WikidataSparqlClient.shouldRetry(
+    void aClientSideTimeoutGetsOnlyOneSecondChance() {
+        // A cold WDQS query can warm the server before crossing our deadline, so
+        // one retry can return quickly. A second timeout must stop rather than use
+        // the ordinary three-attempt transient-failure budget.
+        assertTrue(WikidataSparqlClient.shouldRetry(
                 new java.net.http.HttpTimeoutException("request timed out"), 3));
+        assertFalse(WikidataSparqlClient.shouldRetry(
+                new java.net.http.HttpTimeoutException("request timed out again"), 2));
+        assertFalse(WikidataSparqlClient.shouldRetry(
+                new java.util.concurrent.TimeoutException("watchdog again"), 2));
     }
 
     @Test

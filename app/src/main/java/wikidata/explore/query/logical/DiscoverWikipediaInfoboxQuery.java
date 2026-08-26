@@ -87,13 +87,29 @@ public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResu
 
     private List<String> sample(QueryContext context) throws Exception {
         if (!WikidataIds.isQid(typeQid)) return List.of();
-        List<String> result = new ArrayList<>();
-        for (WikidataBinding row : WikidataAccess.sparql(context, Datasource.WIKIDATA)
-                .query(SparqlQueries.sampleInstancesByP31(typeQid, sampleSize))) {
-            String qid = row.qid("item");
-            if (WikidataIds.isQid(qid)) result.add(qid);
-        }
-        return result.stream().distinct().limit(sampleSize).toList();
+        // Its own step: this request decides which articles the rest of the query
+        // reads, and it runs before any of them, so a reader waiting on the slow
+        // part should see what picked the subjects — and be able to open it.
+        return context.step(
+                "Sample instances to read",
+                "SPARQL",
+                "wd:<type> <- P31 - ?item  (sampled)",
+                java.util.Map.of("typeQid", typeQid,
+                        "sampleSize", String.valueOf(sampleSize)),
+                step -> {
+                    List<String> result = new ArrayList<>();
+                    String sparql = SparqlQueries.sampleInstancesByP31(typeQid, sampleSize);
+                    step.request(sparql);
+                    for (WikidataBinding row : WikidataAccess
+                            .sparql(context, Datasource.WIKIDATA).query(sparql)) {
+                        String qid = row.qid("item");
+                        if (WikidataIds.isQid(qid)) result.add(qid);
+                    }
+                    List<String> sampled =
+                            result.stream().distinct().limit(sampleSize).toList();
+                    step.summary(sampled.size() + " instance(s)");
+                    return sampled;
+                });
     }
 
     @Override public int rowCount(TableQueryResult result) {
