@@ -71,4 +71,21 @@ class SemanticConvergenceTest {
                 "stamping must not re-role a classified kind, or nothing ever converges");
         assertEquals("Person", classified.typeName());
     }
+
+    @Test void anEarlierFieldFetchPlansTheP31ConsumedByFinalization() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("deathDate", FieldType.DATE, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P570");
+        model.rootClass(person);
+        model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
+                "Person", List.of("Q5")));
+
+        var manifest = wikidata.explore.transform.ReferentFieldLoad.compileManifest(
+                model, GenerationFactDemandPlan.compile(model).all());
+
+        assertEquals(java.util.Set.of("P570", "P31"),
+                manifest.propertiesFor("Person"),
+                "P570 acquisition must also bank P31 for disambiguation pruning");
+    }
 }

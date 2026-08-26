@@ -263,12 +263,24 @@ public final class GenerateDomainPipeline {
         return none(out, "No kind/owned property fields");
     }
 
+    /** What the run will retain by, described from the model alone: the phase
+     *  description is built before a source plan exists, and the demands that widen
+     *  a slice — a finalizer's P31, say — are declared by the model either way. */
+    private static java.util.Collection<wikidata.api.FactDemand> plannedFactDemands(
+            GeneratedProjectModel model) {
+        return GenerationFactDemandPlan.compile(model).all();
+    }
+
     private static List<String> semanticDetails(GeneratedProjectModel model) {
         List<String> out = new ArrayList<>();
         out.add("Role stamping — apply each ENTITY field's declared target class");
         out.add("Reachability — rescan the graph after every newly loaded or owned value");
         out.add("Evidence acquisition — fetch all newly reachable declared properties together");
-        var manifest = wikidata.explore.transform.ReferentFieldLoad.compileManifest(model);
+        // The same manifest the run retains by, downstream demands included — a plan
+        // that listed only the semantic closure would understate every slice a
+        // finalizer's demand widens (Person keeps P31 with its P570, for instance).
+        var manifest = wikidata.explore.transform.ReferentFieldLoad.compileManifest(
+                model, plannedFactDemands(model));
         manifest.propertiesByClass().forEach((className, pids) -> out.add(
                 className + " acquisition slice — " + String.join(", ", pids)));
         out.add("Kind classification — combine stored evidence with missing remote evidence");
@@ -411,7 +423,8 @@ public final class GenerateDomainPipeline {
 
     private static PhaseExplanation.PhaseExample preflightExample(
             GeneratedProjectModel model) {
-        var manifest = wikidata.explore.transform.ReferentFieldLoad.compileManifest(model);
+        var manifest = wikidata.explore.transform.ReferentFieldLoad.compileManifest(
+                model, plannedFactDemands(model));
         var first = manifest.propertiesByClass().entrySet().stream()
                 .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
                 .findFirst().orElse(null);

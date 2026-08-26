@@ -76,7 +76,8 @@ public final class SemanticConvergence {
         int iteration;
         int productiveIterations = 0;
         ReferentFieldLoad.AcquisitionManifest acquisition =
-                ReferentFieldLoad.compileManifest(model);
+                ReferentFieldLoad.compileManifest(
+                        model, GenerationFactDemandPlan.compile(model, sourcePlan).all());
         if (!acquisition.propertiesByClass().isEmpty()) {
             sink.message("Semantic acquisition manifest: "
                     + acquisition.propertiesByClass().entrySet().stream()

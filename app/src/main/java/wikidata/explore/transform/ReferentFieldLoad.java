@@ -555,8 +555,24 @@ public final class ReferentFieldLoad {
      * this only tells the run-scoped fact store what portion of the answer to bank.
      */
     public static AcquisitionManifest compileManifest(GeneratedProjectModel model) {
+        return compileManifest(model, List.of());
+    }
+
+    /**
+     * The semantic field closure plus facts consumed after convergence.  An entity
+     * response contains the complete claims body, so a finalizer's prospective P31
+     * demand must be retained by the earlier P570 (for example) fetch rather than
+     * causing the same population to be downloaded again during finalization.
+     */
+    public static AcquisitionManifest compileManifest(
+            GeneratedProjectModel model, Collection<FactDemand> downstreamDemands) {
         Map<String, Set<String>> byClass = new LinkedHashMap<>();
         for (FactDemand demand : factDemands(model)) {
+            byClass.computeIfAbsent(demand.targetClass(), ignored -> new LinkedHashSet<>())
+                    .addAll(demand.propertyPids());
+        }
+        if (downstreamDemands != null) for (FactDemand demand : downstreamDemands) {
+            if (demand == null || demand.targetClass().isBlank()) continue;
             byClass.computeIfAbsent(demand.targetClass(), ignored -> new LinkedHashSet<>())
                     .addAll(demand.propertyPids());
         }
