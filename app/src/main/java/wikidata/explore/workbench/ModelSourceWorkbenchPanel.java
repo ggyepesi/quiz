@@ -394,7 +394,8 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                     // the project root made Person.spouse in History compile the
                     // blank History root and issue BIND(wd: AS ?root).
                     owner,
-                    field);
+                    field,
+                    MembershipPattern.typeQid(owner, model));
     }
 
     public void useProperty(
@@ -408,6 +409,15 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             String pid,
             String label,
             RuleDirection direction) {
+
+        useProperty(pid, label, direction, true);
+    }
+
+    private void useProperty(
+            String pid,
+            String label,
+            RuleDirection direction,
+            boolean showSampleTab) {
 
         GeneratedFieldModel field =
                 createFieldForProperty(label);
@@ -426,8 +436,11 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         if (field.cardinality()
                 == FieldCardinality.AUTO) {
             onShowHelperTools.run();
-            helperTabs.setSelectedComponent(
-                    samplePanel);
+            // Discovery is a sequence: inspect several properties and add the useful
+            // ones. Cardinality sampling may run without tearing the reader out of
+            // that sequence. Direct property-catalogue actions retain the historical
+            // behaviour of opening Sample so the result is visible immediately.
+            if (showSampleTab) helperTabs.setSelectedComponent(samplePanel);
             samplePanel.triggerFieldSample();
         } else {
             onFieldAddedFromTool.accept(field);
@@ -597,6 +610,12 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         samplePanel.setFieldSampleSupplier(
                 this::fieldSampleContextForSelected);
 
+        // Success stays out of the reader's way; a failure does not, or the message
+        // naming the unsampleable field lands on a tab nobody is looking at.
+        samplePanel.onSampleFailed(() -> {
+            onShowHelperTools.run();
+            helperTabs.setSelectedComponent(samplePanel);
+        });
         samplePanel.onCardinalitySuggested(
                 cardinality -> {
                     if (selected
@@ -634,7 +653,8 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                     useProperty(
                             property.pid(),
                             property.label(),
-                            direction);
+                            direction,
+                            false);
                     afterChange.accept(null);
                 });
 

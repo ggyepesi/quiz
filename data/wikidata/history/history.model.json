@@ -125,9 +125,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "birth name",
             "property" : "P1477",
-            "sourceType" : "SPARQL",
-            "label" : "birth name"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -183,9 +183,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "name in native language",
             "property" : "P1559",
-            "sourceType" : "SPARQL",
-            "label" : "name in native language"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -241,9 +241,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "pseudonym",
             "property" : "P742",
-            "sourceType" : "SPARQL",
-            "label" : "pseudonym"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -299,9 +299,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "date of birth",
             "property" : "P569",
-            "sourceType" : "SPARQL",
-            "label" : "date of birth"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -397,9 +397,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
             "property" : "P570",
-            "sourceType" : "SPARQL",
-            "label" : ""
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -408,7 +408,7 @@
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "type",
       "type" : "ENTITY",
-      "entityClassName" : "",
+      "entityClassName" : "Type",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "INLINE",
@@ -455,9 +455,67 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
             "property" : "P31",
-            "sourceType" : "SPARQL",
-            "label" : ""
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "spouse",
+      "type" : "ENTITY",
+      "entityClassName" : "Person",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P26",
+        "propertyLabel" : "spouse",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "spouse",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "spouse",
+            "property" : "P26",
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -642,9 +700,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "birth name",
             "property" : "P1477",
-            "sourceType" : "SPARQL",
-            "label" : "birth name"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -700,9 +758,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "name in native language",
             "property" : "P1559",
-            "sourceType" : "SPARQL",
-            "label" : "name in native language"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -758,9 +816,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "pseudonym",
             "property" : "P742",
-            "sourceType" : "SPARQL",
-            "label" : "pseudonym"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -816,9 +874,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "date of birth",
             "property" : "P569",
-            "sourceType" : "SPARQL",
-            "label" : "date of birth"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -914,9 +972,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
             "property" : "P570",
-            "sourceType" : "SPARQL",
-            "label" : ""
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -925,7 +983,7 @@
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "type",
       "type" : "ENTITY",
-      "entityClassName" : "",
+      "entityClassName" : "Type",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "INLINE",
@@ -972,9 +1030,67 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
             "property" : "P31",
-            "sourceType" : "SPARQL",
-            "label" : ""
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "spouse",
+      "type" : "ENTITY",
+      "entityClassName" : "Person",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P26",
+        "propertyLabel" : "spouse",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "spouse",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "spouse",
+            "property" : "P26",
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -1117,9 +1233,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
             "property" : "P734",
-            "sourceType" : "SPARQL",
-            "label" : ""
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -1175,9 +1291,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
             "property" : "P735",
-            "sourceType" : "SPARQL",
-            "label" : ""
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -1431,9 +1547,9 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "position held",
             "property" : "P39",
-            "sourceType" : "SPARQL",
-            "label" : "position held"
+            "sourceType" : "SPARQL"
           }
         }
       } ] ],
@@ -1612,7 +1728,11 @@
       "primaryListField" : ""
     }
   } ] ],
-  "selections" : [ "java.util.ArrayList", [ ] ],
+  "selections" : [ "java.util.ArrayList", [ {
+    "@class" : "wikidata.explore.model.VocabularySelection",
+    "name" : "Type",
+    "kind" : "VOCABULARY"
+  } ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ {
     "className" : "Person",
     "propertyPid" : "P31",

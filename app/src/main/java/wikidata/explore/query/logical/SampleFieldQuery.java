@@ -67,6 +67,18 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
         RuleNode parentSample =
                 RuleTreeCompiler.compileClass(sampleContext.ownerClass())
                                 .sampleCopy(sampleLimit);
+        // Evidence-derived kinds intentionally have no membership source on the
+        // class mapping. Sampling still needs the type asserted by their kind rule
+        // (for example P31 = Q5 for Person), just as class sampling does.
+        if (clean(parentSample.sourceQid()).isEmpty()) {
+            parentSample.sourceQid(clean(sampleContext.ownerTypeQid()));
+        }
+        if (!WikidataIds.isQid(parentSample.sourceQid())) {
+            throw new IllegalStateException(
+                    "Cannot sample " + sampleContext.ownerClass().className()
+                            + "." + sampleContext.field().name()
+                            + ": the owning class has no population QID");
+        }
 
         RuleIncludedField includedField =
                 RuleTreeCompiler.compileField(sampleContext.field());
@@ -219,6 +231,10 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
         return new TableQueryResult(
                 List.of("Parent QID", "Parent label", "Value", "Value label"),
                 List.of());
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private static String firstNonBlank(String a, String b) {

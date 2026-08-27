@@ -86,6 +86,17 @@
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
       "membershipQid" : ""
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "spouse",
+      "propertyPid" : "P26",
+      "propertyLabel" : "spouse",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : true,
+      "direction" : "ROOT_TO_ITEM",
+      "membershipPid" : "",
+      "membershipQid" : ""
     } ] ],
     "limit" : 200,
     "sortFieldName" : "",

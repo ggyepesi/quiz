@@ -49,6 +49,7 @@ public class NodeSamplePanel extends JPanel {
     private final JButton fieldSampleButton =
             new JButton("Sample selected field");
 
+    private Runnable onSampleFailed = () -> { };
     private final JLabel statusLabel =
             new JLabel(" ");
 
@@ -109,6 +110,16 @@ public class NodeSamplePanel extends JPanel {
     public void log(Consumer<String> log) {
         this.log =
                 log == null ? s -> {} : log;
+    }
+
+    /**
+     * Invoked when a sample fails. A field sample may be started while this panel is
+     * not the visible tab, and its failure is reported on a status label the reader
+     * cannot see; the owner uses this to bring the panel forward for the one case
+     * where interrupting is the point.
+     */
+    public void onSampleFailed(Runnable callback) {
+        onSampleFailed = callback == null ? () -> { } : callback;
     }
 
     public void onCardinalitySuggested(Consumer<FieldCardinality> c) {
@@ -186,6 +197,7 @@ public class NodeSamplePanel extends JPanel {
                 this::acceptFieldSample,
                 this::buildFieldSampleQuery,
                 ex -> {
+                    onSampleFailed.run();
                     statusLabel.setText("Field sample failed.");
                     log.accept("SAMPLE field error: "
                                        + ex.getMessage()
