@@ -34,6 +34,13 @@ public final class FieldRecipes {
                 skyChartImage());
     }
 
+    /** Worked recipes own and evaluate their own prerequisites. */
+    public static List<FieldRecipe> applicableTo(
+            GeneratedProjectModel project, GeneratedFieldModel field) {
+        if (project == null || field == null) return List.of();
+        return all().stream().filter(recipe -> recipe.appliesTo(field, project)).toList();
+    }
+
     private static FieldRecipe brightNamedStars() {
         return new FieldRecipe(
                 "A constellation's brightest named stars",
@@ -55,6 +62,8 @@ public final class FieldRecipes {
                                 "Brightest first, so the limit keeps the brightest — not arbitrary."),
                         new FieldRecipe.Step("Limit per parent", "6",
                                 "A handful of bright stars per constellation.")),
+                (field, project) -> isConstellationField(field, project)
+                        && project.findClass("Star") != null,
                 (f, project) -> {
                     f.type(FieldType.ENTITY);
                     f.cardinality(FieldCardinality.COLLECTION);
@@ -92,6 +101,7 @@ public final class FieldRecipes {
                                 "A name; the resource is resolved to its English label."),
                         new FieldRecipe.Step("Join", "owl:sameAs by QID",
                                 "DBpedia is matched to each entity after the Wikidata extraction.")),
+                FieldRecipes::isConstellationField,
                 (f, project) -> {
                     f.type(FieldType.STRING);
                     f.cardinality(FieldCardinality.SINGLE);
@@ -112,6 +122,7 @@ public final class FieldRecipes {
                                 "The infobox field."),
                         new FieldRecipe.Step("Type", "Number",
                                 "A plain integer from the infobox.")),
+                FieldRecipes::isConstellationField,
                 (f, project) -> {
                     f.type(FieldType.NUMBER);
                     f.cardinality(FieldCardinality.SINGLE);
@@ -132,10 +143,12 @@ public final class FieldRecipes {
                                 "Wikidata's adjacency property."),
                         new FieldRecipe.Step("Render mode", "Reference",
                                 "Show each as a clickable link to that constellation, not inline.")),
+                FieldRecipes::isConstellationField,
                 (f, project) -> {
+                    GeneratedClassModel owner = project.declaringClass(f);
                     f.type(FieldType.ENTITY);
                     f.cardinality(FieldCardinality.COLLECTION);
-                    f.entityClassName("Constellation");
+                    f.entityClassName(owner.className());
                     f.renderMode(FieldRenderMode.REFERENCE);
                     f.mapping().sourceType(FieldSourceType.SPARQL);
                     f.mapping().propertyPid("P47");
@@ -153,6 +166,7 @@ public final class FieldRecipes {
                                 "Rendered as a picture, not a filename."),
                         new FieldRecipe.Step("Property", "P18 (image)",
                                 "Wikidata's image property; the media file is resolved to a URL.")),
+                FieldRecipes::isConstellationField,
                 (f, project) -> {
                     f.type(FieldType.IMAGE);
                     f.cardinality(FieldCardinality.SINGLE);
@@ -160,6 +174,18 @@ public final class FieldRecipes {
                     f.mapping().propertyPid("P18");
                     f.mapping().propertyLabel("image");
                 });
+    }
+
+    /**
+     * Q8928 is a prerequisite of these Wikidata recipes, not the Java/model class
+     * name. This keeps the worked examples available when the user renames the
+     * class while declining them for an unrelated root such as Person.
+     */
+    private static boolean isConstellationField(
+            GeneratedFieldModel field, GeneratedProjectModel project) {
+        GeneratedClassModel owner = project == null ? null : project.declaringClass(field);
+        return owner != null && owner.instanceMapping() != null
+                && "Q8928".equals(owner.instanceMapping().sourceQid());
     }
 
     private static GeneratedFieldModel childField(

@@ -136,6 +136,20 @@ public class GeneratedProjectModel {
         return Collections.unmodifiableList(classes);
     }
 
+    /**
+     * Returns the class that directly declares {@code field}, or {@code null} when
+     * the field is not part of this model. There is deliberately no root-class
+     * fallback: asking a foreign field about the root changes an ownership error
+     * into a valid-looking query for the wrong population.
+     */
+    public GeneratedClassModel declaringClass(GeneratedFieldModel field) {
+        if (field == null) return null;
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz != null && clazz.fields().contains(field)) return clazz;
+        }
+        return null;
+    }
+
     /** The domain's named non-product Selections (vocabularies/populations). */
     public List<Selection> selections() {
         return Collections.unmodifiableList(selections);

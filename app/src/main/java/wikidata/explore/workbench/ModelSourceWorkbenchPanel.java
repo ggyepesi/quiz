@@ -284,8 +284,8 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                 instanceof GeneratedClassModel selectedClass) {
             clazz = selectedClass;
         } else if (selected
-                instanceof GeneratedFieldModel) {
-            clazz = projectModel.rootClass();
+                instanceof GeneratedFieldModel field) {
+            clazz = projectModel.declaringClass(field);
         }
 
         if (clazz == null) {
@@ -354,29 +354,25 @@ public class ModelSourceWorkbenchPanel extends JPanel {
      * fields load — P734, P735 — are properties of the Person one hop up.
      */
     private GeneratedClassModel samplingClass() {
-        GeneratedClassModel clazz = null;
-        if (selected instanceof GeneratedClassModel selectedClass) {
-            clazz = selectedClass;
-        } else if (selected instanceof GeneratedFieldModel field) {
-            clazz = declaringClass(field);
-        }
-        if (clazz == null) {
-            return projectModel.rootClass();
-        }
-        GeneratedClassModel bearer =
-                MembershipPattern.owningEntityClass(clazz, projectModel);
-        return bearer == null ? clazz : bearer;
+        return samplingClass(projectModel, selected);
     }
 
-    /** The class a field is declared on — a field's questions are about its own class,
-     *  which is not the root once a project has more than one. */
-    private GeneratedClassModel declaringClass(GeneratedFieldModel field) {
-        for (GeneratedClassModel clazz : projectModel.classes()) {
-            if (clazz != null && clazz.fields().contains(field)) {
-                return clazz;
-            }
+    private static GeneratedClassModel samplingClass(
+            GeneratedProjectModel model, Object selection) {
+        if (model == null) return null;
+        GeneratedClassModel clazz = null;
+        if (selection instanceof GeneratedClassModel selectedClass) {
+            clazz = selectedClass;
+        } else if (selection instanceof GeneratedFieldModel field) {
+            clazz = model.declaringClass(field);
         }
-        return projectModel.rootClass();
+        if (clazz == null && selection == null) {
+            return model.rootClass();
+        }
+        if (clazz == null) return null;
+        GeneratedClassModel bearer =
+                MembershipPattern.owningEntityClass(clazz, model);
+        return bearer == null ? clazz : bearer;
     }
 
     public FieldSampleContext fieldSampleContextForSelected() {
@@ -384,12 +380,21 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         if (selected
                 instanceof GeneratedFieldModel field) {
-            return new FieldSampleContext(
-                    projectModel.rootClass(),
-                    field);
+            return fieldSampleContext(projectModel, field);
         }
 
         return null;
+    }
+
+    static FieldSampleContext fieldSampleContext(
+            GeneratedProjectModel model, GeneratedFieldModel field) {
+        GeneratedClassModel owner = samplingClass(model, field);
+        return field == null || owner == null ? null : new FieldSampleContext(
+                    // A field is sampled on the population that carries it. Using
+                    // the project root made Person.spouse in History compile the
+                    // blank History root and issue BIND(wd: AS ?root).
+                    owner,
+                    field);
     }
 
     public void useProperty(

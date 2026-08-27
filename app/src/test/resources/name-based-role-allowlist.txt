@@ -4,3 +4,5 @@ wikidata/explore/model/GeneratedFieldModel.java::return "name".equalsIgnoreCase(
 wikidata/explore/model/GeneratedProjectModelValidator.java::|| "source".equals(reference)
 wikidata/explore/workbench/FieldSourcePanel.java::m.subjectField("source".equals(subj) ? "" : subj);
 wikidata/explore/workbench/SingleRootClassModelPanel.java::+ (name.trim().equalsIgnoreCase("name")
+wikidata/explore/query/logical/GenerateDomainQuery.java::|| "WikidataDynamicObject".equals(o.typeName())) {
+wikidata/explore/workbench/ModelBuilderFrame.java::|| "WikidataDynamicObject".equals(o.typeName())) {

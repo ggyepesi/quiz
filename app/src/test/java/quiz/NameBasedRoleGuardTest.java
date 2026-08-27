@@ -36,7 +36,13 @@ class NameBasedRoleGuardTest {
             + "|rawDeclaredField\\([^)]*\"(?:qid|name|id|identifier|source|record)\""
             + "|(?:containsKey|hasRootPath|new FieldPath)\\([^)]*"
             + "\"(?:qid|name|id|identifier|source|record)\""
-            + "|case\\s+\"(?:qid|name|id|identifier|source|record)\"");
+            + "|case\\s+\"(?:qid|name|id|identifier|source|record)\""
+            // A CLASS's role is no more inferable from its name than a field's. The
+            // literal must be class-name SHAPED, so jsoup's className() carrying a CSS
+            // class ("mw-heading mw-heading2") is not mistaken for a model class.
+            + "|\\.(?:className|typeName)\\(\\)\\s*\\.equals(?:IgnoreCase)?\\(\\s*\"[A-Z][A-Za-z0-9_]*\""
+            + "|\"[A-Z][A-Za-z0-9_]*\"\\s*\\.equals(?:IgnoreCase)?"
+            + "\\(\\s*[A-Za-z_$][A-Za-z0-9_$.]*\\.(?:className|typeName)\\(\\)");
 
     private static final Path SOURCE_ROOT = Path.of("src/main/java");
 

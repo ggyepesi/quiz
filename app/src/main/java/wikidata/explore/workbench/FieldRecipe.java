@@ -5,6 +5,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 
 /**
  * A worked, explained configuration example for a field: a goal, a one-line
@@ -20,16 +21,19 @@ public final class FieldRecipe {
     private final String goal;
     private final String summary;
     private final List<Step> steps;
+    private final BiPredicate<GeneratedFieldModel, GeneratedProjectModel> applicability;
     private final BiConsumer<GeneratedFieldModel, GeneratedProjectModel> apply;
 
     public FieldRecipe(
             String goal,
             String summary,
             List<Step> steps,
+            BiPredicate<GeneratedFieldModel, GeneratedProjectModel> applicability,
             BiConsumer<GeneratedFieldModel, GeneratedProjectModel> apply) {
         this.goal = goal;
         this.summary = summary;
         this.steps = steps;
+        this.applicability = applicability;
         this.apply = apply;
     }
 
@@ -37,8 +41,14 @@ public final class FieldRecipe {
     public String summary() { return summary; }
     public List<Step> steps() { return steps; }
 
+    /** Whether this worked example's required domain concepts exist here. */
+    public boolean appliesTo(GeneratedFieldModel field, GeneratedProjectModel project) {
+        return field != null && project != null && applicability != null
+                && applicability.test(field, project);
+    }
+
     public void applyTo(GeneratedFieldModel field, GeneratedProjectModel project) {
-        if (field != null && apply != null) {
+        if (appliesTo(field, project) && apply != null) {
             apply.accept(field, project);
         }
     }

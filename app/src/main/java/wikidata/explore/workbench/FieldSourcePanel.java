@@ -1129,7 +1129,15 @@ public class FieldSourcePanel extends JPanel {
             return;
         }
 
-        List<FieldRecipe> recipes = FieldRecipes.all();
+        List<FieldRecipe> recipes = FieldRecipes.applicableTo(projectModel, field);
+        if (recipes.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No worked configuration example applies to "
+                            + ownerName(field) + "." + field.name() + ".\n"
+                            + "Examples never modify an incompatible field.",
+                    "Configuration examples", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         JList<FieldRecipe> list = new JList<>(recipes.toArray(new FieldRecipe[0]));
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setVisibleRowCount(recipes.size());
@@ -1166,9 +1174,7 @@ public class FieldSourcePanel extends JPanel {
             applyRecipe.setEnabled(true);
         };
         list.addListSelectionListener(e -> refresh.run());
-        if (!recipes.isEmpty()) {
-            list.setSelectedIndex(0);
-        }
+        summary.setText("Select a worked example to inspect its changes.");
 
         JSplitPane split = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
@@ -1196,6 +1202,15 @@ public class FieldSourcePanel extends JPanel {
         applyRecipe.addActionListener(ev -> {
             FieldRecipe r = list.getSelectedValue();
             if (r != null) {
+                int answer = JOptionPane.showConfirmDialog(dialog,
+                        "Apply \"" + r.goal() + "\" to field "
+                                + ownerName(field) + "." + field.name() + "?\n\n"
+                                + "This replaces the field's current type, shape, "
+                                + "property and related settings.",
+                        "Replace field configuration",
+                        JOptionPane.OK_CANCEL_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (answer != JOptionPane.OK_OPTION) return;
                 r.applyTo(field, projectModel);
                 edit(field);                 // reflect the new settings
                 afterApplyField.accept(field);
@@ -1211,18 +1226,19 @@ public class FieldSourcePanel extends JPanel {
         dialog.setVisible(true);
     }
 
+    private String ownerName(GeneratedFieldModel candidate) {
+        if (projectModel == null || candidate == null) return "?";
+        GeneratedClassModel owner = projectModel.declaringClass(candidate);
+        return owner == null ? "?" : owner.className();
+    }
+
     // The class that owns the field being edited (so we can sample its
     // instances for DBpedia property discovery).
     private GeneratedClassModel ownerClass() {
         if (projectModel == null || field == null) {
             return null;
         }
-        for (GeneratedClassModel cls : projectModel.classes()) {
-            if (cls.fields().contains(field)) {
-                return cls;
-            }
-        }
-        return projectModel.rootClass();
+        return projectModel.declaringClass(field);
     }
 
     /**
