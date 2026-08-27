@@ -12,6 +12,11 @@ policy** must be `Curated frontier`. Statement structure supplies the resolved
 source/relation/edge/target pattern, but structure alone never silently enables graph
 traversal.
 
+The Explorer's **Graph patterns** tab provides the read-only explanation before a
+full generation: choose an enabled pattern and up to a few expansion-node QIDs, then
+preview the reverse subjects, reified statement edges and newly reached frontier as a
+diagram plus searchable card tabs. Previewing never changes seeds or the snapshot.
+
 What that slice does *not* do, deliberately: no durable execution ledger (coverage is
 computed at save, so `QUEUED`, `EXPANDING` and `INCOMPLETE` are declared and
 unemitted); no second provider; no persisted selection state of its own; no automatic

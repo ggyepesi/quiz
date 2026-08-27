@@ -72,6 +72,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             new CategorySeedPanel();
     private final CachedPropertyViewablePanel propertyPanel =
             new CachedPropertyViewablePanel();
+    private final GraphPatternSamplePanel graphPatternPanel;
 
     private Object selected;
 
@@ -89,6 +90,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         super(new BorderLayout(4, 4));
         this.projectModel = projectModel;
+        this.graphPatternPanel = new GraphPatternSamplePanel(projectModel);
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
 
@@ -121,6 +123,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         wikiProjectPanel.setQueryRunner(queryRunner);
         explorePanel.setQueryRunner(queryRunner);
         categoryPanel.setQueryRunner(queryRunner);
+        graphPatternPanel.setQueryRunner(queryRunner);
     }
 
     public void afterChange(
@@ -266,6 +269,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         }
 
         discoveryPanel.refreshNodeTitle();
+        graphPatternPanel.refreshPatterns();
 
         // The editors for the newly shown card are built (or rebuilt) enabled. The lock
         // is a property of THIS panel, so re-applying it here keeps every caller of
@@ -676,6 +680,9 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         helperTabs.addTab(
                 "Category",
                 categoryPanel);
+        helperTabs.addTab(
+                "Graph patterns",
+                graphPatternPanel);
         helperTabs.addTab(
                 "Properties",
                 propertyPanel);
