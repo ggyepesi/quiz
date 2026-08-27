@@ -1,2 +1,4 @@
 # Constellations — per-class distinct-qid counts, one row per save
 2026-08-07T15:22:01	total=691	Star=598	Constellation=93
+# counts every saved entity by class membership (ids include statement ids); classes overlap, so columns may exceed total
+2026-08-24T10:22:52	total=635	Star=540	Constellation=95

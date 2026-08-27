@@ -8,6 +8,7 @@
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -38,6 +39,7 @@
       "name" : "abbreviation",
       "type" : "STRING",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -71,12 +73,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "abbreviation",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "IAU abbreviation",
+            "property" : "P1813",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "area",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -110,12 +131,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "area",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "area (deg2)",
+            "property" : "P2046",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "chart",
       "type" : "IMAGE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -149,12 +189,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "chart",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "image",
+            "property" : "P18",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "hemisphere",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -188,12 +247,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "hemisphere",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "part of",
+            "property" : "P361",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "namedAfter",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -227,12 +305,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "namedAfter",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "named after",
+            "property" : "P138",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "sharesBorderWith",
       "type" : "ENTITY",
       "entityClassName" : "Constellation",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -266,12 +363,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "sharesBorderWith",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "shares border with",
+            "property" : "P47",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "stars",
       "type" : "ENTITY",
       "entityClassName" : "Star",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -305,16 +421,105 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "stars",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "constellation",
+            "property" : "P59",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "statement-membership",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "includeSubclasses" : "false",
+        "property" : "P31",
+        "values" : "Q8928"
+      }
+    },
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "Constellation",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Constellation",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Constellation",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "Constellation",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "false",
+          "property" : "P31",
+          "values" : "Q8928"
+        }
+      }
+    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   },
   "generationDepth" : 1,
@@ -325,6 +530,7 @@
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -355,6 +561,7 @@
       "name" : "abbreviation",
       "type" : "STRING",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -388,12 +595,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "abbreviation",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "IAU abbreviation",
+            "property" : "P1813",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "area",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -427,12 +653,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "area",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "area (deg2)",
+            "property" : "P2046",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "chart",
       "type" : "IMAGE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -466,12 +711,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "chart",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "image",
+            "property" : "P18",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "hemisphere",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -505,12 +769,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "hemisphere",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "part of",
+            "property" : "P361",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "namedAfter",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -544,12 +827,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "namedAfter",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "named after",
+            "property" : "P138",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "sharesBorderWith",
       "type" : "ENTITY",
       "entityClassName" : "Constellation",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -583,12 +885,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "sharesBorderWith",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "shares border with",
+            "property" : "P47",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "stars",
       "type" : "ENTITY",
       "entityClassName" : "Star",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -622,16 +943,105 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "stars",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "constellation",
+            "property" : "P59",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "statement-membership",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "includeSubclasses" : "false",
+        "property" : "P31",
+        "values" : "Q8928"
+      }
+    },
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "Constellation",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Constellation",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Constellation",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "Constellation",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "false",
+          "property" : "P31",
+          "values" : "Q8928"
+        }
+      }
+    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
@@ -640,6 +1050,7 @@
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "classKind" : "SOURCE",
     "generationDepth" : 0,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -670,6 +1081,7 @@
       "name" : "apparentMagnitude",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "AUTO",
       "required" : true,
@@ -703,12 +1115,31 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Star",
+          "fieldPath" : "apparentMagnitude",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "apparent magnitude",
+            "property" : "P1215",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "image",
       "type" : "IMAGE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -742,17 +1173,107 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Star",
+          "fieldPath" : "image",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "image",
+            "property" : "P18",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "statement-membership",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "includeSubclasses" : "false",
+        "property" : "P31",
+        "values" : "Q523"
+      }
+    },
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "Star",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Star",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Star",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "Star",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "false",
+          "property" : "P31",
+          "values" : "Q523"
+        }
+      }
+    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   } ] ],
-  "selections" : [ "java.util.ArrayList", [ ] ]
+  "selections" : [ "java.util.ArrayList", [ ] ],
+  "entityKindRules" : [ "java.util.ArrayList", [ ] ]
 }

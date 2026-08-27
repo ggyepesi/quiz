@@ -73,6 +73,24 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "locations",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P840",
+            "label" : "",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -113,6 +131,24 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "publicationDate",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P577",
+            "label" : "publication date",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -153,6 +189,24 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "director",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P57",
+            "label" : "director",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -193,6 +247,24 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "screenwriter",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P58",
+            "label" : "screenwriter",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -233,16 +305,105 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "composer",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P86",
+            "label" : "composer",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "statement-membership",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "values" : "Q11424",
+        "property" : "P31",
+        "includeSubclasses" : "false"
+      }
+    },
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "Movies",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Movies",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Movies",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "Movies",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "values" : "Q11424",
+          "property" : "P31",
+          "includeSubclasses" : "false"
+        }
+      }
+    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   },
   "generationDepth" : 1,
@@ -318,6 +479,24 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "locations",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P840",
+            "label" : "",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -358,6 +537,24 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "publicationDate",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P577",
+            "label" : "publication date",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -398,6 +595,24 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "director",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P57",
+            "label" : "director",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -438,6 +653,24 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "screenwriter",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P58",
+            "label" : "screenwriter",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -478,16 +711,105 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Movies",
+          "fieldPath" : "composer",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P86",
+            "label" : "composer",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "statement-membership",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "values" : "Q11424",
+        "property" : "P31",
+        "includeSubclasses" : "false"
+      }
+    },
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "Movies",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Movies",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Movies",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "Movies",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "values" : "Q11424",
+          "property" : "P31",
+          "includeSubclasses" : "false"
+        }
+      }
+    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ ] ],

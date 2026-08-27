@@ -156,13 +156,19 @@
         "requireSitelink" : false,
         "rankBySitelinks" : false,
         "rankPropertyPid" : "",
-        "rankDescending" : true
+        "rankDescending" : true,
+        "rankFrom" : -1,
+        "rankUntil" : -1,
+        "membershipConstraints" : [ "java.util.ArrayList", [ ] ]
       },
       "collection" : true
     } ] ],
     "requireSitelink" : false,
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
-    "rankDescending" : true
+    "rankDescending" : true,
+    "rankFrom" : -1,
+    "rankUntil" : -1,
+    "membershipConstraints" : [ "java.util.ArrayList", [ ] ]
   }
 }
