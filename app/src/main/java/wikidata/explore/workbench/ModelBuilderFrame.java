@@ -1156,6 +1156,10 @@ public class ModelBuilderFrame extends JFrame {
             replaceGenerationRun(run);
 
             if (run != null) {
+                // Graph state is presentation metadata, like the QID chip: show it in
+                // card titles without inventing stored fields or affecting search/sort.
+                instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
+                        graphDiscoveryState()));
                 instancesPanel.accept(run.objectResult());
                 // Generation runs on a COPY of the model, so a descriptive vocabulary
                 // built from the loaded data (e.g. NomineeType, WorkGenre) lands on

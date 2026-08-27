@@ -40,6 +40,8 @@ public class QueryObjectResultPanel
             new JPanel(new BorderLayout());
 
     private RenderContext activeContext;
+    private java.util.function.Function<Viewable, JComponent> cardDecorator =
+            IdentityChip::ofInstance;
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
@@ -48,6 +50,12 @@ public class QueryObjectResultPanel
 
     public RenderContext activeRenderContext() {
         return activeContext;
+    }
+
+    /** Presentation-only title decoration; identity remains the default. */
+    public void cardDecorator(
+            java.util.function.Function<Viewable, JComponent> decorator) {
+        cardDecorator = decorator == null ? IdentityChip::ofInstance : decorator;
     }
 
     public void viewMode(ViewMode viewMode) {
@@ -100,7 +108,7 @@ public class QueryObjectResultPanel
         // cards read their header decoration while they are constructed. Without this,
         // ModelBuilder showed QIDs for a one-type result but silently lost them as soon
         // as the result contained several types (the normal generated-domain case).
-        multi.context().setCardDecorator(IdentityChip::ofInstance);
+        multi.context().setCardDecorator(cardDecorator);
 
         for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
             List<Viewable> full = e.getValue();
@@ -211,7 +219,7 @@ public class QueryObjectResultPanel
                         // Stamp each instance with its Wikidata identity chip — same
                         // presentation the transform/curation views use, resolved here from the
                         // instance's native id (ModelBuilder has no curation sidecar).
-                        .cardDecorator(IdentityChip::ofInstance)
+                        .cardDecorator(cardDecorator)
                         .build();
         activeContext = browser.renderContext();
 

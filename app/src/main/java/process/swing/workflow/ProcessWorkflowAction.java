@@ -29,6 +29,11 @@ public interface ProcessWorkflowAction<R, D> {
      * together has domain-defined semantics.
      */
     default boolean multipleResultSelection() { return false; }
+    /**
+     * An already-computed result that should open directly for review and apply.
+     * Null keeps the ordinary Plan → Execute → Results lifecycle.
+     */
+    default ProcessOutcome<R> preparedOutcome() { return null; }
     Process<R> process();
     ProcessWorkflowResults<D> results(ProcessOutcome<R> outcome);
     void apply(List<D> decisions) throws Exception;

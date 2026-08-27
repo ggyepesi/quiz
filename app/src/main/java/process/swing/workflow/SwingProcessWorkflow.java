@@ -41,7 +41,9 @@ public final class SwingProcessWorkflow {
             Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
             Consumer<ModelReference> navigateReference) {
         Session<R, D> session = new Session<>(owner, runner, action, navigateReference);
-        session.showPlan();
+        ProcessOutcome<R> prepared = action.preparedOutcome();
+        if (prepared == null) session.showPlan();
+        else session.review(prepared);
         session.dialog.setVisible(true);
         return session.dialog;
     }
@@ -57,6 +59,7 @@ public final class SwingProcessWorkflow {
         final JDialog dialog;
         final ProcessWorkflowPipeline pipeline;
         final ProcessWorkflowPipelinePanel pipelinePanel;
+        boolean reviewingPrepared;
 
         Session(Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
                 Consumer<ModelReference> navigateReference) {
@@ -127,6 +130,18 @@ public final class SwingProcessWorkflow {
             if (pipeline != null && outcome != null) {
                 pipeline.finish(outcome.status(), outcome.summary());
             }
+            state.results();
+            presentResults(outcome);
+        }
+
+        /** Review state produced by an earlier operation, without a pretend Execute. */
+        void review(ProcessOutcome<R> outcome) {
+            reviewingPrepared = true;
+            state.review();
+            presentResults(outcome);
+        }
+
+        private void presentResults(ProcessOutcome<R> outcome) {
             if (outcome == null || outcome.result() == null) {
                 String message = outcome != null && outcome.error() != null
                         ? outcome.error().getMessage() : "No result was produced.";
@@ -134,7 +149,6 @@ public final class SwingProcessWorkflow {
                 dialog.dispose();
                 return;
             }
-            state.results();
             ProcessWorkflowResults<D> results;
             try {
                 results = action.results(outcome);
@@ -154,7 +168,7 @@ public final class SwingProcessWorkflow {
          * page failed. Actions with one safe result (generation) can still be accepted. */
         void showFallbackResults(String summary, Throwable failure,
                                  ProcessWorkflowResults<D> results, ProcessStatus status) {
-            JPanel panel = page("3 · Results", summary);
+            JPanel panel = page(reviewingPrepared ? "Review" : "3 · Results", summary);
             JLabel message = new JLabel("<html>The detailed result preview could not be "
                     + "rendered.<br>" + html(failure.getMessage()) + "</html>");
             panel.add(message, BorderLayout.CENTER);
@@ -173,7 +187,7 @@ public final class SwingProcessWorkflow {
         void showResults(ProcessWorkflowResults<D> results, ProcessStatus status) {
             applyVerb = results.applyVerb();
             boolean applicationAllowed = action.applyAllowed(status);
-            JPanel panel = page("3 · Results", results.summary()
+            JPanel panel = page(reviewingPrepared ? "Review" : "3 · Results", results.summary()
                     + (status == ProcessStatus.PARTIAL
                     ? applicationAllowed ? " (partial result)"
                     : " (partial result — applying is disabled by execution settings)"

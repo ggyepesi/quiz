@@ -15,7 +15,7 @@ class ProcessWorkflowStateTest {
         assertEquals("All instances are already identified", plan.noWorkMessage());
     }
 
-    @Test void followsTheOnlySupportedLifecycle() {
+    @Test void followsTheExecutableLifecycle() {
         ProcessWorkflowState state = new ProcessWorkflowState();
         assertEquals(ProcessWorkflowState.Stage.PLAN, state.stage());
         state.execute();
@@ -25,6 +25,14 @@ class ProcessWorkflowStateTest {
         state.apply();
         assertEquals(ProcessWorkflowState.Stage.APPLYING, state.stage());
         state.applied();
+        assertEquals(ProcessWorkflowState.Stage.COMPLETE, state.stage());
+    }
+
+    @Test void preparedStateCanGoDirectlyToReviewAndApply() {
+        ProcessWorkflowState state = new ProcessWorkflowState();
+        state.review();
+        assertEquals(ProcessWorkflowState.Stage.RESULTS, state.stage());
+        state.apply(); state.applied();
         assertEquals(ProcessWorkflowState.Stage.COMPLETE, state.stage());
     }
 

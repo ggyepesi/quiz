@@ -8,6 +8,7 @@ import datasource.graph.GraphRelation;
 import objectview.field.FieldAccess;
 import wikidata.WikidataIds;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.extract.WikidataObjectGraph;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -83,7 +84,9 @@ public final class WikidataGraphDiscoveryState {
             String targetField) {
         Map<String, String> values = new LinkedHashMap<>();
         if (objects == null) return values.keySet();
-        for (WikidataDynamicObject object : objects) {
+        // A statement or its target may exist only as a nested reference. Coverage
+        // describes the graph that will be saved, so walk that exact reachable graph.
+        for (WikidataDynamicObject object : WikidataObjectGraph.reachable(objects)) {
             // Membership must inspect the explicit stamp. typeName() falls back to the
             // Java class for an unstamped object and must never answer this question.
             if (object == null || !object.hasTypeStamp()

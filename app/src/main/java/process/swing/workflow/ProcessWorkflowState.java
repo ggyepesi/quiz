@@ -6,6 +6,8 @@ public final class ProcessWorkflowState {
     private Stage stage = Stage.PLAN;
     public Stage stage() { return stage; }
     public void execute() { move(Stage.PLAN, Stage.RUNNING); }
+    /** A prior process produced the state being reviewed; there is no new run stage. */
+    public void review() { move(Stage.PLAN, Stage.RESULTS); }
     public void results() { move(Stage.RUNNING, Stage.RESULTS); }
     public void apply() { move(Stage.RESULTS, Stage.APPLYING); }
     public void applied() { move(Stage.APPLYING, Stage.COMPLETE); }
