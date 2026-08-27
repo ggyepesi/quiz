@@ -229,6 +229,23 @@ final class GraphPatternSamplePanel extends JPanel {
 
     /** Compact explanatory diagram; data remains accessible in the card tabs below. */
     private static final class PatternDiagram extends JComponent {
+        // Text follows the look and feel, because a foreground that ignores it is
+        // unreadable on a dark one. The accent stays literal, as it is in the card
+        // renderers this diagram sits above, and is applied as a TINT so it
+        // composites over whatever background is actually beneath it.
+        private static final Color ACCENT = new Color(30, 110, 210);
+        private static Color ui(String key, Color fallback) {
+            Color color = UIManager.getColor(key);
+            return color == null ? fallback : color;
+        }
+        private static Color text() { return ui("Label.foreground", Color.DARK_GRAY); }
+        private static Color muted() {
+            return ui("Label.disabledForeground", Color.GRAY);
+        }
+        private static Color tint() {
+            return new Color(ACCENT.getRed(), ACCENT.getGreen(), ACCENT.getBlue(), 28);
+        }
+
         private GraphExpansionPattern pattern;
         private int selected, sources, statements, frontier;
         PatternDiagram() { setPreferredSize(new Dimension(760, 125)); }
@@ -245,7 +262,8 @@ final class GraphPatternSamplePanel extends JPanel {
                 g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                         RenderingHints.VALUE_ANTIALIAS_ON);
                 if (pattern == null) {
-                    g.setColor(Color.GRAY); g.drawString("No graph pattern selected.", 16, 32);
+                    g.setColor(muted());
+                    g.drawString("No graph pattern selected.", 16, 32);
                     return;
                 }
                 int y = 22, h = 54, gap = 34;
@@ -263,15 +281,17 @@ final class GraphPatternSamplePanel extends JPanel {
         }
         private static void box(Graphics2D g, int x, int y, int w, int h,
                                 String title, String detail) {
-            g.setColor(new Color(237, 244, 252)); g.fillRoundRect(x, y, w, h, 12, 12);
-            g.setColor(new Color(72, 105, 145)); g.drawRoundRect(x, y, w, h, 12, 12);
-            g.setColor(Color.DARK_GRAY); g.setFont(g.getFont().deriveFont(Font.BOLD));
+            g.setColor(tint()); g.fillRoundRect(x, y, w, h, 12, 12);
+            g.setColor(ACCENT); g.drawRoundRect(x, y, w, h, 12, 12);
+            g.setColor(text()); g.setFont(g.getFont().deriveFont(Font.BOLD));
             g.drawString(title, x + 9, y + 21);
-            g.setFont(g.getFont().deriveFont(Font.PLAIN)); g.drawString(detail, x + 9, y + 41);
+            g.setColor(muted());
+            g.setFont(g.getFont().deriveFont(Font.PLAIN));
+            g.drawString(detail, x + 9, y + 41);
         }
         private static void arrow(Graphics2D g, int x1, int y1, int x2, int y2,
                                   String label) {
-            g.setColor(new Color(90, 90, 90)); g.drawLine(x1 + 3, y1, x2 - 5, y2);
+            g.setColor(muted()); g.drawLine(x1 + 3, y1, x2 - 5, y2);
             g.drawLine(x2 - 12, y2 - 5, x2 - 5, y2); g.drawLine(x2 - 12, y2 + 5, x2 - 5, y2);
             Font old = g.getFont(); g.setFont(old.deriveFont(10f));
             g.drawString(label, x1 + 7, y1 - 6); g.setFont(old);
