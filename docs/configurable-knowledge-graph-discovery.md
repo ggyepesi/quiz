@@ -21,23 +21,43 @@ absorbing it silently.
   still does both jobs, by construction rather than by care.
 - `749531ec` — the graph contract (`datasource.graph`), the Wikidata adapter deriving
   the pattern from statement models, coverage persisted with the snapshot, and the
-  frontier workflow whose apply writes the chosen node into the target class's seeds.
+  frontier workflow that turns a chosen node into an expansion (superseded by
+  `110d5ee2`, which stopped that choice editing the authored model).
 - Statement participation is now explicit: `Graph expansion = Curated frontier`
   enables the resolved pattern shown in the StatementClass editor; `None` preserves
   ordinary statement generation without a hidden frontier.
+- `110d5ee2` — accepting a frontier node is execution history, not a model edit. The
+  chosen nodes live in a durable ledger keyed the way coverage already is, applied to
+  the disposable copy a run compiles from, saved with the snapshot and reset when a
+  different model is loaded. `QUEUED` and `INCOMPLETE` are emitted: a queued node
+  becomes expanded only when the run that expanded it completed. A pattern switched
+  back to `None` goes dormant rather than losing its ledger.
+- `fbbd9450`, `d107ac72` — an ordinary typed entity field can declare a graph edge
+  without a StatementClass, one plan carries statement patterns and field steps
+  together, and `GraphStaysNeutralTest` locks the neutral boundary. See
+  [Bounded Graph Execution and Local RDF Storage](bounded-graph-execution-and-local-store.md).
 
 Proven on History: `Person -[P39]-> Position` with one seeded position produced 140
 office holdings across 24 positions, 23 of them encountered rather than configured.
+A second round expanding Holy Roman Emperor took the domain to 491 objects across 42
+positions, and after the prune fix (#119) preview and generation agree on every
+frontier node.
 
 **Deferred, and this list is the scope line.**
 
 - A second provider. Wikipedia category traversal reuses the contract and is the test
   of whether the abstraction generalizes — after 0.1, because one provider proves the
   workflow and only the second proves the abstraction.
-- The durable expansion ledger. Coverage is computed at save, so `QUEUED`,
-  `EXPANDING` and `INCOMPLETE` are declared and unemitted.
-- Persisting the user's selected expansions in the model as first-class state, rather
-  than as seed QIDs on the target class.
+- `EXPANDING` remains declared and unemitted: nothing yet reports a run in flight, so
+  a wave that dies mid-enumeration is only distinguishable afterwards, as `INCOMPLETE`.
+- Acting on incomplete adjacency. `GraphWave` reports it on its own channel, but a
+  truncated enumeration needs a continuation request that no runner issues yet.
+- Bounded execution itself. `GraphWave` evaluates exactly the population it is handed;
+  depth and resource limits belong to a plan runner that does not exist.
+- Local RDF storage beyond the in-memory reference implementation.
+- Restricting a frontier by target type (#120). A type restriction is a third case
+  between an open frontier and a bounded vocabulary, and the derivation currently
+  models two.
 - Arbitrary graph-pattern languages, cross-datasource joins, automatic fixed-point
   traversal, graph editing and a visual pattern editor.
 

@@ -97,6 +97,17 @@
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
       "membershipQid" : ""
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "image",
+      "propertyPid" : "P18",
+      "propertyLabel" : "image",
+      "kind" : "MEDIA",
+      "optional" : true,
+      "collection" : true,
+      "direction" : "ROOT_TO_ITEM",
+      "membershipPid" : "",
+      "membershipQid" : ""
     } ] ],
     "limit" : 200,
     "sortFieldName" : "",

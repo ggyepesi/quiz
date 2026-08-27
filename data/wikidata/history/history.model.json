@@ -125,8 +125,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "birth name",
             "property" : "P1477",
+            "label" : "birth name",
             "sourceType" : "SPARQL"
           }
         }
@@ -183,8 +183,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "name in native language",
             "property" : "P1559",
+            "label" : "name in native language",
             "sourceType" : "SPARQL"
           }
         }
@@ -241,8 +241,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "pseudonym",
             "property" : "P742",
+            "label" : "pseudonym",
             "sourceType" : "SPARQL"
           }
         }
@@ -299,8 +299,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "date of birth",
             "property" : "P569",
+            "label" : "date of birth",
             "sourceType" : "SPARQL"
           }
         }
@@ -397,8 +397,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
             "property" : "P570",
+            "label" : "",
             "sourceType" : "SPARQL"
           }
         }
@@ -455,8 +455,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
             "property" : "P31",
+            "label" : "",
             "sourceType" : "SPARQL"
           }
         }
@@ -513,8 +513,66 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "spouse",
             "property" : "P26",
+            "label" : "spouse",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "image",
+      "type" : "IMAGE",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P18",
+        "propertyLabel" : "image",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "INLINE_VALUE",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "image",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P18",
+            "label" : "image",
             "sourceType" : "SPARQL"
           }
         }
@@ -700,8 +758,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "birth name",
             "property" : "P1477",
+            "label" : "birth name",
             "sourceType" : "SPARQL"
           }
         }
@@ -758,8 +816,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "name in native language",
             "property" : "P1559",
+            "label" : "name in native language",
             "sourceType" : "SPARQL"
           }
         }
@@ -816,8 +874,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "pseudonym",
             "property" : "P742",
+            "label" : "pseudonym",
             "sourceType" : "SPARQL"
           }
         }
@@ -874,8 +932,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "date of birth",
             "property" : "P569",
+            "label" : "date of birth",
             "sourceType" : "SPARQL"
           }
         }
@@ -972,8 +1030,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
             "property" : "P570",
+            "label" : "",
             "sourceType" : "SPARQL"
           }
         }
@@ -1030,8 +1088,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
             "property" : "P31",
+            "label" : "",
             "sourceType" : "SPARQL"
           }
         }
@@ -1088,8 +1146,66 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "spouse",
             "property" : "P26",
+            "label" : "spouse",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "image",
+      "type" : "IMAGE",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P18",
+        "propertyLabel" : "image",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "INLINE_VALUE",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "image",
+          "slot" : "PRIMARY_FIELD_VALUE"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "property" : "P18",
+            "label" : "image",
             "sourceType" : "SPARQL"
           }
         }
@@ -1233,8 +1349,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
             "property" : "P734",
+            "label" : "",
             "sourceType" : "SPARQL"
           }
         }
@@ -1291,8 +1407,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
             "property" : "P735",
+            "label" : "",
             "sourceType" : "SPARQL"
           }
         }
@@ -1343,13 +1459,13 @@
       "sourceType" : "SPARQL"
     },
     "fields" : [ "java.util.ArrayList", [ ] ],
-    "seedQids" : [ "java.util.ArrayList", [ "Q6412254", "Q181765" ] ],
+    "seedQids" : [ "java.util.ArrayList", [ "Q6412254" ] ],
     "populationSource" : {
       "providerId" : "wikidata",
       "operationId" : "seed-list",
       "parameters" : {
         "@class" : "java.util.ImmutableCollections$Map1",
-        "ids" : "Q6412254,Q181765"
+        "ids" : "Q6412254"
       }
     },
     "sourceBindings" : [ "java.util.ArrayList", [ {
@@ -1406,7 +1522,7 @@
         "operationId" : "seed-list",
         "parameters" : {
           "@class" : "java.util.ImmutableCollections$Map1",
-          "ids" : "Q6412254,Q181765"
+          "ids" : "Q6412254"
         }
       }
     } ] ],
@@ -1547,8 +1663,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "position held",
             "property" : "P39",
+            "label" : "position held",
             "sourceType" : "SPARQL"
           }
         }
