@@ -273,6 +273,21 @@ public final class GeneratedProjectModelValidator {
                                 + field.entityClassName()
                                 + "' is not modeled; the field renders as a string."));
             }
+            if (field.graphExpansionPolicy()
+                    != datasource.graph.GraphExpansionPolicy.NONE) {
+                if (field.type() != FieldType.ENTITY
+                        || clean(field.entityClassName()).isBlank()
+                        || project.findClass(field.entityClassName()) == null) {
+                    problems.add(Problem.error(path(clazz, field),
+                            "Graph expansion requires a typed entity field targeting "
+                                    + "a modeled class."));
+                }
+                if (field.mapping().sourceType() != FieldSourceType.SPARQL
+                        || !wikidata.WikidataIds.isPid(field.mapping().propertyPid())) {
+                    problems.add(Problem.error(path(clazz, field),
+                            "Wikidata graph expansion requires a Pxx property source."));
+                }
+            }
             WikipediaCategoryRule category = field.wikipediaCategoryRule();
             if (category != null) {
                 long placeholders = category.pattern().split("<value>", -1).length - 1L;

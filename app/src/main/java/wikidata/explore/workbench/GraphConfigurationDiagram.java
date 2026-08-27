@@ -1,8 +1,9 @@
 package wikidata.explore.workbench;
 
 import datasource.graph.GraphExpansionPattern;
-import datasource.graph.GraphExpansionPolicy;
-import wikidata.explore.generation.WikidataGraphDiscoveryState;
+import datasource.graph.GraphExpansionPlan;
+import datasource.graph.GraphTraversalStep;
+import wikidata.explore.generation.WikidataGraphExpansionPlan;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -25,6 +26,7 @@ final class GraphConfigurationDiagram extends JPanel {
         setBorder(BorderFactory.createTitledBorder("Configured graph expansion"));
         add(diagram, BorderLayout.CENTER);
         diagram.onActivate(this::activate);
+        diagram.onStepActivate(this::activateStep);
         setVisible(false);
     }
 
@@ -38,11 +40,20 @@ final class GraphConfigurationDiagram extends JPanel {
     }
 
     void refresh() {
-        pattern = patternFor(model, selection);
-        setVisible(pattern != null);
+        GraphExpansionPlan plan = WikidataGraphExpansionPlan.compile(model);
+        pattern = patternFor(plan, model, selection);
+        setVisible(!plan.isEmpty());
         diagram.pattern(pattern, GraphPatternDiagram.Details.configuration(pattern));
+        diagram.traversalSteps(plan.traversalSteps());
         revalidate();
         repaint();
+    }
+
+    private void activateStep(GraphTraversalStep step) {
+        GeneratedClassModel owner = model.findClass(step.sourceNodeClass());
+        if (owner == null) return;
+        owner.fields().stream().filter(field -> step.sourceField().equals(field.name()))
+                .findFirst().ifPresent(onActivate);
     }
 
     private void activate(GraphPatternDiagram.Role role) {
@@ -58,25 +69,19 @@ final class GraphConfigurationDiagram extends JPanel {
 
     static GraphExpansionPattern patternFor(GeneratedProjectModel model, Object selected) {
         if (model == null) return null;
+        return patternFor(WikidataGraphExpansionPlan.compile(model), model, selected);
+    }
+
+    private static GraphExpansionPattern patternFor(
+            GraphExpansionPlan plan, GeneratedProjectModel model, Object selected) {
         GeneratedClassModel selectedClass = selected instanceof GeneratedClassModel clazz
                 ? clazz : selected instanceof GeneratedFieldModel field
                 ? model.declaringClass(field) : null;
         if (selectedClass != null) {
-            GraphExpansionPattern selectedPattern = enabledPattern(model, selectedClass);
-            if (selectedPattern != null) return selectedPattern;
+            for (GraphExpansionPattern candidate : plan.patterns()) {
+                if (selectedClass.className().equals(candidate.statementClass())) return candidate;
+            }
         }
-        for (GeneratedClassModel clazz : model.classes()) {
-            GraphExpansionPattern candidate = enabledPattern(model, clazz);
-            if (candidate != null) return candidate;
-        }
-        return null;
-    }
-
-    private static GraphExpansionPattern enabledPattern(
-            GeneratedProjectModel model, GeneratedClassModel clazz) {
-        if (clazz == null || clazz.statementSource() == null
-                || clazz.statementSource().graphExpansionPolicy()
-                != GraphExpansionPolicy.CURATED) return null;
-        return WikidataGraphDiscoveryState.structuralPattern(model, clazz.className());
+        return plan.patterns().isEmpty() ? null : plan.patterns().getFirst();
     }
 }

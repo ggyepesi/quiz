@@ -1,6 +1,7 @@
 package wikidata.explore.workbench;
 
 import datasource.graph.GraphExpansionPattern;
+import datasource.graph.GraphTraversalStep;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,6 +10,7 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.List;
 
 /** One rendering of a compiled graph pattern, shared by configuration and preview. */
 final class GraphPatternDiagram extends JComponent {
@@ -33,9 +35,12 @@ final class GraphPatternDiagram extends JComponent {
 
     private static final Color ACCENT = new Color(30, 110, 210);
     private final Map<Rectangle, Role> hitTargets = new LinkedHashMap<>();
+    private final Map<Rectangle, GraphTraversalStep> stepTargets = new LinkedHashMap<>();
     private GraphExpansionPattern pattern;
     private Details details = Details.counts(0, 0, 0, 0);
     private Consumer<Role> onActivate;
+    private Consumer<GraphTraversalStep> onStepActivate;
+    private List<GraphTraversalStep> steps = List.of();
 
     GraphPatternDiagram() {
         setPreferredSize(new Dimension(760, 125));
@@ -46,12 +51,18 @@ final class GraphPatternDiagram extends JComponent {
                 hitTargets.entrySet().stream()
                         .filter(entry -> entry.getKey().contains(event.getPoint()))
                         .map(Map.Entry::getValue).findFirst().ifPresent(onActivate);
+                if (onStepActivate != null) stepTargets.entrySet().stream()
+                        .filter(entry -> entry.getKey().contains(event.getPoint()))
+                        .map(Map.Entry::getValue).findFirst().ifPresent(onStepActivate);
             }
         });
         addMouseMotionListener(new MouseAdapter() {
             @Override public void mouseMoved(MouseEvent event) {
-                setCursor(onActivate != null && hitTargets.keySet().stream()
-                        .anyMatch(r -> r.contains(event.getPoint()))
+                boolean roleHit = onActivate != null && hitTargets.keySet().stream()
+                        .anyMatch(r -> r.contains(event.getPoint()));
+                boolean stepHit = onStepActivate != null && stepTargets.keySet().stream()
+                        .anyMatch(r -> r.contains(event.getPoint()));
+                setCursor(roleHit || stepHit
                         ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
                         : Cursor.getDefaultCursor());
             }
@@ -75,19 +86,34 @@ final class GraphPatternDiagram extends JComponent {
         setCursor(Cursor.getDefaultCursor());
     }
 
+    void onStepActivate(Consumer<GraphTraversalStep> handler) {
+        onStepActivate = handler;
+        if (handler == null) stepTargets.clear();
+        setCursor(Cursor.getDefaultCursor());
+    }
+
+    void traversalSteps(List<GraphTraversalStep> value) {
+        steps = value == null ? List.of() : List.copyOf(value);
+        setPreferredSize(new Dimension(760, 125 + steps.size() * 25));
+        revalidate();
+        repaint();
+    }
+
     @Override protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
         hitTargets.clear();
+        stepTargets.clear();
         Graphics2D g = (Graphics2D) graphics.create();
         try {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
-            if (pattern == null) {
+            if (pattern == null && steps.isEmpty()) {
                 g.setColor(muted());
                 g.drawString("No graph pattern selected.", 16, 32);
                 return;
             }
             int y = 22, h = 54, gap = 34;
+            if (pattern != null) {
             int w = Math.max(112, (getWidth() - 5 * gap) / 4);
             int x1 = gap, x2 = x1 + w + gap, x3 = x2 + w + gap,
                     x4 = x3 + w + gap;
@@ -110,6 +136,31 @@ final class GraphPatternDiagram extends JComponent {
                 g.setColor(muted());
                 g.setFont(g.getFont().deriveFont(11f));
                 g.drawString(details.footer(), gap, 108);
+            }
+            }
+            int stepY = pattern == null ? 28 : 124;
+            if (pattern == null) {
+                g.setColor(text());
+                g.setFont(g.getFont().deriveFont(Font.BOLD));
+                g.drawString("Configured field traversal", gap, 18);
+            }
+            for (GraphTraversalStep step : steps) {
+                Rectangle row = new Rectangle(gap, stepY - 16,
+                        Math.max(100, getWidth() - 2 * gap), 22);
+                g.setColor(tint());
+                g.fillRoundRect(row.x, row.y, row.width, row.height, 8, 8);
+                g.setColor(ACCENT);
+                g.drawRoundRect(row.x, row.y, row.width, row.height, 8, 8);
+                g.setColor(text());
+                g.setFont(g.getFont().deriveFont(Font.PLAIN, 11f));
+                String arrow = step.direction() == datasource.graph.GraphTraversalDirection.OUTGOING
+                        ? " → " : " ← ";
+                g.drawString(step.sourceNodeClass() + "." + step.sourceField()
+                        + arrow + step.relation().relationId() + arrow
+                        + step.targetNodeClass() + " · " + step.policy(),
+                        row.x + 8, stepY);
+                if (onStepActivate != null) stepTargets.put(row, step);
+                stepY += 25;
             }
         } finally {
             g.dispose();

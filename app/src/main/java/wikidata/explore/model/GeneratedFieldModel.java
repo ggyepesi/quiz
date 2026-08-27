@@ -3,6 +3,7 @@ package wikidata.explore.model;
 import java.util.ArrayList;
 import java.util.List;
 import datasource.api.SourceBinding;
+import datasource.graph.GraphExpansionPolicy;
 
 public class GeneratedFieldModel {
 
@@ -14,6 +15,9 @@ public class GeneratedFieldModel {
     private boolean unclassedEntity;
     private FieldCardinality cardinality = FieldCardinality.AUTO;
     private FieldRenderMode renderMode = FieldRenderMode.AUTO;
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private GraphExpansionPolicy graphExpansionPolicy;
 
     // When true the field's property is a membership constraint: its triple is
     // emitted non-OPTIONAL, so only entities that actually have the property
@@ -142,6 +146,16 @@ public class GeneratedFieldModel {
                 renderMode == null ? FieldRenderMode.AUTO : renderMode;
     }
 
+    public GraphExpansionPolicy graphExpansionPolicy() {
+        return graphExpansionPolicy == null
+                ? GraphExpansionPolicy.NONE : graphExpansionPolicy;
+    }
+
+    public void graphExpansionPolicy(GraphExpansionPolicy value) {
+        graphExpansionPolicy = value == null || value == GraphExpansionPolicy.NONE
+                ? null : value;
+    }
+
     public boolean renderAsReference() {
         return renderMode == FieldRenderMode.REFERENCE;
     }
@@ -219,6 +233,7 @@ public class GeneratedFieldModel {
         c.entityClassName = entityClassName;
         c.unclassedEntity = unclassedEntity;
         c.renderMode = renderMode;
+        c.graphExpansionPolicy = graphExpansionPolicy;
         c.required = required;
         c.expectation = expectation;
         c.filterOperator = filterOperator;

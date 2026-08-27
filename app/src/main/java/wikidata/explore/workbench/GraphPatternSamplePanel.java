@@ -3,13 +3,13 @@ package wikidata.explore.workbench;
 import datasource.graph.GraphDiscoveryState;
 import datasource.graph.GraphExpansionCoverage;
 import datasource.graph.GraphExpansionPattern;
-import datasource.graph.GraphExpansionPolicy;
 import objectview.Viewable;
 import objectview.render.RenderingMode;
 import objectview.view.SearchableView;
 import quiz.transform.DynamicViewable;
 import wikidata.WikidataIds;
 import wikidata.explore.generation.WikidataGraphDiscoveryState;
+import wikidata.explore.generation.WikidataGraphExpansionPlan;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.logical.GraphPatternSampleQuery;
@@ -64,13 +64,10 @@ final class GraphPatternSamplePanel extends JPanel {
         String selected = patterns.getSelectedItem() instanceof Choice choice
                 ? choice.statementClass() : "";
         patterns.removeAllItems();
-        for (GeneratedClassModel clazz : model.classes()) {
-            if (clazz.statementSource() == null
-                    || clazz.statementSource().graphExpansionPolicy()
-                    != GraphExpansionPolicy.CURATED) continue;
-            GraphExpansionPattern pattern = WikidataGraphDiscoveryState
-                    .structuralPattern(model, clazz.className());
-            if (pattern != null) patterns.addItem(new Choice(clazz.className(), pattern));
+        var plan = WikidataGraphExpansionPlan.compile(model);
+        diagram.traversalSteps(plan.traversalSteps());
+        for (GraphExpansionPattern pattern : plan.patterns()) {
+            patterns.addItem(new Choice(pattern.statementClass(), pattern));
         }
         for (int i = 0; i < patterns.getItemCount(); i++) {
             if (selected.equals(patterns.getItemAt(i).statementClass())) {
@@ -119,7 +116,9 @@ final class GraphPatternSamplePanel extends JPanel {
         if (choice == null) {
             seededFor = null;
             seeds.setText("");
-            status.setText("No enabled, structurally complete graph pattern.");
+            status.setText(WikidataGraphExpansionPlan.compile(model).traversalSteps().isEmpty()
+                    ? "No enabled, structurally complete graph pattern."
+                    : "Field traversal configured; bounded-wave preview is the next stage.");
             diagram.pattern(null, GraphPatternDiagram.Details.counts(0, 0, 0, 0));
             updateEnabled();
             return;

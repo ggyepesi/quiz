@@ -21,6 +21,7 @@ import workbench.DbpediaPropertyPicker;
 import workbench.FieldDefinitionPanel;
 import workbench.WikipediaCategoryPicker;
 import workbench.WikipediaInfoboxPicker;
+import datasource.graph.GraphExpansionPolicy;
 
 public class FieldSourcePanel extends JPanel {
 
@@ -106,6 +107,8 @@ public class FieldSourcePanel extends JPanel {
     // values" keeps just id+label references that resolve within the set.
     private final JComboBox<FieldProductionKind> productionBox =
             new JComboBox<>(FieldProductionKind.values());
+    private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
+            new JComboBox<>(GraphExpansionPolicy.values());
 
     private final JTextField propertyPidField = new JTextField(10);
     // For a field of a statement-reification class: the qualifier PID this field
@@ -207,6 +210,8 @@ public class FieldSourcePanel extends JPanel {
         });
         productionBox.setToolTipText(
                 productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
+        graphExpansionBox.setToolTipText("Whether graph discovery follows this typed "
+                + "entity relation. Curated frontier waits for explicit selection.");
         shapeBox.setToolTipText(
                 "<html>How many values this field holds per entity:<br>"
                         + "<b>Single value</b> — at most one (e.g. area, magnitude, "
@@ -249,6 +254,18 @@ public class FieldSourcePanel extends JPanel {
                     public void changedUpdate(
                             javax.swing.event.DocumentEvent event) {
                         refreshStatementFieldControls();
+                    }
+                });
+        propertyPidField.getDocument().addDocumentListener(
+                new javax.swing.event.DocumentListener() {
+                    public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                        refreshGraphExpansionControl();
+                    }
+                    public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                        refreshGraphExpansionControl();
+                    }
+                    public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                        refreshGraphExpansionControl();
                     }
                 });
     }
@@ -487,6 +504,7 @@ public class FieldSourcePanel extends JPanel {
                 field.sortDescending() ? "descending" : "ascending");
         directionBox.setSelectedItem(m.direction());
         productionBox.setSelectedItem(m.productionKind());
+        graphExpansionBox.setSelectedItem(field.graphExpansionPolicy());
         filterOpBox.setSelectedItem(symbolOf(field.filterOperator()));
         filterValueField.setText(field.filterValue() == null
                                          ? "" : trimDouble(field.filterValue()));
@@ -507,6 +525,7 @@ public class FieldSourcePanel extends JPanel {
         refreshFallbackLabel();
         refreshCategoryLabel();
         updateRecommendation();
+        refreshGraphExpansionControl();
         updateSampleButtonState();
     }
 
@@ -618,6 +637,7 @@ public class FieldSourcePanel extends JPanel {
         // The source-independent definition is shared with TransformApp's New Field.
         GridBagUtils.wideRow(form, y++, fieldDefinitionPanel);
         GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
+        GridBagUtils.labeledRow(form, c, y++, "Graph expansion:", graphExpansionBox);
 
         // --- Where it comes from ---
         GridBagUtils.wideRow(form, y++, sectionLabel("Source"));
@@ -771,7 +791,10 @@ public class FieldSourcePanel extends JPanel {
         applyButton.addActionListener(e -> apply());
         reloadFieldButton.addActionListener(e -> requestReload());
         sampleShapeButton.addActionListener(e -> onSampleRequested.run());
-        sourceTypeBox.addActionListener(e -> updateRecommendation());
+        sourceTypeBox.addActionListener(e -> {
+            updateRecommendation();
+            refreshGraphExpansionControl();
+        });
         objectTypeBox.addActionListener(e -> {
             if (updatingObjectTypeBox) {
                 return;
@@ -828,6 +851,8 @@ public class FieldSourcePanel extends JPanel {
             refreshStatementFieldControls();
         });
         renderModeBox.addActionListener(e -> updateRecommendation());
+        typeBox.addActionListener(e -> refreshGraphExpansionControl());
+        objectTypeBox.addActionListener(e -> refreshGraphExpansionControl());
     }
 
     // MissingQualifierPolicy ↔ combo label (null = safe Auto = leave missing).
@@ -947,6 +972,13 @@ public class FieldSourcePanel extends JPanel {
         field.edgeMembership(onlyRelatedOfTypeBox.isSelected()
                                      ? wikidata.explore.model.EdgeMembershipMode.INHERIT
                                      : wikidata.explore.model.EdgeMembershipMode.NONE);
+        boolean graphTraversable = field.type() == FieldType.ENTITY
+                && !field.entityClassName().isBlank()
+                && m.sourceType() == FieldSourceType.SPARQL
+                && WikidataIds.isPid(m.propertyPid());
+        field.graphExpansionPolicy(graphTraversable
+                ? (GraphExpansionPolicy) graphExpansionBox.getSelectedItem()
+                : GraphExpansionPolicy.NONE);
         applyNumericFilter(field);
 
         // The "Load as" dropdown is authoritative — the user's explicit choice
@@ -1371,6 +1403,21 @@ public class FieldSourcePanel extends JPanel {
         sampleShapeButton.setVisible(autoShape);
     }
 
+    private void refreshGraphExpansionControl() {
+        FieldDefinition definition = fieldDefinitionPanel.definition();
+        FieldSourceType source = (FieldSourceType) sourceTypeBox.getSelectedItem();
+        boolean eligible = definition != null
+                && definition.type() == FieldType.ENTITY
+                && definition.entityClassName() != null
+                && !definition.entityClassName().isBlank()
+                && source == FieldSourceType.SPARQL
+                && WikidataIds.isPid(propertyPidField.getText().trim());
+        graphExpansionBox.setEnabled(eligible);
+        graphExpansionBox.setToolTipText(eligible
+                ? "Expose values reached through this field as a curated graph frontier."
+                : "Graph expansion requires a typed Wikidata entity field with a Pxx property.");
+    }
+
     private String entityClassForDisplay() {
         if (field == null) {
             return "";
@@ -1504,6 +1551,8 @@ public class FieldSourcePanel extends JPanel {
         expectationBox.setSelectedItem(wikidata.explore.model.FieldExpectation.NONE);
         directionBox.setSelectedItem(RuleDirection.ITEM_TO_ROOT);
         productionBox.setSelectedItem(FieldProductionKind.AUTO);
+        graphExpansionBox.setSelectedItem(GraphExpansionPolicy.NONE);
+        refreshGraphExpansionControl();
         filterOpBox.setSelectedItem(NO_OP);
         filterValueField.setText("");
         recommendationLabel.setText(" ");
