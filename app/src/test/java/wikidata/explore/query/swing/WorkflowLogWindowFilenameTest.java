@@ -8,6 +8,8 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorkflowLogWindowFilenameTest {
     @TempDir Path directory;
@@ -71,6 +73,13 @@ class WorkflowLogWindowFilenameTest {
         assertEquals(directory.resolve("query-log-domain-1.txt"),
                 WorkflowLogWindow.suggestedLogPath(directory, ""),
                 "an unnamed run still gets a usable filename");
+    }
+
+    @Test void terminalStatusRefreshesEvenWhenTheReaderScrolledUp() {
+        assertFalse(WorkflowLogWindow.refreshFully(false, work.LogStatus.RUNNING));
+        assertTrue(WorkflowLogWindow.refreshFully(false, work.LogStatus.OK));
+        assertTrue(WorkflowLogWindow.refreshFully(false, work.LogStatus.FAILED));
+        assertTrue(WorkflowLogWindow.refreshFully(true, work.LogStatus.RUNNING));
     }
 
     private static process.ProcessWorkflowPipeline pipeline() {

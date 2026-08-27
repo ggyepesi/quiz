@@ -8,6 +8,7 @@ import work.QueryStatus;
 import work.LogKind;
 import work.LogListener;
 import work.LogNode;
+import work.LogStatus;
 import work.LogText;
 import work.WorkflowRecorder;
 import process.SavedRunArtifact;
@@ -54,11 +55,18 @@ public class WorkflowLogWindow implements LogListener {
                 // run were rebuilding the cards under the cursor and destroying the
                 // selection — so hold updates until they scroll back down (the LogNode
                 // data still updates; only the redraw is deferred).
-                if (atBottom) {
+                // A terminal status is important even while the reader has scrolled
+                // up: otherwise the worker finishes and the buttons re-enable while
+                // its visible card keeps saying RUNNING. CardListView itself protects
+                // an active text selection, and the deferred replay below catches up
+                // after that selection/scroll position is released.
+                if (refreshFully(atBottom, root.status())) {
                     view.upsertViewable(root);
-                    if (bar != null) {
+                    if (atBottom && bar != null) {
                         // After the upsert lays out, jump to the (new) bottom.
                         SwingUtilities.invokeLater(() -> bar.setValue(bar.getMaximum()));
+                    } else if (!atBottom) {
+                        deferredUpdates = true;
                     }
                 } else {
                     // Keep cheap mutable titles such as "steps (N)" live while the
@@ -68,6 +76,10 @@ public class WorkflowLogWindow implements LogListener {
                 }
             }
         });
+    }
+
+    static boolean refreshFully(boolean atBottom, LogStatus status) {
+        return atBottom || status != null && status.isTerminal();
     }
 
     private JScrollBar verticalBar() {
