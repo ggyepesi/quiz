@@ -63,4 +63,21 @@ class GraphWaveTest {
         assertEquals(List.of(position), result.unavailable());
         assertFalse(result.completeLocally());
     }
+
+    @Test void incompleteAdjacencyIsNotReturnedAsUnknownWork() {
+        EntityRef position = EntityRef.wikidata("Q18341329");
+        GraphTraversalStep holders = new GraphTraversalStep("holders", "Position", "Person",
+                "holders", P39, GraphTraversalDirection.INCOMING,
+                GraphExpansionPolicy.CURATED);
+        InMemoryGraphStore store = new InMemoryGraphStore();
+        GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
+                List.of(position), P39, GraphTraversalDirection.INCOMING);
+        store.markCoverage(demand, GraphAdjacencyCoverage.INCOMPLETE);
+
+        GraphWaveResult result = GraphWave.evaluate(store, holders, List.of(position));
+        assertFalse(result.requiresAcquisition());
+        assertFalse(result.completeLocally());
+        assertEquals(List.of(position), result.incomplete());
+        assertTrue(result.unavailable().isEmpty());
+    }
 }

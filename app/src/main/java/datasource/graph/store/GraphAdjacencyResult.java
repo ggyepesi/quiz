@@ -7,10 +7,12 @@ import java.util.List;
 public record GraphAdjacencyResult(
         List<GraphEdge> edges,
         List<EntityRef> missingNodes,
+        List<EntityRef> incompleteNodes,
         List<EntityRef> unavailableNodes) {
     public GraphAdjacencyResult {
         edges = edges == null ? List.of() : List.copyOf(edges);
         missingNodes = missingNodes == null ? List.of() : List.copyOf(missingNodes);
+        incompleteNodes = incompleteNodes == null ? List.of() : List.copyOf(incompleteNodes);
         unavailableNodes = unavailableNodes == null ? List.of() : List.copyOf(unavailableNodes);
     }
     public boolean requiresAcquisition() { return !missingNodes.isEmpty(); }

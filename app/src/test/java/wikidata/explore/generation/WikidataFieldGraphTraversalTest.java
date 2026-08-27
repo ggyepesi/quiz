@@ -31,16 +31,36 @@ class WikidataFieldGraphTraversalTest {
     }
 
     @Test void incompleteAndOrdinaryFieldsDoNotBecomeTraversalSteps() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
+        model.addClass(person);
         GeneratedFieldModel spouse = person.addField(
                 "spouse", FieldType.ENTITY, FieldCardinality.COLLECTION);
         spouse.entityClassName("Person");
         spouse.mapping().propertyPid("P26");
-        assertNull(WikidataFieldGraphTraversal.derive(person, spouse));
+        assertTrue(WikidataFieldGraphTraversal.derive(model).isEmpty());
 
         spouse.graphExpansionPolicy(GraphExpansionPolicy.CURATED);
         spouse.entityClassName("");
-        assertNull(WikidataFieldGraphTraversal.derive(person, spouse));
+        assertTrue(WikidataFieldGraphTraversal.derive(model).isEmpty());
+    }
+
+    @Test void nonSparqlAndUnmodeledTargetsCannotCompile() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel spouse = person.addField(
+                "spouse", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        spouse.entityClassName("MissingPerson");
+        spouse.mapping().propertyPid("P26");
+        spouse.graphExpansionPolicy(GraphExpansionPolicy.CURATED);
+        model.addClass(person);
+
+        assertTrue(WikidataFieldGraphTraversal.derive(model).isEmpty());
+
+        GeneratedClassModel target = new GeneratedClassModel("MissingPerson");
+        model.addClass(target);
+        spouse.mapping().sourceType(FieldSourceType.DBPEDIA);
+        assertTrue(WikidataFieldGraphTraversal.derive(model).isEmpty());
     }
 
     @Test void copyPreservesThePolicyWithoutMakingNoneExplicit() {

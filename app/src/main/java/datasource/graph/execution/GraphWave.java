@@ -32,6 +32,7 @@ public final class GraphWave {
         GraphAdjacencyDemand missing = local.missingNodes().isEmpty() ? null
                 : new GraphAdjacencyDemand(local.missingNodes(),
                         step.relation(), step.direction());
-        return new GraphWaveResult(reached, local.edges(), missing, local.unavailableNodes());
+        return new GraphWaveResult(reached, local.edges(), missing,
+                local.incompleteNodes(), local.unavailableNodes());
     }
 }

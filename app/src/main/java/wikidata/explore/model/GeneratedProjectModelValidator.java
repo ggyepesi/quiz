@@ -275,15 +275,13 @@ public final class GeneratedProjectModelValidator {
             }
             if (field.graphExpansionPolicy()
                     != datasource.graph.GraphExpansionPolicy.NONE) {
-                if (field.type() != FieldType.ENTITY
-                        || clean(field.entityClassName()).isBlank()
-                        || project.findClass(field.entityClassName()) == null) {
+                if (!WikidataFieldGraphTraversalEligibility
+                        .hasTypedModeledTarget(project, field)) {
                     problems.add(Problem.error(path(clazz, field),
                             "Graph expansion requires a typed entity field targeting "
                                     + "a modeled class."));
                 }
-                if (field.mapping().sourceType() != FieldSourceType.SPARQL
-                        || !wikidata.WikidataIds.isPid(field.mapping().propertyPid())) {
+                if (!WikidataFieldGraphTraversalEligibility.hasPropertySource(field)) {
                     problems.add(Problem.error(path(clazz, field),
                             "Wikidata graph expansion requires a Pxx property source."));
                 }

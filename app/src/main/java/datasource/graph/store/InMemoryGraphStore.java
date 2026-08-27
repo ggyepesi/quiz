@@ -33,7 +33,9 @@ public final class InMemoryGraphStore implements LocalGraphStore {
     }
 
     @Override public GraphAdjacencyResult adjacent(GraphAdjacencyDemand demand) {
-        if (demand == null) return new GraphAdjacencyResult(List.of(), List.of(), List.of());
+        if (demand == null) {
+            return new GraphAdjacencyResult(List.of(), List.of(), List.of(), List.of());
+        }
         Set<EntityRef> focus = new LinkedHashSet<>(demand.nodes());
         List<GraphEdge> found = edges.stream()
                 .filter(edge -> edge.relation().equals(demand.relation()))
@@ -42,14 +44,16 @@ public final class InMemoryGraphStore implements LocalGraphStore {
                 .toList();
         List<EntityRef> missing = demand.nodes().stream()
                 .filter(node -> adjacencyKnowledge(node, demand)
-                        == GraphAdjacencyCoverage.UNKNOWN
-                        || adjacencyKnowledge(node, demand)
+                        == GraphAdjacencyCoverage.UNKNOWN)
+                .toList();
+        List<EntityRef> incomplete = demand.nodes().stream()
+                .filter(node -> adjacencyKnowledge(node, demand)
                         == GraphAdjacencyCoverage.INCOMPLETE)
                 .toList();
         List<EntityRef> unavailable = demand.nodes().stream()
                 .filter(node -> adjacencyKnowledge(node, demand)
                         == GraphAdjacencyCoverage.UNAVAILABLE)
                 .toList();
-        return new GraphAdjacencyResult(found, missing, unavailable);
+        return new GraphAdjacencyResult(found, missing, incomplete, unavailable);
     }
 }

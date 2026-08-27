@@ -1,7 +1,6 @@
 package wikidata.explore.generation;
 
 import datasource.graph.*;
-import wikidata.WikidataIds;
 import wikidata.explore.model.*;
 
 import java.util.ArrayList;
@@ -17,20 +16,17 @@ public final class WikidataFieldGraphTraversal {
         for (GeneratedClassModel owner : model.classes()) {
             if (owner == null) continue;
             for (GeneratedFieldModel field : owner.fields()) {
-                GraphTraversalStep step = derive(owner, field);
+                GraphTraversalStep step = derive(model, owner, field);
                 if (step != null) result.add(step);
             }
         }
         return List.copyOf(result);
     }
 
-    public static GraphTraversalStep derive(
+    private static GraphTraversalStep derive(GeneratedProjectModel model,
             GeneratedClassModel owner, GeneratedFieldModel field) {
-        if (owner == null || field == null
-                || field.graphExpansionPolicy() == GraphExpansionPolicy.NONE
-                || field.type() != FieldType.ENTITY
-                || field.entityClassName().isBlank()
-                || !WikidataIds.isPid(field.mapping().propertyPid())) return null;
+        if (owner == null
+                || !WikidataFieldGraphTraversalEligibility.canCompile(model, field)) return null;
         GraphTraversalDirection direction = field.mapping().direction()
                 == RuleDirection.ROOT_TO_ITEM
                 ? GraphTraversalDirection.OUTGOING : GraphTraversalDirection.INCOMING;
