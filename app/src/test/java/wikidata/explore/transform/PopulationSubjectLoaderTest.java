@@ -73,6 +73,28 @@ class PopulationSubjectLoaderTest {
                 "its statement was loaded, ready to reify");
     }
 
+    @Test void discoverySeedsDoNotFilterOtherStatementsOfTheReachedSubject() {
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient()
+                .row(Map.of("subject", "Q82686"));
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .entity("Q82686", "Bela II of Hungary")
+                .statement("Q82686", "P39", "Q82686$king", "Q6412254", Map.of())
+                .statement("Q82686", "P39", "Q82686$ban", "Q253779", Map.of());
+
+        QualifierLoadConfig config = new QualifierLoadConfig(
+                "__subject_OfficeHolding", "P39", "__OfficeHolding",
+                "OfficeHolding", "position", "", List.of(),
+                List.of(), List.of("Q6412254"), true, "");
+
+        List<WikidataDynamicObject> created = new QualifierLoader().api(api)
+                .enrich(new ArrayList<>(), config, sparql, null);
+
+        assertEquals(Set.of("Q6412254", "Q253779"), created.stream()
+                .map(statement -> (WikidataDynamicObject) statement.get("position"))
+                .map(WikidataDynamicObject::qid).collect(java.util.stream.Collectors.toSet()),
+                "the seed bounds reverse discovery; it is not the forward edge filter");
+    }
+
     @Test void refusesToDiscoverWithoutAValueSet() {
         FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient()
                 .row(Map.of("subject", "Q105883400"));

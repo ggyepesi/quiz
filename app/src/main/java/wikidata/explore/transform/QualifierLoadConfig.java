@@ -28,8 +28,20 @@ public record QualifierLoadConfig(
         String valueTypeQid,
         List<Qualifier> qualifiers,
         List<String> valueQids,
+        List<String> discoveryValueQids,
         boolean discoverSubjects,
         String valueDomainName) {
+
+    /** Previous canonical form: one value domain both discovers subjects and filters
+     *  their statements. Explicit vocabularies intentionally retain that behaviour. */
+    public QualifierLoadConfig(String entityType, String propertyPid,
+            String statementField, String statementType, String valueField,
+            String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids,
+            boolean discoverSubjects, String valueDomainName) {
+        this(entityType, propertyPid, statementField, statementType, valueField,
+                valueTypeQid, qualifiers, valueQids, valueQids, discoverSubjects,
+                valueDomainName);
+    }
 
     /** Back-compat 9-arg form (no named value domain — used for logging only). */
     public QualifierLoadConfig(String entityType, String propertyPid,
@@ -37,7 +49,7 @@ public record QualifierLoadConfig(
             String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids,
             boolean discoverSubjects) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, valueQids, discoverSubjects, "");
+                valueTypeQid, qualifiers, valueQids, valueQids, discoverSubjects, "");
     }
 
     /** Back-compat 8-arg form: subjects already exist in the pool (no discovery). */
@@ -45,7 +57,7 @@ public record QualifierLoadConfig(
             String statementField, String statementType, String valueField,
             String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, valueQids, false, "");
+                valueTypeQid, qualifiers, valueQids, valueQids, false, "");
     }
 
     /** Back-compat 7-arg form (no explicit value QIDs). */
@@ -53,7 +65,7 @@ public record QualifierLoadConfig(
             String statementField, String statementType, String valueField,
             String valueTypeQid, List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, List.of(), false, "");
+                valueTypeQid, qualifiers, List.of(), List.of(), false, "");
     }
 
     /** Back-compat 6-arg form (no value-type filter). */
@@ -61,15 +73,29 @@ public record QualifierLoadConfig(
             String statementField, String statementType, String valueField,
             List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                "", qualifiers, List.of(), false, "");
+                "", qualifiers, List.of(), List.of(), false, "");
     }
 
     /** A human label for where the value domain came from (a VOCABULARY Selection
      *  name), for the discovery log; blank => describe it generically. */
     public String valueDomainLabel() {
-        return valueDomainName == null || valueDomainName.isBlank()
-                ? valueQids.size() + " allowed values"
-                : "Selection '" + valueDomainName + "'";
+        if (valueDomainName != null && !valueDomainName.isBlank()) {
+            return "Selection '" + valueDomainName + "'";
+        }
+        // "Seeds" only where they seed something. Every config carries discovery
+        // values — the compatibility constructors set them to the accepted values —
+        // so their presence says nothing; discovering subjects with a domain that
+        // does not also filter them is what makes a value a seed.
+        return discoversOnly()
+                ? discoveryValueQids.size() + " discovery seed(s)"
+                : valueQids.size() + " allowed values";
+    }
+
+    /** Whether the value domain finds subjects without also filtering their
+     *  statements — the seeded-target-class case, as opposed to a vocabulary that
+     *  does both jobs. */
+    public boolean discoversOnly() {
+        return discoverSubjects() && hasDiscoveryValueQids() && !hasValueQids();
     }
 
     /** When set (e.g. Q19020 "Academy Awards"), keep only statements whose main
@@ -85,6 +111,13 @@ public record QualifierLoadConfig(
      *  drops statements whose value isn't one of these. */
     public boolean hasValueQids() {
         return valueQids != null && !valueQids.isEmpty();
+    }
+
+    /** Values used only to find the initial statement subjects. They need not be the
+     *  accepted statement-value domain: a seeded Position may discover its holders,
+     *  after which every P39 statement of those holders is materialized. */
+    public boolean hasDiscoveryValueQids() {
+        return discoveryValueQids != null && !discoveryValueQids.isEmpty();
     }
 
     public enum Kind {

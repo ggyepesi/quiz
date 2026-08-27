@@ -144,6 +144,16 @@ public final class ModelStatementReifications {
                 project,
                 statementPid,
                 valueField);
+        List<String> discoveryValueQids = new ArrayList<>(valueQids);
+        if (discoverSubjects && !statementSource.hasValueSelection()) {
+            List<String> seeds = targetClassSeeds(
+                    statementClass, project, valueField);
+            if (!seeds.isEmpty()
+                    && explicitAllowedQids(statementClass, valueField).isEmpty()) {
+                discoveryValueQids = seeds;
+                valueQids = List.of();
+            }
+        }
 
         List<QualifierLoadConfig.Qualifier> qualifiers =
                 new ArrayList<>();
@@ -192,6 +202,7 @@ public final class ModelStatementReifications {
             if (sel instanceof wikidata.explore.model.VocabularySelection vs) {
                 if (!vs.valueQids().isEmpty()) {
                     valueQids = new ArrayList<>(vs.valueQids());
+                    discoveryValueQids = new ArrayList<>(vs.valueQids());
                 }
                 if (vs.hasValueType()) {
                     valueTypeQid = vs.valueTypeQid();
@@ -210,6 +221,7 @@ public final class ModelStatementReifications {
                         : "",
                 qualifiers,
                 valueQids,
+                discoveryValueQids,
                 discoverSubjects,
                 statementSource.valueSelectionName());
 
@@ -290,6 +302,16 @@ public final class ModelStatementReifications {
         List<String> valueQids = valueQids(
                 statementClass, sourceClassModel, project,
                 statementPid, valueField);
+        List<String> discoveryValueQids = new ArrayList<>(valueQids);
+        if (discoverSubjects && !statementSource.hasValueSelection()) {
+            List<String> seeds = targetClassSeeds(
+                    statementClass, project, valueField);
+            if (!seeds.isEmpty()
+                    && explicitAllowedQids(statementClass, valueField).isEmpty()) {
+                discoveryValueQids = seeds;
+                valueQids = List.of();
+            }
+        }
 
         List<QualifierLoadConfig.Qualifier> qualifiers = new ArrayList<>();
         List<String> listQualifiers = new ArrayList<>();
@@ -335,6 +357,7 @@ public final class ModelStatementReifications {
             if (sel instanceof wikidata.explore.model.VocabularySelection vs) {
                 if (!vs.valueQids().isEmpty()) {
                     valueQids = new ArrayList<>(vs.valueQids());
+                    discoveryValueQids = new ArrayList<>(vs.valueQids());
                 }
                 if (vs.hasValueType()) {
                     valueTypeQid = vs.valueTypeQid();
@@ -351,6 +374,7 @@ public final class ModelStatementReifications {
                 WikidataIds.isQid(valueTypeQid) ? valueTypeQid : "",
                 qualifiers,
                 valueQids,
+                discoveryValueQids,
                 discoverSubjects,
                 statementSource.valueSelectionName());
 
@@ -446,6 +470,35 @@ public final class ModelStatementReifications {
         }
 
         return new ArrayList<>(values);
+    }
+
+    private static List<String> explicitAllowedQids(
+            CompiledClass statementClass, String valueField) {
+        if (statementClass == null) return List.of();
+        CompiledField field = statementClass.ownFields().stream()
+                .filter(ModelStatementReifications::runtimeStatementField)
+                .filter(candidate -> valueField.equals(candidate.name()))
+                .findFirst().orElse(null);
+        return field == null ? List.of() : field.source().allowedQids().stream()
+                .map(ModelStatementReifications::clean)
+                .filter(WikidataIds::isQid).distinct().toList();
+    }
+
+    private static List<String> targetClassSeeds(
+            CompiledClass statementClass, CompiledProjectModel project,
+            String valueField) {
+        if (statementClass == null || project == null) return List.of();
+        CompiledField field = statementClass.ownFields().stream()
+                .filter(ModelStatementReifications::runtimeStatementField)
+                .filter(candidate -> valueField.equals(candidate.name()))
+                .filter(candidate -> candidate.type() == FieldType.ENTITY)
+                .findFirst().orElse(null);
+        CompiledClass target = field == null ? null
+                : project.findClass(field.entityClassName()).orElse(null);
+        if (target == null) return List.of();
+        LinkedHashSet<String> seeds = new LinkedHashSet<>();
+        addQids(seeds, target.seedQids());
+        return new ArrayList<>(seeds);
     }
 
     private static List<ReifyConstruct.Role> fallbackRoles(
@@ -590,6 +643,35 @@ public final class ModelStatementReifications {
         }
 
         return new ArrayList<>(values);
+    }
+
+    private static List<String> explicitAllowedQids(
+            GeneratedClassModel statementClass, String valueField) {
+        if (statementClass == null) return List.of();
+        GeneratedFieldModel field = statementClass.fields().stream()
+                .filter(StatementFieldSemantics::isRuntimeStatementField)
+                .filter(candidate -> valueField.equals(candidate.name()))
+                .findFirst().orElse(null);
+        return field == null ? List.of() : field.mapping().allowedQids().stream()
+                .map(ModelStatementReifications::clean)
+                .filter(WikidataIds::isQid).distinct().toList();
+    }
+
+    private static List<String> targetClassSeeds(
+            GeneratedClassModel statementClass, GeneratedProjectModel project,
+            String valueField) {
+        if (statementClass == null || project == null) return List.of();
+        GeneratedFieldModel field = statementClass.fields().stream()
+                .filter(StatementFieldSemantics::isRuntimeStatementField)
+                .filter(candidate -> valueField.equals(candidate.name()))
+                .filter(candidate -> candidate.type() == FieldType.ENTITY)
+                .findFirst().orElse(null);
+        GeneratedClassModel target = field == null ? null
+                : project.findClass(field.entityClassName());
+        if (target == null) return List.of();
+        LinkedHashSet<String> seeds = new LinkedHashSet<>();
+        addQids(seeds, target.seedQids());
+        return new ArrayList<>(seeds);
     }
 
     private static void addQids(

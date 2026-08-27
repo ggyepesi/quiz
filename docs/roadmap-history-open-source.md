@@ -29,7 +29,11 @@
 > take its bounded value domain from a **seeded value class**.
 >
 > **Where it stopped.** The model validates, and it has been generated and saved:
-> `total=167, Person=56, OfficeHolding=54, Position=1` (2026-08-26). The snapshot is
+> `total=167, Person=56, OfficeHolding=54, Position=1` (2026-08-26). Those counts are
+> **pre-split**: the seeded Position then filtered statements as well as discovering
+> holders, so only the Hungarian kingship became an OfficeHolding. Under the discovery
+> /materialization split that followed, the same model should yield roughly 127
+> holdings across a dozen positions. It has not been regenerated since. The snapshot is
 > the proof the date work landed — **124 values carry `(Julian)`**, and precision
 > survives beside it: Stephen I is born `969 (Julian)` at year precision and dies
 > `1038-08-15 (Julian)` on the stated day. A run log is beside it.

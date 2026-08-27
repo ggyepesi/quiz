@@ -57,6 +57,8 @@ class SourceClasslessReifyTest {
                 "subjects source on an internal load type, not a class");
         assertEquals(List.of("Q102427", "Q106301"), r.load().valueQids(),
                 "value domain (bounding the discovery) comes from the vocabulary");
+        assertEquals(r.load().valueQids(), r.load().discoveryValueQids(),
+                "an explicit vocabulary both discovers and filters statements");
     }
 
     @Test void compiledPathMatches() {
@@ -69,6 +71,7 @@ class SourceClasslessReifyTest {
         assertTrue(r.load().discoverSubjects());
         assertEquals("__subject_Nomination", r.reify().sourceType());
         assertEquals(List.of("Q102427", "Q106301"), r.load().valueQids());
+        assertEquals(r.load().valueQids(), r.load().discoveryValueQids());
     }
 
     @Test void valueEntityClassOwnsTheDirectDiscoveryDomain() {
@@ -92,13 +95,52 @@ class SourceClasslessReifyTest {
 
         var editable = ModelStatementReifications.deriveOne(holding, project);
         assertNotNull(editable);
-        assertEquals(List.of("Q6412254"), editable.load().valueQids());
+        assertEquals(List.of(), editable.load().valueQids(),
+                "target seeds discover holders but do not filter their other positions");
+        assertEquals(List.of("Q6412254"), editable.load().discoveryValueQids());
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
         var compiledHolding = compiled.findClass("OfficeHolding").orElseThrow();
         var compiledResult =
                 ModelStatementReifications.deriveOne(compiledHolding, compiled);
         assertNotNull(compiledResult);
-        assertEquals(List.of("Q6412254"), compiledResult.load().valueQids());
+        assertEquals(List.of(), compiledResult.load().valueQids());
+        assertEquals(List.of("Q6412254"),
+                compiledResult.load().discoveryValueQids());
+    }
+
+    // --- what the discovery log calls a value domain ------------------------
+
+    @Test void aDomainThatOnlyFiltersIsNotCalledSeeds() {
+        // Every config carries discovery values, because the compatibility
+        // constructors set them to the accepted values. Their presence therefore
+        // says nothing about whether anything was discovered, and a label that
+        // reads them alone calls a pure filter "seeds".
+        QualifierLoadConfig filterOnly = new QualifierLoadConfig(
+                "T", "P1", "__S", "S", "value", "",
+                java.util.List.of(), java.util.List.of("Q1", "Q2"));
+
+        assertFalse(filterOnly.discoverSubjects());
+        assertEquals("2 allowed values", filterOnly.valueDomainLabel());
+    }
+
+    @Test void aDomainThatFindsSubjectsWithoutFilteringThemIsCalledSeeds() {
+        QualifierLoadConfig discovery = new QualifierLoadConfig(
+                "T", "P1", "__S", "S", "value", "",
+                java.util.List.of(), java.util.List.of(),
+                java.util.List.of("Q6412254"), true, "");
+
+        assertTrue(discovery.discoversOnly());
+        assertEquals("1 discovery seed(s)", discovery.valueDomainLabel());
+    }
+
+    @Test void aVocabularyKeepsItsOwnName() {
+        // A named selection both discovers and filters; it is neither of the above.
+        QualifierLoadConfig vocabulary = new QualifierLoadConfig(
+                "T", "P1", "__S", "S", "value", "",
+                java.util.List.of(), java.util.List.of("Q1"), true, "OscarCategories");
+
+        assertFalse(vocabulary.discoversOnly());
+        assertEquals("Selection 'OscarCategories'", vocabulary.valueDomainLabel());
     }
 }

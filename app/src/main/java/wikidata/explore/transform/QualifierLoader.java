@@ -108,14 +108,21 @@ public class QualifierLoader {
                     fetchValueQids(client, cfg.valueTypeQid(), log));
         }
 
+        // Discovery and materialization are separate graph operations. An explicit
+        // vocabulary normally supplies both sets; a seeded target class can supply
+        // only the reverse-traversal seeds while leaving forward statements open.
+        Set<String> discoveryValues = cfg.hasDiscoveryValueQids()
+                ? new HashSet<>(cfg.discoveryValueQids())
+                : allowedValues;
+
         // POPULATION subjects: with no source-class members in the pool, discover the
         // entities that carry the statement property into the value domain, stamp
         // them the load type, and index them — before the empty-pool bail. Guarded by
         // the value set (no unbounded membership scan).
-        if (cfg.discoverSubjects() && allowedValues != null) {
+        if (cfg.discoverSubjects() && discoveryValues != null) {
             List<WikidataDynamicObject> discovered =
                     new PopulationSubjectLoader().discover(
-                            pool, cfg.propertyPid(), allowedValues,
+                            pool, cfg.propertyPid(), discoveryValues,
                             cfg.entityType(), cfg.valueDomainLabel(), client, log);
 
             // SPARQL discovery yields QIDs only. Acquire the statement property, the
