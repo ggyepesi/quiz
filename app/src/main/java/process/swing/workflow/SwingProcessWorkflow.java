@@ -178,8 +178,10 @@ public final class SwingProcessWorkflow {
                     ? applicationAllowed ? " (partial result)"
                     : " (partial result — applying is disabled by execution settings)"
                     : ""));
-            AtomicReference<ProcessWorkflowResults.Card<D>> selected = new AtomicReference<>();
-            JButton applySelected = new JButton(results.applyVerb() + " selected card");
+            AtomicReference<List<ProcessWorkflowResults.Card<D>>> selected =
+                    new AtomicReference<>(List.of());
+            JButton applySelected = new JButton(results.applyVerb() + " selected card"
+                    + (action.multipleResultSelection() ? "s" : ""));
             applySelected.setEnabled(false);
             List<ProcessWorkflowResults.Card<D>> bulk = results.tabs().stream()
                     .flatMap(tab -> tab.cards().stream())
@@ -225,7 +227,7 @@ public final class SwingProcessWorkflow {
                     results.applyVerb() + " all safe results (" + bulk.size() + ")");
             applyAll.setEnabled(applicationAllowed && !bulk.isEmpty());
             close.addActionListener(e -> dialog.dispose());
-            applySelected.addActionListener(e -> apply(List.of(selected.get())));
+            applySelected.addActionListener(e -> apply(selected.get()));
             applyAll.addActionListener(e -> apply(bulk));
             panel.add(buttons(close, applySelected, applyAll), BorderLayout.SOUTH);
             install(results.title(), panel);
@@ -233,7 +235,7 @@ public final class SwingProcessWorkflow {
 
         private JComponent resultTab(
                 ProcessWorkflowResults.Tab<D> tab,
-                AtomicReference<ProcessWorkflowResults.Card<D>> selected,
+                AtomicReference<List<ProcessWorkflowResults.Card<D>>> selected,
                 JButton applySelected,
                 boolean applicationAllowed) {
             List<Viewable> views = tab.cards().stream()
@@ -242,21 +244,41 @@ public final class SwingProcessWorkflow {
             java.util.Map<Viewable, ProcessWorkflowResults.Card<D>> cards =
                     new java.util.IdentityHashMap<>();
             tab.cards().forEach(card -> cards.put(card.view(), card));
-            return SearchableView.builder(views).sample(views.get(0))
+            SearchableView.Builder builder = SearchableView.builder(views).sample(views.get(0))
                     .mode(RenderingMode.CARD).collapsible(false).columns(2)
                     // RenderContext also asks about nested referenced Viewables.
                     // Only top-level result cards have workflow decorations.
                     .cardDecorator(view -> {
                         ProcessWorkflowResults.Card<D> card = cards.get(view);
                         return card == null ? null : card.decoration().get();
-                    })
-                    .selectionListener(value -> {
-                        ProcessWorkflowResults.Card<D> card = value instanceof Viewable view
-                                ? cards.get(view) : null;
-                        selected.set(card);
-                        applySelected.setEnabled(applicationAllowed && card != null
-                                && card.decision().get() != null);
-                    }).build();
+                    });
+            if (action.multipleResultSelection()) {
+                builder.selectionSetListener(values -> {
+                        List<ProcessWorkflowResults.Card<D>> chosen = values.stream()
+                                .filter(Viewable.class::isInstance)
+                                .map(Viewable.class::cast).map(cards::get)
+                                .filter(java.util.Objects::nonNull)
+                                .filter(card -> card.decision().get() != null).toList();
+                        selected.set(chosen);
+                        applySelected.setText(resultsApplyLabel(
+                                applyVerb, chosen.size()));
+                        applySelected.setEnabled(applicationAllowed && !chosen.isEmpty());
+                    });
+            } else {
+                builder.selectionListener(value -> {
+                    ProcessWorkflowResults.Card<D> card = value instanceof Viewable view
+                            ? cards.get(view) : null;
+                    boolean actionable = card != null && card.decision().get() != null;
+                    selected.set(actionable ? List.of(card) : List.of());
+                    applySelected.setEnabled(applicationAllowed && actionable);
+                });
+            }
+            return builder.build();
+        }
+
+        private static String resultsApplyLabel(String verb, int selected) {
+            return verb + " selected card" + (selected == 1 ? "" : "s")
+                    + (selected == 0 ? "" : " (" + selected + ")");
         }
 
         void apply(List<ProcessWorkflowResults.Card<D>> cards) {

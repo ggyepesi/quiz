@@ -90,10 +90,15 @@ public final class PopulationSubjectLoader {
         } catch (Exception e) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
-            } else {
-                sink.message("Population subject discovery failed ("
-                        + e.getMessage() + ")\n");
             }
+            sink.message("Population subject discovery failed ("
+                    + e.getMessage() + ")\n");
+            // A selected seed can be marked EXPANDED only after its complete reverse
+            // adjacency query succeeds. Continuing with an empty population would save
+            // a false coverage claim and make that branch disappear from the frontier.
+            throw new IllegalStateException(
+                    "Required population subject discovery failed for "
+                            + relationPid + " into " + label, e);
         }
         return created;
     }

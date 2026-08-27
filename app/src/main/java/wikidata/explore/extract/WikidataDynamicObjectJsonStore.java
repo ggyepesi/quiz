@@ -150,6 +150,9 @@ public class WikidataDynamicObjectJsonStore {
             throws IOException {
         this.pendingDeclarations = loadedDeclarations == null
                 ? List.of() : List.copyOf(loadedDeclarations);
+        this.pendingGraphDiscovery =
+                wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
+                        schema, objects);
         try {
             return saveWithGroupRootBindingsInternal(
                     objects, List.of(), file,
@@ -157,12 +160,15 @@ public class WikidataDynamicObjectJsonStore {
                     wikidata.explore.transform.RoleSelections.materialize(schema, objects));
         } finally {
             this.pendingDeclarations = List.of();
+            this.pendingGraphDiscovery = datasource.graph.GraphDiscoveryState.EMPTY;
         }
     }
 
     /** Carried between the public save and the internal writer, which every save path
      *  funnels through; empty for the saves that know nothing about declarations. */
     private List<LoadedDeclaration> pendingDeclarations = List.of();
+    private datasource.graph.GraphDiscoveryState pendingGraphDiscovery =
+            datasource.graph.GraphDiscoveryState.EMPTY;
 
     public SnapshotFieldGraph saveWithGroupRootBindings(
             List<WikidataDynamicObject> memberRoots,
@@ -222,6 +228,7 @@ public class WikidataDynamicObjectJsonStore {
         FlatSnapshot snapshot = new FlatSnapshot();
         snapshot.version = FORMAT_VERSION;
         snapshot.loadedDeclarations = new ArrayList<>(pendingDeclarations);
+        snapshot.graphDiscovery = pendingGraphDiscovery;
         snapshot.fieldGraph = fieldGraph.build();
         for (WikidataDynamicObject o : memberRoots) {
             String k = poolKey(o);
@@ -544,7 +551,10 @@ public class WikidataDynamicObjectJsonStore {
                 resolveGroupRootBindings(snapshot, entities),
                 resolveRoleSelections(snapshot, entities),
                 snapshot.loadedDeclarations == null
-                        ? List.of() : List.copyOf(snapshot.loadedDeclarations));
+                        ? List.of() : List.copyOf(snapshot.loadedDeclarations),
+                snapshot.graphDiscovery == null
+                        ? datasource.graph.GraphDiscoveryState.EMPTY
+                        : snapshot.graphDiscovery);
     }
 
     private static Map<String, List<WikidataDynamicObject>> resolveRoleSelections(
@@ -909,6 +919,9 @@ public class WikidataDynamicObjectJsonStore {
         public List<Entity> entities = new ArrayList<>();
         /** Declarations already fetched — see {@link LoadedDeclaration}. */
         public List<LoadedDeclaration> loadedDeclarations = new ArrayList<>();
+        /** Pattern-relative graph expansion coverage; additive for old snapshots. */
+        public datasource.graph.GraphDiscoveryState graphDiscovery =
+                datasource.graph.GraphDiscoveryState.EMPTY;
         public SnapshotFieldGraph fieldGraph;
     }
 
@@ -919,7 +932,8 @@ public class WikidataDynamicObjectJsonStore {
             List<WikidataDynamicObject> groupRoots,
             List<LoadedGroupRoot> groupRootBindings,
             Map<String, List<WikidataDynamicObject>> roleSelections,
-            List<LoadedDeclaration> loadedDeclarations) {
+            List<LoadedDeclaration> loadedDeclarations,
+            datasource.graph.GraphDiscoveryState graphDiscovery) {
 
         public LoadedSnapshot(
                 List<WikidataDynamicObject> objects, SnapshotFieldGraph fieldGraph,
@@ -928,7 +942,7 @@ public class WikidataDynamicObjectJsonStore {
                 List<LoadedGroupRoot> groupRootBindings,
                 Map<String, List<WikidataDynamicObject>> roleSelections) {
             this(objects, fieldGraph, memberRoots, groupRoots, groupRootBindings,
-                    roleSelections, List.of());
+                    roleSelections, List.of(), datasource.graph.GraphDiscoveryState.EMPTY);
         }
     }
 

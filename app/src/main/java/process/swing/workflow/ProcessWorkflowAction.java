@@ -23,6 +23,12 @@ public interface ProcessWorkflowAction<R, D> {
     default JComponent executionSettings() { return null; }
     /** Whether this terminal result may be applied. */
     default boolean applyAllowed(process.ProcessStatus status) { return true; }
+    /**
+     * Whether result cards may be selected as a set. Single-card selection remains the
+     * compatibility default; actions opt in only when applying independent decisions
+     * together has domain-defined semantics.
+     */
+    default boolean multipleResultSelection() { return false; }
     Process<R> process();
     ProcessWorkflowResults<D> results(ProcessOutcome<R> outcome);
     void apply(List<D> decisions) throws Exception;

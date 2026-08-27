@@ -77,6 +77,9 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton nameCollisionsButton =
             new JButton("Name collisions");
 
+    private final JButton graphFrontierButton =
+            new JButton("Graph frontier");
+
     private final JButton generateButton =
             new JButton("Generate instances");
 
@@ -374,6 +377,11 @@ public class ModelBuilderFrame extends JFrame {
             nameCollisionsButton.addActionListener(e -> showNameCollisions());
             updateNameCollisionsButton();
             toolbar.add(nameCollisionsButton);
+            graphFrontierButton.setToolTipText(
+                    "Review nodes reached by configured graph discovery but not yet "
+                            + "expanded in the reverse direction");
+            graphFrontierButton.addActionListener(e -> showGraphFrontier());
+            toolbar.add(graphFrontierButton);
 
             instancesWindow.add(toolbar, BorderLayout.NORTH);
             instancesWindow.add(instancesPanel, BorderLayout.CENTER);
@@ -1170,6 +1178,7 @@ public class ModelBuilderFrame extends JFrame {
                                        + " objects (in memory — use \"Save domain\" to persist "
                                        + "to " + snapshotFile().getName() + ").");
                 reportNameCollisions(run);
+                updateGraphFrontierButton();
                 // What the declared expectations found. Silent when they all held, so a
                 // clean run says nothing and a gap is the only thing that speaks up.
                 // The results window is gone the moment it is accepted, taking every
@@ -1179,8 +1188,60 @@ public class ModelBuilderFrame extends JFrame {
                 showInstancesWindow(); // pop the results window on a fresh run
             } else {
                 instancesPanel.clear();
+                updateGraphFrontierButton();
             }
         });
+    }
+
+    private datasource.graph.GraphDiscoveryState graphDiscoveryState() {
+        return lastRun == null
+                ? datasource.graph.GraphDiscoveryState.EMPTY
+                : wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
+                        lastRun.modelSnapshot(), lastRun.dynamicObjects());
+    }
+
+    private void updateGraphFrontierButton() {
+        datasource.graph.GraphDiscoveryState state = graphDiscoveryState();
+        int count = state.patterns().stream().mapToInt(
+                pattern -> state.frontier(pattern.id()).size()).sum();
+        graphFrontierButton.setText(count == 0
+                ? "Graph frontier" : "Graph frontier (" + count + ")");
+        graphFrontierButton.setEnabled(lastRun != null && count > 0);
+    }
+
+    private void showGraphFrontier() {
+        if (lastRun == null || processRunner.isRunning()
+                || querySession.runner().isRunning()) return;
+        try {
+            sourceWorkbench.applyEdits();
+        } catch (Exception failure) {
+            reportGenerationError(failure);
+            return;
+        }
+        GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
+                graphDiscoveryState(), lastRun.dynamicObjects(), this::applyGraphFrontier);
+        process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
+    }
+
+    private void applyGraphFrontier(
+            java.util.List<GraphFrontierWorkflowAction.Decision> decisions) {
+        if (decisions.isEmpty()) return;
+        int added = 0;
+        for (GraphFrontierWorkflowAction.Decision decision : decisions) {
+            GeneratedClassModel target = projectModel.findClass(decision.targetClass());
+            if (target != null && WikidataIds.isQid(decision.qid())
+                    && !target.seedQids().contains(decision.qid())) {
+                target.seedQids().add(decision.qid());
+                added++;
+            }
+        }
+        if (added > 0) modelChanged();
+        logWindow.info("Queued " + decisions.size()
+                + " graph-frontier node(s) for reverse expansion"
+                + (added == decisions.size() ? "" : " ("
+                + (decisions.size() - added) + " already queued)")
+                + "; opening Generate domain preview.");
+        SwingUtilities.invokeLater(generateDomainButton::doClick);
     }
 
     /**
