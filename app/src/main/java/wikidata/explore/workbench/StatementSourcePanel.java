@@ -1,6 +1,9 @@
 package wikidata.explore.workbench;
 
 import objectview.utils.swing.GridBagUtils;
+import datasource.graph.GraphExpansionPattern;
+import datasource.graph.GraphExpansionPolicy;
+import wikidata.explore.generation.WikidataGraphDiscoveryState;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.GeneratedClassModel;
@@ -51,6 +54,9 @@ public class StatementSourcePanel extends JPanel {
     private final JTextField statementPropField =
             new JTextField("P1411", 6);
     private final JTextField valueTypeField = new JTextField(10);
+    private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
+            new JComboBox<>(GraphExpansionPolicy.values());
+    private final JLabel graphPatternValue = new JLabel(" ");
 
     private final JPanel keyFieldsPanel =
             new JPanel(new GridBagLayout());
@@ -131,6 +137,8 @@ public class StatementSourcePanel extends JPanel {
         // extraction mapping: it constrains the ps: value by P31.
         valueTypeField.setText(
                 clazz.instanceMapping().sourceQid());
+        graphExpansionBox.setSelectedItem(source == null
+                ? GraphExpansionPolicy.NONE : source.graphExpansionPolicy());
 
         rebuildCanonicalControls();
         refreshDerived();
@@ -160,14 +168,17 @@ public class StatementSourcePanel extends JPanel {
         if (statementPid.isBlank() && sourceClass.isBlank()) {
             clazz.statementSource(null);
         } else {
-            StatementClassSource next =
-                    new StatementClassSource(sourceClass, statementPid);
-            // Preserve a value Selection (VOCABULARY domain) already configured on
-            // the class; the panel doesn't edit it yet, so don't drop it.
+            // Copying the prior source carries the declarations this panel does not
+            // edit — the value Selection (VOCABULARY domain) among them — so they
+            // cannot be dropped here by being forgotten.
             StatementClassSource prior = clazz.statementSource();
-            if (prior != null && prior.hasValueSelection()) {
-                next.valueSelectionName(prior.valueSelectionName());
-            }
+            StatementClassSource next = prior == null
+                    ? new StatementClassSource(sourceClass, statementPid)
+                    : prior.copy();
+            next.sourceClassName(sourceClass);
+            next.propertyPid(statementPid);
+            next.graphExpansionPolicy((GraphExpansionPolicy)
+                    graphExpansionBox.getSelectedItem());
             clazz.statementSource(next);
         }
 
@@ -363,6 +374,7 @@ public class StatementSourcePanel extends JPanel {
                     " (not a reifying class yet — set "
                             + "\"Reify from\" and a statement property, "
                             + "then add qualifier fields)");
+            refreshGraphPattern();
             return;
         }
 
@@ -451,6 +463,33 @@ public class StatementSourcePanel extends JPanel {
                 qualifiers.length() == 0
                         ? " (no qualifier fields yet)"
                         : qualifiers.toString());
+        refreshGraphPattern();
+    }
+
+    private void refreshGraphPattern() {
+        // Read the CHOICE, not the stored policy: this row sits directly under the
+        // combo and must not contradict what the reader has just selected while the
+        // edit is unapplied.
+        if (clazz == null || graphExpansionBox.getSelectedItem()
+                != GraphExpansionPolicy.CURATED) {
+            graphPatternValue.setText("Disabled — statements are still generated normally.");
+            return;
+        }
+        GraphExpansionPattern pattern = WikidataGraphDiscoveryState
+                .structuralPattern(projectModel, clazz.className());
+        if (pattern == null) {
+            graphPatternValue.setText("⚠ Unavailable — requires direct subject discovery, "
+                    + "target seeds and an unrestricted entity value field.");
+            return;
+        }
+        GeneratedClassModel targetClass = projectModel.findClass(pattern.targetNodeClass());
+        int seeds = targetClass == null ? 0 : targetClass.seedQids().size();
+        graphPatternValue.setText("<html>" + pattern.sourceNodeClass()
+                + " &mdash; " + pattern.relation().relationId() + " / "
+                + pattern.statementClass() + " &rarr; " + pattern.targetNodeClass()
+                + "<br>Initial " + pattern.targetNodeClass() + " nodes: " + seeds
+                + " · new " + pattern.targetNodeClass()
+                + " values become a curated frontier.</html>");
     }
 
     private void rederiveIdentity() {
@@ -473,6 +512,8 @@ public class StatementSourcePanel extends JPanel {
         reifyFromBox.removeAllItems();
         statementPropField.setText("P1411");
         valueTypeField.setText("");
+        graphExpansionBox.setSelectedItem(GraphExpansionPolicy.NONE);
+        graphPatternValue.setText(" ");
         keyFieldsPanel.removeAll();
         keyFieldBoxes.clear();
         displayNameFieldBox.removeAllItems();
@@ -536,6 +577,21 @@ public class StatementSourcePanel extends JPanel {
         GridBagUtils.labeledRow(form, row++,
             "Value type filter:",
             valueTypeField);
+
+        JPanel graphDiscovery = new JPanel(new GridBagLayout());
+        graphDiscovery.setBorder(BorderFactory.createTitledBorder("Graph discovery"));
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(3, 4, 3, 4);
+        gc.anchor = GridBagConstraints.WEST;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        graphExpansionBox.setToolTipText("Whether this statement relation exposes "
+                + "newly reached value entities as an expandable graph frontier.");
+        graphExpansionBox.addActionListener(event -> refreshGraphPattern());
+        GridBagUtils.labeledRow(graphDiscovery, gc, 0,
+                "Expansion policy:", graphExpansionBox);
+        GridBagUtils.labeledRow(graphDiscovery, gc, 1,
+                "Resolved pattern:", graphPatternValue);
+        GridBagUtils.wideRow(form, row++, graphDiscovery);
 
         JPanel canonical =
                 new JPanel(new GridBagLayout());

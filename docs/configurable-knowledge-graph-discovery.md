@@ -17,6 +17,9 @@ absorbing it silently.
 - `749531ec` — the graph contract (`datasource.graph`), the Wikidata adapter deriving
   the pattern from statement models, coverage persisted with the snapshot, and the
   frontier workflow whose apply writes the chosen node into the target class's seeds.
+- Statement participation is now explicit: `Graph expansion = Curated frontier`
+  enables the resolved pattern shown in the StatementClass editor; `None` preserves
+  ordinary statement generation without a hidden frontier.
 
 Proven on History: `Person -[P39]-> Position` with one seeded position produced 140
 office holdings across 24 positions, 23 of them encountered rather than configured.

@@ -5,6 +5,7 @@ import process.PhaseExplanation.ModelReference;
 
 import objectview.Viewable;
 import objectview.render.RenderingMode;
+import objectview.utils.swing.SwingWindowActivation;
 import objectview.view.SearchableView;
 import process.ProcessOutcome;
 import process.ProcessStatus;
@@ -44,8 +45,7 @@ public final class SwingProcessWorkflow {
         ProcessOutcome<R> prepared = action.preparedOutcome();
         if (prepared == null) session.showPlan();
         else session.review(prepared);
-        session.dialog.setVisible(true);
-        return session.dialog;
+        return SwingWindowActivation.showAndFocus(session.dialog);
     }
 
     private static final class Session<R, D> {
@@ -309,6 +309,16 @@ public final class SwingProcessWorkflow {
             } catch (Exception error) {
                 state.retryApply();
                 JOptionPane.showMessageDialog(owner, "Apply failed: " + error.getMessage());
+                return;
+            }
+            // A continuation that opens another workflow must run after this window
+            // is gone; it is not part of the already-committed apply transaction.
+            try {
+                action.afterApply();
+            } catch (RuntimeException continuationFailure) {
+                JOptionPane.showMessageDialog(owner,
+                        "Applied, but the next window could not be opened: "
+                                + continuationFailure.getMessage());
             }
         }
 

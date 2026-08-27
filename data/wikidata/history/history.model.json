@@ -125,8 +125,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P1477",
+            "sourceType" : "SPARQL",
             "label" : "birth name"
           }
         }
@@ -183,8 +183,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P1559",
+            "sourceType" : "SPARQL",
             "label" : "name in native language"
           }
         }
@@ -241,8 +241,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P742",
+            "sourceType" : "SPARQL",
             "label" : "pseudonym"
           }
         }
@@ -299,8 +299,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P569",
+            "sourceType" : "SPARQL",
             "label" : "date of birth"
           }
         }
@@ -397,8 +397,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P570",
+            "sourceType" : "SPARQL",
             "label" : ""
           }
         }
@@ -455,8 +455,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P31",
+            "sourceType" : "SPARQL",
             "label" : ""
           }
         }
@@ -642,8 +642,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P1477",
+            "sourceType" : "SPARQL",
             "label" : "birth name"
           }
         }
@@ -700,8 +700,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P1559",
+            "sourceType" : "SPARQL",
             "label" : "name in native language"
           }
         }
@@ -758,8 +758,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P742",
+            "sourceType" : "SPARQL",
             "label" : "pseudonym"
           }
         }
@@ -816,8 +816,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P569",
+            "sourceType" : "SPARQL",
             "label" : "date of birth"
           }
         }
@@ -914,8 +914,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P570",
+            "sourceType" : "SPARQL",
             "label" : ""
           }
         }
@@ -972,8 +972,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P31",
+            "sourceType" : "SPARQL",
             "label" : ""
           }
         }
@@ -1117,8 +1117,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P734",
+            "sourceType" : "SPARQL",
             "label" : ""
           }
         }
@@ -1175,8 +1175,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P735",
+            "sourceType" : "SPARQL",
             "label" : ""
           }
         }
@@ -1227,13 +1227,13 @@
       "sourceType" : "SPARQL"
     },
     "fields" : [ "java.util.ArrayList", [ ] ],
-    "seedQids" : [ "java.util.ArrayList", [ "Q6412254" ] ],
+    "seedQids" : [ "java.util.ArrayList", [ "Q6412254", "Q181765" ] ],
     "populationSource" : {
       "providerId" : "wikidata",
       "operationId" : "seed-list",
       "parameters" : {
         "@class" : "java.util.ImmutableCollections$Map1",
-        "ids" : "Q6412254"
+        "ids" : "Q6412254,Q181765"
       }
     },
     "sourceBindings" : [ "java.util.ArrayList", [ {
@@ -1290,7 +1290,7 @@
         "operationId" : "seed-list",
         "parameters" : {
           "@class" : "java.util.ImmutableCollections$Map1",
-          "ids" : "Q6412254"
+          "ids" : "Q6412254,Q181765"
         }
       }
     } ] ],
@@ -1312,7 +1312,8 @@
     "alias" : "",
     "classKind" : "SOURCE",
     "statementSource" : {
-      "propertyPid" : "P39"
+      "propertyPid" : "P39",
+      "graphExpansionPolicy" : "CURATED"
     },
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -1430,8 +1431,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "sourceType" : "SPARQL",
             "property" : "P39",
+            "sourceType" : "SPARQL",
             "label" : "position held"
           }
         }

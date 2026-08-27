@@ -1,6 +1,7 @@
 package wikidata.explore.generation;
 
 import datasource.graph.GraphExpansionCoverage;
+import datasource.graph.GraphExpansionPolicy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class WikidataGraphDiscoveryStateTest {
 
@@ -50,6 +52,38 @@ class WikidataGraphDiscoveryStateTest {
                 restored.patterns().getFirst().id()).getFirst().node().id());
     }
 
+    @Test void structurallyEligibleStatementDoesNotBecomeAGraphPatternUnlessEnabled() {
+        GeneratedProjectModel model = historyModel();
+        model.findClass("OfficeHolding").statementSource()
+                .graphExpansionPolicy(GraphExpansionPolicy.NONE);
+
+        assertEquals(0, WikidataGraphDiscoveryState.compute(model, historyObjects())
+                .patterns().size());
+    }
+
+    // The editor explains a policy the user is choosing but has not yet applied, so
+    // the structural question must be answerable independently of the policy — and
+    // must be the SAME derivation generation uses, or the editor could promise a
+    // pattern that generation would not build.
+    @Test void theStructuralPatternIsAnswerableWithoutThePolicyBeingEnabled() {
+        GeneratedProjectModel model = historyModel();
+        model.findClass("OfficeHolding").statementSource()
+                .graphExpansionPolicy(GraphExpansionPolicy.NONE);
+
+        var structural = WikidataGraphDiscoveryState
+                .structuralPattern(model, "OfficeHolding");
+        assertNotNull(structural, "structure is eligible even while expansion is off");
+        assertEquals("Position", structural.targetNodeClass());
+        assertEquals(0, WikidataGraphDiscoveryState.compute(model, historyObjects())
+                .patterns().size(), "but nothing is derived until it is enabled");
+
+        model.findClass("OfficeHolding").statementSource()
+                .graphExpansionPolicy(GraphExpansionPolicy.CURATED);
+        assertEquals(structural.id(), WikidataGraphDiscoveryState
+                .compute(model, historyObjects()).patterns().getFirst().id(),
+                "the editor and generation must derive the same pattern");
+    }
+
     private static GeneratedProjectModel historyModel() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
@@ -58,7 +92,9 @@ class WikidataGraphDiscoveryStateTest {
         position.seedQids().add("Q6412254");
         model.addClass(position);
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
-        holding.statementSource(new StatementClassSource("P39"));
+        StatementClassSource statementSource = new StatementClassSource("P39");
+        statementSource.graphExpansionPolicy(GraphExpansionPolicy.CURATED);
+        holding.statementSource(statementSource);
         holding.instanceMapping().propertyPid("P39");
         var source = holding.addField("source", FieldType.ENTITY,
                 FieldCardinality.SINGLE);

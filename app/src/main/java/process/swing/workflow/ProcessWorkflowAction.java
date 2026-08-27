@@ -37,4 +37,6 @@ public interface ProcessWorkflowAction<R, D> {
     Process<R> process();
     ProcessWorkflowResults<D> results(ProcessOutcome<R> outcome);
     void apply(List<D> decisions) throws Exception;
+    /** Continuation invoked only after successful apply, confirmation, and dialog close. */
+    default void afterApply() { }
 }

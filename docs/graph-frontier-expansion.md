@@ -7,6 +7,11 @@ frontier, the workflow shows encountered nodes beside expanded ones, and choosin
 node writes its identity into the target class's seeds and reopens Generate — so the
 graph grows through the choice rather than through a depth setting.
 
+Participation is explicit on the StatementClass: its **Graph discovery / Expansion
+policy** must be `Curated frontier`. Statement structure supplies the resolved
+source/relation/edge/target pattern, but structure alone never silently enables graph
+traversal.
+
 What that slice does *not* do, deliberately: no durable execution ledger (coverage is
 computed at save, so `QUEUED`, `EXPANDING` and `INCOMPLETE` are declared and
 unemitted); no second provider; no persisted selection state of its own; no automatic

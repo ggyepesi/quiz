@@ -29,14 +29,17 @@ final class GraphFrontierWorkflowAction
     private final GraphDiscoveryState state;
     private final Map<String, WikidataDynamicObject> byQid;
     private final Consumer<List<Decision>> apply;
+    private final Runnable afterApply;
     private final int frontierCount;
     private final GraphCoverageCardDecorator decorator;
 
     GraphFrontierWorkflowAction(GraphDiscoveryState state,
                                 Collection<WikidataDynamicObject> objects,
-                                Consumer<List<Decision>> apply) {
+                                Consumer<List<Decision>> apply,
+                                Runnable afterApply) {
         this.state = Objects.requireNonNull(state, "state");
         this.apply = Objects.requireNonNull(apply, "apply");
+        this.afterApply = Objects.requireNonNull(afterApply, "afterApply");
         decorator = new GraphCoverageCardDecorator(state);
         byQid = new LinkedHashMap<>();
         // Frontier targets are commonly reference-only objects nested in a statement;
@@ -90,6 +93,10 @@ final class GraphFrontierWorkflowAction
 
     @Override public void apply(List<Decision> decisions) {
         apply.accept(decisions);
+    }
+
+    @Override public void afterApply() {
+        afterApply.run();
     }
 
     private List<GraphExpansionCoverage> expanded(GraphExpansionPattern pattern) {

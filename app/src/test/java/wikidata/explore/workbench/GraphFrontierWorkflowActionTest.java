@@ -10,6 +10,7 @@ import process.ProcessOutcome;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -31,13 +32,16 @@ class GraphFrontierWorkflowActionTest {
         WikidataDynamicObject holding = object("Q82686$holding", "Holding", "OfficeHolding");
         holding.put("position", position);
 
+        AtomicBoolean continued = new AtomicBoolean();
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
-                state, List.of(holding), ignored -> { });
+                state, List.of(holding), ignored -> { }, () -> continued.set(true));
         var results = action.results(ProcessOutcome.succeeded(state, "ready"));
 
         assertEquals(1, results.tabs().get(1).cards().size());
         assertEquals("Q253779", ((WikidataDynamicObject) results.tabs().get(1)
                 .cards().getFirst().view()).qid());
+        action.afterApply();
+        assertEquals(true, continued.get());
     }
 
     private static WikidataDynamicObject object(String qid, String name, String type) {

@@ -1,6 +1,7 @@
 package wikidata.explore.workbench;
 
 import org.junit.jupiter.api.Test;
+import datasource.graph.GraphExpansionPolicy;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
@@ -20,6 +21,7 @@ class StatementSourcePanelTest {
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         StatementClassSource src = new StatementClassSource("P1411");
         src.valueSelectionName("OscarCategories");
+        src.graphExpansionPolicy(GraphExpansionPolicy.CURATED);
         nom.statementSource(src);
         project.addClass(nom);
         project.rootClass(nom);
@@ -35,5 +37,8 @@ class StatementSourcePanelTest {
         assertEquals("P1411", nom.statementSource().propertyPid());
         assertEquals("OscarCategories", nom.statementSource().valueSelectionName(),
                 "the value Selection must be preserved through applyEdits");
+        assertEquals(GraphExpansionPolicy.CURATED,
+                nom.statementSource().graphExpansionPolicy(),
+                "the explicit graph policy must survive an unrelated panel apply");
     }
 }

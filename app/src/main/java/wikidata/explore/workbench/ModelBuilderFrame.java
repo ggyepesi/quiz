@@ -88,6 +88,11 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton generateDomainButton =
             new JButton("Generate domain");
 
+    // One-shot explanation for a generation launched as the continuation of
+    // another workflow (currently graph-frontier expansion).  The next preview
+    // consumes it, so an ordinary button press keeps the ordinary caption.
+    private String pendingGenerationReason = "";
+
     // Re-materialize the LAST download with the current model (no re-fetch) — picks
     // up canonicalization / display-name / mapping edits fast.
     private final JButton remapButton =
@@ -712,6 +717,8 @@ public class ModelBuilderFrame extends JFrame {
             if (processRunner.isRunning() || queryRunner.isRunning()) {
                 return;
             }
+            String generationReason = pendingGenerationReason;
+            pendingGenerationReason = "";
             try {
                 sourceWorkbench.applyEdits();
                 // Per-class depth (saved on each class) is used; sync the
@@ -763,9 +770,16 @@ public class ModelBuilderFrame extends JFrame {
                                         || !executionSettings.requireComplete();
                             }
                             @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
+                                String title = generationReason.isBlank()
+                                        ? "Generate domain"
+                                        : "Generate domain — " + generationReason;
+                                String description = generationReason.isBlank()
+                                        ? "Generate every configured class into one shared domain snapshot."
+                                        : "Regenerate every configured class after "
+                                        + generationReason.toLowerCase(java.util.Locale.ROOT)
+                                        + ". The selected frontier nodes are now population seeds.";
                                 return new process.swing.workflow.ProcessWorkflowPlan(
-                                        "Generate domain",
-                                        "Generate every configured class into one shared domain snapshot.",
+                                        title, description,
                                         java.util.List.of(
                                                 new process.swing.workflow.ProcessWorkflowPlan.Tab(
                                                         "Classes", classCards)));
@@ -782,6 +796,12 @@ public class ModelBuilderFrame extends JFrame {
                             }
                             @Override public void apply(java.util.List<GenerationRun> decisions) {
                                 if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
+                            }
+                            @Override public void afterApply() {
+                                // Applying installs the data while the workflow dialog still
+                                // exists. Reveal the destination only after that dialog closes,
+                                // otherwise its close can steal activation back on macOS.
+                                showInstancesWindow();
                             }
                         };
                 logWindow.registerPipeline(
@@ -1113,6 +1133,9 @@ public class ModelBuilderFrame extends JFrame {
                     @Override public void apply(java.util.List<GenerationRun> decisions) {
                         if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
                     }
+                    @Override public void afterApply() {
+                        showInstancesWindow();
+                    }
                 };
         logWindow.registerPipeline(title + " — " + snapshot.name(), pipeline,
                 snapshot.name(),
@@ -1189,7 +1212,6 @@ public class ModelBuilderFrame extends JFrame {
                 // rule bucket with it. The run still HOLDS what it did — so say it here,
                 // where it stays readable and is saved with the run log.
                 logWindow.info(wikidata.explore.generation.RunAudits.report(run));
-                showInstancesWindow(); // pop the results window on a fresh run
             } else {
                 instancesPanel.clear();
                 updateGraphFrontierButton();
@@ -1223,7 +1245,8 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
-                graphDiscoveryState(), lastRun.dynamicObjects(), this::applyGraphFrontier);
+                graphDiscoveryState(), lastRun.dynamicObjects(), this::applyGraphFrontier,
+                generateDomainButton::doClick);
         process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
     }
 
@@ -1240,12 +1263,13 @@ public class ModelBuilderFrame extends JFrame {
             }
         }
         if (added > 0) modelChanged();
+        pendingGenerationReason = "Expand " + decisions.size()
+                + " graph-frontier node(s)";
         logWindow.info("Queued " + decisions.size()
                 + " graph-frontier node(s) for reverse expansion"
                 + (added == decisions.size() ? "" : " ("
                 + (decisions.size() - added) + " already queued)")
                 + "; opening Generate domain preview.");
-        SwingUtilities.invokeLater(generateDomainButton::doClick);
     }
 
     /**
@@ -1444,13 +1468,7 @@ public class ModelBuilderFrame extends JFrame {
     /** Information buttons are idempotent: reveal and focus their retained window
      * instead of silently creating another copy. Also restores a minimized frame. */
     private static void showAndFocus(JFrame window) {
-        if (window == null) return;
-        if ((window.getExtendedState() & Frame.ICONIFIED) != 0) {
-            window.setExtendedState(window.getExtendedState() & ~Frame.ICONIFIED);
-        }
-        window.setVisible(true);
-        window.toFront();
-        window.requestFocus();
+        objectview.utils.swing.SwingWindowActivation.showAndFocus(window);
     }
 
     // Returns a human-readable reason the class can't be populated, or null if it
@@ -2121,6 +2139,7 @@ public class ModelBuilderFrame extends JFrame {
             acceptGenerationRun(new GenerationRun(
                     snapshot, 0, plan, objects, runtime, instances,
                     null, saved.loadedDeclarations()));
+            showInstancesWindow();
 
             logWindow.info("Loaded " + objects.size()
                                    + " saved object(s) from " + file.getName()

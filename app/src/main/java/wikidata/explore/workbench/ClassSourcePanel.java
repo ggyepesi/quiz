@@ -894,8 +894,27 @@ public class ClassSourcePanel extends JPanel {
         }
         m.propertyPid(relPid);
         String statementSourceClass = statementSourceField.getText().trim();
-        clazz.statementSource(statementSourceClass.isBlank() ? null
-                : new StatementClassSource(statementSourceClass, relPid));
+        // This editor owns exactly one statement declaration: the source class. A
+        // blank one does NOT mean "not a statement class" — every shipped statement
+        // class discovers its subjects from the property and has no source class at
+        // all — so the source is dropped only when no property keeps it alive
+        // either. Copying carries the declarations this editor cannot see, by
+        // construction rather than by a list maintained here; the Statement panel
+        // remains their single editor.
+        StatementClassSource previousStatementSource = clazz.statementSource();
+        boolean staysAStatementClass = !statementSourceClass.isBlank()
+                || (previousStatementSource != null
+                        && previousStatementSource.hasProperty());
+        if (!staysAStatementClass) {
+            clazz.statementSource(null);
+        } else if (previousStatementSource == null) {
+            clazz.statementSource(
+                    new StatementClassSource(statementSourceClass, relPid));
+        } else {
+            StatementClassSource nextStatementSource = previousStatementSource.copy();
+            nextStatementSource.sourceClassName(statementSourceClass);
+            clazz.statementSource(nextStatementSource);
+        }
         // Preserve the resolved relation label (from "Find…" or a prior load) so
         // it persists and renders; default P31 to "instance of".
         String relLabelText = relationLabel.getText().trim();

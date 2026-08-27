@@ -1,6 +1,7 @@
 package wikidata.explore.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import datasource.graph.GraphExpansionPolicy;
 
 /**
  * Defines where the instances of a statement-reification class come from.
@@ -29,6 +30,9 @@ public final class StatementClassSource {
     // (the allowed statement values + their labels), replacing the value filter
     // otherwise inherited from a source class. Blank = derive as before.
     private String valueSelectionName = "";
+    // Explicit graph participation. Statement structure alone must not silently
+    // turn a relation into an expandable knowledge-graph frontier.
+    private GraphExpansionPolicy graphExpansionPolicy = GraphExpansionPolicy.NONE;
 
     public StatementClassSource() {
     }
@@ -88,6 +92,15 @@ public final class StatementClassSource {
         return !valueSelectionName().isBlank();
     }
 
+    public GraphExpansionPolicy graphExpansionPolicy() {
+        return graphExpansionPolicy == null
+                ? GraphExpansionPolicy.NONE : graphExpansionPolicy;
+    }
+
+    public void graphExpansionPolicy(GraphExpansionPolicy value) {
+        graphExpansionPolicy = value == null ? GraphExpansionPolicy.NONE : value;
+    }
+
     public boolean hasSourceClass() {
         return !sourceClassName.isBlank();
     }
@@ -118,6 +131,7 @@ public final class StatementClassSource {
                 sourceClassName,
                 propertyPid);
         c.valueSelectionName = valueSelectionName;
+        c.graphExpansionPolicy = graphExpansionPolicy();
         return c;
     }
 
