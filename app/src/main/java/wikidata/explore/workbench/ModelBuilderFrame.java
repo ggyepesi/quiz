@@ -662,6 +662,14 @@ public class ModelBuilderFrame extends JFrame {
             sourceWorkbench.edit(f);
         });
 
+        sourceWorkbench.onGraphSelection(target -> {
+            if (target instanceof GeneratedClassModel clazz) {
+                classModelPanel.selectClass(clazz);
+            } else if (target instanceof GeneratedFieldModel field) {
+                classModelPanel.selectField(field);
+            }
+        });
+
         // A field added from a tool in the Explorer window is otherwise
         // invisible — bring the main config window forward and say where it went
         // (only on an explicit add, NOT on the applyEdits a Discover run does,

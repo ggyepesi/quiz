@@ -40,7 +40,7 @@ final class GraphPatternSamplePanel extends JPanel {
     private final JSpinner limit = new JSpinner(new SpinnerNumberModel(60, 1, 200, 10));
     private final JButton preview = new JButton("Preview expansion");
     private final JLabel status = new JLabel(" ");
-    private final PatternDiagram diagram = new PatternDiagram();
+    private final GraphPatternDiagram diagram = new GraphPatternDiagram();
     private final JTabbedPane results = new JTabbedPane();
     private String seededFor;
 
@@ -120,7 +120,7 @@ final class GraphPatternSamplePanel extends JPanel {
             seededFor = null;
             seeds.setText("");
             status.setText("No enabled, structurally complete graph pattern.");
-            diagram.pattern(null);
+            diagram.pattern(null, GraphPatternDiagram.Details.counts(0, 0, 0, 0));
             updateEnabled();
             return;
         }
@@ -136,7 +136,7 @@ final class GraphPatternSamplePanel extends JPanel {
             seeds.setText(String.join(" ", qids));
             status.setText(qids.isEmpty() ? "This pattern has no expansion nodes." : " ");
         }
-        diagram.pattern(choice.pattern());
+        diagram.pattern(choice.pattern(), GraphPatternDiagram.Details.counts(0, 0, 0, 0));
         updateEnabled();
     }
 
@@ -180,7 +180,8 @@ final class GraphPatternSamplePanel extends JPanel {
         setTab(1, "Sources", new ArrayList<>(sources.values()));
         setTab(2, "Statements", statementCards);
         setTab(3, "Frontier", frontier);
-        diagram.counts(selected.size(), sources.size(), statementCards.size(), frontier.size());
+        diagram.details(GraphPatternDiagram.Details.counts(
+                selected.size(), sources.size(), statementCards.size(), frontier.size()));
         status.setText(statementCards.size() + " statement sample(s), "
                 + frontier.size() + " frontier node(s).");
     }
@@ -240,74 +241,4 @@ final class GraphPatternSamplePanel extends JPanel {
                 ? "Unknown error" : error.getMessage();
     }
 
-    /** Compact explanatory diagram; data remains accessible in the card tabs below. */
-    private static final class PatternDiagram extends JComponent {
-        // Text follows the look and feel, because a foreground that ignores it is
-        // unreadable on a dark one. The accent stays literal, as it is in the card
-        // renderers this diagram sits above, and is applied as a TINT so it
-        // composites over whatever background is actually beneath it.
-        private static final Color ACCENT = new Color(30, 110, 210);
-        private static Color ui(String key, Color fallback) {
-            Color color = UIManager.getColor(key);
-            return color == null ? fallback : color;
-        }
-        private static Color text() { return ui("Label.foreground", Color.DARK_GRAY); }
-        private static Color muted() {
-            return ui("Label.disabledForeground", Color.GRAY);
-        }
-        private static Color tint() {
-            return new Color(ACCENT.getRed(), ACCENT.getGreen(), ACCENT.getBlue(), 28);
-        }
-
-        private GraphExpansionPattern pattern;
-        private int selected, sources, statements, frontier;
-        PatternDiagram() { setPreferredSize(new Dimension(760, 125)); }
-        void pattern(GraphExpansionPattern value) {
-            pattern = value; selected = sources = statements = frontier = 0; repaint();
-        }
-        void counts(int a, int b, int c, int d) {
-            selected = a; sources = b; statements = c; frontier = d; repaint();
-        }
-        @Override protected void paintComponent(Graphics graphics) {
-            super.paintComponent(graphics);
-            Graphics2D g = (Graphics2D) graphics.create();
-            try {
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON);
-                if (pattern == null) {
-                    g.setColor(muted());
-                    g.drawString("No graph pattern selected.", 16, 32);
-                    return;
-                }
-                int y = 22, h = 54, gap = 34;
-                int w = Math.max(120, (getWidth() - 5 * gap) / 4);
-                int x1 = gap, x2 = x1 + w + gap, x3 = x2 + w + gap, x4 = x3 + w + gap;
-                box(g, x1, y, w, h, pattern.targetNodeClass(), "selected · " + selected);
-                box(g, x2, y, w, h, pattern.sourceNodeClass(), "discovered · " + sources);
-                box(g, x3, y, w, h, pattern.statementClass(),
-                        pattern.relation().relationId() + " · " + statements);
-                box(g, x4, y, w, h, pattern.targetNodeClass(), "frontier · " + frontier);
-                arrow(g, x1 + w, y + h / 2, x2, y + h / 2, "reverse");
-                arrow(g, x2 + w, y + h / 2, x3, y + h / 2, "statements");
-                arrow(g, x3 + w, y + h / 2, x4, y + h / 2, "values");
-            } finally { g.dispose(); }
-        }
-        private static void box(Graphics2D g, int x, int y, int w, int h,
-                                String title, String detail) {
-            g.setColor(tint()); g.fillRoundRect(x, y, w, h, 12, 12);
-            g.setColor(ACCENT); g.drawRoundRect(x, y, w, h, 12, 12);
-            g.setColor(text()); g.setFont(g.getFont().deriveFont(Font.BOLD));
-            g.drawString(title, x + 9, y + 21);
-            g.setColor(muted());
-            g.setFont(g.getFont().deriveFont(Font.PLAIN));
-            g.drawString(detail, x + 9, y + 41);
-        }
-        private static void arrow(Graphics2D g, int x1, int y1, int x2, int y2,
-                                  String label) {
-            g.setColor(muted()); g.drawLine(x1 + 3, y1, x2 - 5, y2);
-            g.drawLine(x2 - 12, y2 - 5, x2 - 5, y2); g.drawLine(x2 - 12, y2 + 5, x2 - 5, y2);
-            Font old = g.getFont(); g.setFont(old.deriveFont(10f));
-            g.drawString(label, x1 + 7, y1 - 6); g.setFont(old);
-        }
-    }
 }

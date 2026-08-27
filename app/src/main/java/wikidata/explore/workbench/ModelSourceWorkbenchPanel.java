@@ -73,6 +73,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     private final CachedPropertyViewablePanel propertyPanel =
             new CachedPropertyViewablePanel();
     private final GraphPatternSamplePanel graphPatternPanel;
+    private final GraphConfigurationDiagram graphConfigurationDiagram;
 
     private Object selected;
 
@@ -91,6 +92,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         super(new BorderLayout(4, 4));
         this.projectModel = projectModel;
         this.graphPatternPanel = new GraphPatternSamplePanel(projectModel);
+        this.graphConfigurationDiagram = new GraphConfigurationDiagram(projectModel);
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
 
@@ -129,10 +131,11 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     public void afterChange(
             Consumer<Void> afterChange) {
 
-        this.afterChange =
-                afterChange == null
-                        ? ignored -> {}
-                        : afterChange;
+        Consumer<Void> downstream = afterChange == null ? ignored -> {} : afterChange;
+        this.afterChange = ignored -> {
+            graphConfigurationDiagram.refresh();
+            downstream.accept(null);
+        };
 
         classSourcePanel.afterChange(
                 this.afterChange);
@@ -207,6 +210,10 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                         : consumer;
     }
 
+    public void onGraphSelection(Consumer<Object> consumer) {
+        graphConfigurationDiagram.onActivate(consumer);
+    }
+
     public JComponent helperTools() {
         return helperTabs;
     }
@@ -270,6 +277,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
 
         discoveryPanel.refreshNodeTitle();
         graphPatternPanel.refreshPatterns();
+        graphConfigurationDiagram.selection(selected);
 
         // The editors for the newly shown card are built (or rebuilt) enabled. The lock
         // is a property of THIS panel, so re-applying it here keeps every caller of
@@ -720,6 +728,8 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         config.add(
                 cardPanel,
                 BorderLayout.CENTER);
+
+        config.add(graphConfigurationDiagram, BorderLayout.SOUTH);
 
         add(config, BorderLayout.CENTER);
     }
