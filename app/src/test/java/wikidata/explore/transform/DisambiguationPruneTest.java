@@ -7,6 +7,7 @@ import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.CanonicalSpec;
 
 import java.util.List;
 import java.util.Map;
@@ -114,5 +115,60 @@ class DisambiguationPruneTest {
 
         assertTrue(DisambiguationPrune.apply(model(), pool, api, null).isEmpty());
         assertEquals(c, nom.get("ceremony"));
+    }
+
+    @Test void aMixedPurposeItemIsNotPruned() {
+        WikidataDynamicObject position =
+                new WikidataDynamicObject("Q693614", "King of Jerusalem");
+        position.type("Ceremony");
+        WikidataDynamicObject record = new WikidataDynamicObject("Q1$s1", "holding");
+        record.type("Nomination");
+        record.put("ceremony", position);
+
+        FakeWikidataApiClient api = new FakeWikidataApiClient().entity(
+                "Q693614", "King of Jerusalem", Map.of("P31", List.of(
+                        "Q13406463", "Q355567", "Q114962596")));
+
+        assertTrue(DisambiguationPrune.apply(model(), List.of(record), api, null).isEmpty());
+        assertEquals(position, record.get("ceremony"));
+    }
+
+    @Test void mixedLoadedP31AlsoKeepsTheEntityWithoutFetching() {
+        WikidataDynamicObject nominee =
+                new WikidataDynamicObject("Q693614", "King of Jerusalem");
+        nominee.type("Nominee");
+        nominee.put("type", List.of(
+                new WikidataDynamicObject("Q13406463", "Wikimedia list article"),
+                new WikidataDynamicObject("Q355567", "noble title")));
+        WikidataDynamicObject record = new WikidataDynamicObject("Q1$s1", "record");
+        record.type("Nomination");
+        record.put("nominee", nominee);
+
+        assertTrue(DisambiguationPrune.apply(
+                model(), List.of(record), new FakeWikidataApiClient(), null).isEmpty());
+        assertEquals(nominee, record.get("nominee"));
+    }
+
+    @Test void scrubbingAReferenceResettlesADerivedName() {
+        GeneratedProjectModel model = model();
+        model.findClass("Nomination").canonical()
+                .displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
+                .displayNameTemplate("{nominee} — {ceremony}");
+        WikidataDynamicObject bad = new WikidataDynamicObject("Q999", "Bad ceremony");
+        bad.type("Ceremony");
+        WikidataDynamicObject nominee = new WikidataDynamicObject("Q5", "Someone");
+        nominee.type("Nominee");
+        WikidataDynamicObject record = new WikidataDynamicObject(
+                "Q1$s1", "Someone — Bad ceremony");
+        record.type("Nomination");
+        record.put("nominee", nominee);
+        record.put("ceremony", bad);
+        FakeWikidataApiClient api = new FakeWikidataApiClient().entity(
+                "Q999", "Bad ceremony", Map.of("P31", List.of("Q4167410")));
+
+        DisambiguationPrune.apply(model, List.of(record), api, null);
+
+        assertNull(record.get("ceremony"));
+        assertEquals("Someone —", record.getDisplayName());
     }
 }

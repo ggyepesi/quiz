@@ -1,6 +1,7 @@
 package wikidata.explore.transform;
 
 import wikidata.WikidataIds;
+import wikidata.WikimediaInternalTypes;
 
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
@@ -46,14 +47,6 @@ import java.util.Set;
  * ForWork). Walks the reachable graph, since such a referent can be nested-only.
  */
 public final class DisambiguationPrune {
-
-    /** Wikimedia-internal "non-entity" types — never a valid domain member. */
-    private static final Set<String> INTERNAL_TYPES = Set.of(
-            "Q4167410",    // Wikimedia disambiguation page
-            "Q22808320",   // Wikimedia human name disambiguation page
-            "Q17362920",   // Wikimedia duplicated page
-            "Q4167836",    // Wikimedia category
-            "Q13406463");  // Wikimedia list article
 
     private DisambiguationPrune() {}
 
@@ -135,7 +128,7 @@ public final class DisambiguationPrune {
             String p31Field = p31FieldByClass.get(o.typeName());
             Object p31Value = p31Field == null ? null : o.get(p31Field);
             if (p31Value != null) {
-                if (hasInternalType(p31Value)) {   // P31 already on the instance
+                if (hasOnlyInternalTypes(p31Value)) { // P31 already on the instance
                     badQids.add(qid);
                 }
             } else {
@@ -169,11 +162,8 @@ public final class DisambiguationPrune {
                 if (e == null) {
                     continue;
                 }
-                for (String t : e.entityQids("P31")) {
-                    if (INTERNAL_TYPES.contains(t)) {
-                        badQids.add(q);
-                        break;
-                    }
+                if (WikimediaInternalTypes.exclusivelyInternal(e.entityQids("P31"))) {
+                    badQids.add(q);
                 }
             }
         }
@@ -182,12 +172,19 @@ public final class DisambiguationPrune {
             return removed;
         }
 
+        List<WikidataDynamicObject> renamed = new ArrayList<>();
         for (WikidataDynamicObject o : reachable) {
             if (o.qid() != null && badQids.contains(o.qid())) {
                 removed.add(o);
-            } else {
-                scrubReferences(o, badQids);
+            } else if (scrubReferences(o, badQids) && hasDerivedName(model, o)) {
+                // The previous name may have been derived from the reference just
+                // removed. Clear that stale fallback before deriving it again.
+                o.name(o.getIdentifier());
+                renamed.add(o);
             }
+        }
+        if (!renamed.isEmpty()) {
+            Canonicalization.apply(model, renamed, sink);
         }
         sink.message("Disambiguation prune: removed " + removed.size()
                 + " Wikimedia-internal referent(s) " + new ArrayList<>(badQids)
@@ -195,24 +192,23 @@ public final class DisambiguationPrune {
         return removed;
     }
 
-    /** True if any value member is a WDO whose QID is a Wikimedia-internal type. */
-    private static boolean hasInternalType(Object p31Value) {
-        if (p31Value instanceof WikidataDynamicObject w) {
-            return w.qid() != null && INTERNAL_TYPES.contains(w.qid());
+    private static boolean hasOnlyInternalTypes(Object p31Value) {
+        List<String> qids = new ArrayList<>();
+        collectQids(p31Value, qids);
+        return WikimediaInternalTypes.exclusivelyInternal(qids);
+    }
+
+    private static void collectQids(Object value, Collection<String> out) {
+        if (value instanceof WikidataDynamicObject w && WikidataIds.isQid(w.qid())) {
+            out.add(w.qid());
+        } else if (value instanceof Collection<?> values) {
+            values.forEach(item -> collectQids(item, out));
         }
-        if (p31Value instanceof Collection<?> c) {
-            for (Object item : c) {
-                if (hasInternalType(item)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     /** Clears field values that point at a bad QID: a single-valued field is removed
      *  outright; a collection loses just those members (and is removed if it empties). */
-    private static void scrubReferences(WikidataDynamicObject o, Set<String> badQids) {
+    private static boolean scrubReferences(WikidataDynamicObject o, Set<String> badQids) {
         List<String> clear = new ArrayList<>();
         Map<String, List<Object>> shrink = new LinkedHashMap<>();
         for (Map.Entry<String, Object> e : o.dynamicFieldValues().entrySet()) {
@@ -244,6 +240,15 @@ public final class DisambiguationPrune {
                 o.put(e.getKey(), e.getValue());
             }
         }
+        return !clear.isEmpty() || !shrink.isEmpty();
+    }
+
+    private static boolean hasDerivedName(
+            GeneratedProjectModel model, WikidataDynamicObject object) {
+        if (model == null || object == null) return false;
+        GeneratedClassModel clazz = model.findClass(object.typeName());
+        return clazz != null && clazz.canonical().displayNameMode()
+                != wikidata.explore.model.CanonicalSpec.DisplayNameMode.LABEL;
     }
 
     private static boolean isBad(Object v, Set<String> badQids) {

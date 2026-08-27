@@ -3,6 +3,7 @@ package wikidata.explore.query.logical;
 import datasource.graph.GraphExpansionPattern;
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
+import wikidata.WikimediaInternalTypes;
 import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.WikidataAccess;
 import work.Query;
@@ -71,6 +72,7 @@ public final class GraphPatternSampleQuery
                 + "  ?source wdt:" + pid + " ?expanded .\n"
                 + "  ?source p:" + pid + " ?statement .\n"
                 + "  ?statement ps:" + pid + " ?target .\n"
+                + WikimediaInternalTypes.excludeExclusivelyInternal("?target")
                 + "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"en,mul\". }\n"
                 // An explanation the reader may run twice must not answer
                 // differently the second time: LIMIT without an order leaves which
