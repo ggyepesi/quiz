@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class WikidataGraphDiscoveryStateTest {
 
@@ -82,6 +83,18 @@ class WikidataGraphDiscoveryStateTest {
         assertEquals(structural.id(), WikidataGraphDiscoveryState
                 .compute(model, historyObjects()).patterns().getFirst().id(),
                 "the editor and generation must derive the same pattern");
+    }
+
+    @Test void anIncompleteSourceEndpointIsUnavailableRatherThanExceptional() {
+        GeneratedProjectModel model = historyModel();
+        GeneratedClassModel holding = model.findClass("OfficeHolding");
+        holding.fields().stream().filter(field -> "source".equals(field.name()))
+                .findFirst().orElseThrow().entityClassName("");
+
+        assertNull(WikidataGraphDiscoveryState
+                .structuralPattern(model, "OfficeHolding"));
+        assertEquals(0, WikidataGraphDiscoveryState.compute(model, historyObjects())
+                .patterns().size());
     }
 
     private static GeneratedProjectModel historyModel() {

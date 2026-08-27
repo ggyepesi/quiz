@@ -94,7 +94,11 @@ public final class WikidataGraphDiscoveryState {
                 .filter(field -> reification.reify().sourceField().equals(field.name()))
                 .filter(field -> field.type() == FieldType.ENTITY)
                 .findFirst().orElse(null);
-        if (source == null || target == null || target.entityClassName().isBlank()) {
+        // An ENTITY field is allowed to be temporarily unclassed while the model is
+        // being edited. structuralPattern is also an editor query, so incomplete
+        // endpoint typing means "not available yet", not a constructor exception.
+        if (source == null || source.entityClassName().isBlank()
+                || target == null || target.entityClassName().isBlank()) {
             return null;
         }
         String id = load.statementType() + ":" + load.propertyPid() + ":"
