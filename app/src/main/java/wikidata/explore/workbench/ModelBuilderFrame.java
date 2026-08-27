@@ -53,6 +53,9 @@ public class ModelBuilderFrame extends JFrame {
             GeneratedProjectModel.constellationDemo();
 
     private GenerationRun lastRun;
+    /** Data-side graph execution history; never folded back into the authored model. */
+    private datasource.graph.GraphDiscoveryState graphDiscoveryLedger =
+            datasource.graph.GraphDiscoveryState.EMPTY;
 
     private final SingleRootClassModelPanel classModelPanel =
             new SingleRootClassModelPanel(projectModel);
@@ -746,6 +749,8 @@ public class ModelBuilderFrame extends JFrame {
                     return;
                 }
                 GeneratedProjectModel snapshot = projectModel.copy();
+                wikidata.explore.generation.WikidataGraphDiscoveryState
+                        .applyExpansionLedger(snapshot, graphDiscoveryLedger);
                 process.ProcessWorkflowPipeline generationPipeline =
                         wikidata.explore.generation.GenerateDomainPipeline.configured(snapshot);
                 var executionSettings =
@@ -1181,12 +1186,18 @@ public class ModelBuilderFrame extends JFrame {
 
     private void acceptGenerationRun(GenerationRun run) {
         SwingUtilities.invokeLater(() -> {
+            datasource.graph.GraphDiscoveryState previousGraph = graphDiscoveryLedger;
             // Closes the runtime this run supersedes — unless the incoming run carries it,
             // which is how forgetFetchedDeclaration replaces a run without shutting one
             // that is still in use.
             replaceGenerationRun(run);
 
             if (run != null) {
+                datasource.graph.GraphDiscoveryState observed =
+                        wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
+                                run.modelSnapshot(), run.dynamicObjects());
+                graphDiscoveryLedger = previousGraph.reconcile(
+                        observed, run.quality().complete());
                 // Graph state is presentation metadata, like the QID chip: show it in
                 // card titles without inventing stored fields or affecting search/sort.
                 instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
@@ -1229,9 +1240,7 @@ public class ModelBuilderFrame extends JFrame {
 
     private datasource.graph.GraphDiscoveryState graphDiscoveryState() {
         return lastRun == null
-                ? datasource.graph.GraphDiscoveryState.EMPTY
-                : wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
-                        lastRun.modelSnapshot(), lastRun.dynamicObjects());
+                ? datasource.graph.GraphDiscoveryState.EMPTY : graphDiscoveryLedger;
     }
 
     private void updateGraphFrontierButton() {
@@ -1261,22 +1270,25 @@ public class ModelBuilderFrame extends JFrame {
     private void applyGraphFrontier(
             java.util.List<GraphFrontierWorkflowAction.Decision> decisions) {
         if (decisions.isEmpty()) return;
-        int added = 0;
+        int queued = 0;
         for (GraphFrontierWorkflowAction.Decision decision : decisions) {
-            GeneratedClassModel target = projectModel.findClass(decision.targetClass());
-            if (target != null && WikidataIds.isQid(decision.qid())
-                    && !target.seedQids().contains(decision.qid())) {
-                target.seedQids().add(decision.qid());
-                added++;
+            if (WikidataIds.isQid(decision.qid())) {
+                datasource.graph.GraphDiscoveryState next = graphDiscoveryLedger.queue(
+                        decision.patternId(), datasource.EntityRef.wikidata(decision.qid()));
+                if (next != graphDiscoveryLedger) {
+                    graphDiscoveryLedger = next;
+                    queued++;
+                }
             }
         }
-        if (added > 0) modelChanged();
+        instancesPanel.cardDecorator(new GraphCoverageCardDecorator(graphDiscoveryLedger));
+        updateGraphFrontierButton();
         pendingGenerationReason = "Expand " + decisions.size()
                 + " graph-frontier node(s)";
-        logWindow.info("Queued " + decisions.size()
-                + " graph-frontier node(s) for reverse expansion"
-                + (added == decisions.size() ? "" : " ("
-                + (decisions.size() - added) + " already queued)")
+        logWindow.info("Queued " + queued
+                + " graph-frontier node(s) in the snapshot ledger"
+                + (queued == decisions.size() ? "" : " ("
+                + (decisions.size() - queued) + " already queued)")
                 + "; opening Generate domain preview.");
     }
 
@@ -1887,6 +1899,7 @@ public class ModelBuilderFrame extends JFrame {
             projectModel.copyContentsFrom(
                     new GeneratedProjectModelStore().load(model));
             replaceGenerationRun(null);
+            graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
             instancesPanel.clear();
             modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
@@ -1931,6 +1944,7 @@ public class ModelBuilderFrame extends JFrame {
                 GeneratedViewableSourceGenerator.sanitizeClassName(name));
         projectModel.copyContentsFrom(fresh);
         replaceGenerationRun(null);
+        graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
         instancesPanel.clear();
         modelChanged();
         sourceWorkbench.edit(projectModel.rootClass());
@@ -1999,6 +2013,7 @@ public class ModelBuilderFrame extends JFrame {
         } else {
             projectModel.copyContentsFrom(GeneratedProjectModel.constellationDemo());
             replaceGenerationRun(null);
+            graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
             instancesPanel.clear();
             modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
@@ -2124,6 +2139,7 @@ public class ModelBuilderFrame extends JFrame {
             // onto the run so a following Enrich asks only for what is new.
             WikidataDynamicObjectJsonStore.LoadedSnapshot saved =
                     new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(file);
+            graphDiscoveryLedger = saved.graphDiscovery();
             List<WikidataDynamicObject> objects = saved.objects();
 
             // Apply the current model's canonicalization to the loaded pool, so a
@@ -2422,7 +2438,7 @@ public class ModelBuilderFrame extends JFrame {
                 new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
                         lastRun.dynamicObjects(), snapshotFile(),
                         lastRun.modelSnapshot(),
-                        lastRun.loadedDeclarations());
+                        lastRun.loadedDeclarations(), graphDiscoveryLedger);
                 n = lastRun.dynamicObjects().size();
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');

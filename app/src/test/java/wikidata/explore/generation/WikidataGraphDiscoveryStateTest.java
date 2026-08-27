@@ -2,6 +2,7 @@ package wikidata.explore.generation;
 
 import datasource.graph.GraphExpansionCoverage;
 import datasource.graph.GraphExpansionPolicy;
+import datasource.graph.GraphDiscoveryState;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -52,6 +53,53 @@ class WikidataGraphDiscoveryStateTest {
         assertEquals(1, restored.frontier(pattern).size());
         assertEquals("Q253779", restored.frontier(pattern)
                 .getFirst().node().id());
+    }
+
+    @Test void explicitLedgerSurvivesSnapshotWithoutBeingRecomputedFromSeeds()
+            throws Exception {
+        GeneratedProjectModel model = historyModel();
+        var observed = WikidataGraphDiscoveryState.compute(model, historyObjects());
+        var pattern = observed.patterns().getFirst();
+        GraphDiscoveryState queued = observed.queue(
+                pattern.id(), datasource.EntityRef.wikidata("Q253779"));
+        File snapshot = temporary.resolve("queued.snapshot.json").toFile();
+
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.saveWithFieldGraph(historyObjects(), snapshot, model, List.of(), queued);
+
+        assertEquals(GraphExpansionCoverage.State.QUEUED,
+                store.loadAllWithFieldGraph(snapshot).graphDiscovery().coverage().stream()
+                        .filter(item -> "Q253779".equals(item.node().id()))
+                        .findFirst().orElseThrow().state());
+    }
+
+    @Test void expansionLedgerAugmentsOnlyTheDisposableGenerationModel() {
+        GeneratedProjectModel authored = historyModel();
+        GeneratedProjectModel execution = authored.copy();
+        var state = WikidataGraphDiscoveryState.compute(authored, historyObjects());
+        var pattern = state.patterns().getFirst();
+        GraphDiscoveryState queued = state.queue(
+                pattern.id(), datasource.EntityRef.wikidata("Q253779"));
+
+        WikidataGraphDiscoveryState.applyExpansionLedger(execution, queued);
+
+        assertEquals(List.of("Q6412254"), authored.findClass("Position").seedQids());
+        assertEquals(List.of("Q6412254", "Q253779"),
+                execution.findClass("Position").seedQids());
+    }
+
+    @Test void aDormantLedgerIsRetainedButNotExecutedWhileThePolicyIsDisabled() {
+        GeneratedProjectModel model = historyModel();
+        var state = WikidataGraphDiscoveryState.compute(model, historyObjects());
+        var pattern = state.patterns().getFirst();
+        GraphDiscoveryState queued = state.queue(
+                pattern.id(), datasource.EntityRef.wikidata("Q253779"));
+        model.findClass("OfficeHolding").statementSource()
+                .graphExpansionPolicy(GraphExpansionPolicy.NONE);
+
+        WikidataGraphDiscoveryState.applyExpansionLedger(model, queued);
+
+        assertEquals(List.of("Q6412254"), model.findClass("Position").seedQids());
     }
 
     @Test void structurallyEligibleStatementDoesNotBecomeAGraphPatternUnlessEnabled() {

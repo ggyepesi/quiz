@@ -53,6 +53,37 @@ public final class WikidataGraphDiscoveryState {
     }
 
     /**
+     * Adds data-side expansion work to the disposable model copy used by generation.
+     * The authored model remains unchanged; its seed QIDs are only the graph anchors.
+     */
+    public static void applyExpansionLedger(
+            GeneratedProjectModel model, GraphDiscoveryState ledger) {
+        if (model == null || ledger == null) return;
+        List<GraphExpansionPattern> active =
+                WikidataGraphExpansionPlan.compile(model).patterns();
+        for (GraphExpansionPattern pattern : ledger.patterns()) {
+            if (active.stream().noneMatch(candidate ->
+                    candidate.id().equals(pattern.id())
+                            && candidate.relation().equals(pattern.relation())
+                            && candidate.direction() == pattern.direction())) continue;
+            GeneratedClassModel target = model.findClass(pattern.targetNodeClass());
+            if (target == null) continue;
+            ledger.coverage().stream()
+                    .filter(item -> item.patternId().equals(pattern.id()))
+                    .filter(item -> item.relation().equals(pattern.relation()))
+                    .filter(item -> item.direction() == pattern.direction())
+                    .filter(item -> item.state() == GraphExpansionCoverage.State.QUEUED
+                            || item.state() == GraphExpansionCoverage.State.EXPANDED
+                            || item.state() == GraphExpansionCoverage.State.INCOMPLETE)
+                    .map(GraphExpansionCoverage::node)
+                    .filter(node -> EntityRef.WIKIDATA.equals(node.namespace()))
+                    .map(EntityRef::id).filter(WikidataIds::isQid)
+                    .filter(qid -> !target.seedQids().contains(qid))
+                    .forEach(target.seedQids()::add);
+        }
+    }
+
+    /**
      * The pattern this statement class yields by its structure alone, independent of
      * whether its author has enabled expansion. The StatementClass editor asks this
      * to explain a policy the user is choosing but has not yet applied; {@link

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GraphExpansionCoverageTest {
 
@@ -61,6 +62,40 @@ class GraphExpansionCoverageTest {
                 .readValue(legacy, GraphExpansionPattern.class);
 
         assertEquals(GraphTraversalDirection.INCOMING, restored.direction());
+    }
+
+    @Test void queuedExpansionIsDataStateAndReconcilesWithTheRunOutcome() {
+        EntityRef node = new EntityRef("catalogue-a", "position-2");
+        GraphDiscoveryState encountered = new GraphDiscoveryState(List.of(PATTERN),
+                List.of(item(node, PATTERN.relation(), PATTERN.direction())));
+
+        GraphDiscoveryState queued = encountered.queue(PATTERN.id(), node);
+        assertEquals(GraphExpansionCoverage.State.QUEUED,
+                queued.coverage().getFirst().state());
+
+        GraphDiscoveryState observed = new GraphDiscoveryState(List.of(PATTERN),
+                GraphExpansionCoverage.of(PATTERN, List.of(node), List.of()));
+        assertEquals(GraphExpansionCoverage.State.EXPANDED,
+                queued.reconcile(observed, true).coverage().getFirst().state());
+        assertEquals(GraphExpansionCoverage.State.INCOMPLETE,
+                queued.reconcile(observed, false).coverage().getFirst().state());
+        assertTrue(encountered.frontier(PATTERN).stream()
+                .anyMatch(item -> item.node().equals(node)));
+    }
+
+    @Test void disablingAPatternMakesItsLedgerDormantRatherThanDeletingIt() {
+        EntityRef node = new EntityRef("catalogue-a", "position-2");
+        GraphDiscoveryState queued = new GraphDiscoveryState(List.of(PATTERN),
+                List.of(item(node, PATTERN.relation(), PATTERN.direction())))
+                .queue(PATTERN.id(), node);
+
+        GraphDiscoveryState whileDisabled = queued.reconcile(
+                GraphDiscoveryState.EMPTY, true);
+
+        assertEquals(List.of(PATTERN), whileDisabled.patterns());
+        assertEquals(GraphExpansionCoverage.State.QUEUED,
+                whileDisabled.coverage().getFirst().state());
+        assertEquals(node, whileDisabled.coverage().getFirst().node());
     }
 
     private static GraphExpansionCoverage item(

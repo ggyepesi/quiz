@@ -140,6 +140,19 @@ public class WikidataDynamicObjectJsonStore {
         return saveWithFieldGraph(objects, file, schema, List.of());
     }
 
+    /** Saves a caller-owned graph ledger instead of deriving execution state from seeds. */
+    public SnapshotFieldGraph saveWithFieldGraph(
+            List<WikidataDynamicObject> objects,
+            File file,
+            wikidata.explore.model.GeneratedProjectModel schema,
+            List<LoadedDeclaration> loadedDeclarations,
+            datasource.graph.GraphDiscoveryState graphDiscovery)
+            throws IOException {
+        this.pendingGraphDiscovery = graphDiscovery == null
+                ? datasource.graph.GraphDiscoveryState.EMPTY : graphDiscovery;
+        return saveWithFieldGraphInternal(objects, file, schema, loadedDeclarations);
+    }
+
     /** …recording which declarations have been FETCHED, so a later enrich asks only for
      *  what is new rather than re-asking for every entity Wikidata had no answer for. */
     public SnapshotFieldGraph saveWithFieldGraph(
@@ -148,11 +161,20 @@ public class WikidataDynamicObjectJsonStore {
             wikidata.explore.model.GeneratedProjectModel schema,
             List<LoadedDeclaration> loadedDeclarations)
             throws IOException {
-        this.pendingDeclarations = loadedDeclarations == null
-                ? List.of() : List.copyOf(loadedDeclarations);
         this.pendingGraphDiscovery =
                 wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
                         schema, objects);
+        return saveWithFieldGraphInternal(objects, file, schema, loadedDeclarations);
+    }
+
+    private SnapshotFieldGraph saveWithFieldGraphInternal(
+            List<WikidataDynamicObject> objects,
+            File file,
+            wikidata.explore.model.GeneratedProjectModel schema,
+            List<LoadedDeclaration> loadedDeclarations)
+            throws IOException {
+        this.pendingDeclarations = loadedDeclarations == null
+                ? List.of() : List.copyOf(loadedDeclarations);
         try {
             return saveWithGroupRootBindingsInternal(
                     objects, List.of(), file,
