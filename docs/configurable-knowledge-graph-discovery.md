@@ -1,5 +1,10 @@
 # Configurable Knowledge-Graph Discovery
 
+For the product direction, cross-datasource architecture and development order, see
+[Graph Discovery as a Primary ModelBuilder Capability](graph-discovery-product-direction.md).
+The provider contract, correspondence rule and staged second-provider plan are in
+[Cross-Datasource Graph Discovery](cross-datasource-graph-discovery.md).
+
 ## Status
 
 **In scope for 0.1 — one pattern, one provider, one direction.** This is a deliberate
