@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import datasource.graph.GraphExpansionPattern;
+import datasource.graph.GraphRelation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -9,12 +11,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class GraphPatternSamplePanelTest {
 
+    private static final GraphExpansionPattern PATTERN = new GraphExpansionPattern(
+            "OfficeHolding:P39:Position", "Person", "Position",
+            new GraphRelation("wikidata", "P39"), "OfficeHolding", "source", "position");
+
     // The preview box holds at most three expansion nodes, so "reached but not in
     // this preview" is not the same question as "reached but not yet expanded". A
     // model with more configured seeds than the preview requested must not have its
     // own seeds reported back to it as frontier.
     @Test void aConfiguredSeedIsNotFrontierEvenWhenThisPreviewSkippedIt() {
-        Set<String> frontier = GraphPatternSamplePanel.frontierQids(
+        Set<String> frontier = GraphPatternSamplePanel.frontierQids(PATTERN,
                 List.of("Q6412254", "Q181765", "Q253779", "Q29168087"),
                 List.of("Q6412254"),
                 List.of("Q6412254", "Q181765"));
@@ -24,7 +30,7 @@ class GraphPatternSamplePanelTest {
     }
 
     @Test void nonQidSeedsCannotSuppressAReachedNode() {
-        assertEquals(Set.of("Q253779"), GraphPatternSamplePanel.frontierQids(
+        assertEquals(Set.of("Q253779"), GraphPatternSamplePanel.frontierQids(PATTERN,
                 List.of("Q253779"), List.of(), List.of("", "not-a-qid")));
     }
 }

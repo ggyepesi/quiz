@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import datasource.graph.GraphDiscoveryState;
+import datasource.graph.GraphExpansionCoverage;
 import datasource.graph.GraphExpansionPattern;
 import datasource.graph.GraphExpansionPolicy;
 import objectview.Viewable;
@@ -168,8 +170,8 @@ final class GraphPatternSamplePanel extends JPanel {
         }
         GeneratedClassModel targetClass =
                 model.findClass(choice.pattern().targetNodeClass());
-        java.util.Set<String> unexpanded = frontierQids(targets.keySet(),
-                selected.keySet(),
+        java.util.Set<String> unexpanded = frontierQids(choice.pattern(),
+                targets.keySet(), selected.keySet(),
                 targetClass == null ? List.of() : targetClass.seedQids());
         List<Viewable> frontier = targets.entrySet().stream()
                 .filter(entry -> unexpanded.contains(entry.getKey()))
@@ -187,14 +189,24 @@ final class GraphPatternSamplePanel extends JPanel {
      * The reached nodes the model has not already expanded. A node configured as an
      * expansion seed is not frontier even when this preview did not ask about it:
      * only the previewed subset is selected, and the box holds at most three.
+     *
+     * <p>The rule itself belongs to the graph layer and is shared with generation, so
+     * this preview and a generated snapshot cannot mean different things by
+     * "frontier" — only look different distances.</p>
      */
     static java.util.Set<String> frontierQids(
+            GraphExpansionPattern pattern,
             java.util.Collection<String> reached,
             java.util.Collection<String> previewed,
             java.util.Collection<String> configuredSeeds) {
-        java.util.Set<String> expanded = new java.util.HashSet<>(previewed);
-        configuredSeeds.stream().filter(WikidataIds::isQid).forEach(expanded::add);
-        return reached.stream().filter(qid -> !expanded.contains(qid))
+        List<datasource.EntityRef> expanded = WikidataGraphDiscoveryState.nodes(
+                java.util.stream.Stream.concat(previewed.stream(),
+                        configuredSeeds.stream()).toList());
+        List<GraphExpansionCoverage> coverage = GraphExpansionCoverage.of(pattern,
+                GraphExpansionCoverage.Direction.INCOMING, expanded,
+                WikidataGraphDiscoveryState.nodes(reached));
+        return new GraphDiscoveryState(List.of(pattern), coverage)
+                .frontier(pattern.id()).stream().map(item -> item.node().id())
                 .collect(java.util.stream.Collectors
                         .toCollection(java.util.LinkedHashSet::new));
     }

@@ -44,15 +44,11 @@ public final class WikidataGraphDiscoveryState {
             if (pattern == null) continue;
             patterns.add(pattern);
 
-            GraphRelation relation = pattern.relation();
-            Set<String> expanded = new LinkedHashSet<>(load.discoveryValueQids());
-            Set<String> encountered = encounteredValues(
-                    objects, load.statementType(), pattern.targetField());
-            expanded.stream().filter(WikidataIds::isQid).forEach(qid -> coverage.add(
-                    item(pattern, relation, qid, GraphExpansionCoverage.State.EXPANDED)));
-            encountered.stream().filter(qid -> !expanded.contains(qid)).forEach(qid ->
-                    coverage.add(item(pattern, relation, qid,
-                            GraphExpansionCoverage.State.ENCOUNTERED)));
+            coverage.addAll(GraphExpansionCoverage.of(pattern,
+                    GraphExpansionCoverage.Direction.INCOMING,
+                    nodes(load.discoveryValueQids()),
+                    nodes(encounteredValues(
+                            objects, load.statementType(), pattern.targetField()))));
         }
         return new GraphDiscoveryState(patterns, coverage);
     }
@@ -109,11 +105,10 @@ public final class WikidataGraphDiscoveryState {
                 load.statementType(), source.name(), target.name());
     }
 
-    private static GraphExpansionCoverage item(
-            GraphExpansionPattern pattern, GraphRelation relation, String qid,
-            GraphExpansionCoverage.State state) {
-        return new GraphExpansionCoverage(pattern.id(), EntityRef.wikidata(qid), relation,
-                GraphExpansionCoverage.Direction.INCOMING, state);
+    /** Wikidata's mapping into the neutral graph layer: QIDs become node identities. */
+    public static List<EntityRef> nodes(Collection<String> qids) {
+        return qids == null ? List.of() : qids.stream().filter(WikidataIds::isQid)
+                .distinct().map(EntityRef::wikidata).toList();
     }
 
     private static Set<String> encounteredValues(
