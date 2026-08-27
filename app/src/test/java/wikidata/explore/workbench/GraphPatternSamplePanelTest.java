@@ -2,6 +2,7 @@ package wikidata.explore.workbench;
 
 import datasource.graph.GraphExpansionPattern;
 import datasource.graph.GraphRelation;
+import datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -13,7 +14,8 @@ class GraphPatternSamplePanelTest {
 
     private static final GraphExpansionPattern PATTERN = new GraphExpansionPattern(
             "OfficeHolding:P39:Position", "Person", "Position",
-            new GraphRelation("wikidata", "P39"), "OfficeHolding", "source", "position");
+            new GraphRelation("wikidata", "P39"), "OfficeHolding", "source", "position",
+            GraphTraversalDirection.INCOMING);
 
     // The preview box holds at most three expansion nodes, so "reached but not in
     // this preview" is not the same question as "reached but not yet expanded". A

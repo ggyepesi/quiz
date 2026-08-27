@@ -45,7 +45,6 @@ public final class WikidataGraphDiscoveryState {
             patterns.add(pattern);
 
             coverage.addAll(GraphExpansionCoverage.of(pattern,
-                    GraphExpansionCoverage.Direction.INCOMING,
                     nodes(load.discoveryValueQids()),
                     nodes(encounteredValues(
                             objects, load.statementType(), pattern.targetField()))));
@@ -102,7 +101,8 @@ public final class WikidataGraphDiscoveryState {
         return new GraphExpansionPattern(
                 id, source.entityClassName(), target.entityClassName(),
                 new GraphRelation("wikidata", load.propertyPid()),
-                load.statementType(), source.name(), target.name());
+                load.statementType(), source.name(), target.name(),
+                datasource.graph.GraphTraversalDirection.INCOMING);
     }
 
     /** Wikidata's mapping into the neutral graph layer: QIDs become node identities. */

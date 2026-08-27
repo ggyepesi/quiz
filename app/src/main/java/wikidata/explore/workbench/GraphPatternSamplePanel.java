@@ -203,10 +203,11 @@ final class GraphPatternSamplePanel extends JPanel {
                 java.util.stream.Stream.concat(previewed.stream(),
                         configuredSeeds.stream()).toList());
         List<GraphExpansionCoverage> coverage = GraphExpansionCoverage.of(pattern,
-                GraphExpansionCoverage.Direction.INCOMING, expanded,
+                expanded,
                 WikidataGraphDiscoveryState.nodes(reached));
         return new GraphDiscoveryState(List.of(pattern), coverage)
-                .frontier(pattern.id()).stream().map(item -> item.node().id())
+                .frontier(pattern).stream()
+                .map(item -> item.node().id())
                 .collect(java.util.stream.Collectors
                         .toCollection(java.util.LinkedHashSet::new));
     }

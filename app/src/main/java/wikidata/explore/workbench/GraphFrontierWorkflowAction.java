@@ -50,7 +50,7 @@ final class GraphFrontierWorkflowAction
             }
         }
         frontierCount = state.patterns().stream()
-                .mapToInt(pattern -> state.frontier(pattern.id()).size()).sum();
+                .mapToInt(pattern -> frontier(pattern).size()).sum();
     }
 
     @Override public String id() { return "graph-frontier"; }
@@ -80,7 +80,7 @@ final class GraphFrontierWorkflowAction
                             view, () -> null, false, () -> decorator.apply(view))).toList();
             tabs.add(new ProcessWorkflowResults.Tab<>(
                     pattern.targetNodeClass() + " expanded", expandedCards));
-            var frontierCards = views(outcome.result().frontier(pattern.id())).stream()
+            var frontierCards = views(frontier(pattern)).stream()
                     .map(view -> new ProcessWorkflowResults.Card<>(view,
                             () -> new Decision(pattern.id(), pattern.targetNodeClass(), view.qid()),
                             false, () -> decorator.apply(view))).toList();
@@ -100,10 +100,11 @@ final class GraphFrontierWorkflowAction
     }
 
     private List<GraphExpansionCoverage> expanded(GraphExpansionPattern pattern) {
-        return state.coverage().stream()
-                .filter(item -> pattern.id().equals(item.patternId()))
-                .filter(item -> item.state() == GraphExpansionCoverage.State.EXPANDED)
-                .toList();
+        return state.coverage(pattern, GraphExpansionCoverage.State.EXPANDED);
+    }
+
+    private List<GraphExpansionCoverage> frontier(GraphExpansionPattern pattern) {
+        return state.frontier(pattern);
     }
 
     private List<WikidataDynamicObject> views(List<GraphExpansionCoverage> coverage) {

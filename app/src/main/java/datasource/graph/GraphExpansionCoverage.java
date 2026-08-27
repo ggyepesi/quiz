@@ -11,10 +11,9 @@ public record GraphExpansionCoverage(
         String patternId,
         EntityRef node,
         GraphRelation relation,
-        Direction direction,
+        GraphTraversalDirection direction,
         State state) {
 
-    public enum Direction { INCOMING, OUTGOING }
     public enum State {
         ENCOUNTERED,
         /** Reserved for the durable execution ledger; not emitted by this slice. */
@@ -33,7 +32,7 @@ public record GraphExpansionCoverage(
      * about it — they differ in how far they looked, never in what they mean.
      */
     public static java.util.List<GraphExpansionCoverage> of(
-            GraphExpansionPattern pattern, Direction direction,
+            GraphExpansionPattern pattern,
             java.util.Collection<datasource.EntityRef> expanded,
             java.util.Collection<datasource.EntityRef> reached) {
         java.util.Set<datasource.EntityRef> settled =
@@ -41,12 +40,12 @@ public record GraphExpansionCoverage(
         java.util.List<GraphExpansionCoverage> out = new java.util.ArrayList<>();
         for (datasource.EntityRef node : settled) {
             out.add(new GraphExpansionCoverage(pattern.id(), node,
-                    pattern.relation(), direction, State.EXPANDED));
+                    pattern.relation(), pattern.direction(), State.EXPANDED));
         }
         for (datasource.EntityRef node : new java.util.LinkedHashSet<>(reached)) {
             if (settled.contains(node)) continue;
             out.add(new GraphExpansionCoverage(pattern.id(), node,
-                    pattern.relation(), direction, State.ENCOUNTERED));
+                    pattern.relation(), pattern.direction(), State.ENCOUNTERED));
         }
         return java.util.List.copyOf(out);
     }

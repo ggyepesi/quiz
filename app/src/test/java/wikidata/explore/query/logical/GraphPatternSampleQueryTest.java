@@ -2,6 +2,7 @@ package wikidata.explore.query.logical;
 
 import datasource.graph.GraphExpansionPattern;
 import datasource.graph.GraphRelation;
+import datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.explore.query.core.WikidataAccess;
@@ -16,7 +17,7 @@ class GraphPatternSampleQueryTest {
         GraphExpansionPattern pattern = new GraphExpansionPattern(
                 "OfficeHolding:P39:Position", "Person", "Position",
                 new GraphRelation("wikidata", "P39"), "OfficeHolding",
-                "source", "position");
+                "source", "position", GraphTraversalDirection.INCOMING);
         try (FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient()
                 .row(Map.of(
                         "expanded", "http://www.wikidata.org/entity/Q6412254",

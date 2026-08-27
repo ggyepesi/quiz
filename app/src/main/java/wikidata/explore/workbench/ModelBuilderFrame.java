@@ -1229,7 +1229,7 @@ public class ModelBuilderFrame extends JFrame {
     private void updateGraphFrontierButton() {
         datasource.graph.GraphDiscoveryState state = graphDiscoveryState();
         int count = state.patterns().stream().mapToInt(
-                pattern -> state.frontier(pattern.id()).size()).sum();
+                pattern -> state.frontier(pattern).size()).sum();
         graphFrontierButton.setText(count == 0
                 ? "Graph frontier" : "Graph frontier (" + count + ")");
         graphFrontierButton.setEnabled(lastRun != null && count > 0);

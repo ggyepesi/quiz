@@ -5,6 +5,7 @@ import datasource.graph.GraphDiscoveryState;
 import datasource.graph.GraphExpansionCoverage;
 import datasource.graph.GraphExpansionPattern;
 import datasource.graph.GraphRelation;
+import datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
 import process.ProcessOutcome;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -20,10 +21,10 @@ class GraphFrontierWorkflowActionTest {
         GraphRelation relation = new GraphRelation("wikidata", "P39");
         GraphExpansionPattern pattern = new GraphExpansionPattern(
                 "holding:P39:position", "Person", "Position", relation,
-                "OfficeHolding", "source", "position");
+                "OfficeHolding", "source", "position", GraphTraversalDirection.INCOMING);
         GraphExpansionCoverage frontier = new GraphExpansionCoverage(pattern.id(),
                 EntityRef.wikidata("Q253779"), relation,
-                GraphExpansionCoverage.Direction.INCOMING,
+                GraphTraversalDirection.INCOMING,
                 GraphExpansionCoverage.State.ENCOUNTERED);
         GraphDiscoveryState state = new GraphDiscoveryState(
                 List.of(pattern), List.of(frontier));

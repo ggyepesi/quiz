@@ -48,9 +48,10 @@ class WikidataGraphDiscoveryStateTest {
         var restored = store.loadAllWithFieldGraph(snapshot).graphDiscovery();
 
         assertEquals(1, restored.patterns().size());
-        assertEquals(1, restored.frontier(restored.patterns().getFirst().id()).size());
-        assertEquals("Q253779", restored.frontier(
-                restored.patterns().getFirst().id()).getFirst().node().id());
+        var pattern = restored.patterns().getFirst();
+        assertEquals(1, restored.frontier(pattern).size());
+        assertEquals("Q253779", restored.frontier(pattern)
+                .getFirst().node().id());
     }
 
     @Test void structurallyEligibleStatementDoesNotBecomeAGraphPatternUnlessEnabled() {

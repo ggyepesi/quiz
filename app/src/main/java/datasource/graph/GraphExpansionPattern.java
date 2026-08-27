@@ -12,7 +12,8 @@ public record GraphExpansionPattern(
         GraphRelation relation,
         String statementClass,
         String sourceField,
-        String targetField) {
+        String targetField,
+        GraphTraversalDirection direction) {
 
     public GraphExpansionPattern {
         id = required(id, "Pattern id is required");
@@ -22,6 +23,9 @@ public record GraphExpansionPattern(
         statementClass = required(statementClass, "Statement class is required");
         sourceField = required(sourceField, "Source field is required");
         targetField = required(targetField, "Target field is required");
+        // Saved patterns from before direction became intrinsic omit the property;
+        // the only pattern that existed then was reverse/incoming expansion.
+        direction = direction == null ? GraphTraversalDirection.INCOMING : direction;
     }
 
     private static String required(String value, String message) {

@@ -14,9 +14,18 @@ public record GraphDiscoveryState(
         coverage = coverage == null ? List.of() : List.copyOf(coverage);
     }
 
-    public List<GraphExpansionCoverage> frontier(String patternId) {
-        return coverage.stream().filter(item -> item.patternId().equals(patternId))
-                .filter(item -> item.state() == GraphExpansionCoverage.State.ENCOUNTERED)
+    /** Coverage for one exact traversal and terminal state. */
+    public List<GraphExpansionCoverage> coverage(
+            GraphExpansionPattern pattern, GraphExpansionCoverage.State state) {
+        if (pattern == null || state == null) return List.of();
+        return coverage.stream().filter(item -> item.patternId().equals(pattern.id()))
+                .filter(item -> item.relation().equals(pattern.relation()))
+                .filter(item -> item.direction() == pattern.direction())
+                .filter(item -> item.state() == state)
                 .toList();
+    }
+
+    public List<GraphExpansionCoverage> frontier(GraphExpansionPattern pattern) {
+        return coverage(pattern, GraphExpansionCoverage.State.ENCOUNTERED);
     }
 }
