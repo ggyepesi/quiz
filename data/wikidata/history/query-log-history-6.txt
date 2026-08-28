@@ -1,0 +1,674 @@
+Log message  [OK]  Done
+    | Loaded domain "History".
+Generate domain  [OK]  247 objects
+  Generate domain  [OK]  247 objects
+      | Datasource plan: 18 binding(s): 2 Wikidata id (QID), 2 Label, 2 Also known as, 1 Members by explicit list, 11 Statement property. 1 class population binding(s) drive discovery; 0 field acquisition binding(s) drive field acquisition across all configured classes; 2 Wikidata class-name declaration(s) drive label/alias retention; remaining field sources still use the established acquisition passes.
+    Generate domain "History"  [OK]  Person	53
+Name	53
+Position	1
+TOTAL	107 distinct across 3 served type(s); 1 root class query(ies)
+        | Execution settings: cache 768 MB (auto), network balanced (6 concurrent entity requests), completeness require complete.
+        | Skip class "Person" — no population source is configured.
+        | Skip class "Name" — no population source is configured.
+        | === Class "Position" (depth 1) ===
+        | [WIKIDATA] [SPARQL 1] START
+        | SELECT *
+        | WITH {
+        |   SELECT DISTINCT ?value ?valueLabel WHERE {
+        |     VALUES ?value { wd:Q6412254 }
+        |     ?value rdfs:label ?valueLabel .
+        |     FILTER(LANG(?valueLabel) IN ("en", "mul"))
+        |   }
+        |   LIMIT 200
+        | } AS %limited
+        | WHERE {
+        |   INCLUDE %limited .
+        | }
+        | ORDER BY ?valueLabel
+        | [WIKIDATA] [SPARQL 1] OK rows=1 timeMs=1427
+        | 
+        | [API 1] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q6412254&props=labels%7Cclaims%7Caliases&languages=en%7Cmul&format=json
+        | [API 1] OK headersMs=395 timeMs=397 bytes=3531 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 441 ms (up to 6 concurrent unit(s)).
+        | Retained prospective downstream claim(s): disambiguation prune needs [P31]; final label hydration needs [LABEL]; alias coverage needs [ALIASES]; bound 1 QID/property and 2 QID/metadata pair(s).
+        |   -> 1 Position
+        | Skip class "OfficeHolding" — no population source is configured.
+        | Statement acquisition plan: OfficeHolding: discover subjects, load P39 with startDate=P580, endDate=P582, predecessor=P1365, successor=P1366
+        | [WIKIDATA] [SPARQL 2] START
+        | SELECT DISTINCT ?subject WHERE {
+        |   ?subject wdt:P39 ?value .
+        |   VALUES ?value { wd:Q6412254 }
+        | }
+        | [WIKIDATA] [SPARQL 2] OK rows=53 timeMs=327
+        | 
+        | [API 2] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555%7CQ82448%7CQ82686%7CQ82687%7CQ83066%7CQ86932%7CQ86940%7CQ86946%7CQ86953%7CQ87044%7CQ87051%7CQ116382%7CQ130834%7CQ131706%7CQ150494%7CQ150575%7CQ150586%7CQ150599%7CQ150611%7CQ150665%7CQ150862%7CQ151321%7CQ152157%7CQ152370%7CQ152480%7CQ154412%7CQ155599%7CQ156147%7CQ157092%7CQ157103%7CQ157112%7CQ158038%7CQ177903%7CQ183579%7CQ188634%7CQ213061%7CQ271104%7CQ298056%7CQ299400%7CQ311351%7CQ311861%7CQ312775%7CQ313494%7CQ314218%7CQ318824%7CQ26486%7CQ32607%7CQ51056%7CQ51068%7CQ54040&props=labels%7Cclaims&languages=en%7Cmul&format=json
+        | 
+        | [API 3] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q54053%7CQ57124%7CQ57323&props=labels%7Cclaims&languages=en%7Cmul&format=json
+        | [API 3] OK headersMs=279 timeMs=648 bytes=43791 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | [API 2] OK headersMs=1802 timeMs=2465 bytes=777085 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 2566 ms (up to 6 concurrent unit(s)).
+        | Batch execution wall time: 5 ms (up to 6 concurrent unit(s)).
+        | Statement-field propagation OfficeHolding.predecessor: 59 QID(s), 590 planned property pair(s).
+        | Statement-field propagation OfficeHolding.position: 24 QID(s), 24 planned property pair(s).
+        | Statement-field propagation OfficeHolding.successor: 53 QID(s), 530 planned property pair(s).
+        | Qualifier load __subject_OfficeHolding P39 -> 140 OfficeHolding statements
+        | Reify P39 of __subject_OfficeHolding → OfficeHolding
+        |  value: position
+        |  canonical list: —
+        |  subject-fallback fields: —
+        |  statement-value-fallback fields: —
+        |  canonical key: source + position + startDate + endDate
+        |  qualifiers: startDate←P580(date), endDate←P582(date), predecessor←P1365, successor←P1366
+        |  → 140 records
+        | Un-stamped 53 discovered subject(s), stripped 53 internal statement field(s) — kept as referents, not served.
+        | Stamped 95 referent(s) with their declared class.
+        | Semantic acquisition manifest: Person=[P1477, P1559, P742, P569, P570, P31, P26, P18, P734, P735]; Name=[P734, P735, P31]; Position=[P31]; OfficeHolding=[P31]; __subject_OfficeHolding=[P39].
+        | Semantic retention preflight iteration 1: 744 planned QID/property pair(s) across 96 class member(s) in 2 class(es), registered before acquisition; 0 pair(s) already loaded and not planned again.
+        | 
+        | [API 4] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555%7CQ82448%7CQ82686%7CQ82687%7CQ83066%7CQ86932%7CQ86940%7CQ86946%7CQ86953%7CQ87044%7CQ87051%7CQ116382%7CQ130834%7CQ131706%7CQ150494%7CQ150575%7CQ150586%7CQ150599%7CQ150611%7CQ150665%7CQ150862%7CQ151321%7CQ152157%7CQ152370%7CQ152480%7CQ154412%7CQ155599%7CQ156147%7CQ157092%7CQ157103%7CQ157112%7CQ158038%7CQ177903%7CQ183579%7CQ188634%7CQ213061%7CQ271104%7CQ298056%7CQ299400%7CQ311351%7CQ311861%7CQ312775%7CQ313494%7CQ314218%7CQ318824%7CQ26486%7CQ32607%7CQ51056%7CQ51068%7CQ54040&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | 
+        | [API 5] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q54053%7CQ57124%7CQ57323%7CQ151075%7CQ86978%7CQ159679%7CQ32500%7CQ170467%7CQ150966%7CQ66023226%7CQ53998%7CQ235381%7CQ317593%7CQ877256%7CQ1302000%7CQ591681%7CQ265849%7CQ155581%7CQ275408%7CQ155669%7CQ158181%7CQ152148&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | [API 5] OK headersMs=749 timeMs=1233 bytes=320758 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 4] OK headersMs=974 timeMs=1658 bytes=778276 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 1757 ms (up to 6 concurrent unit(s)).
+        | Batch execution wall time: 4 ms (up to 6 concurrent unit(s)).
+        | Referent field load Person.birthName (P1477) -> 2 value(s)
+        | Referent field load Person.nativeName (P1559) -> 45 value(s)
+        | Referent field load Person.pseudonyms (P742) -> 0 value(s)
+        | Referent field load Person.dateOfBirth (P569) -> 71 value(s)
+        | Referent field load Person.dateOfDeath (P570) -> 71 value(s)
+        | Referent field load Person.type (P31) -> 72 value(s)
+        | Referent field load Person.spouse (P26) -> 64 value(s)
+        | Referent field load Person.image (P18) -> 69 value(s)
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 72 of 72 role member(s) eligible from evidence producers.
+        | Owned components: materialized 72 object(s).
+        | Semantic convergence iteration 1: 0 role stamp(s), 394 field value(s), 0 kind(s), 72 owned value(s).
+        | Semantic fact reuse iteration 1: 72 document(s) fetched, 72 fetch(es) avoided.
+        | Semantic retention preflight iteration 2: 1084 planned QID/property pair(s) across 238 class member(s) in 3 class(es), registered before acquisition; 576 pair(s) already loaded and not planned again.
+        | 
+        | [API 6] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q256692%7CQ269315%7CQ265835%7CQ272413%7CQ234724%7CQ447333%7CQ261183%7CQ75574819%7CQ12357079%7CQ61978%7CQ2461803%7CQ254374%7CQ354918%7CQ235591%7CQ150782%7CQ50926%7CQ438477%7CQ231334%7CQ450811%7CQ175920&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | 
+        | [API 7] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q169448%7CQ77336%7CQ3492072%7CQ354864%7CQ267849%7CQ447076%7CQ546165%7CQ271506%7CQ433941%7CQ238341%7CQ260019%7CQ234253%7CQ324913%7CQ4990810%7CQ80879%7CQ233900%7CQ164504%7CQ170205%7CQ57662%7CQ93541%7CQ57527%7CQ158659%7CQ158662%7CQ236892%7CQ237463%7CQ58835%7CQ237940%7CQ233335%7CQ57528%7CQ159660%7CQ229826%7CQ235540%7CQ237076%7CQ235552%7CQ258910%7CQ236886%7CQ231126%7CQ447337%7CQ157077%7CQ167401%7CQ265467%7CQ232039%7CQ170182%7CQ181615%7CQ867369%7CQ242825%7CQ265501%7CQ271503%7CQ1032920%7CQ61491&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | [API 6] OK headersMs=386 timeMs=1242 bytes=118788 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | [API 7] OK headersMs=1004 timeMs=5116 bytes=350618 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 5176 ms (up to 6 concurrent unit(s)).
+        | Batch execution wall time: 4 ms (up to 6 concurrent unit(s)).
+        | Referent field load Person.birthName (P1477) -> 4 value(s)
+        | Referent field load Person.nativeName (P1559) -> 26 value(s)
+        | Referent field load Person.pseudonyms (P742) -> 1 value(s)
+        | Referent field load Person.dateOfBirth (P569) -> 70 value(s)
+        | Referent field load Person.dateOfDeath (P570) -> 68 value(s)
+        | Referent field load Person.type (P31) -> 71 value(s)
+        | Referent field load Person.spouse (P26) -> 71 value(s)
+        | Referent field load Person.image (P18) -> 49 value(s)
+        | Batch execution wall time: 4 ms (up to 6 concurrent unit(s)).
+        | Referent field load Name.familyName (P734) -> 15 value(s)
+        | Referent field load Name.givenName (P735) -> 57 value(s)
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 72 of 72 role member(s) eligible from evidence producers.
+        | Owned components: materialized 70 object(s).
+        | Semantic convergence iteration 2: 128 role stamp(s), 432 field value(s), 0 kind(s), 70 owned value(s).
+        | Semantic fact reuse iteration 2: 70 document(s) fetched, 142 fetch(es) avoided.
+        | Semantic retention preflight iteration 3: 590 planned QID/property pair(s) across 308 class member(s) in 3 class(es), registered before acquisition; 1280 pair(s) already loaded and not planned again.
+        | Referent field Person.birthName (P1477) already loaded for 142 entities — skipped.
+        | Referent field Person.nativeName (P1559) already loaded for 142 entities — skipped.
+        | Referent field Person.pseudonyms (P742) already loaded for 142 entities — skipped.
+        | Referent field Person.dateOfBirth (P569) already loaded for 142 entities — skipped.
+        | Referent field Person.dateOfDeath (P570) already loaded for 142 entities — skipped.
+        | Referent field Person.type (P31) already loaded for 142 entities — skipped.
+        | Referent field Person.spouse (P26) already loaded for 142 entities — skipped.
+        | Referent field Person.image (P18) already loaded for 142 entities — skipped.
+        | Batch execution wall time: 4 ms (up to 6 concurrent unit(s)).
+        | Referent field load Name.familyName (P734) -> 15 value(s)
+        | Referent field load Name.givenName (P735) -> 62 value(s)
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 72 of 72 role member(s) eligible from evidence producers.
+        | Semantic convergence iteration 3: 0 role stamp(s), 77 field value(s), 0 kind(s), 0 owned value(s).
+        | Semantic fact reuse iteration 3: 0 document(s) fetched, 70 fetch(es) avoided.
+        | Semantic retention preflight iteration 4: 450 planned QID/property pair(s) across 308 class member(s) in 3 class(es), registered before acquisition; 1420 pair(s) already loaded and not planned again.
+        | Referent field Person.birthName (P1477) already loaded for 142 entities — skipped.
+        | Referent field Person.nativeName (P1559) already loaded for 142 entities — skipped.
+        | Referent field Person.pseudonyms (P742) already loaded for 142 entities — skipped.
+        | Referent field Person.dateOfBirth (P569) already loaded for 142 entities — skipped.
+        | Referent field Person.dateOfDeath (P570) already loaded for 142 entities — skipped.
+        | Referent field Person.type (P31) already loaded for 142 entities — skipped.
+        | Referent field Person.spouse (P26) already loaded for 142 entities — skipped.
+        | Referent field Person.image (P18) already loaded for 142 entities — skipped.
+        | Referent field Name.familyName (P734) already loaded for 142 entities — skipped.
+        | Referent field Name.givenName (P735) already loaded for 142 entities — skipped.
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 72 of 72 role member(s) eligible from evidence producers.
+        | Semantic convergence iteration 4: 0 role stamp(s), 0 field value(s), 0 kind(s), 0 owned value(s).
+        | Semantic fact reuse iteration 4: 0 document(s) fetched, 0 fetch(es) avoided.
+        | Semantic convergence fixed point reached after 3 productive iteration(s).
+        | Loaded 903 referent/owned field value(s) from declared PIDs.
+        | 
+        | [API 9] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q271503%7CQ1032920%7CQ61491%7CQ256692%7CQ269315%7CQ265835%7CQ272413%7CQ234724%7CQ447333%7CQ261183%7CQ75574819%7CQ12357079%7CQ265849%7CQ61978%7CQ2461803%7CQ254374%7CQ354918%7CQ235591%7CQ150782%7CQ50926%7CQ438477%7CQ231334%7CQ450811%7CQ175920%7CQ181765%7CQ22722%7CQ45341328%7CQ253779%7CQ84020495%7CQ86978%7CQ159679%7CQ166877%7CQ32500%7CQ58631963%7CQ170467%7CQ111730433%7CQ110636748%7CQ782985%7CQ95976929%7CQ59533391%7CQ150966%7CQ66023226%7CQ53998%7CQ21096118%7CQ235381%7CQ317593%7CQ42724549%7CQ128605334%7CQ877256&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 8] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5%7CQ169448%7CQ77336%7CQ3492072%7CQ354864%7CQ267849%7CQ447076%7CQ546165%7CQ271506%7CQ433941%7CQ238341%7CQ260019%7CQ234253%7CQ324913%7CQ4990810%7CQ80879%7CQ233900%7CQ164504%7CQ170205%7CQ57662%7CQ151075%7CQ93541%7CQ57527%7CQ158659%7CQ158662%7CQ236892%7CQ237463%7CQ58835%7CQ237940%7CQ233335%7CQ57528%7CQ159660%7CQ229826%7CQ235540%7CQ237076%7CQ235552%7CQ258910%7CQ236886%7CQ231126%7CQ447337%7CQ157077%7CQ167401%7CQ265467%7CQ232039%7CQ170182%7CQ181615%7CQ867369%7CQ242825%7CQ265501&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 10] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q1302000%7CQ117814546%7CQ1077786%7CQ7244362%7CQ591681%7CQ116149375%7CQ113318727%7CQ67653663%7CQ3273712%7CQ155581%7CQ275408%7CQ155669%7CQ158181%7CQ152148%7CQ23011565%7CQ4927100%7CQ13484571%7CQ1010138%7CQ931618%7CQ3817756%7CQ15813127%7CQ24957539%7CQ2648973%7CQ4925932%7CQ58060544%7CQ1076652%7CQ3276175%7CQ18028491%7CQ18115751%7CQ15730712%7CQ105778482%7CQ18190444%7CQ11122389%7CQ5401576%7CQ18177333%7CQ18133228%7CQ1267979%7CQ4927273%7CQ471788%7CQ16747395%7CQ24716982%7CQ632104%7CQ16799105%7CQ15728196%7CQ37430698%7CQ16290783%7CQ4927313%7CQ2958359%7CQ51394%7CQ1369927&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 11] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q24192760%7CQ21491395%7CQ18421743%7CQ75135331%7CQ4925477%7CQ73094614%7CQ15731830%7CQ1602218%7CQ19817951%7CQ18029644%7CQ76545225%7CQ1166840%7CQ15727982%7CQ61054577%7CQ364753%7CQ368314%7CQ15727189%7CQ15727141%7CQ14038597%7CQ2438057%7CQ106515210%7CQ99197293%7CQ5004850%7CQ4925914%7CQ2218095%7CQ2018484%7CQ15731850%7CQ106907497%7CQ18192705%7CQ17522230%7CQ4218918%7CQ325872%7CQ18092018%7CQ2693455%7CQ1000387%7CQ673677%7CQ12900079%7CQ3474521%7CQ21143838%7CQ3806969%7CQ19693378%7CQ2965735%7CQ354633%7CQ1035239%7CQ14942517%7CQ2302787%7CQ10990164%7CQ87180183%7CQ992341%7CQ3734209&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 12] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q80702611%7CQ20741323%7CQ13403917%7CQ113495620%7CQ17524931%7CQ15728223%7CQ3215140%7CQ36873107%7CQ19798631%7CQ59651660%7CQ115819240%7CQ16275172%7CQ2936353%7CQ3198135%7CQ17190292%7CQ4963612%7CQ22992247%7CQ18759077%7CQ666578%7CQ18759074%7CQ2087646%7CQ6761370%7CQ18091986%7CQ18171842%7CQ453020%7CQ153957%7CQ564684%7CQ385468%7CQ2979460%7CQ110300500%7CQ18088640%7CQ18180972%7CQ509729%7CQ76909999%7CQ18199023%7CQ734292%7CQ9258890%7CQ394431%7CQ39316079%7CQ9324406%7CQ21489069%7CQ14937153%7CQ5954149%7CQ61121644%7CQ16423275%7CQ123614057%7CQ18171848%7CQ21142133%7CQ12798318%7CQ4965354&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 13] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q18192709%7CQ301657%7CQ130221%7CQ704950%7CQ570497%7CQ170398%7CQ442040%7CQ28137096%7CQ355013%7CQ54046&props=labels&languages=en%7Cmul&format=json
+        | [API 13] OK headersMs=273 timeMs=273 bytes=385 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 12] OK headersMs=312 timeMs=313 bytes=1158 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 11] OK headersMs=383 timeMs=384 bytes=1143 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 10] OK headersMs=429 timeMs=430 bytes=1222 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 8] OK headersMs=436 timeMs=436 bytes=1152 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 9] OK headersMs=666 timeMs=667 bytes=1163 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | 
+        | [API 14] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q2075895%7CQ59394133%7CQ86846%7CQ231723%7CQ431579%7CQ526839%7CQ331575%7CQ229861%7CQ229867%7CQ161149%7CQ1190554%7CQ265460%7CQ231166%7CQ501504%7CQ738040%7CQ878998%7CQ602408%7CQ1152182%7CQ452270%7CQ7725842%7CQ17516100%7CQ1299666%7CQ259040%7CQ61261%7CQ269565%7CQ354770%7CQ86997%7CQ237501%7CQ63373%7CQ258917%7CQ266519%7CQ1330472%7CQ394775%7CQ448853%7CQ455201&props=labels&languages=en%7Cmul&format=json
+        | [API 14] OK headersMs=310 timeMs=311 bytes=926 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 987 ms (up to 6 concurrent unit(s)).
+        | Final label hydration: 341 resolved, 0 explicitly missing, 0 unavailable.
+        | Canonicalization: scanned=336 withModel=336 withSpec=336 derived=140 changed=140  sample: type=OfficeHolding field= value=[null] 'Joseph II, Holy Roman Emperor — Q181765' -> 'Joseph II, Holy Roman Emperor — Holy Roman Emperor (1765–1790)'
+        | 
+        | [API 15] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q181765%7CQ22722%7CQ45341328%7CQ253779%7CQ84020495%7CQ166877%7CQ58631963&props=claims&languages=en%7Cmul&format=json
+        | 
+        | [API 16] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q111730433%7CQ110636748%7CQ782985%7CQ95976929%7CQ59533391%7CQ21096118%7CQ42724549%7CQ128605334%7CQ117814546%7CQ1077786%7CQ7244362%7CQ116149375%7CQ113318727%7CQ67653663%7CQ3273712%7CQ23011565&props=claims&languages=en%7Cmul&format=json
+        | [API 15] OK headersMs=296 timeMs=362 bytes=16031 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 16] OK headersMs=358 timeMs=691 bytes=15916 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 705 ms (up to 6 concurrent unit(s)).
+        | Dropped 89 owned part(s) whose owner is not served.
+        | Built vocabulary 'Type' from the served pool -> 1 distinct value(s)
+        | Alias acquisition: aliases rode 5 entity request(s), 0 standalone request(s) of which 0 failed, 143 entity answer(s), ~8321 KB alias-bearing response JSON, ~1535 KB transferred on the wire; aliases themselves ~18 KB; 9646 ms aggregate request time (concurrent, not wall clock).
+        | Wikidata fact store: 512 entity document(s) fetched, 528 later fetch(es) avoided; holding 347 document(s) (~4 MB), 0 evicted, 0 re-fetch(es) of an evicted document.
+        | Fact-demand timing: 967 QID/property demand pair(s) known or retained before first acquisition, 530 unplanned demand pair(s) discovered after the entity had already been fetched; 528 request(s) avoided by retained facts.
+        | Fact-store measurement: ~280 KB.
+        | Fact-store property usage (banked / demanded / unused, retained bytes, cache hits, eviction re-fetches, late demands):
+        |   P569: 142 / 142 / 0, ~1711 KB retained, ~0 KB unused, 142 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P570: 142 / 142 / 0, ~1653 KB retained, ~0 KB unused, 142 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P26: 142 / 142 / 0, ~1203 KB retained, ~0 KB unused, 0 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P39: 53 / 53 / 0, ~1140 KB retained, ~0 KB unused, 53 hit(s), 0 eviction re-fetch(es), 0 late demand(s).
+        |   P735: 142 / 142 / 0, ~592 KB retained, ~0 KB unused, 142 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P31: 166 / 166 / 0, ~531 KB retained, ~0 KB unused, 285 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P18: 142 / 142 / 0, ~458 KB retained, ~0 KB unused, 142 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P1559: 142 / 142 / 0, ~228 KB retained, ~0 KB unused, 142 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P734: 142 / 142 / 0, ~56 KB retained, ~0 KB unused, 142 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P742: 142 / 142 / 0, ~9 KB retained, ~0 KB unused, 142 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        |   P1477: 142 / 142 / 0, ~8 KB retained, ~0 KB unused, 142 hit(s), 0 eviction re-fetch(es), 53 late demand(s).
+        | Fact demand by consumer: statement acquisition OfficeHolding [P39=53]; Person [P31=142, P26=142, P1477=142, P1559=142, P742=142, P569=142, P570=142, P18=142]; Name [P734=142, P735=142]; disambiguation prune [P31=24].
+        | Fact retention by producer (PID: banked entities, retained / unused bytes):
+        |   discovered statement subjects → statement acquisition / P39: 53, ~1140 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P569: 59, ~992 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P570: 59, ~949 / ~0 KB.
+        |   semantic preflight → semantic convergence / P569: 74, ~633 / ~0 KB.
+        |   semantic preflight → semantic convergence / P570: 74, ~607 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P26: 59, ~578 / ~0 KB.
+        |   semantic preflight → semantic convergence / P26: 74, ~497 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P735: 59, ~294 / ~0 KB.
+        |   semantic preflight → semantic convergence / P735: 74, ~260 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P18: 59, ~255 / ~0 KB.
+        |   semantic preflight → semantic convergence / P31: 74, ~215 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P31: 59, ~203 / ~0 KB.
+        |   semantic preflight → semantic convergence / P18: 74, ~171 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P26: 9, ~127 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P1559: 59, ~115 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P570: 9, ~95 / ~0 KB.
+        |   semantic preflight → semantic convergence / P1559: 74, ~89 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P569: 9, ~85 / ~0 KB.
+        |   statement field OfficeHolding.position → disambiguation prune / P31: 23, ~75 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P735: 9, ~37 / ~0 KB.
+        |   semantic preflight → semantic convergence / P734: 74, ~36 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P31: 9, ~33 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P18: 9, ~31 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P1559: 9, ~23 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P734: 59, ~18 / ~0 KB.
+        |   semantic preflight → semantic convergence / P742: 74, ~9 / ~0 KB.
+        |   semantic preflight → semantic convergence / P1477: 74, ~5 / ~0 KB.
+        |   root acquisition → disambiguation prune / P31: 1, ~4 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P1477: 9, ~1 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P734: 9, ~1 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P1477: 59, ~1 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P742: 59, ~0 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P742: 9, ~0 / ~0 KB.
+      Root query  [OK]  1 objects
+          | SELECT *
+          | WITH {
+          |   SELECT DISTINCT ?value ?valueLabel WHERE {
+          |     VALUES ?value { wd:Q6412254 }
+          |     ?value rdfs:label ?valueLabel .
+          |     FILTER(LANG(?valueLabel) IN ("en", "mul"))
+          |   }
+          |   LIMIT 200
+          | } AS %limited
+          | WHERE {
+          |   INCLUDE %limited .
+          | }
+          | ORDER BY ?valueLabel
+      Fill [] for 1 members — 1 batches of 50 (the members' own claims, fetched via wbgetentities: these properties full-scan in SPARQL); propagated: disambiguation prune needs [P31]; final label hydration needs [LABEL]; alias coverage needs [ALIASES]  [OK]  1 request(s)
+        wbgetentities 1 entities  [OK]  ok (435 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q6412254&props=labels|claims|aliases&languages=en|mul&format=json
+      Discover subjects: P39 into 1 discovery seed(s)  [OK]  1 request(s)
+        Subjects with P39 into 1 discovery seed(s)  [OK]  53 subjects
+            | SELECT DISTINCT ?subject WHERE {
+            |   ?subject wdt:P39 ?value .
+            |   VALUES ?value { wd:Q6412254 }
+            | }
+      Acquire discovered __subject_OfficeHolding subjects (53 entities, 1 properties)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (2565 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152157|Q152370|Q152480|Q154412|Q155599|Q156147|Q157092|Q157103|Q157112|Q158038|Q177903|Q183579|Q188634|Q213061|Q271104|Q298056|Q299400|Q311351|Q311861|Q312775|Q313494|Q314218|Q318824|Q26486|Q32607|Q51056|Q51068|Q54040&props=labels|claims&languages=en|mul&format=json
+        wbgetentities 3 entities  [OK]  ok (2565 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q54053|Q57124|Q57323&props=labels|claims&languages=en|mul&format=json
+      Qualifier load __subject_OfficeHolding P39 (53 entities)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152157|Q152370|Q152480|Q154412|Q155599|Q156147|Q157092|Q157103|Q157112|Q158038|Q177903|Q183579|Q188634|Q213061|Q271104|Q298056|Q299400|Q311351|Q311861|Q312775|Q313494|Q314218|Q318824|Q26486|Q32607|Q51056|Q51068|Q54040&props=claims&languages=en|mul&format=json
+        wbgetentities 3 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q54053|Q57124|Q57323&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Person for 72 entities; retain 10 planned property slice(s) (P31, P26, P1477, P1559, P742, P569, P570, P18, P734, P735)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (1756 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152157|Q152370|Q152480|Q154412|Q155599|Q156147|Q157092|Q157103|Q157112|Q158038|Q177903|Q183579|Q188634|Q213061|Q271104|Q298056|Q299400|Q311351|Q311861|Q312775|Q313494|Q314218|Q318824|Q26486|Q32607|Q51056|Q51068|Q54040&props=claims|aliases&languages=en|mul&format=json
+        wbgetentities 22 entities  [OK]  ok (1756 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q54053|Q57124|Q57323|Q151075|Q86978|Q159679|Q32500|Q170467|Q150966|Q66023226|Q53998|Q235381|Q317593|Q877256|Q1302000|Q591681|Q265849|Q155581|Q275408|Q155669|Q158181|Q152148&props=claims|aliases&languages=en|mul&format=json
+      Load 6 literal referent fields on Person for 72 entities (P1477, P1559, P742, P569, P570, P18)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152157|Q152370|Q152480|Q154412|Q155599|Q156147|Q157092|Q157103|Q157112|Q158038|Q177903|Q183579|Q188634|Q213061|Q271104|Q298056|Q299400|Q311351|Q311861|Q312775|Q313494|Q314218|Q318824|Q26486|Q32607|Q51056|Q51068|Q54040&props=claims&languages=en|mul&format=json
+        wbgetentities 22 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q54053|Q57124|Q57323|Q151075|Q86978|Q159679|Q32500|Q170467|Q150966|Q66023226|Q53998|Q235381|Q317593|Q877256|Q1302000|Q591681|Q265849|Q155581|Q275408|Q155669|Q158181|Q152148&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Person for 70 entities; retain 10 planned property slice(s) (P31, P26, P1477, P1559, P742, P569, P570, P18, P734, P735)  [OK]  2 request(s)
+        wbgetentities 20 entities  [OK]  ok (5175 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q256692|Q269315|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q12357079|Q61978|Q2461803|Q254374|Q354918|Q235591|Q150782|Q50926|Q438477|Q231334|Q450811|Q175920&props=claims|aliases&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (5175 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q235540|Q237076|Q235552|Q258910|Q236886|Q231126|Q447337|Q157077|Q167401|Q265467|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491&props=claims|aliases&languages=en|mul&format=json
+      Load 6 literal referent fields on Person for 70 entities (P1477, P1559, P742, P569, P570, P18)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (2 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q235540|Q237076|Q235552|Q258910|Q236886|Q231126|Q447337|Q157077|Q167401|Q265467|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491&props=claims&languages=en|mul&format=json
+        wbgetentities 20 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q256692|Q269315|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q12357079|Q61978|Q2461803|Q254374|Q354918|Q235591|Q150782|Q50926|Q438477|Q231334|Q450811|Q175920&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Name for 72 entities; retain 3 planned property slice(s) (P734, P735, P31)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152157|Q152370|Q152480|Q154412|Q155599|Q156147|Q157092|Q157103|Q157112|Q158038|Q177903|Q183579|Q188634|Q213061|Q271104|Q298056|Q299400|Q311351|Q311861|Q312775|Q313494|Q314218|Q318824|Q26486|Q32607|Q51056|Q51068|Q54040&props=claims&languages=en|mul&format=json
+        wbgetentities 22 entities  [OK]  ok (4 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q54053|Q57124|Q57323|Q151075|Q86978|Q159679|Q32500|Q170467|Q150966|Q66023226|Q53998|Q235381|Q317593|Q877256|Q1302000|Q591681|Q265849|Q155581|Q275408|Q155669|Q158181|Q152148&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Name for 70 entities; retain 3 planned property slice(s) (P734, P735, P31)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q235540|Q237076|Q235552|Q258910|Q236886|Q231126|Q447337|Q157077|Q167401|Q265467|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491&props=claims&languages=en|mul&format=json
+        wbgetentities 20 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q256692|Q269315|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q12357079|Q61978|Q2461803|Q254374|Q354918|Q235591|Q150782|Q50926|Q438477|Q231334|Q450811|Q175920&props=claims&languages=en|mul&format=json
+      Hydrate final labels for 341 reachable entities  [OK]  7 request(s)
+        wbgetentities 50 entities  [OK]  ok (438 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5|Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q151075|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q235540|Q237076|Q235552|Q57124|Q258910|Q236886|Q231126|Q447337|Q157077|Q167401|Q265467|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (670 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q271503|Q1032920|Q61491|Q256692|Q269315|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q12357079|Q265849|Q61978|Q2461803|Q254374|Q354918|Q235591|Q150782|Q50926|Q438477|Q154412|Q231334|Q450811|Q175920|Q181765|Q22722|Q45341328|Q253779|Q84020495|Q86978|Q159679|Q166877|Q32500|Q58631963|Q170467|Q111730433|Q110636748|Q782985|Q95976929|Q59533391|Q150966|Q66023226|Q53998|Q21096118|Q235381|Q317593|Q42724549|Q128605334|Q877256&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (670 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q1302000|Q117814546|Q1077786|Q7244362|Q591681|Q116149375|Q113318727|Q67653663|Q3273712|Q155581|Q275408|Q155669|Q158181|Q152148|Q23011565|Q4927100|Q13484571|Q1010138|Q931618|Q3817756|Q15813127|Q24957539|Q2648973|Q4925932|Q58060544|Q1076652|Q3276175|Q18028491|Q18115751|Q15730712|Q105778482|Q18190444|Q11122389|Q5401576|Q18177333|Q18133228|Q1267979|Q4927273|Q471788|Q16747395|Q24716982|Q632104|Q16799105|Q15728196|Q37430698|Q16290783|Q4927313|Q2958359|Q51394|Q1369927&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (670 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q24192760|Q21491395|Q18421743|Q75135331|Q4925477|Q73094614|Q15731830|Q1602218|Q19817951|Q18029644|Q76545225|Q1166840|Q15727982|Q61054577|Q364753|Q368314|Q15727189|Q15727141|Q14038597|Q2438057|Q106515210|Q99197293|Q5004850|Q4925914|Q2218095|Q2018484|Q15731850|Q106907497|Q18192705|Q17522230|Q4218918|Q325872|Q18092018|Q2693455|Q1000387|Q673677|Q12900079|Q3474521|Q21143838|Q3806969|Q19693378|Q2965735|Q354633|Q1035239|Q14942517|Q2302787|Q10990164|Q87180183|Q992341|Q3734209&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (670 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q80702611|Q20741323|Q13403917|Q113495620|Q17524931|Q15728223|Q3215140|Q36873107|Q19798631|Q59651660|Q115819240|Q16275172|Q2936353|Q3198135|Q17190292|Q4963612|Q22992247|Q18759077|Q666578|Q18759074|Q2087646|Q6761370|Q18091986|Q18171842|Q453020|Q153957|Q564684|Q385468|Q2979460|Q110300500|Q18088640|Q18180972|Q509729|Q76909999|Q18199023|Q734292|Q9258890|Q394431|Q39316079|Q9324406|Q21489069|Q14937153|Q5954149|Q61121644|Q16423275|Q123614057|Q18171848|Q21142133|Q12798318|Q4965354&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (670 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q18192709|Q301657|Q76555|Q82448|Q82686|Q82687|Q83066|Q86940|Q86946|Q86953|Q130221|Q704950|Q87044|Q87051|Q570497|Q130834|Q170398|Q150494|Q150575|Q150599|Q150611|Q150665|Q150862|Q151321|Q152157|Q152370|Q152480|Q155599|Q442040|Q188634|Q156147|Q157092|Q157112|Q158038|Q28137096|Q177903|Q183579|Q213061|Q271104|Q298056|Q299400|Q311351|Q311861|Q312775|Q313494|Q355013|Q314218|Q318824|Q54046|Q26486&props=labels&languages=en|mul&format=json
+        wbgetentities 41 entities  [OK]  ok (314 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q32607|Q51056|Q51068|Q54040|Q2075895|Q57323|Q59394133|Q131706|Q86846|Q231723|Q431579|Q526839|Q331575|Q229861|Q229867|Q161149|Q1190554|Q265460|Q231166|Q501504|Q738040|Q878998|Q602408|Q1152182|Q452270|Q7725842|Q17516100|Q1299666|Q259040|Q61261|Q269565|Q354770|Q86997|Q237501|Q63373|Q258917|Q266519|Q1330472|Q394775|Q448853|Q455201&props=labels&languages=en|mul&format=json
+      Check 166 modeled entity(ies) for Wikimedia internal types  [OK]  4 request(s)
+        wbgetentities 50 entities  [OK]  ok (6 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q6412254|Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152157|Q152370|Q152480|Q154412|Q155599|Q156147|Q157092|Q157103|Q157112|Q158038|Q177903|Q183579|Q188634|Q213061|Q271104|Q298056|Q299400|Q311351|Q311861|Q312775|Q313494|Q314218|Q318824|Q26486|Q32607|Q51056|Q51068&props=claims&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (6 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q54040|Q54053|Q57124|Q57323|Q151075|Q86978|Q159679|Q32500|Q170467|Q150966|Q66023226|Q53998|Q235381|Q317593|Q877256|Q1302000|Q591681|Q265849|Q155581|Q275408|Q155669|Q158181|Q152148|Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940&props=claims&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (374 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q233335|Q57528|Q159660|Q229826|Q235540|Q237076|Q235552|Q258910|Q236886|Q231126|Q447337|Q157077|Q167401|Q265467|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491|Q256692|Q269315|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q12357079|Q61978|Q2461803|Q254374|Q354918|Q235591|Q150782|Q50926|Q438477|Q231334|Q450811|Q175920|Q181765|Q22722|Q45341328|Q253779|Q84020495|Q166877|Q58631963&props=claims&languages=en|mul&format=json
+        wbgetentities 16 entities  [OK]  ok (703 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q111730433|Q110636748|Q782985|Q95976929|Q59533391|Q21096118|Q42724549|Q128605334|Q117814546|Q1077786|Q7244362|Q116149375|Q113318727|Q67653663|Q3273712|Q23011565&props=claims&languages=en|mul&format=json
+Log message  [OK]  Done
+    | 1 vocabulary(ies) filled from the generated data — use "Save domain" to persist them.
+Log message  [OK]  Done
+    | Generated 247 objects (in memory — use "Save domain" to persist to history.snapshot.json).
+Log message  [OK]  Done
+    | What this run did:
+    |   Rules that named instances: Owned parts newly created: 142 changed
+    |   Self-reference: Ran; no self-reference decisions
+    |   Owned composition: Ran; 142 part(s) newly created
+    |   Kind classification: Ran; every kind was already settled
+    |   Projections: Ran; no projected field value changed
+    |   Objects in the pool: 247
+Log message  [OK]  Done
+    | Queued 1 graph-frontier node(s) in the snapshot ledger; opening Generate domain preview.
+Generate domain  [OK]  313 objects
+  Generate domain  [OK]  313 objects
+      | Datasource plan: 18 binding(s): 2 Wikidata id (QID), 2 Label, 2 Also known as, 1 Members by explicit list, 11 Statement property. 1 class population binding(s) drive discovery; 0 field acquisition binding(s) drive field acquisition across all configured classes; 2 Wikidata class-name declaration(s) drive label/alias retention; remaining field sources still use the established acquisition passes.
+    Generate domain "History"  [OK]  Person	66
+Name	66
+Position	2
+TOTAL	134 distinct across 3 served type(s); 1 root class query(ies)
+        | Execution settings: cache 768 MB (auto), network balanced (6 concurrent entity requests), completeness require complete.
+        | Skip class "Person" — no population source is configured.
+        | Skip class "Name" — no population source is configured.
+        | === Class "Position" (depth 1) ===
+        | [WIKIDATA] [SPARQL 3] START
+        | SELECT *
+        | WITH {
+        |   SELECT DISTINCT ?value ?valueLabel WHERE {
+        |     VALUES ?value { wd:Q6412254 wd:Q45341328 }
+        |     ?value rdfs:label ?valueLabel .
+        |     FILTER(LANG(?valueLabel) IN ("en", "mul"))
+        |   }
+        |   LIMIT 200
+        | } AS %limited
+        | WHERE {
+        |   INCLUDE %limited .
+        | }
+        | ORDER BY ?valueLabel
+        | [WIKIDATA] [SPARQL 3] OK rows=2 timeMs=868
+        | 
+        | [API 1] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q6412254%7CQ45341328&props=labels%7Cclaims%7Caliases&languages=en%7Cmul&format=json
+        | [API 1] OK headersMs=422 timeMs=423 bytes=5452 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 429 ms (up to 6 concurrent unit(s)).
+        | Retained prospective downstream claim(s): disambiguation prune needs [P31]; final label hydration needs [LABEL]; alias coverage needs [ALIASES]; bound 2 QID/property and 4 QID/metadata pair(s).
+        |   -> 2 Position
+        | Skip class "OfficeHolding" — no population source is configured.
+        | Statement acquisition plan: OfficeHolding: discover subjects, load P39 with startDate=P580, endDate=P582, predecessor=P1365, successor=P1366
+        | [WIKIDATA] [SPARQL 4] START
+        | SELECT DISTINCT ?subject WHERE {
+        |   ?subject wdt:P39 ?value .
+        |   VALUES ?value { wd:Q45341328 wd:Q6412254 }
+        | }
+        | [WIKIDATA] [SPARQL 4] OK rows=66 timeMs=178
+        | 
+        | [API 3] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q312775%7CQ312938%7CQ313494%7CQ314218%7CQ318824%7CQ347013%7CQ367578%7CQ26486%7CQ32607%7CQ51056%7CQ51068%7CQ54040%7CQ54053%7CQ57124%7CQ57195%7CQ57323&props=labels%7Cclaims&languages=en%7Cmul&format=json
+        | 
+        | [API 2] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555%7CQ82448%7CQ82686%7CQ82687%7CQ83066%7CQ86932%7CQ86940%7CQ86946%7CQ86953%7CQ87044%7CQ87051%7CQ116382%7CQ130834%7CQ131706%7CQ150320%7CQ150494%7CQ150575%7CQ150586%7CQ150599%7CQ150611%7CQ150665%7CQ150862%7CQ151321%7CQ152148%7CQ152157%7CQ152370%7CQ152480%7CQ154412%7CQ155167%7CQ155581%7CQ155599%7CQ155669%7CQ156147%7CQ157092%7CQ157103%7CQ157112%7CQ158038%7CQ159679%7CQ168254%7CQ175833%7CQ177903%7CQ183579%7CQ188634%7CQ213061%7CQ271104%7CQ275408%7CQ298056%7CQ299400%7CQ311351%7CQ311861&props=labels%7Cclaims&languages=en%7Cmul&format=json
+        | [API 3] OK headersMs=739 timeMs=1386 bytes=229774 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | [API 2] OK headersMs=1907 timeMs=2654 bytes=786359 http=HTTP_2 age=4 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 2697 ms (up to 6 concurrent unit(s)).
+        | Batch execution wall time: 2 ms (up to 6 concurrent unit(s)).
+        | Statement-field propagation OfficeHolding.predecessor: 73 QID(s), 730 planned property pair(s).
+        | Statement-field propagation OfficeHolding.position: 28 QID(s), 28 planned property pair(s).
+        | Statement-field propagation OfficeHolding.successor: 66 QID(s), 660 planned property pair(s).
+        | Qualifier load __subject_OfficeHolding P39 -> 179 OfficeHolding statements
+        | Reify P39 of __subject_OfficeHolding → OfficeHolding
+        |  value: position
+        |  canonical list: —
+        |  subject-fallback fields: —
+        |  statement-value-fallback fields: —
+        |  canonical key: source + position + startDate + endDate
+        |  qualifiers: startDate←P580(date), endDate←P582(date), predecessor←P1365, successor←P1366
+        |  → 179 records
+        | Un-stamped 66 discovered subject(s), stripped 66 internal statement field(s) — kept as referents, not served.
+        | Stamped 118 referent(s) with their declared class.
+        | Semantic acquisition manifest: Person=[P1477, P1559, P742, P569, P570, P31, P26, P18, P734, P735]; Name=[P734, P735, P31]; Position=[P31]; OfficeHolding=[P31]; __subject_OfficeHolding=[P39].
+        | Semantic retention preflight iteration 1: 948 planned QID/property pair(s) across 120 class member(s) in 2 class(es), registered before acquisition; 0 pair(s) already loaded and not planned again.
+        | 
+        | [API 4] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q312775%7CQ312938%7CQ313494%7CQ314218%7CQ318824%7CQ347013%7CQ367578%7CQ26486%7CQ32607%7CQ51056%7CQ51068%7CQ54040%7CQ54053%7CQ57124%7CQ57195%7CQ57323%7CQ151075%7CQ86978%7CQ32500%7CQ170467%7CQ658785%7CQ158181%7CQ152717%7CQ697880%7CQ150966%7CQ66023226%7CQ53998%7CQ235381%7CQ317593%7CQ877256%7CQ1302000%7CQ703838%7CQ506635%7CQ506060%7CQ591681%7CQ265849%7CQ506317%7CQ454258%7CQ703833%7CQ506071%7CQ60746%7CQ57206&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | 
+        | [API 5] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555%7CQ82448%7CQ82686%7CQ82687%7CQ83066%7CQ86932%7CQ86940%7CQ86946%7CQ86953%7CQ87044%7CQ87051%7CQ116382%7CQ130834%7CQ131706%7CQ150320%7CQ150494%7CQ150575%7CQ150586%7CQ150599%7CQ150611%7CQ150665%7CQ150862%7CQ151321%7CQ152148%7CQ152157%7CQ152370%7CQ152480%7CQ154412%7CQ155167%7CQ155581%7CQ155599%7CQ155669%7CQ156147%7CQ157092%7CQ157103%7CQ157112%7CQ158038%7CQ159679%7CQ168254%7CQ175833%7CQ177903%7CQ183579%7CQ188634%7CQ213061%7CQ271104%7CQ275408%7CQ298056%7CQ299400%7CQ311351%7CQ311861&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | [API 4] OK headersMs=1037 timeMs=1681 bytes=510821 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 5] OK headersMs=1515 timeMs=2239 bytes=787683 http=HTTP_2 age=4 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 2310 ms (up to 6 concurrent unit(s)).
+        | Batch execution wall time: 4 ms (up to 6 concurrent unit(s)).
+        | Referent field load Person.birthName (P1477) -> 2 value(s)
+        | Referent field load Person.nativeName (P1559) -> 60 value(s)
+        | Referent field load Person.pseudonyms (P742) -> 0 value(s)
+        | Referent field load Person.dateOfBirth (P569) -> 91 value(s)
+        | Referent field load Person.dateOfDeath (P570) -> 91 value(s)
+        | Referent field load Person.type (P31) -> 92 value(s)
+        | Referent field load Person.spouse (P26) -> 82 value(s)
+        | Referent field load Person.image (P18) -> 88 value(s)
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 92 of 92 role member(s) eligible from evidence producers.
+        | Owned components: materialized 92 object(s).
+        | Semantic convergence iteration 1: 0 role stamp(s), 506 field value(s), 0 kind(s), 92 owned value(s).
+        | Semantic fact reuse iteration 1: 92 document(s) fetched, 92 fetch(es) avoided.
+        | Semantic retention preflight iteration 2: 1458 planned QID/property pair(s) across 309 class member(s) in 3 class(es), registered before acquisition; 736 pair(s) already loaded and not planned again.
+        | 
+        | [API 7] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q169448%7CQ77336%7CQ3492072%7CQ354864%7CQ267849%7CQ447076%7CQ546165%7CQ271506%7CQ433941%7CQ238341%7CQ260019%7CQ234253%7CQ324913%7CQ4990810%7CQ80879%7CQ233900%7CQ164504%7CQ170205%7CQ57662%7CQ253778%7CQ174504%7CQ3563185%7CQ93541%7CQ57527%7CQ158659%7CQ158662%7CQ236892%7CQ237463%7CQ58835%7CQ237940%7CQ233335%7CQ57528%7CQ159660%7CQ229826%7CQ448853%7CQ455201%7CQ235540%7CQ237076%7CQ235552%7CQ269586%7CQ254322%7CQ259040%7CQ61261%7CQ258910%7CQ236886%7CQ231126%7CQ237501%7CQ63373%7CQ258917%7CQ266519&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | 
+        | [API 6] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q447337%7CQ157077%7CQ167401%7CQ265467%7CQ431579%7CQ526839%7CQ455035%7CQ63186%7CQ232039%7CQ170182%7CQ181615%7CQ867369%7CQ242825%7CQ265501%7CQ271503%7CQ1032920%7CQ61491%7CQ256692%7CQ269315%7CQ269565%7CQ354770%7CQ86997%7CQ265835%7CQ272413%7CQ234724%7CQ447333%7CQ261183%7CQ75574819%7CQ64231%7CQ240860%7CQ12357079%7CQ61978%7CQ2461803%7CQ254374%7CQ2457515%7CQ269570%7CQ2243803%7CQ67390%7CQ354918%7CQ235591%7CQ150782%7CQ50926%7CQ438477%7CQ231334%7CQ158252%7CQ450811%7CQ175920&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | [API 6] OK headersMs=677 timeMs=1151 bytes=274807 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | [API 7] OK headersMs=854 timeMs=1447 bytes=351552 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 1487 ms (up to 6 concurrent unit(s)).
+        | Batch execution wall time: 2 ms (up to 6 concurrent unit(s)).
+        | Referent field load Person.birthName (P1477) -> 4 value(s)
+        | Referent field load Person.nativeName (P1559) -> 37 value(s)
+        | Referent field load Person.pseudonyms (P742) -> 1 value(s)
+        | Referent field load Person.dateOfBirth (P569) -> 98 value(s)
+        | Referent field load Person.dateOfDeath (P570) -> 95 value(s)
+        | Referent field load Person.type (P31) -> 99 value(s)
+        | Referent field load Person.spouse (P26) -> 99 value(s)
+        | Referent field load Person.image (P18) -> 72 value(s)
+        | Batch execution wall time: 5 ms (up to 6 concurrent unit(s)).
+        | Referent field load Name.familyName (P734) -> 16 value(s)
+        | Referent field load Name.givenName (P735) -> 77 value(s)
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 92 of 92 role member(s) eligible from evidence producers.
+        | Owned components: materialized 97 object(s).
+        | Semantic convergence iteration 2: 169 role stamp(s), 598 field value(s), 0 kind(s), 97 owned value(s).
+        | Semantic fact reuse iteration 2: 97 document(s) fetched, 189 fetch(es) avoided.
+        | Semantic retention preflight iteration 3: 789 planned QID/property pair(s) across 406 class member(s) in 3 class(es), registered before acquisition; 1696 pair(s) already loaded and not planned again.
+        | Referent field Person.birthName (P1477) already loaded for 189 entities — skipped.
+        | Referent field Person.nativeName (P1559) already loaded for 189 entities — skipped.
+        | Referent field Person.pseudonyms (P742) already loaded for 189 entities — skipped.
+        | Referent field Person.dateOfBirth (P569) already loaded for 189 entities — skipped.
+        | Referent field Person.dateOfDeath (P570) already loaded for 189 entities — skipped.
+        | Referent field Person.type (P31) already loaded for 189 entities — skipped.
+        | Referent field Person.spouse (P26) already loaded for 189 entities — skipped.
+        | Referent field Person.image (P18) already loaded for 189 entities — skipped.
+        | Batch execution wall time: 3 ms (up to 6 concurrent unit(s)).
+        | Referent field load Name.familyName (P734) -> 20 value(s)
+        | Referent field load Name.givenName (P735) -> 89 value(s)
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 92 of 92 role member(s) eligible from evidence producers.
+        | Semantic convergence iteration 3: 0 role stamp(s), 109 field value(s), 0 kind(s), 0 owned value(s).
+        | Semantic fact reuse iteration 3: 0 document(s) fetched, 97 fetch(es) avoided.
+        | Semantic retention preflight iteration 4: 595 planned QID/property pair(s) across 406 class member(s) in 3 class(es), registered before acquisition; 1890 pair(s) already loaded and not planned again.
+        | Referent field Person.birthName (P1477) already loaded for 189 entities — skipped.
+        | Referent field Person.nativeName (P1559) already loaded for 189 entities — skipped.
+        | Referent field Person.pseudonyms (P742) already loaded for 189 entities — skipped.
+        | Referent field Person.dateOfBirth (P569) already loaded for 189 entities — skipped.
+        | Referent field Person.dateOfDeath (P570) already loaded for 189 entities — skipped.
+        | Referent field Person.type (P31) already loaded for 189 entities — skipped.
+        | Referent field Person.spouse (P26) already loaded for 189 entities — skipped.
+        | Referent field Person.image (P18) already loaded for 189 entities — skipped.
+        | Referent field Name.familyName (P734) already loaded for 189 entities — skipped.
+        | Referent field Name.givenName (P735) already loaded for 189 entities — skipped.
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 92 of 92 role member(s) eligible from evidence producers.
+        | Semantic convergence iteration 4: 0 role stamp(s), 0 field value(s), 0 kind(s), 0 owned value(s).
+        | Semantic fact reuse iteration 4: 0 document(s) fetched, 0 fetch(es) avoided.
+        | Semantic convergence fixed point reached after 3 productive iteration(s).
+        | Loaded 1213 referent/owned field value(s) from declared PIDs.
+        | 
+        | [API 8] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5%7CQ169448%7CQ77336%7CQ3492072%7CQ354864%7CQ267849%7CQ447076%7CQ546165%7CQ271506%7CQ433941%7CQ238341%7CQ260019%7CQ234253%7CQ324913%7CQ4990810%7CQ80879%7CQ233900%7CQ164504%7CQ170205%7CQ57662%7CQ151075%7CQ253778%7CQ174504%7CQ3563185%7CQ93541%7CQ57527%7CQ158659%7CQ158662%7CQ236892%7CQ237463%7CQ58835%7CQ237940%7CQ233335%7CQ57528%7CQ159660%7CQ229826%7CQ448853%7CQ455201%7CQ235540%7CQ237076%7CQ235552%7CQ269586%7CQ254322%7CQ259040%7CQ61261%7CQ258910%7CQ236886%7CQ231126%7CQ237501&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 9] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q63373%7CQ258917%7CQ266519%7CQ447337%7CQ157077%7CQ167401%7CQ265467%7CQ431579%7CQ526839%7CQ455035%7CQ63186%7CQ232039%7CQ170182%7CQ181615%7CQ867369%7CQ242825%7CQ265501%7CQ271503%7CQ1032920%7CQ61491%7CQ256692%7CQ269315%7CQ269565%7CQ354770%7CQ86997%7CQ265835%7CQ272413%7CQ234724%7CQ447333%7CQ261183%7CQ75574819%7CQ64231%7CQ240860%7CQ12357079%7CQ265849%7CQ61978%7CQ2461803%7CQ254374%7CQ2457515%7CQ269570%7CQ2243803%7CQ67390%7CQ354918%7CQ235591%7CQ150782%7CQ50926%7CQ438477%7CQ231334%7CQ158252&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 10] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q450811%7CQ175920%7CQ181765%7CQ22722%7CQ253779%7CQ84020495%7CQ86978%7CQ166877%7CQ32500%7CQ58631963%7CQ170467%7CQ111730433%7CQ110636748%7CQ782985%7CQ95976929%7CQ658785%7CQ158181%7CQ3273712%7CQ95975116%7CQ152717%7CQ48797880%7CQ697880%7CQ59533391%7CQ150966%7CQ66023226%7CQ53998%7CQ21096118%7CQ235381%7CQ317593%7CQ42724549%7CQ128605334%7CQ877256%7CQ1302000%7CQ117814546%7CQ1077786%7CQ27562678%7CQ703838%7CQ506635%7CQ506060%7CQ7244362%7CQ591681%7CQ506317%7CQ454258%7CQ703833%7CQ506071%7CQ116149375%7CQ113318727%7CQ67653663%7CQ19827831%7CQ60746&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 11] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q57206%7CQ23011565%7CQ4927100%7CQ13484571%7CQ1010138%7CQ931618%7CQ3817756%7CQ15813127%7CQ24957539%7CQ2648973%7CQ4925932%7CQ58060544%7CQ22902177%7CQ12015993%7CQ1076652%7CQ3276175%7CQ18028491%7CQ18115751%7CQ15730712%7CQ105778482%7CQ18190444%7CQ11122389%7CQ5401576%7CQ18177333%7CQ18133228%7CQ1602218%7CQ1267979%7CQ4927273%7CQ471788%7CQ16747395%7CQ24716982%7CQ632104%7CQ475210%7CQ15731830%7CQ15731850%7CQ16799105%7CQ61054577%7CQ15728196%7CQ37430698%7CQ16290783%7CQ4927313%7CQ2958359%7CQ51394%7CQ1369927%7CQ2018484%7CQ24192760%7CQ21491395%7CQ18421743%7CQ2067239%7CQ19826494&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 12] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q75135331%7CQ4925477%7CQ73094614%7CQ19817951%7CQ14038597%7CQ18029644%7CQ76545225%7CQ1166840%7CQ15727982%7CQ364753%7CQ368314%7CQ15727189%7CQ15727141%7CQ4107266%7CQ106907497%7CQ18192705%7CQ17522230%7CQ12024763%7CQ12173670%7CQ16909101%7CQ2438057%7CQ106515210%7CQ99197293%7CQ11706851%7CQ5004850%7CQ4925914%7CQ2218095%7CQ18156206%7CQ55847248%7CQ21155606%7CQ95104804%7CQ4218918%7CQ325872%7CQ18092018%7CQ2693455%7CQ1000387%7CQ673677%7CQ12900079%7CQ3474521%7CQ21143838%7CQ3806969%7CQ19693378%7CQ2965735%7CQ354633%7CQ1035239%7CQ14942517%7CQ2302787%7CQ10990164%7CQ87180183%7CQ992341&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 13] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q3734209%7CQ80702611%7CQ20741323%7CQ13403917%7CQ113495620%7CQ17524931%7CQ15728223%7CQ3215140%7CQ36873107%7CQ19798631%7CQ59651660%7CQ115819240%7CQ16275172%7CQ4963612%7CQ16278106%7CQ394431%7CQ2936353%7CQ3198135%7CQ17190292%7CQ22992247%7CQ18759077%7CQ666578%7CQ18759074%7CQ2087646%7CQ6761370%7CQ18091986%7CQ18201538%7CQ18201520%7CQ12375180%7CQ18171842%7CQ453020%7CQ98890770%7CQ734292%7CQ385468%7CQ5954149%7CQ21286117%7CQ153957%7CQ564684%7CQ106695612%7CQ881391%7CQ1929625%7CQ21141878%7CQ2979460%7CQ110300500%7CQ18088640%7CQ18180972%7CQ509729%7CQ76909999%7CQ18199023%7CQ23041587&props=labels&languages=en%7Cmul&format=json
+        | [API 9] OK headersMs=356 timeMs=356 bytes=1121 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 13] OK headersMs=428 timeMs=429 bytes=1126 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 8] OK headersMs=535 timeMs=536 bytes=1141 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 11] OK headersMs=569 timeMs=570 bytes=1167 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 10] OK headersMs=587 timeMs=587 bytes=1195 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 12] OK headersMs=605 timeMs=605 bytes=1144 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | 
+        | [API 15] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q271713%7CQ236290%7CQ6470051%7CQ1137720%7CQ6470247%7CQ161149%7CQ1190554%7CQ265460%7CQ231166%7CQ501504%7CQ738040%7CQ878998%7CQ602408%7CQ1152182%7CQ452270%7CQ7725842%7CQ12019362%7CQ17516100%7CQ1299666%7CQ3510942%7CQ3490318%7CQ2520202%7CQ2731801%7CQ265243%7CQ69922%7CQ93381&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 14] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q1096551%7CQ5004975%7CQ9258890%7CQ39316079%7CQ9324406%7CQ4057477%7CQ19689463%7CQ21489069%7CQ14937153%7CQ14918621%7CQ61121644%7CQ16423275%7CQ123614057%7CQ18171848%7CQ21142133%7CQ12798318%7CQ4965354%7CQ18192709%7CQ301657%7CQ23041619%7CQ130221%7CQ704950%7CQ570497%7CQ170398%7CQ163102%7CQ167769&props=labels&languages=en%7Cmul&format=json
+        | 
+        | [API 16] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q96244909%7CQ442040%7CQ28137096%7CQ355013%7CQ54046%7CQ2075895%7CQ59394133%7CQ86846%7CQ231723%7CQ331575%7CQ229861%7CQ229867%7CQ271908%7CQ1330472%7CQ394775&props=labels&languages=en%7Cmul&format=json
+        | [API 16] OK headersMs=319 timeMs=320 bytes=545 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | [API 14] OK headersMs=347 timeMs=347 bytes=734 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | [API 15] OK headersMs=454 timeMs=454 bytes=764 http=HTTP_2 age=0 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 1064 ms (up to 6 concurrent unit(s)).
+        | Final label hydration: 426 resolved, 0 explicitly missing, 0 unavailable.
+        | Canonicalization: scanned=436 withModel=436 withSpec=436 derived=179 changed=179  sample: type=OfficeHolding field= value=[null] 'Joseph II, Holy Roman Emperor — Q181765' -> 'Joseph II, Holy Roman Emperor — Holy Roman Emperor (1765–1790)'
+        | 
+        | [API 17] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q181765%7CQ22722%7CQ253779%7CQ84020495%7CQ166877%7CQ58631963%7CQ111730433%7CQ110636748%7CQ782985&props=claims&languages=en%7Cmul&format=json
+        | 
+        | [API 18] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q95976929%7CQ3273712%7CQ95975116%7CQ48797880%7CQ59533391%7CQ21096118%7CQ42724549%7CQ128605334%7CQ117814546%7CQ1077786%7CQ27562678%7CQ7244362%7CQ116149375%7CQ113318727%7CQ67653663%7CQ19827831%7CQ23011565&props=claims&languages=en%7Cmul&format=json
+        | [API 18] OK headersMs=398 timeMs=399 bytes=14538 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | [API 17] OK headersMs=400 timeMs=403 bytes=18111 http=HTTP_2 age=2 cache=cp3067 miss, cp3067 pass
+        | Batch execution wall time: 409 ms (up to 6 concurrent unit(s)).
+        | Dropped 123 owned part(s) whose owner is not served.
+        | Built vocabulary 'Type' from the served pool -> 1 distinct value(s)
+        | Alias acquisition: aliases rode 5 entity request(s), 0 standalone request(s) of which 0 failed, 191 entity answer(s), ~10307 KB alias-bearing response JSON, ~1885 KB transferred on the wire; aliases themselves ~22 KB; 6941 ms aggregate request time (concurrent, not wall clock).
+        | Wikidata fact store: 648 entity document(s) fetched, 696 later fetch(es) avoided; holding 433 document(s) (~5 MB), 0 evicted, 0 re-fetch(es) of an evicted document.
+        | Fact-demand timing: 1324 QID/property demand pair(s) known or retained before first acquisition, 660 unplanned demand pair(s) discovered after the entity had already been fetched; 696 request(s) avoided by retained facts.
+        | Fact-store measurement: ~372 KB.
+        | Fact-store property usage (banked / demanded / unused, retained bytes, cache hits, eviction re-fetches, late demands):
+        |   P569: 189 / 189 / 0, ~2162 KB retained, ~0 KB unused, 189 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P570: 189 / 189 / 0, ~2068 KB retained, ~0 KB unused, 189 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P26: 189 / 189 / 0, ~1579 KB retained, ~0 KB unused, 0 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P39: 66 / 66 / 0, ~1354 KB retained, ~0 KB unused, 66 hit(s), 0 eviction re-fetch(es), 0 late demand(s).
+        |   P735: 189 / 189 / 0, ~695 KB retained, ~0 KB unused, 189 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P31: 217 / 217 / 0, ~684 KB retained, ~0 KB unused, 380 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P18: 189 / 189 / 0, ~595 KB retained, ~0 KB unused, 189 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P1559: 189 / 189 / 0, ~317 KB retained, ~0 KB unused, 189 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P734: 189 / 189 / 0, ~69 KB retained, ~0 KB unused, 189 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P742: 189 / 189 / 0, ~9 KB retained, ~0 KB unused, 189 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        |   P1477: 189 / 189 / 0, ~8 KB retained, ~0 KB unused, 189 hit(s), 0 eviction re-fetch(es), 66 late demand(s).
+        | Fact demand by consumer: statement acquisition OfficeHolding [P39=66]; Person [P31=189, P26=189, P1477=189, P1559=189, P742=189, P569=189, P570=189, P18=189]; Name [P734=189, P735=189]; disambiguation prune [P31=28].
+        | Fact retention by producer (PID: banked entities, retained / unused bytes):
+        |   discovered statement subjects → statement acquisition / P39: 66, ~1354 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P569: 73, ~1142 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P570: 73, ~1047 / ~0 KB.
+        |   semantic preflight → semantic convergence / P569: 103, ~906 / ~0 KB.
+        |   semantic preflight → semantic convergence / P570: 103, ~879 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P26: 73, ~714 / ~0 KB.
+        |   semantic preflight → semantic convergence / P26: 103, ~708 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P735: 73, ~327 / ~0 KB.
+        |   semantic preflight → semantic convergence / P735: 103, ~318 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P18: 73, ~304 / ~0 KB.
+        |   semantic preflight → semantic convergence / P31: 103, ~301 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P31: 73, ~243 / ~0 KB.
+        |   semantic preflight → semantic convergence / P18: 103, ~243 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P1559: 73, ~165 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P26: 13, ~156 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P570: 13, ~141 / ~0 KB.
+        |   semantic preflight → semantic convergence / P1559: 103, ~121 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P569: 13, ~113 / ~0 KB.
+        |   statement field OfficeHolding.position → disambiguation prune / P31: 26, ~81 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P31: 13, ~49 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P735: 13, ~49 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P18: 13, ~48 / ~0 KB.
+        |   semantic preflight → semantic convergence / P734: 103, ~44 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P1559: 13, ~30 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P734: 73, ~18 / ~0 KB.
+        |   semantic preflight → semantic convergence / P742: 103, ~9 / ~0 KB.
+        |   root acquisition → disambiguation prune / P31: 2, ~8 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P734: 13, ~6 / ~0 KB.
+        |   semantic preflight → semantic convergence / P1477: 103, ~5 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P1477: 13, ~1 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P1477: 73, ~1 / ~0 KB.
+        |   statement field OfficeHolding.predecessor → semantic convergence / P742: 73, ~0 / ~0 KB.
+        |   statement field OfficeHolding.successor → semantic convergence / P742: 13, ~0 / ~0 KB.
+      Root query  [OK]  2 objects
+          | SELECT *
+          | WITH {
+          |   SELECT DISTINCT ?value ?valueLabel WHERE {
+          |     VALUES ?value { wd:Q6412254 wd:Q45341328 }
+          |     ?value rdfs:label ?valueLabel .
+          |     FILTER(LANG(?valueLabel) IN ("en", "mul"))
+          |   }
+          |   LIMIT 200
+          | } AS %limited
+          | WHERE {
+          |   INCLUDE %limited .
+          | }
+          | ORDER BY ?valueLabel
+      Fill [] for 2 members — 1 batches of 50 (the members' own claims, fetched via wbgetentities: these properties full-scan in SPARQL); propagated: disambiguation prune needs [P31]; final label hydration needs [LABEL]; alias coverage needs [ALIASES]  [OK]  1 request(s)
+        wbgetentities 2 entities  [OK]  ok (428 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q6412254|Q45341328&props=labels|claims|aliases&languages=en|mul&format=json
+      Discover subjects: P39 into 2 discovery seed(s)  [OK]  1 request(s)
+        Subjects with P39 into 2 discovery seed(s)  [OK]  66 subjects
+            | SELECT DISTINCT ?subject WHERE {
+            |   ?subject wdt:P39 ?value .
+            |   VALUES ?value { wd:Q45341328 wd:Q6412254 }
+            | }
+      Acquire discovered __subject_OfficeHolding subjects (66 entities, 1 properties)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (2696 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150320|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152148|Q152157|Q152370|Q152480|Q154412|Q155167|Q155581|Q155599|Q155669|Q156147|Q157092|Q157103|Q157112|Q158038|Q159679|Q168254|Q175833|Q177903|Q183579|Q188634|Q213061|Q271104|Q275408|Q298056|Q299400|Q311351|Q311861&props=labels|claims&languages=en|mul&format=json
+        wbgetentities 16 entities  [OK]  ok (2696 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q312775|Q312938|Q313494|Q314218|Q318824|Q347013|Q367578|Q26486|Q32607|Q51056|Q51068|Q54040|Q54053|Q57124|Q57195|Q57323&props=labels|claims&languages=en|mul&format=json
+      Qualifier load __subject_OfficeHolding P39 (66 entities)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (1 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150320|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152148|Q152157|Q152370|Q152480|Q154412|Q155167|Q155581|Q155599|Q155669|Q156147|Q157092|Q157103|Q157112|Q158038|Q159679|Q168254|Q175833|Q177903|Q183579|Q188634|Q213061|Q271104|Q275408|Q298056|Q299400|Q311351|Q311861&props=claims&languages=en|mul&format=json
+        wbgetentities 16 entities  [OK]  ok (1 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q312775|Q312938|Q313494|Q314218|Q318824|Q347013|Q367578|Q26486|Q32607|Q51056|Q51068|Q54040|Q54053|Q57124|Q57195|Q57323&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Person for 92 entities; retain 10 planned property slice(s) (P31, P26, P1477, P1559, P742, P569, P570, P18, P734, P735)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (2309 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150320|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152148|Q152157|Q152370|Q152480|Q154412|Q155167|Q155581|Q155599|Q155669|Q156147|Q157092|Q157103|Q157112|Q158038|Q159679|Q168254|Q175833|Q177903|Q183579|Q188634|Q213061|Q271104|Q275408|Q298056|Q299400|Q311351|Q311861&props=claims|aliases&languages=en|mul&format=json
+        wbgetentities 42 entities  [OK]  ok (2309 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q312775|Q312938|Q313494|Q314218|Q318824|Q347013|Q367578|Q26486|Q32607|Q51056|Q51068|Q54040|Q54053|Q57124|Q57195|Q57323|Q151075|Q86978|Q32500|Q170467|Q658785|Q158181|Q152717|Q697880|Q150966|Q66023226|Q53998|Q235381|Q317593|Q877256|Q1302000|Q703838|Q506635|Q506060|Q591681|Q265849|Q506317|Q454258|Q703833|Q506071|Q60746|Q57206&props=claims|aliases&languages=en|mul&format=json
+      Load 6 literal referent fields on Person for 92 entities (P1477, P1559, P742, P569, P570, P18)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (2 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150320|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152148|Q152157|Q152370|Q152480|Q154412|Q155167|Q155581|Q155599|Q155669|Q156147|Q157092|Q157103|Q157112|Q158038|Q159679|Q168254|Q175833|Q177903|Q183579|Q188634|Q213061|Q271104|Q275408|Q298056|Q299400|Q311351|Q311861&props=claims&languages=en|mul&format=json
+        wbgetentities 42 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q312775|Q312938|Q313494|Q314218|Q318824|Q347013|Q367578|Q26486|Q32607|Q51056|Q51068|Q54040|Q54053|Q57124|Q57195|Q57323|Q151075|Q86978|Q32500|Q170467|Q658785|Q158181|Q152717|Q697880|Q150966|Q66023226|Q53998|Q235381|Q317593|Q877256|Q1302000|Q703838|Q506635|Q506060|Q591681|Q265849|Q506317|Q454258|Q703833|Q506071|Q60746|Q57206&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Person for 97 entities; retain 10 planned property slice(s) (P31, P26, P1477, P1559, P742, P569, P570, P18, P734, P735)  [OK]  2 request(s)
+        wbgetentities 47 entities  [OK]  ok (1486 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q447337|Q157077|Q167401|Q265467|Q431579|Q526839|Q455035|Q63186|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491|Q256692|Q269315|Q269565|Q354770|Q86997|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q64231|Q240860|Q12357079|Q61978|Q2461803|Q254374|Q2457515|Q269570|Q2243803|Q67390|Q354918|Q235591|Q150782|Q50926|Q438477|Q231334|Q158252|Q450811|Q175920&props=claims|aliases&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (1486 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q253778|Q174504|Q3563185|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q448853|Q455201|Q235540|Q237076|Q235552|Q269586|Q254322|Q259040|Q61261|Q258910|Q236886|Q231126|Q237501|Q63373|Q258917|Q266519&props=claims|aliases&languages=en|mul&format=json
+      Load 6 literal referent fields on Person for 97 entities (P1477, P1559, P742, P569, P570, P18)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (1 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q253778|Q174504|Q3563185|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q448853|Q455201|Q235540|Q237076|Q235552|Q269586|Q254322|Q259040|Q61261|Q258910|Q236886|Q231126|Q237501|Q63373|Q258917|Q266519&props=claims&languages=en|mul&format=json
+        wbgetentities 47 entities  [OK]  ok (2 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q447337|Q157077|Q167401|Q265467|Q431579|Q526839|Q455035|Q63186|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491|Q256692|Q269315|Q269565|Q354770|Q86997|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q64231|Q240860|Q12357079|Q61978|Q2461803|Q254374|Q2457515|Q269570|Q2243803|Q67390|Q354918|Q235591|Q150782|Q50926|Q438477|Q231334|Q158252|Q450811|Q175920&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Name for 92 entities; retain 3 planned property slice(s) (P734, P735, P31)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150320|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152148|Q152157|Q152370|Q152480|Q154412|Q155167|Q155581|Q155599|Q155669|Q156147|Q157092|Q157103|Q157112|Q158038|Q159679|Q168254|Q175833|Q177903|Q183579|Q188634|Q213061|Q271104|Q275408|Q298056|Q299400|Q311351|Q311861&props=claims&languages=en|mul&format=json
+        wbgetentities 42 entities  [OK]  ok (4 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q312775|Q312938|Q313494|Q314218|Q318824|Q347013|Q367578|Q26486|Q32607|Q51056|Q51068|Q54040|Q54053|Q57124|Q57195|Q57323|Q151075|Q86978|Q32500|Q170467|Q658785|Q158181|Q152717|Q697880|Q150966|Q66023226|Q53998|Q235381|Q317593|Q877256|Q1302000|Q703838|Q506635|Q506060|Q591681|Q265849|Q506317|Q454258|Q703833|Q506071|Q60746|Q57206&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Name for 97 entities; retain 3 planned property slice(s) (P734, P735, P31)  [OK]  2 request(s)
+        wbgetentities 50 entities  [OK]  ok (1 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q253778|Q174504|Q3563185|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q448853|Q455201|Q235540|Q237076|Q235552|Q269586|Q254322|Q259040|Q61261|Q258910|Q236886|Q231126|Q237501|Q63373|Q258917|Q266519&props=claims&languages=en|mul&format=json
+        wbgetentities 47 entities  [OK]  ok (2 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q447337|Q157077|Q167401|Q265467|Q431579|Q526839|Q455035|Q63186|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491|Q256692|Q269315|Q269565|Q354770|Q86997|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q64231|Q240860|Q12357079|Q61978|Q2461803|Q254374|Q2457515|Q269570|Q2243803|Q67390|Q354918|Q235591|Q150782|Q50926|Q438477|Q231334|Q158252|Q450811|Q175920&props=claims&languages=en|mul&format=json
+      Hydrate final labels for 426 reachable entities  [OK]  9 request(s)
+        wbgetentities 50 entities  [OK]  ok (537 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5|Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076|Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q151075|Q253778|Q174504|Q3563185|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q448853|Q455201|Q235540|Q237076|Q235552|Q57124|Q269586|Q254322|Q259040|Q61261|Q258910|Q236886|Q231126|Q237501&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (537 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q63373|Q258917|Q266519|Q447337|Q157077|Q167401|Q265467|Q431579|Q526839|Q455035|Q63186|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491|Q256692|Q269315|Q269565|Q354770|Q86997|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q64231|Q240860|Q12357079|Q265849|Q61978|Q2461803|Q254374|Q2457515|Q269570|Q2243803|Q67390|Q354918|Q235591|Q150782|Q50926|Q438477|Q154412|Q231334|Q158252&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (588 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q450811|Q175920|Q181765|Q22722|Q253779|Q84020495|Q86978|Q166877|Q32500|Q58631963|Q170467|Q111730433|Q110636748|Q782985|Q95976929|Q658785|Q158181|Q3273712|Q95975116|Q152717|Q48797880|Q697880|Q59533391|Q150966|Q66023226|Q53998|Q21096118|Q235381|Q317593|Q42724549|Q128605334|Q877256|Q1302000|Q117814546|Q1077786|Q27562678|Q703838|Q506635|Q506060|Q7244362|Q591681|Q506317|Q454258|Q703833|Q506071|Q116149375|Q113318727|Q67653663|Q19827831|Q60746&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (588 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q57206|Q23011565|Q4927100|Q13484571|Q1010138|Q931618|Q3817756|Q15813127|Q24957539|Q2648973|Q4925932|Q58060544|Q22902177|Q12015993|Q1076652|Q3276175|Q18028491|Q18115751|Q15730712|Q105778482|Q18190444|Q11122389|Q5401576|Q18177333|Q18133228|Q1602218|Q1267979|Q4927273|Q471788|Q16747395|Q24716982|Q632104|Q475210|Q15731830|Q15731850|Q16799105|Q61054577|Q15728196|Q37430698|Q16290783|Q4927313|Q2958359|Q51394|Q1369927|Q2018484|Q24192760|Q21491395|Q18421743|Q2067239|Q19826494&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (606 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q75135331|Q4925477|Q73094614|Q19817951|Q14038597|Q18029644|Q76545225|Q1166840|Q15727982|Q364753|Q368314|Q15727189|Q15727141|Q4107266|Q106907497|Q18192705|Q17522230|Q12024763|Q12173670|Q16909101|Q2438057|Q106515210|Q99197293|Q11706851|Q5004850|Q4925914|Q2218095|Q18156206|Q55847248|Q21155606|Q95104804|Q4218918|Q325872|Q18092018|Q2693455|Q1000387|Q673677|Q12900079|Q3474521|Q21143838|Q3806969|Q19693378|Q2965735|Q354633|Q1035239|Q14942517|Q2302787|Q10990164|Q87180183|Q992341&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (606 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q3734209|Q80702611|Q20741323|Q13403917|Q113495620|Q17524931|Q15728223|Q3215140|Q36873107|Q19798631|Q59651660|Q115819240|Q16275172|Q4963612|Q16278106|Q394431|Q2936353|Q3198135|Q17190292|Q22992247|Q18759077|Q666578|Q18759074|Q2087646|Q6761370|Q18091986|Q18201538|Q18201520|Q12375180|Q18171842|Q453020|Q98890770|Q734292|Q385468|Q5954149|Q21286117|Q153957|Q564684|Q106695612|Q881391|Q1929625|Q21141878|Q2979460|Q110300500|Q18088640|Q18180972|Q509729|Q76909999|Q18199023|Q23041587&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (351 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q1096551|Q5004975|Q9258890|Q39316079|Q9324406|Q4057477|Q19689463|Q21489069|Q14937153|Q14918621|Q61121644|Q16423275|Q123614057|Q18171848|Q21142133|Q12798318|Q4965354|Q18192709|Q301657|Q23041619|Q76555|Q82448|Q82686|Q82687|Q83066|Q86940|Q86946|Q86953|Q130221|Q704950|Q87044|Q87051|Q570497|Q130834|Q170398|Q163102|Q150320|Q167769|Q150494|Q150575|Q150599|Q150611|Q150665|Q150862|Q151321|Q152148|Q152157|Q152370|Q152480|Q155167&props=labels&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (351 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q96244909|Q155581|Q168254|Q155599|Q442040|Q188634|Q155669|Q156147|Q157092|Q157112|Q158038|Q28137096|Q159679|Q175833|Q177903|Q183579|Q213061|Q271104|Q275408|Q298056|Q299400|Q311351|Q311861|Q312775|Q312938|Q313494|Q355013|Q314218|Q318824|Q54046|Q347013|Q367578|Q26486|Q32607|Q51056|Q51068|Q54040|Q2075895|Q57195|Q57323|Q59394133|Q131706|Q86846|Q231723|Q331575|Q229861|Q229867|Q271908|Q1330472|Q394775&props=labels&languages=en|mul&format=json
+        wbgetentities 26 entities  [OK]  ok (455 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q271713|Q236290|Q6470051|Q1137720|Q6470247|Q161149|Q1190554|Q265460|Q231166|Q501504|Q738040|Q878998|Q602408|Q1152182|Q452270|Q7725842|Q12019362|Q17516100|Q1299666|Q3510942|Q3490318|Q2520202|Q2731801|Q265243|Q69922|Q93381&props=labels&languages=en|mul&format=json
+      Check 217 modeled entity(ies) for Wikimedia internal types  [OK]  5 request(s)
+        wbgetentities 50 entities  [OK]  ok (3 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q6412254|Q45341328|Q76555|Q82448|Q82686|Q82687|Q83066|Q86932|Q86940|Q86946|Q86953|Q87044|Q87051|Q116382|Q130834|Q131706|Q150320|Q150494|Q150575|Q150586|Q150599|Q150611|Q150665|Q150862|Q151321|Q152148|Q152157|Q152370|Q152480|Q154412|Q155167|Q155581|Q155599|Q155669|Q156147|Q157092|Q157103|Q157112|Q158038|Q159679|Q168254|Q175833|Q177903|Q183579|Q188634|Q213061|Q271104|Q275408|Q298056|Q299400&props=claims&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (5 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q311351|Q311861|Q312775|Q312938|Q313494|Q314218|Q318824|Q347013|Q367578|Q26486|Q32607|Q51056|Q51068|Q54040|Q54053|Q57124|Q57195|Q57323|Q151075|Q86978|Q32500|Q170467|Q658785|Q158181|Q152717|Q697880|Q150966|Q66023226|Q53998|Q235381|Q317593|Q877256|Q1302000|Q703838|Q506635|Q506060|Q591681|Q265849|Q506317|Q454258|Q703833|Q506071|Q60746|Q57206|Q169448|Q77336|Q3492072|Q354864|Q267849|Q447076&props=claims&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (4 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q546165|Q271506|Q433941|Q238341|Q260019|Q234253|Q324913|Q4990810|Q80879|Q233900|Q164504|Q170205|Q57662|Q253778|Q174504|Q3563185|Q93541|Q57527|Q158659|Q158662|Q236892|Q237463|Q58835|Q237940|Q233335|Q57528|Q159660|Q229826|Q448853|Q455201|Q235540|Q237076|Q235552|Q269586|Q254322|Q259040|Q61261|Q258910|Q236886|Q231126|Q237501|Q63373|Q258917|Q266519|Q447337|Q157077|Q167401|Q265467|Q431579|Q526839&props=claims&languages=en|mul&format=json
+        wbgetentities 50 entities  [OK]  ok (408 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q455035|Q63186|Q232039|Q170182|Q181615|Q867369|Q242825|Q265501|Q271503|Q1032920|Q61491|Q256692|Q269315|Q269565|Q354770|Q86997|Q265835|Q272413|Q234724|Q447333|Q261183|Q75574819|Q64231|Q240860|Q12357079|Q61978|Q2461803|Q254374|Q2457515|Q269570|Q2243803|Q67390|Q354918|Q235591|Q150782|Q50926|Q438477|Q231334|Q158252|Q450811|Q175920|Q181765|Q22722|Q253779|Q84020495|Q166877|Q58631963|Q111730433|Q110636748|Q782985&props=claims&languages=en|mul&format=json
+        wbgetentities 17 entities  [OK]  ok (408 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q95976929|Q3273712|Q95975116|Q48797880|Q59533391|Q21096118|Q42724549|Q128605334|Q117814546|Q1077786|Q27562678|Q7244362|Q116149375|Q113318727|Q67653663|Q19827831|Q23011565&props=claims&languages=en|mul&format=json
+Log message  [OK]  Done
+    | 1 vocabulary(ies) filled from the generated data — use "Save domain" to persist them.
+Log message  [OK]  Done
+    | Generated 313 objects (in memory — use "Save domain" to persist to history.snapshot.json).
+Log message  [OK]  Done
+    | What this run did:
+    |   Rules that named instances: Owned parts newly created: 189 changed
+    |   Self-reference: Ran; no self-reference decisions
+    |   Owned composition: Ran; 189 part(s) newly created
+    |   Kind classification: Ran; every kind was already settled
+    |   Projections: Ran; no projected field value changed
+    |   Objects in the pool: 313
+Log message  [OK]  Done
+    | Saved domain "History":
+    | Config:    data/wikidata/history/history.model.json
+    | Rule tree: data/wikidata/history/history.ruletree.json
+    | Instances: 313 -> data/wikidata/history/history.snapshot.json
+    | Registry:  data/wikidata/datasets.json
+    | Counts:    data/wikidata/history/history.counts.tsv
+Log message  [OK]  Done
+    | Saved domain "History":
+    | Config:    data/wikidata/history/history.model.json
+    | Rule tree: data/wikidata/history/history.ruletree.json
+    | Instances: 313 -> data/wikidata/history/history.snapshot.json
+    | Registry:  data/wikidata/datasets.json
+    | Counts:    data/wikidata/history/history.counts.tsv
