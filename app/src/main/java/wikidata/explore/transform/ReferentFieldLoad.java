@@ -417,26 +417,20 @@ public final class ReferentFieldLoad {
     }
 
     /**
-     * The membership patterns whose members are never extracted as roots, so the normal
-     * field pipeline never runs for them and their declared properties would otherwise
-     * never load.
-     *
-     * <p>REFERENCED members appear only as the value-end of a field; an OWNED_COMPONENT
-     * is produced per owner; and an EVIDENCE_KIND is STAMPED from P31 evidence rather
-     * than queried — its members are pool entities with real QIDs and no root query of
-     * their own. Declaring {@code Person.birthDate (P569)} used to validate, discover,
-     * and then silently load nothing.
+     * Every entity class may gain members outside its own root query (population
+     * subjects, graph traversal, role references, classification). Therefore every
+     * non-statement class participates; populated fields and declaration coverage make
+     * this incremental. Statement classes remain on the qualifier/reification path.
      */
     private static boolean loadsHere(MembershipPattern pattern) {
-        return pattern == MembershipPattern.REFERENCED
-                || pattern == MembershipPattern.OWNED_COMPONENT
-                || pattern == MembershipPattern.EVIDENCE_KIND;
+        return pattern != MembershipPattern.REIFIED;
     }
 
-    /** Entity refs (outgoing claims), dates and plain strings load onto referents;
-     *  other kinds (boolean/auto) aren't a referent property load. */
+    /** Entity refs, literals and Commons media load onto referents; other kinds
+     *  (boolean/auto) aren't a Wikidata property load. */
     private static boolean loadableType(FieldType t) {
-        return t == FieldType.ENTITY || t == FieldType.DATE || t == FieldType.STRING;
+        return t == FieldType.ENTITY || t == FieldType.DATE
+                || t == FieldType.STRING || t == FieldType.IMAGE;
     }
 
     private static LoadOutcome loadField(
@@ -672,7 +666,8 @@ public final class ReferentFieldLoad {
         Set<String> qids = new LinkedHashSet<>();
         Set<String> pids = new LinkedHashSet<>();
         for (GeneratedFieldModel field : fields) {
-            if (field.type() != FieldType.DATE && field.type() != FieldType.STRING) continue;
+            if (field.type() != FieldType.DATE && field.type() != FieldType.STRING
+                    && field.type() != FieldType.IMAGE) continue;
             String pid = clean(field.mapping().propertyPid());
             wikidata.explore.extract.LoadedDeclaration done = known.get(
                     wikidata.explore.extract.LoadedDeclaration.key(
@@ -749,9 +744,7 @@ public final class ReferentFieldLoad {
         return qids;
     }
 
-    /** DATE / STRING: the property's literal value(s) read off the statements
-     *  (mainsnak) — a DATE becomes a {@link aux.FlexibleDate}, a STRING the raw
-     *  literal. This is what lets a Ceremony carry its own {@code year}/{@code date}. */
+    /** DATE / STRING / IMAGE values read off the statement mainsnaks. */
     private static LoadOutcome loadLiteralField(
             String className, List<WikidataDynamicObject> objs,
             GeneratedFieldModel field, GenerationLog log, LiteralFieldBatch batch) {
@@ -769,6 +762,7 @@ public final class ReferentFieldLoad {
         boolean collection = field.cardinality() != null
                 && field.cardinality().isCollection();
         boolean date = field.type() == FieldType.DATE;
+        boolean image = field.type() == FieldType.IMAGE;
         // Calendar models this build cannot translate, for THIS field and this load.
         java.util.Set<String> untranslatedCalendars = new java.util.TreeSet<>();
         int loaded = 0;
@@ -787,10 +781,18 @@ public final class ReferentFieldLoad {
                     continue;
                 }
                 // An untranslatable calendar drops that value rather than the load.
-                Object v = date
-                        ? wikidata.CalendarModelCodec.readTimeReporting(raw,
-                                model -> untranslatedCalendars.add(model))
-                        : raw;
+                Object v;
+                if (date) {
+                    v = wikidata.CalendarModelCodec.readTimeReporting(raw,
+                            model -> untranslatedCalendars.add(model));
+                } else if (image) {
+                    String label = wikidata.explore.CommonsMedia.fileName(raw);
+                    v = new wikidata.explore.extract.WikidataMediaValue(
+                            label, wikidata.explore.CommonsMedia.filePathUrl(raw),
+                            wikidata.explore.CommonsMedia.isSvg(label));
+                } else {
+                    v = raw;
+                }
                 if (v != null) {
                     values.add(v);
                 }
@@ -836,7 +838,12 @@ public final class ReferentFieldLoad {
                 continue;   // no data, or already populated
             }
             List<WikidataDynamicObject> values = new ArrayList<>();
-            for (String vq : e.entityQids(pid)) {
+            String languageQid = wikidata.WikidataLanguageDefaults.entityQid(
+                    field.mapping().valueLanguage());
+            List<String> projected = languageQid.isBlank()
+                    ? e.entityQids(pid)
+                    : e.entityQidsInLanguage(pid, languageQid);
+            for (String vq : projected) {
                 WikidataApiClient.ApiEntity le = batch.labels().get(vq);
                 String label = le == null || le.label() == null || le.label().isBlank()
                         ? vq : le.label();

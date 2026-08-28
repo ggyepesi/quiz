@@ -20,6 +20,28 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ReferentFieldLoadTest {
 
+    @Test void sourceMembersDiscoveredOutsideTheirRootQueryStillLoadImages() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.instanceMapping().propertyPid("P31");
+        person.instanceMapping().sourceQid("Q5");
+        person.addField("image", FieldType.IMAGE, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P18");
+        model.rootClass(person);
+
+        WikidataDynamicObject discovered = new WikidataDynamicObject("Q1", "Person");
+        discovered.type("Person");
+        RecordingApi api = new RecordingApi();
+        api.entity("Q1", "Person").statement(
+                "Q1", "P18", "Q1$image", "Portrait.jpg", Map.of());
+
+        assertEquals(1, ReferentFieldLoad.apply(model, List.of(discovered), api, null));
+        Object image = ((List<?>) discovered.get("image")).getFirst();
+        assertInstanceOf(wikidata.explore.extract.WikidataMediaValue.class, image);
+        assertEquals("Portrait.jpg",
+                ((objectview.media.MediaValue) image).mediaLabel());
+    }
+
     @Test void retentionPreflightSeesAllKnownConsumersBeforeAnyLoaderRuns() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");

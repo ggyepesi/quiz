@@ -126,7 +126,7 @@ class GenerateDomainPipelineTest {
                                 && s.contains("before acquisition")),
                 semantic.operations().toString());
         assertTrue(semantic.examples().stream().anyMatch(e ->
-                        e.title().startsWith("Plan facts before loading Nominee")
+                        e.title().startsWith("Plan facts before loading ")
                                 && e.evidence().stream().anyMatch(value ->
                                 value.contains("P31"))
                                 && e.output().stream().anyMatch(value ->
