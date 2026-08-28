@@ -12,6 +12,7 @@ import wikidata.explore.model.StatementClassSource;
 import javax.swing.JComboBox;
 import java.awt.Component;
 import java.awt.Container;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -35,6 +36,31 @@ class ModelSourceWorkbenchPanelTest {
         assertEquals(CanonicalSpec.DisplayNameMode.FIELD,
                 holding.canonical().displayNameMode());
         assertEquals("position", holding.canonical().displayNameField());
+    }
+
+    @Test void modelRefreshDuringCommitDoesNotReenterSelectionChange() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        holding.addField("position", FieldType.ENTITY, FieldCardinality.SINGLE);
+        model.addClass(holding);
+        model.rootClass(holding);
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        model.addClass(person);
+
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.edit(holding);
+        AtomicInteger refreshes = new AtomicInteger();
+        panel.afterChange(ignored -> {
+            refreshes.incrementAndGet();
+            // Mirrors ModelBuilderFrame.modelChanged(): refreshing the tree fires its
+            // selection listener while the previous editor is still being committed.
+            panel.changeSelection(person);
+        });
+
+        panel.changeSelection(person);
+
+        assertEquals(1, refreshes.get());
     }
 
     @SuppressWarnings("unchecked")

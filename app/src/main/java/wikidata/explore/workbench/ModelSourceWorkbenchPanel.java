@@ -76,6 +76,9 @@ public class ModelSourceWorkbenchPanel extends JPanel {
     private final GraphConfigurationDiagram graphConfigurationDiagram;
 
     private Object selected;
+    /** Applying the editor being left invokes afterChange, whose model-tree refresh can
+     * fire the selection listener again before the outer transition has completed. */
+    private boolean changingSelection;
 
     private Consumer<Void> afterChange =
             ignored -> {};
@@ -294,10 +297,18 @@ public class ModelSourceWorkbenchPanel extends JPanel {
      * without writing stale controls into the old model.</p>
      */
     public void changeSelection(Object next) {
-        if (selected != null && selected != next) {
-            applyEdits();
+        if (changingSelection) {
+            return;
         }
-        edit(next);
+        changingSelection = true;
+        try {
+            if (selected != null && selected != next) {
+                applyEdits();
+            }
+            edit(next);
+        } finally {
+            changingSelection = false;
+        }
     }
 
     private String selectedNodeTitle() {
