@@ -73,7 +73,7 @@ public final class GraphPatternSampleQuery
                 + "  ?source p:" + pid + " ?statement .\n"
                 + "  ?statement ps:" + pid + " ?target .\n"
                 + WikimediaInternalTypes.excludeExclusivelyInternal("?target")
-                + "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"en,mul\". }\n"
+                + wikidata.query.LabelService.service()
                 // An explanation the reader may run twice must not answer
                 // differently the second time: LIMIT without an order leaves which
                 // sample survives to the query planner. Measured against WDQS, the

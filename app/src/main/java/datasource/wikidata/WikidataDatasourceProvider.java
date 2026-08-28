@@ -64,7 +64,8 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     public static final String SEED_LIST = "seed-list";
 
     private static final ParameterDescriptor LANGUAGES = new ParameterDescriptor(
-            "languages", "Languages", ParameterDescriptor.Kind.TEXT, false, "en,mul",
+            "languages", "Languages", ParameterDescriptor.Kind.TEXT, false,
+            wikidata.WikidataLanguageDefaults.languages(),
             List.of(),
             "Language preference, most preferred first. mul is Wikidata's "
                     + "multilingual default and is many entities' only Latin-script name.");

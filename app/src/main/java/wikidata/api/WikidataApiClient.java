@@ -203,7 +203,7 @@ public class WikidataApiClient {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("action",   "wbsearchentities");
         params.put("search",   encode(query));
-        params.put("language", "en");
+        params.put("language", wikidata.WikidataLanguageDefaults.CODE);
         params.put("type",     type == null || type.isBlank() ? "item" : type);
         params.put("limit",    String.valueOf(Math.min(limit, 50)));
         params.put("format",   "json");
@@ -335,10 +335,10 @@ public class WikidataApiClient {
 
         Map<String, String> params = new LinkedHashMap<>();
         params.put("action",    "wbgetentities");
-        params.put("sites",     "enwiki");
+        params.put("sites",     wikidata.WikidataLanguageDefaults.wikipediaSite());
         params.put("titles",    titlesParam);
         params.put("props",     "claims%7Clabels%7Csitelinks");
-        params.put("languages", "en");
+        params.put("languages", wikidata.WikidataLanguageDefaults.CODE);
         params.put("format",    "json");
 
         JsonNode root = get(WIKIDATA_API, params);
@@ -352,10 +352,13 @@ public class WikidataApiClient {
             if (qid.isBlank()) return;
 
             // Label — fall back to sitelink title when English label absent
-            String label = entity.path("labels").path("en")
+            String label = entity.path("labels")
+                                 .path(wikidata.WikidataLanguageDefaults.CODE)
                                  .path("value").asText();
             if (label.isBlank()) {
-                String siteTitle = entity.path("sitelinks").path("enwiki")
+                String siteTitle = entity.path("sitelinks")
+                                         .path(wikidata.WikidataLanguageDefaults
+                                                 .wikipediaSite())
                                          .path("title").asText();
                 if (!siteTitle.isBlank()) {
                     // Strip disambiguation suffixes
@@ -1052,12 +1055,14 @@ public class WikidataApiClient {
                 + "&props=" + entityProps(withClaims, metadata)
                 + (metadata != null && metadata.contains(FactDemand.EntityMetadata.SITELINKS)
                         ? "&sitefilter=" + SITE_FILTER : "")
-                + "&languages=en|mul&format=json";
+                + "&languages=" + wikidata.WikidataLanguageDefaults.apiLanguages()
+                + "&format=json";
     }
 
     private static String aliasesUrl(List<String> qids) {
         return WIKIDATA_API + "?action=wbgetentities&ids=" + String.join("|", qids)
-                + "&props=aliases&languages=en|mul&format=json";
+                + "&props=aliases&languages="
+                + wikidata.WikidataLanguageDefaults.apiLanguages() + "&format=json";
     }
 
     /** Compatibility projection. Plan-aware callers use the overload below so entity
@@ -1081,7 +1086,8 @@ public class WikidataApiClient {
 
     /** Only the English article: an entity's full sitelink set is one line per language
      *  and nobody here reads the other three hundred. */
-    private static final String SITE_FILTER = "enwiki";
+    private static final String SITE_FILTER =
+            wikidata.WikidataLanguageDefaults.wikipediaSite();
 
     private static String encodePipes(String value) {
         return value.replace("|", "%7C");
@@ -1219,7 +1225,7 @@ public class WikidataApiClient {
             params.put("sitefilter", SITE_FILTER);
         // en + mul (the language-agnostic label) so an item without an English label
         // still resolves to a name instead of staying a QID — matches the SPARQL
-        // SERVICE "en,mul".
+        // The same default-language + mul preference used by LabelService.
         params.put("languages", "en%7Cmul");
         params.put("format",    "json");
         return get(WIKIDATA_API, params);
@@ -1265,13 +1271,16 @@ public class WikidataApiClient {
                 return;
             }
 
-            String label = entity.path("labels").path("en").path("value").asText("");
+            String label = entity.path("labels")
+                    .path(wikidata.WikidataLanguageDefaults.CODE)
+                    .path("value").asText("");
             if (label.isBlank()) {
                 label = entity.path("labels").path("mul").path("value").asText("");
             }
             boolean aliasesAnswered = entity.has("aliases");
             List<String> aliases = new ArrayList<>();
-            for (String language : List.of("en", "mul")) {
+            for (String language : wikidata.WikidataLanguageDefaults
+                    .languages().split(",")) {
                 JsonNode values = entity.path("aliases").path(language);
                 if (!values.isArray()) continue;
                 for (JsonNode value : values) {
@@ -1301,7 +1310,8 @@ public class WikidataApiClient {
             }
             out.put(qid, new ApiEntity(
                     qid, label, claims, false, valueless, aliases, aliasesAnswered,
-                    values, entity.path("sitelinks").path("enwiki").path("title").asText("")));
+                    values, entity.path("sitelinks").path(SITE_FILTER)
+                            .path("title").asText("")));
             parsed[0]++;
         });
         return parsed[0];
@@ -1328,7 +1338,7 @@ public class WikidataApiClient {
     private static List<String> entityQids(JsonNode claimsArray) {
         if (!claimsArray.isArray()) return List.of();
         List<String> out = new ArrayList<>();
-        for (JsonNode claim : truthy(claimsArray)) {
+        for (JsonNode claim : defaultLanguageTruthy(claimsArray)) {
             JsonNode val = claim.path("mainsnak").path("datavalue").path("value");
             String id = val.path("id").asText("");
             if (id.isBlank() && val.has("numeric-id")) {
@@ -1344,7 +1354,7 @@ public class WikidataApiClient {
     private static List<String> statementValues(JsonNode claimsArray) {
         if (!claimsArray.isArray()) return List.of();
         List<String> out = new ArrayList<>();
-        for (JsonNode claim : truthy(claimsArray)) {
+        for (JsonNode claim : defaultLanguageTruthy(claimsArray)) {
             String value = snakValue(claim.path("mainsnak").path("datavalue"));
             if (value != null) out.add(value);
         }
@@ -1373,6 +1383,43 @@ public class WikidataApiClient {
             else normal.add(claim);
         }
         return preferred.isEmpty() ? normal : preferred;
+    }
+
+    /**
+     * A language-qualified claim is a localized assertion, not an additional value.
+     * Prefer the application's default language when Wikidata states one.  When no
+     * such statement exists, retain unqualified statements as the honest fallback;
+     * they carry no evidence by which we could choose a language.  Explicitly foreign
+     * values are not silently presented as default-language values.
+     *
+     * <p>This is intentionally value-independent: given names exposed the problem,
+     * but titles and other localized entity-valued properties use the same P407
+     * qualifier. Rank selection remains the outer, pre-existing rule.
+     */
+    private static List<JsonNode> defaultLanguageTruthy(JsonNode claimsArray) {
+        List<JsonNode> ranked = truthy(claimsArray);
+        List<JsonNode> preferred = new ArrayList<>();
+        List<JsonNode> unqualified = new ArrayList<>();
+        boolean hasLanguageQualifier = false;
+        for (JsonNode claim : ranked) {
+            JsonNode languages = claim.path("qualifiers")
+                    .path(wikidata.WikidataLanguageDefaults.QUALIFIER_PID);
+            if (!languages.isArray() || languages.isEmpty()) {
+                unqualified.add(claim);
+                continue;
+            }
+            hasLanguageQualifier = true;
+            for (JsonNode language : languages) {
+                String qid = snakValue(language.path("datavalue"));
+                if (wikidata.WikidataLanguageDefaults.ENTITY_QID.equals(qid)) {
+                    preferred.add(claim);
+                    break;
+                }
+            }
+        }
+        if (!preferred.isEmpty()) return preferred;
+        if (!unqualified.isEmpty()) return unqualified;
+        return hasLanguageQualifier ? List.of() : ranked;
     }
 
     /**

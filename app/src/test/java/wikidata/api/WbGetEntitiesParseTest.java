@@ -15,6 +15,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Parsing a wbgetentities response into labels + entity-QID claim lists (no network). */
 class WbGetEntitiesParseTest {
 
+    private static String entityClaim(String qid, String languageQid) {
+        String qualifier = languageQid == null ? "" : """
+                , "qualifiers": { "P407": [
+                    { "datavalue": { "type": "wikibase-entityid",
+                                      "value": { "id": "%s" } } }
+                  ] }
+                """.formatted(languageQid);
+        return """
+                { "rank": "normal",
+                  "mainsnak": { "datavalue": { "type": "wikibase-entityid",
+                                                 "value": { "id": "%s" } } }%s }
+                """.formatted(qid, qualifier);
+    }
+
     private static final String JSON = """
         {
           "entities": {
@@ -97,6 +111,55 @@ class WbGetEntitiesParseTest {
         assertEquals("First nominee", out.get("Q11").label());
         assertTrue(out.get("Q11").entityQids("P31").isEmpty(),
                 "no PIDs requested → no claims extracted");
+    }
+
+    @Test
+    void languageQualifiedClaimsPreferTheFactoredDefaultLanguage() throws Exception {
+        String json = """
+                { "entities": { "Q1": { "id": "Q1", "claims": { "P735": [
+                %s, %s, %s
+                ] } } } }
+                """.formatted(entityClaim("Q10", "Q1860"),
+                entityClaim("Q20", "Q188"), entityClaim("Q30", null));
+        Map<String, WikidataApiClient.ApiEntity> out = new LinkedHashMap<>();
+        WikidataApiClient.parseEntities(
+                new ObjectMapper().readTree(json), List.of("P735"), out);
+
+        assertEquals(List.of("Q10"), out.get("Q1").entityQids("P735"));
+    }
+
+    // The branch that REMOVES data. When Wikidata states a language for every value
+    // and none of them is ours, there is no honest answer: presenting a French given
+    // name as the English one asserts something Wikidata denies. Empty is the result,
+    // and it is pinned here because nothing else would fail if it stopped happening —
+    // a field would simply go quiet.
+    @Test
+    void everyValueBeingForeignYieldsNothingRatherThanAWrongLanguage() throws Exception {
+        String json = """
+                { "entities": { "Q1": { "id": "Q1", "claims": { "P735": [
+                %s, %s
+                ] } } } }
+                """.formatted(entityClaim("Q10", "Q188"), entityClaim("Q20", "Q150"));
+        Map<String, WikidataApiClient.ApiEntity> out = new LinkedHashMap<>();
+        WikidataApiClient.parseEntities(
+                new ObjectMapper().readTree(json), List.of("P735"), out);
+
+        assertEquals(List.of(), out.get("Q1").entityQids("P735"));
+    }
+
+    @Test
+    void unqualifiedClaimsRemainWhenNoDefaultLanguageClaimExists() throws Exception {
+        String json = """
+                { "entities": { "Q1": { "id": "Q1", "claims": { "P735": [
+                %s, %s, %s
+                ] } } } }
+                """.formatted(entityClaim("Q10", "Q188"),
+                entityClaim("Q20", null), entityClaim("Q30", null));
+        Map<String, WikidataApiClient.ApiEntity> out = new LinkedHashMap<>();
+        WikidataApiClient.parseEntities(
+                new ObjectMapper().readTree(json), List.of("P735"), out);
+
+        assertEquals(List.of("Q20", "Q30"), out.get("Q1").entityQids("P735"));
     }
 
     // A nominee (Q11) with two P1411 nomination statements, each carrying an entity

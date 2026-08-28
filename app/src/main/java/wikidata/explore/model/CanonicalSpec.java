@@ -33,7 +33,7 @@ public class CanonicalSpec {
     private DisplayNameMode displayNameMode = DisplayNameMode.LABEL;
     private String displayNameField = "";       // DisplayNameMode.FIELD
     private String displayNameTemplate = "";    // DisplayNameMode.TEMPLATE
-    private String labelLanguage = "en";        // DisplayNameMode.LABEL
+    private String labelLanguage = wikidata.WikidataLanguageDefaults.CODE;
 
     // Which collection field marks the CANONICAL copy of a reified statement (#92).
     // Blank => fall back to structural inference; see primaryListField().
@@ -92,7 +92,7 @@ public class CanonicalSpec {
 
     public CanonicalSpec labelLanguage(String language) {
         this.labelLanguage = language == null || language.isBlank()
-                ? "en" : language.trim();
+                ? wikidata.WikidataLanguageDefaults.CODE : language.trim();
         return this;
     }
 

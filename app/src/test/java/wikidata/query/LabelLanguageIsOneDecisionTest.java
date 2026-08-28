@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -87,6 +88,49 @@ class LabelLanguageIsOneDecisionTest {
 
     @Test void anyLanguageMeansNoFilterAtAll() {
         assertEquals("", LabelService.labelFilter("valueLabel", "any"));
+    }
+
+    /**
+     * Guarding three remembered files is a guard that lasts until the fourth — the
+     * same shape as the bug this class exists for. The whole tree is scanned, and the
+     * remaining restatements are frozen in a ratcheted allowlist: a new one fails, and
+     * one that is migrated onto {@link wikidata.WikidataLanguageDefaults} must be
+     * deleted from the list, so it only shrinks.
+     */
+    @Test void noSourceRestatesTheDefaultLanguage() throws IOException {
+        List<String> current = new ArrayList<>();
+        for (Path file : mainJavaFiles()) {
+            String relative = Path.of("src", "main", "java").relativize(file)
+                    .toString().replace('\\', '/');
+            if (relative.endsWith("WikidataLanguageDefaults.java")
+                    || DBPEDIA_QUERIES.contains(relative)) continue;
+            String source = stripComments(Files.readString(file));
+            if (source.contains("\"en\"") || source.contains("\"en,mul\"")
+                    || source.contains("\"en|mul\"") || source.contains("\"enwiki\"")) {
+                current.add(relative);
+            }
+        }
+        List<String> allowed = allowlist();
+        List<String> added = new ArrayList<>(current);
+        added.removeAll(allowed);
+        List<String> resolved = new ArrayList<>(allowed);
+        resolved.removeAll(current);
+
+        assertTrue(added.isEmpty(),
+                "NEW restatement of the default language — ask "
+                        + "WikidataLanguageDefaults instead: " + added);
+        assertTrue(resolved.isEmpty(),
+                "these no longer restate it (progress!) — delete them from "
+                        + "default-language-allowlist.txt: " + resolved);
+    }
+
+    private static List<String> allowlist() throws IOException {
+        try (var in = LabelLanguageIsOneDecisionTest.class
+                .getResourceAsStream("/default-language-allowlist.txt")) {
+            if (in == null) return List.of();
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
+                    .lines().map(String::strip).filter(line -> !line.isEmpty()).toList();
+        }
     }
 
     private static List<Path> mainJavaFiles() throws IOException {

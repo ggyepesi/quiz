@@ -117,7 +117,7 @@ public class ClassSourcePanel extends JPanel {
             new JCheckBox("Require label", true);
 
     private final JTextField langField =
-            new JTextField("en", 4);
+            new JTextField(wikidata.WikidataLanguageDefaults.CODE, 4);
 
     // --- Identity & label (canonicalization) ---
     private static final String KIND_ENTITY = "Source entity (id + label)";

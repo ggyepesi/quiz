@@ -55,7 +55,7 @@ public class FieldSourceMapping {
 
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
     private boolean requireLabel = true;
-    private String labelLanguage = "en";
+    private String labelLanguage = wikidata.WikidataLanguageDefaults.CODE;
     // "Notable only": require the entity to have an English Wikipedia article.
     // The sitelink is a selective entry that bounds a huge class (e.g. Q523
     // star, ~3M) to its notable members (~2886), so a root query can complete
@@ -201,7 +201,7 @@ public class FieldSourceMapping {
 
     public void labelLanguage(String labelLanguage) {
         this.labelLanguage = labelLanguage == null || labelLanguage.isBlank()
-                ? "en"
+                ? wikidata.WikidataLanguageDefaults.CODE
                 : labelLanguage.trim();
     }
 

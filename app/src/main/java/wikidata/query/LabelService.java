@@ -13,12 +13,15 @@ public final class LabelService {
 
     private LabelService() {}
 
-    public static final String DEFAULT_LANGUAGE = "en";
+    public static final String DEFAULT_LANGUAGE =
+            wikidata.WikidataLanguageDefaults.CODE;
 
     /** The requested language(s) plus the {@code mul} fallback (idempotent). */
     public static String language(String lang) {
         String l = lang == null || lang.isBlank() ? DEFAULT_LANGUAGE : lang;
-        return l.contains("mul") ? l : l + ",mul";
+        return DEFAULT_LANGUAGE.equals(l)
+                ? wikidata.WikidataLanguageDefaults.languages()
+                : l.contains("mul") ? l : l + ",mul";
     }
 
     /** Automatic-mode SERVICE at the default language: labels every {@code ?xLabel}
