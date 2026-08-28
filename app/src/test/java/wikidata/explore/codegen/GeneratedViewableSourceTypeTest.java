@@ -62,8 +62,10 @@ class GeneratedViewableSourceTypeTest {
                     .mapRoots(java.util.List.of(source)).getFirst();
             assertTrue(mapped instanceof quiz.source.GeneratedEntity);
             assertEquals("Q28", ((objectview.Viewable) mapped).getIdentifier());
+            java.lang.reflect.Field aliases = mapped.getClass()
+                    .getDeclaredField("alternateNames");
             assertEquals(java.util.List.of("Magyarország"),
-                    ((quiz.source.GeneratedEntity) mapped).alternateNames());
+                    aliases.get(mapped));
         }
 
         GeneratedClassModel statementClass = new GeneratedClassModel("Fact");
@@ -78,6 +80,28 @@ class GeneratedViewableSourceTypeTest {
                     .mapRoots(java.util.List.of(statement)).getFirst();
             assertEquals("Q28$statement-guid",
                     ((objectview.Viewable) mapped).getIdentifier());
+        }
+    }
+
+    @Test void anExplicitAliasOptOutRemovesTheFieldAndDoesNotCopyCachedAliases()
+            throws Exception {
+        GeneratedClassModel country = new GeneratedClassModel("Country");
+        wikidata.explore.model.ClassSourceBindings.synchronize(country);
+        wikidata.explore.model.ClassSourceBindings.aliases(country, false);
+
+        String sourceCode = generator.sourceFor(country);
+        assertFalse(sourceCode.contains("alternateNames"));
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(country)) {
+            wikidata.explore.extract.WikidataDynamicObject source =
+                    new wikidata.explore.extract.WikidataDynamicObject("Q28", "Hungary");
+            source.type("Country");
+            source.aliases(java.util.List.of("Magyarország"));
+            Object mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(source)).getFirst();
+            assertFalse(java.util.Arrays.stream(mapped.getClass().getFields())
+                    .anyMatch(field -> "alternateNames".equals(field.getName())));
         }
     }
 

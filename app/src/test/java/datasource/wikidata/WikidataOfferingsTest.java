@@ -43,8 +43,8 @@ class WikidataOfferingsTest {
     }
 
     @Test void aliasesAreAnOfferingAClassMayDecline() {
-        // Today they arrive as alternateNames on every generated class, hardcoded and
-        // @Minor, because there was nowhere to say yes or no. Here it is a choice.
+        // A binding now makes code generation add the minor alternateNames field;
+        // declining the offering omits both its acquisition and that field.
         DatasourceOperation aliases = offering(WikidataDatasourceProvider.ALIASES);
 
         assertEquals(BindingScope.CLASS_NAMES, aliases.scope());

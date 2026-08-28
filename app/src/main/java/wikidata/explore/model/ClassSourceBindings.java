@@ -108,6 +108,20 @@ public final class ClassSourceBindings {
         }
     }
 
+    /**
+     * Whether the generated class exposes and retains aliases.
+     *
+     * <p>The no-binding case is the legacy model shape and preserves its historical
+     * aliases. Once identity/label have been materialized, an absent alias binding is
+     * an explicit opt-out rather than another legacy default.
+     */
+    public static boolean aliasesEnabled(GeneratedClassModel clazz) {
+        if (clazz == null || clazz.classKind() != ClassKind.SOURCE) return false;
+        if (binding(clazz, SourceBindingSlot.CLASS_ALIASES) != null) return true;
+        return binding(clazz, SourceBindingSlot.CLASS_IDENTITY) == null
+                && binding(clazz, SourceBindingSlot.CLASS_LABEL) == null;
+    }
+
     private static SourceBinding classBinding(GeneratedClassModel clazz,
             SourceBindingSlot slot, String operation) {
         SourceBindingTarget target = slot == SourceBindingSlot.CLASS_IDENTITY

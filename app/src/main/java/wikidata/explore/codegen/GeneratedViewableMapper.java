@@ -156,7 +156,10 @@ public class GeneratedViewableMapper {
         if (target instanceof quiz.source.GeneratedEntity ge) {
             ge.identifier(source.getIdentifier());
             ge.label(source.getDisplayName());
-            ge.alternateNames(source.aliases());
+            if (wikidata.explore.model.ClassSourceBindings
+                    .aliasesEnabled(cr.model())) {
+                assignAliases(target, source.aliases());
+            }
             ge.part(source.isPart());
         }
 
@@ -191,6 +194,23 @@ public class GeneratedViewableMapper {
         }
 
         return target;
+    }
+
+    /** Populates the conditionally generated alias field without putting it back on
+     *  the universal carrier, where it would become part of every class's schema. */
+    private static void assignAliases(Object target, java.util.Collection<String> values)
+            throws IllegalAccessException {
+        Field field = findField(target.getClass(), "alternateNames");
+        if (field == null) return;
+        field.setAccessible(true);
+        Object existing = field.get(target);
+        if (existing instanceof java.util.Collection<?> collection) {
+            @SuppressWarnings("unchecked")
+            java.util.Collection<Object> writable =
+                    (java.util.Collection<Object>) collection;
+            writable.clear();
+            if (values != null) writable.addAll(values);
+        }
     }
 
     /**

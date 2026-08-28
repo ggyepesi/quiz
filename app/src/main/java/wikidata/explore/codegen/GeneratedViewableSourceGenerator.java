@@ -79,6 +79,20 @@ public class GeneratedViewableSourceGenerator {
         sb.append("public class ").append(className)
           .append(" extends quiz.source.GeneratedEntity {\n\n");
 
+        // Aliases are an explicit class-source offering, not a universal property of
+        // generated objects. Declaring the field here makes reflection, view config and
+        // the generated schema agree with the binding. Legacy models still answer true
+        // until their implicit source bindings are materialized.
+        boolean aliases = wikidata.explore.model.ClassSourceBindings
+                .aliasesEnabled(model);
+        boolean aliasesDeclared = fields.stream().filter(java.util.Objects::nonNull)
+                .anyMatch(field -> "alternateNames".equals(field.name()));
+        if (aliases && !aliasesDeclared) {
+            sb.append("    @objectview.annotations.Minor\n")
+              .append("    public java.util.List<String> alternateNames")
+              .append(" = new java.util.ArrayList<>();\n\n");
+        }
+
         if (model.hasBase()) {
             sb.append("    // extends ").append(model.baseClassName())
               .append(" — base fields below are inherited (flattened in;\n")
