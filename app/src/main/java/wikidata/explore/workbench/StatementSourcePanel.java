@@ -334,14 +334,22 @@ public class StatementSourcePanel extends JPanel {
         String displayField =
                 selectedText(displayNameFieldBox);
 
-        if (displayField.isBlank()) {
-            canonical.displayNameMode(
-                    CanonicalSpec.DisplayNameMode.LABEL);
-            canonical.displayNameField("");
-        } else {
-            canonical.displayNameMode(
-                    CanonicalSpec.DisplayNameMode.FIELD);
-            canonical.displayNameField(displayField);
+        boolean preserveUneditableTemplate = displayField.isBlank()
+                && canonical.displayNameMode()
+                == CanonicalSpec.DisplayNameMode.TEMPLATE
+                && !canonical.displayNameTemplate().isBlank();
+        // This compact statement editor exposes FIELD selection, not the general
+        // class editor's TEMPLATE control. Merely visiting and leaving a statement
+        // class must therefore preserve a template it cannot display or edit.
+        if (!preserveUneditableTemplate) {
+            if (displayField.isBlank()) {
+                canonical.displayNameMode(CanonicalSpec.DisplayNameMode.LABEL);
+                canonical.displayNameField("");
+            } else {
+                canonical.displayNameMode(CanonicalSpec.DisplayNameMode.FIELD);
+                canonical.displayNameField(displayField);
+            }
+            canonical.displayNameTemplate("");
         }
 
         clazz.canonical(canonical);

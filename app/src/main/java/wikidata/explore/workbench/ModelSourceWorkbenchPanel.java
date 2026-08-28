@@ -285,6 +285,21 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         if (!editingEnabled) setEditingEnabled(false);
     }
 
+    /**
+     * Commits the editor being left, then presents another model node.
+     *
+     * <p>A tree selection changes before its listener is notified. Keeping this
+     * transition here means the workbench still knows which editor owns the pending
+     * values; callers that replace the whole model can continue to use {@link #edit}
+     * without writing stale controls into the old model.</p>
+     */
+    public void changeSelection(Object next) {
+        if (selected != null && selected != next) {
+            applyEdits();
+        }
+        edit(next);
+    }
+
     private String selectedNodeTitle() {
         GeneratedClassModel clazz = null;
 

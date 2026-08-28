@@ -687,7 +687,7 @@ public class ModelBuilderFrame extends JFrame {
         });
 
         classModelPanel.addTreeSelectionListener(e -> {
-            sourceWorkbench.edit(classModelPanel.selectedUserObject());
+            sourceWorkbench.changeSelection(classModelPanel.selectedUserObject());
             // Per-class depth: show the newly-selected class's saved depth.
             syncDepthSpinnerToActiveClass();
             // Mirror the selection onto the graph (the two-way "connection").

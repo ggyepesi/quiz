@@ -5,12 +5,33 @@ import datasource.graph.GraphExpansionPolicy;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.CanonicalSpec;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StatementSourcePanelTest {
+
+    @Test void applyingCompactEditorPreservesAnExistingDisplayTemplate() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        holding.canonical(new CanonicalSpec()
+                .displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
+                .displayNameTemplate("{position} ({startDate}–{endDate})"));
+        project.addClass(holding);
+
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(holding);
+        panel.applyEdits();
+
+        assertEquals(CanonicalSpec.DisplayNameMode.TEMPLATE,
+                holding.canonical().displayNameMode());
+        assertEquals("{position} ({startDate}–{endDate})",
+                holding.canonical().displayNameTemplate());
+    }
 
     // Regression: a statement class with NO source class (subjects discovered from
     // the property) must survive applyEdits(). Previously a blank "Reify from"
