@@ -287,7 +287,20 @@ public final class SwingProcessWorkflow {
                     applySelected.setEnabled(applicationAllowed && actionable);
                 });
             }
-            return builder.build();
+            SearchableView view = builder.build();
+            if (!action.multipleResultSelection()) return view;
+            JPanel panel = new JPanel(new BorderLayout(4, 4));
+            JPanel selection = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+            JButton selectAll = new JButton("Select all");
+            JButton clear = new JButton("Clear selection");
+            selectAll.addActionListener(e -> view.renderContext().selectAll());
+            clear.addActionListener(e -> view.renderContext().clearSelection());
+            selection.add(selectAll);
+            selection.add(clear);
+            selection.add(new JLabel("Shift-click selects an interval"));
+            panel.add(selection, BorderLayout.NORTH);
+            panel.add(view, BorderLayout.CENTER);
+            return panel;
         }
 
         private static String resultsApplyLabel(String verb, int selected) {

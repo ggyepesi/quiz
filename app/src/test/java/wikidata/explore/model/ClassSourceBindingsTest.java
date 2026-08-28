@@ -39,6 +39,25 @@ class ClassSourceBindingsTest {
         assertTrue(owned.sourceBindings().isEmpty());
     }
 
+    @Test void explicitlyRemovedAliasesStayRemovedWhenThePlanIsRecompiled() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.instanceMapping().propertyPid("P31");
+        person.instanceMapping().sourceQid("Q5");
+        model.rootClass(person);
+
+        ClassSourceBindings.synchronize(model);
+        ClassSourceBindings.aliases(person, false);
+        ClassSourceBindings.synchronize(model);
+
+        assertNull(ClassSourceBindings.binding(
+                person, SourceBindingSlot.CLASS_ALIASES));
+        assertNotNull(ClassSourceBindings.binding(
+                person, SourceBindingSlot.CLASS_IDENTITY));
+        assertNotNull(ClassSourceBindings.binding(
+                person, SourceBindingSlot.CLASS_LABEL));
+    }
+
     /**
      * The project-less form exists for an editor that has no project: it needs the
      * identity/label/alias defaults and never reads the population slot. Deriving the

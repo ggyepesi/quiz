@@ -100,8 +100,12 @@ class ConfigFieldRowSourceSchemaTest {
         assertFalse(hasPath(rows, "isoCode"),
                 "a schema-declared minor dynamic field must NOT render in the table"
                         + " — it is governed wholesale by 'All minor fields'");
-        assertFalse(rows.stream().anyMatch(FieldRow::isMinorBlock),
-                "no per-field minor block: minor dynamic fields are checkbox-governed only");
+        // The gate and the checkbox are different axes, so both appear: the checkbox
+        // decides whether minor fields are INCLUDED, the block row whether they are
+        // SHOWN while editing. They governed the same fields when the block stood for
+        // the minor set as a group, and objectview no longer makes that claim.
+        assertTrue(rows.stream().anyMatch(FieldRow::isMinorBlock),
+                "a schema-declared minor field raises the same gate a reflected one does");
     }
 
     @Test void minorOnlyRowsDoNotInjectTheOrdinaryIdentityName() {

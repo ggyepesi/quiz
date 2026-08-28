@@ -129,6 +129,7 @@ public class ClassSourcePanel extends JPanel {
     /** States the regime rather than offering it: it is a consequence, not a choice. */
     private final javax.swing.JLabel canonicalKindLabel = new javax.swing.JLabel();
     private final javax.swing.JLabel canonicalSourcesLabel = new javax.swing.JLabel();
+    private final JCheckBox aliasesBox = new JCheckBox("Add aliases (Also known as)");
     private final JComboBox<String> displayNameModeBox =
             new JComboBox<>(new String[]{DN_LABEL, DN_FIELD, DN_TEMPLATE});
     private final JComboBox<String> displayNameFieldBox = new JComboBox<>();
@@ -468,6 +469,11 @@ public class ClassSourcePanel extends JPanel {
         canonicalSourcesLabel.setToolTipText("Datasource operations supplying the source "
                 + "class's identity, display label and alternate names.");
         GridBagUtils.labeledRow(form, c, y++, "Source bindings:", canonicalSourcesLabel);
+
+        aliasesBox.setToolTipText("Retain Wikidata aliases as the minor "
+                + "alternateNames field. They can then be configured for view, search "
+                + "and sort like other fields.");
+        GridBagUtils.labeledRow(form, c, y++, "Additional names:", aliasesBox);
 
         displayNameModeBox.setToolTipText("How to make the display name: the source "
                 + "label, a single field's value, or a template.");
@@ -993,6 +999,9 @@ public class ClassSourcePanel extends JPanel {
     private void loadCanonical() {
         populateDisplayNameFields();
 
+        if (clazz != null) ClassSourceBindings.synchronize(clazz);
+        aliasesBox.setSelected(clazz != null && ClassSourceBindings.binding(clazz,
+                SourceBindingSlot.CLASS_ALIASES) != null);
         CanonicalSpec spec = clazz == null
                 ? new CanonicalSpec()
                 : clazz.canonical();
@@ -1043,6 +1052,7 @@ public class ClassSourcePanel extends JPanel {
         displayNameFieldBox.setEnabled(hasClass && DN_FIELD.equals(mode));
         displayNameTemplateField.setEnabled(hasClass && DN_TEMPLATE.equals(mode));
         keyFieldsField.setEnabled(keyed);
+        aliasesBox.setEnabled(hasClass && clazz.classKind() == ClassKind.SOURCE);
 
         canonicalHint.setText(canonicalWarning(clazz == null ? null : clazz.classKind(), mode));
     }
@@ -1099,6 +1109,7 @@ public class ClassSourcePanel extends JPanel {
                 keyFieldsField.getText());
 
         clazz.canonical(spec);
+        ClassSourceBindings.aliases(clazz, aliasesBox.isSelected());
 
         String warning = canonicalWarning(clazz.classKind(), mode);
         if (warning != null && !warning.isBlank()) {

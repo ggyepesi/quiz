@@ -39,20 +39,20 @@ public final class ClassSourceBindings {
                     PopulationSourceBindings.fromLegacy(clazz, project)));
         }
         if (clazz.classKind() == ClassKind.SOURCE) {
-            putDefault(clazz, new SourceBinding(
-                    SourceBindingTarget.classIdentity(clazz.className()),
-                    new SourceRecipe(WikidataDatasourceProvider.ID,
-                            WikidataDatasourceProvider.IDENTIFIER, Map.of())));
-            putDefault(clazz, new SourceBinding(
-                    SourceBindingTarget.classNames(clazz.className(),
-                            SourceBindingSlot.CLASS_LABEL),
-                    new SourceRecipe(WikidataDatasourceProvider.ID,
-                            WikidataDatasourceProvider.LABEL, Map.of())));
-            putDefault(clazz, new SourceBinding(
-                    SourceBindingTarget.classNames(clazz.className(),
-                            SourceBindingSlot.CLASS_ALIASES),
-                    new SourceRecipe(WikidataDatasourceProvider.ID,
-                            WikidataDatasourceProvider.ALIASES, Map.of())));
+            // A legacy class has no name bindings at all. Materialize the historical
+            // id + label + aliases behaviour once. After that, absence is meaningful:
+            // an editor may deliberately remove aliases and synchronization must not
+            // silently opt the class back in.
+            boolean legacy = binding(clazz, SourceBindingSlot.CLASS_IDENTITY) == null
+                    && binding(clazz, SourceBindingSlot.CLASS_LABEL) == null
+                    && binding(clazz, SourceBindingSlot.CLASS_ALIASES) == null;
+            putDefault(clazz, classBinding(clazz, SourceBindingSlot.CLASS_IDENTITY,
+                    WikidataDatasourceProvider.IDENTIFIER));
+            putDefault(clazz, classBinding(clazz, SourceBindingSlot.CLASS_LABEL,
+                    WikidataDatasourceProvider.LABEL));
+            if (legacy) putDefault(clazz, classBinding(clazz,
+                    SourceBindingSlot.CLASS_ALIASES,
+                    WikidataDatasourceProvider.ALIASES));
         } else {
             remove(clazz, SourceBindingSlot.CLASS_IDENTITY);
             remove(clazz, SourceBindingSlot.CLASS_LABEL);
@@ -95,6 +95,26 @@ public final class ClassSourceBindings {
         return clazz.sourceBindings().stream()
                 .filter(value -> value.target().slot() == slot)
                 .findFirst().orElse(null);
+    }
+
+    /** Explicitly chooses whether Wikidata aliases are retained for this class. */
+    public static void aliases(GeneratedClassModel clazz, boolean enabled) {
+        if (clazz == null) return;
+        remove(clazz, SourceBindingSlot.CLASS_ALIASES);
+        if (enabled && clazz.classKind() == ClassKind.SOURCE) {
+            clazz.sourceBindings().add(classBinding(clazz,
+                    SourceBindingSlot.CLASS_ALIASES,
+                    WikidataDatasourceProvider.ALIASES));
+        }
+    }
+
+    private static SourceBinding classBinding(GeneratedClassModel clazz,
+            SourceBindingSlot slot, String operation) {
+        SourceBindingTarget target = slot == SourceBindingSlot.CLASS_IDENTITY
+                ? SourceBindingTarget.classIdentity(clazz.className())
+                : SourceBindingTarget.classNames(clazz.className(), slot);
+        return new SourceBinding(target, new SourceRecipe(
+                WikidataDatasourceProvider.ID, operation, Map.of()));
     }
 
     private static SourceBinding population(String className, SourceRecipe recipe) {
