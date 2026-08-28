@@ -2,6 +2,7 @@ package quiz.web;
 
 import org.junit.jupiter.api.Test;
 import objectview.ViewableAdapter;
+import objectview.annotations.Inline;
 import quiz.ValueObject;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -9,6 +10,18 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ViewableJsonValueObjectTest {
+
+    static final class DatedHolding extends ViewableAdapter {
+        @Inline private final aux.FlexibleDate startDate =
+                aux.FlexibleDate.parse("1765");
+        @Inline private final aux.FlexibleDate endDate =
+                aux.FlexibleDate.parse("1790");
+
+        @Override public String getIdentifier() { return "holding"; }
+        @Override public String getDisplayName() {
+            return "Office (1765–1790)";
+        }
+    }
 
     static final class Owner extends ViewableAdapter {
         private final ViewableAdapter detail;
@@ -93,5 +106,17 @@ class ViewableJsonValueObjectTest {
         assertEquals("Named entity", detail.ref().name());
         assertEquals("entity-id", detail.ref().id());
         assertNull(detail.ref().inline());
+    }
+
+    @Test
+    void inlineScalarDatesRemainOrdinaryVisibleValues() {
+        ViewableView view = ViewableJson.of(new DatedHolding());
+
+        assertEquals(2, view.fields().size());
+        assertEquals("startDate", view.fields().get(0).name());
+        assertEquals("text", view.fields().get(0).kind());
+        assertEquals("1765", view.fields().get(0).value());
+        assertEquals("endDate", view.fields().get(1).name());
+        assertEquals("1790", view.fields().get(1).value());
     }
 }

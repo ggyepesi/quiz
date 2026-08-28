@@ -83,7 +83,7 @@ final class TypeSpecDomainView extends DelegatingDomainModel {
                     field.name(), field.label(), field.role(), field.kind(), field.valueKind(),
                     field.collection() ? "List<" + label + ">" : label,
                     true, field.collection(), VIRTUAL + fieldPath,
-                    field.structural(), field.minor(), field.inline(), field.link(),
+                    field.structural(), field.minor(), field.inline(), field.embedded(), field.link(),
                     field.linkText(), field.annotatedReference()));
         }
         List<FieldRef> immutable = List.copyOf(fields.values());

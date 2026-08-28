@@ -154,7 +154,10 @@ public final class SnapshotFieldGraph {
                     field.typeLabel(), field.reference, field.collection,
                     field.primaryTargetType(),
                     field.structural || extra.contains(field.name),
-                    field.minor, field.inline, field.link, field.linkText,
+                    field.minor,
+                    field.inline && !field.reference,
+                    field.embedded || (field.inline && field.reference),
+                    field.link, field.linkText,
                     field.annotatedReference));
         }
         List<FieldRef> immutable = List.copyOf(refs);
@@ -425,6 +428,9 @@ public final class SnapshotFieldGraph {
         public boolean structural;
         public boolean minor;
         public boolean inline;
+        /** Structured embedding, separate from scalar inline presentation. Older
+         * snapshots omit it and are migrated from inline+reference when read. */
+        public boolean embedded;
         public boolean link;
         public String linkText = "";
         public boolean annotatedReference;
@@ -451,6 +457,7 @@ public final class SnapshotFieldGraph {
             structural |= field.structural();
             minor |= field.minor();
             inline |= field.inline();
+            embedded |= field.embedded();
             link |= field.link();
             if (field.linkText() != null && !field.linkText().isBlank()) {
                 linkText = field.linkText();

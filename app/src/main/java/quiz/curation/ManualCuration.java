@@ -63,7 +63,9 @@ public final class ManualCuration implements CorrectionSource {
                         fieldDeclarations.add(new FieldDeclaration(
                                 e.type, e.name, e.kind, e.valueKind, e.typeLabel,
                                 e.reference, e.collection, e.targetType, e.structural,
-                                e.minor, e.inline, e.annotatedReference));
+                                e.minor, e.inline && !e.reference,
+                                e.embedded || (e.inline && e.reference),
+                                e.annotatedReference));
                     }
                 }
                 if (doc.merges != null) {
@@ -350,6 +352,7 @@ public final class ManualCuration implements CorrectionSource {
         public boolean structural;
         public boolean minor;
         public boolean inline;
+        public boolean embedded;
         public boolean annotatedReference;
 
         FieldEntry() { }
@@ -366,6 +369,7 @@ public final class ManualCuration implements CorrectionSource {
             structural = field.structural();
             minor = field.minor();
             inline = field.inline();
+            embedded = field.embedded();
             annotatedReference = field.annotatedReference();
         }
     }

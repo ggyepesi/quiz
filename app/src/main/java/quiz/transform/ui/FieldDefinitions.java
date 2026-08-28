@@ -59,7 +59,7 @@ public final class FieldDefinitions {
                 };
         FieldCardinality cardinality = field.collection()
                 ? FieldCardinality.COLLECTION : FieldCardinality.SINGLE;
-        FieldRenderMode render = field.inline() ? FieldRenderMode.INLINE
+        FieldRenderMode render = field.inline() || field.embedded() ? FieldRenderMode.INLINE
                 : field.annotatedReference() || field.reference()
                 ? FieldRenderMode.REFERENCE : FieldRenderMode.AUTO;
         return new FieldDefinition(field.name(), type,

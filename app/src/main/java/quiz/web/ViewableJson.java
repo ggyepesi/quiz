@@ -497,9 +497,9 @@ public final class ViewableJson {
         if (fr.link() && value instanceof String s && !s.isBlank()) {
             return linkField(name, s, fr.linkText());
         }
-        if (fr.inline()) {
+        if (fr.embedded()) {
             List<ViewableView> nodes = inlineNodes(value, visited);
-            return nodes.isEmpty() ? null : ViewableView.Field.inline(name, nodes);
+            if (!nodes.isEmpty()) return ViewableView.Field.inline(name, nodes);
         }
 
         // -- value shape (backing-agnostic) --

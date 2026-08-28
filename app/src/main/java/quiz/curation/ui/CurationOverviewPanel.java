@@ -688,7 +688,7 @@ public final class CurationOverviewPanel extends JPanel {
                         + "\nElement kind: " + field.valueKind()
                         + "\nCardinality: " + (field.collection() ? "collection" : "single")
                         + "\nReference target: " + blankAsDash(field.targetType())
-                        + "\nDisplay: " + (field.inline() ? "inline"
+                        + "\nDisplay: " + (field.inline() || field.embedded() ? "inline"
                                 : field.annotatedReference() ? "reference" : "auto");
             }
             return summary;
