@@ -1896,10 +1896,12 @@ public class ModelBuilderFrame extends JFrame {
     // post-delete fallback.
     private void doLoadDomain(File model) {
         try {
-            projectModel.copyContentsFrom(
-                    new GeneratedProjectModelStore().load(model));
+            GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(model);
+            datasource.graph.GraphDiscoveryState ledger =
+                    graphDiscoveryBeside(model);
+            projectModel.copyContentsFrom(loaded);
             replaceGenerationRun(null);
-            graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
+            graphDiscoveryLedger = ledger;
             instancesPanel.clear();
             modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
@@ -2028,7 +2030,10 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         try {
-            projectModel.copyContentsFrom(new GeneratedProjectModelStore().load(f));
+            GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(f);
+            datasource.graph.GraphDiscoveryState ledger = graphDiscoveryBeside(f);
+            projectModel.copyContentsFrom(loaded);
+            graphDiscoveryLedger = ledger;
             modelChanged();
             syncDepthSpinnerToActiveClass();
         } catch (Exception ex) {
@@ -2093,8 +2098,13 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         try {
-            projectModel.copyContentsFrom(
-                    new GeneratedProjectModelStore().load(model));
+            GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(model);
+            datasource.graph.GraphDiscoveryState ledger =
+                    graphDiscoveryBeside(model);
+            projectModel.copyContentsFrom(loaded);
+            replaceGenerationRun(null);
+            graphDiscoveryLedger = ledger;
+            instancesPanel.clear();
             modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
@@ -2103,6 +2113,16 @@ public class ModelBuilderFrame extends JFrame {
         } catch (Exception ex) {
             reportGenerationError(ex);
         }
+    }
+
+    /** The graph ledger is generated data owned by the snapshot beside the model. */
+    private static datasource.graph.GraphDiscoveryState graphDiscoveryBeside(File model)
+            throws java.io.IOException {
+        File snapshot = model == null ? null
+                : findInDir(model.getParentFile(), ".snapshot.json");
+        return snapshot == null
+                ? datasource.graph.GraphDiscoveryState.EMPTY
+                : new WikidataDynamicObjectJsonStore().loadGraphDiscovery(snapshot);
     }
 
     private void loadSavedInstances() {

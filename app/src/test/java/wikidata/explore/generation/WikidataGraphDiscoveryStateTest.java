@@ -55,6 +55,28 @@ class WikidataGraphDiscoveryStateTest {
                 .getFirst().node().id());
     }
 
+    @Test void graphCoverageCanBeRestoredWithoutMaterializingTheEntityPool()
+            throws Exception {
+        File snapshot = temporary.resolve("history-metadata.snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.saveWithFieldGraph(historyObjects(), snapshot, historyModel(), List.of());
+
+        // If this method accidentally enters the ordinary entity loader, the invalid
+        // pool makes it fail. The ledger itself remains valid snapshot metadata.
+        com.fasterxml.jackson.databind.ObjectMapper json =
+                new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode tree = json.readTree(snapshot);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) tree)
+                .putArray("entities").add("not an entity");
+        json.writerWithDefaultPrettyPrinter().writeValue(snapshot, tree);
+
+        GraphDiscoveryState restored = store.loadGraphDiscovery(snapshot);
+
+        assertEquals(1, restored.patterns().size());
+        assertEquals("Q253779", restored.frontier(restored.patterns().getFirst())
+                .getFirst().node().id());
+    }
+
     @Test void explicitLedgerSurvivesSnapshotWithoutBeingRecomputedFromSeeds()
             throws Exception {
         GeneratedProjectModel model = historyModel();

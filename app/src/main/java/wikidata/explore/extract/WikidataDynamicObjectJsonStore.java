@@ -548,6 +548,45 @@ public class WikidataDynamicObjectJsonStore {
     }
 
     /**
+     * Reads only the durable graph-expansion ledger from a snapshot.
+     *
+     * <p>ModelBuilder needs this when a model is selected, before its instances are
+     * loaded. Parsing the whole entity pool merely to preserve coverage would make a
+     * domain switch pay the cost of loading tens of thousands of objects.
+     */
+    public datasource.graph.GraphDiscoveryState loadGraphDiscovery(File file)
+            throws IOException {
+        int version = -1;
+        datasource.graph.GraphDiscoveryState result =
+                datasource.graph.GraphDiscoveryState.EMPTY;
+        try (com.fasterxml.jackson.core.JsonParser parser =
+                     mapper.getFactory().createParser(file)) {
+            if (parser.nextToken() != com.fasterxml.jackson.core.JsonToken.START_OBJECT) {
+                throw new IOException("Unsupported snapshot format; regenerate " + file);
+            }
+            while (parser.nextToken() != com.fasterxml.jackson.core.JsonToken.END_OBJECT) {
+                String name = parser.currentName();
+                if (name == null || parser.nextToken() == null) break;
+                if ("version".equals(name)) {
+                    version = parser.getIntValue();
+                } else if ("graphDiscovery".equals(name)
+                        && parser.currentToken()
+                        != com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
+                    datasource.graph.GraphDiscoveryState loaded = mapper.readValue(
+                            parser, datasource.graph.GraphDiscoveryState.class);
+                    if (loaded != null) result = loaded;
+                } else {
+                    parser.skipChildren();
+                }
+            }
+        }
+        if (version != FORMAT_VERSION) {
+            throw new IOException("Unsupported snapshot version; regenerate " + file);
+        }
+        return result;
+    }
+
+    /**
      * Loads instances and their persisted schema from one parse of a current snapshot.
      */
     public LoadedSnapshot loadAllWithFieldGraph(File file) throws IOException {
